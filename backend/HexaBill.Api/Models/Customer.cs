@@ -26,6 +26,9 @@ namespace HexaBill.Api.Models
         // MULTI-TENANT: Tenant identification (new, replaces OwnerId)
         public int? TenantId { get; set; }
         
+        public int? BranchId { get; set; }
+        public int? RouteId { get; set; }
+        
         [Required]
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
@@ -60,5 +63,9 @@ namespace HexaBill.Api.Models
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
         public byte[] RowVersion { get; set; } = Array.Empty<byte>(); // For optimistic concurrency
+
+        // Navigation properties
+        public virtual Branch? Branch { get; set; }
+        public virtual Route? Route { get; set; }
     }
 }

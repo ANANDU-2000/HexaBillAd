@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { 
-  Search, 
-  Plus, 
-  Minus, 
-  Trash2, 
-  Save, 
-  Printer, 
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  Save,
+  Printer,
   User,
   Calculator,
   AlertTriangle,
@@ -22,6 +22,7 @@ import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../uti
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import toast from 'react-hot-toast'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
@@ -68,6 +69,17 @@ const PosPage = () => {
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedRouteId, setSelectedRouteId] = useState('')
 
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    showInput: false,
+    inputPlaceholder: '',
+    defaultValue: '',
+    onConfirm: () => { }
+  })
+
   const customerInputRef = useRef(null)
   const productSearchRefs = useRef({})
   const lastAddedRowIndexRef = useRef(null)
@@ -104,10 +116,29 @@ const PosPage = () => {
         branchesAPI.getBranches().catch(() => ({ success: false })),
         routesAPI.getRoutes().catch(() => ({ success: false }))
       ])
-      if (bRes?.success && bRes?.data) setBranches(bRes.data)
-      if (rRes?.success && rRes?.data) setRoutes(rRes.data)
+
+      // Filter for non-admin users
+      const isManagerOrAdmin = user?.role === 'Owner' || user?.role === 'Admin' || user?.role === 'Manager'
+
+      if (bRes?.success && bRes?.data) {
+        let branchList = bRes.data
+        if (!isManagerOrAdmin && user?.branchId) {
+          branchList = branchList.filter(b => b.id === user.branchId)
+          setSelectedBranchId(user.branchId)
+        }
+        setBranches(branchList)
+      }
+
+      if (rRes?.success && rRes?.data) {
+        let routeList = rRes.data
+        if (!isManagerOrAdmin && user?.routeId) {
+          routeList = routeList.filter(r => r.id === user.routeId)
+          setSelectedRouteId(user.routeId)
+        }
+        setRoutes(routeList)
+      }
     } catch (_) { /* ignore */ }
-  }, [])
+  }, [user])
 
   // Load next invoice number when customer is selected
   const loadNextInvoiceNumber = useCallback(async () => {
@@ -231,7 +262,7 @@ const PosPage = () => {
         loadCustomers()
       }
     }, 60000) // 60 seconds - reduced from 15
-    
+
     // Click outside handler for product dropdowns - use mousedown to prevent conflicts
     const handleClickOutside = (e) => {
       // Only close if clicking outside the dropdown container
@@ -254,7 +285,7 @@ const PosPage = () => {
     // Use mousedown instead of click to avoid conflicts with onClick handlers
     document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('visibilitychange', handleVisibilityChange)
-    
+
     return () => {
       clearInterval(refreshInterval)
       document.removeEventListener('mousedown', handleClickOutside)
@@ -280,9 +311,9 @@ const PosPage = () => {
       loadProducts()
       loadCustomers()
     }
-    
+
     window.addEventListener('dataUpdated', handleDataUpdate)
-    
+
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate)
     }
@@ -295,7 +326,7 @@ const PosPage = () => {
     if (customerChangedDuringEdit) {
       return
     }
-    
+
     if (isEditMode && editingSale && editingSale.customerId && customers.length > 0) {
       const customer = customers.find(c => c.id === editingSale.customerId)
       // Only set if customer found and current selection doesn't match
@@ -331,9 +362,9 @@ const PosPage = () => {
       // Show all products when no search (or first 50 for better performance)
       return products.slice(0, 50)
     }
-    
+
     const term = searchTerm.toLowerCase()
-    const filtered = products.filter(product => 
+    const filtered = products.filter(product =>
       product.nameEn?.toLowerCase().includes(term) ||
       product.nameAr?.toLowerCase().includes(term) ||
       product.sku?.toLowerCase().includes(term) ||
@@ -346,13 +377,13 @@ const PosPage = () => {
   const addToCart = (product, rowIndex = null) => {
     // CRITICAL FIX: Ensure price is populated - use sellPrice or costPrice as fallback
     const unitPrice = product.sellPrice || product.costPrice || 0
-    
+
     // OPTIMISTIC UI: Instant update - React state updates are already synchronous and instant
     const qty = 1
     const rowTotal = qty * unitPrice
     const vatAmount = Math.round((rowTotal * 0.05) * 100) / 100
     const lineTotal = rowTotal + vatAmount
-    
+
     // If rowIndex is provided, replace that specific row
     if (rowIndex !== null && rowIndex >= 0 && rowIndex < cart.length) {
       const newCart = [...cart]
@@ -367,7 +398,7 @@ const PosPage = () => {
         lineTotal: lineTotal
       }
       setCart(newCart)
-      
+
       // Close dropdown IMMEDIATELY for this row
       setShowProductDropdown(prev => ({ ...prev, [rowIndex]: false }))
       setProductSearchTerms(prev => {
@@ -375,13 +406,13 @@ const PosPage = () => {
         delete newTerms[rowIndex]
         return newTerms
       })
-      
+
       // Visual feedback for mobile
       toast.success(`Added ${product.nameEn}`, { duration: 1500, icon: '✓' })
     } else {
       // Otherwise, check if product already exists in cart
       const existingItemIndex = cart.findIndex(item => item.productId === product.id)
-      
+
       if (existingItemIndex !== -1) {
         // Increment quantity of existing item
         setCart(cart.map((item, idx) => {
@@ -409,7 +440,7 @@ const PosPage = () => {
         }])
         toast.success(`Added ${product.nameEn}`, { duration: 1500, icon: '✓' })
       }
-      
+
       // Close all dropdowns
       setShowProductDropdown({})
     }
@@ -432,27 +463,27 @@ const PosPage = () => {
 
   const updateCartItem = (index, field, value) => {
     const newCart = [...cart]
-    
+
     // Handle empty string for number fields
     const numValue = value === '' ? '' : (field === 'qty' || field === 'unitPrice' ? Number(value) : value)
     newCart[index] = { ...newCart[index], [field]: numValue }
-    
+
     // Calculate: Total = Qty × Price, VAT = Total × 5%, Amount = Total + VAT
     const qty = typeof newCart[index].qty === 'number' ? newCart[index].qty : 0
     const unitPrice = typeof newCart[index].unitPrice === 'number' ? newCart[index].unitPrice : 0
-    
+
     if (unitPrice > 0 && qty > 0) {
       const rowTotal = qty * unitPrice
       const vatAmount = Math.round((rowTotal * 0.05) * 100) / 100
       const lineTotal = rowTotal + vatAmount
-      
+
       newCart[index].vatAmount = vatAmount
       newCart[index].lineTotal = lineTotal
     } else {
       newCart[index].vatAmount = 0
       newCart[index].lineTotal = 0
     }
-    
+
     setCart(newCart)
   }
 
@@ -472,11 +503,11 @@ const PosPage = () => {
       const rowTotal = qty * unitPrice
       return sum + rowTotal
     }, 0)
-    
+
     const vatTotal = cart.reduce((sum, item) => sum + (item.vatAmount || 0), 0)
     const discountValue = typeof discount === 'number' ? discount : 0
     const grandTotal = subtotal + vatTotal - discountValue
-    
+
     return { subtotal, vatTotal, grandTotal }
   }
 
@@ -502,27 +533,27 @@ const PosPage = () => {
   const handlePrintReceipt = async () => {
     console.log('Print Receipt Called')
     console.log('  - lastCreatedInvoice:', lastCreatedInvoice)
-    
+
     if (!lastCreatedInvoice) {
       toast.error('No invoice to print. Please create an invoice first.')
       console.error('lastCreatedInvoice is null or undefined')
       return
     }
-    
+
     const saleId = lastCreatedInvoice.id
     const invoiceNo = lastCreatedInvoice.invoiceNo
-    
+
     console.log(`  - Sale ID: ${saleId}, Invoice No: ${invoiceNo}`)
-    
+
     if (!saleId) {
       toast.error('Invalid sale ID. Cannot print invoice.')
       console.error('Sale ID is missing from lastCreatedInvoice')
       return
     }
-    
+
     try {
       toast.loading('Generating PDF for printing...', { id: 'print-toast' })
-      
+
       // Get the PDF blob - ensure it's a proper PDF file, not a link
       let pdfBlob
       try {
@@ -534,12 +565,12 @@ const PosPage = () => {
         toast.error(apiError.message || 'Failed to generate PDF. Please try again.')
         return
       }
-      
+
       if (!pdfBlob) {
         toast.dismiss('print-toast')
         throw new Error('No PDF data received from server')
       }
-      
+
       // Ensure it's a proper Blob (PDF file), not a string/link
       let blob
       if (pdfBlob instanceof Blob) {
@@ -551,22 +582,22 @@ const PosPage = () => {
       } else {
         blob = new Blob([pdfBlob], { type: 'application/pdf' })
       }
-      
+
       // Validate blob is actually a PDF
       if (blob.size === 0) {
         toast.dismiss('print-toast')
         throw new Error('PDF is empty - invoice may not exist or PDF generation failed')
       }
-      
+
       // Verify it's actually a PDF by checking type
       if (blob.type && !blob.type.includes('pdf')) {
         toast.dismiss('print-toast')
         throw new Error('Invalid file type received. Expected PDF file.')
       }
-      
+
       // Create object URL from blob (PDF file, not a link)
       const pdfUrl = URL.createObjectURL(blob)
-      
+
       // Use iframe approach to avoid pop-up blockers (works on mobile and desktop)
       const iframe = document.createElement('iframe')
       iframe.style.position = 'fixed'
@@ -577,9 +608,9 @@ const PosPage = () => {
       iframe.style.border = 'none'
       iframe.style.display = 'none'
       iframe.src = pdfUrl
-      
+
       document.body.appendChild(iframe)
-      
+
       // Function to trigger print from iframe
       const triggerPrint = () => {
         try {
@@ -608,13 +639,13 @@ const PosPage = () => {
               document.body.appendChild(a)
               a.click()
               document.body.removeChild(a)
-              
+
               toast.dismiss('print-toast')
               toast('PDF downloaded. Please open it and print manually.', {
                 duration: 5000
               })
             }
-            
+
             // Clean up iframe and URL after delay
             setTimeout(() => {
               if (iframe.parentNode) {
@@ -627,7 +658,7 @@ const PosPage = () => {
           console.error('Print setup error:', err)
           toast.dismiss('print-toast')
           toast.error('Failed to open print dialog. PDF downloaded instead.')
-          
+
           // Fallback: download PDF
           const a = document.createElement('a')
           a.href = pdfUrl
@@ -636,7 +667,7 @@ const PosPage = () => {
           document.body.appendChild(a)
           a.click()
           document.body.removeChild(a)
-          
+
           setTimeout(() => {
             if (iframe.parentNode) {
               document.body.removeChild(iframe)
@@ -645,19 +676,19 @@ const PosPage = () => {
           }, 1000)
         }
       }
-      
+
       // Wait for iframe to load PDF
       iframe.onload = () => {
         triggerPrint()
       }
-      
+
       // Fallback: trigger print after timeout even if onload doesn't fire
       setTimeout(() => {
         if (iframe.parentNode) {
           triggerPrint()
         }
       }, 2000)
-      
+
     } catch (error) {
       console.error('Print error:', error)
       console.error('Error details:', {
@@ -665,12 +696,12 @@ const PosPage = () => {
         response: error?.response?.data,
         status: error?.response?.status
       })
-      
+
       toast.dismiss('print-toast')
-      
+
       // Extract error message
       let errorMessage = 'Failed to prepare invoice for printing'
-      
+
       if (error?.response?.status === 401) {
         errorMessage = 'Authentication required. Please login again.'
       } else if (error?.response?.status === 404) {
@@ -682,9 +713,9 @@ const PosPage = () => {
       } else if (error?.message) {
         errorMessage = error.message
       }
-      
+
       toast.error(errorMessage)
-      
+
       // Automatically try to download as fallback
       setTimeout(async () => {
         try {
@@ -703,25 +734,25 @@ const PosPage = () => {
 
   const handleWhatsAppShare = async () => {
     if (!lastCreatedInvoice) return
-    
+
     try {
       const saleId = lastCreatedInvoice.id
       const invoiceNo = lastCreatedInvoice.invoiceNo || `INV-${saleId}`
       const customerName = selectedCustomer?.name || 'Cash Customer'
       const totals = calculateTotals()
       const date = new Date().toLocaleDateString()
-      
+
       const message = `*Invoice ${invoiceNo}*\n\n` +
         `Customer: ${customerName}\n` +
         `Date: ${date}\n` +
         `Total: ${formatCurrency(totals.grandTotal)}\n\n` +
         `Please find the invoice attached.`
-      
+
       const encodedMessage = encodeURIComponent(message)
-      
+
       // Generate PDF blob first - ensure it's a PDF file, not a link
       toast.loading('Generating PDF for sharing...', { id: 'whatsapp-share' })
-      
+
       let pdfBlob
       try {
         pdfBlob = await salesAPI.getInvoicePdf(saleId)
@@ -731,14 +762,14 @@ const PosPage = () => {
         toast.error(apiError.message || 'Failed to generate PDF. Please try again.')
         return
       }
-      
+
       // Validate it's a proper PDF blob, not a string/link
       if (!pdfBlob) {
         toast.dismiss('whatsapp-share')
         toast.error('No PDF data received from server')
         return
       }
-      
+
       let blob
       if (pdfBlob instanceof Blob) {
         blob = pdfBlob
@@ -750,21 +781,21 @@ const PosPage = () => {
       } else {
         blob = new Blob([pdfBlob], { type: 'application/pdf' })
       }
-      
+
       // Validate blob is actually a PDF file
       if (blob.size === 0) {
         toast.dismiss('whatsapp-share')
         toast.error('PDF is empty - invoice may not exist or PDF generation failed')
         return
       }
-      
+
       // Verify it's actually a PDF by checking type
       if (blob.type && !blob.type.includes('pdf')) {
         toast.dismiss('whatsapp-share')
         toast.error('Invalid file type received. Expected PDF file.')
         return
       }
-      
+
       // Download PDF file (not a link) so user can attach it
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -773,17 +804,17 @@ const PosPage = () => {
       a.download = `invoice_${invoiceNo}.pdf`
       document.body.appendChild(a)
       a.click()
-      
+
       // Clean up download link
       setTimeout(() => {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       }, 100)
-      
+
       // Open WhatsApp Web with message (user will attach the downloaded PDF file)
       const whatsappUrl = `https://wa.me/?text=${encodedMessage}`
       window.open(whatsappUrl, '_blank')
-      
+
       toast.dismiss('whatsapp-share')
       toast.success('PDF downloaded. WhatsApp opened. Please attach the downloaded PDF file.')
     } catch (error) {
@@ -795,44 +826,53 @@ const PosPage = () => {
 
   const handleEmailShare = async () => {
     if (!lastCreatedInvoice) return
-    
-    try {
-      const saleId = lastCreatedInvoice.id
-      const invoiceNo = lastCreatedInvoice.invoiceNo || `INV-${saleId}`
-      
-      // Get customer email or prompt
-      let customerEmail = selectedCustomer?.email
-      
-      if (!customerEmail) {
-        customerEmail = prompt('Enter customer email address:')
-        if (!customerEmail) {
-          toast.error('Email address required')
-          return
-        }
-      }
-      
-      // Send email via API
+
+    const saleId = lastCreatedInvoice.id
+    const invoiceNo = lastCreatedInvoice.invoiceNo || `INV-${saleId}`
+    let customerEmail = selectedCustomer?.email
+
+    const sendEmail = async (email) => {
       try {
-        const response = await salesAPI.sendInvoiceEmail(saleId, customerEmail)
+        toast.loading('Sending email...', { id: 'email-share' })
+        const response = await salesAPI.sendInvoiceEmail(saleId, email)
         if (response.success) {
-          toast.success(`Invoice sent to ${customerEmail}`)
+          toast.success(`Invoice sent to ${email}`, { id: 'email-share' })
         } else {
-          toast.error(response.message || 'Failed to send email')
+          toast.error(response.message || 'Failed to send email', { id: 'email-share' })
         }
       } catch (emailError) {
         console.error('Email send error:', emailError)
-        // Fallback: Create mailto link with PDF attachment suggestion
+        toast.dismiss('email-share')
+        // Fallback: Create mailto link
         const subject = encodeURIComponent(`Invoice ${invoiceNo}`)
         const body = encodeURIComponent(`Please find invoice ${invoiceNo} attached.\n\nThank you for your business!`)
-        window.location.href = `mailto:${customerEmail}?subject=${subject}&body=${body}`
+        window.location.href = `mailto:${email}?subject=${subject}&body=${body}`
         toast('Email client opened. Please attach the PDF manually if needed.', {
           duration: 5000
         })
       }
-    } catch (error) {
-      console.error('Email share error:', error)
-      toast.error(error.message || 'Failed to send email')
     }
+
+    if (!customerEmail) {
+      setDangerModal({
+        isOpen: true,
+        title: 'Send Invoice to Email',
+        message: 'Enter the customer email address:',
+        confirmLabel: 'Send Email',
+        showInput: true,
+        inputPlaceholder: 'customer@example.com',
+        onConfirm: (val) => {
+          if (!val?.trim()) {
+            toast.error('Email address required')
+            return
+          }
+          sendEmail(val.trim())
+        }
+      })
+      return
+    }
+
+    await sendEmail(customerEmail)
   }
 
   const handleCloseInvoiceOptions = async () => {
@@ -910,14 +950,14 @@ const PosPage = () => {
     setLoading(true)
     try {
       const totals = calculateTotals()
-      
+
       // Validate items before creating sale data
       if (!validCart || validCart.length === 0) {
         toast.error('Please add at least one product to the invoice')
         setLoading(false)
         return
       }
-      
+
       const saleData = {
         customerId: selectedCustomer?.id || null,
         items: validCart.map(item => ({
@@ -938,7 +978,7 @@ const PosPage = () => {
         branchId: selectedBranchId ? parseInt(selectedBranchId, 10) : undefined,
         routeId: selectedRouteId ? parseInt(selectedRouteId, 10) : undefined
       }
-      
+
       // Final validation
       if (!saleData.items || saleData.items.length === 0) {
         toast.error('Please add at least one valid product to the invoice')
@@ -966,7 +1006,7 @@ const PosPage = () => {
           ...(editingSale?.rowVersion && { rowVersion: editingSale.rowVersion }),
           ...(saleData.invoiceDate && { invoiceDate: saleData.invoiceDate })
         }
-        
+
         // Log the update request for debugging
         console.log('Updating invoice:', {
           saleId: editingSaleId,
@@ -974,20 +1014,20 @@ const PosPage = () => {
           hasRowVersion: !!editingSale?.rowVersion,
           itemsCount: updateData.items?.length
         })
-        
+
         response = await salesAPI.updateSale(editingSaleId, updateData)
         if (response.success) {
           const invoiceNo = response.data?.invoiceNo
           const saleId = response.data?.id
           toast.success(`Invoice ${invoiceNo || editingSaleId} updated successfully!`)
-          
+
           // Refresh products and customers after update (non-blocking for better UX)
           Promise.all([
             loadProducts(),
             loadCustomers(),
             loadNextInvoiceNumber()
           ]).catch(err => console.error('Error refreshing data:', err))
-          
+
           // Clear edit mode and URL param
           setIsEditMode(false)
           setEditingSaleId(null)
@@ -995,7 +1035,7 @@ const PosPage = () => {
           setEditReason('')
           setCustomerChangedDuringEdit(false) // Reset customer change tracking
           setSearchParams({})
-          
+
           // Store invoice data and show options modal
           if (saleId) {
             setLastCreatedInvoice({
@@ -1004,15 +1044,18 @@ const PosPage = () => {
               data: response.data
             })
             setShowInvoiceOptionsModal(true)
-            
+
             // If we came from customer ledger, offer to go back
             const cameFromLedger = document.referrer.includes('/ledger')
             if (cameFromLedger) {
-              // Small delay to show success message first
               setTimeout(() => {
-                if (window.confirm('Invoice updated successfully! Would you like to return to Customer Ledger?')) {
-                  navigate('/ledger')
-                }
+                setDangerModal({
+                  isOpen: true,
+                  title: 'Update Successful',
+                  message: 'Invoice updated successfully! Would you like to return to Customer Ledger?',
+                  confirmLabel: 'Go to Ledger',
+                  onConfirm: () => navigate('/ledger')
+                })
               }, 1000)
             }
           } else {
@@ -1033,31 +1076,31 @@ const PosPage = () => {
         console.log('  - Grand Total:', totals.grandTotal)
         console.log('  - Discount:', saleData.discount)
         console.log('  - Payments:', saleData.payments)
-        
+
         response = await salesAPI.createSale(saleData)
-        
+
         console.log('Create Sale Response:', response)
-        
+
         if (response.success) {
           const invoiceNo = response.data?.invoiceNo
           const saleId = response.data?.id
-          
+
           if (!saleId) {
             console.error('Sale created but no ID returned:', response.data)
             toast.error('Invoice created but ID missing. Please refresh and check Sales list.')
             setLoading(false)
             return
           }
-          
+
           toast.success(`Invoice ${invoiceNo || 'saved'} successfully!`)
-          
+
           // Refresh products and customers after billing (non-blocking for better UX)
           Promise.all([
             loadProducts(),
             loadCustomers(),
             loadNextInvoiceNumber() // Refresh invoice number for next invoice
           ]).catch(err => console.error('Error refreshing data:', err))
-          
+
           // Store invoice data and show options modal
           if (saleId) {
             setLastCreatedInvoice({
@@ -1085,11 +1128,11 @@ const PosPage = () => {
         url: error?.config?.url,
         method: error?.config?.method
       })
-      
+
       if (isEditMode) {
         // Update-specific error handling
         let errorMsg = 'Failed to update invoice. Please try again.'
-        
+
         if (error?.response) {
           // Server responded with error
           const responseData = error.response.data
@@ -1110,17 +1153,17 @@ const PosPage = () => {
           // Network or other error
           errorMsg = error.message
         }
-        
+
         toast.error(errorMsg, { duration: 6000 })
       } else {
         // Create-specific error handling
         let errorMsg = 'Failed to save sale'
-        
+
         if (error.response?.status === 400) {
           // Extract detailed error message from response
           const responseData = error.response.data
           console.log('400 Bad Request - Full Response:', responseData)
-          
+
           if (responseData?.message) {
             errorMsg = responseData.message
           } else if (responseData?.errors) {
@@ -1147,9 +1190,9 @@ const PosPage = () => {
         } else if (error.message) {
           errorMsg = error.message
         }
-        
+
         toast.error(errorMsg, { duration: 8000 })
-        
+
         // Log detailed error for debugging
         console.log('Error occurred during save')
         console.log('Backend Error Response:', error.response?.data)
@@ -1263,9 +1306,8 @@ const PosPage = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm overflow-x-auto">
           <div className="bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm border border-blue-200">
             <span className="font-medium text-blue-700">Invoice No:</span>
-            <span className={`ml-1 sm:ml-2 font-semibold font-mono text-xs sm:text-sm ${
-              isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
-            }`}>
+            <span className={`ml-1 sm:ml-2 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
+              }`}>
               {isEditMode && editingSale ? editingSale.invoiceNo : nextInvoiceNumber}
             </span>
             {isEditMode && <span className="ml-2 text-xs text-blue-600">(Read-only)</span>}
@@ -1328,181 +1370,385 @@ const PosPage = () => {
             <div className="hidden md:block bg-white rounded-lg border-2 border-gray-300 shadow-lg overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
-                <thead className="bg-gray-100 border-2 border-gray-300">
-                  <tr>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-12 text-xs sm:text-sm">SL<br/><span className="text-xs sm:text-xs font-normal text-gray-600">رقم</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 w-80 text-xs sm:text-sm">Description<br/><span className="text-xs sm:text-xs font-normal text-gray-600">التفاصيل</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Unit<br/><span className="text-xs sm:text-xs font-normal text-gray-600">الوحدة</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Qty<br/><span className="text-xs sm:text-xs font-normal text-gray-600">الكمية</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Unit Price<br/><span className="text-xs sm:text-xs font-normal text-gray-600">سعر الوحدة</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Total<br/><span className="text-xs sm:text-xs font-normal text-gray-600">الإجمالي</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Vat:5%<br/><span className="text-xs sm:text-xs font-normal text-gray-600">ضريبة 5%</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Amount<br/><span className="text-xs sm:text-xs font-normal text-gray-600">المبلغ</span></th>
-                    <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Actions<br/><span className="text-xs sm:text-xs font-normal text-gray-600">إجراءات</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {cart.length === 0 ? (
+                  <thead className="bg-gray-100 border-2 border-gray-300">
                     <tr>
-                      <td colSpan="9" className="px-4 py-12 text-center text-gray-500 text-base">
-                        No items in cart. Click + to add products
-                      </td>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-12 text-xs sm:text-sm">SL<br /><span className="text-xs sm:text-xs font-normal text-gray-600">رقم</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 w-80 text-xs sm:text-sm">Description<br /><span className="text-xs sm:text-xs font-normal text-gray-600">التفاصيل</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Unit<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الوحدة</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Qty<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الكمية</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Unit Price<br /><span className="text-xs sm:text-xs font-normal text-gray-600">سعر الوحدة</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Total<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الإجمالي</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Vat:5%<br /><span className="text-xs sm:text-xs font-normal text-gray-600">ضريبة 5%</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Amount<br /><span className="text-xs sm:text-xs font-normal text-gray-600">المبلغ</span></th>
+                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Actions<br /><span className="text-xs sm:text-xs font-normal text-gray-600">إجراءات</span></th>
                     </tr>
-                  ) : (
-                    cart.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 text-center border-r-2 border-gray-200 font-medium text-sm align-middle">{index + 1}</td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 min-h-[80px] align-top" style={{ position: 'relative', overflow: 'visible' }}>
-                          <div className="relative product-dropdown-container" style={{ zIndex: showProductDropdown[index] ? 9999 : 1 }}>
-                            {item.productId ? (
-                              <div className="py-2">
-                                <p className="font-semibold text-gray-900 text-base leading-snug break-words">{item.productName}</p>
-                                <p className="text-xs text-gray-500 mt-1.5">{item.sku}</p>
-                              </div>
-                            ) : (
-                              <div className="relative product-dropdown-container">
-                                <input
-                                  type="text"
-                                  ref={(el) => productSearchRefs.current[index] = el}
-                                  value={productSearchTerms[index] || ''}
-                                  disabled={isFormDisabled}
-                                  onChange={(e) => {
-                                    const searchValue = e.target.value
-                                    setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                                    // Auto-open dropdown when user starts typing
-                                    if (searchValue.trim() && !showProductDropdown[index]) {
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {cart.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" className="px-4 py-12 text-center text-gray-500 text-base">
+                          No items in cart. Click + to add products
+                        </td>
+                      </tr>
+                    ) : (
+                      cart.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 text-center border-r-2 border-gray-200 font-medium text-sm align-middle">{index + 1}</td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 min-h-[80px] align-top" style={{ position: 'relative', overflow: 'visible' }}>
+                            <div className="relative product-dropdown-container" style={{ zIndex: showProductDropdown[index] ? 9999 : 1 }}>
+                              {item.productId ? (
+                                <div className="py-2">
+                                  <p className="font-semibold text-gray-900 text-base leading-snug break-words">{item.productName}</p>
+                                  <p className="text-xs text-gray-500 mt-1.5">{item.sku}</p>
+                                </div>
+                              ) : (
+                                <div className="relative product-dropdown-container">
+                                  <input
+                                    type="text"
+                                    ref={(el) => productSearchRefs.current[index] = el}
+                                    value={productSearchTerms[index] || ''}
+                                    disabled={isFormDisabled}
+                                    onChange={(e) => {
+                                      const searchValue = e.target.value
+                                      setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
+                                      // Auto-open dropdown when user starts typing
+                                      if (searchValue.trim() && !showProductDropdown[index]) {
+                                        setShowProductDropdown(prev => ({ ...prev, [index]: true }))
+                                      }
+                                    }}
+                                    onFocus={() => {
+                                      if (isFormDisabled) return
+                                      // Always show dropdown when focused
                                       setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                                    }
-                                  }}
-                                  onFocus={() => {
-                                    if (isFormDisabled) return
-                                    // Always show dropdown when focused
-                                      setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                                    // If no search term, show all products
-                                    if (!productSearchTerms[index] || !productSearchTerms[index].trim()) {
-                                      // Keep dropdown open to show all products
-                                    }
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  placeholder="Type to search product..."
-                                  className="w-full px-3 py-3 border-2 border-blue-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                />
-                                {showProductDropdown[index] && (
-                                  <>
-                                    {/* Arrow pointing down */}
-                                    <div className="absolute z-[9999] top-full left-4 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-blue-400" style={{ marginTop: '-1px' }}></div>
-                                    {/* Dropdown - Positioned ABOVE table overflow with HIGHEST z-index */}
-                                    <div 
-                                      className="fixed bg-white border-2 border-blue-400 rounded-lg shadow-lg z-[10000]"
-                                      style={{ 
-                                        maxHeight: '500px',
-                                        width: '600px',
-                                        overflowY: 'auto',
-                                        overflowX: 'hidden',
-                                        top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 2}px`,
-                                        left: `${productSearchRefs.current[index]?.getBoundingClientRect().left}px`,
-                                        boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
-                                      }}
-                                      onMouseDown={(e) => e.stopPropagation()}
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {(() => {
-                                        if (loadingProducts) {
-                                          return (
-                                            <div className="p-4 text-center">
-                                              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                              <p className="text-sm text-gray-500 mt-2">Loading products...</p>
-                                            </div>
-                                          )
-                                        }
-                                        
-                                        const filtered = getFilteredProducts(index)
-                                        const searchTerm = productSearchTerms[index] || ''
-                                        const totalProducts = searchTerm.trim() 
-                                          ? products.filter(p => 
+                                      // If no search term, show all products
+                                      if (!productSearchTerms[index] || !productSearchTerms[index].trim()) {
+                                        // Keep dropdown open to show all products
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    placeholder="Type to search product..."
+                                    className="w-full px-3 py-3 border-2 border-blue-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                  />
+                                  {showProductDropdown[index] && (
+                                    <>
+                                      {/* Arrow pointing down */}
+                                      <div className="absolute z-[9999] top-full left-4 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-blue-400" style={{ marginTop: '-1px' }}></div>
+                                      {/* Dropdown - Positioned ABOVE table overflow with HIGHEST z-index */}
+                                      <div
+                                        className="fixed bg-white border-2 border-blue-400 rounded-lg shadow-lg z-[10000]"
+                                        style={{
+                                          maxHeight: '500px',
+                                          width: '600px',
+                                          overflowY: 'auto',
+                                          overflowX: 'hidden',
+                                          top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 2}px`,
+                                          left: `${productSearchRefs.current[index]?.getBoundingClientRect().left}px`,
+                                          boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
+                                        }}
+                                        onMouseDown={(e) => e.stopPropagation()}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {(() => {
+                                          if (loadingProducts) {
+                                            return (
+                                              <div className="p-4 text-center">
+                                                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                                <p className="text-sm text-gray-500 mt-2">Loading products...</p>
+                                              </div>
+                                            )
+                                          }
+
+                                          const filtered = getFilteredProducts(index)
+                                          const searchTerm = productSearchTerms[index] || ''
+                                          const totalProducts = searchTerm.trim()
+                                            ? products.filter(p =>
                                               p.nameEn?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                               p.nameAr?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                               p.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                               p.barcode?.toLowerCase().includes(searchTerm.toLowerCase())
                                             ).length
-                                          : products.length
-                                        const showingCount = filtered.length
-                                        const hasMore = totalProducts > showingCount
+                                            : products.length
+                                          const showingCount = filtered.length
+                                          const hasMore = totalProducts > showingCount
 
-                                        return filtered.length > 0 ? (
-                                        <>
-                                          {/* Product list */}
-                                            {filtered.map((product) => (
-                                            <div
-                                              key={product.id}
-                                                className="p-2.5 border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors active:bg-blue-100"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault()
-                                                e.stopPropagation()
-                                              }}
-                                              onClick={(e) => {
-                                                e.preventDefault()
-                                                e.stopPropagation()
-                                                addToCart(product, index)
-                                              }}
-                                            >
-                                              <div className="flex items-center justify-between w-full">
-                                                  <div className="flex-1 min-w-0">
-                                                    <p className="font-medium text-sm text-gray-900 truncate">{product.nameEn}</p>
-                                                  <p className="text-xs text-gray-600">AED {product.sellPrice.toFixed(2)}</p>
+                                          return filtered.length > 0 ? (
+                                            <>
+                                              {/* Product list */}
+                                              {filtered.map((product) => (
+                                                <div
+                                                  key={product.id}
+                                                  className="p-2.5 border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors active:bg-blue-100"
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                  }}
+                                                  onClick={(e) => {
+                                                    e.preventDefault()
+                                                    e.stopPropagation()
+                                                    addToCart(product, index)
+                                                  }}
+                                                >
+                                                  <div className="flex items-center justify-between w-full">
+                                                    <div className="flex-1 min-w-0">
+                                                      <p className="font-medium text-sm text-gray-900 truncate">{product.nameEn}</p>
+                                                      <p className="text-xs text-gray-600">AED {product.sellPrice.toFixed(2)}</p>
+                                                    </div>
+                                                    <div className="text-right ml-2 flex-shrink-0">
+                                                      <p className={`text-xs font-semibold ${product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600' : 'text-green-600'}`}>
+                                                        Stock: {product.stockQty} {product.unitType || 'KG'}
+                                                      </p>
+                                                      {product.stockQty <= (product.reorderLevel || 0) && (
+                                                        <p className="text-xs text-red-500">Low Stock!</p>
+                                                      )}
+                                                    </div>
+                                                  </div>
                                                 </div>
-                                                  <div className="text-right ml-2 flex-shrink-0">
-                                                  <p className={`text-xs font-semibold ${product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600' : 'text-green-600'}`}>
-                                                    Stock: {product.stockQty} {product.unitType || 'KG'}
+                                              ))}
+                                              {/* Show more indicator */}
+                                              {hasMore && (
+                                                <div className="p-2 bg-blue-50 border-t border-blue-200 text-center">
+                                                  <p className="text-xs text-blue-700 font-medium">
+                                                    Showing {showingCount} of {totalProducts} products. Type to search for more...
                                                   </p>
-                                                  {product.stockQty <= (product.reorderLevel || 0) && (
-                                                    <p className="text-xs text-red-500">Low Stock!</p>
-                                                  )}
                                                 </div>
-                                              </div>
+                                              )}
+                                            </>
+                                          ) : (
+                                            <div className="p-3 text-center">
+                                              <p className="text-sm text-gray-500">No products found</p>
+                                              <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
                                             </div>
-                                          ))}
-                                            {/* Show more indicator */}
-                                            {hasMore && (
-                                              <div className="p-2 bg-blue-50 border-t border-blue-200 text-center">
-                                                <p className="text-xs text-blue-700 font-medium">
-                                                  Showing {showingCount} of {totalProducts} products. Type to search for more...
-                                                </p>
-                                              </div>
-                                            )}
-                                        </>
-                                      ) : (
-                                        <div className="p-3 text-center">
-                                          <p className="text-sm text-gray-500">No products found</p>
-                                            <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
+                                          )
+                                        })()}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          {/* Unit Column: Editable numeric quantity (1.5, 1, 0.5) */}
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              disabled={isFormDisabled}
+                              className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              value={item.qty === '' ? '' : item.qty}
+                              onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
+                              placeholder="1.5"
+                            />
+                          </td>
+                          {/* Qty Column: Editable unit type dropdown (CRTN, KG, PIECE, etc.) */}
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
+                            <select
+                              disabled={isFormDisabled}
+                              className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium uppercase min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              value={item.unitType || 'CRTN'}
+                              onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
+                            >
+                              <option value="CRTN">CRTN</option>
+                              <option value="KG">KG</option>
+                              <option value="PIECE">PIECE</option>
+                              <option value="BOX">BOX</option>
+                              <option value="PKG">PKG</option>
+                              <option value="BAG">BAG</option>
+                              <option value="PC">PC</option>
+                              <option value="UNIT">UNIT</option>
+                            </select>
+                          </td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              disabled={isFormDisabled}
+                              className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              value={item.unitPrice === '' ? '' : item.unitPrice}
+                              onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
+                            />
+                          </td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 text-right border-r-2 border-gray-200 font-semibold text-base align-middle">
+                            {(() => {
+                              const qty = typeof item.qty === 'number' ? item.qty : 0
+                              const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+                              return (qty * price).toFixed(2)
+                            })()}
+                          </td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 text-right border-r-2 border-gray-200 font-semibold text-base align-middle">
+                            {item.vatAmount.toFixed(2)}
+                          </td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 text-right font-bold border-r-2 border-gray-200 text-base align-middle">
+                            {item.lineTotal.toFixed(2)}
+                          </td>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 text-center align-middle border-r-2 border-gray-200">
+                            <button
+                              onClick={() => removeFromCart(index)}
+                              disabled={isFormDisabled}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors inline-flex items-center justify-center min-w-[44px] min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Delete item"
+                              aria-label="Delete item"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile Card Layout - design lock: border only, 44px touch, auto-scroll on add */}
+            <div className="md:hidden space-y-3">
+              <button
+                onClick={addEmptyRow}
+                disabled={isFormDisabled}
+                className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform min-h-[44px]"
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add Product to Bill
+              </button>
+
+              {cart.length === 0 ? (
+                <div className="bg-white rounded-xl border border-dashed border-neutral-300 p-8 text-center">
+                  <div className="text-neutral-400 mb-2">
+                    <Calculator className="h-12 w-12 mx-auto" />
+                  </div>
+                  <p className="text-neutral-600 font-medium">No items in cart</p>
+                  <p className="text-neutral-500 text-sm mt-1">Tap &apos;Add Product to Bill&apos; above</p>
+                </div>
+              ) : (
+                cart.map((item, index) => (
+                  <div key={index} className="bg-white rounded-xl border border-neutral-200 p-4">
+                    {/* Header: Product Name or Search */}
+                    <div className="bg-neutral-50 p-3 border-b border-neutral-200 flex items-center justify-between">
+                      <div className="flex-1">
+                        {item.productId ? (
+                          <div>
+                            <p className="font-bold text-neutral-900 text-sm">#{index + 1} {item.productName}</p>
+                            <p className="text-xs text-neutral-600">{item.sku}</p>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <p className="text-xs text-neutral-600 mb-1">#{index + 1} Select Product:</p>
+                            <input
+                              type="text"
+                              ref={(el) => productSearchRefs.current[index] = el}
+                              value={productSearchTerms[index] || ''}
+                              disabled={isFormDisabled}
+                              onChange={(e) => {
+                                const searchValue = e.target.value
+                                setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
+                                if (searchValue.trim() && !showProductDropdown[index]) {
+                                  setShowProductDropdown(prev => ({ ...prev, [index]: true }))
+                                }
+                              }}
+                              onFocus={() => {
+                                if (isFormDisabled) return
+                                setShowProductDropdown(prev => ({ ...prev, [index]: true }))
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="Search product name or code..."
+                              className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            />
+                            {showProductDropdown[index] && (
+                              <div
+                                className="fixed bg-white border border-neutral-200 rounded-lg shadow-md z-[9998]"
+                                style={{
+                                  maxHeight: '60vh',
+                                  width: 'calc(100vw - 32px)',
+                                  top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 4}px`,
+                                  left: '16px'
+                                }}
+                                onMouseDown={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {(() => {
+                                  if (loadingProducts) {
+                                    return (
+                                      <div className="p-4 text-center">
+                                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                        <p className="text-sm text-gray-500 mt-2">Loading products...</p>
+                                      </div>
+                                    )
+                                  }
+
+                                  const filtered = getFilteredProducts(index)
+                                  return filtered.length > 0 ? (
+                                    <div className="divide-y divide-gray-200">
+                                      {filtered.map((product) => (
+                                        <div
+                                          key={product.id}
+                                          className="p-3 hover:bg-primary-50 active:bg-primary-100 cursor-pointer"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                          }}
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            addToCart(product, index)
+                                          }}
+                                        >
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex-1 min-w-0">
+                                              <p className="font-semibold text-sm text-gray-900 truncate">{product.nameEn}</p>
+                                              <p className="text-xs text-gray-600 mt-0.5">AED {product.sellPrice.toFixed(2)}</p>
+                                            </div>
+                                            <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${product.stockQty > (product.reorderLevel || 0) ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
+                                              }`}>
+                                              Stock: {product.stockQty}
+                                            </span>
+                                          </div>
                                         </div>
-                                        )
-                                      })()}
+                                      ))}
                                     </div>
-                                  </>
-                                )}
+                                  ) : (
+                                    <div className="p-4 text-center text-neutral-500 text-sm">
+                                      No products found
+                                    </div>
+                                  )
+                                })()}
                               </div>
                             )}
                           </div>
-                        </td>
-                        {/* Unit Column: Editable numeric quantity (1.5, 1, 0.5) */}
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(index)}
+                        disabled={isFormDisabled}
+                        className="ml-2 text-error hover:text-error/90 p-2 rounded-lg hover:bg-error/10 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Delete item"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </button>
+                    </div>
+
+                    {/* Body: Input Fields - Large Touch Targets */}
+                    <div className="p-3 space-y-2">
+                      {/* Row 1: Quantity and Unit - min-h-11 (44px) touch targets */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">Quantity</label>
                           <input
                             type="number"
                             min="0"
                             step="0.01"
                             disabled={isFormDisabled}
-                            className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full min-h-[44px] px-3 py-2.5 border border-neutral-300 rounded-lg text-center text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             value={item.qty === '' ? '' : item.qty}
                             onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
-                            placeholder="1.5"
+                            placeholder="1"
                           />
-                        </td>
-                        {/* Qty Column: Editable unit type dropdown (CRTN, KG, PIECE, etc.) */}
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-700 mb-1">Unit Type</label>
                           <select
                             disabled={isFormDisabled}
-                            className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium uppercase min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full min-h-[44px] px-2 py-2.5 border border-neutral-300 rounded-lg text-center text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             value={item.unitType || 'CRTN'}
                             onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
                           >
@@ -1515,255 +1761,50 @@ const PosPage = () => {
                             <option value="PC">PC</option>
                             <option value="UNIT">UNIT</option>
                           </select>
-                        </td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 align-middle">
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            disabled={isFormDisabled}
-                            className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
-                            value={item.unitPrice === '' ? '' : item.unitPrice}
-                            onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
-                          />
-                        </td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 text-right border-r-2 border-gray-200 font-semibold text-base align-middle">
-                          {(() => {
-                            const qty = typeof item.qty === 'number' ? item.qty : 0
-                            const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
-                            return (qty * price).toFixed(2)
-                          })()}
-                        </td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 text-right border-r-2 border-gray-200 font-semibold text-base align-middle">
-                          {item.vatAmount.toFixed(2)}
-                        </td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 text-right font-bold border-r-2 border-gray-200 text-base align-middle">
-                          {item.lineTotal.toFixed(2)}
-                        </td>
-                        <td className="px-2 sm:px-3 py-3 sm:py-4 text-center align-middle border-r-2 border-gray-200">
-                          <button
-                            onClick={() => removeFromCart(index)}
-                            disabled={isFormDisabled}
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors inline-flex items-center justify-center min-w-[44px] min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Delete item"
-                            aria-label="Delete item"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          
-          {/* Mobile Card Layout - design lock: border only, 44px touch, auto-scroll on add */}
-          <div className="md:hidden space-y-3">
-            <button
-              onClick={addEmptyRow}
-              disabled={isFormDisabled}
-              className="w-full px-4 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center justify-center text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] transition-transform min-h-[44px]"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Product to Bill
-            </button>
-            
-            {cart.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-neutral-300 p-8 text-center">
-                <div className="text-neutral-400 mb-2">
-                  <Calculator className="h-12 w-12 mx-auto" />
-                </div>
-                <p className="text-neutral-600 font-medium">No items in cart</p>
-                <p className="text-neutral-500 text-sm mt-1">Tap &apos;Add Product to Bill&apos; above</p>
-              </div>
-            ) : (
-              cart.map((item, index) => (
-                <div key={index} className="bg-white rounded-xl border border-neutral-200 p-4">
-                  {/* Header: Product Name or Search */}
-                  <div className="bg-neutral-50 p-3 border-b border-neutral-200 flex items-center justify-between">
-                    <div className="flex-1">
-                      {item.productId ? (
-                        <div>
-                          <p className="font-bold text-neutral-900 text-sm">#{index + 1} {item.productName}</p>
-                          <p className="text-xs text-neutral-600">{item.sku}</p>
                         </div>
-                      ) : (
-                        <div className="relative">
-                          <p className="text-xs text-neutral-600 mb-1">#{index + 1} Select Product:</p>
-                          <input
-                            type="text"
-                            ref={(el) => productSearchRefs.current[index] = el}
-                            value={productSearchTerms[index] || ''}
-                            disabled={isFormDisabled}
-                            onChange={(e) => {
-                              const searchValue = e.target.value
-                              setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                              if (searchValue.trim() && !showProductDropdown[index]) {
-                                setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                              }
-                            }}
-                            onFocus={() => {
-                              if (isFormDisabled) return
-                              setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            placeholder="Search product name or code..."
-                            className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-                          />
-                          {showProductDropdown[index] && (
-                            <div 
-                              className="fixed bg-white border border-neutral-200 rounded-lg shadow-md z-[9998]"
-                              style={{ 
-                                maxHeight: '60vh',
-                                width: 'calc(100vw - 32px)',
-                                top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 4}px`,
-                                left: '16px'
-                              }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                if (loadingProducts) {
-                                  return (
-                                    <div className="p-4 text-center">
-                                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                      <p className="text-sm text-gray-500 mt-2">Loading products...</p>
-                                    </div>
-                                  )
-                                }
-                                
-                                const filtered = getFilteredProducts(index)
-                                return filtered.length > 0 ? (
-                                  <div className="divide-y divide-gray-200">
-                                    {filtered.map((product) => (
-                                      <div
-                                        key={product.id}
-                                        className="p-3 hover:bg-primary-50 active:bg-primary-100 cursor-pointer"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          addToCart(product, index)
-                                        }}
-                                      >
-                                        <div className="flex items-start justify-between">
-                                          <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 truncate">{product.nameEn}</p>
-                                            <p className="text-xs text-gray-600 mt-0.5">AED {product.sellPrice.toFixed(2)}</p>
-                                          </div>
-                                          <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${
-                                            product.stockQty > (product.reorderLevel || 0) ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                                          }`}>
-                                            Stock: {product.stockQty}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-<div className="p-4 text-center text-neutral-500 text-sm">
-                                  No products found
-                                  </div>
-                                )
-                              })()}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => removeFromCart(index)}
-                      disabled={isFormDisabled}
-                      className="ml-2 text-error hover:text-error/90 p-2 rounded-lg hover:bg-error/10 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
-                      aria-label="Delete item"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                  
-                  {/* Body: Input Fields - Large Touch Targets */}
-                  <div className="p-3 space-y-2">
-                    {/* Row 1: Quantity and Unit - min-h-11 (44px) touch targets */}
-                    <div className="grid grid-cols-2 gap-2">
+                      </div>
+
+                      {/* Row 2: Unit Price */}
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Quantity</label>
+                        <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price (AED)</label>
                         <input
                           type="number"
                           min="0"
                           step="0.01"
                           disabled={isFormDisabled}
-                          className="w-full min-h-[44px] px-3 py-2.5 border border-neutral-300 rounded-lg text-center text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          value={item.qty === '' ? '' : item.qty}
-                          onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
-                          placeholder="1"
+                          className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          value={item.unitPrice === '' ? '' : item.unitPrice}
+                          onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
+                          placeholder="0.00"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Unit Type</label>
-                        <select
-                          disabled={isFormDisabled}
-                          className="w-full min-h-[44px] px-2 py-2.5 border border-neutral-300 rounded-lg text-center text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                          value={item.unitType || 'CRTN'}
-                          onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
-                        >
-                          <option value="CRTN">CRTN</option>
-                          <option value="KG">KG</option>
-                          <option value="PIECE">PIECE</option>
-                          <option value="BOX">BOX</option>
-                          <option value="PKG">PKG</option>
-                          <option value="BAG">BAG</option>
-                          <option value="PC">PC</option>
-                          <option value="UNIT">UNIT</option>
-                        </select>
-                      </div>
-                    </div>
-                    
-                    {/* Row 2: Unit Price */}
-                    <div>
-                      <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price (AED)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        disabled={isFormDisabled}
-                        className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        value={item.unitPrice === '' ? '' : item.unitPrice}
-                        onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
-                        placeholder="0.00"
-                      />
-                    </div>
-                    
-                    {/* Row 3: Calculated Values - Read Only */}
-                    <div className="bg-neutral-50 rounded-lg p-2 border border-neutral-200">
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="text-center">
-                          <p className="text-neutral-600 font-medium">Total</p>
-                          <p className="font-bold text-neutral-900">{(() => {
-                            const qty = typeof item.qty === 'number' ? item.qty : 0
-                            const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
-                            return (qty * price).toFixed(2)
-                          })()}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-neutral-600 font-medium">VAT 5%</p>
-                          <p className="font-bold text-neutral-900">{item.vatAmount.toFixed(2)}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-neutral-600 font-medium">Amount</p>
-                          <p className="font-bold text-success text-sm">{item.lineTotal.toFixed(2)}</p>
+
+                      {/* Row 3: Calculated Values - Read Only */}
+                      <div className="bg-neutral-50 rounded-lg p-2 border border-neutral-200">
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="text-center">
+                            <p className="text-neutral-600 font-medium">Total</p>
+                            <p className="font-bold text-neutral-900">{(() => {
+                              const qty = typeof item.qty === 'number' ? item.qty : 0
+                              const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+                              return (qty * price).toFixed(2)
+                            })()}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-neutral-600 font-medium">VAT 5%</p>
+                            <p className="font-bold text-neutral-900">{item.vatAmount.toFixed(2)}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-neutral-600 font-medium">Amount</p>
+                            <p className="font-bold text-success text-sm">{item.lineTotal.toFixed(2)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
           </div>
 
           {/* Add Row Button - Desktop Only */}
@@ -1806,7 +1847,7 @@ const PosPage = () => {
                   <span className="text-green-700 text-sm sm:text-base whitespace-nowrap">AED {totals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
-              
+
               {/* Optional Discount Field - Compact */}
               <div className="mt-2 pt-1.5 border-t border-gray-300">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Discount</label>
@@ -1864,7 +1905,7 @@ const PosPage = () => {
                     <option value="Online">Online</option>
                   </select>
                 </div>
-                
+
                 {paymentMethod !== 'Pending' && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">Amount</label>
@@ -1900,11 +1941,10 @@ const PosPage = () => {
               <button
                 onClick={handleSave}
                 disabled={loading || loadingSale || cart.length === 0}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-bold text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg transition-all active:scale-95 ${
-                  isEditMode 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
+                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-bold text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg transition-all active:scale-95 ${isEditMode
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
               >
                 {(loading || loadingSale) ? (
                   <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white mr-1.5"></div>
@@ -2209,10 +2249,10 @@ const PosPage = () => {
                       }
                     } catch (error) {
                       console.error('Error updating invoice:', error)
-                      const errorMsg = error?.response?.data?.message || 
-                                      error?.response?.data?.errors?.[0] || 
-                                      error?.message || 
-                                      'Failed to update invoice. Please try again.'
+                      const errorMsg = error?.response?.data?.message ||
+                        error?.response?.data?.errors?.[0] ||
+                        error?.message ||
+                        'Failed to update invoice. Please try again.'
                       toast.error(errorMsg)
                     } finally {
                       setLoading(false)
@@ -2273,11 +2313,11 @@ const PosPage = () => {
                   )}
                 </ul>
               </div>
-              
+
               <p className="text-gray-700 mb-4">
                 Editing this invoice may affect payment records and customer balances. Are you sure you want to continue?
               </p>
-              
+
               {selectedCustomer && customerChangedDuringEdit && (
                 <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-blue-800 text-sm">
@@ -2285,7 +2325,7 @@ const PosPage = () => {
                   </p>
                 </div>
               )}
-              
+
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
@@ -2336,10 +2376,10 @@ const PosPage = () => {
                       }
                     } catch (error) {
                       console.error('Error updating invoice:', error)
-                      const errorMsg = error?.response?.data?.message || 
-                                      error?.response?.data?.errors?.[0] || 
-                                      error?.message || 
-                                      'Failed to update invoice. Please try again.'
+                      const errorMsg = error?.response?.data?.message ||
+                        error?.response?.data?.errors?.[0] ||
+                        error?.message ||
+                        'Failed to update invoice. Please try again.'
                       toast.error(errorMsg)
                     } finally {
                       setLoading(false)
@@ -2389,7 +2429,7 @@ const PosPage = () => {
             {/* Content */}
             <div className="p-6 space-y-4">
               <p className="text-gray-700 mb-4">What would you like to do with this invoice?</p>
-              
+
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button
@@ -2399,7 +2439,7 @@ const PosPage = () => {
                   <Printer className="h-5 w-5 mr-2" />
                   Print Receipt
                 </button>
-                
+
                 <button
                   onClick={() => handleDownloadPdf(lastCreatedInvoice.id, lastCreatedInvoice.invoiceNo)}
                   className="w-full flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md"
@@ -2407,7 +2447,7 @@ const PosPage = () => {
                   <Download className="h-5 w-5 mr-2" />
                   Download PDF
                 </button>
-                
+
                 <button
                   onClick={handleWhatsAppShare}
                   className="w-full flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
@@ -2415,7 +2455,7 @@ const PosPage = () => {
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Share via WhatsApp
                 </button>
-                
+
                 <button
                   onClick={handleEmailShare}
                   className="w-full flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors shadow-md"
@@ -2438,6 +2478,18 @@ const PosPage = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        showInput={dangerModal.showInput}
+        inputPlaceholder={dangerModal.inputPlaceholder}
+        defaultValue={dangerModal.defaultValue}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

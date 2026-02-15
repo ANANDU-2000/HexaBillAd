@@ -3,6 +3,7 @@ import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp,
 import { purchasesAPI, productsAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const PurchasesPage = () => {
   const [purchases, setPurchases] = useState([])
@@ -11,7 +12,7 @@ const PurchasesPage = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [showForm, setShowForm] = useState(false)
   const [editingPurchase, setEditingPurchase] = useState(null)
-  
+
   // Filter states - CRITICAL FIX: Default to 'all' to show all purchases without filtering
   const [filterPeriod, setFilterPeriod] = useState('all') // Show all purchases by default
   const [startDate, setStartDate] = useState('')
@@ -20,11 +21,11 @@ const PurchasesPage = () => {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
-  
+
   // Analytics state
   const [analytics, setAnalytics] = useState(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
-  
+
   const [formData, setFormData] = useState({
     supplierName: '',
     invoiceNo: '',
@@ -37,6 +38,13 @@ const PurchasesPage = () => {
   const [showProductSearch, setShowProductSearch] = useState(false)
   const searchInputRef = useRef(null)
   const formRef = useRef(null) // CRITICAL: Ref for scrolling to form
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    onConfirm: () => { }
+  })
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
@@ -59,24 +67,24 @@ const PurchasesPage = () => {
     try {
       setLoading(true)
       const params = { page: currentPage, pageSize: 10 }
-      
+
       // Apply date filters based on period
       const dateRange = getDateRangeFromPeriod(filterPeriod)
       if (dateRange.startDate) params.startDate = dateRange.startDate
       if (dateRange.endDate) params.endDate = dateRange.endDate
-      
+
       // Custom date range
       if (filterPeriod === 'custom') {
         if (startDate) params.startDate = startDate
         if (endDate) params.endDate = endDate
       }
-      
+
       // Apply supplier filter
       if (supplierSearch) params.supplierName = supplierSearch
-      
+
       // Apply category filter
       if (categoryFilter) params.category = categoryFilter
-      
+
       const response = await purchasesAPI.getPurchases(params)
       if (response.success) {
         setPurchases(response.data.items)
@@ -93,17 +101,17 @@ const PurchasesPage = () => {
     try {
       setLoadingAnalytics(true)
       const params = {}
-      
+
       // Apply date filters for analytics
       const dateRange = getDateRangeFromPeriod(filterPeriod)
       if (dateRange.startDate) params.startDate = dateRange.startDate
       if (dateRange.endDate) params.endDate = dateRange.endDate
-      
+
       if (filterPeriod === 'custom') {
         if (startDate) params.startDate = startDate
         if (endDate) params.endDate = endDate
       }
-      
+
       const response = await purchasesAPI.getPurchaseAnalytics(params)
       if (response.success) {
         // Validate and sanitize analytics data to prevent calculation errors
@@ -168,23 +176,23 @@ const PurchasesPage = () => {
   const getDateRangeFromPeriod = (period) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     switch (period) {
       case 'today':
         return { startDate: today.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
-      
+
       case 'yesterday': {
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
         return { startDate: yesterday.toISOString().split('T')[0], endDate: yesterday.toISOString().split('T')[0] }
       }
-      
+
       case 'week': {
         const startOfWeek = new Date(today)
         startOfWeek.setDate(today.getDate() - today.getDay())
         return { startDate: startOfWeek.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
       }
-      
+
       case 'lastWeek': {
         const startOfLastWeek = new Date(today)
         startOfLastWeek.setDate(today.getDate() - today.getDay() - 7)
@@ -192,12 +200,12 @@ const PurchasesPage = () => {
         endOfLastWeek.setDate(startOfLastWeek.getDate() + 6)
         return { startDate: startOfLastWeek.toISOString().split('T')[0], endDate: endOfLastWeek.toISOString().split('T')[0] }
       }
-      
+
       case 'month': {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
         return { startDate: startOfMonth.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
       }
-      
+
       default:
         return {}
     }
@@ -242,7 +250,7 @@ const PurchasesPage = () => {
     // CRITICAL FIX: Use sellPrice for purchase cost if costPrice is not available
     // This ensures price auto-fills correctly when product is selected
     const unitCost = product.costPrice || product.sellPrice || 0
-    
+
     const newItem = {
       productId: product.id,
       productName: product.nameEn,
@@ -261,11 +269,11 @@ const PurchasesPage = () => {
 
   const updateItem = (index, field, value) => {
     const newItems = [...formData.items]
-    
+
     // Handle empty string for number fields
     const numValue = value === '' ? '' : (field === 'qty' || field === 'unitCost' ? Number(value) : value)
     newItems[index] = { ...newItems[index], [field]: numValue }
-    
+
     setFormData({ ...formData, items: newItems })
   }
 
@@ -367,7 +375,7 @@ const PurchasesPage = () => {
       items: []
     })
     setShowForm(true)
-    
+
     // CRITICAL FIX: Scroll to form after it opens
     setTimeout(() => {
       if (formRef.current) {
@@ -395,34 +403,35 @@ const PurchasesPage = () => {
     setShowForm(true)
   }
 
-  const handleDeletePurchase = async (purchase) => {
-    const confirmMessage = `⚠️ WARNING: Delete Purchase?\n\n` +
-      `Invoice: ${purchase.invoiceNo}\n` +
+  const handleDeletePurchase = (purchase) => {
+    const confirmMessage = `Invoice: ${purchase.invoiceNo}\n` +
       `Supplier: ${purchase.supplierName}\n` +
       `Amount: AED ${purchase.totalAmount.toFixed(2)}\n` +
       `Items: ${purchase.items?.length || 0}\n\n` +
-      `This will:\n` +
-      `✅ Reverse all stock changes\n` +
-      `✅ Remove inventory transactions\n` +
-      `✅ Delete purchase record\n\n` +
-      `This action cannot be undone!`
-    
-    if (!window.confirm(confirmMessage)) return
+      `This will reverse all stock changes and remove inventory transactions.`
 
-    try {
-      const response = await purchasesAPI.deletePurchase(purchase.id)
-      if (response.success) {
-        toast.success(`Purchase deleted! Stock reversed for ${response.data.itemsCount} items.`)
-        loadPurchases()
-        loadProducts() // Refresh products to show updated stock
-      } else {
-        toast.error(response.message || 'Failed to delete purchase')
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete Purchase?',
+      message: confirmMessage,
+      confirmLabel: 'Delete Purchase',
+      onConfirm: async () => {
+        try {
+          const response = await purchasesAPI.deletePurchase(purchase.id)
+          if (response.success) {
+            toast.success(`Purchase deleted! Stock reversed for ${response.data.itemsCount} items.`)
+            loadPurchases()
+            loadProducts()
+          } else {
+            toast.error(response.message || 'Failed to delete purchase')
+          }
+        } catch (error) {
+          console.error('Delete purchase error:', error)
+          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete purchase'
+          toast.error(`Delete failed: ${errorMsg}`)
+        }
       }
-    } catch (error) {
-      console.error('Delete purchase error:', error)
-      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete purchase'
-      toast.error(`Delete failed: ${errorMsg}`)
-    }
+    })
   }
 
   // TALLY ERP PURCHASE VOUCHER STYLE
@@ -451,99 +460,99 @@ const PurchasesPage = () => {
         {analytics && (
           <>
             <div className="mb-4 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-            {/* Today's Total */}
-            <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs sm:text-sm font-bold text-primary-800">Today's Purchases</h3>
-                <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-blue-700">AED {analytics.todayTotal?.toFixed(2) || '0.00'}</div>
-              <div className="text-xs text-blue-600 mt-1">{analytics.todayCount || 0} purchase(s)</div>
-              {analytics.yesterdayTotal > 0 && (
-                <div className="flex items-center mt-2 text-xs">
-                  {analytics.todayTotal > analytics.yesterdayTotal ? (
-                    <>
-                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-                      <span className="text-green-600 font-medium">
-                        +{((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
-                      </span>
-                    </>
-                  ) : analytics.todayTotal < analytics.yesterdayTotal ? (
-                    <>
-                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-                      <span className="text-red-600 font-medium">
-                        {((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-primary-600">Same as yesterday</span>
-                  )}
+              {/* Today's Total */}
+              <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-primary-800">Today's Purchases</h3>
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
                 </div>
-              )}
-            </div>
-
-            {/* This Week's Total */}
-            <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs sm:text-sm font-bold text-green-900">This Week</h3>
-                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                <div className="text-xl sm:text-2xl font-bold text-blue-700">AED {analytics.todayTotal?.toFixed(2) || '0.00'}</div>
+                <div className="text-xs text-blue-600 mt-1">{analytics.todayCount || 0} purchase(s)</div>
+                {analytics.yesterdayTotal > 0 && (
+                  <div className="flex items-center mt-2 text-xs">
+                    {analytics.todayTotal > analytics.yesterdayTotal ? (
+                      <>
+                        <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                        <span className="text-green-600 font-medium">
+                          +{((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
+                        </span>
+                      </>
+                    ) : analytics.todayTotal < analytics.yesterdayTotal ? (
+                      <>
+                        <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                        <span className="text-red-600 font-medium">
+                          {((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-primary-600">Same as yesterday</span>
+                    )}
+                  </div>
+                )}
               </div>
-              <div className="text-xl sm:text-2xl font-bold text-green-700">AED {analytics.thisWeekTotal?.toFixed(2) || '0.00'}</div>
-              <div className="text-xs text-green-600 mt-1">{analytics.thisWeekCount || 0} purchase(s)</div>
-              {analytics.lastWeekTotal > 0 && (
-                <div className="flex items-center mt-2 text-xs">
-                  {analytics.thisWeekTotal > analytics.lastWeekTotal ? (
-                    <>
-                      <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-                      <span className="text-green-600 font-medium">
-                        +{((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
-                      </span>
-                    </>
-                  ) : analytics.thisWeekTotal < analytics.lastWeekTotal ? (
-                    <>
-                      <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-                      <span className="text-red-600 font-medium">
-                        {((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-primary-600">Same as last week</span>
-                  )}
+
+              {/* This Week's Total */}
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-green-900">This Week</h3>
+                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                 </div>
-              )}
-            </div>
-
-            {/* Top Supplier Today - hidden on mobile when analytics collapsed */}
-            <div className="hidden sm:block bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs sm:text-sm font-bold text-orange-900">Top Supplier (Today)</h3>
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                <div className="text-xl sm:text-2xl font-bold text-green-700">AED {analytics.thisWeekTotal?.toFixed(2) || '0.00'}</div>
+                <div className="text-xs text-green-600 mt-1">{analytics.thisWeekCount || 0} purchase(s)</div>
+                {analytics.lastWeekTotal > 0 && (
+                  <div className="flex items-center mt-2 text-xs">
+                    {analytics.thisWeekTotal > analytics.lastWeekTotal ? (
+                      <>
+                        <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
+                        <span className="text-green-600 font-medium">
+                          +{((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
+                        </span>
+                      </>
+                    ) : analytics.thisWeekTotal < analytics.lastWeekTotal ? (
+                      <>
+                        <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
+                        <span className="text-red-600 font-medium">
+                          {((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-primary-600">Same as last week</span>
+                    )}
+                  </div>
+                )}
               </div>
-              {analytics.topSupplierToday ? (
-                <>
-                  <div className="text-sm sm:text-base font-bold text-orange-700 truncate">{analytics.topSupplierToday}</div>
-                  <div className="text-xs text-orange-600 mt-1">AED {analytics.topSupplierTodayAmount?.toFixed(2)}</div>
-                </>
-              ) : (
-                <div className="text-sm text-primary-500">No purchases today</div>
-              )}
-            </div>
 
-            {/* Top Supplier This Week - hidden on mobile when analytics collapsed */}
-            <div className="hidden sm:block bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs sm:text-sm font-bold text-purple-900">Top Supplier (Week)</h3>
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+              {/* Top Supplier Today - hidden on mobile when analytics collapsed */}
+              <div className="hidden sm:block bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-orange-900">Top Supplier (Today)</h3>
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+                </div>
+                {analytics.topSupplierToday ? (
+                  <>
+                    <div className="text-sm sm:text-base font-bold text-orange-700 truncate">{analytics.topSupplierToday}</div>
+                    <div className="text-xs text-orange-600 mt-1">AED {analytics.topSupplierTodayAmount?.toFixed(2)}</div>
+                  </>
+                ) : (
+                  <div className="text-sm text-primary-500">No purchases today</div>
+                )}
               </div>
-              {analytics.topSupplierWeek ? (
-                <>
-                  <div className="text-sm sm:text-base font-bold text-purple-700 truncate">{analytics.topSupplierWeek}</div>
-                  <div className="text-xs text-purple-600 mt-1">AED {analytics.topSupplierWeekAmount?.toFixed(2)}</div>
-                </>
-              ) : (
-                <div className="text-sm text-primary-500">No purchases this week</div>
-              )}
-            </div>
+
+              {/* Top Supplier This Week - hidden on mobile when analytics collapsed */}
+              <div className="hidden sm:block bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-purple-900">Top Supplier (Week)</h3>
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+                </div>
+                {analytics.topSupplierWeek ? (
+                  <>
+                    <div className="text-sm sm:text-base font-bold text-purple-700 truncate">{analytics.topSupplierWeek}</div>
+                    <div className="text-xs text-purple-600 mt-1">AED {analytics.topSupplierWeekAmount?.toFixed(2)}</div>
+                  </>
+                ) : (
+                  <div className="text-sm text-primary-500">No purchases this week</div>
+                )}
+              </div>
             </div>
 
             {/* Mobile: toggle for more stats to avoid long vertical scroll */}
@@ -571,7 +580,7 @@ const PurchasesPage = () => {
                       const maxAmount = Math.max(...analytics.dailyStats.slice(0, 7).map(d => d.totalAmount || 0))
                       const percentage = maxAmount > 0 ? (day.totalAmount / maxAmount) * 100 : 0
                       const isToday = new Date(day.date).toDateString() === new Date().toDateString()
-                      
+
                       return (
                         <div key={index} className="flex items-center gap-2">
                           <div className="text-xs font-medium text-primary-700 w-20">
@@ -580,9 +589,8 @@ const PurchasesPage = () => {
                           </div>
                           <div className="flex-1 bg-primary-50 rounded-full h-6 relative">
                             <div
-                              className={`h-6 rounded-full flex items-center justify-end pr-2 transition-all ${
-                                isToday ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-lime-400 to-lime-500'
-                              }`}
+                              className={`h-6 rounded-full flex items-center justify-end pr-2 transition-all ${isToday ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-lime-400 to-lime-500'
+                                }`}
                               style={{ width: `${Math.max(percentage, 5)}%` }}
                             >
                               <span className="text-xs font-bold text-white">AED {day.totalAmount?.toFixed(0) || 0}</span>
@@ -609,7 +617,7 @@ const PurchasesPage = () => {
                     {analytics.supplierStats.slice(0, 5).map((supplier, index) => {
                       const maxAmount = analytics.supplierStats[0]?.totalAmount || 1
                       const percentage = (supplier.totalAmount / maxAmount) * 100
-                      
+
                       return (
                         <div key={index} className="flex items-center gap-2">
                           <div className="text-lg font-bold text-primary-400 w-6">{index + 1}</div>
@@ -663,16 +671,15 @@ const PurchasesPage = () => {
                           {analytics.supplierStats.map((supplier, index) => {
                             const avgPerPurchase = supplier.count > 0 ? supplier.totalAmount / supplier.count : 0
                             const isTopSupplier = index === 0
-                            
+
                             return (
                               <tr key={index} className={`hover:bg-purple-50 ${isTopSupplier ? 'bg-purple-50 font-semibold' : ''}`}>
                                 <td className="px-3 py-2 border-r border-purple-100">
-                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${
-                                    index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
                                     index === 1 ? 'bg-primary-200 text-primary-800' :
-                                    index === 2 ? 'bg-orange-300 text-orange-900' :
-                                    'bg-primary-100 text-purple-700'
-                                  } text-xs font-bold`}>
+                                      index === 2 ? 'bg-orange-300 text-orange-900' :
+                                        'bg-primary-100 text-purple-700'
+                                    } text-xs font-bold`}>
                                     {index + 1}
                                   </span>
                                 </td>
@@ -723,17 +730,16 @@ const PurchasesPage = () => {
                       {analytics.supplierStats.map((supplier, index) => {
                         const avgPerPurchase = supplier.count > 0 ? supplier.totalAmount / supplier.count : 0
                         const isTopSupplier = index === 0
-                        
+
                         return (
                           <div key={index} className="bg-white rounded-lg shadow-sm border border-primary-200 p-4">
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${
-                                  index === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
                                   index === 1 ? 'bg-primary-200 text-primary-800' :
-                                  index === 2 ? 'bg-orange-300 text-orange-900' :
-                                  'bg-primary-100 text-purple-700'
-                                } text-xs font-bold`}>
+                                    index === 2 ? 'bg-orange-300 text-orange-900' :
+                                      'bg-primary-100 text-purple-700'
+                                  } text-xs font-bold`}>
                                   {index + 1}
                                 </span>
                                 <div>
@@ -1329,7 +1335,7 @@ const PurchasesPage = () => {
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
                           <td className="px-3 py-2">
                             <div className="flex justify-center space-x-2">
-                              <button 
+                              <button
                                 onClick={() => handleEditPurchase(purchase)}
                                 className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
                                 title="Edit Purchase"
@@ -1338,7 +1344,7 @@ const PurchasesPage = () => {
                                 <Edit className="h-3.5 w-3.5" />
                                 Edit
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeletePurchase(purchase)}
                                 className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
                                 title="Delete Purchase"
@@ -1406,7 +1412,7 @@ const PurchasesPage = () => {
                         </div>
                       )}
                       <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
-                        <button 
+                        <button
                           onClick={() => handleEditPurchase(purchase)}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
                           title="Edit Purchase"
@@ -1414,7 +1420,7 @@ const PurchasesPage = () => {
                           <Edit className="h-3.5 w-3.5" />
                           Edit
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleDeletePurchase(purchase)}
                           className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
                           title="Delete Purchase"
@@ -1429,7 +1435,7 @@ const PurchasesPage = () => {
               </div>
             </>
           )}
-          
+
           {totalPages > 1 && (
             <div className="p-4 border-t border-lime-300 flex justify-center space-x-2">
               <button
@@ -1453,6 +1459,15 @@ const PurchasesPage = () => {
           )}
         </div>
       </div>
+      {/* Confirm Danger Modal */}
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

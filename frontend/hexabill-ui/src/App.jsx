@@ -44,7 +44,7 @@ import ConnectionStatus from './components/ConnectionStatus'
 import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, impersonatedTenantId } = useAuth()
   const location = useLocation()
 
   if (loading) {
@@ -115,7 +115,7 @@ function App() {
         )}
 
         {/* Tenant routes - Accessible to standard users OR impersonating SystemAdmin */}
-        {(!userIsSystemAdmin || !!localStorage.getItem('selected_tenant_id')) && (
+        {(!userIsSystemAdmin || !!impersonatedTenantId) && (
           <>
             {/* Dashboard has its own layout */}
             <Route path="/dashboard" element={<Dashboard />} />
@@ -149,7 +149,7 @@ function App() {
         )}
 
         {/* Redirect SystemAdmin trying to access tenant routes WITHOUT impersonation */}
-        {userIsSystemAdmin && !localStorage.getItem('selected_tenant_id') && (
+        {userIsSystemAdmin && !impersonatedTenantId && (
           <>
             <Route path="/dashboard" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/products" element={<Navigate to="/superadmin/dashboard" replace />} />

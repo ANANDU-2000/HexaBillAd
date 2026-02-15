@@ -17,6 +17,8 @@ namespace HexaBill.Api.Models
 
         /// <summary>Primary assigned staff (optional). Use RouteStaff for multiple staff.</summary>
         public int? AssignedStaffId { get; set; }
+        
+        public bool IsActive { get; set; } = true;
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

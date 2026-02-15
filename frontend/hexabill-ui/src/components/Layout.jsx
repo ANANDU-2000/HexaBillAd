@@ -41,7 +41,7 @@ import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../contexts/TenantBrandingContext'
 
 const Layout = () => {
-  const { user, logout } = useAuth()
+  const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()
   const { companyName } = useBranding()
   const location = useLocation()
   const navigate = useNavigate()
@@ -62,7 +62,7 @@ const Layout = () => {
 
   // CRITICAL: SystemAdmin should ONLY see tenant navigation if they are impersonating
   const userIsSystemAdmin = isSystemAdmin(user)
-  const selectedTenantId = localStorage.getItem('selected_tenant_id')
+  const selectedTenantId = impersonatedTenantId
   const selectedTenantName = localStorage.getItem('selected_tenant_name')
 
   // If SystemAdmin but NOT impersonating, redirect to SuperAdmin dashboard
@@ -71,7 +71,7 @@ const Layout = () => {
   }
 
   const handleExitImpersonation = () => {
-    localStorage.removeItem('selected_tenant_id')
+    stopImpersonation()
     localStorage.removeItem('selected_tenant_name')
     navigate('/superadmin/dashboard')
     // Navigation already handles state reset, no reload needed

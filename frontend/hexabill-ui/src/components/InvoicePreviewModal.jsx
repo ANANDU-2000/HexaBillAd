@@ -4,11 +4,22 @@ import { salesAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
 import PrintOptionsModal from './PrintOptionsModal'
+import ConfirmDangerModal from './ConfirmDangerModal'
 
 const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => {
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
   const [showPrintOptions, setShowPrintOptions] = useState(false)
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    showInput: false,
+    inputPlaceholder: '',
+    defaultValue: '',
+    onConfirm: () => { }
+  })
 
   useEffect(() => {
     if (saleId) {
@@ -50,17 +61,17 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
         setLoading(false)
         return
       }
-      
+
       // Validate blob
       if (!pdfBlob || !(pdfBlob instanceof Blob)) {
         toast.error('Invalid PDF data received from server')
         setLoading(false)
         return
       }
-      
+
       // Ensure it's a proper blob
       const blob = pdfBlob instanceof Blob ? pdfBlob : new Blob([pdfBlob], { type: 'application/pdf' })
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -70,13 +81,13 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
       a.download = `invoice_${invoiceNumber}.pdf`
       document.body.appendChild(a)
       a.click()
-      
+
       // Clean up after a delay
       setTimeout(() => {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       }, 100)
-      
+
       toast.success('Invoice downloaded successfully')
     } catch (error) {
       console.error('Download error:', error)
@@ -89,22 +100,22 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
   const handleWhatsAppShare = async () => {
     try {
       setLoading(true)
-      
+
       // Generate WhatsApp message
       const invoiceNo = invoice?.invoiceNo || `INV-${saleId}`
       const customerName = invoice?.customerName || 'Cash Customer'
       const grandTotal = invoice?.grandTotal || 0
       const date = invoice ? new Date(invoice.invoiceDate).toLocaleDateString() : new Date().toLocaleDateString()
-      
+
       const message = `*Invoice ${invoiceNo}*\n\n` +
         `Customer: ${customerName}\n` +
         `Date: ${date}\n` +
         `Total: AED ${grandTotal.toFixed(2)}\n\n` +
         `Please find the invoice attached.`
-      
+
       // Encode message for WhatsApp URL
       const encodedMessage = encodeURIComponent(message)
-      
+
       // Generate PDF blob first - ensure it's a PDF file, not a link
       let pdfBlob
       try {
@@ -114,13 +125,13 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
         toast.error(apiError.message || 'Failed to generate PDF')
         return
       }
-      
+
       // Validate it's a proper PDF blob, not a string/link
       if (!pdfBlob) {
         toast.error('No PDF data received from server')
         return
       }
-      
+
       let blob
       if (pdfBlob instanceof Blob) {
         blob = pdfBlob
@@ -131,19 +142,19 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
       } else {
         blob = new Blob([pdfBlob], { type: 'application/pdf' })
       }
-      
+
       // Validate blob is actually a PDF file
       if (blob.size === 0) {
         toast.error('PDF is empty - invoice may not exist or PDF generation failed')
         return
       }
-      
+
       // Verify it's actually a PDF by checking type
       if (blob.type && !blob.type.includes('pdf')) {
         toast.error('Invalid file type received. Expected PDF file.')
         return
       }
-      
+
       // Download PDF file (not a link) so user can attach it
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -153,17 +164,17 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
       a.download = `invoice_${invoiceNumber}.pdf`
       document.body.appendChild(a)
       a.click()
-      
+
       // Clean up download link
       setTimeout(() => {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
       }, 100)
-      
+
       // Open WhatsApp Web with message (user will attach the downloaded PDF file)
       const whatsappUrl = `https://wa.me/?text=${encodedMessage}`
       window.open(whatsappUrl, '_blank')
-      
+
       toast.success('PDF downloaded. WhatsApp opened. Please attach the downloaded PDF file.')
     } catch (error) {
       console.error('WhatsApp share error:', error)
@@ -176,80 +187,85 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
   const handleEmailShare = async () => {
     try {
       const invoiceNo = invoice?.invoiceNo || `INV-${saleId}`
-      
-      // Prompt for email address
-      const customerEmail = invoice?.customerEmail || prompt('Enter customer email address:')
-      
-      if (!customerEmail) {
-        toast.error('Email address required')
-        return
-      }
-      
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(customerEmail)) {
-        toast.error('Please enter a valid email address')
-        return
-      }
-      
-      setLoading(true)
-      
-      try {
-        // Call backend API to send email
-        const response = await salesAPI.sendInvoiceEmail(saleId, customerEmail)
-        if (response.success) {
-          toast.success('Invoice sent via email successfully')
-        } else {
-          toast.error(response.message || 'Failed to send email')
-        }
-      } catch (error) {
-        console.error('Email send error:', error)
-        // Fallback: Download PDF and use mailto link
-        let pdfBlob
+      const customerEmail = invoice?.customerEmail
+
+      const executeSendEmail = async (email) => {
+        setLoading(true)
         try {
-          pdfBlob = await salesAPI.getInvoicePdf(saleId)
-        } catch (apiError) {
-          console.error('API Error:', apiError)
-          toast.error(apiError.message || 'Failed to generate PDF')
-          return
+          // Call backend API to send email
+          const response = await salesAPI.sendInvoiceEmail(saleId, email)
+          if (response.success) {
+            toast.success('Invoice sent via email successfully')
+          } else {
+            toast.error(response.message || 'Failed to send email')
+          }
+        } catch (error) {
+          console.error('Email send error:', error)
+          // Fallback: Download PDF and use mailto link
+          let pdfBlob
+          try {
+            pdfBlob = await salesAPI.getInvoicePdf(saleId)
+          } catch (apiError) {
+            console.error('API Error:', apiError)
+            toast.error(apiError.message || 'Failed to generate PDF')
+            return
+          }
+
+          const blob = pdfBlob instanceof Blob ? pdfBlob : new Blob([pdfBlob], { type: 'application/pdf' })
+          const url = window.URL.createObjectURL(blob)
+
+          const subject = encodeURIComponent(`Invoice ${invoiceNo}`)
+          const body = encodeURIComponent(`Please find invoice ${invoiceNo} attached.`)
+          const mailtoLink = `mailto:${email}?subject=${subject}&body=${body}`
+
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `invoice_${invoiceNo}.pdf`
+          document.body.appendChild(a)
+          a.click()
+
+          window.location.href = mailtoLink
+
+          setTimeout(() => {
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+          }, 100)
+
+          toast.info('Email client opened. Please attach the downloaded PDF')
+        } finally {
+          setLoading(false)
         }
-        
-        // Validate blob
-        if (!pdfBlob || !(pdfBlob instanceof Blob)) {
-          toast.error('Invalid PDF data received from server')
-          return
-        }
-        
-        const blob = pdfBlob instanceof Blob ? pdfBlob : new Blob([pdfBlob], { type: 'application/pdf' })
-        const url = window.URL.createObjectURL(blob)
-        
-        // Create mailto link with subject and body
-        const subject = encodeURIComponent(`Invoice ${invoiceNo}`)
-        const body = encodeURIComponent(`Please find invoice ${invoiceNo} attached.`)
-        const mailtoLink = `mailto:${customerEmail}?subject=${subject}&body=${body}`
-        
-        // Download PDF first
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `invoice_${invoiceNo}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        
-        // Open email client
-        window.location.href = mailtoLink
-        
-        setTimeout(() => {
-          window.URL.revokeObjectURL(url)
-          document.body.removeChild(a)
-        }, 100)
-        
-        toast.info('Email client opened. Please attach the downloaded PDF')
       }
+
+      if (!customerEmail) {
+        setDangerModal({
+          isOpen: true,
+          title: 'Send Invoice to Email',
+          message: 'Please provide the customer email address:',
+          confirmLabel: 'Send Email',
+          showInput: true,
+          inputPlaceholder: 'customer@example.com',
+          onConfirm: (val) => {
+            if (!val?.trim()) {
+              toast.error('Email address required')
+              return
+            }
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(val.trim())) {
+              toast.error('Please enter a valid email address')
+              return
+            }
+            executeSendEmail(val.trim())
+          }
+        })
+        return
+      }
+
+      await executeSendEmail(customerEmail)
     } catch (error) {
       console.error('Email share error:', error)
       toast.error('Failed to send email. Please download PDF and send manually.')
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -391,6 +407,18 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, onClose, onPrint, onNew }) => 
           onPrint={handlePrintExecute}
         />
       )}
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        showInput={dangerModal.showInput}
+        inputPlaceholder={dangerModal.inputPlaceholder}
+        defaultValue={dangerModal.defaultValue}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

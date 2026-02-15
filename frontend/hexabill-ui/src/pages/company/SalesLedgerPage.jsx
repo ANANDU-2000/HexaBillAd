@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { 
-  Download, 
+import {
+  Download,
   Filter,
   X,
   FileText
@@ -43,9 +43,9 @@ const SalesLedgerPage = () => {
     const handleDataUpdate = () => {
       fetchSalesLedger()
     }
-    
+
     window.addEventListener('dataUpdated', handleDataUpdate)
-    
+
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate)
     }
@@ -62,7 +62,7 @@ const SalesLedgerPage = () => {
       if (ledgerResponse?.success && ledgerResponse?.data) {
         const entries = ledgerResponse.data.entries || []
         const summary = ledgerResponse.data.summary || {}
-        
+
         const ledgerWithBalance = entries.map(entry => ({
           date: new Date(entry.date),
           type: entry.type,
@@ -71,12 +71,12 @@ const SalesLedgerPage = () => {
           customerName: entry.customerName || 'Cash Customer',
           paymentMode: entry.paymentMode || '-',
           // CRITICAL: Handle both camelCase and PascalCase from backend
-          grandTotal: entry.grandTotal || entry.GrandTotal || 0, // Full invoice amount
-          paidAmount: entry.paidAmount || entry.PaidAmount || 0, // Amount paid for invoice
-          realPending: entry.realPending || entry.RealPending || 0,
-          realGotPayment: entry.realGotPayment || entry.RealGotPayment || 0, // For sales: shows paidAmount, for payments: shows payment amount
+          grandTotal: Number(entry.grandTotal || entry.GrandTotal || 0), // Full invoice amount
+          paidAmount: Number(entry.paidAmount || entry.PaidAmount || 0), // Amount paid for invoice
+          realPending: Number(entry.realPending || entry.RealPending || 0),
+          realGotPayment: Number(entry.realGotPayment || entry.RealGotPayment || 0), // For sales: shows paidAmount, for payments: shows payment amount
           status: entry.status || 'Unpaid',
-          customerBalance: entry.customerBalance || entry.CustomerBalance || 0,
+          customerBalance: Number(entry.customerBalance || entry.CustomerBalance || 0),
           planDate: entry.planDate ? new Date(entry.planDate) : null,
           saleId: entry.saleId || entry.SaleId,
           paymentId: entry.paymentId || entry.PaymentId
@@ -101,32 +101,32 @@ const SalesLedgerPage = () => {
   // Apply filters to sales ledger data
   const getFilteredLedger = () => {
     let filteredLedger = [...reportData.salesLedger]
-    
+
     if (filters.date) {
       const filterDate = new Date(filters.date)
       filterDate.setHours(0, 0, 0, 0)
       const filterDateEnd = new Date(filterDate)
       filterDateEnd.setHours(23, 59, 59, 999)
-      
+
       filteredLedger = filteredLedger.filter(entry => {
         const entryDate = new Date(entry.date)
         return entryDate >= filterDate && entryDate <= filterDateEnd
       })
     }
-    
+
     if (filters.name) {
       const nameFilter = filters.name.toLowerCase()
       filteredLedger = filteredLedger.filter(entry =>
         (entry.customerName || '').toLowerCase().includes(nameFilter)
       )
     }
-    
+
     if (filters.type) {
       filteredLedger = filteredLedger.filter(entry =>
         entry.type === filters.type
       )
     }
-    
+
     if (filters.status) {
       filteredLedger = filteredLedger.filter(entry => {
         const normalizeStatus = (status) => {
@@ -137,21 +137,21 @@ const SalesLedgerPage = () => {
           if (statusUpper === 'UNPAID' || statusUpper === 'PENDING' || statusUpper === 'DUE') return 'Unpaid'
           return status
         }
-        
+
         const normalizedEntryStatus = normalizeStatus(entry.status)
         const normalizedFilterStatus = normalizeStatus(filters.status)
-        
+
         return normalizedEntryStatus === normalizedFilterStatus
       })
     }
-    
+
     if (filters.invoiceNo) {
       const invoiceFilter = filters.invoiceNo.toLowerCase()
       filteredLedger = filteredLedger.filter(entry =>
         (entry.invoiceNo || '').toLowerCase().includes(invoiceFilter)
       )
     }
-    
+
     if (filters.realPendingMin) {
       const realPendingMin = parseFloat(filters.realPendingMin)
       filteredLedger = filteredLedger.filter(entry =>
@@ -164,7 +164,7 @@ const SalesLedgerPage = () => {
         (entry.realPending || 0) <= realPendingMax
       )
     }
-    
+
     if (filters.realGotPaymentMin) {
       const realGotPaymentMin = parseFloat(filters.realGotPaymentMin)
       filteredLedger = filteredLedger.filter(entry =>
@@ -177,7 +177,7 @@ const SalesLedgerPage = () => {
         (entry.realGotPayment || 0) <= realGotPaymentMax
       )
     }
-    
+
     return filteredLedger.map(entry => ({
       ...entry,
       balance: entry.customerBalance || 0
@@ -190,17 +190,17 @@ const SalesLedgerPage = () => {
   // Calculate filtered summary - REAL CALCULATIONS (CORRECTED & SIMPLIFIED)
   const salesEntries = filteredLedger.filter(e => e.type === 'Sale')
   const paymentEntries = filteredLedger.filter(e => e.type === 'Payment')
-  
+
   // CRITICAL CORRECTIONS - REAL DATA CALCULATIONS:
   // 1. Total Sales = Sum of GrandTotal from all sales (invoice amounts) - REAL BILL AMOUNTS
   const totalSales = salesEntries.reduce((sum, e) => sum + (e.grandTotal || 0), 0)
-  
+
   // 2. Total Paid Amount = ONLY from sales entries (paidAmount field)
   // CRITICAL: paidAmount on sales already includes all payments received for that invoice
   // We should NOT add payment entries separately to avoid double-counting
   // When type="Sale" is selected, payment entries should not be in the list anyway
   let totalPayments = salesEntries.reduce((sum, e) => sum + (e.paidAmount || 0), 0)
-  
+
   // Only add payment entries if type filter is "Payment" only (not "Sale")
   // This ensures: Total Payments <= Total Sales (logically correct)
   if (filters.type === 'Payment' && paymentEntries.length > 0) {
@@ -211,19 +211,19 @@ const SalesLedgerPage = () => {
     // Don't double-count by adding payment entries
     totalPayments = salesEntries.reduce((sum, e) => sum + (e.paidAmount || 0), 0)
   }
-  
+
   // 3. Real Pending = Sum of unpaid amounts (GrandTotal - PaidAmount) from sales only
   // This is the amount still owed on invoices
   const totalRealPending = salesEntries.reduce((sum, e) => sum + (e.realPending || 0), 0)
-  
+
   // 4. Pending Balance = Total Sales - Total Payments (net outstanding)
   // This is the actual amount still owed after all payments
   // CRITICAL: Ensure payments never exceed sales (logically impossible)
   const pendingBalance = Math.max(0, totalSales - totalPayments)
-  
+
   // Total Invoices = Count of sales entries (not transactions)
   const totalInvoices = salesEntries.length
-  
+
   const filteredSummary = {
     totalSales,           // Total bill amounts (invoices)
     totalPayments,        // Total paid (from sales + payments)
@@ -237,18 +237,18 @@ const SalesLedgerPage = () => {
     try {
       toast.loading('Generating PDF...')
       const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
-      
+
       // Build query params with filters
       const params = new URLSearchParams({
         fromDate: dateRange.from,
         toDate: dateRange.to
       })
-      
+
       // Add type filter if selected
       if (filters.type) {
         params.append('type', filters.type)
       }
-      
+
       const response = await fetch(
         `${API_BASE_URL}/reports/sales-ledger/export/pdf?${params.toString()}`,
         {
@@ -257,13 +257,13 @@ const SalesLedgerPage = () => {
           }
         }
       )
-      
+
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        const fileName = filters.type 
+        const fileName = filters.type
           ? `sales_ledger_${filters.type.toLowerCase()}_${dateRange.from}_${dateRange.to}.pdf`
           : `sales_ledger_${dateRange.from}_${dateRange.to}.pdf`
         a.download = fileName
@@ -460,11 +460,10 @@ const SalesLedgerPage = () => {
         </div>
         <div className="bg-orange-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-orange-500">
           <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Balance</div>
-          <div className={`text-sm md:text-base lg:text-lg font-bold truncate ${
-            filteredSummary.pendingBalance > 0 ? 'text-red-600' : 
-            filteredSummary.pendingBalance < 0 ? 'text-green-600' : 
-            'text-gray-600'
-          }`}>
+          <div className={`text-sm md:text-base lg:text-lg font-bold truncate ${filteredSummary.pendingBalance > 0 ? 'text-red-600' :
+            filteredSummary.pendingBalance < 0 ? 'text-green-600' :
+              'text-gray-600'
+            }`}>
             {formatBalance(filteredSummary.pendingBalance)}
           </div>
         </div>
@@ -555,17 +554,17 @@ const SalesLedgerPage = () => {
                       if (statusUpper === 'UNPAID' || statusUpper === 'PENDING' || statusUpper === 'DUE') return 'Unpaid'
                       return status
                     }
-                    
+
                     const displayStatus = normalizeStatusForDisplay(entry.status)
-                    
+
                     const statusColor =
                       displayStatus === 'Paid'
                         ? 'bg-green-100 text-green-800 border-green-300'
                         : displayStatus === 'Partial'
-                        ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                        : displayStatus === 'Unpaid'
-                        ? 'bg-red-100 text-red-800 border-red-300'
-                        : 'bg-gray-100 text-gray-800 border-gray-300'
+                          ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                          : displayStatus === 'Unpaid'
+                            ? 'bg-red-100 text-red-800 border-red-300'
+                            : 'bg-gray-100 text-gray-800 border-gray-300'
 
                     const customerBalance = entry.customerBalance || 0
 
@@ -575,11 +574,10 @@ const SalesLedgerPage = () => {
                           {dateStr}
                         </td>
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-gray-900 border-r border-gray-200">
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${
-                            entry.type === 'Payment' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-blue-100 text-blue-800'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-blue-100 text-blue-800'
+                            }`}>
                             {entry.type}
                           </span>
                         </td>
@@ -594,24 +592,24 @@ const SalesLedgerPage = () => {
                         </td>
                         {/* Bill Amount - Show GrandTotal for Sales, payment amount for Payments */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-blue-600 border-r border-gray-200">
-                          {entry.type === 'Sale' 
-                            ? formatCurrency(entry.grandTotal || 0) 
+                          {entry.type === 'Sale'
+                            ? formatCurrency(entry.grandTotal || 0)
                             : entry.type === 'Payment'
-                            ? formatCurrency(entry.realGotPayment || 0)
-                            : '-'}
+                              ? formatCurrency(entry.realGotPayment || 0)
+                              : '-'}
                         </td>
                         {/* Paid Amount - Show actual paid amount for Sales, payment amount for Payments */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-green-600 border-r border-gray-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : entry.type === 'Payment'
-                            ? formatCurrency(entry.realGotPayment || 0)
-                            : '-'}
+                              ? formatCurrency(entry.realGotPayment || 0)
+                              : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-red-600 border-r border-gray-200">
-                          {entry.type === 'Sale' && entry.realPending > 0 
-                            ? formatCurrency(entry.realPending) 
+                          {entry.type === 'Sale' && entry.realPending > 0
+                            ? formatCurrency(entry.realPending)
                             : '-'}
                         </td>
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-gray-200">
@@ -624,13 +622,12 @@ const SalesLedgerPage = () => {
                           )}
                         </td>
                         <td
-                          className={`px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${
-                            customerBalance < 0
-                              ? 'text-green-600'
-                              : customerBalance > 0
+                          className={`px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
+                            ? 'text-green-600'
+                            : customerBalance > 0
                               ? 'text-red-600'
                               : 'text-gray-900'
-                          }`}
+                            }`}
                         >
                           {formatBalance(customerBalance)}
                         </td>
@@ -726,28 +723,26 @@ const SalesLedgerPage = () => {
                   displayStatus === 'Paid'
                     ? 'bg-green-100 text-green-800'
                     : displayStatus === 'Partial'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : displayStatus === 'Unpaid'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-gray-100 text-gray-800'
+                      ? 'bg-yellow-100 text-yellow-800'
+                      : displayStatus === 'Unpaid'
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-gray-100 text-gray-800'
 
                 return (
                   <div
                     key={idx}
-                    className={`rounded-lg border p-2.5 ${
-                      entry.type === 'Payment'
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-white border-gray-200'
-                    }`}
+                    className={`rounded-lg border p-2.5 ${entry.type === 'Payment'
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-white border-gray-200'
+                      }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                            entry.type === 'Payment' 
-                              ? 'bg-green-600 text-white' 
-                              : 'bg-blue-600 text-white'
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${entry.type === 'Payment'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-blue-600 text-white'
+                            }`}>
                             {entry.type}
                           </span>
                           <span className="text-xs font-bold text-gray-900">{entry.invoiceNo}</span>
@@ -761,13 +756,13 @@ const SalesLedgerPage = () => {
                         <div className="text-xs text-gray-500">{dateStr}</div>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-1.5 text-xs">
                       <div>
                         <div className="text-xs text-gray-500 uppercase">Bill</div>
                         <div className="font-bold text-blue-600">
-                          {entry.type === 'Sale' 
-                            ? formatCurrency(entry.grandTotal || 0) 
+                          {entry.type === 'Sale'
+                            ? formatCurrency(entry.grandTotal || 0)
                             : formatCurrency(entry.realGotPayment || 0)}
                         </div>
                       </div>
@@ -789,16 +784,15 @@ const SalesLedgerPage = () => {
                       )}
                       <div>
                         <div className="text-xs text-gray-500 uppercase">Balance</div>
-                        <div className={`font-bold ${
-                          entry.customerBalance < 0 ? 'text-green-600' :
+                        <div className={`font-bold ${entry.customerBalance < 0 ? 'text-green-600' :
                           entry.customerBalance > 0 ? 'text-red-600' :
-                          'text-gray-900'
-                        }`}>
+                            'text-gray-900'
+                          }`}>
                           {formatBalance(entry.customerBalance || 0)}
                         </div>
                       </div>
                     </div>
-                    
+
                     {entry.paymentMode && entry.paymentMode !== '-' && (
                       <div className="mt-1.5 pt-1.5 border-t border-gray-200">
                         <span className="text-xs text-gray-500">Mode: </span>

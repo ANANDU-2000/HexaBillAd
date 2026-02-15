@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
-import { 
-  Plus, 
-  Search, 
-  Filter, 
+import {
+  Plus,
+  Search,
+  Filter,
   RefreshCw,
   DollarSign,
   Calendar,
@@ -21,7 +21,8 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
 import { expensesAPI } from '../../services'
-import { 
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import {
   PieChart as RechartsPieChart,
   Pie,
   Cell,
@@ -48,7 +49,17 @@ const ExpensesPage = () => {
   const [groupBy, setGroupBy] = useState('') // '', 'weekly', 'monthly', 'yearly'
   const [showAggregated, setShowAggregated] = useState(false)
   const [aggregatedData, setAggregatedData] = useState([])
-  
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    showInput: false,
+    inputPlaceholder: '',
+    defaultValue: '',
+    onConfirm: () => { }
+  })
+
   const [categories, setCategories] = useState([])
 
   const {
@@ -63,8 +74,8 @@ const ExpensesPage = () => {
     try {
       const response = await expensesAPI.getExpenseCategories()
       if (response?.success && response?.data && Array.isArray(response.data)) {
-        const categoryOptions = response.data.map(cat => ({ 
-          value: cat.id, 
+        const categoryOptions = response.data.map(cat => ({
+          value: cat.id,
           label: cat.name,
           color: cat.colorCode
         }))
@@ -89,7 +100,7 @@ const ExpensesPage = () => {
         fromDate: dateRange.from,
         toDate: dateRange.to
       }
-      
+
       // Fetch aggregated view if enabled
       if (showAggregated && groupBy) {
         try {
@@ -115,29 +126,29 @@ const ExpensesPage = () => {
           // Don't fail the entire fetch if aggregated view fails
         }
       }
-      
+
       const response = await expensesAPI.getExpenses(params)
       if (response?.success && response?.data) {
         const expenseList = response.data.items || []
         setExpenses(expenseList)
         setFilteredExpenses(expenseList)
         setTotalPages(response.data.totalPages || 1)
-        
+
         const total = expenseList.reduce((sum, expense) => sum + (expense.amount || 0), 0)
         const categoryTotals = expenseList.reduce((acc, expense) => {
           const cat = expense.categoryName || 'Other'
           acc[cat] = (acc[cat] || 0) + (expense.amount || 0)
           return acc
         }, {})
-        
+
         setExpenseSummary({
           total,
           categoryTotals,
           averagePerDay: total / 30,
-          topCategory: Object.keys(categoryTotals).length > 0 
-            ? Object.keys(categoryTotals).reduce((a, b) => 
-                categoryTotals[a] > categoryTotals[b] ? a : b
-              )
+          topCategory: Object.keys(categoryTotals).length > 0
+            ? Object.keys(categoryTotals).reduce((a, b) =>
+              categoryTotals[a] > categoryTotals[b] ? a : b
+            )
             : 'N/A'
         })
       } else {
@@ -182,7 +193,7 @@ const ExpensesPage = () => {
   const onSubmit = async (data) => {
     try {
       const expenseDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString()
-      
+
       if (selectedExpense) {
         const response = await expensesAPI.updateExpense(selectedExpense.id, {
           categoryId: parseInt(data.category),
@@ -190,7 +201,7 @@ const ExpensesPage = () => {
           date: expenseDate,
           note: data.note || ''
         })
-        
+
         if (response?.success) {
           toast.success('Expense updated successfully!')
         } else {
@@ -204,7 +215,7 @@ const ExpensesPage = () => {
           date: expenseDate,
           note: data.note || ''
         })
-        
+
         if (response?.success) {
           toast.success('Expense added successfully!')
         } else {
@@ -212,7 +223,7 @@ const ExpensesPage = () => {
           return
         }
       }
-      
+
       reset()
       setShowAddModal(false)
       setShowEditModal(false)
@@ -229,7 +240,7 @@ const ExpensesPage = () => {
     setSelectedExpense(expense)
     setValue('category', expense.categoryId || '')
     setValue('amount', expense.amount || 0)
-    const expenseDate = expense.date 
+    const expenseDate = expense.date
       ? new Date(expense.date).toISOString().split('T')[0]
       : new Date().toISOString().split('T')[0]
     setValue('date', expenseDate)
@@ -237,22 +248,29 @@ const ExpensesPage = () => {
     setShowEditModal(true)
   }
 
-  const handleDelete = async (expenseId) => {
-    if (!window.confirm('Are you sure you want to delete this expense?')) return
-    
-    try {
-      const response = await expensesAPI.deleteExpense(expenseId)
-      
-      if (response?.success) {
-        toast.success('Expense deleted successfully!')
-        fetchExpenses()
-      } else {
-        toast.error(response?.message || 'Failed to delete expense')
+  const handleDelete = (expenseId) => {
+    const expense = expenses.find(e => e.id === expenseId)
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete Expense?',
+      message: `Are you sure you want to delete this ${expense?.categoryName || ''} expense of ${formatCurrency(expense?.amount || 0)}?`,
+      confirmLabel: 'Delete Expense',
+      onConfirm: async () => {
+        try {
+          const response = await expensesAPI.deleteExpense(expenseId)
+
+          if (response?.success) {
+            toast.success('Expense deleted successfully!')
+            fetchExpenses()
+          } else {
+            toast.error(response?.message || 'Failed to delete expense')
+          }
+        } catch (error) {
+          console.error('Error deleting expense:', error)
+          toast.error(error?.response?.data?.message || 'Failed to delete expense')
+        }
       }
-    } catch (error) {
-      console.error('Error deleting expense:', error)
-      toast.error(error?.response?.data?.message || 'Failed to delete expense')
-    }
+    })
   }
 
   const getCategoryColor = (category) => {
@@ -276,6 +294,46 @@ const ExpensesPage = () => {
     value: amount,
     color: getCategoryColor(category)
   })) : []
+
+  const handleCreateCategory = async (categoryName) => {
+    if (!categoryName || !categoryName.trim()) {
+      toast.error('Category name is required')
+      return
+    }
+
+    try {
+      setCreatingCategory(true)
+      const response = await expensesAPI.createCategory({
+        name: categoryName.trim(),
+        colorCode: '#3B82F6'
+      })
+      if (response?.success) {
+        toast.success('Category created successfully!')
+        await fetchCategories()
+        setValue('category', response.data.id.toString())
+      } else {
+        toast.error(response?.message || 'Failed to create category')
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      toast.error(error?.response?.data?.message || 'Failed to create category')
+    } finally {
+      setCreatingCategory(false)
+    }
+  }
+
+  const openCategoryPrompt = () => {
+    setDangerModal({
+      isOpen: true,
+      title: 'New Expense Category',
+      message: 'Enter the name for the new expense category:',
+      confirmLabel: 'Create Category',
+      showInput: true,
+      inputPlaceholder: 'Category Name',
+      defaultValue: '',
+      onConfirm: (val) => handleCreateCategory(val)
+    })
+  }
 
   if (loading) {
     return <LoadingCard message="Loading expenses..." />
@@ -318,7 +376,7 @@ const ExpensesPage = () => {
             <Filter className="h-4 w-4 text-blue-600 mr-2" />
             <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
           </div>
-          
+
           {/* Date Range Presets */}
           <div className="mb-3 flex flex-wrap gap-2">
             <button
@@ -366,7 +424,7 @@ const ExpensesPage = () => {
               This Year
             </button>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input
               label="From Date"
@@ -398,7 +456,7 @@ const ExpensesPage = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Summary Cards - Mobile Responsive */}
         {expenseSummary && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -413,7 +471,7 @@ const ExpensesPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm p-3 sm:p-4">
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600 flex-shrink-0" />
@@ -425,7 +483,7 @@ const ExpensesPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm p-3 sm:p-4">
               <div className="flex items-center">
                 <Tag className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
@@ -497,7 +555,7 @@ const ExpensesPage = () => {
                 Expenses Aggregated by {groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}
               </h3>
             </div>
-            
+
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full text-xs">
@@ -583,7 +641,7 @@ const ExpensesPage = () => {
             <div className="p-3 border-b-2 border-lime-400 bg-lime-100">
               <h3 className="text-sm font-bold text-gray-900">Expenses Ledger</h3>
             </div>
-            
+
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full text-xs">
@@ -605,40 +663,40 @@ const ExpensesPage = () => {
                     </tr>
                   ) : (
                     filteredExpenses.map((expense) => (
-                    <tr key={expense.id} className="hover:bg-lime-50">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div 
-                            className="w-3 h-3 rounded-full mr-3"
-                            style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
-                          />
-                          <span className="font-medium text-gray-900">{expense.categoryName}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right font-medium text-gray-900">
-                        {formatCurrency(expense.amount)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-gray-900">
-                        {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
-                      </td>
-                      <td className="px-4 py-4 text-gray-900">
-                        {expense.note || '-'}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(expense)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(expense.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </td>
-                    </tr>
+                      <tr key={expense.id} className="hover:bg-lime-50">
+                        <td className="px-4 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div
+                              className="w-3 h-3 rounded-full mr-3"
+                              style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
+                            />
+                            <span className="font-medium text-gray-900">{expense.categoryName}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-right font-medium text-gray-900">
+                          {formatCurrency(expense.amount)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-gray-900">
+                          {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
+                        </td>
+                        <td className="px-4 py-4 text-gray-900">
+                          {expense.note || '-'}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-center space-x-2">
+                          <button
+                            onClick={() => handleEdit(expense)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(expense.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
                     ))
                   )}
                 </tbody>
@@ -657,7 +715,7 @@ const ExpensesPage = () => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <div className="flex items-center mb-1">
-                          <div 
+                          <div
                             className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                             style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
                           />
@@ -692,7 +750,7 @@ const ExpensesPage = () => {
                 ))
               )}
             </div>
-          
+
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center mt-4 pb-4">
@@ -740,30 +798,7 @@ const ExpensesPage = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={async () => {
-                    const categoryName = prompt('Enter new category name:')
-                    if (categoryName && categoryName.trim()) {
-                      try {
-                        setCreatingCategory(true)
-                        const response = await expensesAPI.createCategory({
-                          name: categoryName.trim(),
-                          colorCode: '#3B82F6'
-                        })
-                        if (response?.success) {
-                          toast.success('Category created successfully!')
-                          await fetchCategories()
-                          setValue('category', response.data.id.toString())
-                        } else {
-                          toast.error(response?.message || 'Failed to create category')
-                        }
-                      } catch (error) {
-                        console.error('Error creating category:', error)
-                        toast.error(error?.response?.data?.message || 'Failed to create category')
-                      } finally {
-                        setCreatingCategory(false)
-                      }
-                    }
-                  }}
+                  onClick={openCategoryPrompt}
                   disabled={creatingCategory}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
                   title="Create new category"
@@ -787,7 +822,7 @@ const ExpensesPage = () => {
               placeholder="0.00"
               required
               error={errors.amount?.message}
-              {...register('amount', { 
+              {...register('amount', {
                 required: 'Amount is required',
                 min: { value: 0.01, message: 'Amount must be greater than 0' }
               })}
@@ -852,30 +887,7 @@ const ExpensesPage = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={async () => {
-                    const categoryName = prompt('Enter new category name:')
-                    if (categoryName && categoryName.trim()) {
-                      try {
-                        setCreatingCategory(true)
-                        const response = await expensesAPI.createCategory({
-                          name: categoryName.trim(),
-                          colorCode: '#3B82F6'
-                        })
-                        if (response?.success) {
-                          toast.success('Category created successfully!')
-                          await fetchCategories()
-                          setValue('category', response.data.id.toString())
-                        } else {
-                          toast.error(response?.message || 'Failed to create category')
-                        }
-                      } catch (error) {
-                        console.error('Error creating category:', error)
-                        toast.error(error?.response?.data?.message || 'Failed to create category')
-                      } finally {
-                        setCreatingCategory(false)
-                      }
-                    }
-                  }}
+                  onClick={openCategoryPrompt}
                   disabled={creatingCategory}
                   className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
                   title="Create new category"
@@ -900,7 +912,7 @@ const ExpensesPage = () => {
                 placeholder="0.00"
                 required
                 error={errors.amount?.message}
-                {...register('amount', { 
+                {...register('amount', {
                   required: 'Amount is required',
                   min: { value: 0.01, message: 'Amount must be greater than 0' }
                 })}
@@ -946,6 +958,18 @@ const ExpensesPage = () => {
           </div>
         </form>
       </Modal>
+      {/* Edit Expense Modal same as add modal but with title change */}
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        showInput={dangerModal.showInput}
+        inputPlaceholder={dangerModal.inputPlaceholder}
+        defaultValue={dangerModal.defaultValue}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

@@ -3,7 +3,7 @@ import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, 
 import { productsAPI, stockAdjustmentsAPI } from '../../services'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
-import DeleteConfirmModal from '../../components/DeleteConfirmModal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { TabNavigation, FilterPanel, ModernTable } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
@@ -34,6 +34,14 @@ const ProductsPage = () => {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    requireTypedText: null,
+    onConfirm: () => { }
+  })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -192,18 +200,24 @@ const ProductsPage = () => {
   }
 
   const handleDeleteClick = (product) => {
-    setProductToDelete(product)
-    setShowDeleteModal(true)
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete Product',
+      message: `This will permanently delete ${product.nameEn || product.sku}. This action cannot be undone.`,
+      confirmLabel: 'Delete Product',
+      requireTypedText: 'DELETE',
+      onConfirm: () => handleDeleteProduct(product.id)
+    })
   }
 
-  const handleDeleteProduct = async () => {
-    if (!productToDelete?.id) {
+  const handleDeleteProduct = async (productId) => {
+    if (!productId) {
       toast.error('Invalid product ID')
       return
     }
 
     try {
-      const response = await productsAPI.deleteProduct(productToDelete.id)
+      const response = await productsAPI.deleteProduct(productId)
       if (response?.success) {
         toast.success('Product deleted successfully')
         loadProducts()
@@ -213,9 +227,6 @@ const ProductsPage = () => {
     } catch (error) {
       console.error('Error deleting product:', error)
       toast.error(error?.response?.data?.message || 'Failed to delete product')
-    } finally {
-      setShowDeleteModal(false)
-      setProductToDelete(null)
     }
   }
 
@@ -286,38 +297,36 @@ const ProductsPage = () => {
     }
   }
 
-  const handleResetAllStock = async () => {
-    const confirmMessage = `DANGER: Reset ALL Product Stock to Zero?\n\n` +
-      `This will set stock to 0 for ALL ${totalCount} products!\n\n` +
-      `This action:\n` +
-      `Sets all product stock quantities to zero\n` +
-      `Creates inventory adjustment records\n` +
-      `Keeps all product names and details\n` +
-      `CANNOT BE UNDONE!\n\n` +
-      `Type "RESET ALL STOCK" to confirm:`
-
-    const userInput = prompt(confirmMessage)
-    if (userInput !== 'RESET ALL STOCK') {
-      if (userInput !== null) {
-        toast.error('Reset cancelled. You must type exactly "RESET ALL STOCK" to confirm.')
+  const handleResetAllStock = () => {
+    setDangerModal({
+      isOpen: true,
+      title: 'DANGER: Reset ALL Product Stock?',
+      message: `This will set stock to 0 for ALL ${totalCount} products!
+        This action:
+        • Sets all product stock quantities to zero
+        • Creates inventory adjustment records
+        • Keeps all product names and details
+        
+        CANNOT BE UNDONE!`,
+      confirmLabel: 'Reset All Stock Now',
+      requireTypedText: 'RESET ALL STOCK',
+      onConfirm: async () => {
+        try {
+          const response = await productsAPI.resetAllStock()
+          if (response?.success) {
+            const updatedCount = response.data?.productsUpdated || 0
+            toast.success(`Stock reset complete! ${updatedCount} products set to zero stock.`, { duration: 5000 })
+            await loadProducts() // Refresh to show updated stock
+          } else {
+            toast.error(response?.message || 'Failed to reset stock')
+          }
+        } catch (error) {
+          console.error('Reset stock error:', error)
+          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to reset stock'
+          toast.error(`Reset failed: ${errorMsg}`)
+        }
       }
-      return
-    }
-
-    try {
-      const response = await productsAPI.resetAllStock()
-      if (response?.success) {
-        const updatedCount = response.data?.productsUpdated || 0
-        toast.success(`Stock reset complete! ${updatedCount} products set to zero stock.`, { duration: 5000 })
-        await loadProducts() // Refresh to show updated stock
-      } else {
-        toast.error(response?.message || 'Failed to reset stock')
-      }
-    } catch (error) {
-      console.error('Reset stock error:', error)
-      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to reset stock'
-      toast.error(`Reset failed: ${errorMsg}`)
-    }
+    })
   }
 
   const tabs = [
@@ -759,17 +768,14 @@ const ProductsPage = () => {
         )
       }
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={showDeleteModal}
-        onClose={() => {
-          setShowDeleteModal(false)
-          setProductToDelete(null)
-        }}
-        onConfirm={handleDeleteProduct}
-        title="Delete Product"
-        message="This will permanently delete this product. This action cannot be undone."
-        itemName={productToDelete?.nameEn || productToDelete?.sku}
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        requireTypedText={dangerModal.requireTypedText}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
       />
     </div >
   )

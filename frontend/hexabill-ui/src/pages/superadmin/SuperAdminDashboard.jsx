@@ -73,7 +73,7 @@ const SuperAdminDashboard = () => {
       title: 'Active Companies',
       value: dashboard.activeTenants,
       icon: CheckCircle,
-      desc: `Paid active · ${dashboard.trialTenants} on trial`
+      desc: `${dashboard.totalTenants > 0 ? ((dashboard.activeTenants / dashboard.totalTenants) * 100).toFixed(0) : 0}% Active · ${dashboard.trialTenants} on trial`
     },
     {
       title: 'Suspended Companies',
@@ -83,19 +83,19 @@ const SuperAdminDashboard = () => {
     },
     {
       title: 'Monthly Revenue',
-      value: formatCurrency(dashboard.platformRevenue ?? dashboard.mrr ?? 0),
+      value: formatCurrency((dashboard?.platformRevenue ?? dashboard?.mrr ?? 0) || 0),
       icon: DollarSign,
       desc: 'Platform revenue'
     },
     {
       title: 'Total Active Users',
-      value: dashboard.totalUsers,
+      value: (dashboard?.totalUsers || 0).toLocaleString(),
       icon: Users,
       desc: 'Across all companies'
     },
     {
       title: 'Total DB Storage Used',
-      value: `${dashboard.estimatedStorageUsedMb ?? 0} MB`,
+      value: `${(dashboard?.estimatedStorageUsedMb ?? 0).toFixed(0)} MB`,
       icon: Database,
       desc: 'Estimated (row-based)'
     }

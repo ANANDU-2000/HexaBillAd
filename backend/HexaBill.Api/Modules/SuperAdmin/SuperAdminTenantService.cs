@@ -530,7 +530,42 @@ namespace HexaBill.Api.Modules.SuperAdmin
             if (request.Email != null)
                 tenant.Email = request.Email;
             if (request.Status.HasValue)
+            {
                 tenant.Status = request.Status.Value;
+
+                // Sync subscription status to prevent reversion
+                var subscription = await _context.Subscriptions
+                    .Where(s => s.TenantId == tenantId)
+                    .OrderByDescending(s => s.CreatedAt)
+                    .FirstOrDefaultAsync();
+
+                if (subscription != null)
+                {
+                    subscription.Status = request.Status.Value switch
+                    {
+                        TenantStatus.Active => SubscriptionStatus.Active,
+                        TenantStatus.Trial => SubscriptionStatus.Trial,
+                        TenantStatus.Suspended => SubscriptionStatus.Suspended,
+                        TenantStatus.Expired => SubscriptionStatus.Expired,
+                        _ => subscription.Status
+                    };
+
+                    // If manually activating, ensuring it doesn't immediately expire
+                    if (subscription.Status == SubscriptionStatus.Active)
+                    {
+                        if (subscription.ExpiresAt.HasValue && subscription.ExpiresAt.Value < DateTime.UtcNow)
+                        {
+                            subscription.ExpiresAt = null; // Clear expiry or set to future
+                        }
+                    }
+                    
+                    // If trial, sync end date
+                    if (subscription.Status == SubscriptionStatus.Trial && request.TrialEndDate.HasValue)
+                    {
+                        subscription.TrialEndDate = request.TrialEndDate.Value;
+                    }
+                }
+            }
             if (request.TrialEndDate.HasValue)
                 tenant.TrialEndDate = request.TrialEndDate;
 
@@ -559,6 +594,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
             tenant.SuspendedAt = DateTime.UtcNow;
             tenant.SuspensionReason = reason;
 
+            // Sync subscription
+            var subscription = await _context.Subscriptions
+                .Where(s => s.TenantId == tenantId)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (subscription != null)
+            {
+                subscription.Status = SubscriptionStatus.Suspended;
+            }
+
             await _context.SaveChangesAsync();
             return true;
         }
@@ -571,6 +617,22 @@ namespace HexaBill.Api.Modules.SuperAdmin
             tenant.Status = TenantStatus.Active;
             tenant.SuspendedAt = null;
             tenant.SuspensionReason = null;
+
+            // Sync subscription
+            var subscription = await _context.Subscriptions
+                .Where(s => s.TenantId == tenantId)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (subscription != null)
+            {
+                subscription.Status = SubscriptionStatus.Active;
+                // Ensure not expired
+                if (subscription.ExpiresAt.HasValue && subscription.ExpiresAt.Value < DateTime.UtcNow)
+                {
+                    subscription.ExpiresAt = null;
+                }
+            }
 
             await _context.SaveChangesAsync();
             return true;

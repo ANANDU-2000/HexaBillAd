@@ -31,8 +31,10 @@
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    color: #0F172A; /* text primary */
-    background: #F8FAFC; /* surface */
+    color: #0F172A;
+    /* text primary */
+    background: #F8FAFC;
+    /* surface */
   }
 
   @media (max-width: 768px) {
@@ -58,6 +60,7 @@
 }
 
 @layer components {
+
   .container-lock,
   .page-content {
     max-width: 100%;

@@ -64,8 +64,8 @@ const BackupPage = () => {
       setLoading(true)
       const response = await backupAPI.createFullBackup(exportToDesktop)
       if (response.success) {
-        toast.success(exportToDesktop 
-          ? 'Backup created! Note: On cloud hosting, use Download button to save to your computer.' 
+        toast.success(exportToDesktop
+          ? 'Backup created! Note: On cloud hosting, use Download button to save to your computer.'
           : 'Full backup created successfully! Click Download to save to your computer.')
         await loadBackups()
       } else {
@@ -95,11 +95,15 @@ const BackupPage = () => {
     }
   }
 
-  const handleDeleteBackup = async (fileName) => {
-    if (!confirm(`Are you sure you want to delete ${fileName}?`)) return
-    
+  const handleDeleteBackup = (fileName) => {
+    setFileToDelete(fileName)
+  }
+
+  const handleConfirmDeleteBackup = async () => {
+    if (!fileToDelete) return
+
     try {
-      const response = await backupAPI.deleteBackup(fileName)
+      const response = await backupAPI.deleteBackup(fileToDelete)
       if (response.success) {
         toast.success('Backup deleted')
         await loadBackups()
@@ -108,6 +112,8 @@ const BackupPage = () => {
       }
     } catch (error) {
       toast.error('Failed to delete backup')
+    } finally {
+      setFileToDelete(null)
     }
   }
 
@@ -132,9 +138,9 @@ const BackupPage = () => {
     try {
       setRestoring(true)
       toast.loading('Restoring backup... This may take a few minutes.')
-      
+
       let response
-      
+
       // Check if selectedFile is a File object (uploaded) or object with name (from list)
       if (selectedFile instanceof File) {
         // File uploaded from computer - use upload endpoint
@@ -144,7 +150,7 @@ const BackupPage = () => {
         const fileName = selectedFile.name || selectedFile.fileName
         response = await backupAPI.restoreBackup(fileName, null)
       }
-      
+
       if (response.success) {
         toast.success('Backup restored successfully! Refreshing data...')
         // Refresh backup list and use client-side navigation instead of full page reload
@@ -208,7 +214,7 @@ const BackupPage = () => {
               </button>
             )}
           </div>
-          
+
           {/* Google Drive Settings (Admin Only) */}
           {isAdmin && showCloudSettings && (
             <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -269,7 +275,7 @@ const BackupPage = () => {
               </p>
             </div>
           )}
-          
+
           {/* IMPORTANT NOTICE FOR CLOUD HOSTING */}
           <div className="bg-amber-50 border border-amber-300 rounded-md p-3 mb-4">
             <p className="text-sm font-medium text-amber-800">
@@ -281,7 +287,7 @@ const BackupPage = () => {
               <strong>To save to YOUR computer:</strong> Create backup → Click <strong>Download</strong> button in the list below.
             </p>
           </div>
-          
+
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleCreateBackup}
@@ -291,7 +297,7 @@ const BackupPage = () => {
               <Database className="h-4 w-4 mr-2" />
               {loading ? 'Creating...' : 'Database Backup'}
             </button>
-            
+
             <button
               onClick={() => handleCreateFullBackup(false)}
               disabled={loading}
@@ -300,7 +306,7 @@ const BackupPage = () => {
               <HardDrive className="h-4 w-4 mr-2" />
               {loading ? 'Creating...' : 'Full Backup (ZIP)'}
             </button>
-            
+
             <button
               onClick={() => handleCreateFullBackup(true)}
               disabled={loading}
@@ -319,7 +325,7 @@ const BackupPage = () => {
             <Upload className="h-6 w-6 text-green-600 mr-3" />
             <h2 className="text-lg font-semibold text-gray-900">Restore Backup</h2>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex items-center gap-4">
               <label className="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
@@ -332,7 +338,7 @@ const BackupPage = () => {
                   className="hidden"
                 />
               </label>
-              
+
               {selectedFile && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600 font-medium">{selectedFile.name}</span>
@@ -347,7 +353,7 @@ const BackupPage = () => {
                 </div>
               )}
             </div>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
               <p className="text-sm text-yellow-800">
                 <strong>Important:</strong> To restore from a backup file:
@@ -359,7 +365,7 @@ const BackupPage = () => {
                 <li>Make sure to backup current data first!</li>
               </ol>
             </div>
-            
+
             <button
               onClick={handleRestoreClick}
               disabled={!selectedFile || restoring}
@@ -385,7 +391,7 @@ const BackupPage = () => {
               <RefreshCw className="h-4 w-4" />
             </button>
           </div>
-          
+
           {backups.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <Database className="h-12 w-12 mx-auto mb-4 text-gray-400" />

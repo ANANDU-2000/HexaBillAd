@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import {
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
   Download,
   Phone,
   Mail,
@@ -30,6 +30,7 @@ import { customersAPI } from '../../services'
 import { TabNavigation } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const CustomersPage = () => {
   const { user } = useAuth()
@@ -46,6 +47,14 @@ const CustomersPage = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [ledgerData, setLedgerData] = useState([])
   const [saving, setSaving] = useState(false)
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    requireTypedText: null,
+    onConfirm: () => { }
+  })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -103,7 +112,7 @@ const CustomersPage = () => {
       console.error('Failed to load customers:', error)
       // Only show error if it's not a network error (handled by interceptor)
       if (error.response || (!error.code || error.code !== 'ERR_NETWORK')) {
-      toast.error(error?.response?.data?.message || 'Failed to load customers')
+        toast.error(error?.response?.data?.message || 'Failed to load customers')
       }
       setCustomers([])
     } finally {
@@ -154,7 +163,7 @@ const CustomersPage = () => {
       } else {
         response = await customersAPI.createCustomer(data)
       }
-      
+
       if (response.success) {
         toast.success(selectedCustomer ? 'Customer updated successfully!' : 'Customer added successfully!')
         // Refresh customer list without page reload
@@ -186,42 +195,43 @@ const CustomersPage = () => {
     setShowEditModal(true)
   }
 
-  const handleDelete = async (customerId) => {
+  const handleDelete = (customerId) => {
     const customer = customers.find(c => c.id === customerId)
     const customerName = customer?.name || 'Customer'
-    
+
     // First check if customer has transactions
     const hasTransactions = (customer?.balance || 0) !== 0
-    
-    let confirmMessage = ''
-    let forceDelete = false
-    
+
     if (hasTransactions) {
       // Customer has transactions - offer force delete option
-      confirmMessage = `WARNING: This customer has transactions.\n\n` +
-        `Force Delete will permanently delete:\n` +
-        `• Customer: ${customerName}\n` +
-        `• All Sales/Invoices\n` +
-        `• All Payments\n` +
-        `• All Sale Returns\n` +
-        `• Stock will be restored\n\n` +
-        `THIS CANNOT BE UNDONE!\n\n` +
-        `Type "DELETE ${customerName.toUpperCase()}" to confirm:`
-      
-      const confirmText = prompt(confirmMessage)
-      if (confirmText?.trim().toUpperCase() !== `DELETE ${customerName.toUpperCase()}`) {
-        if (confirmText !== null) {
-          toast.error('Deletion cancelled. You must type the exact confirmation text.')
-        }
-        return
-      }
-      forceDelete = true
+      setDangerModal({
+        isOpen: true,
+        title: 'Force Delete Customer?',
+        message: `WARNING: This customer has transactions. Force Delete will permanently delete:
+          • Customer: ${customerName}
+          • All Sales/Invoices
+          • All Payments
+          • All Sale Returns
+          • Stock will be restored
+          
+          THIS CANNOT BE UNDONE!`,
+        confirmLabel: 'Force Delete Everything',
+        requireTypedText: `DELETE ${customerName.toUpperCase()}`,
+        onConfirm: () => performDelete(customerId, true, customerName)
+      })
     } else {
       // No transactions - regular delete
-      confirmMessage = `WARNING: Are you sure you want to delete "${customerName}"?\n\nThis action cannot be undone!`
-      if (!window.confirm(confirmMessage)) return
+      setDangerModal({
+        isOpen: true,
+        title: 'Delete Customer?',
+        message: `Are you sure you want to delete "${customerName}"? This action cannot be undone!`,
+        confirmLabel: 'Delete Customer',
+        onConfirm: () => performDelete(customerId, false, customerName)
+      })
     }
-    
+  }
+
+  const performDelete = async (customerId, forceDelete, customerName) => {
     try {
       const response = await customersAPI.deleteCustomer(customerId, forceDelete)
       if (response.success) {
@@ -280,11 +290,11 @@ const CustomersPage = () => {
 
   const handleExportStatement = async () => {
     if (!selectedCustomer) return
-    
+
     try {
       toast.loading('Generating statement PDF...')
       const blob = await customersAPI.getCustomerStatement(selectedCustomer.id)
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -294,7 +304,7 @@ const CustomersPage = () => {
       a.click()
       a.remove()
       window.URL.revokeObjectURL(url)
-      
+
       toast.success('Statement exported successfully!')
     } catch (error) {
       console.error('Failed to export statement:', error)
@@ -348,9 +358,9 @@ const CustomersPage = () => {
 
         {/* Modern Tabs */}
         <div className="mt-4">
-          <TabNavigation 
-            tabs={tabs} 
-            activeTab={activeTab} 
+          <TabNavigation
+            tabs={tabs}
+            activeTab={activeTab}
             onChange={setActiveTab}
           />
         </div>
@@ -435,69 +445,69 @@ const CustomersPage = () => {
                 </tr>
               ) : (
                 filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-gray-50">
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-xs sm:text-sm font-medium text-gray-900">{customer.name}</div>
-                      <div className="text-xs text-gray-500">{customer.trn}</div>
-                    </div>
-                  </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <div className="text-xs sm:text-sm text-gray-900">{customer.phone}</div>
-                    <div className="text-xs text-gray-500">{customer.email}</div>
-                  </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                    {formatCurrency(customer.creditLimit)}
-                  </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                    <span className={`text-xs sm:text-sm font-medium ${
-                      customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}>
-                      {formatBalance(customer.balance)}
-                    </span>
-                  </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                    {customer.lastOrderDate || 'No orders'}
-                  </td>
-                  <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <button
-                        onClick={() => handleViewLedger(customer)}
-                        className="bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                        title="View Ledger"
-                        aria-label="View Ledger"
-                      >
-                        <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        <span className="hidden sm:inline text-xs font-medium">View</span>
-                      </button>
-                      <button
-                        onClick={() => handleEdit(customer)}
-                        className="bg-indigo-50 text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                        title="Edit Customer"
-                        aria-label="Edit Customer"
-                      >
-                        <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                        <span className="hidden sm:inline text-xs font-medium">Edit</span>
-                      </button>
-                      {isAdminOrOwner(user) && (
+                  <tr key={customer.id} className="hover:bg-gray-50">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-xs sm:text-sm font-medium text-gray-900">{customer.name}</div>
+                        <div className="text-xs text-gray-500">{customer.trn}</div>
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <div className="text-xs sm:text-sm text-gray-900">{customer.phone}</div>
+                      <div className="text-xs text-gray-500">{customer.email}</div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                      {formatCurrency(customer.creditLimit)}
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <span className={`text-xs sm:text-sm font-medium ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
+                        }`}>
+                        {formatBalance(customer.balance)}
+                      </span>
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                      {customer.lastOrderDate || 'No orders'}
+                    </td>
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
-                          onClick={() => handleDelete(customer.id)}
-                          className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                          title="Delete Customer (Admin Only)"
-                          aria-label="Delete Customer (Admin Only)"
+                          onClick={() => handleViewLedger(customer)}
+                          className="bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                          title="View Ledger"
+                          aria-label="View Ledger"
                         >
-                          <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline text-xs font-medium">Delete</span>
+                          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline text-xs font-medium">View</span>
                         </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                        <button
+                          onClick={() => handleEdit(customer)}
+                          className="bg-indigo-50 text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                          title="Edit Customer"
+                          aria-label="Edit Customer"
+                        >
+                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="hidden sm:inline text-xs font-medium">Edit</span>
+                        </button>
+                        {isAdminOrOwner(user) && (
+                          <button
+                            onClick={() => handleDelete(customer.id)}
+                            className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            title="Delete Customer (Admin Only)"
+                            aria-label="Delete Customer (Admin Only)"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline text-xs font-medium">Delete</span>
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        
+
         {/* Mobile Cards */}
         <div className="md:hidden divide-y divide-gray-200">
           {filteredCustomers.map((customer) => (
@@ -539,9 +549,8 @@ const CustomersPage = () => {
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
                   <span className="text-gray-500">Balance:</span>
-                  <span className={`ml-1 font-medium ${
-                    customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
-                  }`}>
+                  <span className={`ml-1 font-medium ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
+                    }`}>
                     {formatBalance(customer.balance)}
                   </span>
                 </div>
@@ -604,7 +613,7 @@ const CustomersPage = () => {
               type="number"
               placeholder="50000"
               error={errors.creditLimit?.message}
-              {...register('creditLimit', { 
+              {...register('creditLimit', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'Credit limit must be positive' }
               })}
@@ -701,7 +710,7 @@ const CustomersPage = () => {
               type="number"
               placeholder="50000"
               error={errors.creditLimit?.message}
-              {...register('creditLimit', { 
+              {...register('creditLimit', {
                 valueAsNumber: true,
                 min: { value: 0, message: 'Credit limit must be positive' }
               })}
@@ -766,9 +775,8 @@ const CustomersPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm font-medium text-gray-500">Current Balance</p>
-                <p className={`text-lg font-semibold ${
-                  selectedCustomer?.balance < 0 ? 'text-green-600' : selectedCustomer?.balance > 0 ? 'text-red-600' : 'text-gray-600'
-                }`}>
+                <p className={`text-lg font-semibold ${selectedCustomer?.balance < 0 ? 'text-green-600' : selectedCustomer?.balance > 0 ? 'text-red-600' : 'text-gray-600'
+                  }`}>
                   {formatBalance(selectedCustomer?.balance || 0)}
                 </p>
               </div>
@@ -840,24 +848,23 @@ const CustomersPage = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(entry.date).toLocaleDateString('en-GB')}
                       </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {entry.type}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {entry.reference}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
-                    </td>
-                    <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                      entry.balance < 0 ? 'text-green-600' : entry.balance > 0 ? 'text-red-600' : 'text-gray-900'
-                    }`}>
-                      {formatBalance(entry.balance)}
-                    </td>
-                  </tr>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {entry.type}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {entry.reference}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
+                      </td>
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${entry.balance < 0 ? 'text-green-600' : entry.balance > 0 ? 'text-red-600' : 'text-gray-900'
+                        }`}>
+                        {formatBalance(entry.balance)}
+                      </td>
+                    </tr>
                   ))
                 )}
               </tbody>
@@ -883,6 +890,16 @@ const CustomersPage = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        requireTypedText={dangerModal.requireTypedText}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

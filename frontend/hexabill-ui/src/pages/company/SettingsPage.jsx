@@ -29,6 +29,7 @@ import { adminAPI } from '../../services'
 import toast from 'react-hot-toast'
 import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { useBranding } from '../../contexts/TenantBrandingContext'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -63,6 +64,14 @@ const SettingsPage = () => {
     cloudBackupClientSecret: '',
     cloudBackupRefreshToken: '',
     cloudBackupFolderId: ''
+  })
+
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    onConfirm: () => { }
   })
 
   const {
@@ -181,41 +190,52 @@ const SettingsPage = () => {
     }
   }
 
-  const handleDeleteBackup = async (fileName) => {
-    if (!window.confirm(`Are you sure you want to delete ${fileName}?`)) return
-
-    try {
-      const response = await adminAPI.deleteBackup(fileName)
-      if (response.success) {
-        toast.success('Backup deleted')
-        await fetchBackups()
-      } else {
-        toast.error(response.message || 'Failed to delete backup')
+  const handleDeleteBackup = (fileName) => {
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete Backup?',
+      message: `Are you sure you want to delete ${fileName}? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        try {
+          const response = await adminAPI.deleteBackup(fileName)
+          if (response.success) {
+            toast.success('Backup deleted')
+            await fetchBackups()
+          } else {
+            toast.error(response.message || 'Failed to delete backup')
+          }
+        } catch (error) {
+          toast.error('Failed to delete backup')
+        }
       }
-    } catch (error) {
-      toast.error('Failed to delete backup')
-    }
+    })
   }
 
-  const handleRestoreBackup = async (fileName) => {
-    if (!window.confirm(`This will restore the database from ${fileName}. This action cannot be undone. Continue?`)) return
-
-    try {
-      const response = await adminAPI.restoreBackup(fileName)
-      if (response.success) {
-        toast.success('Backup restored successfully! Refreshing data...')
-        // Refresh settings and backups, then use client-side navigation instead of full page reload
-        await fetchSettings()
-        await fetchBackups()
-        setTimeout(() => {
-          navigate(0) // Client-side reload using react-router
-        }, 1000)
-      } else {
-        toast.error(response.message || 'Failed to restore backup')
+  const handleRestoreBackup = (fileName) => {
+    setDangerModal({
+      isOpen: true,
+      title: 'Restore Database?',
+      message: `This will restore the database from ${fileName}. All CURRENT transactional data will be replaced. This action cannot be reversed.`,
+      confirmLabel: 'Restore Now',
+      onConfirm: async () => {
+        try {
+          const response = await adminAPI.restoreBackup(fileName)
+          if (response.success) {
+            toast.success('Backup restored successfully! Refreshing data...')
+            await fetchSettings()
+            await fetchBackups()
+            setTimeout(() => {
+              navigate(0)
+            }, 1000)
+          } else {
+            toast.error(response.message || 'Failed to restore backup')
+          }
+        } catch (error) {
+          toast.error('Failed to restore backup')
+        }
       }
-    } catch (error) {
-      toast.error('Failed to restore backup')
-    }
+    })
   }
 
   const handleClearAllData = async () => {
@@ -1015,6 +1035,15 @@ const SettingsPage = () => {
           </div>
         </div>
       </Modal>
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

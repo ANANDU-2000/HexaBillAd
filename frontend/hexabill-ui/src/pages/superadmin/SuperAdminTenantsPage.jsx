@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 import {
   Plus,
   Search,
@@ -24,6 +25,7 @@ import toast from 'react-hot-toast'
 
 const SuperAdminTenantsPage = () => {
   const navigate = useNavigate()
+  const { impersonateTenant } = useAuth()
   const [loading, setLoading] = useState(true)
   const [tenants, setTenants] = useState([])
   const [totalCount, setTotalCount] = useState(0)
@@ -134,15 +136,17 @@ const SuperAdminTenantsPage = () => {
     }
   }
 
-  const getStatusBadge = (status) => {
-    const statusLower = status?.toLowerCase()
+  const getStatusBadge = (status, subscriptionStatus) => {
+    // Priority to subscription status if available & valid, else fall back to tenant status
+    const effectiveStatus = (subscriptionStatus || status || '').toLowerCase()
+
     const badges = {
       active: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>,
       trial: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Trial</span>,
       suspended: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Suspended</span>,
       expired: <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Expired</span>
     }
-    return badges[statusLower] || <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>
+    return badges[effectiveStatus] || <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">{effectiveStatus}</span>
   }
 
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/?$/, '')
@@ -183,7 +187,7 @@ const SuperAdminTenantsPage = () => {
       </div>
     ),
     totalRevenue: formatCurrency(tenant.totalRevenue || 0),
-    status: getStatusBadge(tenant.status),
+    status: getStatusBadge(tenant.status, tenant.subscription?.status),
     plan: tenant.planName ? <span className="text-neutral-700">{tenant.planName}</span> : <span className="text-neutral-400">—</span>,
     lastActivity: tenant.lastActivity
       ? new Date(tenant.lastActivity).toLocaleDateString(undefined, { dateStyle: 'short' })
@@ -193,7 +197,7 @@ const SuperAdminTenantsPage = () => {
       <div className="flex items-center space-x-2">
         <button
           onClick={() => {
-            localStorage.setItem('selected_tenant_id', tenant.id)
+            impersonateTenant(tenant.id)
             localStorage.setItem('selected_tenant_name', tenant.name)
             toast.success(`Entering ${tenant.name}'s workspace...`)
             window.location.href = '/dashboard'

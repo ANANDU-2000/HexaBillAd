@@ -7,6 +7,7 @@ import { routesAPI } from '../../services'
 import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Misc']
 
@@ -28,6 +29,12 @@ const RouteDetailPage = () => {
   const [expenseAmount, setExpenseAmount] = useState('')
   const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
   const [expenseDescription, setExpenseDescription] = useState('')
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => { }
+  })
 
   const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
 
@@ -66,7 +73,7 @@ const RouteDetailPage = () => {
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([loadRoute(), loadSummary(), loadExpenses()]).finally(() => setLoading(false))
+    loadRoute().finally(() => setLoading(false))
   }, [id])
 
   useEffect(() => {
@@ -108,20 +115,27 @@ const RouteDetailPage = () => {
     }
   }
 
-  const handleDeleteExpense = async (expenseId) => {
-    if (!window.confirm('Delete this expense?')) return
-    try {
-      const res = await routesAPI.deleteRouteExpense(id, expenseId)
-      if (res?.success) {
-        toast.success('Expense deleted')
-        loadExpenses()
-        loadSummary()
-      } else {
-        toast.error(res?.message || 'Failed to delete')
+  const handleDeleteExpense = (expenseId) => {
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete expense?',
+      message: 'This expense will be permanently removed from this route.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        try {
+          const res = await routesAPI.deleteRouteExpense(id, expenseId)
+          if (res?.success) {
+            toast.success('Expense deleted')
+            loadExpenses()
+            loadSummary()
+          } else {
+            toast.error(res?.message || 'Failed to delete')
+          }
+        } catch (e) {
+          toast.error(e?.message || 'Failed to delete')
+        }
       }
-    } catch (e) {
-      toast.error(e?.message || 'Failed to delete')
-    }
+    })
   }
 
   if (loading && !route) {
@@ -284,6 +298,15 @@ const RouteDetailPage = () => {
           </form>
         </Modal>
       )}
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }

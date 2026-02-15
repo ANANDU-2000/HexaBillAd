@@ -98,6 +98,9 @@ namespace HexaBill.Api.Modules.Subscription
 
         public async Task<SubscriptionDto?> GetTenantSubscriptionAsync(int tenantId)
         {
+            // Ensure status is up to date before returning
+            await CheckSubscriptionStatusAsync(tenantId);
+
             var subscription = await _context.Subscriptions
                 .Include(s => s.Plan)
                 .Where(s => s.TenantId == tenantId)
@@ -258,6 +261,9 @@ namespace HexaBill.Api.Modules.Subscription
 
             if (subscription == null) return false;
 
+            // Start by assuming Active/Trial, then degrade if expired
+            bool isSubscriptionValid = subscription.Status == SubscriptionStatus.Active || subscription.Status == SubscriptionStatus.Trial;
+
             // Check if trial expired
             if (subscription.Status == SubscriptionStatus.Trial && subscription.TrialEndDate.HasValue)
             {
@@ -265,17 +271,7 @@ namespace HexaBill.Api.Modules.Subscription
                 {
                     subscription.Status = SubscriptionStatus.Expired;
                     subscription.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-
-                    // Update tenant status
-                    var tenant = await _context.Tenants.FindAsync(tenantId);
-                    if (tenant != null)
-                    {
-                        tenant.Status = TenantStatus.Expired;
-                        await _context.SaveChangesAsync();
-                    }
-
-                    return false;
+                    isSubscriptionValid = false;
                 }
             }
 
@@ -284,19 +280,51 @@ namespace HexaBill.Api.Modules.Subscription
             {
                 subscription.Status = SubscriptionStatus.Expired;
                 subscription.UpdatedAt = DateTime.UtcNow;
-                await _context.SaveChangesAsync();
-
-                var tenant = await _context.Tenants.FindAsync(tenantId);
-                if (tenant != null)
-                {
-                    tenant.Status = TenantStatus.Expired;
-                    await _context.SaveChangesAsync();
-                }
-
-                return false;
+                isSubscriptionValid = false;
             }
 
-            return subscription.Status == SubscriptionStatus.Active || subscription.Status == SubscriptionStatus.Trial;
+            // Always sync Tenant status with Subscription status
+            var tenant = await _context.Tenants.FindAsync(tenantId);
+            if (tenant != null)
+            {
+                var targetStatus = subscription.Status switch
+                {
+                    SubscriptionStatus.Active => TenantStatus.Active,
+                    SubscriptionStatus.Trial => TenantStatus.Trial,
+                    SubscriptionStatus.Suspended => TenantStatus.Suspended,
+                    SubscriptionStatus.PastDue => TenantStatus.Suspended,
+                    SubscriptionStatus.Cancelled => TenantStatus.Expired,
+                    SubscriptionStatus.Expired => TenantStatus.Expired,
+                    _ => TenantStatus.Expired
+                };
+
+                if (tenant.Status != targetStatus)
+                {
+                    tenant.Status = targetStatus;
+                    // Clear trial date on tenant if redundant, but maybe keep for history? 
+                    // Plan says: "sync Tenant.Status and TrialEndDate".
+                    // If not trial, trial end date doesn't matter much for status check, but let's leave it or clear it.
+                    // If active, we don't need trial end date.
+                    if (targetStatus == TenantStatus.Active)
+                    {
+                        tenant.TrialEndDate = null;
+                    }
+                    else if (targetStatus == TenantStatus.Trial)
+                    {
+                        tenant.TrialEndDate = subscription.TrialEndDate;
+                    }
+                    
+                    await _context.SaveChangesAsync();
+                }
+                
+                // Save subscription changes if any status change happened above
+                if (_context.Entry(subscription).State == EntityState.Modified)
+                {
+                    await _context.SaveChangesAsync();
+                }
+            }
+
+            return isSubscriptionValid;
         }
 
         public async Task<bool> IsFeatureAllowedAsync(int tenantId, string feature)

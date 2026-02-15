@@ -243,7 +243,7 @@ const ReportsPage = () => {
             totalExpenses: expensesToday,
             netProfit: profitToday,
             salesGrowth: 0, // Calculate from previous period if needed
-            profitMargin: profitToday && salesToday
+            profitMargin: (profitToday && salesToday && salesToday > 0)
               ? (profitToday / salesToday) * 100
               : 0
           }
@@ -1083,11 +1083,10 @@ const ReportsPage = () => {
                   role="tab"
                   aria-selected={active}
                   onClick={() => handleTabChange(tab.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 ${
-                    active
-                      ? 'bg-primary-600 text-white shadow-sm'
-                      : 'text-[#475569] bg-[#F8FAFC] border border-[#E5E7EB] hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
-                  }`}
+                  className={`flex-shrink-0 flex items-center gap-1.5 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 ${active
+                    ? 'bg-primary-600 text-white shadow-sm'
+                    : 'text-[#475569] bg-[#F8FAFC] border border-[#E5E7EB] hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
+                    }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
                   <span>{tab.name.split(' ')[0]}</span>
@@ -1387,10 +1386,10 @@ const ReportsPage = () => {
                         </div>
                         <div className="text-right">
                           <p className={`font-semibold text-lg ${customer.total > (customer.creditLimit * 0.8)
-                              ? 'text-red-600'
-                              : customer.total > (customer.creditLimit * 0.5)
-                                ? 'text-yellow-600'
-                                : 'text-gray-900'
+                            ? 'text-red-600'
+                            : customer.total > (customer.creditLimit * 0.5)
+                              ? 'text-yellow-600'
+                              : 'text-gray-900'
                             }`}>
                             {formatCurrency(customer.total)}
                           </p>
@@ -1554,7 +1553,7 @@ const ReportsPage = () => {
                       <p className="text-xs text-purple-600 mt-1">
                         Margin: {reportData.profitLoss.grossProfitMargin?.toFixed(1) || (reportData.profitLoss.totalSales > 0
                           ? ((reportData.profitLoss.grossProfit / reportData.profitLoss.totalSales) * 100).toFixed(1)
-                          : 0)}%
+                          : '0.0')}%
                       </p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-6 border border-red-200">
@@ -1576,10 +1575,10 @@ const ReportsPage = () => {
                         <p className="text-sm text-gray-600 mt-2">
                           Net Profit Margin: {reportData.profitLoss.netProfitMargin?.toFixed(2) || (reportData.profitLoss.totalSales > 0
                             ? ((reportData.profitLoss.netProfit / reportData.profitLoss.totalSales) * 100).toFixed(2)
-                            : 0)}%
+                            : '0.00')}%
                         </p>
                       </div>
-                      <TrendingUp className={`h-16 w-16 ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                      <TrendingUp className={`h-16 w-16 ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600 rotate-180'
                         }`} />
                     </div>
                   </div>
@@ -1749,8 +1748,8 @@ const ReportsPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bill.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' :
-                                  bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
-                                    'bg-red-100 text-red-800'
+                                bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-red-100 text-red-800'
                                 }`}>
                                 {bill.paymentStatus}
                               </span>
@@ -1758,8 +1757,8 @@ const ReportsPage = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {bill.daysOverdue > 0 ? (
                                 <span className={`font-medium ${bill.daysOverdue > 90 ? 'text-red-600' :
-                                    bill.daysOverdue > 60 ? 'text-orange-600' :
-                                      'text-yellow-600'
+                                  bill.daysOverdue > 60 ? 'text-orange-600' :
+                                    'text-yellow-600'
                                   }`}>
                                   {bill.daysOverdue} days
                                 </span>
@@ -1828,8 +1827,8 @@ const ReportsPage = () => {
                   <div className="space-y-4">
                     {reportData.aiSuggestions.map((suggestion, index) => (
                       <div key={index} className={`p-4 rounded-lg border-l-4 ${suggestion.priority === 'high' ? 'bg-red-50 border-red-400' :
-                          suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
-                            'bg-green-50 border-green-400'
+                        suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
+                          'bg-green-50 border-green-400'
                         }`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">

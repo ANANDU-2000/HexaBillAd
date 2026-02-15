@@ -14,10 +14,16 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [impersonatedTenantId, setImpersonatedTenantId] = useState(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     const userData = localStorage.getItem('user')
+    const savedTenantId = localStorage.getItem('selected_tenant_id')
+
+    if (savedTenantId) {
+      setImpersonatedTenantId(parseInt(savedTenantId, 10))
+    }
 
     if (token && userData) {
       try {
@@ -101,6 +107,10 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData))
         setUser(userData)
 
+        // Clear any previous impersonation
+        localStorage.removeItem('selected_tenant_id')
+        setImpersonatedTenantId(null)
+
         return { success: true, data: response.data }
       } else {
         return { success: false, message: response.message }
@@ -116,7 +126,9 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('selected_tenant_id') // Clear impersonation on logout
     setUser(null)
+    setImpersonatedTenantId(null)
   }
 
   const updateUser = (updatedUserData) => {
@@ -125,12 +137,26 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(newUserData))
   }
 
+  const impersonateTenant = (tenantId) => {
+    if (!tenantId) return
+    localStorage.setItem('selected_tenant_id', tenantId.toString())
+    setImpersonatedTenantId(parseInt(tenantId, 10))
+  }
+
+  const stopImpersonation = () => {
+    localStorage.removeItem('selected_tenant_id')
+    setImpersonatedTenantId(null)
+  }
+
   const value = {
     user,
     login,
     logout,
     updateUser,
-    loading
+    loading,
+    impersonatedTenantId,
+    impersonateTenant,
+    stopImpersonation
   }
 
   return (

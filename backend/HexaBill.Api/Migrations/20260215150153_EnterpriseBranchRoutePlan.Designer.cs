@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HexaBill.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260215070856_AddBranchIdToExpense")]
-    partial class AddBranchIdToExpense
+    [Migration("20260215150153_EnterpriseBranchRoutePlan")]
+    partial class EnterpriseBranchRoutePlan
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -160,6 +160,19 @@ namespace HexaBill.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ManagerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ManagerUserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -173,9 +186,36 @@ namespace HexaBill.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ManagerId");
+
                     b.HasIndex("TenantId");
 
                     b.ToTable("Branches");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.BranchStaff", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("BranchId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("BranchId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("BranchStaff");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.Customer", b =>
@@ -192,6 +232,9 @@ namespace HexaBill.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
+
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
@@ -231,6 +274,9 @@ namespace HexaBill.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RouteId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -258,6 +304,10 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("RouteId");
 
                     b.ToTable("Customers");
                 });
@@ -399,6 +449,9 @@ namespace HexaBill.Api.Migrations
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("CategoryId")
                         .HasColumnType("INTEGER");
 
@@ -422,6 +475,8 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
 
                     b.HasIndex("CategoryId");
 
@@ -1029,6 +1084,9 @@ namespace HexaBill.Api.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -1797,17 +1855,61 @@ namespace HexaBill.Api.Migrations
 
             modelBuilder.Entity("HexaBill.Api.Models.Branch", b =>
                 {
+                    b.HasOne("HexaBill.Api.Models.User", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId");
+
                     b.HasOne("HexaBill.Api.Models.Tenant", "Tenant")
                         .WithMany("Branches")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Manager");
+
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.BranchStaff", b =>
+                {
+                    b.HasOne("HexaBill.Api.Models.Branch", "Branch")
+                        .WithMany("BranchStaff")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("HexaBill.Api.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.Customer", b =>
+                {
+                    b.HasOne("HexaBill.Api.Models.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("HexaBill.Api.Models.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId");
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Route");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.Expense", b =>
                 {
+                    b.HasOne("HexaBill.Api.Models.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
                     b.HasOne("HexaBill.Api.Models.ExpenseCategory", "Category")
                         .WithMany("Expenses")
                         .HasForeignKey("CategoryId")
@@ -1819,6 +1921,8 @@ namespace HexaBill.Api.Migrations
                         .HasForeignKey("CreatedBy")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Branch");
 
                     b.Navigation("Category");
 
@@ -2245,6 +2349,8 @@ namespace HexaBill.Api.Migrations
 
             modelBuilder.Entity("HexaBill.Api.Models.Branch", b =>
                 {
+                    b.Navigation("BranchStaff");
+
                     b.Navigation("Routes");
                 });
 

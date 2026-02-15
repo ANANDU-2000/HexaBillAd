@@ -31,6 +31,7 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { customersAPI, paymentsAPI, salesAPI, reportsAPI, branchesAPI, routesAPI, adminAPI } from '../../services'
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -65,6 +66,18 @@ const CustomerLedgerPage = () => {
   // UI State
   const [activeTab, setActiveTab] = useState('ledger') // ledger, invoices, payments, reports
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    requireTypedText: null, // null or string like 'DELETE'
+    showInput: false,
+    inputPlaceholder: '',
+    defaultValue: '',
+    inputType: 'text',
+    onConfirm: () => { }
+  })
   const [paymentModalInvoiceId, setPaymentModalInvoiceId] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [selectedInvoiceForView, setSelectedInvoiceForView] = useState(null)
@@ -769,14 +782,18 @@ const CustomerLedgerPage = () => {
         })
 
         // Calculate totals from filtered ledger data (matching LedgerStatementTab logic)
-        const totalSales = filteredLedgerData.reduce((sum, entry) => sum + (entry.debit || 0), 0)
+        const totalSales = filteredLedgerData.reduce((sum, entry) => sum + (Number(entry.debit) || 0), 0)
         const totalPayments = filteredLedgerData
           .filter(entry => entry.type === 'Payment')
-          .reduce((sum, entry) => sum + (entry.credit || 0), 0)
+          .reduce((sum, entry) => sum + (Number(entry.credit) || 0), 0)
+
         // Outstanding is the difference between sales and payments in the date range
-        const outstanding = totalSales - totalPayments
+        let outstanding = Number(totalSales) - Number(totalPayments)
+        if (isNaN(outstanding)) outstanding = 0
+
         // Also store the customer's overall balance for reference
-        const customerBalance = customer.balance || 0
+        let customerBalance = Number(customer.balance) || 0
+        if (isNaN(customerBalance)) customerBalance = 0
 
         setCustomerSummary({
           totalSales,
@@ -1883,47 +1900,60 @@ const CustomerLedgerPage = () => {
                         setShowPaymentModal(true)
                       }}
                       onUnlockInvoice={async (invoiceId) => {
-                        const reason = prompt('Please provide reason for unlocking this invoice:')
-                        if (!reason?.trim()) {
-                          toast.error('Unlock reason is required')
-                          return
-                        }
-                        try {
-                          const response = await salesAPI.unlockInvoice(invoiceId, reason)
-                          if (response.success) {
-                            toast.success('Invoice unlocked successfully!')
-                            if (selectedCustomer) {
-                              await loadCustomerData(selectedCustomer.id)
+                        setDangerModal({
+                          isOpen: true,
+                          title: 'Unlock Invoice',
+                          message: 'Please provide a reason for unlocking this invoice:',
+                          confirmLabel: 'Unlock Invoice',
+                          showInput: true,
+                          inputPlaceholder: 'Reason for unlocking',
+                          onConfirm: async (reason) => {
+                            if (!reason?.trim()) {
+                              toast.error('Unlock reason is required')
+                              return
                             }
-                          } else {
-                            toast.error(response.message || 'Failed to unlock invoice')
+                            try {
+                              const response = await salesAPI.unlockInvoice(invoiceId, reason)
+                              if (response.success) {
+                                toast.success('Invoice unlocked successfully!')
+                                if (selectedCustomer) {
+                                  await loadCustomerData(selectedCustomer.id)
+                                }
+                              } else {
+                                toast.error(response.message || 'Failed to unlock invoice')
+                              }
+                            } catch (error) {
+                              toast.error(error?.response?.data?.message || 'Failed to unlock invoice')
+                            }
                           }
-                        } catch (error) {
-                          toast.error(error?.response?.data?.message || 'Failed to unlock invoice')
-                        }
+                        })
                       }}
-                      onDeleteInvoice={async (invoiceId) => {
-                        const confirmText = prompt('WARNING: Type DELETE to confirm deletion of this invoice.\n\nThis will restore stock and cannot be undone!')
-                        if (confirmText?.trim().toUpperCase() !== 'DELETE') {
-                          if (confirmText !== null) toast.error('Deletion cancelled. You must type DELETE to confirm.')
-                          return
-                        }
-                        try {
-                          const response = await salesAPI.deleteSale(invoiceId)
-                          if (response.success) {
-                            toast.success('Invoice deleted successfully!')
-                            if (selectedCustomer) {
-                              // Reload customer data to update ledger
-                              await loadCustomerData(selectedCustomer.id)
-                              // Refresh customer list
-                              await fetchCustomers()
+                      onDeleteInvoice={(invoiceId) => {
+                        setDangerModal({
+                          isOpen: true,
+                          title: 'DELETE INVOICE',
+                          message: 'WARNING: This will restore stock and cannot be undone!\n\nAre you sure you want to delete this invoice?',
+                          confirmLabel: 'Delete Invoice',
+                          requireTypedText: 'DELETE',
+                          onConfirm: async () => {
+                            try {
+                              const response = await salesAPI.deleteSale(invoiceId)
+                              if (response.success) {
+                                toast.success('Invoice deleted successfully!')
+                                if (selectedCustomer) {
+                                  // Reload customer data to update ledger
+                                  await loadCustomerData(selectedCustomer.id)
+                                  // Refresh customer list
+                                  await fetchCustomers()
+                                }
+                              } else {
+                                toast.error(response.message || 'Failed to delete invoice')
+                              }
+                            } catch (error) {
+                              toast.error(error?.response?.data?.message || 'Failed to delete invoice')
                             }
-                          } else {
-                            toast.error(response.message || 'Failed to delete invoice')
                           }
-                        } catch (error) {
-                          toast.error(error?.response?.data?.message || 'Failed to delete invoice')
-                        }
+                        })
                       }}
                     />
                   )}
@@ -2021,86 +2051,99 @@ const CustomerLedgerPage = () => {
                       }}
                       onEditPayment={async (payment) => {
                         // Handle edit payment
-                        try {
-                          const newAmount = prompt(`Edit payment amount (current: ${formatCurrency(payment.amount)}):`, payment.amount)
-                          if (newAmount === null) return // User cancelled
-
-                          const amountValue = parseFloat(newAmount)
-                          if (!newAmount || isNaN(amountValue) || amountValue <= 0) {
-                            toast.error('Invalid amount. Please enter a valid positive number.')
-                            return
-                          }
-
-                          const currentMode = payment.method || payment.mode || 'CASH'
-                          const newMode = prompt(`Edit payment mode (current: ${currentMode}):\nOptions: CASH, CHEQUE, ONLINE, CREDIT`, currentMode)
-                          if (newMode === null) return // User cancelled
-
-                          const modeUpper = newMode?.trim().toUpperCase()
-                          if (!modeUpper || !['CASH', 'CHEQUE', 'ONLINE', 'CREDIT'].includes(modeUpper)) {
-                            toast.error('Invalid payment mode. Please select: CASH, CHEQUE, ONLINE, or CREDIT')
-                            return
-                          }
-
-                          toast.loading('Updating payment...', { id: 'update-payment' })
-
-                          const response = await paymentsAPI.updatePayment(payment.id, {
-                            amount: amountValue,
-                            mode: modeUpper,
-                            reference: payment.ref || payment.reference || null,
-                            paymentDate: payment.paymentDate
-                          })
-
-                          if (response?.success) {
-                            toast.success('Payment updated successfully', { id: 'update-payment' })
-                            // Refresh customer data
-                            if (selectedCustomer) {
-                              await loadCustomerData(selectedCustomer.id)
-                              await fetchCustomers()
-                              window.dispatchEvent(new CustomEvent('dataUpdated'))
+                        setDangerModal({
+                          isOpen: true,
+                          title: 'Edit Payment Amount',
+                          message: `Current amount: ${formatCurrency(payment.amount)}`,
+                          confirmLabel: 'Next',
+                          showInput: true,
+                          inputType: 'number',
+                          defaultValue: payment.amount,
+                          inputPlaceholder: 'New amount',
+                          onConfirm: (newAmount) => {
+                            const amountValue = parseFloat(newAmount)
+                            if (!newAmount || isNaN(amountValue) || amountValue <= 0) {
+                              toast.error('Invalid amount. Please enter a valid positive number.')
+                              return
                             }
-                          } else {
-                            toast.error(response?.message || 'Failed to update payment', { id: 'update-payment' })
+
+                            const currentMode = payment.method || payment.mode || 'CASH'
+                            // Open second modal for mode
+                            setDangerModal({
+                              isOpen: true,
+                              title: 'Edit Payment Mode',
+                              message: `Current mode: ${currentMode}\nOptions: CASH, CHEQUE, ONLINE, CREDIT`,
+                              confirmLabel: 'Update Payment',
+                              showInput: true,
+                              defaultValue: currentMode,
+                              inputPlaceholder: 'CASH, CHEQUE, ONLINE, or CREDIT',
+                              onConfirm: async (newMode) => {
+                                const modeUpper = newMode?.trim().toUpperCase()
+                                if (!modeUpper || !['CASH', 'CHEQUE', 'ONLINE', 'CREDIT'].includes(modeUpper)) {
+                                  toast.error('Invalid payment mode. Please select: CASH, CHEQUE, ONLINE, or CREDIT')
+                                  return
+                                }
+
+                                try {
+                                  toast.loading('Updating payment...', { id: 'update-payment' })
+
+                                  const response = await paymentsAPI.updatePayment(payment.id, {
+                                    amount: amountValue,
+                                    mode: modeUpper,
+                                    reference: payment.ref || payment.reference || null,
+                                    paymentDate: payment.paymentDate
+                                  })
+
+                                  if (response?.success) {
+                                    toast.success('Payment updated successfully', { id: 'update-payment' })
+                                    // Refresh customer data
+                                    if (selectedCustomer) {
+                                      await loadCustomerData(selectedCustomer.id)
+                                      await fetchCustomers()
+                                      window.dispatchEvent(new CustomEvent('dataUpdated'))
+                                    }
+                                  } else {
+                                    toast.error(response?.message || 'Failed to update payment', { id: 'update-payment' })
+                                  }
+                                } catch (error) {
+                                  console.error('Error updating payment:', error)
+                                  const errorMsg = error?.response?.data?.message || error?.message || 'Failed to update payment'
+                                  toast.error(errorMsg, { id: 'update-payment' })
+                                }
+                              }
+                            })
                           }
-                        } catch (error) {
-                          console.error('Error updating payment:', error)
-                          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to update payment'
-                          toast.error(errorMsg, { id: 'update-payment' })
-                        }
+                        })
                       }}
-                      onDeletePayment={async (payment) => {
-                        // Handle delete payment
-                        try {
-                          const confirmDelete = window.confirm(
-                            `DELETE PAYMENT\n\n` +
-                            `Amount: ${formatCurrency(payment.amount)}\n` +
-                            `Mode: ${payment.method || payment.mode || 'N/A'}\n` +
-                            `Date: ${new Date(payment.paymentDate).toLocaleDateString('en-GB')}\n\n` +
-                            `This will reverse the payment effects on the invoice and customer balance.\n\n` +
-                            `Are you sure you want to delete this payment?`
-                          )
-
-                          if (!confirmDelete) return // User cancelled
-
-                          toast.loading('Deleting payment...', { id: 'delete-payment' })
-
-                          const response = await paymentsAPI.deletePayment(payment.id)
-
-                          if (response?.success) {
-                            toast.success('Payment deleted successfully', { id: 'delete-payment' })
-                            // Refresh customer data
-                            if (selectedCustomer) {
-                              await loadCustomerData(selectedCustomer.id)
-                              await fetchCustomers()
-                              window.dispatchEvent(new CustomEvent('dataUpdated'))
+                      onDeletePayment={(payment) => {
+                        setDangerModal({
+                          isOpen: true,
+                          title: 'DELETE PAYMENT',
+                          message: `Amount: ${formatCurrency(payment.amount)}\nMode: ${payment.method || payment.mode || 'N/A'}\nDate: ${new Date(payment.paymentDate).toLocaleDateString('en-GB')}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`,
+                          confirmLabel: 'Delete Payment',
+                          requireTypedText: 'DELETE', // As this is destructive and critical
+                          onConfirm: async () => {
+                            try {
+                              toast.loading('Deleting payment...', { id: 'delete-payment' })
+                              const response = await paymentsAPI.deletePayment(payment.id)
+                              if (response?.success) {
+                                toast.success('Payment deleted successfully', { id: 'delete-payment' })
+                                // Refresh customer data
+                                if (selectedCustomer) {
+                                  await loadCustomerData(selectedCustomer.id)
+                                  await fetchCustomers()
+                                  window.dispatchEvent(new CustomEvent('dataUpdated'))
+                                }
+                              } else {
+                                toast.error(response?.message || 'Failed to delete payment', { id: 'delete-payment' })
+                              }
+                            } catch (error) {
+                              console.error('Error deleting payment:', error)
+                              const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete payment'
+                              toast.error(errorMsg, { id: 'delete-payment' })
                             }
-                          } else {
-                            toast.error(response?.message || 'Failed to delete payment', { id: 'delete-payment' })
                           }
-                        } catch (error) {
-                          console.error('Error deleting payment:', error)
-                          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete payment'
-                          toast.error(errorMsg, { id: 'delete-payment' })
-                        }
+                        })
                       }}
                     />
                   )}
@@ -2434,6 +2477,20 @@ const CustomerLedgerPage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        requireTypedText={dangerModal.requireTypedText}
+        showInput={dangerModal.showInput}
+        inputPlaceholder={dangerModal.inputPlaceholder}
+        defaultValue={dangerModal.defaultValue}
+        inputType={dangerModal.inputType}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }
@@ -2452,18 +2509,18 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
         <div className="bg-white rounded-lg border border-neutral-200 p-3 border-l-4 border-l-primary-500">
           <div className="text-xs text-neutral-500 uppercase">Total Sales</div>
-          <div className="text-lg font-bold text-neutral-900">{formatCurrency(totalDebit)}</div>
+          <div className="text-lg font-bold text-neutral-900">{formatCurrency(Number(totalDebit) || 0)}</div>
         </div>
         <div className="bg-white rounded-lg border border-neutral-200 p-3 border-l-4 border-l-green-500">
           <div className="text-xs text-neutral-500 uppercase">Payments Received</div>
-          <div className="text-lg font-bold text-green-600">{formatCurrency(totalCredit)}</div>
+          <div className="text-lg font-bold text-green-600">{formatCurrency(Number(totalCredit) || 0)}</div>
         </div>
         <div className={`bg-white rounded-lg border border-neutral-200 p-3 border-l-4 ${closingBalance < 0 ? 'border-l-green-500' : closingBalance > 0 ? 'border-l-red-500' : 'border-l-neutral-500'
           }`}>
           <div className="text-xs text-neutral-500 uppercase">Closing Balance</div>
           <div className={`text-lg font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
             }`}>
-            {formatBalance(closingBalance)}
+            {formatBalance(Number(closingBalance) || 0)}
           </div>
         </div>
       </div>
@@ -2626,17 +2683,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                   CLOSING BALANCE:
                 </td>
                 <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900 border-r border-neutral-300">
-                  {formatCurrency(totalDebit)}
+                  {formatCurrency(Number(totalDebit) || 0)}
                 </td>
                 <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900 border-r border-neutral-300">
-                  {formatCurrency(totalCredit)}
+                  {formatCurrency(Number(totalCredit) || 0)}
                 </td>
                 <td className="px-3 py-2.5 text-center text-sm font-bold text-neutral-900 border-r border-neutral-300">
                   -
                 </td>
                 <td className={`px-3 py-2.5 text-right text-sm font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
                   }`}>
-                  {formatBalance(closingBalance)}
+                  {formatBalance(Number(closingBalance) || 0)}
                 </td>
               </tr>
             </tfoot>

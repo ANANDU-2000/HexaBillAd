@@ -157,6 +157,19 @@ namespace HexaBill.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ManagerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ManagerUserId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -169,6 +182,8 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ManagerId");
 
                     b.HasIndex("TenantId");
 
@@ -215,6 +230,9 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
 
+                    b.Property<int?>("BranchId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
@@ -253,6 +271,9 @@ namespace HexaBill.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RouteId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -280,6 +301,10 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("RouteId");
 
                     b.ToTable("Customers");
                 });
@@ -1057,6 +1082,9 @@ namespace HexaBill.Api.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -1824,11 +1852,17 @@ namespace HexaBill.Api.Migrations
 
             modelBuilder.Entity("HexaBill.Api.Models.Branch", b =>
                 {
+                    b.HasOne("HexaBill.Api.Models.User", "Manager")
+                        .WithMany()
+                        .HasForeignKey("ManagerId");
+
                     b.HasOne("HexaBill.Api.Models.Tenant", "Tenant")
                         .WithMany("Branches")
                         .HasForeignKey("TenantId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Manager");
 
                     b.Navigation("Tenant");
                 });
@@ -1850,6 +1884,21 @@ namespace HexaBill.Api.Migrations
                     b.Navigation("Branch");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.Customer", b =>
+                {
+                    b.HasOne("HexaBill.Api.Models.Branch", "Branch")
+                        .WithMany()
+                        .HasForeignKey("BranchId");
+
+                    b.HasOne("HexaBill.Api.Models.Route", "Route")
+                        .WithMany()
+                        .HasForeignKey("RouteId");
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("Route");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.Expense", b =>

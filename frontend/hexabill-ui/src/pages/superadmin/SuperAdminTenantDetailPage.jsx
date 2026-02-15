@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
 import {
   ArrowLeft,
   Edit,
@@ -40,10 +41,12 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 import { Input, Select } from '../../components/Form'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const SuperAdminTenantDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { impersonateTenant } = useAuth()
   const [loading, setLoading] = useState(true)
   const [tenant, setTenant] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
@@ -71,16 +74,15 @@ const SuperAdminTenantDetailPage = () => {
     billingCycle: 0 // 0 = Monthly, 1 = Yearly
   })
   const [editFormData, setEditFormData] = useState({
-    name: '',
-    companyNameEn: '',
-    companyNameAr: '',
-    email: '',
-    phone: '',
-    country: 'AE',
-    currency: 'AED',
-    vatNumber: '',
-    address: '',
     status: 'Active'
+  })
+
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    onConfirm: () => { }
   })
 
   const [userFormData, setUserFormData] = useState({
@@ -186,7 +188,7 @@ const SuperAdminTenantDetailPage = () => {
 
   const handleEnterWorkspace = () => {
     if (!tenant) return
-    localStorage.setItem('selected_tenant_id', tenant.id)
+    impersonateTenant(tenant.id)
     localStorage.setItem('selected_tenant_name', tenant.name)
     toast.success(`Entering ${tenant.name}'s workspace`)
     window.location.href = '/dashboard'
@@ -323,20 +325,26 @@ const SuperAdminTenantDetailPage = () => {
     }
   }
 
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to delete this user?')) return
-
-    try {
-      const response = await superAdminAPI.deleteTenantUser(tenant.id, userId)
-      if (response.success) {
-        toast.success('User deleted successfully')
-        fetchTenant()
-      } else {
-        toast.error(response.message || 'Failed to delete user')
+  const handleDeleteUser = (userId) => {
+    setDangerModal({
+      isOpen: true,
+      title: 'Delete User Account?',
+      message: 'This user will lose all access to the system. This action cannot be reversed.',
+      confirmLabel: 'Delete User',
+      onConfirm: async () => {
+        try {
+          const response = await superAdminAPI.deleteTenantUser(tenant.id, userId)
+          if (response.success) {
+            toast.success('User deleted successfully')
+            fetchTenant()
+          } else {
+            toast.error(response.message || 'Failed to delete user')
+          }
+        } catch (error) {
+          toast.error(error.response?.data?.message || 'Failed to delete user')
+        }
       }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete user')
-    }
+    })
   }
 
   const handleResetPassword = async (e) => {
@@ -357,15 +365,17 @@ const SuperAdminTenantDetailPage = () => {
     }
   }
 
-  const getStatusBadge = (status) => {
-    const statusLower = status?.toLowerCase()
+  const getStatusBadge = (status, subscriptionStatus) => {
+    // Priority to subscription status if available & valid, else fall back to tenant status
+    const effectiveStatus = (subscriptionStatus || status || '').toLowerCase()
+
     const badges = {
       active: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">Active</span>,
       trial: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">Trial</span>,
       suspended: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">Suspended</span>,
       expired: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">Expired</span>
     }
-    return badges[statusLower] || <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">{status}</span>
+    return badges[effectiveStatus] || <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">{effectiveStatus}</span>
   }
 
   if (loading) {
@@ -411,7 +421,7 @@ const SuperAdminTenantDetailPage = () => {
               <LogIn className="h-5 w-5" />
               <span>Enter Workspace</span>
             </button>
-            {getStatusBadge(tenant.status)}
+            {getStatusBadge(tenant.status, tenant.subscription?.status)}
             {tenant.status?.toLowerCase() === 'suspended' ? (
               <button
                 onClick={handleActivate}
@@ -1324,6 +1334,15 @@ const SuperAdminTenantDetailPage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   )
 }
