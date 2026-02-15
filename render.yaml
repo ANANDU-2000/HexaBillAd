@@ -1,0 +1,21 @@
+# HexaBill – Render blueprint (reference only)
+# Root Directory for backend must be: backend/HexaBill.Api
+# Use this if you create services via Render Dashboard or Blueprint.
+
+services:
+  - type: web
+    name: hexabill-api
+    runtime: docker
+    rootDir: backend/HexaBill.Api
+    dockerfilePath: backend/HexaBill.Api/Dockerfile
+    dockerContext: backend/HexaBill.Api
+    healthCheckPath: /health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: JwtSettings__SecretKey
+        generateValue: true

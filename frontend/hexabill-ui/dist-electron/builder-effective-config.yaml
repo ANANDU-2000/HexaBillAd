@@ -1,0 +1,37 @@
+directories:
+  output: dist-electron
+  buildResources: build
+appId: com.hexabill.app
+productName: HexaBill Billing System
+files:
+  - filter:
+      - dist/**/*
+      - electron/**/*.cjs
+      - electron/**/*.js
+      - node_modules/**/*
+extraResources:
+  - from: ../../backend/HexaBill.Api/bin/Release/net9.0/publish
+    to: backend
+    filter:
+      - '**/*'
+win:
+  target:
+    - nsis
+  icon: assets/icon.ico
+mac:
+  target:
+    - dmg
+  icon: assets/icon.icns
+  category: public.app-category.business
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: assets/icon.png
+  category: Office
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+electronVersion: 28.3.3

@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========== HEXABILL UI/UX DESIGN LOCK (docs/UI_UX_DESIGN_LOCK.md) ========== */
+/* Global: overflow-x hidden, 8px grid, neutral foundation, no shadow on cards */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  @media (min-width: 769px) {
+    html {
+      font-size: 14px;
+    }
+  }
+
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: #0F172A; /* text primary */
+    background: #F8FAFC; /* surface */
+  }
+
+  @media (max-width: 768px) {
+    * {
+      min-width: 0;
+    }
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  a {
+    @apply transition-colors duration-150;
+  }
+
+  *:focus-visible {
+    outline: none;
+    @apply ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+@layer components {
+  .container-lock,
+  .page-content {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Card: white + border only, NO shadow (design lock; blue & white only) */
+  .card {
+    @apply bg-white border border-primary-200 rounded-xl p-4;
+  }
+
+  @media (min-width: 769px) {
+    .card {
+      @apply p-6;
+    }
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+  }
+
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white border border-primary-200 text-primary-700 hover:bg-primary-50 focus:ring-2 focus:ring-primary-400 focus:ring-offset-2;
+  }
+
+  .btn-danger {
+    @apply bg-error text-white hover:opacity-90 focus:ring-2 focus:ring-error focus:ring-offset-2;
+  }
+
+  .btn-success {
+    @apply bg-success text-white hover:opacity-90 focus:ring-2 focus:ring-success focus:ring-offset-2;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+  }
+
+  .table {
+    @apply w-full border-collapse;
+  }
+
+  .table th {
+    @apply bg-primary-50 px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider border-b border-primary-200;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-sm text-primary-800 border-b border-primary-200;
+  }
+
+  .table tbody tr:hover {
+    @apply bg-primary-50/50;
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}

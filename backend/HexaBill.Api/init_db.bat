@@ -1,0 +1,9 @@
+@echo off
+echo Installing dotnet-ef...
+dotnet tool install --global dotnet-ef
+echo Creating InitialCreate migration...
+dotnet ef migrations add InitialCreate --context AppDbContext
+echo Updating database...
+dotnet ef database update --context AppDbContext
+echo Done.
+pause

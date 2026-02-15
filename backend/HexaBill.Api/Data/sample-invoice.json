@@ -1,0 +1,82 @@
+{
+  "company_name_ar": "ستار بلس لتجارة المواد الغذائية",
+  "company_name_en": "STARPLUS FOODSTUFF TRADING",
+  "company_address": "Mussafah 44 – Abu Dhabi",
+  "company_phone": "+971 555 298 878",
+  "company_trn": "100366253100003",
+  "company_logo": "/static/images/company-logo.png",
+  "invoice_no": "SP-20251101-0001",
+  "date": "01/11/2025",
+  "customer_name": "Cash Customer",
+  "customer_trn": "",
+  "payment_terms": "Cash on Delivery",
+  "currency": "AED",
+  "items": [
+    {
+      "sl_no": 1,
+      "description": "Chicken Breast",
+      "unit": "KG",
+      "qty": "10.00",
+      "unit_price": "25.00",
+      "total": "250.00",
+      "vat": "12.50",
+      "amount": "262.50"
+    },
+    {
+      "sl_no": 2,
+      "description": "Beef Mince",
+      "unit": "KG",
+      "qty": "5.00",
+      "unit_price": "35.00",
+      "total": "175.00",
+      "vat": "8.75",
+      "amount": "183.75"
+    },
+    {
+      "sl_no": 3,
+      "description": "Ice Cream Vanilla",
+      "unit": "CTN",
+      "qty": "3.00",
+      "unit_price": "45.00",
+      "total": "135.00",
+      "vat": "6.75",
+      "amount": "141.75"
+    },
+    {
+      "sl_no": 4,
+      "description": "Frozen Peas",
+      "unit": "KG",
+      "qty": "20.00",
+      "unit_price": "8.00",
+      "total": "160.00",
+      "vat": "8.00",
+      "amount": "168.00"
+    },
+    {
+      "sl_no": 5,
+      "description": "Frozen Corn",
+      "unit": "KG",
+      "qty": "15.00",
+      "unit_price": "7.50",
+      "total": "112.50",
+      "vat": "5.63",
+      "amount": "118.13"
+    },
+    {
+      "sl_no": 6,
+      "description": "Mixed Vegetables",
+      "unit": "KG",
+      "qty": "12.00",
+      "unit_price": "9.00",
+      "total": "108.00",
+      "vat": "5.40",
+      "amount": "113.40"
+    }
+  ],
+  "filler_rows": 10,
+  "subtotal": "940.50",
+  "vat_total": "47.03",
+  "grand_total": "987.53",
+  "footer_notes": "Thank you for your business!\nAll products are stored and delivered frozen."
+}
+

@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cash Report</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, Tahoma, sans-serif;
+            font-size: 10.5pt;
+            color: #000;
+            line-height: 1.4;
+        }
+        .container {
+            width: 100%;
+            padding: 10mm;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 10mm;
+        }
+        .company-name {
+            font-size: 18pt;
+            font-weight: bold;
+            margin-bottom: 5pt;
+        }
+        .company-name-ar {
+            font-size: 16pt;
+            font-weight: bold;
+            direction: rtl;
+            margin-bottom: 5pt;
+        }
+        .company-info {
+            font-size: 10pt;
+            margin-bottom: 3pt;
+        }
+        .report-title {
+            font-size: 16pt;
+            font-weight: bold;
+            text-align: center;
+            margin: 8mm 0;
+            border-bottom: 2px solid #000;
+            padding-bottom: 3mm;
+        }
+        .report-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5mm;
+            font-size: 10pt;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 5mm;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 4pt;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+            font-weight: bold;
+            text-align: center;
+            font-size: 10pt;
+        }
+        td {
+            font-size: 9.5pt;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .summary {
+            margin-top: 10mm;
+            border-top: 2px solid #000;
+            padding-top: 5mm;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3pt;
+            font-size: 11pt;
+        }
+        .summary-label {
+            font-weight: bold;
+        }
+        .summary-value {
+            text-align: right;
+            font-weight: bold;
+        }
+        .footer {
+            margin-top: 15mm;
+            text-align: center;
+            font-size: 9pt;
+            border-top: 1px solid #000;
+            padding-top: 3mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-name">{{company_name_en}}</div>
+            <div class="company-name-ar">{{company_name_ar}}</div>
+            <div class="company-info">{{company_address}}</div>
+            <div class="company-info">Mob: {{company_phone}} | TRN: {{company_trn}}</div>
+        </div>
+
+        <div class="report-title">CASH REPORT</div>
+
+        <div class="report-info">
+            <div>Period: {{from_date}} to {{to_date}}</div>
+            <div>Generated: {{generated_date}}</div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Reference</th>
+                    <th>Customer</th>
+                    <th>Payment Mode</th>
+                    <th class="text-right">Cash In</th>
+                    <th class="text-right">Cash Out</th>
+                    <th class="text-right">Balance</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{cash_rows}}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="5" class="text-right" style="font-weight: bold;">TOTAL:</td>
+                    <td class="text-right" style="font-weight: bold;">{{total_cash_in}}</td>
+                    <td class="text-right" style="font-weight: bold;">{{total_cash_out}}</td>
+                    <td class="text-right" style="font-weight: bold;">{{closing_balance}}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="summary">
+            <div class="summary-row">
+                <span class="summary-label">Total Cash In:</span>
+                <span class="summary-value">{{total_cash_in}} {{currency}}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Total Cash Out:</span>
+                <span class="summary-value">{{total_cash_out}} {{currency}}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Net Cash Flow:</span>
+                <span class="summary-value">{{net_cash_flow}} {{currency}}</span>
+            </div>
+            <div class="summary-row">
+                <span class="summary-label">Closing Balance:</span>
+                <span class="summary-value">{{closing_balance}} {{currency}}</span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <div>This is a computer-generated report.</div>
+        </div>
+    </div>
+</body>
+</html>
+

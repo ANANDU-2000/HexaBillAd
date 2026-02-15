@@ -1,0 +1,353 @@
+/* ============================================
+   INVOICE PRINT STYLES - A4 Format
+   For STARPLUS FOODSTUFF TRADING
+   Matching the exact design from the image
+   ============================================ */
+
+/* Page Setup */
+@page {
+    size: A4;
+    margin: 18mm 14mm;
+}
+
+/* Global Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* CSS Variables */
+:root {
+    --color-border: #000000;
+    --color-text: #000000;
+    --color-bg: #ffffff;
+    --border-width: 1px;
+    --border-width-thick: 2px;
+    --font-en: 'Times New Roman', serif;
+    --font-ar: 'NotoNaskhArabic', Arial, sans-serif;
+    --font-sans: Arial, sans-serif;
+    --row-height: 25px;
+}
+
+/* Typography */
+body {
+    font-family: var(--font-en);
+    font-size: 12px;
+    color: var(--color-text);
+    background: var(--color-bg);
+    line-height: 1.4;
+}
+
+.arabic {
+    font-family: var(--font-ar);
+    direction: rtl;
+    text-align: right;
+}
+
+.small-text {
+    font-size: 0.85em;
+}
+
+/* Number formatting */
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Invoice Container */
+.invoice-container {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 8mm;
+    background: var(--color-bg);
+    page-break-inside: avoid;
+}
+
+/* Header Section */
+.header-section {
+    text-align: center;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+}
+
+.company-name-english {
+    font-family: var(--font-en);
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.company-name-arabic {
+    font-family: var(--font-ar);
+    direction: rtl;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+
+.company-contact {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-align: center;
+}
+
+.header-separator {
+    border-top: 1px solid var(--color-border);
+    margin-top: 6px;
+    margin-bottom: 8px;
+}
+
+/* TRN and Date Row */
+.trn-date-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.trn-left {
+    flex: 1;
+}
+
+.date-right {
+    flex: 1;
+    text-align: right;
+}
+
+/* TAX INVOICE Title */
+.tax-invoice-title {
+    text-align: center;
+    font-size: 20px;
+    font-weight: bold;
+    font-family: var(--font-sans);
+    margin: 6px 0;
+    padding: 6px 0;
+}
+
+/* Invoice and Customer Details */
+.invoice-customer-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+.invoice-left {
+    flex: 1;
+}
+
+.customer-right {
+    flex: 1;
+    text-align: right;
+}
+
+.customer-name-row {
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+
+/* Items Table */
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 6px;
+    page-break-inside: auto;
+    font-size: 11px;
+}
+
+.invoice-table th,
+.invoice-table td {
+    border: 1px solid var(--color-border);
+    padding: 6px;
+}
+
+.invoice-table thead {
+    background-color: transparent;
+}
+
+.invoice-table thead th {
+    font-weight: bold;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.arabic-header {
+    text-align: center;
+}
+
+.arabic-header .arabic {
+    display: block;
+    font-size: 10px;
+    margin-bottom: 2px;
+}
+
+.arabic-header > div:not(.arabic) {
+    font-weight: 600;
+}
+
+.invoice-table tbody tr {
+    height: var(--row-height);
+}
+
+.invoice-table tbody tr.empty-row {
+    background-color: transparent;
+}
+
+/* Column Widths */
+.col-sno { width: 4%; }
+.col-desc { width: 30%; }
+.col-unit { width: 8%; }
+.col-qty { width: 8%; }
+.col-price { width: 10%; }
+.col-total { width: 12%; }
+.col-vat { width: 10%; }
+.col-amount { width: 18%; }
+
+/* Text Alignment */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* Summary Rows */
+.summary-row {
+    font-weight: 700;
+}
+
+.summary-label {
+    text-align: left;
+    padding: 6px;
+    vertical-align: middle;
+}
+
+.summary-value {
+    padding: 6px;
+    font-weight: 700;
+    vertical-align: middle;
+}
+
+.total-amount-row {
+    border-top: 1px solid var(--color-border);
+}
+
+.total-amount-label {
+    position: relative;
+    padding-right: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dotted-line {
+    flex: 1;
+    min-width: 200px;
+    height: 2px;
+    margin: 0 4px;
+    border-bottom: 2px dotted var(--color-border);
+    align-self: center;
+}
+
+.total-amount-arabic {
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+.grand-total {
+    font-weight: 700;
+    font-size: 11px;
+}
+
+/* Footer Note */
+.footer-note {
+    margin-top: 6px;
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+
+/* Footer Section */
+.footer-section {
+    margin-top: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    page-break-inside: avoid;
+}
+
+.signature-lines {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.sig-field {
+    width: 100%;
+}
+
+.sig-label {
+    font-size: 11px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.sig-line {
+    border-bottom: 1px dotted var(--color-border);
+    height: 20px;
+    width: 200px;
+}
+
+.company-footer {
+    text-align: right;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.sig-line-company {
+    border-bottom: 1px dotted var(--color-border);
+    height: 20px;
+    width: 200px;
+    margin-bottom: 4px;
+}
+
+.company-footer > div:last-child {
+    font-size: 11px;
+    font-weight: normal;
+}
+
+/* Print Utilities */
+@media print {
+    body {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+    
+    .invoice-container {
+        box-shadow: none;
+    }
+}
+
+/* Accessibility */
+[role="table"] {
+    border-collapse: collapse;
+}
+
+[scope="col"] {
+    background-color: transparent;
+}
+
+/* Responsive adjustments for screen preview */
+@media screen {
+    body {
+        background: #e0e0e0;
+        padding: 20px;
+    }
+    
+    .invoice-container {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+}
