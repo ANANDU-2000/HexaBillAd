@@ -2,10 +2,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY backend/HexaBill.Api/HexaBill.Api.csproj ./
+COPY HexaBill.Api.csproj ./
 RUN dotnet restore
 
-COPY backend/HexaBill.Api/ ./
+COPY . ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Run stage
