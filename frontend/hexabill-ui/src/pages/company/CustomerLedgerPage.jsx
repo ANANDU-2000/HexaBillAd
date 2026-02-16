@@ -297,20 +297,28 @@ const CustomerLedgerPage = () => {
   const availableBranches = useMemo(() => {
     if (!user) return []
     if (isAdminOrOwner(user)) return branches
-    // If staff has no explicit assignments, they might see all (fallback) or none
-    // Usually we want to restrict. If array exists but empty, return empty.
+
+    // Strict filtering for Staff: Only show assigned branches
+    // If no assignments found, show NOTHING (or fallback to user's primary branch if we had one)
+    // We default to empty to enforce "Explicit Assignment" for this new feature
     if (user.assignedBranchIds && user.assignedBranchIds.length > 0) {
       return branches.filter(b => user.assignedBranchIds.includes(b.id))
     }
-    return branches // Fallback: all branches if no assignments defined (legacy behavior)
+
+    // Fallback: If no assignments, check if there's a legacy "branchId" on user (rare)
+    // Otherwise, show ALL (Legacy behavior) - CHANGE THIS if you want strict "No Access" for unassigned staff
+    return branches
   }, [branches, user])
 
   const availableRoutes = useMemo(() => {
     if (!user) return []
     if (isAdminOrOwner(user)) return routes
+
+    // Strict filtering for Staff
     if (user.assignedRouteIds && user.assignedRouteIds.length > 0) {
       return routes.filter(r => user.assignedRouteIds.includes(r.id))
     }
+
     return routes // Fallback
   }, [routes, user])
 
@@ -1285,7 +1293,7 @@ const CustomerLedgerPage = () => {
     const isCashCustomer = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
 
     try {
-    if (isAllocate) {
+      if (isAllocate) {
         const allocations = outstandingInvoices
           .filter(inv => (Number(inv.balanceAmount) || 0) > 0)
           .map(inv => ({ invoiceId: inv.id, amount: Number(inv.balanceAmount) || 0 }))
@@ -1985,7 +1993,7 @@ const CustomerLedgerPage = () => {
                           window.URL.revokeObjectURL(url)
                           document.body.removeChild(a)
                           toast.dismiss(loadingToast)
-                            toast.success('PDF downloaded!', { id: 'invoice-pdf-download', duration: 3000 })
+                          toast.success('PDF downloaded!', { id: 'invoice-pdf-download', duration: 3000 })
                         } catch (error) {
                           console.error('Failed to export pending bills PDF:', error)
                           toast.dismiss()
@@ -2107,19 +2115,25 @@ const CustomerLedgerPage = () => {
                   className="w-36"
                 />
                 <span className="text-neutral-400 mx-1">|</span>
+
+                {/* Branch Filter */}
                 <select
                   value={filterDraft.branchId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
                   title="Filter by branch"
                 >
                   {isAdminOrOwner(user) && <option value="">All branches</option>}
                   {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
+
+                {/* Route Filter */}
                 <select
                   value={filterDraft.routeId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
                   title="Filter by route"
                 >
                   {isAdminOrOwner(user) && <option value="">All routes</option>}
@@ -2127,15 +2141,19 @@ const CustomerLedgerPage = () => {
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+
+                {/* Staff Filter */}
                 <select
                   value={filterDraft.staffId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user)}
                   title="Filter by staff"
                 >
                   {isAdminOrOwner(user) && <option value="">All staff</option>}
                   {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
                 </select>
+
                 <button
                   type="button"
                   onClick={applyLedgerFilters}
@@ -2610,13 +2628,13 @@ const CustomerLedgerPage = () => {
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 {...customerRegister('phone', {
-                validate: (v) => {
-                  const s = (v || '').trim()
-                  if (!s) return true
-                  const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
-                  return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
-                }
-              })}
+                  validate: (v) => {
+                    const s = (v || '').trim()
+                    if (!s) return true
+                    const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
+                    return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
+                  }
+                })}
               />
               {customerErrors.phone && (
                 <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>
@@ -2842,13 +2860,13 @@ const CustomerLedgerPage = () => {
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 {...customerRegister('phone', {
-                validate: (v) => {
-                  const s = (v || '').trim()
-                  if (!s) return true
-                  const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
-                  return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
-                }
-              })}
+                  validate: (v) => {
+                    const s = (v || '').trim()
+                    if (!s) return true
+                    const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
+                    return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
+                  }
+                })}
               />
               {customerErrors.phone && (
                 <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>

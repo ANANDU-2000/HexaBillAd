@@ -306,26 +306,25 @@ namespace HexaBill.Api.Modules.Subscription
                 if (tenant.Status != targetStatus)
                 {
                     tenant.Status = targetStatus;
-                    // Clear trial date on tenant if redundant, but maybe keep for history? 
-                    // Plan says: "sync Tenant.Status and TrialEndDate".
-                    // If not trial, trial end date doesn't matter much for status check, but let's leave it or clear it.
-                    // If active, we don't need trial end date.
                     if (targetStatus == TenantStatus.Active)
-                    {
                         tenant.TrialEndDate = null;
-                    }
                     else if (targetStatus == TenantStatus.Trial)
-                    {
                         tenant.TrialEndDate = subscription.TrialEndDate;
-                    }
-                    
-                    await _context.SaveChangesAsync();
                 }
-                
-                // Save subscription changes if any status change happened above
-                if (_context.Entry(subscription).State == EntityState.Modified)
+            }
+
+            // Save all tracked changes (subscription and/or tenant) - wrap to avoid failing read flows (e.g. GET tenant/2)
+            if (_context.ChangeTracker.HasChanges())
+            {
+                try
                 {
                     await _context.SaveChangesAsync();
+                }
+                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+                {
+                    _logger.LogWarning(ex, "CheckSubscriptionStatusAsync: SaveChanges failed for tenant {TenantId}. Inner: {Inner}", tenantId,
+                        ex.InnerException?.Message ?? "none");
+                    // Do not rethrow - allow GetTenantSubscription to return data; status sync will retry next request
                 }
             }
 

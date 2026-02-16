@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Building2, Plus, ChevronRight, MapPin, LayoutGrid } from 'lucide-react'
+import { Building2, Plus, ChevronRight, MapPin, LayoutGrid, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { branchesAPI, routesAPI } from '../../services'
+import { branchesAPI, routesAPI, adminAPI } from '../../services'
 import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -14,6 +14,7 @@ const BranchesPage = () => {
 
   const [branches, setBranches] = useState([])
   const [routes, setRoutes] = useState([])
+  const [staffUsers, setStaffUsers] = useState([])
   const [loading, setLoading] = useState(true)
 
   // Modal states
@@ -25,8 +26,8 @@ const BranchesPage = () => {
   const [routeBranchFilter, setRouteBranchFilter] = useState('')
 
   // Form states
-  const [branchForm, setBranchForm] = useState({ name: '', address: '' })
-  const [routeForm, setRouteForm] = useState({ name: '', branchId: '' })
+  const [branchForm, setBranchForm] = useState({ name: '', address: '', assignedStaffIds: [] })
+  const [routeForm, setRouteForm] = useState({ name: '', branchId: '', assignedStaffIds: [] })
 
   const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
 
@@ -64,11 +65,27 @@ const BranchesPage = () => {
     }
   }
 
+  const fetchStaff = async () => {
+    if (!canManage) return
+    try {
+      const res = await adminAPI.getUsers()
+      if (res?.success && res?.data) {
+        // adminAPI.getUsers returns { items: [], ... } or [] depending on backend
+        const users = Array.isArray(res.data) ? res.data : (res.data.items || [])
+        // Filter for Staff role if needed, or just show all users that can be assigned
+        const staff = users.filter(u => u.role === 'Staff')
+        setStaffUsers(staff)
+      }
+    } catch (err) {
+      console.error('Fetch staff error:', err)
+    }
+  }
+
   // Initial load
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchBranches(), fetchRoutes()])
+      await Promise.all([fetchBranches(), fetchRoutes(), fetchStaff()])
       setLoading(false)
     }
     loadData()
@@ -89,12 +106,13 @@ const BranchesPage = () => {
       setSaving(true)
       const res = await branchesAPI.createBranch({
         name: branchForm.name.trim(),
-        address: branchForm.address?.trim() || undefined
+        address: branchForm.address?.trim() || undefined,
+        assignedStaffIds: branchForm.assignedStaffIds
       })
       if (res?.success) {
         toast.success('Branch created')
         setShowBranchModal(false)
-        setBranchForm({ name: '', address: '' })
+        setBranchForm({ name: '', address: '', assignedStaffIds: [] })
         fetchBranches()
       } else {
         toast.error(res?.message || 'Failed to create branch')
@@ -119,11 +137,15 @@ const BranchesPage = () => {
     }
     try {
       setSaving(true)
-      const res = await routesAPI.createRoute({ name: routeForm.name.trim(), branchId: bid })
+      const res = await routesAPI.createRoute({
+        name: routeForm.name.trim(),
+        branchId: bid,
+        assignedStaffIds: routeForm.assignedStaffIds
+      })
       if (res?.success) {
         toast.success('Route created')
         setShowRouteModal(false)
-        setRouteForm({ name: '', branchId: '' })
+        setRouteForm({ name: '', branchId: '', assignedStaffIds: [] })
         // If current filter is different or empty, refresh to show new route (or stay same)
         fetchRoutes()
         // Also refresh branches to update counts if needed
@@ -136,6 +158,30 @@ const BranchesPage = () => {
     } finally {
       setSaving(false)
     }
+  }
+
+  const toggleBranchStaff = (staffId) => {
+    setBranchForm(prev => {
+      const exists = prev.assignedStaffIds.includes(staffId)
+      return {
+        ...prev,
+        assignedStaffIds: exists
+          ? prev.assignedStaffIds.filter(id => id !== staffId)
+          : [...prev.assignedStaffIds, staffId]
+      }
+    })
+  }
+
+  const toggleRouteStaff = (staffId) => {
+    setRouteForm(prev => {
+      const exists = prev.assignedStaffIds.includes(staffId)
+      return {
+        ...prev,
+        assignedStaffIds: exists
+          ? prev.assignedStaffIds.filter(id => id !== staffId)
+          : [...prev.assignedStaffIds, staffId]
+      }
+    })
   }
 
   if (loading && branches.length === 0 && routes.length === 0) {
@@ -160,8 +206,8 @@ const BranchesPage = () => {
         <button
           onClick={() => setActiveTab('branches')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'branches'
-              ? 'border-primary-600 text-primary-600'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            ? 'border-primary-600 text-primary-600'
+            : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
         >
           <Building2 className="h-4 w-4" />
@@ -170,8 +216,8 @@ const BranchesPage = () => {
         <button
           onClick={() => setActiveTab('routes')}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'routes'
-              ? 'border-primary-600 text-primary-600'
-              : 'border-transparent text-neutral-500 hover:text-neutral-700'
+            ? 'border-primary-600 text-primary-600'
+            : 'border-transparent text-neutral-500 hover:text-neutral-700'
             }`}
         >
           <MapPin className="h-4 w-4" />
@@ -313,6 +359,33 @@ const BranchesPage = () => {
               onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
               placeholder="Full address"
             />
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Assign Staff</label>
+              <div className="border border-neutral-300 rounded-lg max-h-48 overflow-y-auto p-2 bg-neutral-50">
+                {staffUsers.length === 0 ? (
+                  <p className="text-sm text-neutral-500 text-center py-2">No staff users found.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {staffUsers.map(staff => (
+                      <label key={staff.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition">
+                        <input
+                          type="checkbox"
+                          checked={branchForm.assignedStaffIds.includes(staff.id)}
+                          onChange={() => toggleBranchStaff(staff.id)}
+                          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-neutral-900">{staff.name}</p>
+                          <p className="text-xs text-neutral-500">{staff.email}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowBranchModal(false)} className="px-4 py-2 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50">
                 Cancel
@@ -354,6 +427,33 @@ const BranchesPage = () => {
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-2">Assign Staff</label>
+              <div className="border border-neutral-300 rounded-lg max-h-48 overflow-y-auto p-2 bg-neutral-50">
+                {staffUsers.length === 0 ? (
+                  <p className="text-sm text-neutral-500 text-center py-2">No staff users found.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {staffUsers.map(staff => (
+                      <label key={staff.id} className="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded transition">
+                        <input
+                          type="checkbox"
+                          checked={routeForm.assignedStaffIds.includes(staff.id)}
+                          onChange={() => toggleRouteStaff(staff.id)}
+                          className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-neutral-900">{staff.name}</p>
+                          <p className="text-xs text-neutral-500">{staff.email}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowRouteModal(false)} className="px-4 py-2 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50">
                 Cancel

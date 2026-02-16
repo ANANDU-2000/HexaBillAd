@@ -53,6 +53,7 @@ namespace HexaBill.Api.Modules.Branches
                     AssignedStaffId = r.AssignedStaffId,
                     AssignedStaffName = r.AssignedStaff != null ? r.AssignedStaff.Name : null,
                     CreatedAt = r.CreatedAt,
+                    AssignedStaffIds = r.RouteStaff.Select(rs => rs.UserId).ToList(),
                     CustomerCount = r.RouteCustomers.Count,
                     StaffCount = r.RouteStaff.Count
                 })
@@ -89,6 +90,7 @@ namespace HexaBill.Api.Modules.Branches
                 Name = r.Name,
                 AssignedStaffId = r.AssignedStaffId,
                 AssignedStaffName = r.AssignedStaff?.Name,
+                AssignedStaffIds = r.RouteStaff.Select(rs => rs.UserId).ToList(),
                 CreatedAt = r.CreatedAt,
                 CustomerCount = r.RouteCustomers.Count,
                 StaffCount = r.RouteStaff.Count,
@@ -127,7 +129,20 @@ namespace HexaBill.Api.Modules.Branches
             _context.Routes.Add(route);
             await _context.SaveChangesAsync();
             var list = await GetRoutesAsync(tenantId);
-            return list.First(r => r.Id == route.Id);
+            var result = list.First(r => r.Id == route.Id);
+
+            if (request.AssignedStaffIds != null && request.AssignedStaffIds.Any())
+            {
+                foreach (var userId in request.AssignedStaffIds)
+                {
+                    _context.RouteStaff.Add(new RouteStaff { RouteId = route.Id, UserId = userId, AssignedAt = DateTime.UtcNow });
+                }
+                await _context.SaveChangesAsync();
+                // Refresh result with staff
+                result.AssignedStaffIds = request.AssignedStaffIds;
+            }
+
+            return result;
         }
 
         public async Task<RouteDto?> UpdateRouteAsync(int id, CreateRouteRequest request, int tenantId)
@@ -138,6 +153,20 @@ namespace HexaBill.Api.Modules.Branches
             route.AssignedStaffId = request.AssignedStaffId;
             route.BranchId = request.BranchId;
             route.UpdatedAt = DateTime.UtcNow;
+
+            if (request.AssignedStaffIds != null)
+            {
+                // Remove existing
+                var existing = await _context.RouteStaff.Where(rs => rs.RouteId == id).ToListAsync();
+                _context.RouteStaff.RemoveRange(existing);
+
+                // Add new
+                foreach (var userId in request.AssignedStaffIds)
+                {
+                    _context.RouteStaff.Add(new RouteStaff { RouteId = route.Id, UserId = userId, AssignedAt = DateTime.UtcNow });
+                }
+            }
+
             await _context.SaveChangesAsync();
             return (await GetRoutesAsync(tenantId)).FirstOrDefault(r => r.Id == id);
         }

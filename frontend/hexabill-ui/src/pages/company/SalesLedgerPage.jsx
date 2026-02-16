@@ -71,24 +71,66 @@ const SalesLedgerPage = () => {
     load()
   }, [user])
 
-  // When branch is selected, fetch routes for that branch (server-side filtered)
+  // Load branches and routes
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [bRes, rRes] = await Promise.all([
+          branchesAPI.getBranches().catch(() => ({ success: false })),
+          routesAPI.getRoutes().catch(() => ({ success: false }))
+        ])
+
+        if (bRes?.success && bRes?.data) {
+          let branchList = bRes.data
+          // Strict filtering for Staff
+          if (user && !isAdminOrOwner(user) && user.assignedBranchIds && user.assignedBranchIds.length > 0) {
+            branchList = branchList.filter(b => user.assignedBranchIds.includes(b.id))
+          }
+          setBranches(branchList)
+
+          // Auto-select if only 1 branch available for staff
+          if (user && !isAdminOrOwner(user) && branchList.length === 1 && !filters.branchId) {
+            setFilters(prev => ({ ...prev, branchId: String(branchList[0].id) }))
+          }
+        }
+
+        if (rRes?.success && rRes?.data) {
+          let routeList = rRes.data
+          // Strict filtering for Staff (routes) - though routes are also filtered by branch selection later
+          if (user && !isAdminOrOwner(user) && user.assignedRouteIds && user.assignedRouteIds.length > 0) {
+            routeList = routeList.filter(r => user.assignedRouteIds.includes(r.id))
+          }
+          setAllRoutes(routeList)
+        }
+
+        if (isAdminOrOwner(user)) {
+          const uRes = await adminAPI.getUsers().catch(() => ({ success: false }))
+          if (uRes?.success && uRes?.data) {
+            const items = Array.isArray(uRes.data) ? uRes.data : (uRes.data?.items || [])
+            setStaffUsers(items.filter(u => (u.role || '').toLowerCase() === 'staff'))
+          }
+        } else if (user) {
+          // For staff, only show themselves
+          setStaffUsers([user])
+          if (!filters.staffId) {
+            // Optional: auto-select self? Maybe not, allow viewing all their own sales
+          }
+        }
+      } catch (_) { /* ignore */ }
+    }
+    load()
+  }, [user])
+
+  // When branch is selected, fetch routes for that branch OR filter existing
   useEffect(() => {
     if (!filters.branchId) {
-      setRoutesForBranch([])
+      setRoutesForBranch(allRoutes) // If no branch selected, show all (filtered) routes
       return
     }
     const branchId = parseInt(filters.branchId, 10)
-    const load = async () => {
-      try {
-        const rRes = await routesAPI.getRoutes(branchId).catch(() => ({ success: false }))
-        if (rRes?.success && rRes?.data) setRoutesForBranch(Array.isArray(rRes.data) ? rRes.data : [])
-        else setRoutesForBranch([])
-      } catch {
-        setRoutesForBranch([])
-      }
-    }
-    load()
-  }, [filters.branchId])
+    // Filter from allRoutes instead of network call to avoid loose network restrictions
+    setRoutesForBranch(allRoutes.filter(r => r.branchId === branchId))
+  }, [filters.branchId, allRoutes])
 
   useEffect(() => {
     fetchSalesLedger()
@@ -430,7 +472,7 @@ const SalesLedgerPage = () => {
               onClick={() => {
                 const next = !showFilters
                 setShowFilters(next)
-                try { localStorage.setItem(SHOW_FILTERS_KEY, String(next)) } catch (_) {}
+                try { localStorage.setItem(SHOW_FILTERS_KEY, String(next)) } catch (_) { }
               }}
               className="px-2 md:px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1"
             >
@@ -514,29 +556,40 @@ const SalesLedgerPage = () => {
             {branches.length > 0 && (
               <Select
                 label="Branch"
-                options={[{ value: '', label: 'All branches' }, ...branches.map(b => ({ value: String(b.id), label: b.name }))]}
+                options={[
+                  ...(isAdminOrOwner(user) ? [{ value: '', label: 'All branches' }] : []),
+                  ...branches.map(b => ({ value: String(b.id), label: b.name }))
+                ]}
                 value={filters.branchId}
                 onChange={(e) => setFilters(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
+                disabled={!isAdminOrOwner(user) && branches.length === 1}
+                className={(!isAdminOrOwner(user) && branches.length === 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}
               />
             )}
             {(branches.length > 0 || filters.branchId) && (
               <Select
                 label="Route"
                 options={[
-                  { value: '', label: filters.branchId ? 'All routes' : 'Select branch first' },
+                  ...(isAdminOrOwner(user) ? [{ value: '', label: filters.branchId ? 'All routes' : 'Select branch first' }] : []),
                   ...(filters.branchId ? routesForBranch : []).map(r => ({ value: String(r.id), label: r.name }))
                 ]}
                 value={filters.routeId}
                 onChange={(e) => setFilters(prev => ({ ...prev, routeId: e.target.value }))}
-                disabled={!filters.branchId}
+                disabled={!filters.branchId || (!isAdminOrOwner(user) && routesForBranch.length <= 1)}
+                className={(!filters.branchId || (!isAdminOrOwner(user) && routesForBranch.length <= 1)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}
               />
             )}
             {staffUsers.length > 0 && (
               <Select
                 label="Staff"
-                options={[{ value: '', label: 'All staff' }, ...staffUsers.map(u => ({ value: String(u.id), label: u.name || u.email || 'Staff' }))]}
+                options={[
+                  ...(isAdminOrOwner(user) ? [{ value: '', label: 'All staff' }] : []),
+                  ...staffUsers.map(u => ({ value: String(u.id), label: u.name || u.email || 'Staff' }))
+                ]}
                 value={filters.staffId}
                 onChange={(e) => setFilters(prev => ({ ...prev, staffId: e.target.value }))}
+                disabled={!isAdminOrOwner(user)}
+                className={!isAdminOrOwner(user) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}
               />
             )}
             <div className="col-span-2 sm:col-span-1">

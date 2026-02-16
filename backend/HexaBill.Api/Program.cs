@@ -91,8 +91,11 @@ logger.LogInformation("ConnectionStrings__DefaultConnection env var: {HasEnvConn
 if (!string.IsNullOrWhiteSpace(envConnectionString))
 {
     connectionString = envConnectionString;
-    // Detect database type: SQLite uses "Data Source=" or ".db", PostgreSQL uses "Host="
     usePostgreSQL = connectionString.Contains("Host=") || connectionString.Contains("Server=");
+    var includeErrorDetail = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(Environment.GetEnvironmentVariable("INCLUDE_PG_ERROR_DETAIL"), "true", StringComparison.OrdinalIgnoreCase);
+    if (usePostgreSQL && includeErrorDetail && !connectionString.Contains("Include Error Detail", StringComparison.OrdinalIgnoreCase))
+        connectionString += ";Include Error Detail=true";
     logger.LogInformation($"✅ Using ConnectionStrings__DefaultConnection from environment ({(usePostgreSQL ? "PostgreSQL" : "SQLite")})");
 }
 // Priority 2: DATABASE_URL from Render (always PostgreSQL)
@@ -110,6 +113,11 @@ else if (!string.IsNullOrWhiteSpace(databaseUrl))
         var dbPort = uri.Port > 0 ? uri.Port : 5432;
         
         connectionString = $"Host={uri.Host};Port={dbPort};Database={uri.AbsolutePath.TrimStart('/')};Username={uri.UserInfo.Split(':')[0]};Password={uri.UserInfo.Split(':')[1]};SSL Mode=Require;Trust Server Certificate=true";
+        // Include Error Detail in Development or when explicitly requested (needed to diagnose DbUpdateException)
+        var includeErrorDetail = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Environment.GetEnvironmentVariable("INCLUDE_PG_ERROR_DETAIL"), "true", StringComparison.OrdinalIgnoreCase);
+        if (includeErrorDetail && !connectionString.Contains("Include Error Detail", StringComparison.OrdinalIgnoreCase))
+            connectionString += ";Include Error Detail=true";
         usePostgreSQL = true;
         logger.LogInformation("✅ Successfully parsed DATABASE_URL from Render (PostgreSQL)");
     }
@@ -259,6 +267,9 @@ using (var scope = app.Services.CreateScope())
         {
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""PaymentTerms"" character varying(100) NULL");
+            // Customers.BranchId and RouteId (EnterpriseBranchRoutePlan) - add if missing
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL");
             ctx.Database.ExecuteSqlRaw(@"
                 DO $$ BEGIN
                     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
@@ -269,6 +280,18 @@ using (var scope = app.Services.CreateScope())
                 DO $$ BEGIN
                     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Branches' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
                         ALTER TABLE ""Branches"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
+                    END IF;
+                END $$");
+            ctx.Database.ExecuteSqlRaw(@"
+                DO $$ BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Routes') THEN
+                        ALTER TABLE ""Routes"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
+                    END IF;
+                END $$");
+            ctx.Database.ExecuteSqlRaw(@"
+                DO $$ BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Branches' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Branches') THEN
+                        ALTER TABLE ""Branches"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
                     END IF;
                 END $$");
         }

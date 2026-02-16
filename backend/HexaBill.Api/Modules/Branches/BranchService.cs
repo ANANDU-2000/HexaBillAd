@@ -38,7 +38,8 @@ namespace HexaBill.Api.Modules.Branches
                     Name = b.Name,
                     Address = b.Address,
                     CreatedAt = b.CreatedAt,
-                    RouteCount = b.Routes.Count
+                    RouteCount = b.Routes.Count,
+                    AssignedStaffIds = b.BranchStaff.Select(bs => bs.UserId).ToList()
                 })
                 .OrderBy(b => b.Name)
                 .ToListAsync();
@@ -56,7 +57,8 @@ namespace HexaBill.Api.Modules.Branches
                     Name = x.Name,
                     Address = x.Address,
                     CreatedAt = x.CreatedAt,
-                    RouteCount = x.Routes.Count
+                    RouteCount = x.Routes.Count,
+                    AssignedStaffIds = x.BranchStaff.Select(bs => bs.UserId).ToList()
                 })
                 .FirstOrDefaultAsync();
             return b;
@@ -78,9 +80,29 @@ namespace HexaBill.Api.Modules.Branches
                 Id = branch.Id,
                 TenantId = branch.TenantId,
                 Name = branch.Name,
+                CreatedAt = branch.CreatedAt,
+                RouteCount = 0,
+                AssignedStaffIds = request.AssignedStaffIds ?? new List<int>()
+            };
+
+            if (request.AssignedStaffIds != null && request.AssignedStaffIds.Any())
+            {
+                foreach (var staffId in request.AssignedStaffIds)
+                {
+                    _context.BranchStaff.Add(new BranchStaff { BranchId = branch.Id, UserId = staffId, AssignedAt = DateTime.UtcNow });
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return new BranchDto
+            {
+                Id = branch.Id,
+                TenantId = branch.TenantId,
+                Name = branch.Name,
                 Address = branch.Address,
                 CreatedAt = branch.CreatedAt,
-                RouteCount = 0
+                RouteCount = 0,
+                AssignedStaffIds = request.AssignedStaffIds ?? new List<int>()
             };
         }
 
@@ -91,6 +113,20 @@ namespace HexaBill.Api.Modules.Branches
             branch.Name = request.Name.Trim();
             branch.Address = request.Address?.Trim();
             branch.UpdatedAt = DateTime.UtcNow;
+
+            if (request.AssignedStaffIds != null)
+            {
+                // Remove existing
+                var existing = await _context.BranchStaff.Where(bs => bs.BranchId == id).ToListAsync();
+                _context.BranchStaff.RemoveRange(existing);
+
+                // Add new
+                foreach (var staffId in request.AssignedStaffIds)
+                {
+                    _context.BranchStaff.Add(new BranchStaff { BranchId = branch.Id, UserId = staffId, AssignedAt = DateTime.UtcNow });
+                }
+            }
+
             await _context.SaveChangesAsync();
             return await GetBranchByIdAsync(id, tenantId);
         }

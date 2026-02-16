@@ -97,14 +97,24 @@ namespace HexaBill.Api.Shared.Middleware
                 }
             }
 
-            // Entity Framework specific errors
+            // Entity Framework specific errors - log full inner chain for DbUpdateException
             if (exception is DbUpdateException dbEx)
             {
                 errorDetails.AppendLine("\n📊 DATABASE UPDATE ERROR:");
-                errorDetails.AppendLine($"Failed Entity: {dbEx.Entries?.FirstOrDefault()?.Entity?.GetType().Name ?? "Unknown"}");
-                if (dbEx.InnerException != null)
+                var firstEntry = dbEx.Entries?.FirstOrDefault();
+                errorDetails.AppendLine($"Failed Entity: {firstEntry?.Entity?.GetType().Name ?? "Unknown"}");
+                errorDetails.AppendLine($"State: {firstEntry?.State}");
+                var inner = dbEx.InnerException;
+                var depth = 0;
+                while (inner != null && depth < 5)
                 {
-                    errorDetails.AppendLine($"Inner Error: {dbEx.InnerException.Message}");
+                    errorDetails.AppendLine($"Inner[{depth}]: {inner.GetType().Name}: {inner.Message}");
+                    if (inner is Npgsql.PostgresException pgEx)
+                    {
+                        errorDetails.AppendLine($"  SQL State: {pgEx.SqlState}, Detail: {pgEx.Detail}");
+                    }
+                    inner = inner.InnerException;
+                    depth++;
                 }
             }
 

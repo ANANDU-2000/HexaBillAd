@@ -512,6 +512,7 @@ namespace HexaBill.Api.Models
         public string? Address { get; set; }
         public DateTime CreatedAt { get; set; }
         public int RouteCount { get; set; }
+        public List<int> AssignedStaffIds { get; set; } = new();
     }
 
     public class RouteDto
@@ -526,6 +527,7 @@ namespace HexaBill.Api.Models
         public DateTime CreatedAt { get; set; }
         public int CustomerCount { get; set; }
         public int StaffCount { get; set; }
+        public List<int> AssignedStaffIds { get; set; } = new();
     }
 
     public class RouteDetailDto : RouteDto
@@ -592,6 +594,7 @@ namespace HexaBill.Api.Models
         public string Name { get; set; } = string.Empty;
         [MaxLength(500)]
         public string? Address { get; set; }
+        public List<int>? AssignedStaffIds { get; set; }
     }
 
     public class CreateRouteRequest
@@ -602,6 +605,7 @@ namespace HexaBill.Api.Models
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
         public int? AssignedStaffId { get; set; }
+        public List<int>? AssignedStaffIds { get; set; }
     }
 
     public class CreateRouteExpenseRequest

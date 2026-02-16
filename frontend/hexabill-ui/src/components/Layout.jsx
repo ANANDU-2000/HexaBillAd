@@ -31,7 +31,9 @@ import {
   Sparkles,
   MapPin,
   Printer,
-  LayoutGrid
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import Logo from './Logo'
@@ -47,7 +49,16 @@ const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true'
+  })
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+
+  const toggleSidebar = () => {
+    const newState = !isSidebarCollapsed
+    setIsSidebarCollapsed(newState)
+    localStorage.setItem('sidebar_collapsed', String(newState))
+  }
   const profileDropdownRef = useRef(null)
 
   // Close dropdown when clicking outside
@@ -238,7 +249,7 @@ const Layout = () => {
       )}
 
       {/* Desktop sidebar - 240px per design system (Task 11) */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 lg:flex-col lg:min-h-0">
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col lg:min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex flex-col flex-grow bg-primary-900 text-white border-r border-primary-800 min-h-screen overflow-hidden w-full">
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0 scrollbar-hide">
             {navigation.map((item) => {
@@ -247,14 +258,14 @@ const Layout = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors min-h-[44px] ${isActive(item.href)
+                  className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors min-h-[44px] ${isActive(item.href)
                     ? 'bg-primary-600 text-white'
                     : 'text-primary-200 hover:bg-primary-800 hover:text-white'
                     }`}
                   title={item.name}
                 >
-                  <Icon className="h-5 w-5 mr-3 flex-shrink-0" />
-                  <span className="truncate">{item.name}</span>
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
+                  {!isSidebarCollapsed && <span className="truncate">{item.name}</span>}
                 </Link>
               )
             })}
@@ -262,22 +273,30 @@ const Layout = () => {
           <div className="border-t border-primary-800 p-3">
             <button
               onClick={logout}
-              className="flex items-center w-full px-4 py-3 text-sm text-primary-200 hover:text-white hover:bg-primary-800 rounded-lg transition-colors min-h-[44px]"
+              className={`flex items-center w-full ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm text-primary-200 hover:text-white hover:bg-primary-800 rounded-lg transition-colors min-h-[44px]`}
+              title="Logout"
             >
-              <LogOut className="h-5 w-5 mr-3 flex-shrink-0" />
-              <span>Logout</span>
+              <LogOut className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
+              {!isSidebarCollapsed && <span>Logout</span>}
             </button>
           </div>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar (Task 11: 240px sidebar) */}
-      <div className="flex flex-col min-h-screen w-full lg:pl-60">
+      <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'}`}>
         <SubscriptionGraceBanner />
         {/* Top Header Bar for Other Pages - Similar to Dashboard */}
-        <div className="hidden lg:block fixed top-0 left-60 right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30">
+        <div className={`hidden lg:block fixed top-0 right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30 transition-all duration-300 ${isSidebarCollapsed ? 'left-20' : 'left-60'}`}>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
+              <button
+                onClick={toggleSidebar}
+                className="p-1.5 rounded-lg hover:bg-primary-800 text-primary-200 hover:text-white transition-colors"
+                title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
               <Logo size="default" showText={false} className="flex-shrink-0" />
               <div className="min-w-0 flex-1">
                 <h1 className="text-base xl:text-lg font-semibold text-white truncate">{companyName}</h1>
@@ -371,16 +390,18 @@ const Layout = () => {
                       <User className="h-4 w-4 mr-2" />
                       My Profile
                     </button>
-                    <button
-                      onClick={() => {
-                        navigate('/settings')
-                        setShowProfileDropdown(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-primary-700 hover:bg-primary-50 flex items-center"
-                    >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
-                    </button>
+                    {isAdminOrOwner(user) && (
+                      <button
+                        onClick={() => {
+                          navigate('/settings')
+                          setShowProfileDropdown(false)
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-primary-700 hover:bg-primary-50 flex items-center"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </button>
+                    )}
                     <div className="border-t border-primary-200 my-1" />
                     <button
                       onClick={() => {
