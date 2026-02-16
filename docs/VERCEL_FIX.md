@@ -52,13 +52,56 @@ The banner **"The billing address on your payment method is missing or incomplet
 
 ---
 
+---
+
+## Build failed: "Exited with status 1 while building"
+
+### 1. Check the actual logs
+
+1. Vercel → **Deployments** → click the failed deployment.
+2. Open the **Building** step and scroll to see the full error (e.g. missing module, syntax error, memory).
+
+### 2. Root Directory not set
+
+If **Root Directory** is empty, Vercel builds from the repo root where there is no `package.json`, so the build fails.
+
+**Fix:** A root `vercel.json` at repo root tells Vercel how to build when Root Directory is not set:
+
+- `installCommand`: `cd frontend/hexabill-ui && npm install`
+- `buildCommand`: `cd frontend/hexabill-ui && npm run build`
+- `outputDirectory`: `frontend/hexabill-ui/dist`
+
+**Preferred:** Set **Root Directory** = `frontend/hexabill-ui` in Vercel → Settings → General.
+
+### 3. Node version
+
+If the error mentions Node, add `engines` to `frontend/hexabill-ui/package.json`:
+
+```json
+"engines": {
+  "node": ">=18"
+}
+```
+
+Or create `frontend/hexabill-ui/.nvmrc` with: `18`
+
+### 4. Memory / timeout
+
+Large builds can hit limits on the free tier. Try:
+
+- Reduce dev dependencies if possible.
+- Upgrade plan, or split into smaller builds.
+
+---
+
 ## Summary
 
 | Problem              | Cause              | Solution                    |
 |----------------------|--------------------|-----------------------------|
 | Site not updated     | Rollback to old deploy | **Undo Rollback** in Vercel |
+| Build status 1       | Root Dir wrong / code error / Node | Check logs, set Root Dir, add engines |
 | .gitignore concern   | None (icons/UI not ignored) | No change needed            |
 | Wrong build output   | Possible wrong Output in dashboard | Set Output to `dist`       |
 | Billing              | Incomplete address  | Update in Billing           |
 
-Do **Fix 1 (Undo Rollback)** first; that should bring your latest UI and icon order live.
+Do **Fix 1 (Undo Rollback)** first for “site not updated”. For build failures, check the deploy logs and apply the fixes above.
