@@ -249,6 +249,33 @@ builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.TrialExpiryCheckJo
 
 var app = builder.Build();
 
+// CRITICAL: Add SessionVersion + fix IsActive BEFORE any requests (fixes 42703, 42804)
+using (var scope = app.Services.CreateScope())
+{
+    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    if (ctx.Database.IsNpgsql())
+    {
+        try
+        {
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""PaymentTerms"" character varying(100) NULL");
+            ctx.Database.ExecuteSqlRaw(@"
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
+                        ALTER TABLE ""Routes"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
+                    END IF;
+                END $$");
+            ctx.Database.ExecuteSqlRaw(@"
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Branches' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
+                        ALTER TABLE ""Branches"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
+                    END IF;
+                END $$");
+        }
+        catch { /* columns may already exist */ }
+    }
+}
+
 // CRITICAL: Global Exception Handler - MUST be FIRST in pipeline to catch all unhandled exceptions
 app.UseMiddleware<HexaBill.Api.Shared.Middleware.GlobalExceptionHandlerMiddleware>();
 
