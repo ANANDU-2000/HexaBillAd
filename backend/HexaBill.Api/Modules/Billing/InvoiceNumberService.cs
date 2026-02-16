@@ -67,7 +67,7 @@ namespace HexaBill.Api.Modules.Billing
                     var lockId = 1000000 + tenantId;
                     if (IsPostgres())
                     {
-                        try { await _context.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_lock({lockId})"); }
+                        try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_lock({lockId})"); }
                         catch { /* ignore */ }
                     }
 
@@ -105,7 +105,7 @@ namespace HexaBill.Api.Modules.Billing
                     {
                         if (IsPostgres())
                         {
-                            try { await _context.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_unlock({lockId})"); }
+                            try { await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_unlock({lockId})"); }
                             catch { /* ignore */ }
                         }
                     }

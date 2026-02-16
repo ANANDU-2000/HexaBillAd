@@ -105,7 +105,43 @@ If you need to allowlist Vercel or other services (e.g. Render firewall, DB allo
 
 ---
 
-## 7. Vercel API Key (for CLI / MCP)
+## 7. Direct Deploy to Vercel (When GitHub Fails)
+
+When GitHub push → Vercel auto-deploy fails, deploy directly from your machine:
+
+### One-time setup
+
+1. **Get token:** Vercel Dashboard → [Settings → Tokens](https://vercel.com/account/tokens) → Create
+2. **Set env:** Add to `backend/HexaBill.Api/.env` or root `.env` (never commit):
+   ```
+   VERCEL_TOKEN=your_vercel_token_here
+   ```
+3. **Link project (first time):** From `frontend/hexabill-ui` run:
+   ```bash
+   npx vercel link
+   ```
+   Choose your team, project **hexa-bill**, and confirm.
+
+### Deploy
+
+```powershell
+# From repo root (PowerShell)
+.\scripts\deploy-vercel-direct.ps1
+```
+
+Or manually:
+
+```bash
+cd frontend/hexabill-ui
+npm run build
+npx vercel deploy --prebuilt --prod
+```
+
+`--prebuilt` uses your local `dist/` so Vercel does not rebuild from GitHub—avoids GitHub build errors.
+
+---
+
+## 8. Vercel API Key (for CLI / MCP)
 
 - **Never commit** the API key. Add to local `backend/HexaBill.Api/.env` or root `.env`:
   ```
@@ -116,7 +152,7 @@ If you need to allowlist Vercel or other services (e.g. Render firewall, DB allo
 
 ---
 
-## 8. File Reference
+## 9. File Reference
 
 | Purpose | Path |
 |---------|------|

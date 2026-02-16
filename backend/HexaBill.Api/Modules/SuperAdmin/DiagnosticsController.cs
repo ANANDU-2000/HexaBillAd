@@ -169,11 +169,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 {
                     try
                     {
-                        // Check which tables exist
                         var connection = _db.Database.GetDbConnection();
                         await connection.OpenAsync();
                         var command = connection.CreateCommand();
-                        command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;";
+                        command.CommandText = _db.Database.IsNpgsql()
+                            ? "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;"
+                            : "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;";
                         using var reader = await command.ExecuteReaderAsync();
                         while (await reader.ReadAsync())
                         {
@@ -296,6 +297,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
+                // PostgreSQL: migrations handle schema. This fix is SQLite-only (legacy).
+                if (_db.Database.IsNpgsql())
+                {
+                    return Ok(new { message = "fix-columns is SQLite-only; PostgreSQL uses migrations", results = Array.Empty<object>(), success = true });
+                }
+
                 var results = new List<object>();
                 
                 // Add missing columns using raw SQL (SQLite-safe)

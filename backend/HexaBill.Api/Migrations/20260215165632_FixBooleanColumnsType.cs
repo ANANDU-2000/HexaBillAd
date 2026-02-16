@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -10,41 +10,30 @@ namespace HexaBill.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<bool>(
-                name: "IsActive",
-                table: "Routes",
-                type: "boolean",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "INTEGER");
-
-            migrationBuilder.AlterColumn<bool>(
-                name: "IsActive",
-                table: "Branches",
-                type: "boolean",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "INTEGER");
+            // PostgreSQL cannot auto-cast integer to boolean (42804). Use explicit USING clause.
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""Routes"" 
+                  ALTER COLUMN ""IsActive"" DROP DEFAULT,
+                  ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int = 0 THEN false ELSE true END),
+                  ALTER COLUMN ""IsActive"" SET DEFAULT false;
+            ");
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""Branches"" 
+                  ALTER COLUMN ""IsActive"" DROP DEFAULT,
+                  ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int = 0 THEN false ELSE true END),
+                  ALTER COLUMN ""IsActive"" SET DEFAULT false;
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AlterColumn<bool>(
-                name: "IsActive",
-                table: "Routes",
-                type: "INTEGER",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean");
-
-            migrationBuilder.AlterColumn<bool>(
-                name: "IsActive",
-                table: "Branches",
-                type: "INTEGER",
-                nullable: false,
-                oldClrType: typeof(bool),
-                oldType: "boolean");
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""Routes"" ALTER COLUMN ""IsActive"" TYPE integer USING (CASE WHEN ""IsActive"" THEN 1 ELSE 0 END);
+            ");
+            migrationBuilder.Sql(@"
+                ALTER TABLE ""Branches"" ALTER COLUMN ""IsActive"" TYPE integer USING (CASE WHEN ""IsActive"" THEN 1 ELSE 0 END);
+            ");
         }
     }
 }
