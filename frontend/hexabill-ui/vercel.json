@@ -2,5 +2,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "projectId": "prj_ySOQNgFETHc1B9bcYVy7msKDwQbh",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

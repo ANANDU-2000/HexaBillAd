@@ -105,7 +105,18 @@ If you need to allowlist Vercel or other services (e.g. Render firewall, DB allo
 
 ---
 
-## 7. File Reference
+## 7. Vercel API Key (for CLI / MCP)
+
+- **Never commit** the API key. Add to local `backend/HexaBill.Api/.env` or root `.env`:
+  ```
+  VERCEL_TOKEN=your_vercel_token_from_dashboard
+  ```
+- **Where to get:** Vercel Dashboard → Settings → Tokens → Create
+- **Use for:** `vercel` CLI, Vercel MCP, or scripts. Frontend env vars (`VITE_API_BASE_URL`) go in **Vercel Dashboard → Project → Settings → Environment Variables**.
+
+---
+
+## 8. File Reference
 
 | Purpose | Path |
 |---------|------|
