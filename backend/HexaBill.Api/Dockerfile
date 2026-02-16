@@ -1,11 +1,11 @@
-# Build stage - works when Docker context is repo root (Render: rootDir empty, dockerContext ".")
+# Build stage - works when Docker context is repo root (dockerContext: ".")
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY HexaBill.Api.csproj ./
+COPY backend/HexaBill.Api/HexaBill.Api.csproj ./
 RUN dotnet restore
 
-COPY . ./
+COPY backend/HexaBill.Api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Run stage
