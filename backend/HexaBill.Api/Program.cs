@@ -421,7 +421,20 @@ _ = Task.Run(async () =>
         {
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             
-            // PostgreSQL - no special initialization needed
+            // CRITICAL: Ensure SessionVersion exists (fixes 42703 login error when migrations haven't run)
+            if (context.Database.IsNpgsql())
+            {
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""PaymentTerms"" character varying(100) NULL");
+                    initLogger.LogInformation("PostgreSQL: SessionVersion and PaymentTerms columns ensured");
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogWarning(ex, "PostgreSQL: Ensure columns failed (may already exist): {Message}", ex.Message);
+                }
+            }
             
             // Create performance indexes for large datasets (100K+ records)
             try
