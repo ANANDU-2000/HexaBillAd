@@ -1677,7 +1677,7 @@ const PosPage = () => {
               </span>
             </div>
             <div className="text-right flex items-center justify-end gap-3 flex-wrap">
-              {staffHasNoAssignments && (
+{staffHasNoAssignments && (
                 <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm w-full sm:w-auto">
                   <AlertTriangle className="h-5 w-5 shrink-0" />
                   <span>No branches or routes assigned. Contact your admin.</span>

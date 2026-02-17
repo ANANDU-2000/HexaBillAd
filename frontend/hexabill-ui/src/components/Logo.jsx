@@ -26,7 +26,7 @@ const Logo = ({ className = '', showText = true, size = 'default' }) => {
   return (
     <div className={`flex items-center space-x-3 ${className}`}>
       <div className={`${sizeClasses[size]} ${!logoSrc && (companyName === 'HexaBill' || !companyName) ? '' : 'bg-primary-600 rounded-lg'} flex items-center justify-center overflow-hidden flex-shrink-0`}>
-        {logoSrc && !logoError ? (
+{logoSrc && !logoError ? (
           <img
             src={logoSrc}
             alt={companyName}
