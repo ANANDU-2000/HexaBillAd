@@ -28,11 +28,21 @@ const LimitedToaster = () => {
       toastOptions={{
         duration: 3000,
         style: {
-          background: '#363636',
-          color: '#fff',
+          background: '#fff',
+          color: '#1f2937',
+          borderRadius: '12px',
+          padding: '14px 18px',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.12), 0 0 1px rgba(0,0,0,0.08)',
+          border: '1px solid #e5e7eb',
+          maxWidth: '360px',
         },
         success: {
           duration: 3000,
+          style: {
+            background: '#fff',
+            color: '#1f2937',
+            borderLeft: '4px solid #10b981',
+          },
           iconTheme: {
             primary: '#10b981',
             secondary: '#fff',
@@ -40,6 +50,11 @@ const LimitedToaster = () => {
         },
         error: {
           duration: 4000,
+          style: {
+            background: '#fff',
+            color: '#1f2937',
+            borderLeft: '4px solid #ef4444',
+          },
           iconTheme: {
             primary: '#ef4444',
             secondary: '#fff',

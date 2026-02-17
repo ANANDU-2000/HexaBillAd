@@ -342,6 +342,8 @@ namespace HexaBill.Api.Models
         public decimal TotalPayments { get; set; }
         public decimal PendingBalance { get; set; }
         public DateTime? LastPaymentDate { get; set; }
+        public int? BranchId { get; set; }
+        public int? RouteId { get; set; }
     }
 
     public class CreateCustomerRequest
@@ -362,6 +364,8 @@ namespace HexaBill.Api.Models
         /// Default is "Credit"
         /// </summary>
         public string CustomerType { get; set; } = "Credit";
+        public int? BranchId { get; set; }
+        public int? RouteId { get; set; }
     }
 
     public class CustomerLedgerEntry
@@ -512,6 +516,7 @@ namespace HexaBill.Api.Models
         public string? Address { get; set; }
         public DateTime CreatedAt { get; set; }
         public int RouteCount { get; set; }
+        public List<int> AssignedStaffIds { get; set; } = new();
     }
 
     public class RouteDto
@@ -526,6 +531,7 @@ namespace HexaBill.Api.Models
         public DateTime CreatedAt { get; set; }
         public int CustomerCount { get; set; }
         public int StaffCount { get; set; }
+        public List<int> AssignedStaffIds { get; set; } = new();
     }
 
     public class RouteDetailDto : RouteDto
@@ -592,6 +598,7 @@ namespace HexaBill.Api.Models
         public string Name { get; set; } = string.Empty;
         [MaxLength(500)]
         public string? Address { get; set; }
+        public List<int>? AssignedStaffIds { get; set; }
     }
 
     public class CreateRouteRequest
@@ -602,6 +609,7 @@ namespace HexaBill.Api.Models
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
         public int? AssignedStaffId { get; set; }
+        public List<int>? AssignedStaffIds { get; set; }
     }
 
     public class CreateRouteExpenseRequest

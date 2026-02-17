@@ -131,10 +131,12 @@ const SuperAdminTenantsPage = () => {
         setSelectedTenant(null)
         fetchTenants()
       } else {
-        toast.error(response.message || 'Failed to delete company')
+        const detail = response.errors?.[0] || response.message
+        toast.error(detail || 'Failed to delete company')
       }
     } catch (error) {
-      if (!error?._handledByInterceptor) toast.error('Failed to delete company')
+      const msg = error?.response?.data?.errors?.[0] || error?.response?.data?.message || error?.message
+      if (!error?._handledByInterceptor) toast.error(msg || 'Failed to delete company')
     } finally {
       setDeleteLoading(false)
     }

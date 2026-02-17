@@ -40,7 +40,12 @@ namespace HexaBill.Api.Modules.Expenses
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _expenseService.GetExpensesAsync(tenantId, page, pageSize, category, fromDate, toDate, groupBy, branchId);
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+                }
+                var result = await _expenseService.GetExpensesAsync(tenantId, page, pageSize, category, fromDate, toDate, groupBy, branchId, staffBranchIds);
                 return Ok(new ApiResponse<PagedResponse<ExpenseDto>>
                 {
                     Success = true,
@@ -70,7 +75,12 @@ namespace HexaBill.Api.Modules.Expenses
                 var from = (fromDate ?? DateTime.UtcNow.AddMonths(-6)).ToUtcKind();
                 var to = (toDate ?? DateTime.UtcNow).ToUtcKind();
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _expenseService.GetExpensesAggregatedAsync(tenantId, from, to, groupBy);
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+                }
+                var result = await _expenseService.GetExpensesAggregatedAsync(tenantId, from, to, groupBy, staffBranchIds);
                 return Ok(new ApiResponse<List<ExpenseAggregateDto>>
                 {
                     Success = true,
@@ -95,7 +105,12 @@ namespace HexaBill.Api.Modules.Expenses
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _expenseService.GetExpenseByIdAsync(id, tenantId);
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+                }
+                var result = await _expenseService.GetExpenseByIdAsync(id, tenantId, staffBranchIds);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<ExpenseDto>
@@ -139,7 +154,12 @@ namespace HexaBill.Api.Modules.Expenses
                 }
 
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _expenseService.CreateExpenseAsync(request, userId, tenantId);
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff)
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == userId).Select(bs => bs.BranchId).ToListAsync();
+                }
+                var result = await _expenseService.CreateExpenseAsync(request, userId, tenantId, staffBranchIds);
                 return CreatedAtAction(nameof(GetExpense), new { id = result.Id }, new ApiResponse<ExpenseDto>
                 {
                     Success = true,
@@ -174,7 +194,12 @@ namespace HexaBill.Api.Modules.Expenses
                 }
 
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _expenseService.UpdateExpenseAsync(id, request, userId, tenantId);
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff)
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == userId).Select(bs => bs.BranchId).ToListAsync();
+                }
+                var result = await _expenseService.UpdateExpenseAsync(id, request, userId, tenantId, staffBranchIds);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<ExpenseDto>

@@ -35,23 +35,9 @@ import { showToast } from '../../utils/toast'
 import { isAdminOrOwner, isOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { LoadingCard } from '../../components/Loading'
 import { StatCard, KpiSkeleton, EmptyState } from '../../components/ui'
-import { reportsAPI, adminAPI, productsAPI } from '../../services'
-import PendingBillsPanel from '../../components/PendingBillsPanel'
-import QuickActionsPanel from '../../components/QuickActionsPanel'
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Area,
-  AreaChart
-} from 'recharts'
-import toast from 'react-hot-toast'
+import { branchesAPI, routesAPI, adminAPI, reportsAPI, productsAPI } from '../../services'
+
+// ... imports remain the same
 
 const Dashboard = () => {
   const { user, logout } = useAuth()
@@ -81,6 +67,9 @@ const Dashboard = () => {
   const [dbStatus, setDbStatus] = useState(true)
   const [lastBackup, setLastBackup] = useState(null)
   const [backupLoading, setBackupLoading] = useState(false)
+
+  // Allocations Data for Admin
+  const [allocations, setAllocations] = useState({ branches: [], routes: [], users: [] })
 
   // Dashboard Item Permissions Logic
   const canShow = (itemId) => {
@@ -216,8 +205,25 @@ const Dashboard = () => {
           if (backupsResponse.success && backupsResponse.data?.length > 0) {
             setLastBackup(backupsResponse.data[0])
           }
+
+          // Fetch Allocations Data
+          const [branchesRes, routesRes, usersRes] = await Promise.all([
+            branchesAPI.getBranches(),
+            routesAPI.getRoutes(),
+            adminAPI.getUsers()
+          ])
+
+          if (branchesRes.success && routesRes.success && usersRes.success) {
+            const allUsers = Array.isArray(usersRes.data) ? usersRes.data : (usersRes.data.items || [])
+            setAllocations({
+              branches: branchesRes.data || [],
+              routes: routesRes.data || [],
+              users: allUsers
+            })
+          }
+
         } catch (error) {
-          console.error('Failed to fetch backup info:', error)
+          console.error('Failed to fetch admin dashboard info:', error)
         }
       }
 
@@ -515,7 +521,7 @@ const Dashboard = () => {
                     axisLine={false}
                     tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   />
-                  <YAxis tick={{ fill: '#737373', fontSize: 11 }} tickLine={false} axisLine={false} width={45} tickFormatter={(v) => (v >= 1000 ? `₹${(v/1000).toFixed(0)}k` : `₹${v}`)} />
+                  <YAxis tick={{ fill: '#737373', fontSize: 11 }} tickLine={false} axisLine={false} width={45} tickFormatter={(v) => (v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`)} />
                   <Tooltip
                     formatter={(value) => formatCurrency(value)}
                     contentStyle={{
@@ -608,6 +614,71 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Branch & Staff Allocations (Admin Only) */}
+        {isAdminOrOwner(user) && allocations.branches.length > 0 && (
+          <div className="bg-white rounded-xl border border-primary-200 p-4 md:p-6 min-w-0 w-full mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-primary-800 flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary-600" />
+                Branch & Staff Allocations
+              </h2>
+              <button
+                onClick={() => navigate('/branches')}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Manage
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-primary-600 mb-3 border-b border-primary-100 pb-2">Branch Staff</h3>
+                <div className="space-y-3">
+                  {allocations.branches.map(branch => {
+                    const staffNames = (branch.assignedStaffIds || [])
+                      .map(id => allocations.users.find(u => u.id === id)?.name)
+                      .filter(Boolean)
+                      .join(', ');
+
+                    return (
+                      <div key={branch.id} className="flex justify-between items-start text-sm">
+                        <span className="font-medium text-primary-800">{branch.name}</span>
+                        <span className="text-primary-600 text-right max-w-[60%] truncate">
+                          {staffNames || <span className="text-neutral-400 italic">No staff assigned</span>}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-primary-600 mb-3 border-b border-primary-100 pb-2">Route Staff</h3>
+                <div className="space-y-3">
+                  {allocations.routes.slice(0, 8).map(route => {
+                    const staffNames = (route.assignedStaffIds || [])
+                      .map(id => allocations.users.find(u => u.id === id)?.name)
+                      .filter(Boolean)
+                      .join(', ');
+
+                    return (
+                      <div key={route.id} className="flex justify-between items-start text-sm">
+                        <span className="font-medium text-primary-800">{route.name} <span className="text-xs text-neutral-400">({route.branchName})</span></span>
+                        <span className="text-primary-600 text-right max-w-[60%] truncate">
+                          {staffNames || <span className="text-neutral-400 italic">No staff assigned</span>}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {allocations.routes.length > 8 && (
+                    <div className="text-center pt-2">
+                      <span className="text-xs text-primary-500 italic">...and {allocations.routes.length - 8} more routes</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Row 3: Low Stock + Quick Actions — full width row */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">

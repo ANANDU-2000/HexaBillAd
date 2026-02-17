@@ -61,7 +61,7 @@ export const BrandingProvider = ({ children }) => {
       const data = response?.data ?? response
       if (data) {
         const name = data.COMPANY_NAME_EN || data.companyNameEn || data.companyName || 'HexaBill'
-        const logoUrl = data.COMPANY_LOGO || data.logoUrl || null
+        const logoUrl = data.COMPANY_LOGO || data.logoUrl || data.companyLogo || null
         const primary = data.primaryColor || data.primary_color || '#2563EB'
         const accent = data.accentColor || data.accent_color || '#10B981'
 

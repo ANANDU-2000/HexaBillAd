@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS ""Branches"" (
     ""Address"" character varying(500),
     ""CreatedAt"" timestamp with time zone NOT NULL,
     ""UpdatedAt"" timestamp with time zone,
+    ""IsActive"" boolean NOT NULL DEFAULT true,
     CONSTRAINT ""FK_Branches_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants""(""Id"") ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS ""IX_Branches_TenantId"" ON ""Branches"" (""TenantId"");
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS ""Routes"" (
     ""AssignedStaffId"" integer,
     ""CreatedAt"" timestamp with time zone NOT NULL,
     ""UpdatedAt"" timestamp with time zone,
+    ""IsActive"" boolean NOT NULL DEFAULT true,
     CONSTRAINT ""FK_Routes_Branches_BranchId"" FOREIGN KEY (""BranchId"") REFERENCES ""Branches""(""Id"") ON DELETE CASCADE,
     CONSTRAINT ""FK_Routes_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants""(""Id"") ON DELETE CASCADE,
     CONSTRAINT ""FK_Routes_Users_AssignedStaffId"" FOREIGN KEY (""AssignedStaffId"") REFERENCES ""Users""(""Id"") ON DELETE SET NULL
@@ -114,6 +116,32 @@ CREATE TABLE IF NOT EXISTS ""BranchStaff"" (
 CREATE INDEX IF NOT EXISTS ""IX_BranchStaff_BranchId"" ON ""BranchStaff"" (""BranchId"");
 CREATE INDEX IF NOT EXISTS ""IX_BranchStaff_UserId"" ON ""BranchStaff"" (""UserId"");
 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_BranchStaff_BranchId_UserId"" ON ""BranchStaff"" (""BranchId"", ""UserId"");
+");
+
+                // Add BranchId and RouteId to Customers if missing (EnterpriseBranchRoutePlan)
+                await context.Database.ExecuteSqlRawAsync(@"
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND column_name = 'BranchId') THEN
+        ALTER TABLE ""Customers"" ADD COLUMN ""BranchId"" integer NULL;
+        CREATE INDEX IF NOT EXISTS ""IX_Customers_BranchId"" ON ""Customers"" (""BranchId"");
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Customers_Branches_BranchId') THEN
+            ALTER TABLE ""Customers"" ADD CONSTRAINT ""FK_Customers_Branches_BranchId"" FOREIGN KEY (""BranchId"") REFERENCES ""Branches""(""Id"") ON DELETE SET NULL;
+        END IF;
+    END IF;
+END $$;
+");
+                await context.Database.ExecuteSqlRawAsync(@"
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND column_name = 'RouteId') THEN
+        ALTER TABLE ""Customers"" ADD COLUMN ""RouteId"" integer NULL;
+        CREATE INDEX IF NOT EXISTS ""IX_Customers_RouteId"" ON ""Customers"" (""RouteId"");
+        IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Customers_Routes_RouteId') THEN
+            ALTER TABLE ""Customers"" ADD CONSTRAINT ""FK_Customers_Routes_RouteId"" FOREIGN KEY (""RouteId"") REFERENCES ""Routes""(""Id"") ON DELETE SET NULL;
+        END IF;
+    END IF;
+END $$;
 ");
 
                 // Add BranchId and RouteId to Sales if missing

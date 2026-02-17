@@ -1,15 +1,16 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Package, ShoppingCart, BookOpen, User } from 'lucide-react'
+import { Home, Package, ShoppingCart, Truck, BookOpen } from 'lucide-react'
 
 const BottomNav = () => {
   const location = useLocation()
 
+  // Order: Home, Products, POS (center), Purchases, Ledger
   const navItems = [
     { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Products', href: '/products', icon: Package },
     { name: 'POS', href: '/pos', icon: ShoppingCart, center: true },
+    { name: 'Purchases', href: '/purchases', icon: Truck },
     { name: 'Ledger', href: '/ledger', icon: BookOpen },
-    { name: 'Profile', href: '/profile', icon: User },
   ]
 
   const isActive = (href) => location.pathname === href

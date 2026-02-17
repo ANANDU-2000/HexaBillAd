@@ -47,6 +47,10 @@ const BranchDetailPage = () => {
   const [branchCustomers, setBranchCustomers] = useState([])
   const [branchCustomersLoading, setBranchCustomersLoading] = useState(false)
   const [branchStaff, setBranchStaff] = useState([])
+  const [showAssignStaffModal, setShowAssignStaffModal] = useState(false)
+  const [staffToAssignList, setStaffToAssignList] = useState([])
+  const [assignStaffSaving, setAssignStaffSaving] = useState(false)
+  const [removeStaffSavingId, setRemoveStaffSavingId] = useState(null)
   const fetchBranchExpenses = useCallback(async () => {
     if (!id) return
     try {
@@ -137,7 +141,8 @@ const BranchDetailPage = () => {
         .then(res => {
           if (res?.success && res?.data) {
             const bid = parseInt(id, 10)
-            const staff = res.data.filter(u => (u.assignedBranchIds || []).includes(bid))
+            const items = res.data?.items ?? (Array.isArray(res.data) ? res.data : [])
+            const staff = items.filter(u => (u.assignedBranchIds || []).includes(bid))
             setBranchStaff(staff)
           } else setBranchStaff([])
         })
@@ -151,6 +156,69 @@ const BranchDetailPage = () => {
   }
 
   const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
+
+  const branchRouteIds = (summary?.routes ?? []).map(r => r.routeId ?? r.id)
+  const routeIdToName = Object.fromEntries((summary?.routes ?? []).map(r => [r.routeId ?? r.id, r.routeName ?? r.name ?? '']))
+
+  const openAssignStaffModal = async () => {
+    try {
+      const res = await adminAPI.getUsers()
+      const items = res?.success && res?.data ? (res.data?.items ?? (Array.isArray(res.data) ? res.data : [])) : []
+      const bid = parseInt(id, 10)
+      const alreadyAssignedIds = new Set(branchStaff.map(u => u.id))
+      const staff = items.filter(u => (u.role || '').toLowerCase() === 'staff' && !alreadyAssignedIds.has(u.id))
+      setStaffToAssignList(staff)
+      setShowAssignStaffModal(true)
+    } catch {
+      toast.error('Failed to load users')
+      setStaffToAssignList([])
+    }
+  }
+
+  const handleAssignStaff = async (user) => {
+    const bid = parseInt(id, 10)
+    if ((user.assignedBranchIds || []).includes(bid)) return
+    const nextBranchIds = [...(user.assignedBranchIds || []), bid]
+    try {
+      setAssignStaffSaving(true)
+      const res = await adminAPI.updateUser(user.id, {
+        assignedBranchIds: nextBranchIds,
+        assignedRouteIds: user.assignedRouteIds || []
+      })
+      if (res?.success) {
+        toast.success(`${user.name} assigned to this branch`)
+        setShowAssignStaffModal(false)
+        const listRes = await adminAPI.getUsers()
+        const items = listRes?.success && listRes?.data ? (listRes.data?.items ?? (Array.isArray(listRes.data) ? listRes.data : [])) : []
+        setBranchStaff(items.filter(u => (u.assignedBranchIds || []).includes(bid)))
+      } else toast.error(res?.message || 'Failed to assign')
+    } catch (e) {
+      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to assign')
+    } finally {
+      setAssignStaffSaving(false)
+    }
+  }
+
+  const handleRemoveStaff = async (user) => {
+    const bid = parseInt(id, 10)
+    const nextBranchIds = (user.assignedBranchIds || []).filter(b => b !== bid)
+    const nextRouteIds = (user.assignedRouteIds || []).filter(rid => !branchRouteIds.includes(rid))
+    try {
+      setRemoveStaffSavingId(user.id)
+      const res = await adminAPI.updateUser(user.id, {
+        assignedBranchIds: nextBranchIds,
+        assignedRouteIds: nextRouteIds
+      })
+      if (res?.success) {
+        toast.success(`${user.name} removed from this branch`)
+        setBranchStaff(prev => prev.filter(u => u.id !== user.id))
+      } else toast.error(res?.message || 'Failed to remove')
+    } catch (e) {
+      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to remove')
+    } finally {
+      setRemoveStaffSavingId(null)
+    }
+  }
 
   const handleEditBranch = async (e) => {
     e?.preventDefault()
@@ -470,29 +538,88 @@ const BranchDetailPage = () => {
 
       {activeTab === 'staff' && (
         <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-neutral-500">Staff assigned to this branch. You can assign or remove from here.</p>
+            {canManage && (
+              <button
+                type="button"
+                onClick={openAssignStaffModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+              >
+                <UserPlus className="h-4 w-4" />
+                Assign staff
+              </button>
+            )}
+          </div>
           {branchStaff.length === 0 ? (
-            <p className="text-neutral-500 py-6">No staff assigned to this branch. Assign users from the Users page.</p>
+            <p className="text-neutral-500 py-6">No staff assigned to this branch. {canManage && 'Click "Assign staff" or assign from the Users page.'}</p>
           ) : (
             <div className="overflow-x-auto border border-neutral-200 rounded-lg">
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
                     <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Name</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Role</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Assigned Routes</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Email</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Assigned routes (this branch)</th>
+                    {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
-                  {branchStaff.map(u => (
-                    <tr key={u.id}>
-                      <td className="px-4 py-2 font-medium">{u.name}</td>
-                      <td className="px-4 py-2 text-sm">{u.role || '—'}</td>
-                      <td className="px-4 py-2 text-sm">{(u.assignedRouteIds || []).length} route(s)</td>
-                    </tr>
-                  ))}
+                  {branchStaff.map(u => {
+                    const routeNames = (u.assignedRouteIds || [])
+                      .filter(rid => branchRouteIds.includes(rid))
+                      .map(rid => routeIdToName[rid] || `Route #${rid}`)
+                    return (
+                      <tr key={u.id} className="hover:bg-neutral-50">
+                        <td className="px-4 py-2 font-medium">{u.name}</td>
+                        <td className="px-4 py-2 text-sm text-neutral-600">{u.email || '—'}</td>
+                        <td className="px-4 py-2 text-sm">{routeNames.length ? routeNames.join(', ') : '—'}</td>
+                        {canManage && (
+                          <td className="px-4 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStaff(u)}
+                              disabled={removeStaffSavingId === u.id}
+                              className="text-red-600 hover:bg-red-50 rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
+                            >
+                              {removeStaffSavingId === u.id ? 'Removing…' : 'Remove'}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
+          )}
+          {showAssignStaffModal && (
+            <Modal
+              title="Assign staff to this branch"
+              onClose={() => !assignStaffSaving && setShowAssignStaffModal(false)}
+              size="md"
+            >
+              {staffToAssignList.length === 0 ? (
+                <p className="text-neutral-500 py-4">No other staff to assign. All staff are already assigned to this branch.</p>
+              ) : (
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
+                  {staffToAssignList.map(u => (
+                    <li key={u.id} className="flex items-center justify-between p-2 rounded border border-neutral-200 hover:bg-neutral-50">
+                      <span className="font-medium">{u.name}</span>
+                      <span className="text-sm text-neutral-500">{u.email}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleAssignStaff(u)}
+                        disabled={assignStaffSaving}
+                        className="px-3 py-1 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        Assign
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Modal>
           )}
         </div>
       )}

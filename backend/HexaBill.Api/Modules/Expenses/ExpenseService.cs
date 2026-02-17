@@ -12,11 +12,11 @@ namespace HexaBill.Api.Modules.Expenses
 {
     public interface IExpenseService
     {
-        Task<PagedResponse<ExpenseDto>> GetExpensesAsync(int tenantId, int page = 1, int pageSize = 10, string? category = null, DateTime? fromDate = null, DateTime? toDate = null, string? groupBy = null, int? branchId = null);
-        Task<List<ExpenseAggregateDto>> GetExpensesAggregatedAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "monthly"); // weekly, monthly, yearly
-        Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId);
-        Task<ExpenseDto> CreateExpenseAsync(CreateExpenseRequest request, int userId, int tenantId);
-        Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId);
+        Task<PagedResponse<ExpenseDto>> GetExpensesAsync(int tenantId, int page = 1, int pageSize = 10, string? category = null, DateTime? fromDate = null, DateTime? toDate = null, string? groupBy = null, int? branchId = null, IReadOnlyList<int>? staffAllowedBranchIds = null);
+        Task<List<ExpenseAggregateDto>> GetExpensesAggregatedAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "monthly", IReadOnlyList<int>? staffAllowedBranchIds = null); // weekly, monthly, yearly
+        Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null);
+        Task<ExpenseDto> CreateExpenseAsync(CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null);
+        Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null);
         Task<bool> DeleteExpenseAsync(int id, int userId, int tenantId);
         Task<List<string>> GetExpenseCategoriesAsync();
     }
@@ -30,7 +30,7 @@ namespace HexaBill.Api.Modules.Expenses
             _context = context;
         }
 
-        public async Task<PagedResponse<ExpenseDto>> GetExpensesAsync(int tenantId, int page = 1, int pageSize = 10, string? category = null, DateTime? fromDate = null, DateTime? toDate = null, string? groupBy = null, int? branchId = null)
+        public async Task<PagedResponse<ExpenseDto>> GetExpensesAsync(int tenantId, int page = 1, int pageSize = 10, string? category = null, DateTime? fromDate = null, DateTime? toDate = null, string? groupBy = null, int? branchId = null, IReadOnlyList<int>? staffAllowedBranchIds = null)
         {
             // OPTIMIZATION: Use AsNoTracking and limit page size
             pageSize = Math.Min(pageSize, 100); // Max 100 items per page
@@ -41,6 +41,15 @@ namespace HexaBill.Api.Modules.Expenses
                 .Include(e => e.Category)
                 .Include(e => e.Branch)
                 .AsQueryable();
+
+            // Staff: only see expenses for their assigned branches (and expenses with no branch if any). If Staff has no branches assigned, they see nothing.
+            if (staffAllowedBranchIds != null)
+            {
+                if (staffAllowedBranchIds.Count == 0)
+                    query = query.Where(e => false);
+                else
+                    query = query.Where(e => e.BranchId == null || staffAllowedBranchIds.Contains(e.BranchId.Value));
+            }
 
             if (branchId.HasValue)
             {
@@ -91,7 +100,7 @@ namespace HexaBill.Api.Modules.Expenses
             };
         }
 
-        public async Task<List<ExpenseAggregateDto>> GetExpensesAggregatedAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "monthly")
+        public async Task<List<ExpenseAggregateDto>> GetExpensesAggregatedAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "monthly", IReadOnlyList<int>? staffAllowedBranchIds = null)
         {
             try
             {
@@ -106,6 +115,14 @@ namespace HexaBill.Api.Modules.Expenses
                     .Include(e => e.Category)
                     .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date <= to) // CRITICAL: Multi-tenant filter
                     .AsQueryable();
+
+                if (staffAllowedBranchIds != null)
+                {
+                    if (staffAllowedBranchIds.Count == 0)
+                        query = query.Where(e => false);
+                    else
+                        query = query.Where(e => e.BranchId == null || staffAllowedBranchIds.Contains(e.BranchId.Value));
+                }
 
                 // Check if there are any expenses
                 var expenseCount = await query.CountAsync();
@@ -226,7 +243,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        public async Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId)
+        public async Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null)
         {
             var expense = await _context.Expenses
                 .Where(e => e.Id == id && e.TenantId == tenantId) // CRITICAL: Multi-tenant filter
@@ -234,6 +251,11 @@ namespace HexaBill.Api.Modules.Expenses
                 .Include(e => e.Branch)
                 .FirstOrDefaultAsync();
             if (expense == null) return null;
+            if (staffAllowedBranchIds != null)
+            {
+                if (staffAllowedBranchIds.Count == 0) return null;
+                if (expense.BranchId.HasValue && !staffAllowedBranchIds.Contains(expense.BranchId.Value)) return null;
+            }
 
             return new ExpenseDto
             {
@@ -249,8 +271,16 @@ namespace HexaBill.Api.Modules.Expenses
             };
         }
 
-        public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseRequest request, int userId, int tenantId)
+        public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null)
         {
+            if (staffAllowedBranchIds != null)
+            {
+                if (staffAllowedBranchIds.Count == 0)
+                    throw new InvalidOperationException("You have no branch assigned. Ask an admin to assign you to a branch before adding expenses.");
+                if (request.BranchId.HasValue && !staffAllowedBranchIds.Contains(request.BranchId.Value))
+                    throw new InvalidOperationException("You can only add expenses to your assigned branch(es).");
+            }
+
             var category = await _context.ExpenseCategories.FindAsync(request.CategoryId);
             if (category == null)
             {
@@ -303,7 +333,7 @@ namespace HexaBill.Api.Modules.Expenses
             };
         }
 
-        public async Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId)
+        public async Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null)
         {
             var expense = await _context.Expenses
                 .Where(e => e.Id == id && e.TenantId == tenantId) // CRITICAL: Multi-tenant filter
@@ -311,6 +341,14 @@ namespace HexaBill.Api.Modules.Expenses
                 .Include(e => e.Branch)
                 .FirstOrDefaultAsync();
             if (expense == null) return null;
+            if (staffAllowedBranchIds != null)
+            {
+                if (staffAllowedBranchIds.Count == 0) return null;
+                if (expense.BranchId.HasValue && !staffAllowedBranchIds.Contains(expense.BranchId.Value))
+                    return null;
+                if (request.BranchId.HasValue && !staffAllowedBranchIds.Contains(request.BranchId.Value))
+                    throw new InvalidOperationException("You can only assign expenses to your assigned branch(es).");
+            }
 
             var category = await _context.ExpenseCategories.FindAsync(request.CategoryId);
             if (category == null)

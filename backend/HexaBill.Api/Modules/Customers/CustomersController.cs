@@ -3,8 +3,11 @@ Purpose: Customers controller for customer management
 Author: AI Assistant
 Date: 2024
 */
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions; // MULTI-TENANT
@@ -22,11 +25,15 @@ namespace HexaBill.Api.Modules.Customers
     {
         private readonly ICustomerService _customerService;
         private readonly ITimeZoneService _timeZoneService;
+        private readonly IRouteScopeService _routeScopeService;
+        private readonly AppDbContext _context;
 
-        public CustomersController(ICustomerService customerService, ITimeZoneService timeZoneService)
+        public CustomersController(ICustomerService customerService, ITimeZoneService timeZoneService, IRouteScopeService routeScopeService, AppDbContext context)
         {
             _customerService = customerService;
             _timeZoneService = timeZoneService;
+            _routeScopeService = routeScopeService;
+            _context = context;
         }
 
         [HttpGet]
@@ -86,7 +93,26 @@ namespace HexaBill.Api.Modules.Customers
                     });
                 }
                 
-                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId);
+                // Staff with no branch/route filter: restrict to assigned branches and routes
+                IReadOnlyList<int>? restrictToBranchIds = null;
+                IReadOnlyList<int>? restrictToRouteIds = null;
+                if (tenantId > 0 && !branchId.HasValue && !routeId.HasValue && IsStaff)
+                {
+                    var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                    if (int.TryParse(userIdClaim, out var userId))
+                    {
+                        var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+                        var branchIds = await _context.BranchStaff
+                            .Where(bs => bs.UserId == userId)
+                            .Select(bs => bs.BranchId)
+                            .ToListAsync();
+                        var routeIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userId, tenantId, role);
+                        restrictToBranchIds = branchIds;
+                        restrictToRouteIds = routeIds != null && routeIds.Length > 0 ? routeIds : null;
+                    }
+                }
+
+                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds);
                 return Ok(new ApiResponse<PagedResponse<CustomerDto>>
                 {
                     Success = true,

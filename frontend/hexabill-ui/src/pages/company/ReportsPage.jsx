@@ -17,7 +17,8 @@ import {
   Clock,
   ChevronDown,
   ChevronRight,
-  Users
+  Users,
+  MapPin
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -114,6 +115,7 @@ const ReportsPage = () => {
     { id: 'customers', name: 'Customer Report', icon: FileText },
     { id: 'expenses', name: 'Expenses', icon: TrendingDown },
     { id: 'branch', name: 'Branch Report', icon: Building2 },
+    { id: 'route', name: 'Route Report', icon: MapPin },
     { id: 'aging', name: 'Customer Aging', icon: Clock },
     { id: 'profit-loss', name: 'Profit & Loss', icon: TrendingUp, adminOnly: true },
     { id: 'outstanding', name: 'Outstanding Bills', icon: DollarSign },
@@ -479,7 +481,7 @@ const ReportsPage = () => {
         } finally {
           setLoading(false)
         }
-      } else if (activeTab === 'branch') {
+      } else if (activeTab === 'branch' || activeTab === 'route') {
         try {
           setLoading(true)
           const branchRes = await reportsAPI.getBranchComparison({
@@ -1594,6 +1596,7 @@ const ReportsPage = () => {
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sales</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">COGS</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Growth</th>
@@ -1622,6 +1625,7 @@ const ReportsPage = () => {
                                     {row.branchName}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(row.totalSales || 0)}</td>
+                                  <td className="px-4 py-3 text-sm text-right text-amber-700">{formatCurrency(row.costOfGoodsSold || 0)}</td>
                                   <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(row.totalExpenses || 0)}</td>
                                   <td className={`px-4 py-3 text-sm text-right font-medium ${(row.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                     {formatCurrency(row.profit || 0)}
@@ -1646,6 +1650,7 @@ const ReportsPage = () => {
                                     <td className="px-4 py-2 text-sm text-gray-500" />
                                     <td className="px-4 py-2 text-sm text-gray-700 pl-8">↳ {rt.routeName || rt.name}</td>
                                     <td className="px-4 py-2 text-sm text-right text-gray-700">{formatCurrency(rt.totalSales || 0)}</td>
+                                    <td className="px-4 py-2 text-sm text-right text-amber-700">{formatCurrency(rt.costOfGoodsSold || 0)}</td>
                                     <td className="px-4 py-2 text-sm text-right text-red-600">{formatCurrency(rt.totalExpenses || 0)}</td>
                                     <td className={`px-4 py-2 text-sm text-right font-medium ${(rt.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                                       {formatCurrency(rt.profit || 0)}
@@ -1681,6 +1686,64 @@ const ReportsPage = () => {
                   {loading ? 'Loading branch report...' : 'No branches found or no data for the selected period.'}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Route Report Tab — flat list of all routes with Sales, COGS, Expenses, Profit */}
+          {activeTab === 'route' && (
+            <div className="space-y-6">
+              {(() => {
+                const routeRows = (reportData.branchComparison || []).flatMap(b =>
+                  (b.routes || []).map(r => ({
+                    ...r,
+                    branchName: b.branchName,
+                    branchId: b.branchId
+                  }))
+                )
+                return routeRows.length > 0 ? (
+                  <>
+                    <p className="text-sm text-gray-500">All routes across branches. COGS uses product cost from purchases.</p>
+                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sales</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">COGS</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200">
+                            {routeRows.map((rt) => (
+                              <tr
+                                key={`${rt.branchId}-${rt.routeId}`}
+                                onClick={() => navigate(`/routes/${rt.routeId}?from=${dateRange.from}&to=${dateRange.to}`)}
+                                className="hover:bg-blue-50 cursor-pointer"
+                              >
+                                <td className="px-4 py-3 text-sm text-gray-700">{rt.branchName}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-blue-600">{rt.routeName || rt.name}</td>
+                                <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(rt.totalSales || 0)}</td>
+                                <td className="px-4 py-3 text-sm text-right text-amber-700">{formatCurrency(rt.costOfGoodsSold ?? 0)}</td>
+                                <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(rt.totalExpenses || 0)}</td>
+                                <td className={`px-4 py-3 text-sm text-right font-medium ${(rt.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(rt.profit ?? 0)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                    {loading ? 'Loading route report...' : 'No routes found or no data for the selected period.'}
+                  </div>
+                )
+              })()}
             </div>
           )}
 

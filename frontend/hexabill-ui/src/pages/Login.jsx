@@ -153,6 +153,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 label="Password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
+                autoComplete="current-password"
                 required
                 error={errors.password?.message}
                 {...register('password', {

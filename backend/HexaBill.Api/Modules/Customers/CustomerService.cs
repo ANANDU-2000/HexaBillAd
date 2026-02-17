@@ -15,7 +15,7 @@ namespace HexaBill.Api.Modules.Customers
     public interface ICustomerService
     {
         // MULTI-TENANT: All methods now require tenantId for data isolation
-        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null);
+        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null);
         Task<CustomerDto?> GetCustomerByIdAsync(int id, int tenantId);
         Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId);
         Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId);
@@ -42,7 +42,7 @@ namespace HexaBill.Api.Modules.Customers
             QuestPDF.Settings.License = LicenseType.Community;
         }
 
-        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null)
+        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
         {
             // NOTE: DatabaseFixer should only run at application startup (Program.cs)
             // Calling it here could interfere with transactions if this method is called
@@ -67,6 +67,29 @@ namespace HexaBill.Api.Modules.Customers
                     .Select(rc => rc.CustomerId)
                     .ToListAsync();
                 query = query.Where(c => c.RouteId == routeId.Value || routeCustomerIds.Contains(c.Id));
+            }
+            // Staff with no branch/route filter: restrict to assigned branches and routes
+            if (!branchId.HasValue && !routeId.HasValue && (restrictToBranchIds != null || restrictToRouteIds != null))
+            {
+                var hasBranch = restrictToBranchIds != null && restrictToBranchIds.Count > 0;
+                var hasRoute = restrictToRouteIds != null && restrictToRouteIds.Count > 0;
+                if (!hasBranch && !hasRoute)
+                    query = query.Where(c => false); // Staff with no assignments see no customers
+                else
+                {
+                    List<int> routeCustomerIdsForRestrict = new List<int>();
+                    if (hasRoute)
+                    {
+                        routeCustomerIdsForRestrict = await _context.RouteCustomers
+                            .Where(rc => restrictToRouteIds!.Contains(rc.RouteId))
+                            .Select(rc => rc.CustomerId)
+                            .Distinct()
+                            .ToListAsync();
+                    }
+                    query = query.Where(c =>
+                        (hasBranch && c.BranchId.HasValue && restrictToBranchIds!.Contains(c.BranchId.Value)) ||
+                        (hasRoute && (c.RouteId.HasValue && restrictToRouteIds!.Contains(c.RouteId.Value) || routeCustomerIdsForRestrict.Contains(c.Id))));
+                }
             }
 
             if (!string.IsNullOrEmpty(search))
@@ -100,7 +123,9 @@ namespace HexaBill.Api.Modules.Customers
                     TotalSales = c.TotalSales,
                     TotalPayments = c.TotalPayments,
                     PendingBalance = c.PendingBalance,
-                    LastPaymentDate = c.LastPaymentDate
+                    LastPaymentDate = c.LastPaymentDate,
+                    BranchId = c.BranchId,
+                    RouteId = c.RouteId
             }).ToList();
 
             return new PagedResponse<CustomerDto>
@@ -139,7 +164,9 @@ namespace HexaBill.Api.Modules.Customers
                 TotalSales = customer.TotalSales,
                 TotalPayments = customer.TotalPayments,
                 PendingBalance = customer.PendingBalance,
-                LastPaymentDate = customer.LastPaymentDate
+                LastPaymentDate = customer.LastPaymentDate,
+                BranchId = customer.BranchId,
+                RouteId = customer.RouteId
             };
         }
 
@@ -204,7 +231,9 @@ namespace HexaBill.Api.Modules.Customers
                     CustomerType = ParseCustomerType(request.CustomerType), // Parse and set customer type
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
-                    RowVersion = rowVersion // Always set to valid byte array
+                    RowVersion = rowVersion, // Always set to valid byte array
+                    BranchId = request.BranchId,
+                    RouteId = request.RouteId
                 };
                 
                 // Double-check before adding to context
@@ -220,6 +249,21 @@ namespace HexaBill.Api.Modules.Customers
                 // CRITICAL FIX: Save changes normally and let EF Core handle it
                 // The database schema is now fixed to have proper defaults
                 await _context.SaveChangesAsync();
+                
+                // Link customer to route for filtering (many-to-many)
+                if (request.RouteId.HasValue && request.RouteId.Value > 0)
+                {
+                    if (!await _context.RouteCustomers.AnyAsync(rc => rc.RouteId == request.RouteId.Value && rc.CustomerId == customer.Id))
+                    {
+                        _context.RouteCustomers.Add(new RouteCustomer
+                        {
+                            RouteId = request.RouteId.Value,
+                            CustomerId = customer.Id,
+                            AssignedAt = DateTime.UtcNow
+                        });
+                        await _context.SaveChangesAsync();
+                    }
+                }
                 
                 // Commit the transaction
                 await transaction.CommitAsync();
@@ -243,7 +287,9 @@ namespace HexaBill.Api.Modules.Customers
                     TotalSales = customer.TotalSales,
                     TotalPayments = customer.TotalPayments,
                     PendingBalance = customer.PendingBalance,
-                    LastPaymentDate = customer.LastPaymentDate
+                    LastPaymentDate = customer.LastPaymentDate,
+                    BranchId = customer.BranchId,
+                    RouteId = customer.RouteId
                 };
             }
             catch (OperationCanceledException)
@@ -316,7 +362,22 @@ namespace HexaBill.Api.Modules.Customers
             customer.CreditLimit = request.CreditLimit;
             customer.PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms.Trim();
             customer.CustomerType = newCustomerType;
+            customer.BranchId = request.BranchId;
+            customer.RouteId = request.RouteId;
             customer.UpdatedAt = DateTime.UtcNow;
+
+            // Sync RouteCustomers: ensure customer is linked to the selected route only
+            var existingRouteCustomers = await _context.RouteCustomers.Where(rc => rc.CustomerId == customer.Id).ToListAsync();
+            _context.RouteCustomers.RemoveRange(existingRouteCustomers);
+            if (request.RouteId.HasValue && request.RouteId.Value > 0)
+            {
+                _context.RouteCustomers.Add(new RouteCustomer
+                {
+                    RouteId = request.RouteId.Value,
+                    CustomerId = customer.Id,
+                    AssignedAt = DateTime.UtcNow
+                });
+            }
 
             // Log customer type change if it changed
             if (oldCustomerType != newCustomerType)
@@ -329,7 +390,7 @@ namespace HexaBill.Api.Modules.Customers
             return new CustomerDto
             {
                 Id = customer.Id,
-                Name = customer.Name,
+                Name = customer.Name ?? string.Empty,
                 Phone = customer.Phone,
                 Email = customer.Email,
                 Trn = customer.Trn,
@@ -341,7 +402,9 @@ namespace HexaBill.Api.Modules.Customers
                 TotalSales = customer.TotalSales,
                 TotalPayments = customer.TotalPayments,
                 PendingBalance = customer.PendingBalance,
-                LastPaymentDate = customer.LastPaymentDate
+                LastPaymentDate = customer.LastPaymentDate,
+                BranchId = customer.BranchId,
+                RouteId = customer.RouteId
             };
         }
 

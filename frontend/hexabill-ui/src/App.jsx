@@ -120,10 +120,9 @@ function App() {
         {/* Tenant routes - Accessible to standard users OR impersonating SystemAdmin */}
         {(!userIsSystemAdmin || !!impersonatedTenantId) && (
           <>
-            {/* Dashboard has its own layout */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            {/* All other pages use Layout with sidebar */}
+            {/* All pages including Dashboard use Layout with sidebar */}
             <Route element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/pricelist" element={<PriceList />} />
               <Route path="/purchases" element={<PurchasesPage />} />

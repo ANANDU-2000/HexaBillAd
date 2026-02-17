@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
+import { useAuth } from '../../hooks/useAuth'
+import { isAdminOrOwner } from '../../utils/roles'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
@@ -31,6 +33,7 @@ import {
 } from 'recharts'
 
 const ExpensesPage = () => {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [expenses, setExpenses] = useState([])
   const [filteredExpenses, setFilteredExpenses] = useState([])
@@ -348,6 +351,9 @@ const ExpensesPage = () => {
           <div>
             <h1 className="text-base sm:text-lg font-bold text-gray-900">Expenses Ledger</h1>
             <div className="text-xs text-gray-600">Date: {new Date().toLocaleDateString('en-GB')}</div>
+            {user && !isAdminOrOwner(user) && (
+              <p className="text-xs text-blue-700 mt-0.5">Totals and list are for your assigned branch(es).</p>
+            )}
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
@@ -658,7 +664,9 @@ const ExpensesPage = () => {
                   {filteredExpenses.length === 0 ? (
                     <tr>
                       <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
-                        No expenses found
+                        {user && !isAdminOrOwner(user)
+                          ? 'No expenses in your assigned branch(es) for this period.'
+                          : 'No expenses found'}
                       </td>
                     </tr>
                   ) : (
@@ -707,7 +715,9 @@ const ExpensesPage = () => {
             <div className="md:hidden space-y-3 p-4">
               {filteredExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  No expenses found
+                  {user && !isAdminOrOwner(user)
+                    ? 'No expenses in your assigned branch(es) for this period.'
+                    : 'No expenses found'}
                 </div>
               ) : (
                 filteredExpenses.map((expense) => (
@@ -796,16 +806,18 @@ const ExpensesPage = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Category <span className="text-red-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={openCategoryPrompt}
-                  disabled={creatingCategory}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
-                  title="Create new category"
-                >
-                  <Plus className="h-3 w-3" />
-                  {creatingCategory ? 'Creating...' : 'New Category'}
-                </button>
+                {isAdminOrOwner(user) && (
+                  <button
+                    type="button"
+                    onClick={openCategoryPrompt}
+                    disabled={creatingCategory}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
+                    title="Create new category"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {creatingCategory ? 'Creating...' : 'New Category'}
+                  </button>
+                )}
               </div>
               <Select
                 options={categories}
@@ -885,16 +897,18 @@ const ExpensesPage = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Category <span className="text-red-500">*</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={openCategoryPrompt}
-                  disabled={creatingCategory}
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
-                  title="Create new category"
-                >
-                  <Plus className="h-3 w-3" />
-                  {creatingCategory ? 'Creating...' : 'New Category'}
-                </button>
+                {isAdminOrOwner(user) && (
+                  <button
+                    type="button"
+                    onClick={openCategoryPrompt}
+                    disabled={creatingCategory}
+                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
+                    title="Create new category"
+                  >
+                    <Plus className="h-3 w-3" />
+                    {creatingCategory ? 'Creating...' : 'New Category'}
+                  </button>
+                )}
               </div>
               <Select
                 options={categories}

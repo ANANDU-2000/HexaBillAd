@@ -3,6 +3,8 @@ import { useBranding } from '../contexts/TenantBrandingContext'
 
 const Logo = ({ className = '', showText = true, size = 'default' }) => {
   const { companyName, companyLogo } = useBranding()
+  const [logoError, setLogoError] = React.useState(false)
+  React.useEffect(() => { setLogoError(false) }, [companyLogo])
 
   const sizeClasses = {
     small: 'h-8 w-8',
@@ -14,26 +16,31 @@ const Logo = ({ className = '', showText = true, size = 'default' }) => {
   const textSizeClasses = {
     small: 'text-sm',
     default: 'text-base',
-    large: 'text-xl',
-    xl: 'text-2xl'
+    large: 'text-2xl',
+    xl: 'text-3xl'
   }
 
   const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/api\/?$/, '')
   const logoSrc = companyLogo?.startsWith('http') ? companyLogo : companyLogo ? `${apiBase}${companyLogo.startsWith('/') ? '' : '/'}${companyLogo}` : null
 
   return (
-    <div className={`flex items-center space-x-2 ${className}`}>
-      <div className={`${sizeClasses[size]} bg-primary-600 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0`}>
-        {logoSrc ? (
-          <img src={logoSrc} alt={companyName} className="w-full h-full object-contain" />
-        ) : companyName === 'HexaBill' ? (
-          <span className="w-full h-full flex items-center justify-center text-white font-bold" style={{ fontSize: '1.1em' }}>H</span>
+    <div className={`flex items-center space-x-3 ${className}`}>
+      <div className={`${sizeClasses[size]} ${!logoSrc && (companyName === 'HexaBill' || !companyName) ? '' : 'bg-primary-600 rounded-lg'} flex items-center justify-center overflow-hidden flex-shrink-0`}>
+        {logoSrc && !logoError ? (
+          <img
+            src={logoSrc}
+            alt={companyName}
+            className="w-full h-full object-contain"
+            onError={() => setLogoError(true)}
+          />
+        ) : companyName === 'HexaBill' || !companyName ? (
+          <img src="/hexabill-logo.svg" alt="HexaBill" className="w-full h-full object-contain" />
         ) : (
           <span className="text-white font-bold text-xl">{companyName.charAt(0).toUpperCase()}</span>
         )}
       </div>
       {showText && (
-        <div className={`font-semibold text-neutral-900 ${textSizeClasses[size]} hidden sm:block truncate`}>
+        <div className={`font-bold tracking-tight text-neutral-900 ${textSizeClasses[size]} hidden sm:block truncate`}>
           {companyName}
         </div>
       )}

@@ -24,7 +24,8 @@ import {
   Activity,
   Package,
   Zap,
-  FileText
+  FileText,
+  Copy
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { LoadingCard } from '../../components/Loading'
@@ -164,6 +165,8 @@ const UsersPage = () => {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showCredentialsModal, setShowCredentialsModal] = useState(false)
+  const [createdCredentials, setCreatedCredentials] = useState(null)
   const [selectedUser, setSelectedUser] = useState(null)
   const [loadingAction, setLoadingAction] = useState(false)
 
@@ -240,6 +243,7 @@ const UsersPage = () => {
   useEffect(() => {
     if (isAdminOrOwner(currentUser)) {
       fetchUsers()
+      fetchBranchesAndRoutes()
     }
   }, [])
 
@@ -290,10 +294,12 @@ const UsersPage = () => {
       }
       const response = await adminAPI.createUser(payload)
       if (response?.success) {
-        toast.success('User created successfully!')
         setShowAddModal(false)
         resetAdd()
         fetchUsers()
+        setCreatedCredentials({ email: data.email, password: data.password || '' })
+        setShowCredentialsModal(true)
+        toast.success('User created. Copy credentials below.')
       } else {
         toast.error(response?.message || 'Failed to create user')
       }
@@ -462,6 +468,9 @@ const UsersPage = () => {
                     Role
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                    Assigned (Branch / Route)
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Created
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
@@ -472,7 +481,7 @@ const UsersPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+                    <td colSpan="7" className="px-6 py-8 text-center text-gray-500 text-sm">
                       {searchTerm ? 'No users found matching your search' : 'No users found. Add your first user.'}
                     </td>
                   </tr>
@@ -515,11 +524,42 @@ const UsersPage = () => {
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px]">
+                        {user.role?.toLowerCase() === 'staff' ? (
+                          (() => {
+                            const branchIds = user.assignedBranchIds || []
+                            const routeIds = user.assignedRouteIds || []
+                            const branchNames = branchIds.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean).join(', ') || '—'
+                            const routeNames = routeIds.map(rid => routes.find(r => r.id === rid)?.name).filter(Boolean).join(', ') || '—'
+                            return (
+                              <span className="text-xs">
+                                {branchNames !== '—' || routeNames !== '—' ? (
+                                  <>Branch: {branchNames} · Route: {routeNames}</>
+                                ) : (
+                                  <span className="text-amber-600">Not assigned</span>
+                                )}
+                              </span>
+                            )
+                          })()
+                        ) : (
+                          <span className="text-neutral-400">—</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => {
+                              const text = `Email: ${user.email}`
+                              navigator.clipboard.writeText(text).then(() => toast.success('Email copied'))
+                            }}
+                            className="text-gray-500 hover:text-gray-800 p-2 hover:bg-gray-100 rounded transition"
+                            title="Copy email"
+                          >
+                            <Copy className="h-5 w-5" />
+                          </button>
                           {(isOwner(currentUser) || user.role?.toLowerCase() !== 'owner') && (
                             <button
                               onClick={() => openEditModal(user)}
@@ -585,6 +625,37 @@ const UsersPage = () => {
       </div>
 
       {/* Add User Modal - tabbed for shorter vertical layout */}
+      {/* Copy credentials modal - shown once after creating a user */}
+      <Modal
+        isOpen={showCredentialsModal && !!createdCredentials}
+        onClose={() => {
+          setShowCredentialsModal(false)
+          setCreatedCredentials(null)
+        }}
+        title="User created – copy credentials"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">Share these with the user. Password cannot be shown again.</p>
+          <div className="bg-gray-50 rounded-lg p-4 font-mono text-sm space-y-1">
+            <p><span className="text-gray-500">Email:</span> {createdCredentials?.email}</p>
+            {createdCredentials?.password && <p><span className="text-gray-500">Password:</span> {createdCredentials.password}</p>}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              const text = createdCredentials?.password
+                ? `Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`
+                : `Email: ${createdCredentials?.email}`
+              navigator.clipboard.writeText(text).then(() => toast.success('Credentials copied'))
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+          >
+            <Copy className="h-4 w-4" />
+            Copy credentials
+          </button>
+        </div>
+      </Modal>
+
       <Modal
         isOpen={showAddModal}
         onClose={() => {

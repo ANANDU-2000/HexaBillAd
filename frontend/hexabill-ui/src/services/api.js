@@ -400,8 +400,14 @@ api.interceptors.response.use(
       }
       // If no token: silent fail (e.g. BrandingProvider on login page) - no toast, no redirect
     } else if (error.response?.status >= 500) {
-      // Server errors - throttle heavily to avoid repeated toasts for branches/routes/reports
       connectionManager.markConnected()
+      // Duplicate payment check failure: do not show scary error; caller proceeds with payment
+      const url = (error.config?.url || '').toLowerCase()
+      if (url.includes('duplicate-check')) {
+        error._handledByInterceptor = true
+        return Promise.reject(error)
+      }
+      // Server errors - throttle heavily to avoid repeated toasts for branches/routes/reports
       const now = Date.now()
       if (lastServerErrorToast && (now - lastServerErrorToast) < SERVER_ERROR_THROTTLE_MS) {
         return Promise.reject(error)

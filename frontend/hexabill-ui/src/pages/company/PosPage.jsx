@@ -73,6 +73,8 @@ const PosPage = () => {
   const [routes, setRoutes] = useState([])
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedRouteId, setSelectedRouteId] = useState('')
+  const [staffHasNoAssignments, setStaffHasNoAssignments] = useState(false)
+  const [nextInvoiceNumberPreview, setNextInvoiceNumberPreview] = useState('')
 
   // Hold/Resume invoice — saved to localStorage
   const [heldInvoices, setHeldInvoices] = useState(() => {
@@ -121,8 +123,11 @@ const PosPage = () => {
   const loadCustomers = useCallback(async () => {
     try {
       const response = await customersAPI.getCustomers({ pageSize: 100 })
-      if (response.success) {
-        setCustomers(response.data.items)
+      if (response.success && response.data?.items) {
+        // Dedupe by id so the same customer never appears twice (e.g. after invoice or refetch)
+        const byId = new Map()
+        response.data.items.forEach(c => { if (c?.id != null && !byId.has(c.id)) byId.set(c.id, c) })
+        setCustomers(Array.from(byId.values()))
       }
     } catch (error) {
       if (!error?._handledByInterceptor) toast.error('Failed to load customers')
@@ -132,7 +137,7 @@ const PosPage = () => {
   const loadBranchesAndRoutes = useCallback(async () => {
     try {
       const isManagerOrAdmin = user?.role === 'Owner' || user?.role === 'Admin' || user?.role === 'Manager'
-      // RISK-4: Staff use server-side assigned routes (not localStorage) to prevent spoofing
+      // Single source of truth for Staff: always use server assignments (never rely only on login)
       let serverAssignedRouteIds = []
       let serverAssignedBranchIds = []
       if (!isManagerOrAdmin) {
@@ -142,7 +147,14 @@ const PosPage = () => {
             serverAssignedRouteIds = meRes.data.assignedRouteIds || []
             serverAssignedBranchIds = meRes.data.assignedBranchIds || []
           }
-        } catch (_) { /* fallback to localStorage if API fails */ }
+        } catch (_) { /* API failure: keep empty so Staff see no branches */ }
+        if (serverAssignedBranchIds.length === 0 && serverAssignedRouteIds.length === 0) {
+          setStaffHasNoAssignments(true)
+        } else {
+          setStaffHasNoAssignments(false)
+        }
+      } else {
+        setStaffHasNoAssignments(false)
       }
 
       const [bRes, rRes] = await Promise.all([
@@ -152,24 +164,97 @@ const PosPage = () => {
 
       if (bRes?.success && bRes?.data) {
         let branchList = bRes.data
-        if (!isManagerOrAdmin && (serverAssignedBranchIds.length > 0 || user?.assignedBranchIds?.length > 0)) {
-          const allowedBranchIds = serverAssignedBranchIds.length > 0 ? serverAssignedBranchIds : (user.assignedBranchIds || [])
-          branchList = branchList.filter(b => allowedBranchIds.includes(b.id))
-          if (branchList.length === 1) setSelectedBranchId(String(branchList[0].id))
+        if (!isManagerOrAdmin) {
+          if (serverAssignedBranchIds.length > 0) {
+            branchList = branchList.filter(b => serverAssignedBranchIds.includes(b.id))
+            if (branchList.length === 1) setSelectedBranchId(String(branchList[0].id))
+          } else {
+            branchList = []
+          }
         }
         setBranches(branchList)
       }
 
       if (rRes?.success && rRes?.data) {
         let routeList = rRes.data
-        if (!isManagerOrAdmin && (serverAssignedRouteIds.length > 0 || user?.assignedRouteIds?.length > 0)) {
-          const allowedRouteIds = serverAssignedRouteIds.length > 0 ? serverAssignedRouteIds : (user.assignedRouteIds || [])
-          routeList = routeList.filter(r => allowedRouteIds.includes(r.id))
-          if (routeList.length === 1) setSelectedRouteId(String(routeList[0].id))
+        if (!isManagerOrAdmin) {
+          if (serverAssignedRouteIds.length > 0) {
+            routeList = routeList.filter(r => serverAssignedRouteIds.includes(r.id))
+            if (routeList.length === 1) setSelectedRouteId(String(routeList[0].id))
+          } else {
+            routeList = []
+          }
         }
         setRoutes(routeList)
       }
     } catch (_) { /* ignore */ }
+  }, [user])
+
+  // Auto-select branch and route for restricted staff
+  useEffect(() => {
+    if (!user || isAdminOrOwner(user)) return
+
+    // Auto-select Branch if only 1 is available
+    if (branches.length === 1 && !selectedBranchId) {
+      setSelectedBranchId(String(branches[0].id))
+    }
+
+    // Auto-select Route if only 1 is available (considering branch filter)
+    const availableRoutes = selectedBranchId
+      ? routes.filter(r => r.branchId === parseInt(selectedBranchId))
+      : routes
+
+    if (availableRoutes.length === 1 && !selectedRouteId) {
+      setSelectedRouteId(String(availableRoutes[0].id))
+    }
+  }, [branches, routes, user, selectedBranchId, selectedRouteId])
+
+  // Auto-fill Branch and Route from selected customer (Owner/Staff see customer's assigned branch/route)
+  useEffect(() => {
+    if (!selectedCustomer?.id) return
+    const bid = selectedCustomer.branchId != null ? Number(selectedCustomer.branchId) : null
+    const rid = selectedCustomer.routeId != null ? Number(selectedCustomer.routeId) : null
+    if (bid != null && branches.some(b => b.id === bid)) {
+      setSelectedBranchId(String(bid))
+    }
+    if (rid != null && routes.some(r => r.id === rid)) {
+      setSelectedRouteId(String(rid))
+    }
+  }, [selectedCustomer?.id, selectedCustomer?.branchId, selectedCustomer?.routeId, branches, routes])
+
+  // If customer was selected but has no branchId/routeId (e.g. stale list or temp object), fetch full customer and set branch/route
+  useEffect(() => {
+    if (!selectedCustomer?.id || selectedCustomer.id === 'cash') return
+    const hasBranchOrRoute = selectedCustomer.branchId != null || selectedCustomer.routeId != null
+    if (hasBranchOrRoute) return
+    let cancelled = false
+    customersAPI.getCustomer(selectedCustomer.id)
+      .then(res => {
+        if (cancelled) return
+        const data = res?.data ?? res
+        if (!data?.id) return
+        const bid = data.branchId != null ? Number(data.branchId) : null
+        const rid = data.routeId != null ? Number(data.routeId) : null
+        if (bid != null && branches.some(b => b.id === bid)) setSelectedBranchId(String(bid))
+        if (rid != null && routes.some(r => r.id === rid)) setSelectedRouteId(String(rid))
+        setSelectedCustomer(prev => prev && prev.id === data.id ? { ...prev, branchId: data.branchId, routeId: data.routeId } : prev)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [selectedCustomer?.id])
+
+  // Fetch next invoice number for display (real number instead of "Auto-generated")
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    salesAPI.getNextInvoiceNumber()
+      .then(res => {
+        if (cancelled) return
+        const num = res?.data ?? res?.invoiceNo ?? res
+        if (typeof num === 'string' && num) setNextInvoiceNumberPreview(num)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
   }, [user])
 
   // Load sale for editing
@@ -374,10 +459,12 @@ const PosPage = () => {
     }
   }, [cart.length])
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-    customer.phone?.includes(customerSearchTerm)
-  )
+  const filteredCustomers = customers
+    .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
+    .filter(customer =>
+      customer.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
+      customer.phone?.includes(customerSearchTerm)
+    )
 
   // Filter products based on search term for each row
   const getFilteredProducts = (rowIndex) => {
@@ -954,7 +1041,9 @@ const PosPage = () => {
           discount: discount || 0,
           payments: (paymentMethod !== 'Pending') ? [{
             method: paymentMethod,
-            amount: paymentAmount ? parseFloat(paymentAmount) : totals.grandTotal
+            amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
+              ? parseFloat(paymentAmount)
+              : (totals.grandTotal || 0)
           }] : [],
           notes: notes || null,
           editReason: editReason || undefined,
@@ -986,10 +1075,12 @@ const PosPage = () => {
           unitPrice: Number(item.unitPrice) || 0
         })).filter(item => item.productId && item.qty > 0 && item.unitPrice > 0), // Filter out invalid items
         discount: discount || 0,
-        // Only include payment if method is not "Pending" and amount is provided or should use full amount
+        // Only include payment if method is not "Pending" - this prevents "Pending" method which causes Enum parse error
         payments: (paymentMethod !== 'Pending') ? [{
           method: paymentMethod,
-          amount: paymentAmount ? parseFloat(paymentAmount) : totals.grandTotal // Use grandTotal if amount not specified
+          amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
+            ? parseFloat(paymentAmount)
+            : (totals.grandTotal || 0) // Use grandTotal if amount not specified, ensure not NaN
         }] : [],
         notes: notes || null,
         editReason: isEditMode ? editReason : undefined,
@@ -1235,6 +1326,11 @@ const PosPage = () => {
     setCustomerChangedDuringEdit(false) // Reset customer change tracking
     setSearchParams({}) // Clear URL params
     setShowProductDropdown({}) // Close all dropdowns
+    setLastCreatedInvoice(null)
+    salesAPI.getNextInvoiceNumber().then(res => {
+      const num = res?.data ?? res?.invoiceNo ?? res
+      if (typeof num === 'string' && num) setNextInvoiceNumberPreview(num)
+    }).catch(() => {})
     // Reset invoice date to today
     const today = new Date()
     setInvoiceDate(today.toISOString().split('T')[0])
@@ -1438,55 +1534,7 @@ const PosPage = () => {
         </div>
       )}
 
-      {/* Branch / Route — Staff users with assigned route see read-only labels; Admin/Owner can change */}
-      {(branches.length > 0 || routes.length > 0) && (() => {
-        const staffHasAssignedRoute = !isAdminOrOwner(user) && (user?.routeId || user?.branchId)
-        const branchName = branches.find(b => String(b.id) === String(selectedBranchId))?.name || 'No branch'
-        const routeName = routes.find(r => String(r.id) === String(selectedRouteId))?.name || 'No route'
-        return (
-          <div className="bg-white border-b border-neutral-200 px-3 py-1.5 flex items-center gap-2 flex-wrap">
-            {staffHasAssignedRoute ? (
-              <>
-                <span className="text-xs text-neutral-500">Branch:</span>
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-sm font-medium text-neutral-700 bg-neutral-100 rounded border border-neutral-200">
-                  <Lock className="h-3.5 w-3.5 text-neutral-500" />
-                  {branchName}
-                </span>
-                <span className="text-xs text-neutral-500">Route:</span>
-                <span className="inline-flex items-center gap-1 px-2 py-1 text-sm font-medium text-neutral-700 bg-neutral-100 rounded border border-neutral-200">
-                  <Lock className="h-3.5 w-3.5 text-neutral-500" />
-                  {routeName}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="text-xs text-neutral-500">Branch:</span>
-                <select
-                  value={selectedBranchId}
-                  onChange={(e) => { setSelectedBranchId(e.target.value); setSelectedRouteId('') }}
-                  className="border border-neutral-300 rounded px-2 py-1 text-sm bg-white min-w-[100px]"
-                  title="Branch for this invoice"
-                >
-                  <option value="">No branch</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-                <span className="text-xs text-neutral-500">Route:</span>
-                <select
-                  value={selectedRouteId}
-                  onChange={(e) => setSelectedRouteId(e.target.value)}
-                  className="border border-neutral-300 rounded px-2 py-1 text-sm bg-white min-w-[100px]"
-                  title="Route for this invoice"
-                >
-                  <option value="">No route</option>
-                  {(selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </>
-            )}
-          </div>
-        )
-      })()}
+
 
       {/* Edit Mode Indicator */}
       {isEditMode && (
@@ -1513,7 +1561,7 @@ const PosPage = () => {
             <span className="font-medium text-blue-700">Invoice No:</span>
             <span className={`ml-1 sm:ml-2 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
               }`}>
-              {isEditMode && editingSale ? editingSale.invoiceNo : '(Auto-generated)'}
+              {isEditMode && editingSale ? editingSale.invoiceNo : (lastCreatedInvoice?.invoiceNo || nextInvoiceNumberPreview || '(Auto-generated)')}
             </span>
             {isEditMode && <span className="ml-2 text-xs text-blue-600">(Read-only)</span>}
           </div>
@@ -1552,7 +1600,7 @@ const PosPage = () => {
                     >
                       <p className="font-medium text-neutral-900">Cash Customer</p>
                     </div>
-                    {customers.filter(c =>
+                    {customers.filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i).filter(c =>
                       c.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
                       c.phone?.includes(customerSearchTerm)
                     ).slice(0, 8).map((c) => (
@@ -1565,12 +1613,12 @@ const PosPage = () => {
                         {c.phone && <p className="text-xs text-neutral-500">{c.phone}</p>}
                       </div>
                     ))}
-                    {customerSearchTerm && customers.filter(c =>
+                    {customerSearchTerm && customers.filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i).filter(c =>
                       c.name?.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
                       c.phone?.includes(customerSearchTerm)
                     ).length === 0 && (
-                      <div className="p-3 text-sm text-neutral-500 text-center">No customers found</div>
-                    )}
+                        <div className="p-3 text-sm text-neutral-500 text-center">No customers found</div>
+                      )}
                   </div>
                 )}
               </div>
@@ -1625,20 +1673,68 @@ const PosPage = () => {
             <div>
               <span className="font-medium text-neutral-600">Invoice No:</span>
               <span className="ml-2 text-neutral-900 font-mono">
-                {isEditMode && editingSale ? editingSale.invoiceNo : '(Auto-generated)'}
+                {isEditMode && editingSale ? editingSale.invoiceNo : (lastCreatedInvoice?.invoiceNo || nextInvoiceNumberPreview || '(Auto-generated)')}
               </span>
             </div>
-            <div className="text-right flex items-center justify-end gap-3">
-              <label className="font-medium text-neutral-600">Invoice Date:</label>
-              <input
-                type="date"
-                value={invoiceDate}
-                onChange={(e) => setInvoiceDate(e.target.value)}
-                className="px-3 py-1.5 border border-neutral-300 rounded-lg text-neutral-900 font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
-              />
-              {isEditMode && (
-                <span className="text-xs text-primary-600">(Editable)</span>
+            <div className="text-right flex items-center justify-end gap-3 flex-wrap">
+              {staffHasNoAssignments && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm w-full sm:w-auto">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <span>No branches or routes assigned. Contact your admin.</span>
+                </div>
               )}
+              {/* Branch Selector */}
+              {!staffHasNoAssignments && branches.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="font-medium text-neutral-600 hidden sm:inline">Branch:</label>
+                  <select
+                    value={selectedBranchId}
+                    onChange={(e) => {
+                      setSelectedBranchId(e.target.value)
+                      // Reset route when branch changes
+                      setSelectedRouteId('')
+                    }}
+                    disabled={(!isAdminOrOwner(user) && branches.length === 1)} // Allow admins to edit even if single branch
+                    className="px-2 py-1.5 border border-neutral-300 rounded-lg text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="">Select Branch</option>
+                    {branches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Route Selector */}
+              {!staffHasNoAssignments && routes.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <label className="font-medium text-neutral-600 hidden sm:inline">Route:</label>
+                  <select
+                    value={selectedRouteId}
+                    onChange={(e) => setSelectedRouteId(e.target.value)}
+                    disabled={(!isAdminOrOwner(user) && !selectedBranchId) || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
+                    className="px-2 py-1.5 border border-neutral-300 rounded-lg text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                  >
+                    <option value="">Select Route</option>
+                    {routes
+                      // Filter routes by selected branch if a branch is selected
+                      .filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
+                      .map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2">
+                <label className="font-medium text-neutral-600 hidden sm:inline">Date:</label>
+                <input
+                  type="date"
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                  className="px-3 py-1.5 border border-neutral-300 rounded-lg text-neutral-900 font-semibold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -2490,13 +2586,16 @@ const PosPage = () => {
                           unitPrice: Number(item.unitPrice)
                         })),
                         discount: discount || 0,
-                        payments: paymentAmount ? [{
+                        payments: (paymentMethod !== 'Pending') ? [{
                           method: paymentMethod,
-                          amount: parseFloat(paymentAmount)
+                          amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
+                            ? parseFloat(paymentAmount)
+                            : (calculateTotals().grandTotal || 0)
                         }] : [],
                         notes: notes || null,
-                        ...(editReason && { editReason: editReason }),
-                        ...(editingSale?.rowVersion && { rowVersion: editingSale.rowVersion })
+                        editReason: editReason, // Actually use the editReason from state/modal
+                        ...(editingSale?.rowVersion && { rowVersion: editingSale.rowVersion }),
+                        invoiceDate: invoiceDate ? `${invoiceDate}T12:00:00.000Z` : undefined
                       }
                       const response = await salesAPI.updateSale(editingSaleId, saleData)
                       if (response.success) {

@@ -23,7 +23,8 @@ import {
   X,
   Edit,
   Trash2,
-  Wallet
+  Wallet,
+  AlertTriangle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../contexts/TenantBrandingContext'
@@ -32,7 +33,7 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, branchesAPI, routesAPI, adminAPI } from '../../services'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, branchesAPI, routesAPI, adminAPI, usersAPI } from '../../services'
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
@@ -116,6 +117,9 @@ const CustomerLedgerPage = () => {
   const [branches, setBranches] = useState([])
   const [routes, setRoutes] = useState([])
   const [staffUsers, setStaffUsers] = useState([])
+  const [staffAssignedBranchIds, setStaffAssignedBranchIds] = useState([])
+  const [staffAssignedRouteIds, setStaffAssignedRouteIds] = useState([])
+  const [staffAssignmentsLoaded, setStaffAssignmentsLoaded] = useState(false)
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })
   const [duplicatePaymentModal, setDuplicatePaymentModal] = useState({ isOpen: false, amount: 0 })
   const pendingPaymentRef = useRef(null) // Store pending payment for duplicate confirm
@@ -219,18 +223,42 @@ const CustomerLedgerPage = () => {
     }
   }
 
-  // Apply staged ledger filters (reduces API calls while user is selecting)
+  // Apply staged ledger filters (reduces API calls while user is selecting); refetch customer list and search so count is correct
   const applyLedgerFilters = () => {
     setDateRange({ from: filterDraft.from, to: filterDraft.to })
     setLedgerBranchId(filterDraft.branchId)
     setLedgerRouteId(filterDraft.routeId)
     setLedgerStaffId(filterDraft.staffId)
+    const branchId = filterDraft.branchId || undefined
+    const routeId = filterDraft.routeId || undefined
+    if (branchId) {
+      fetchCustomers({ branchId, routeId })
+    } else if (isAdminOrOwner(user)) {
+      fetchCustomers()
+    }
+    fetchCustomerSearch(searchTerm || '', 1, false)
   }
 
-  // Load all customers
+  // Initial customer load: Owner/Admin get all; Staff get scoped list after default filter is set
   useEffect(() => {
-    fetchCustomers()
-  }, [])
+    if (!user) return
+    if (isAdminOrOwner(user)) {
+      fetchCustomers()
+    }
+  }, [user])
+
+  // Staff: load customers scoped to default (or current) branch/route once filter is set; if no assignments, stop loading
+  useEffect(() => {
+    if (!user || isAdminOrOwner(user)) return
+    if (staffAssignedBranchIds.length === 0 && staffAssignedRouteIds.length === 0) {
+      setLoading(false)
+      return
+    }
+    const branchId = filterDraft.branchId || ledgerBranchId
+    const routeId = filterDraft.routeId || ledgerRouteId
+    if (!branchId) return
+    fetchCustomers({ branchId, routeId: routeId || undefined })
+  }, [user, filterDraft.branchId, filterDraft.routeId, ledgerBranchId, ledgerRouteId, staffAssignedBranchIds.length, staffAssignedRouteIds.length])
 
   // Load customer from URL parameter
   useEffect(() => {
@@ -263,10 +291,29 @@ const CustomerLedgerPage = () => {
     }
   }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId])
 
-  // Load branches, routes, and staff for ledger filters
+  // Load branches, routes, staff, and (for Staff) server assignments as single source of truth
   useEffect(() => {
     const load = async () => {
       try {
+        if (!isAdminOrOwner(user) && user) {
+          try {
+            const meRes = await usersAPI.getMyAssignedRoutes()
+            if (meRes?.success && meRes?.data) {
+              setStaffAssignedBranchIds(meRes.data.assignedBranchIds || [])
+              setStaffAssignedRouteIds(meRes.data.assignedRouteIds || [])
+            } else {
+              setStaffAssignedBranchIds([])
+              setStaffAssignedRouteIds([])
+            }
+          } catch (_) {
+            setStaffAssignedBranchIds([])
+            setStaffAssignedRouteIds([])
+          }
+        } else {
+          setStaffAssignedBranchIds([])
+          setStaffAssignedRouteIds([])
+        }
+
         const [bRes, rRes] = await Promise.all([
           branchesAPI.getBranches().catch(() => ({ success: false })),
           routesAPI.getRoutes().catch(() => ({ success: false }))
@@ -279,40 +326,39 @@ const CustomerLedgerPage = () => {
             staffList = Array.isArray(uRes.data) ? uRes.data : (uRes.data?.items || [])
           }
         } else {
-          // If staff, just add self
           if (user) staffList = [user]
         }
 
         if (bRes?.success && bRes?.data) setBranches(bRes.data)
         if (rRes?.success && rRes?.data) setRoutes(rRes.data)
         setStaffUsers(staffList)
+        if (!isAdminOrOwner(user)) setStaffAssignmentsLoaded(true)
       } catch (err) {
         console.error('Failed to load filter options:', err)
+        if (!isAdminOrOwner(user)) setStaffAssignmentsLoaded(true)
       }
     }
     load()
   }, [user])
 
-  // Filter branches and routes based on user role
+  // Filter branches and routes based on user role (Staff uses server assignments only)
   const availableBranches = useMemo(() => {
     if (!user) return []
     if (isAdminOrOwner(user)) return branches
-    // If staff has no explicit assignments, they might see all (fallback) or none
-    // Usually we want to restrict. If array exists but empty, return empty.
-    if (user.assignedBranchIds && user.assignedBranchIds.length > 0) {
-      return branches.filter(b => user.assignedBranchIds.includes(b.id))
+    if (staffAssignedBranchIds.length > 0) {
+      return branches.filter(b => staffAssignedBranchIds.includes(b.id))
     }
-    return branches // Fallback: all branches if no assignments defined (legacy behavior)
-  }, [branches, user])
+    return []
+  }, [branches, user, staffAssignedBranchIds])
 
   const availableRoutes = useMemo(() => {
     if (!user) return []
     if (isAdminOrOwner(user)) return routes
-    if (user.assignedRouteIds && user.assignedRouteIds.length > 0) {
-      return routes.filter(r => user.assignedRouteIds.includes(r.id))
+    if (staffAssignedRouteIds.length > 0) {
+      return routes.filter(r => staffAssignedRouteIds.includes(r.id))
     }
-    return routes // Fallback
-  }, [routes, user])
+    return []
+  }, [routes, user, staffAssignedRouteIds])
 
   const availableStaff = useMemo(() => {
     if (!user) return []
@@ -321,13 +367,16 @@ const CustomerLedgerPage = () => {
     return staffUsers.filter(u => u.id === user.id)
   }, [staffUsers, user])
 
-  // Auto-select filters for Staff (sync both applied and draft)
+  // Auto-select filters for Staff: default to first assigned branch and first route of that branch
   useEffect(() => {
     if (user && !isAdminOrOwner(user) && !loading) {
       if (!ledgerBranchId && availableBranches.length > 0) {
         const branchIdStr = availableBranches[0].id.toString()
+        const branchRoutes = availableRoutes.filter(r => r.branchId === availableBranches[0].id)
+        const routeIdStr = branchRoutes.length > 0 ? branchRoutes[0].id.toString() : ''
         setLedgerBranchId(branchIdStr)
-        setFilterDraft(prev => ({ ...prev, branchId: branchIdStr, routeId: '' }))
+        setLedgerRouteId(routeIdStr)
+        setFilterDraft(prev => ({ ...prev, branchId: branchIdStr, routeId: routeIdStr }))
       }
       if (!ledgerStaffId && user.id) {
         const staffIdStr = user.id.toString()
@@ -335,7 +384,7 @@ const CustomerLedgerPage = () => {
         setFilterDraft(prev => ({ ...prev, staffId: staffIdStr }))
       }
     }
-  }, [user, availableBranches, ledgerBranchId, ledgerStaffId, loading])
+  }, [user, availableBranches, availableRoutes, ledgerBranchId, ledgerRouteId, ledgerStaffId, loading])
 
   // Refresh data when window regains focus (e.g., returning from POS edit)
   useEffect(() => {
@@ -426,10 +475,13 @@ const CustomerLedgerPage = () => {
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [selectedCustomer])
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = async (opts = {}) => {
     try {
       setLoading(true)
-      const response = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
+      const params = { page: 1, pageSize: 1000 }
+      if (opts.branchId) params.branchId = typeof opts.branchId === 'number' ? opts.branchId : parseInt(opts.branchId, 10)
+      if (opts.routeId) params.routeId = typeof opts.routeId === 'number' ? opts.routeId : parseInt(opts.routeId, 10)
+      const response = await customersAPI.getCustomers(params)
       if (response.success && response.data) {
         setCustomers(response.data.items || [])
       }
@@ -1285,7 +1337,7 @@ const CustomerLedgerPage = () => {
     const isCashCustomer = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
 
     try {
-    if (isAllocate) {
+      if (isAllocate) {
         const allocations = outstandingInvoices
           .filter(inv => (Number(inv.balanceAmount) || 0) > 0)
           .map(inv => ({ invoiceId: inv.id, amount: Number(inv.balanceAmount) || 0 }))
@@ -1686,6 +1738,17 @@ const CustomerLedgerPage = () => {
   }
 
 
+  if (user && !isAdminOrOwner(user) && staffAssignmentsLoaded && staffAssignedBranchIds.length === 0 && staffAssignedRouteIds.length === 0) {
+    return (
+      <div className="min-h-screen flex flex-col bg-neutral-50 items-center justify-center p-6">
+        <div className="flex items-center gap-3 px-4 py-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 max-w-md">
+          <AlertTriangle className="h-8 w-8 shrink-0" />
+          <p className="text-sm font-medium">No branches or routes assigned. Contact your admin.</p>
+        </div>
+      </div>
+    )
+  }
+
   if (loading && !selectedCustomer) {
     return <LoadingCard message="Loading customers..." />
   }
@@ -1750,6 +1813,39 @@ const CustomerLedgerPage = () => {
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        {/* Branch / Route filters for customer list - visible before selecting a customer */}
+        <div className="bg-neutral-100/80 border-b border-neutral-200 px-3 py-2 flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-medium text-neutral-600">Filter:</span>
+          <select
+            value={filterDraft.branchId}
+            onChange={(e) => {
+              const v = e.target.value
+              setFilterDraft(prev => ({ ...prev, branchId: v, routeId: '' }))
+              setLedgerBranchId(v)
+              setLedgerRouteId('')
+            }}
+            className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+            title="Filter customers by branch"
+          >
+            <option value="">All branches</option>
+            {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+          <select
+            value={filterDraft.routeId}
+            onChange={(e) => {
+              const v = e.target.value
+              setFilterDraft(prev => ({ ...prev, routeId: v }))
+              setLedgerRouteId(v)
+            }}
+            className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+            title="Filter customers by route"
+          >
+            <option value="">All routes</option>
+            {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </div>
         {/* TOP BAR - Customer Search: full width, design-lock */}
         <div className="bg-neutral-50 border-b border-neutral-200 p-3 sm:p-4 flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-0 max-w-full lg:max-w-xl">
@@ -1985,7 +2081,7 @@ const CustomerLedgerPage = () => {
                           window.URL.revokeObjectURL(url)
                           document.body.removeChild(a)
                           toast.dismiss(loadingToast)
-                            toast.success('PDF downloaded!', { id: 'invoice-pdf-download', duration: 3000 })
+                          toast.success('PDF downloaded!', { id: 'invoice-pdf-download', duration: 3000 })
                         } catch (error) {
                           console.error('Failed to export pending bills PDF:', error)
                           toast.dismiss()
@@ -2107,19 +2203,25 @@ const CustomerLedgerPage = () => {
                   className="w-36"
                 />
                 <span className="text-neutral-400 mx-1">|</span>
+
+                {/* Branch Filter */}
                 <select
                   value={filterDraft.branchId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
                   title="Filter by branch"
                 >
                   {isAdminOrOwner(user) && <option value="">All branches</option>}
                   {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
+
+                {/* Route Filter */}
                 <select
                   value={filterDraft.routeId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
                   title="Filter by route"
                 >
                   {isAdminOrOwner(user) && <option value="">All routes</option>}
@@ -2127,15 +2229,19 @@ const CustomerLedgerPage = () => {
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
+
+                {/* Staff Filter */}
                 <select
                   value={filterDraft.staffId}
                   onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                  className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                  disabled={!isAdminOrOwner(user)}
                   title="Filter by staff"
                 >
                   {isAdminOrOwner(user) && <option value="">All staff</option>}
                   {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
                 </select>
+
                 <button
                   type="button"
                   onClick={applyLedgerFilters}
@@ -2610,13 +2716,13 @@ const CustomerLedgerPage = () => {
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 {...customerRegister('phone', {
-                validate: (v) => {
-                  const s = (v || '').trim()
-                  if (!s) return true
-                  const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
-                  return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
-                }
-              })}
+                  validate: (v) => {
+                    const s = (v || '').trim()
+                    if (!s) return true
+                    const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
+                    return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
+                  }
+                })}
               />
               {customerErrors.phone && (
                 <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>
@@ -2842,13 +2948,13 @@ const CustomerLedgerPage = () => {
                 placeholder="+971 50 123 4567 or 050 123 4567"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 {...customerRegister('phone', {
-                validate: (v) => {
-                  const s = (v || '').trim()
-                  if (!s) return true
-                  const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
-                  return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
-                }
-              })}
+                  validate: (v) => {
+                    const s = (v || '').trim()
+                    if (!s) return true
+                    const uaePhone = /^(\+971|0)(5[0-9]|[1-9])[0-9]{7}$/
+                    return uaePhone.test(s.replace(/\s/g, '')) || 'Enter valid UAE phone (+971... or 05X...)'
+                  }
+                })}
               />
               {customerErrors.phone && (
                 <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>
@@ -3313,6 +3419,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onViewPDF, onEditInvoice, onPayInvoice, onUnlockInvoice, onDeleteInvoice }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
+
+  // Sort by date descending (latest first), then by id descending for stable order
+  const sortedInvoices = React.useMemo(() => {
+    return [...(invoices || [])].sort((a, b) => {
+      const dA = new Date(a.invoiceDate || a.date || 0).getTime()
+      const dB = new Date(b.invoiceDate || b.date || 0).getTime()
+      if (dB !== dA) return dB - dA
+      return (b.id ?? 0) - (a.id ?? 0)
+    })
+  }, [invoices])
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case 'paid': return 'bg-green-100 text-green-800'
@@ -3331,9 +3448,15 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
     }
   }
 
-  const totalInvoices = invoices.length
-  const totalPending = outstandingInvoices.reduce((sum, inv) => sum + inv.balanceAmount, 0)
-  const totalPaid = invoices
+  const totalInvoices = sortedInvoices.length
+  // Use table data for totals so footer matches visible rows (avoids stale outstandingInvoices)
+  const totalPending = sortedInvoices.reduce((sum, inv) => {
+    const paid = inv.paidAmount ?? 0
+    const total = inv.grandTotal || inv.total || 0
+    const balance = Math.max(0, total - paid)
+    return sum + balance
+  }, 0)
+  const totalPaid = sortedInvoices
     .filter(inv => inv.paymentStatus === 'Paid')
     .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0)
 
@@ -3355,14 +3478,14 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {invoices.length === 0 ? (
+              {sortedInvoices.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
                     No invoices found
                   </td>
                 </tr>
               ) : (
-                invoices.map((invoice) => {
+                sortedInvoices.map((invoice) => {
                   // Use the actual paidAmount from backend, or calculate from grandTotal
                   const paidAmount = invoice.paidAmount ?? 0
                   const grandTotal = invoice.grandTotal || invoice.total || 0
@@ -3482,12 +3605,12 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
 
       {/* Invoices Cards - Mobile */}
       <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
-        {invoices.length === 0 ? (
+        {sortedInvoices.length === 0 ? (
           <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
             No invoices found
           </div>
         ) : (
-          invoices.map((invoice) => {
+          sortedInvoices.map((invoice) => {
             const paidAmount = invoice.paidAmount ?? 0
             const grandTotal = invoice.grandTotal || invoice.total || 0
             const balance = grandTotal - paidAmount

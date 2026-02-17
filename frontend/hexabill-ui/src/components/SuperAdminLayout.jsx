@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { 
+import {
   LayoutDashboard,
   Building2,
   DollarSign,
@@ -13,7 +13,9 @@ import {
   Shield,
   Activity,
   ClipboardList,
-  AlertCircle
+  AlertCircle,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 import Logo from './Logo'
 
@@ -22,6 +24,7 @@ const SuperAdminLayout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const profileDropdownRef = useRef(null)
 
@@ -52,7 +55,7 @@ const SuperAdminLayout = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile Header - Premium Design */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-blue-900 to-blue-800 text-white shadow-xl z-50 border-b border-blue-700">
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-gradient-to-r from-indigo-900 to-indigo-800 text-white shadow-xl z-50 border-b border-indigo-700">
         <div className="flex items-center justify-between px-4 py-3">
           <button
             type="button"
@@ -61,7 +64,7 @@ const SuperAdminLayout = () => {
               e.stopPropagation()
               setSidebarOpen(true)
             }}
-            className="p-2.5 rounded-xl hover:bg-blue-700 active:bg-blue-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-600 transition-all duration-200 touch-manipulation shadow-md"
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6" />
@@ -76,7 +79,7 @@ const SuperAdminLayout = () => {
               e.preventDefault()
               navigate('/profile')
             }}
-            className="p-2.5 rounded-xl hover:bg-blue-700 active:bg-blue-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-xl hover:bg-indigo-700 active:bg-indigo-600 transition-all duration-200 touch-manipulation shadow-md"
             aria-label="Profile"
           >
             <User className="h-5 w-5" />
@@ -86,17 +89,17 @@ const SuperAdminLayout = () => {
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-[60] lg:hidden"
           aria-modal="true"
         >
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 transition-opacity"
             onClick={() => setSidebarOpen(false)}
             onTouchEnd={() => setSidebarOpen(false)}
           />
-          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] flex flex-col bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900 text-white shadow-lg transform transition-transform duration-300 ease-in-out border-r border-blue-700">
-            <div className="flex h-16 items-center justify-between px-6 border-b border-blue-700 bg-blue-900/50">
+          <div className="fixed inset-y-0 left-0 w-80 max-w-[85vw] flex flex-col bg-gradient-to-b from-indigo-900 via-indigo-800 to-indigo-900 text-white shadow-lg transform transition-transform duration-300 ease-in-out border-r border-indigo-700">
+            <div className="flex h-16 items-center justify-between px-6 border-b border-indigo-700 bg-indigo-900/50">
               <div className="flex items-center gap-3">
                 <Logo size="default" showText={false} />
                 <span className="text-lg font-bold">Platform Menu</span>
@@ -104,7 +107,7 @@ const SuperAdminLayout = () => {
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-xl hover:bg-blue-700 active:bg-blue-600 touch-manipulation transition-all duration-200"
+                className="p-2 rounded-xl hover:bg-indigo-700 active:bg-indigo-600 touch-manipulation transition-all duration-200"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -117,23 +120,22 @@ const SuperAdminLayout = () => {
                     key={item.name}
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3.5 text-base font-semibold rounded-xl touch-manipulation transition-all duration-200 ${
-                      isActive(item.href)
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50'
-                        : 'text-blue-100 hover:bg-blue-700/50 active:bg-blue-600'
-                    }`}
+                    className={`flex items-center px-4 py-3.5 text-base font-semibold rounded-xl touch-manipulation transition-all duration-200 ${isActive(item.href)
+                      ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-500/50'
+                      : 'text-indigo-100 hover:bg-indigo-700/50 active:bg-indigo-600'
+                      }`}
                   >
-                    <Icon className={`mr-4 h-5 w-5 ${isActive(item.href) ? 'text-white' : 'text-blue-300'}`} />
+                    <Icon className={`mr-4 h-5 w-5 ${isActive(item.href) ? 'text-white' : 'text-indigo-300'}`} />
                     {item.name}
                   </Link>
                 )
               })}
             </nav>
-            <div className="border-t border-blue-700 p-4 space-y-2 bg-blue-900/30">
+            <div className="border-t border-indigo-700 p-4 space-y-2 bg-indigo-900/30">
               <Link
                 to="/profile"
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center px-4 py-3 text-base font-semibold rounded-xl text-blue-100 hover:bg-blue-700 active:bg-blue-600 touch-manipulation transition-all duration-200"
+                className="flex items-center px-4 py-3 text-base font-semibold rounded-xl text-indigo-100 hover:bg-indigo-700 active:bg-indigo-600 touch-manipulation transition-all duration-200"
               >
                 <User className="mr-4 h-5 w-5" />
                 My Profile
@@ -154,56 +156,70 @@ const SuperAdminLayout = () => {
         </div>
       )}
 
-      {/* Desktop sidebar - Premium Blue Theme */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900 text-white shadow-lg border-r border-blue-700">
-          {/* Logo Section */}
-          <div className="flex items-center px-6 py-5 border-b border-blue-700">
-            <Logo size="default" showText={false} className="mr-3" />
-            <div>
-              <h2 className="text-lg font-bold">HexaBill</h2>
-              <p className="text-xs text-blue-300">Platform Admin</p>
+      {/* Desktop sidebar - Premium Blue Theme (collapsible) */}
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-72'}`}>
+        <div className="flex flex-col flex-grow bg-gradient-to-b from-indigo-900 via-indigo-800 to-indigo-900 text-white shadow-lg border-r border-indigo-700">
+          {/* Logo Section + Toggle */}
+          <div className={`flex items-center border-b border-indigo-700 py-5 ${sidebarCollapsed ? 'flex-col gap-3 px-2' : 'justify-between px-4'}`}>
+            <div className={`flex items-center overflow-hidden ${sidebarCollapsed ? 'justify-center' : 'flex-1 min-w-0'}`}>
+              <Logo size="default" showText={false} className="flex-shrink-0" />
+              {!sidebarCollapsed && (
+                <div className="ml-3 min-w-0">
+                  <h2 className="text-lg font-bold truncate">HexaBill</h2>
+                  <p className="text-xs text-indigo-300 truncate">Platform Admin</p>
+                </div>
+              )}
             </div>
+            <button
+              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              className="p-2 rounded-lg hover:bg-indigo-700 text-indigo-200 hover:text-white transition-all flex-shrink-0"
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+            </button>
           </div>
-          
+
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+          <nav className="flex-1 px-2 py-6 space-y-2 overflow-y-auto">
             {navigation.map((item) => {
               const Icon = item.icon
               return (
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`group flex items-center px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 ${
-                    isActive(item.href)
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50'
-                      : 'text-blue-100 hover:bg-blue-700/50 hover:text-white'
-                  }`}
+                  title={sidebarCollapsed ? item.name : undefined}
+                  className={`group flex items-center rounded-xl transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+                    } ${isActive(item.href)
+                      ? 'bg-gradient-to-r from-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-500/50'
+                      : 'text-indigo-100 hover:bg-indigo-700/50 hover:text-white'
+                    }`}
                 >
-                  <Icon className={`h-5 w-5 mr-3 ${isActive(item.href) ? 'text-white' : 'text-blue-300 group-hover:text-white'}`} />
-                  <span>{item.name}</span>
+                  <Icon className={`h-5 w-5 flex-shrink-0 ${isActive(item.href) ? 'text-white' : 'text-indigo-300 group-hover:text-white'}`} />
+                  {!sidebarCollapsed && <span className="ml-3 text-sm font-semibold">{item.name}</span>}
                 </Link>
               )
             })}
           </nav>
-          
+
           {/* Logout Section */}
-          <div className="border-t border-blue-700 p-4">
+          <div className="border-t border-indigo-700 p-2">
             <button
               onClick={logout}
-              className="flex items-center w-full px-4 py-3 text-sm font-semibold text-red-200 hover:text-white hover:bg-red-600/20 rounded-xl transition-all duration-200"
+              title={sidebarCollapsed ? 'Sign Out' : undefined}
+              className={`flex items-center w-full text-sm font-semibold text-red-200 hover:text-white hover:bg-red-600/20 rounded-xl transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+                }`}
             >
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Sign Out</span>
+              <LogOut className="h-5 w-5 flex-shrink-0" />
+              {!sidebarCollapsed && <span className="ml-3">Sign Out</span>}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="lg:pl-72">
+      {/* Main content - full width, dynamic padding for sidebar */}
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         {/* Top Header Bar - Premium Design */}
-        <div className="hidden lg:block fixed top-0 left-72 right-0 bg-white border-b border-gray-200 shadow-sm z-30">
+        <div className={`hidden lg:block fixed top-0 right-0 bg-white border-b border-gray-200 shadow-sm z-30 transition-all duration-300 ${sidebarCollapsed ? 'left-20' : 'left-72'}`}>
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center space-x-4 flex-1 min-w-0">
               <div className="min-w-0 flex-1">
@@ -212,11 +228,11 @@ const SuperAdminLayout = () => {
               </div>
             </div>
             <div className="flex items-center space-x-3 flex-shrink-0">
-              <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-md">
+              <div className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-lg shadow-md">
                 <Shield className="h-4 w-4" />
                 <span className="text-sm font-semibold">System Admin</span>
               </div>
-              
+
               {/* Profile Dropdown */}
               <div className="relative" ref={profileDropdownRef}>
                 <button
@@ -227,17 +243,17 @@ const SuperAdminLayout = () => {
                     <p className="text-sm font-semibold text-gray-900">{user?.name || 'Admin'}</p>
                     <p className="text-xs text-gray-500">Super Admin</p>
                   </div>
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-md">
                     <User className="h-5 w-5 text-white" />
                   </div>
                   <ChevronDown className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
                 </button>
-                
+
                 {showProfileDropdown && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-indigo-100">
                       <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
-                      <p className="text-xs text-gray-600">Super Admin</p>
+                      <p className="text-xs text-indigo-600">Super Admin</p>
                     </div>
                     <button
                       onClick={() => {
@@ -266,10 +282,10 @@ const SuperAdminLayout = () => {
             </div>
           </div>
         </div>
-        {/* Page content */}
-        <main className="flex-1 pb-6 pt-14 lg:pt-24">
+        {/* Page content - use full available width */}
+        <main className="flex-1 pb-6 pt-14 lg:pt-24 min-w-0">
           <div className="py-1 sm:py-2 lg:py-6">
-            <div className="mx-auto max-w-7xl px-1.5 sm:px-2 lg:px-4 xl:px-8">
+            <div className="w-full px-4 sm:px-6 lg:px-8">
               <Outlet />
             </div>
           </div>
