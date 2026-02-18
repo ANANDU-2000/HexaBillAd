@@ -33,16 +33,18 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, branchesAPI, routesAPI, adminAPI, usersAPI } from '../../services'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI } from '../../services'
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const CustomerLedgerPage = () => {
   const { user } = useAuth()
   const { companyName } = useBranding()
+  const { branches, routes } = useBranchesRoutes()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [paymentLoading, setPaymentLoading] = useState(false) // Separate loading state for payment submission
@@ -114,11 +116,7 @@ const CustomerLedgerPage = () => {
     routeId: '',
     staffId: ''
   }))
-  const [branches, setBranches] = useState([])
-  const [routes, setRoutes] = useState([])
   const [staffUsers, setStaffUsers] = useState([])
-  const [staffAssignedBranchIds, setStaffAssignedBranchIds] = useState([])
-  const [staffAssignedRouteIds, setStaffAssignedRouteIds] = useState([])
   const [staffAssignmentsLoaded, setStaffAssignmentsLoaded] = useState(false)
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })
   const [duplicatePaymentModal, setDuplicatePaymentModal] = useState({ isOpen: false, amount: 0 })
@@ -318,74 +316,31 @@ const CustomerLedgerPage = () => {
     }
   }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId])
 
-  // Load branches, routes, staff, and (for Staff) server assignments as single source of truth
+  // Load staff users only (branches/routes from shared context)
   useEffect(() => {
     const load = async () => {
       try {
-        if (!isAdminOrOwner(user) && user) {
-          try {
-            const meRes = await usersAPI.getMyAssignedRoutes()
-            if (meRes?.success && meRes?.data) {
-              setStaffAssignedBranchIds(meRes.data.assignedBranchIds || [])
-              setStaffAssignedRouteIds(meRes.data.assignedRouteIds || [])
-            } else {
-              setStaffAssignedBranchIds([])
-              setStaffAssignedRouteIds([])
-            }
-          } catch (_) {
-            setStaffAssignedBranchIds([])
-            setStaffAssignedRouteIds([])
-          }
-        } else {
-          setStaffAssignedBranchIds([])
-          setStaffAssignedRouteIds([])
-        }
-
-        const [bRes, rRes] = await Promise.all([
-          branchesAPI.getBranches().catch(() => ({ success: false })),
-          routesAPI.getRoutes().catch(() => ({ success: false }))
-        ])
-
-        let staffList = []
         if (isAdminOrOwner(user)) {
           const uRes = await adminAPI.getUsers().catch(() => ({ success: false }))
           if (uRes?.success && uRes?.data) {
-            staffList = Array.isArray(uRes.data) ? uRes.data : (uRes.data?.items || [])
+            const staffList = Array.isArray(uRes.data) ? uRes.data : (uRes.data?.items || [])
+            setStaffUsers(staffList)
           }
-        } else {
-          if (user) staffList = [user]
+        } else if (user) {
+          setStaffUsers([user])
         }
-
-        if (bRes?.success && bRes?.data) setBranches(bRes.data)
-        if (rRes?.success && rRes?.data) setRoutes(rRes.data)
-        setStaffUsers(staffList)
-        if (!isAdminOrOwner(user)) setStaffAssignmentsLoaded(true)
+        setStaffAssignmentsLoaded(true)
       } catch (err) {
-        console.error('Failed to load filter options:', err)
-        if (!isAdminOrOwner(user)) setStaffAssignmentsLoaded(true)
+        console.error('Failed to load staff users:', err)
+        setStaffAssignmentsLoaded(true)
       }
     }
     load()
   }, [user])
 
-  // Filter branches and routes based on user role (Staff uses server assignments only)
-  const availableBranches = useMemo(() => {
-    if (!user) return []
-    if (isAdminOrOwner(user)) return branches
-    if (staffAssignedBranchIds.length > 0) {
-      return branches.filter(b => staffAssignedBranchIds.includes(b.id))
-    }
-    return []
-  }, [branches, user, staffAssignedBranchIds])
-
-  const availableRoutes = useMemo(() => {
-    if (!user) return []
-    if (isAdminOrOwner(user)) return routes
-    if (staffAssignedRouteIds.length > 0) {
-      return routes.filter(r => staffAssignedRouteIds.includes(r.id))
-    }
-    return []
-  }, [routes, user, staffAssignedRouteIds])
+  // Branches/routes from context - already filtered for Staff
+  const availableBranches = useMemo(() => branches || [], [branches])
+  const availableRoutes = useMemo(() => routes || [], [routes])
 
   const availableStaff = useMemo(() => {
     if (!user) return []

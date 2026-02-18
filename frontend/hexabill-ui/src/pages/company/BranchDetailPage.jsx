@@ -3,17 +3,19 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Building2, ArrowLeft, Plus, Pencil, MapPin, Filter, DollarSign, Trash2, Edit, Users, UserPlus, BarChart3, TrendingUp, ArrowRightLeft } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
-import { branchesAPI, routesAPI, expensesAPI, customersAPI, adminAPI } from '../../services'
+import { branchesAPI, expensesAPI, customersAPI, adminAPI } from '../../services'
 import Modal from '../../components/Modal'
 import { Input, TextArea } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const TABS = ['overview', 'routes', 'staff', 'customers', 'expenses', 'performance', 'report']
 
 const BranchDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { branches: contextBranches, routes: contextRoutes } = useBranchesRoutes()
   const [activeTab, setActiveTab] = useState('overview')
   const [branch, setBranch] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -56,8 +58,8 @@ const BranchDetailPage = () => {
   const [transferTargetBranchId, setTransferTargetBranchId] = useState('')
   const [transferTargetRouteId, setTransferTargetRouteId] = useState('')
   const [transferSaving, setTransferSaving] = useState(false)
-  const [allBranches, setAllBranches] = useState([])
-  const [allRoutes, setAllRoutes] = useState([])
+  const allBranches = (contextBranches || []).filter(b => b.id !== parseInt(id, 10))
+  const allRoutes = contextRoutes || []
   const fetchBranchExpenses = useCallback(async () => {
     if (!id) return
     try {
@@ -157,25 +159,7 @@ const BranchDetailPage = () => {
     }
   }, [activeTab, id])
 
-  useEffect(() => {
-    if (showTransferCustomerModal) {
-      // Load all branches and routes for transfer
-      Promise.all([
-        branchesAPI.getBranches(),
-        routesAPI.getRoutes()
-      ]).then(([branchesRes, routesRes]) => {
-        if (branchesRes?.success && branchesRes?.data) {
-          setAllBranches(branchesRes.data.filter(b => b.id !== parseInt(id, 10))) // Exclude current branch
-        }
-        if (routesRes?.success && routesRes?.data) {
-          setAllRoutes(routesRes.data)
-        }
-      }).catch(() => {
-        setAllBranches([])
-        setAllRoutes([])
-      })
-    }
-  }, [showTransferCustomerModal, id])
+  // allBranches and allRoutes from shared context (no fetch when modal opens)
 
   const applyDateRange = () => {
     setFromDate(dateDraft.from)

@@ -26,10 +26,11 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
-import { expensesAPI, branchesAPI, routesAPI, usersAPI } from '../../services'
+import { expensesAPI } from '../../services'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import {
   PieChart as RechartsPieChart,
@@ -41,6 +42,7 @@ import {
 
 const ExpensesPage = () => {
   const { user } = useAuth()
+  const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const [expenses, setExpenses] = useState([])
   const [filteredExpenses, setFilteredExpenses] = useState([])
@@ -71,11 +73,7 @@ const ExpensesPage = () => {
   })
 
   const [categories, setCategories] = useState([])
-  const [branches, setBranches] = useState([])
-  const [routes, setRoutes] = useState([])
   const [selectedBranchId, setSelectedBranchId] = useState('')
-  const [staffAssignedBranchIds, setStaffAssignedBranchIds] = useState([])
-  const [staffAssignedRouteIds, setStaffAssignedRouteIds] = useState([])
   const [attachmentFile, setAttachmentFile] = useState(null)
   const [attachmentPreview, setAttachmentPreview] = useState(null)
   const [showRecurringModal, setShowRecurringModal] = useState(false)
@@ -204,57 +202,13 @@ const ExpensesPage = () => {
     setFilteredExpenses(filtered)
   }, [expenses, searchTerm])
 
-  // Load branches, routes, and staff assignments
+  // Auto-select branch if only 1 for staff (branches/routes from shared context)
   useEffect(() => {
-    const loadBranchesAndRoutes = async () => {
-      try {
-        // For staff, get their assigned branches/routes
-        if (user && !isAdminOrOwner(user)) {
-          try {
-            const meRes = await usersAPI.getMyAssignedRoutes()
-            if (meRes?.success && meRes?.data) {
-              setStaffAssignedBranchIds(meRes.data.assignedBranchIds || [])
-              setStaffAssignedRouteIds(meRes.data.assignedRouteIds || [])
-            }
-          } catch (_) {
-            setStaffAssignedBranchIds([])
-            setStaffAssignedRouteIds([])
-          }
-        }
-
-        const [bRes, rRes] = await Promise.all([
-          branchesAPI.getBranches().catch(() => ({ success: false })),
-          routesAPI.getRoutes().catch(() => ({ success: false }))
-        ])
-
-        if (bRes?.success && bRes?.data) {
-          let branchList = bRes.data
-          // Filter branches for staff
-          if (user && !isAdminOrOwner(user) && staffAssignedBranchIds.length > 0) {
-            branchList = branchList.filter(b => staffAssignedBranchIds.includes(b.id))
-          }
-          setBranches(branchList)
-          // Auto-select if only 1 branch for staff
-          if (user && !isAdminOrOwner(user) && branchList.length === 1) {
-            setSelectedBranchId(String(branchList[0].id))
-            setValue('branchId', branchList[0].id)
-          }
-        }
-
-        if (rRes?.success && rRes?.data) {
-          let routeList = rRes.data
-          // Filter routes for staff
-          if (user && !isAdminOrOwner(user) && staffAssignedRouteIds.length > 0) {
-            routeList = routeList.filter(r => staffAssignedRouteIds.includes(r.id))
-          }
-          setRoutes(routeList)
-        }
-      } catch (error) {
-        console.error('Failed to load branches/routes:', error)
-      }
+    if (user && !isAdminOrOwner(user) && branches?.length === 1) {
+      setSelectedBranchId(String(branches[0].id))
+      setValue('branchId', branches[0].id)
     }
-    loadBranchesAndRoutes()
-  }, [user, staffAssignedBranchIds, staffAssignedRouteIds, setValue])
+  }, [user, branches, setValue])
 
   // Filter routes when branch changes
   useEffect(() => {

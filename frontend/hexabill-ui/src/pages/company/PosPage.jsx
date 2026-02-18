@@ -22,10 +22,11 @@ import {
   Package,
   RefreshCw
 } from 'lucide-react'
-import { productsAPI, salesAPI, customersAPI, branchesAPI, routesAPI, usersAPI, settingsAPI } from '../../services'
+import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../services'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -37,6 +38,7 @@ const PosPage = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { companyName } = useBranding()
+  const { branches, routes, staffHasNoAssignments, refresh: refreshBranchesRoutes } = useBranchesRoutes()
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState([])
   const [customers, setCustomers] = useState([])
@@ -71,11 +73,8 @@ const PosPage = () => {
     return today.toISOString().split('T')[0] // YYYY-MM-DD format
   })
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
-  const [branches, setBranches] = useState([])
-  const [routes, setRoutes] = useState([])
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedRouteId, setSelectedRouteId] = useState('')
-  const [staffHasNoAssignments, setStaffHasNoAssignments] = useState(false)
   const [nextInvoiceNumberPreview, setNextInvoiceNumberPreview] = useState('')
   // VAT from company settings; fallback only when settings unavailable (PRODUCTION_MASTER_TODO #4)
   const FALLBACK_VAT_PERCENT = 5
@@ -132,63 +131,7 @@ const PosPage = () => {
     }
   }, [])
 
-  const loadBranchesAndRoutes = useCallback(async () => {
-    try {
-      const isManagerOrAdmin = user?.role === 'Owner' || user?.role === 'Admin' || user?.role === 'Manager'
-      // Single source of truth for Staff: always use server assignments (never rely only on login)
-      let serverAssignedRouteIds = []
-      let serverAssignedBranchIds = []
-      if (!isManagerOrAdmin) {
-        try {
-          const meRes = await usersAPI.getMyAssignedRoutes()
-          if (meRes?.success && meRes?.data) {
-            serverAssignedRouteIds = meRes.data.assignedRouteIds || []
-            serverAssignedBranchIds = meRes.data.assignedBranchIds || []
-          }
-        } catch (_) { /* API failure: keep empty so Staff see no branches */ }
-        if (serverAssignedBranchIds.length === 0 && serverAssignedRouteIds.length === 0) {
-          setStaffHasNoAssignments(true)
-        } else {
-          setStaffHasNoAssignments(false)
-        }
-      } else {
-        setStaffHasNoAssignments(false)
-      }
-
-      const [bRes, rRes] = await Promise.all([
-        branchesAPI.getBranches().catch(() => ({ success: false })),
-        routesAPI.getRoutes().catch(() => ({ success: false }))
-      ])
-
-      if (bRes?.success && bRes?.data) {
-        let branchList = bRes.data
-        if (!isManagerOrAdmin) {
-          if (serverAssignedBranchIds.length > 0) {
-            branchList = branchList.filter(b => serverAssignedBranchIds.includes(b.id))
-            if (branchList.length === 1) setSelectedBranchId(String(branchList[0].id))
-          } else {
-            branchList = []
-          }
-        }
-        setBranches(branchList)
-      }
-
-      if (rRes?.success && rRes?.data) {
-        let routeList = rRes.data
-        if (!isManagerOrAdmin) {
-          if (serverAssignedRouteIds.length > 0) {
-            routeList = routeList.filter(r => serverAssignedRouteIds.includes(r.id))
-            if (routeList.length === 1) setSelectedRouteId(String(routeList[0].id))
-          } else {
-            routeList = []
-          }
-        }
-        setRoutes(routeList)
-      }
-    } catch (_) { /* ignore */ }
-  }, [user])
-
-  // Auto-select branch and route for restricted staff
+  // Auto-select branch and route for restricted staff (branches/routes from shared context)
   useEffect(() => {
     if (!user || isAdminOrOwner(user)) return
 
@@ -375,7 +318,7 @@ const PosPage = () => {
   useEffect(() => {
     loadProducts()
     loadCustomers()
-    loadBranchesAndRoutes()
+    // Branches/routes from shared context - no per-page fetch
     // Auto-refresh products and customers every 60 seconds (reduced frequency)
     // Only refresh if page is visible and not in edit mode
     const refreshInterval = setInterval(() => {
@@ -413,7 +356,7 @@ const PosPage = () => {
       document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [loadProducts, loadCustomers, loadBranchesAndRoutes])
+  }, [loadProducts, loadCustomers])
 
   // Held invoices are now stored server-side - no localStorage needed
 
@@ -434,7 +377,7 @@ const PosPage = () => {
     if (refreshingData) return
     setRefreshingData(true)
     try {
-      await Promise.all([loadProducts(), loadCustomers(), loadBranchesAndRoutes()])
+      await Promise.all([loadProducts(), loadCustomers(), refreshBranchesRoutes()])
       toast.success('Data refreshed')
     } catch (_) {
       toast.error('Refresh failed')
@@ -456,7 +399,7 @@ const PosPage = () => {
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate)
     }
-  }, [loadProducts, loadCustomers, loadBranchesAndRoutes])
+  }, [loadProducts, loadCustomers])
 
   // Update customer when customers are loaded and we're in edit mode
   // CRITICAL: Only set customer on INITIAL load, not when user changes it

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Building2, Plus, ChevronRight, MapPin, LayoutGrid, Users } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { branchesAPI, routesAPI, adminAPI } from '../../services'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -11,6 +12,7 @@ const BranchesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') === 'routes' ? 'routes' : 'branches'
   const [activeTab, setActiveTab] = useState(initialTab)
+  const { branches: contextBranches, routes: contextRoutes, refresh: refreshBranchesRoutes } = useBranchesRoutes()
 
   const [branches, setBranches] = useState([])
   const [routes, setRoutes] = useState([])
@@ -37,32 +39,15 @@ const BranchesPage = () => {
   }, [activeTab, setSearchParams])
 
   const fetchBranches = async () => {
-    try {
-      const res = await branchesAPI.getBranches()
-      if (res?.success && res?.data) setBranches(res.data)
-      else setBranches([])
-    } catch (err) {
-      if (!err?.isConnectionBlocked) console.error('Fetch branches error:', err)
-      if (activeTab === 'branches') {
-        toast.error(err.response?.data?.message || 'Failed to load branches')
-      }
-      setBranches([])
-    }
+    setBranches(contextBranches || [])
   }
 
   const fetchRoutes = async () => {
-    try {
-      const branchId = routeBranchFilter ? parseInt(routeBranchFilter, 10) : null
-      const res = await routesAPI.getRoutes(branchId)
-      if (res?.success && res?.data) setRoutes(res.data)
-      else setRoutes([])
-    } catch (err) {
-      if (!err?.isConnectionBlocked) console.error('Fetch routes error:', err)
-      if (activeTab === 'routes') {
-        toast.error(err.response?.data?.message || 'Failed to load routes')
-      }
-      setRoutes([])
-    }
+    const branchId = routeBranchFilter ? parseInt(routeBranchFilter, 10) : null
+    const list = branchId
+      ? (contextRoutes || []).filter(r => r.branchId === branchId)
+      : (contextRoutes || [])
+    setRoutes(list)
   }
 
   const fetchStaff = async () => {
@@ -81,20 +66,22 @@ const BranchesPage = () => {
     }
   }
 
-  // Initial load
+  // Initial load from context
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await Promise.all([fetchBranches(), fetchRoutes(), fetchStaff()])
+      fetchBranches()
+      fetchRoutes()
+      await fetchStaff()
       setLoading(false)
     }
     loadData()
-  }, [])
+  }, [contextBranches, contextRoutes, routeBranchFilter])
 
   // Refetch routes when filter changes
   useEffect(() => {
-    if (!loading) fetchRoutes()
-  }, [routeBranchFilter])
+    fetchRoutes()
+  }, [routeBranchFilter, contextRoutes])
 
   const handleCreateBranch = async (e) => {
     e?.preventDefault()
@@ -113,7 +100,7 @@ const BranchesPage = () => {
         toast.success('Branch created')
         setShowBranchModal(false)
         setBranchForm({ name: '', address: '', assignedStaffIds: [] })
-        fetchBranches()
+        refreshBranchesRoutes()
       } else {
         toast.error(res?.message || 'Failed to create branch')
       }
@@ -146,10 +133,7 @@ const BranchesPage = () => {
         toast.success('Route created')
         setShowRouteModal(false)
         setRouteForm({ name: '', branchId: '', assignedStaffIds: [] })
-        // If current filter is different or empty, refresh to show new route (or stay same)
-        fetchRoutes()
-        // Also refresh branches to update counts if needed
-        fetchBranches()
+        refreshBranchesRoutes()
       } else {
         toast.error(res?.message || 'Failed to create route')
       }

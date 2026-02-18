@@ -31,9 +31,10 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { LoadingCard } from '../../components/Loading'
 import Modal from '../../components/Modal'
-import { adminAPI, branchesAPI, routesAPI } from '../../services'
+import { adminAPI } from '../../services'
 import toast from 'react-hot-toast'
 import { isAdminOrOwner, isOwner, getRoleDisplayName } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const DASHBOARD_ITEMS = [
   { id: 'salesToday', label: 'Sales Today Card', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
@@ -159,6 +160,7 @@ const UserAssignments = ({ branches, routes, assignedBranches, assignedRoutes, s
 
 const UsersPage = () => {
   const { user: currentUser, updateUser } = useAuth()
+  const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
@@ -179,8 +181,6 @@ const UsersPage = () => {
   const [sessionsLoading, setSessionsLoading] = useState(false)
 
   const [userModalTab, setUserModalTab] = useState('details') // 'details' | 'access' | 'assignments'
-  const [branches, setBranches] = useState([])
-  const [routes, setRoutes] = useState([])
   const [assignedBranches, setAssignedBranches] = useState([])
   const [assignedRoutes, setAssignedRoutes] = useState([])
 
@@ -209,21 +209,7 @@ const UsersPage = () => {
     setSelectedPermissions(DASHBOARD_ITEMS.map(i => i.id))
     setAssignedBranches([])
     setAssignedRoutes([])
-    fetchBranchesAndRoutes()
     setShowAddModal(true)
-  }
-
-  const fetchBranchesAndRoutes = async () => {
-    try {
-      const [branchesRes, routesRes] = await Promise.all([
-        branchesAPI.getBranches(),
-        routesAPI.getRoutes()
-      ])
-      if (branchesRes?.success) setBranches(branchesRes.data || [])
-      if (routesRes?.success) setRoutes(routesRes.data || [])
-    } catch (error) {
-      console.error('Error loading assignments data:', error)
-    }
   }
 
   const {
@@ -271,7 +257,6 @@ const UsersPage = () => {
   useEffect(() => {
     if (isAdminOrOwner(currentUser)) {
       fetchUsers()
-      fetchBranchesAndRoutes()
     }
   }, [])
 
@@ -406,8 +391,6 @@ const UsersPage = () => {
 
     setShowEditModal(true)
 
-    // Load assignments
-    fetchBranchesAndRoutes()
     setAssignedBranches(user.assignedBranchIds || [])
     setAssignedRoutes(user.assignedRouteIds || [])
   }

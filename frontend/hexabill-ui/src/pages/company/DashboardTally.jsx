@@ -10,21 +10,22 @@ import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGri
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
-import { reportsAPI, alertsAPI, usersAPI, branchesAPI } from '../../services'
+import { reportsAPI, alertsAPI } from '../../services'
 import { isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranding } from '../../contexts/TenantBrandingContext'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const DashboardTally = () => {
     const { user, logout } = useAuth()
     const { companyName } = useBranding()
+    const { branches } = useBranchesRoutes()
     const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [dateRange, setDateRange] = useState('today') // 'today' | 'week' | 'month' | 'custom'
     const [customFromDate, setCustomFromDate] = useState('')
     const [customToDate, setCustomToDate] = useState('')
     const [selectedBranchId, setSelectedBranchId] = useState(null) // For Staff branch filtering
-    const [staffAssignedBranchIds, setStaffAssignedBranchIds] = useState([])
-    const [availableBranches, setAvailableBranches] = useState([])
+    const availableBranches = branches || []
     const [stats, setStats] = useState({
         salesToday: 0,
         expensesToday: 0,
@@ -161,51 +162,15 @@ const DashboardTally = () => {
         }
     }
 
-    // Load Staff assignments and branches
+    // Auto-select branch for Staff (branches from shared context - already filtered)
     useEffect(() => {
-        const loadStaffAssignments = async () => {
-            if (!user || isAdminOrOwner(user)) {
-                setStaffAssignedBranchIds([])
-                setSelectedBranchId(null)
-                return
-            }
-
-            try {
-                // Fetch Staff assignments
-                const meRes = await usersAPI.getMyAssignedRoutes()
-                if (meRes?.success && meRes?.data) {
-                    const branchIds = meRes.data.assignedBranchIds || []
-                    setStaffAssignedBranchIds(branchIds)
-                    
-                    // Auto-select single branch if only one assigned
-                    if (branchIds.length === 1) {
-                        setSelectedBranchId(branchIds[0])
-                    } else if (branchIds.length > 1) {
-                        // If multiple branches, select first one by default
-                        setSelectedBranchId(branchIds[0])
-                    }
-                } else {
-                    setStaffAssignedBranchIds([])
-                    setSelectedBranchId(null)
-                }
-
-                // Fetch branches for selector dropdown
-                const bRes = await branchesAPI.getBranches()
-                if (bRes?.success && bRes?.data) {
-                    const branchList = bRes.data.filter(b => 
-                        staffAssignedBranchIds.length === 0 || staffAssignedBranchIds.includes(b.id)
-                    )
-                    setAvailableBranches(branchList)
-                }
-            } catch (error) {
-                console.error('Failed to load staff assignments:', error)
-                setStaffAssignedBranchIds([])
-                setSelectedBranchId(null)
-            }
+        if (!user || isAdminOrOwner(user)) return
+        if (availableBranches.length === 1) {
+            setSelectedBranchId(availableBranches[0].id)
+        } else if (availableBranches.length > 1 && !selectedBranchId) {
+            setSelectedBranchId(availableBranches[0].id)
         }
-
-        loadStaffAssignments()
-    }, [user])
+    }, [user, availableBranches])
 
     const fetchStats = async () => {
         try {

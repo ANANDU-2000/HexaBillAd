@@ -44,6 +44,7 @@ import HelpPage from './pages/HelpPage'
 import FeedbackPage from './pages/FeedbackPage'
 import UpdatesPage from './pages/company/UpdatesPage'
 import Layout from './components/Layout'
+import { BranchesRoutesProvider } from './contexts/BranchesRoutesContext'
 import SuperAdminLayout from './components/SuperAdminLayout'
 import ConnectionStatus from './components/ConnectionStatus'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -164,8 +165,8 @@ function App() {
         {/* Tenant routes - Accessible to standard users OR impersonating SystemAdmin */}
         {(!userIsSystemAdmin || !!impersonatedTenantId) && (
           <>
-            {/* All pages including Dashboard use Layout with sidebar */}
-            <Route element={<Layout />}>
+            {/* All pages including Dashboard use Layout with sidebar - BranchesRoutesProvider caches branches/routes to prevent 429 */}
+            <Route element={<BranchesRoutesProvider><Layout /></BranchesRoutesProvider>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/pricelist" element={<PriceList />} />

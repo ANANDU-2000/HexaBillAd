@@ -24,11 +24,12 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
-import { reportsAPI, productsAPI, customersAPI, profitAPI, paymentsAPI, branchesAPI, routesAPI, adminAPI } from '../../services'
+import { reportsAPI, productsAPI, customersAPI, profitAPI, paymentsAPI, adminAPI } from '../../services'
 import {
   LineChart,
   Line,
@@ -67,6 +68,7 @@ function loadDateRangeFromStorage() {
 const ReportsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const initialTab = searchParams.get('tab') || 'summary'
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -118,8 +120,10 @@ const ReportsPage = () => {
   const [expandedBranchId, setExpandedBranchId] = useState(null) // Branch Report: which branch row is expanded for route sub-rows
   const [productsList, setProductsList] = useState([])
   const [customersList, setCustomersList] = useState([])
-  const [branchesList, setBranchesList] = useState([])
-  const [routesList, setRoutesList] = useState([])
+  const branchesList = branches || []
+  const routesList = filters.branch
+    ? (routes || []).filter(r => r.branchId === parseInt(filters.branch, 10))
+    : []
 
   // Persist shared date range so last used range is restored on next visit (#40)
   useEffect(() => {
@@ -876,23 +880,19 @@ const ReportsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only set up listeners once, use ref for fetchReportData
 
-  // Load products, customers, branches for filters
+  // Load products, customers for filters (branches/routes from shared context)
   useEffect(() => {
     const loadFilterData = async () => {
       try {
-        const [productsRes, customersRes, branchesRes] = await Promise.all([
+        const [productsRes, customersRes] = await Promise.all([
           productsAPI.getProducts({ page: 1, pageSize: 100 }),
-          customersAPI.getCustomers({ page: 1, pageSize: 100 }),
-          branchesAPI.getBranches().catch(() => ({ success: false }))
+          customersAPI.getCustomers({ page: 1, pageSize: 100 })
         ])
         if (productsRes?.success && productsRes?.data) {
           setProductsList(productsRes.data.items || [])
         }
         if (customersRes?.success && customersRes?.data) {
           setCustomersList(customersRes.data.items || [])
-        }
-        if (branchesRes?.success && branchesRes?.data) {
-          setBranchesList(Array.isArray(branchesRes.data) ? branchesRes.data : [])
         }
       } catch (error) {
         console.error('Error loading filter data:', error)
@@ -906,22 +906,7 @@ const ReportsPage = () => {
     tabDataCacheRef.current = {}
   }
 
-  // Load routes when branch filter changes (route dropdown filtered by branch)
-  useEffect(() => {
-    if (!filters.branch) {
-      setRoutesList([])
-      return
-    }
-    const branchId = parseInt(filters.branch, 10)
-    if (!branchId) return
-    routesAPI.getRoutes(branchId).then(res => {
-      if (res?.success && res?.data) {
-        setRoutesList(Array.isArray(res.data) ? res.data : [])
-      } else {
-        setRoutesList([])
-      }
-    }).catch(() => setRoutesList([]))
-  }, [filters.branch])
+  // routesList derived from context (filtered by filters.branch) - no fetch
 
   // Initial load ONLY ONCE on mount (separate from dependency-based refreshes)
   useEffect(() => {

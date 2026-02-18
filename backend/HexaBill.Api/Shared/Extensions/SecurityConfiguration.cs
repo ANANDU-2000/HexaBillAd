@@ -225,6 +225,7 @@ namespace HexaBill.Api.Shared.Extensions
             Console.WriteLine($"✅ CORS: Configuration complete. Environment: {(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not Set")}");
 
             // Built-in rate limiter (replaces custom in-memory RateLimitingMiddleware) - PRODUCTION_MASTER_TODO #31
+            // Increased from 100 to 300 req/min to prevent 429 when multiple pages load branches/routes
             services.AddRateLimiter(options =>
             {
                 options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
@@ -232,7 +233,7 @@ namespace HexaBill.Api.Shared.Extensions
                     var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
                     return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = 100,
+                        PermitLimit = 300,
                         Window = TimeSpan.FromMinutes(1)
                     });
                 });

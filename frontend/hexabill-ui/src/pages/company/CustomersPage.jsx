@@ -23,10 +23,11 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
 import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
-import { customersAPI, branchesAPI, routesAPI } from '../../services'
+import { customersAPI } from '../../services'
 import { TabNavigation } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
@@ -34,6 +35,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const CustomersPage = () => {
   const { user } = useAuth()
+  const { branches, routes } = useBranchesRoutes()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
@@ -53,8 +55,6 @@ const CustomersPage = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [ledgerData, setLedgerData] = useState([])
   const [saving, setSaving] = useState(false)
-  const [branches, setBranches] = useState([])
-  const [routes, setRoutes] = useState([])
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
     title: '',
@@ -78,27 +78,10 @@ const CustomersPage = () => {
 
   const selectedBranchId = watch('branchId')
 
-  useEffect(() => {
-    loadBranchesAndRoutes()
-  }, [])
-
   // Fetch page 1 on mount and when search or page size changes (PRODUCTION_MASTER_TODO #42: pagination)
   useEffect(() => {
     fetchCustomers(1)
   }, [debouncedSearchTerm, pageSize])
-
-  const loadBranchesAndRoutes = async () => {
-    try {
-      const [branchesRes, routesRes] = await Promise.all([
-        branchesAPI.getBranches().catch(() => ({ success: false, data: [] })),
-        routesAPI.getRoutes().catch(() => ({ success: false, data: [] }))
-      ])
-      if (branchesRes.success) setBranches(branchesRes.data || [])
-      if (routesRes.success) setRoutes(routesRes.data || [])
-    } catch (error) {
-      console.error('Failed to load branches/routes:', error)
-    }
-  }
 
   // Handle ?edit=ID URL parameter from Customer Ledger
   useEffect(() => {

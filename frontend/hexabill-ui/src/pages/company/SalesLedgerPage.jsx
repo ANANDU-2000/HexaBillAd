@@ -9,16 +9,18 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
-import { reportsAPI, branchesAPI, routesAPI, adminAPI, salesAPI, customersAPI } from '../../services'
+import { reportsAPI, adminAPI, salesAPI, customersAPI } from '../../services'
 import { getWhatsAppShareUrl } from '../../utils/whatsapp'
 import { getApiBaseUrl } from '../../services/apiConfig'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
+import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
 
 const SalesLedgerPage = () => {
   const { user } = useAuth()
+  const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   // Default to current month (first day of month to today)
   const getDefaultDateRange = () => {
@@ -48,9 +50,7 @@ const SalesLedgerPage = () => {
     salesLedger: [],
     salesLedgerSummary: null
   })
-  const [branches, setBranches] = useState([])
-  const [allRoutes, setAllRoutes] = useState([]) // All routes (used when no branch filter)
-  const [routesForBranch, setRoutesForBranch] = useState([]) // Routes for selected branch (API-fetched)
+  const [routesForBranch, setRoutesForBranch] = useState([]) // Routes for selected branch (filtered from context)
   const [staffUsers, setStaffUsers] = useState([])
   const [showFilters, setShowFilters] = useState(() => {
     try {
@@ -60,59 +60,10 @@ const SalesLedgerPage = () => {
   })
   const [sharingSaleId, setSharingSaleId] = useState(null)
 
+  // Load staff users only (branches/routes from shared context)
   useEffect(() => {
     const load = async () => {
       try {
-        const [bRes, rRes] = await Promise.all([
-          branchesAPI.getBranches().catch(() => ({ success: false })),
-          routesAPI.getRoutes().catch(() => ({ success: false }))
-        ])
-        if (bRes?.success && bRes?.data) setBranches(bRes.data)
-        if (rRes?.success && rRes?.data) setAllRoutes(rRes.data)
-        if (isAdminOrOwner(user)) {
-          const uRes = await adminAPI.getUsers().catch(() => ({ success: false }))
-          if (uRes?.success && uRes?.data) {
-            const items = Array.isArray(uRes.data) ? uRes.data : (uRes.data?.items || [])
-            setStaffUsers(items.filter(u => (u.role || '').toLowerCase() === 'staff'))
-          }
-        }
-      } catch (_) { /* ignore */ }
-    }
-    load()
-  }, [user])
-
-  // Load branches and routes
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const [bRes, rRes] = await Promise.all([
-          branchesAPI.getBranches().catch(() => ({ success: false })),
-          routesAPI.getRoutes().catch(() => ({ success: false }))
-        ])
-
-        if (bRes?.success && bRes?.data) {
-          let branchList = bRes.data
-          // Strict filtering for Staff
-          if (user && !isAdminOrOwner(user) && user.assignedBranchIds && user.assignedBranchIds.length > 0) {
-            branchList = branchList.filter(b => user.assignedBranchIds.includes(b.id))
-          }
-          setBranches(branchList)
-
-          // Auto-select if only 1 branch available for staff
-          if (user && !isAdminOrOwner(user) && branchList.length === 1 && !filters.branchId) {
-            setFilters(prev => ({ ...prev, branchId: String(branchList[0].id) }))
-          }
-        }
-
-        if (rRes?.success && rRes?.data) {
-          let routeList = rRes.data
-          // Strict filtering for Staff (routes) - though routes are also filtered by branch selection later
-          if (user && !isAdminOrOwner(user) && user.assignedRouteIds && user.assignedRouteIds.length > 0) {
-            routeList = routeList.filter(r => user.assignedRouteIds.includes(r.id))
-          }
-          setAllRoutes(routeList)
-        }
-
         if (isAdminOrOwner(user)) {
           const uRes = await adminAPI.getUsers().catch(() => ({ success: false }))
           if (uRes?.success && uRes?.data) {
@@ -120,27 +71,26 @@ const SalesLedgerPage = () => {
             setStaffUsers(items.filter(u => (u.role || '').toLowerCase() === 'staff'))
           }
         } else if (user) {
-          // For staff, only show themselves
           setStaffUsers([user])
-          if (!filters.staffId) {
-            // Optional: auto-select self? Maybe not, allow viewing all their own sales
-          }
+        }
+        // Auto-select if only 1 branch for staff
+        if (user && !isAdminOrOwner(user) && branches?.length === 1 && !filters.branchId) {
+          setFilters(prev => ({ ...prev, branchId: String(branches[0].id) }))
         }
       } catch (_) { /* ignore */ }
     }
     load()
-  }, [user])
+  }, [user, branches, filters.branchId])
 
-  // When branch is selected, fetch routes for that branch OR filter existing
+  // Filter routes by selected branch (branches/routes from context)
   useEffect(() => {
     if (!filters.branchId) {
-      setRoutesForBranch(allRoutes) // If no branch selected, show all (filtered) routes
+      setRoutesForBranch(routes || [])
       return
     }
     const branchId = parseInt(filters.branchId, 10)
-    // Filter from allRoutes instead of network call to avoid loose network restrictions
-    setRoutesForBranch(allRoutes.filter(r => r.branchId === branchId))
-  }, [filters.branchId, allRoutes])
+    setRoutesForBranch((routes || []).filter(r => r.branchId === branchId))
+  }, [filters.branchId, routes])
 
   useEffect(() => {
     fetchSalesLedger()
