@@ -1530,26 +1530,44 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var tenant = await _context.Tenants.FindAsync(tenantId);
             if (tenant == null) return false;
 
-            // Check if tenant has data
-            var hasData = await _context.Sales.AnyAsync(s => s.TenantId == tenantId) ||
-                         await _context.Customers.AnyAsync(c => c.TenantId == tenantId) ||
-                         await _context.Products.AnyAsync(p => p.TenantId == tenantId);
-
-            if (hasData)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                // Soft delete: Mark as suspended instead of deleting
-                tenant.Status = TenantStatus.Suspended;
-                tenant.SuspendedAt = DateTime.UtcNow;
-                tenant.SuspensionReason = "Deleted by Super Admin";
-            }
-            else
-            {
-                // Hard delete if no data
+                // Delete all tenant data in correct order (respecting foreign keys)
+                // 1. Delete dependent records first
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""SaleItems"" WHERE ""SaleId"" IN (SELECT ""Id"" FROM ""Sales"" WHERE ""TenantId"" = {0})", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Payments"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Expenses"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""RecurringExpenses"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""ProductCategories"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""UserSessions"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""BranchStaff"" WHERE ""BranchId"" IN (SELECT ""Id"" FROM ""Branches"" WHERE ""TenantId"" = {0})", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""RouteStaff"" WHERE ""RouteId"" IN (SELECT ""Id"" FROM ""Routes"" WHERE ""TenantId"" = {0})", tenantId);
+                
+                // 2. Delete main records
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Sales"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Customers"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Products"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Branches"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Routes"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Subscriptions"" WHERE ""TenantId"" = {0}", tenantId);
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Settings"" WHERE ""OwnerId"" = {0}", tenantId);
+                
+                // 3. Delete users (except SystemAdmin)
+                await _context.Database.ExecuteSqlRawAsync(@"DELETE FROM ""Users"" WHERE ""TenantId"" = {0} AND ""Role"" != 0", tenantId);
+                
+                // 4. Finally delete the tenant
                 _context.Tenants.Remove(tenant);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                return true;
             }
-
-            await _context.SaveChangesAsync();
-            return true;
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception($"Failed to delete tenant: {ex.Message}", ex);
+            }
         }
 
         private const int PLATFORM_OWNER_ID = 0;

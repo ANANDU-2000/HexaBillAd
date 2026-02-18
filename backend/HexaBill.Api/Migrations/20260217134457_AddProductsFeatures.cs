@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,32 +11,44 @@ namespace HexaBill.Api.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Barcode",
-                table: "Products",
-                type: "TEXT",
-                maxLength: 100,
-                nullable: true);
+            // Use PostgreSQL native IF NOT EXISTS syntax (PostgreSQL 9.6+)
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                migrationBuilder.Sql(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""Barcode"" character varying(100) NULL;");
+                migrationBuilder.Sql(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CategoryId"" integer NULL;");
+                migrationBuilder.Sql(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" character varying(500) NULL;");
+                migrationBuilder.Sql(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT false;");
+            }
+            else
+            {
+                // SQLite - use standard AddColumn (will be caught by try-catch if exists)
+                migrationBuilder.AddColumn<string>(
+                    name: "Barcode",
+                    table: "Products",
+                    type: "TEXT",
+                    maxLength: 100,
+                    nullable: true);
 
-            migrationBuilder.AddColumn<int>(
-                name: "CategoryId",
-                table: "Products",
-                type: "INTEGER",
-                nullable: true);
+                migrationBuilder.AddColumn<int>(
+                    name: "CategoryId",
+                    table: "Products",
+                    type: "INTEGER",
+                    nullable: true);
 
-            migrationBuilder.AddColumn<string>(
-                name: "ImageUrl",
-                table: "Products",
-                type: "TEXT",
-                maxLength: 500,
-                nullable: true);
+                migrationBuilder.AddColumn<string>(
+                    name: "ImageUrl",
+                    table: "Products",
+                    type: "TEXT",
+                    maxLength: 500,
+                    nullable: true);
 
-            migrationBuilder.AddColumn<bool>(
-                name: "IsActive",
-                table: "Products",
-                type: "INTEGER",
-                nullable: false,
-                defaultValue: false);
+                migrationBuilder.AddColumn<bool>(
+                    name: "IsActive",
+                    table: "Products",
+                    type: "INTEGER",
+                    nullable: false,
+                    defaultValue: false);
+            }
 
             migrationBuilder.CreateTable(
                 name: "ProductCategories",

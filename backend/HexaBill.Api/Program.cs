@@ -295,18 +295,14 @@ using (var scope = app.Services.CreateScope())
                         ALTER TABLE ""Branches"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
                     END IF;
                 END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Routes') AND LOWER(column_name)=LOWER('IsActive')) AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND LOWER(table_name)=LOWER('Routes')) THEN
-                        ALTER TABLE ""Routes"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Branches') AND LOWER(column_name)=LOWER('IsActive')) AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND LOWER(table_name)=LOWER('Branches')) THEN
-                        ALTER TABLE ""Branches"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
-                    END IF;
-                END $$");
+            // Routes and Branches IsActive - use native IF NOT EXISTS
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Routes"" ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT true;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT true;");
+            // Products table columns - Barcode, ImageUrl, CategoryId, IsActive
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""Barcode"" character varying(100) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""ImageUrl"" character varying(500) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CategoryId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT true;");
             // Expenses table columns - use native IF NOT EXISTS
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" character varying(500) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""Status"" integer NOT NULL DEFAULT 1;");
