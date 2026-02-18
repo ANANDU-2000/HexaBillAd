@@ -391,6 +391,36 @@ using (var scope = app.Services.CreateScope())
                 CREATE INDEX IF NOT EXISTS ""IX_UserSessions_TenantId"" ON ""UserSessions"" (""TenantId"");
                 CREATE INDEX IF NOT EXISTS ""IX_UserSessions_LoginAt"" ON ""UserSessions"" (""LoginAt"");
                 ");
+            // BUG #2.7 FIX: FailedLoginAttempts table - persistent login lockout (CRITICAL: was in SQLite block only, never ran for PostgreSQL!)
+            ctx.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS ""FailedLoginAttempts"" (
+                    ""Id"" serial PRIMARY KEY,
+                    ""Email"" character varying(100) NOT NULL,
+                    ""FailedCount"" integer NOT NULL DEFAULT 1,
+                    ""LockoutUntil"" timestamp with time zone NULL,
+                    ""LastAttemptAt"" timestamp with time zone NOT NULL,
+                    ""CreatedAt"" timestamp with time zone NOT NULL,
+                    ""UpdatedAt"" timestamp with time zone NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_Email"" ON ""FailedLoginAttempts"" (""Email"");
+                CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LockoutUntil"" ON ""FailedLoginAttempts"" (""LockoutUntil"");
+                CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LastAttemptAt"" ON ""FailedLoginAttempts"" (""LastAttemptAt"");
+                ");
+            // ProductCategories table - ensure exists for product category CRUD (fixes 500 on POST /productcategories)
+            ctx.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS ""ProductCategories"" (
+                    ""Id"" serial PRIMARY KEY,
+                    ""TenantId"" integer NOT NULL,
+                    ""Name"" character varying(100) NOT NULL,
+                    ""Description"" character varying(500) NULL,
+                    ""ColorCode"" character varying(20) NULL,
+                    ""IsActive"" boolean NOT NULL DEFAULT true,
+                    ""CreatedAt"" timestamp with time zone NOT NULL,
+                    ""UpdatedAt"" timestamp with time zone NOT NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ProductCategories_TenantId_Name"" ON ""ProductCategories"" (""TenantId"", ""Name"");
+                ");
+            try { ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CategoryId"" integer NULL;"); } catch { }
         }
         catch (Exception ex)
         {

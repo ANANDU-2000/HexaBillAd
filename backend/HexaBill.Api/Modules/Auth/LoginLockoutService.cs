@@ -9,6 +9,8 @@ public interface ILoginLockoutService
     Task<bool> IsLockedOutAsync(string email);
     Task RecordFailedAttemptAsync(string email);
     Task ClearAttemptsAsync(string email);
+    /// <summary>Manually lock a user for specified duration (Super Admin only).</summary>
+    Task LockUserAsync(string email, int durationMinutes = 15);
 }
 
 /// <summary>
@@ -114,6 +116,35 @@ public class LoginLockoutService : ILoginLockoutService
             _context.FailedLoginAttempts.Remove(attempt);
             await _context.SaveChangesAsync();
         }
+    }
+
+    public async Task LockUserAsync(string email, int durationMinutes = 15)
+    {
+        var key = (email ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(key)) return;
+
+        var attempt = await _context.FailedLoginAttempts
+            .FirstOrDefaultAsync(a => a.Email == key);
+
+        if (attempt == null)
+        {
+            attempt = new FailedLoginAttempt
+            {
+                Email = key,
+                FailedCount = MaxAttempts,
+                LastAttemptAt = DateTime.UtcNow,
+                LockoutUntil = DateTime.UtcNow.AddMinutes(Math.Max(1, durationMinutes)),
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.FailedLoginAttempts.Add(attempt);
+        }
+        else
+        {
+            attempt.FailedCount = MaxAttempts;
+            attempt.LockoutUntil = DateTime.UtcNow.AddMinutes(Math.Max(1, durationMinutes));
+            attempt.UpdatedAt = DateTime.UtcNow;
+        }
+        await _context.SaveChangesAsync();
     }
 
     private async Task PruneOldAttemptsAsync()

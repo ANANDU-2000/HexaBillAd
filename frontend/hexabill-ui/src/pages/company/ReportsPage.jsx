@@ -452,7 +452,9 @@ const ReportsPage = () => {
           console.log('Customer Report response:', customersResponse)
 
           if (customersResponse?.success && customersResponse?.data) {
-            const customers = (customersResponse.data || []).map(c => ({
+            // PagedResponse: data has { items, totalCount, page } - use items array
+            const items = customersResponse.data?.items ?? customersResponse.data
+            const customers = (Array.isArray(items) ? items : []).map(c => ({
               id: c.id || c.Id || 0,
               name: c.name || c.Name || 'Unknown Customer',
               phone: c.phone || c.Phone || '',

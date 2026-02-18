@@ -116,6 +116,19 @@ namespace HexaBill.Api.Models
         public string NewPassword { get; set; } = string.Empty;
     }
 
+    public class UnlockLoginRequest
+    {
+        [Required]
+        public string Email { get; set; } = string.Empty;
+    }
+
+    public class LockLoginRequest
+    {
+        [Required]
+        public string Email { get; set; } = string.Empty;
+        public int DurationMinutes { get; set; } = 15;
+    }
+
     // Product DTOs
     public class ProductDto
     {

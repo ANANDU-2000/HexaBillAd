@@ -1291,7 +1291,7 @@ export const superAdminAPI = {
   },
 
   clearTenantData: async (id) => {
-    const response = await api.post(`/superadmin/tenant/${id}/clear-data`)
+    const response = await api.post(`/superadmin/tenant/${id}/clear-data`, {})
     return response.data
   },
 
@@ -1351,6 +1351,16 @@ export const superAdminAPI = {
 
   deleteTenant: async (id) => {
     const response = await api.delete(`/superadmin/tenant/${id}`)
+    return response.data
+  },
+
+  unlockLogin: async (email) => {
+    const response = await api.post('/superadmin/unlock-login', { email })
+    return response.data
+  },
+
+  lockLogin: async (email, durationMinutes = 15) => {
+    const response = await api.post('/superadmin/lock-login', { email, durationMinutes })
     return response.data
   },
 

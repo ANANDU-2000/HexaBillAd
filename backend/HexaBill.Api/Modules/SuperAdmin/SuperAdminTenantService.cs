@@ -1477,9 +1477,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var tenant = await _context.Tenants.FindAsync(tenantId);
             if (tenant == null) return false;
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // Delete all transactional data for this tenant (subscription and settings are NOT touched)
                 
                 // Sales and Sale Items
@@ -1555,13 +1558,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                System.Diagnostics.Debug.WriteLine($"ClearTenantDataAsync error: {ex.Message}");
-                throw;
-            }
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    System.Diagnostics.Debug.WriteLine($"ClearTenantDataAsync error: {ex.Message}");
+                    throw;
+                }
+            });
         }
 
         public async Task<SubscriptionDto?> UpdateTenantSubscriptionAsync(int tenantId, int planId, BillingCycle billingCycle)
@@ -1592,9 +1596,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var tenant = await _context.Tenants.FindAsync(tenantId);
             if (tenant == null) return false;
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // AUDIT-1 FIX: Use ExecuteSqlInterpolatedAsync instead of ExecuteSqlRawAsync with {0} placeholders
                 // This prevents SQL syntax errors and ensures proper parameterization
                 
@@ -1751,13 +1759,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 await transaction.CommitAsync();
                 
                 return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                // AUDIT-1 FIX: Preserve original exception details for better debugging
-                throw new Exception($"Failed to delete tenant {tenantId}: {ex.Message}. Inner exception: {ex.InnerException?.Message ?? "None"}", ex);
-            }
+                }
+                catch (Exception ex)
+                {
+                    await transaction.RollbackAsync();
+                    throw new Exception($"Failed to delete tenant {tenantId}: {ex.Message}. Inner exception: {ex.InnerException?.Message ?? "None"}", ex);
+                }
+            });
         }
 
         private const int PLATFORM_OWNER_ID = 0;

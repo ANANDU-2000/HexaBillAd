@@ -81,8 +81,8 @@ namespace HexaBill.Api.Modules.Reports
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
 
                 var gstNow = _timeZoneService.GetCurrentDate();
-                var to = (toDate ?? gstNow).Date;
-                var from = (fromDate ?? gstNow.AddDays(-30)).Date;
+                var to = (toDate ?? gstNow).ToUtcKind();
+                var from = (fromDate ?? gstNow.AddDays(-30)).ToUtcKind();
                 var periodDays = (int)(to - from).TotalDays;
                 if (periodDays <= 0) periodDays = 30;
 

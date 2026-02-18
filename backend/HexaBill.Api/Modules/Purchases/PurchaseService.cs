@@ -203,9 +203,14 @@ namespace HexaBill.Api.Modules.Purchases
                     $"Purchase invoice '{request.InvoiceNo}' from supplier '{request.SupplierName}' already exists.");
             }
             
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
+            // Wrap in CreateExecutionStrategy().ExecuteAsync() so the transaction is retriable.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // VAT CALCULATION LOGIC
                 // CRITICAL: Purchase bills show Unit Cost EXCLUDING VAT (like sales invoices)
                 // Default: Costs EXCLUDE VAT (matching real purchase invoices)
@@ -378,12 +383,13 @@ namespace HexaBill.Api.Modules.Purchases
                 await transaction.CommitAsync();
 
                 return await GetPurchaseByIdAsync(purchase.Id, tenantId) ?? throw new InvalidOperationException("Failed to retrieve created purchase");
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<PurchaseDto?> UpdatePurchaseAsync(int id, CreatePurchaseRequest request, int userId, int tenantId)

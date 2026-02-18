@@ -75,6 +75,10 @@ const SuperAdminTenantDetailPage = () => {
   const [duplicatePreview, setDuplicatePreview] = useState(null)
   const [duplicatePreviewLoading, setDuplicatePreviewLoading] = useState(false)
   const [suspendReason, setSuspendReason] = useState('')
+  const [showLockoutModal, setShowLockoutModal] = useState(false)
+  const [lockoutEmail, setLockoutEmail] = useState('')
+  const [lockoutAction, setLockoutAction] = useState('unlock') // 'unlock' | 'lock'
+  const [lockoutDuration, setLockoutDuration] = useState(15)
   const [subscriptionFormData, setSubscriptionFormData] = useState({
     planId: '',
     billingCycle: 0 // 0 = Monthly, 1 = Yearly
@@ -771,6 +775,33 @@ const SuperAdminTenantDetailPage = () => {
               {exportLoading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Download className="h-5 w-5" />}
               {exportLoading ? 'Preparing…' : 'Download ZIP (CSV)'}
             </button>
+          </div>
+
+          {/* Login Lockout - Super Admin can unlock/lock client login */}
+          <div className="bg-amber-50 rounded-lg border border-amber-200 shadow-sm p-6 mt-6">
+            <h2 className="text-xl font-bold text-amber-800 mb-4 flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              Login Lockout
+            </h2>
+            <p className="text-sm text-amber-800 mb-4">
+              If a client is locked out (5 failed login attempts), unlock them instantly. Or manually lock a user&apos;s login.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => { setLockoutAction('unlock'); setLockoutEmail(tenant?.users?.[0]?.email || ''); setShowLockoutModal(true) }}
+                className="bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-medium hover:bg-green-50 flex items-center gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Unlock Login
+              </button>
+              <button
+                onClick={() => { setLockoutAction('lock'); setLockoutEmail(''); setShowLockoutModal(true) }}
+                className="bg-white text-amber-700 border border-amber-300 px-4 py-2 rounded-lg font-medium hover:bg-amber-50 flex items-center gap-2"
+              >
+                <Lock className="h-4 w-4" />
+                Lock Login
+              </button>
+            </div>
           </div>
 
           {/* Danger Zone */}
@@ -1550,6 +1581,69 @@ const SuperAdminTenantDetailPage = () => {
               className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 font-bold"
             >
               Suspend Now
+            </LoadingButton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Login Lockout Modal */}
+      <Modal
+        isOpen={showLockoutModal}
+        onClose={() => { setShowLockoutModal(false); setLockoutEmail('') }}
+        title={lockoutAction === 'unlock' ? 'Unlock Login' : 'Lock Login'}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            {lockoutAction === 'unlock'
+              ? 'Enter the user email to clear failed login attempts and allow them to sign in again.'
+              : 'Enter the user email to manually lock their login for the specified duration.'}
+          </p>
+          <Input
+            label="Email"
+            type="email"
+            value={lockoutEmail}
+            onChange={(e) => setLockoutEmail(e.target.value)}
+            placeholder="user@example.com"
+            required
+          />
+          {lockoutAction === 'lock' && (
+            <Input
+              label="Lock duration (minutes)"
+              type="number"
+              min={1}
+              max={1440}
+              value={lockoutDuration}
+              onChange={(e) => setLockoutDuration(parseInt(e.target.value, 10) || 15)}
+            />
+          )}
+          <div className="flex gap-2 pt-2">
+            <button onClick={() => setShowLockoutModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <LoadingButton
+              loading={loadingAction}
+              disabled={!lockoutEmail.trim()}
+              onClick={async () => {
+                if (!lockoutEmail.trim()) return
+                setLoadingAction(true)
+                try {
+                  const res = lockoutAction === 'unlock'
+                    ? await superAdminAPI.unlockLogin(lockoutEmail.trim())
+                    : await superAdminAPI.lockLogin(lockoutEmail.trim(), lockoutDuration)
+                  if (res?.success) {
+                    toast.success(res.message || (lockoutAction === 'unlock' ? 'Login unlocked' : 'Login locked'))
+                    setShowLockoutModal(false)
+                    setLockoutEmail('')
+                  } else {
+                    toast.error(res?.message || 'Action failed')
+                  }
+                } catch (err) {
+                  if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Action failed')
+                } finally {
+                  setLoadingAction(false)
+                }
+              }}
+              className="px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 font-medium"
+            >
+              {lockoutAction === 'unlock' ? 'Unlock' : 'Lock'}
             </LoadingButton>
           </div>
         </div>

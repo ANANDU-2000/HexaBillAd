@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
+using HexaBill.Api.Modules.Auth;
 using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Shared.Services;
 using Microsoft.Extensions.Logging;
@@ -26,14 +27,61 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly IConfiguration _configuration;
         private readonly AppDbContext _context;
         private readonly ITenantActivityService _activityService;
+        private readonly ILoginLockoutService _lockoutService;
 
-        public TenantController(ISuperAdminTenantService tenantService, ILogger<TenantController> logger, IConfiguration configuration, AppDbContext context, ITenantActivityService activityService)
+        public TenantController(ISuperAdminTenantService tenantService, ILogger<TenantController> logger, IConfiguration configuration, AppDbContext context, ITenantActivityService activityService, ILoginLockoutService lockoutService)
         {
             _tenantService = tenantService;
             _logger = logger;
             _configuration = configuration;
             _context = context;
             _activityService = activityService;
+            _lockoutService = lockoutService;
+        }
+
+        /// <summary>
+        /// Unlock a client's login (clear failed attempt lockout). SystemAdmin only.
+        /// </summary>
+        [HttpPost("/api/superadmin/unlock-login")]
+        public async Task<ActionResult<ApiResponse<object>>> UnlockLogin([FromBody] UnlockLoginRequest request)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            if (string.IsNullOrWhiteSpace(request?.Email))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Email is required" });
+            try
+            {
+                await _lockoutService.ClearAttemptsAsync(request.Email.Trim());
+                await WriteSuperAdminAuditAsync("UnlockLogin", null, $"Unlocked login for: {request.Email}");
+                return Ok(new ApiResponse<object> { Success = true, Message = $"Login unlocked for {request.Email}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UnlockLogin failed for {Email}", request.Email);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Manually lock a client's login. SystemAdmin only.
+        /// </summary>
+        [HttpPost("/api/superadmin/lock-login")]
+        public async Task<ActionResult<ApiResponse<object>>> LockLogin([FromBody] LockLoginRequest request)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            if (string.IsNullOrWhiteSpace(request?.Email))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Email is required" });
+            try
+            {
+                var duration = request.DurationMinutes > 0 ? request.DurationMinutes : 15;
+                await _lockoutService.LockUserAsync(request.Email.Trim(), duration);
+                await WriteSuperAdminAuditAsync("LockLogin", null, $"Locked login for: {request.Email} ({duration} min)");
+                return Ok(new ApiResponse<object> { Success = true, Message = $"Login locked for {request.Email} ({duration} minutes)" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "LockLogin failed for {Email}", request.Email);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
         }
 
         /// <summary>
