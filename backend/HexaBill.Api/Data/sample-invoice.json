@@ -1,11 +1,11 @@
 {
-  "company_name_ar": "ستار بلس لتجارة المواد الغذائية",
-  "company_name_en": "STARPLUS FOODSTUFF TRADING",
-  "company_address": "Mussafah 44 – Abu Dhabi",
-  "company_phone": "+971 555 298 878",
-  "company_trn": "100366253100003",
+  "company_name_ar": "هيكسا بيل",
+  "company_name_en": "HexaBill",
+  "company_address": "Business Address",
+  "company_phone": "+971 555 000 000",
+  "company_trn": "100000000000000",
   "company_logo": "/static/images/company-logo.png",
-  "invoice_no": "SP-20251101-0001",
+  "invoice_no": "HB-20251101-0001",
   "date": "01/11/2025",
   "customer_name": "Cash Customer",
   "customer_trn": "",
@@ -14,8 +14,8 @@
   "items": [
     {
       "sl_no": 1,
-      "description": "Chicken Breast",
-      "unit": "KG",
+      "description": "Product A",
+      "unit": "PCS",
       "qty": "10.00",
       "unit_price": "25.00",
       "total": "250.00",
@@ -24,8 +24,8 @@
     },
     {
       "sl_no": 2,
-      "description": "Beef Mince",
-      "unit": "KG",
+      "description": "Product B",
+      "unit": "PCS",
       "qty": "5.00",
       "unit_price": "35.00",
       "total": "175.00",
@@ -34,7 +34,7 @@
     },
     {
       "sl_no": 3,
-      "description": "Ice Cream Vanilla",
+      "description": "Product C",
       "unit": "CTN",
       "qty": "3.00",
       "unit_price": "45.00",
@@ -44,8 +44,8 @@
     },
     {
       "sl_no": 4,
-      "description": "Frozen Peas",
-      "unit": "KG",
+      "description": "Product D",
+      "unit": "PCS",
       "qty": "20.00",
       "unit_price": "8.00",
       "total": "160.00",
@@ -54,8 +54,8 @@
     },
     {
       "sl_no": 5,
-      "description": "Frozen Corn",
-      "unit": "KG",
+      "description": "Product E",
+      "unit": "PCS",
       "qty": "15.00",
       "unit_price": "7.50",
       "total": "112.50",
@@ -64,8 +64,8 @@
     },
     {
       "sl_no": 6,
-      "description": "Mixed Vegetables",
-      "unit": "KG",
+      "description": "Product F",
+      "unit": "PCS",
       "qty": "12.00",
       "unit_price": "9.00",
       "total": "108.00",
@@ -77,6 +77,6 @@
   "subtotal": "940.50",
   "vat_total": "47.03",
   "grand_total": "987.53",
-  "footer_notes": "Thank you for your business!\nAll products are stored and delivered frozen."
+  "footer_notes": "Thank you for your business!"
 }
 

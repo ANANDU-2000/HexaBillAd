@@ -49,14 +49,5 @@
     plus
   </text>
   
-  <!-- foodstuffs text (dark gray) -->
-  <text x="60" y="88" 
-        font-family="Arial, sans-serif" 
-        font-size="20" 
-        font-weight="normal" 
-        fill="#374151"
-        style="font-style: italic; letter-spacing: 0.5px;">
-    foodstuffs
-  </text>
 </svg>
 

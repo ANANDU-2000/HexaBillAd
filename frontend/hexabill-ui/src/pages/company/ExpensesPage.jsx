@@ -526,7 +526,7 @@ const ExpensesPage = () => {
       'Marketing': '#3B82F6',
       'Fuel': '#8B5CF6',
       'Delivery': '#F97316',
-      'Food': '#EC4899',
+      'Meals': '#EC4899',
       'Maintenance': '#6B7280',
       'Insurance': '#14B8A6',
       'Other': '#84CC16'

@@ -1374,7 +1374,7 @@ _ = Task.Run(async () =>
                         new ExpenseCategory { Name = "Marketing", ColorCode = "#8B5CF6", CreatedAt = DateTime.UtcNow },
                         new ExpenseCategory { Name = "Fuel", ColorCode = "#14B8A6", CreatedAt = DateTime.UtcNow },
                         new ExpenseCategory { Name = "Delivery", ColorCode = "#F97316", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Food", ColorCode = "#EC4899", CreatedAt = DateTime.UtcNow },
+                        new ExpenseCategory { Name = "Meals", ColorCode = "#EC4899", CreatedAt = DateTime.UtcNow },
                         new ExpenseCategory { Name = "Maintenance", ColorCode = "#6366F1", CreatedAt = DateTime.UtcNow },
                         new ExpenseCategory { Name = "Insurance", ColorCode = "#10B981", CreatedAt = DateTime.UtcNow },
                         new ExpenseCategory { Name = "Other", ColorCode = "#6B7280", CreatedAt = DateTime.UtcNow }

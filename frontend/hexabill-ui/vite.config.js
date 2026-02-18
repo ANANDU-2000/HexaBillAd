@@ -11,7 +11,7 @@ export default defineConfig({
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           if (req.url && req.url.split('?')[0] === '/favicon.ico') {
-            req.url = '/starplus-icon.svg'
+            req.url = '/favicon.ico'
           }
           next()
         })

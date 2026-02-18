@@ -693,7 +693,7 @@ const DashboardTally = () => {
                     <div className="p-4">
                         <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white rounded-lg p-3 mb-4 shadow-lg">
                             <h2 className="text-base font-bold text-center">{companyName} Dashboard</h2>
-                            <p className="text-xs text-center text-blue-200 mt-0.5">Foodstuff Trading</p>
+                            <p className="text-xs text-center text-blue-200 mt-0.5">Billing software for business</p>
                         </div>
 
                         <div className="space-y-3">
