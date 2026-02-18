@@ -273,123 +273,48 @@ using (var scope = app.Services.CreateScope())
     {
         try
         {
-            // Users table columns - use DO blocks to check before adding (prevents 42701 "column already exists")
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='SessionVersion') THEN
-                        ALTER TABLE ""Users"" ADD COLUMN ""SessionVersion"" integer NOT NULL DEFAULT 0;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='ProfilePhotoUrl') THEN
-                        ALTER TABLE ""Users"" ADD COLUMN ""ProfilePhotoUrl"" character varying(500) NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='LanguagePreference') THEN
-                        ALTER TABLE ""Users"" ADD COLUMN ""LanguagePreference"" character varying(10) NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='LastLoginAt') THEN
-                        ALTER TABLE ""Users"" ADD COLUMN ""LastLoginAt"" timestamp with time zone NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='LastActiveAt') THEN
-                        ALTER TABLE ""Users"" ADD COLUMN ""LastActiveAt"" timestamp with time zone NULL;
-                    END IF;
-                END $$");
+            // Users table columns - use PostgreSQL native IF NOT EXISTS (PostgreSQL 9.6+)
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""ProfilePhotoUrl"" character varying(500) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LanguagePreference"" character varying(10) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastLoginAt"" timestamp with time zone NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" timestamp with time zone NULL;");
             // Customers table columns
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""PaymentTerms"" character varying(100) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Customers"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"
                 DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Customers' AND column_name='PaymentTerms') THEN
-                        ALTER TABLE ""Customers"" ADD COLUMN ""PaymentTerms"" character varying(100) NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Customers' AND column_name='BranchId') THEN
-                        ALTER TABLE ""Customers"" ADD COLUMN ""BranchId"" integer NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Customers' AND column_name='RouteId') THEN
-                        ALTER TABLE ""Customers"" ADD COLUMN ""RouteId"" integer NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Routes') AND LOWER(column_name)=LOWER('IsActive') AND data_type IN ('integer','smallint')) THEN
                         ALTER TABLE ""Routes"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
                     END IF;
                 END $$");
             ctx.Database.ExecuteSqlRaw(@"
                 DO $$ BEGIN
-                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Branches' AND column_name='IsActive' AND data_type IN ('integer','smallint')) THEN
+                    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Branches') AND LOWER(column_name)=LOWER('IsActive') AND data_type IN ('integer','smallint')) THEN
                         ALTER TABLE ""Branches"" ALTER COLUMN ""IsActive"" DROP DEFAULT, ALTER COLUMN ""IsActive"" TYPE boolean USING (CASE WHEN ""IsActive""::int=0 THEN false ELSE true END), ALTER COLUMN ""IsActive"" SET DEFAULT false;
                     END IF;
                 END $$");
             ctx.Database.ExecuteSqlRaw(@"
                 DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Routes') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Routes') AND LOWER(column_name)=LOWER('IsActive')) AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND LOWER(table_name)=LOWER('Routes')) THEN
                         ALTER TABLE ""Routes"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
                     END IF;
                 END $$");
             ctx.Database.ExecuteSqlRaw(@"
                 DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Branches' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Branches') THEN
+                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)=LOWER('Branches') AND LOWER(column_name)=LOWER('IsActive')) AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND LOWER(table_name)=LOWER('Branches')) THEN
                         ALTER TABLE ""Branches"" ADD COLUMN ""IsActive"" boolean NOT NULL DEFAULT true;
                     END IF;
                 END $$");
-            // Expenses table columns - fixes 500 on /api/expenses when columns missing
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='AttachmentUrl') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""AttachmentUrl"" character varying(500) NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='Status') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""Status"" integer NOT NULL DEFAULT 1;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='RecurringExpenseId') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""RecurringExpenseId"" integer NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='ApprovedBy') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""ApprovedBy"" integer NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='ApprovedAt') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""ApprovedAt"" timestamp with time zone NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='RejectionReason') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""RejectionReason"" text NULL;
-                    END IF;
-                END $$");
-            ctx.Database.ExecuteSqlRaw(@"
-                DO $$ BEGIN
-                    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='RouteId') THEN
-                        ALTER TABLE ""Expenses"" ADD COLUMN ""RouteId"" integer NULL;
-                    END IF;
-                END $$");
+            // Expenses table columns - use native IF NOT EXISTS
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""AttachmentUrl"" character varying(500) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""Status"" integer NOT NULL DEFAULT 1;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RecurringExpenseId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""ApprovedBy"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""ApprovedAt"" timestamp with time zone NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RejectionReason"" text NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             // UserSessions table for "who is logged in" / recent logins
             ctx.Database.ExecuteSqlRaw(@"
                 CREATE TABLE IF NOT EXISTS ""UserSessions"" (
@@ -408,14 +333,14 @@ using (var scope = app.Services.CreateScope())
         catch (Exception ex)
         {
             // Log but don't crash - migration errors are non-fatal (columns may already exist)
-            var logger = app.Services.GetService<ILoggerFactory>()?.CreateLogger("DatabaseInit");
+            var startupLogger = app.Services.GetService<ILoggerFactory>()?.CreateLogger("DatabaseInit");
             var errorMsg = ex.Message ?? "";
             // Only log if it's NOT a "column already exists" or "duplicate" error
             if (!errorMsg.Contains("already exists", StringComparison.OrdinalIgnoreCase) &&
                 !errorMsg.Contains("duplicate", StringComparison.OrdinalIgnoreCase) &&
                 !errorMsg.Contains("42701", StringComparison.OrdinalIgnoreCase))
             {
-                logger?.LogWarning(ex, "PostgreSQL migration warning (non-fatal): {Message}", errorMsg);
+                startupLogger?.LogWarning(ex, "PostgreSQL migration warning (non-fatal): {Message}", errorMsg);
             }
         }
     }
@@ -663,25 +588,10 @@ _ = Task.Run(async () =>
             {
                 try
                 {
-                    // Use DO blocks to check before adding (prevents 42701 "column already exists" errors)
-                    await context.Database.ExecuteSqlRawAsync(@"
-                        DO $$ BEGIN
-                            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='SessionVersion') THEN
-                                ALTER TABLE ""Users"" ADD COLUMN ""SessionVersion"" integer NOT NULL DEFAULT 0;
-                            END IF;
-                        END $$");
-                    await context.Database.ExecuteSqlRawAsync(@"
-                        DO $$ BEGIN
-                            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Users' AND column_name='LastActiveAt') THEN
-                                ALTER TABLE ""Users"" ADD COLUMN ""LastActiveAt"" timestamp with time zone NULL;
-                            END IF;
-                        END $$");
-                    await context.Database.ExecuteSqlRawAsync(@"
-                        DO $$ BEGIN
-                            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='ErrorLogs' AND column_name='ResolvedAt') THEN
-                                ALTER TABLE ""ErrorLogs"" ADD COLUMN ""ResolvedAt"" timestamp with time zone NULL;
-                            END IF;
-                        END $$");
+                    // Use PostgreSQL native IF NOT EXISTS syntax
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" timestamp with time zone NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""ErrorLogs"" ADD COLUMN IF NOT EXISTS ""ResolvedAt"" timestamp with time zone NULL;");
                     initLogger.LogInformation("PostgreSQL: Safety check for critical columns completed");
                 }
                 catch (Exception ex)
