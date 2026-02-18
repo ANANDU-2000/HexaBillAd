@@ -116,130 +116,126 @@ const Login = ({ isSuperAdminLogin = false }) => {
   const textAlign = isRtl ? 'text-right' : 'text-left'
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex" dir={dir} lang={lang}>
+    <div className="h-screen bg-neutral-50 flex overflow-hidden" dir={dir} lang={lang}>
       {/* Split screen: left brand (desktop), right form — works LTR/RTL */}
-      <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-start lg:justify-center lg:bg-gradient-to-br lg:from-primary-50 lg:via-primary-100 lg:to-primary-50 lg:border-r lg:border-primary-200 lg:px-12 lg:py-16">
+      <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-start lg:justify-start lg:bg-gradient-to-br lg:from-primary-50 lg:via-primary-100 lg:to-primary-50 lg:border-r lg:border-primary-200 lg:px-10 lg:py-8 overflow-y-auto">
         <div className={`max-w-lg w-full ${isRtl ? 'text-right' : 'text-left'}`}>
           <Logo size="large" showText={true} />
-          <h2 className="mt-8 text-3xl font-bold text-primary-900 leading-tight">
-            Complete Business Management Software for Growing Companies
+          <h2 className="mt-4 text-2xl font-bold text-primary-900 leading-tight">
+            Complete Business Management Software
           </h2>
-          <p className="mt-4 text-lg text-primary-700 leading-relaxed">
-            Streamline invoicing, inventory, POS, customer management, and financial reporting — all in one powerful platform designed for businesses in the Gulf, India, and worldwide.
+          <p className="mt-2 text-sm text-primary-700 leading-snug">
+            Streamline invoicing, inventory, POS, customer management, and financial reporting — all in one platform for businesses in the Gulf, India, and worldwide.
           </p>
           
-          {/* Key Features */}
-          <div className="mt-8 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          {/* Key Features - Compact Grid */}
+          <div className="mt-5 grid grid-cols-1 gap-2.5">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Professional Invoicing & Billing</h3>
-                <p className="text-sm text-primary-600 mt-1">Create, send, and track invoices instantly. Multi-currency support, automated reminders, and payment tracking.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Professional Invoicing & Billing</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Create, send, track invoices. Multi-currency, automated reminders.</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Point of Sale (POS) System</h3>
-                <p className="text-sm text-primary-600 mt-1">Fast checkout, barcode scanning, receipt printing, and real-time inventory updates.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Point of Sale (POS) System</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Fast checkout, barcode scanning, receipt printing, real-time updates.</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Smart Inventory Management</h3>
-                <p className="text-sm text-primary-600 mt-1">Track stock levels, low stock alerts, multi-location support, and automated reorder points.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Smart Inventory Management</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Track stock, low stock alerts, multi-location, automated reorder.</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Customer & Payment Management</h3>
-                <p className="text-sm text-primary-600 mt-1">Customer ledger, payment tracking, credit limits, payment terms, and outstanding balance reports.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Customer & Payment Management</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Customer ledger, payment tracking, credit limits, balance reports.</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Advanced Analytics & Reports</h3>
-                <p className="text-sm text-primary-600 mt-1">Sales reports, profit analysis, expense tracking, tax reports, and customizable dashboards.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Advanced Analytics & Reports</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Sales reports, profit analysis, expense tracking, tax reports.</p>
               </div>
             </div>
             
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <div>
-                <h3 className="font-semibold text-primary-900">Multi-Branch & Route Management</h3>
-                <p className="text-sm text-primary-600 mt-1">Manage multiple locations, delivery routes, staff assignments, and branch-specific reporting.</p>
+              <div className="flex-1">
+                <h3 className="font-semibold text-primary-900 text-sm">Multi-Branch & Route Management</h3>
+                <p className="text-xs text-primary-600 mt-0.5">Multiple locations, delivery routes, staff assignments, branch reports.</p>
               </div>
             </div>
           </div>
           
-          {/* Business Benefits */}
-          <div className="mt-10 p-6 bg-white/60 backdrop-blur-sm rounded-xl border border-primary-200">
-            <h3 className="font-bold text-primary-900 text-lg mb-3">Why Choose HexaBill?</h3>
-            <ul className="space-y-2 text-sm text-primary-700">
-              <li className="flex items-center gap-2">
+          {/* Business Benefits - Compact */}
+          <div className="mt-5 p-4 bg-white/60 backdrop-blur-sm rounded-lg border border-primary-200">
+            <h3 className="font-bold text-primary-900 text-sm mb-2">Why Choose HexaBill?</h3>
+            <ul className="space-y-1 text-xs text-primary-700">
+              <li className="flex items-center gap-1.5">
                 <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Save Time:</strong> Automate invoicing, inventory updates, and payment tracking</span>
+                <span><strong>Save Time:</strong> Automate invoicing & inventory</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Grow Faster:</strong> Real-time insights help you make data-driven decisions</span>
+                <span><strong>Grow Faster:</strong> Real-time insights & data-driven decisions</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Reduce Errors:</strong> Automated calculations and validation prevent costly mistakes</span>
+                <span><strong>Scale Easily:</strong> Single location to multi-branch</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Scale Easily:</strong> From single location to multi-branch operations</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Stay Compliant:</strong> Tax reports, VAT handling, and audit trails built-in</span>
+                <span><strong>Stay Compliant:</strong> Tax reports, VAT, audit trails</span>
               </li>
             </ul>
           </div>
           
-          {/* SEO Keywords & CTA */}
-          <div className="mt-8 text-sm text-primary-600 leading-relaxed">
+          {/* SEO Keywords - Compact */}
+          <div className="mt-4 text-xs text-primary-600 leading-snug">
             <p>
-              <strong>Perfect for:</strong> Retail stores, wholesale distributors, service businesses, restaurants, e-commerce, manufacturing, and trading companies. 
-              <strong className="text-primary-700"> Trusted by businesses across UAE, Saudi Arabia, India, and 50+ countries.</strong>
+              <strong>Perfect for:</strong> Retail, wholesale, restaurants, e-commerce, manufacturing. 
+              <strong className="text-primary-700"> Trusted across UAE, Saudi Arabia, India & 50+ countries.</strong>
             </p>
           </div>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto">
       <div className={`max-w-md w-full space-y-6 ${textAlign}`}>
         <div className={isRtl ? 'text-right' : 'text-center'}>
           <div className={`mb-4 lg:hidden ${isRtl ? 'flex justify-end' : 'mx-auto flex justify-center'}`}>
