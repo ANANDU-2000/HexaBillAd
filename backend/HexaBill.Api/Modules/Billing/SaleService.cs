@@ -1241,15 +1241,28 @@ namespace HexaBill.Api.Modules.Billing
                     // If staff has branch/route assignments, check if invoice matches
                     if (!staffCanEdit && existingSale.BranchId.HasValue)
                     {
-                        // Check if staff is assigned to this branch/route
-                        var staffAssignments = await _context.StaffAssignments
-                            .Where(sa => sa.UserId == userId && sa.TenantId == tenantId)
-                            .ToListAsync();
+                        // Check if staff is assigned to this branch
+                        var branchStaff = await _context.BranchStaff
+                            .Where(bs => bs.UserId == userId)
+                            .Include(bs => bs.Branch)
+                            .Where(bs => bs.Branch.TenantId == tenantId && bs.BranchId == existingSale.BranchId.Value)
+                            .AnyAsync();
                         
-                        staffCanEdit = staffAssignments.Any(sa => 
-                            sa.BranchId == existingSale.BranchId.Value &&
-                            (!existingSale.RouteId.HasValue || sa.RouteId == existingSale.RouteId.Value)
-                        );
+                        if (branchStaff)
+                        {
+                            staffCanEdit = true;
+                        }
+                        else if (existingSale.RouteId.HasValue)
+                        {
+                            // Check if staff is assigned to this route
+                            var routeStaff = await _context.RouteStaff
+                                .Where(rs => rs.UserId == userId)
+                                .Include(rs => rs.Route)
+                                .Where(rs => rs.Route.TenantId == tenantId && rs.RouteId == existingSale.RouteId.Value)
+                                .AnyAsync();
+                            
+                            staffCanEdit = routeStaff;
+                        }
                     }
                     
                     if (!staffCanEdit)
@@ -2185,14 +2198,29 @@ namespace HexaBill.Api.Modules.Billing
                 // Check if invoice is in staff's assigned branch/route
                 if (sale.BranchId.HasValue)
                 {
-                    var staffAssignments = await _context.StaffAssignments
-                        .Where(sa => sa.UserId == userId && sa.TenantId == tenantId)
-                        .ToListAsync();
+                    // Check if staff is assigned to this branch
+                    var branchStaff = await _context.BranchStaff
+                        .Where(bs => bs.UserId == userId)
+                        .Include(bs => bs.Branch)
+                        .Where(bs => bs.Branch.TenantId == tenantId && bs.BranchId == sale.BranchId.Value)
+                        .AnyAsync();
                     
-                    return staffAssignments.Any(sa => 
-                        sa.BranchId == sale.BranchId.Value &&
-                        (!sale.RouteId.HasValue || sa.RouteId == sale.RouteId.Value)
-                    );
+                    if (branchStaff)
+                    {
+                        return true;
+                    }
+                    
+                    // Check if staff is assigned to this route
+                    if (sale.RouteId.HasValue)
+                    {
+                        var routeStaff = await _context.RouteStaff
+                            .Where(rs => rs.UserId == userId)
+                            .Include(rs => rs.Route)
+                            .Where(rs => rs.Route.TenantId == tenantId && rs.RouteId == sale.RouteId.Value)
+                            .AnyAsync();
+                        
+                        return routeStaff;
+                    }
                 }
             }
 
