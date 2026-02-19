@@ -18,7 +18,8 @@ import {
   AlertCircle,
   UserPlus,
   DollarSign,
-  Inbox
+  Inbox,
+  ArrowLeft
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
