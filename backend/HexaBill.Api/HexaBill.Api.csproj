@@ -13,6 +13,8 @@ Date: 2026
   <ItemGroup>
     <!-- Exclude SQLite backup; only Migrations folder (PostgreSQL) is used -->
     <Compile Remove="MigrationsSqliteBackup\**\*.cs" />
+    <!-- Exclude MigrationFixer - it has its own Program.cs with top-level statements -->
+    <Compile Remove="MigrationFixer\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
