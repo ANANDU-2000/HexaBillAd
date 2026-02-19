@@ -3227,9 +3227,16 @@ const CustomerLedgerPage = () => {
 // Add Customer Modal Component removed - now using inline Modal in main component
 
 // Ledger Statement Tab Component - Tally Style Redesign
+// CRITICAL: Define default filters OUTSIDE component to prevent TDZ errors
+const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all' }
+
 const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, filters, onFilterChange }) => {
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
-  const safeFilters = filters && typeof filters === 'object' ? filters : { status: 'all', type: 'all' }
+  // Use different property names to avoid minifier creating 'st' variable
+  const safeFilters = filters && typeof filters === 'object' ? {
+    statusFilterValue: filters.status || 'all',
+    typeFilterValue: filters.type || 'all'
+  } : DEFAULT_LEDGER_FILTERS
   const safeOnFilterChange = onFilterChange || (() => {})
   
   const [displayLimit, setDisplayLimit] = React.useState(100) // Show first 100 entries by default
@@ -3281,7 +3288,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
           </div>
           <div className="flex items-center space-x-2 flex-wrap">
             <select
-              value={safeFilters['status'] || 'all'}
+              value={safeFilters.statusFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('status', e.target.value)}
               className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
@@ -3291,7 +3298,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
               <option value="unpaid">Unpaid</option>
             </select>
             <select
-              value={safeFilters['type'] || 'all'}
+              value={safeFilters.typeFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('type', e.target.value)}
               className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
