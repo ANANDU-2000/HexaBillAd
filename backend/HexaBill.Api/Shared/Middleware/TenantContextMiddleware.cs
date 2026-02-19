@@ -167,15 +167,33 @@ namespace HexaBill.Api.Shared.Middleware
                     // Development: use first active tenant as fallback so app keeps working
                     if (_env.IsDevelopment())
                     {
-                        var fallbackTenant = await dbContext.Tenants.AsNoTracking()
-                            .Where(t => t.Status == TenantStatus.Active)
-                            .OrderBy(t => t.Id)
-                            .FirstOrDefaultAsync();
-                        if (fallbackTenant != null)
+                        try
                         {
-                            _logger.LogWarning("Development: Tenant {TenantId} not found - using fallback tenant {FallbackId} ({Name})", tenantId, fallbackTenant.Id, fallbackTenant.Name);
-                            tenant = fallbackTenant;
-                            tenantId = fallbackTenant.Id;
+                            var fallbackTenant = await dbContext.Tenants.AsNoTracking()
+                                .Where(t => t.Status == TenantStatus.Active)
+                                .OrderBy(t => t.Id)
+                                .FirstOrDefaultAsync();
+                            if (fallbackTenant != null)
+                            {
+                                _logger.LogWarning("Development: Tenant {TenantId} not found - using fallback tenant {FallbackId} ({Name})", tenantId, fallbackTenant.Id, fallbackTenant.Name);
+                                tenant = fallbackTenant;
+                                tenantId = fallbackTenant.Id;
+                            }
+                        }
+                        catch (Exception fallbackEx)
+                        {
+                            // If FeaturesJson column is missing, skip fallback
+                            var pgEx = fallbackEx as Npgsql.PostgresException 
+                                ?? fallbackEx.InnerException as Npgsql.PostgresException
+                                ?? (fallbackEx.InnerException?.InnerException as Npgsql.PostgresException);
+                            if (pgEx != null && pgEx.SqlState == "42703" && pgEx.MessageText.Contains("FeaturesJson"))
+                            {
+                                _logger.LogWarning("Skipping development fallback due to missing FeaturesJson column");
+                            }
+                            else
+                            {
+                                throw;
+                            }
                         }
                     }
                     if (tenant == null)
@@ -195,12 +213,30 @@ namespace HexaBill.Api.Shared.Middleware
                 if (wouldBlock && _env.IsDevelopment())
                 {
                     _logger.LogInformation("Development: Auto-activating tenant {TenantId} ({Name}) - was {Status}", tenant.Id, tenant.Name, tenant.Status);
-                    var dbTenant = await dbContext.Tenants.FindAsync(tenantId);
-                    if (dbTenant != null)
+                    try
                     {
-                        dbTenant.Status = TenantStatus.Active;
-                        dbTenant.TrialEndDate = null;
-                        await dbContext.SaveChangesAsync();
+                        var dbTenant = await dbContext.Tenants.FindAsync(tenantId);
+                        if (dbTenant != null)
+                        {
+                            dbTenant.Status = TenantStatus.Active;
+                            dbTenant.TrialEndDate = null;
+                            await dbContext.SaveChangesAsync();
+                        }
+                    }
+                    catch (Exception activateEx)
+                    {
+                        // If FeaturesJson column is missing, skip activation (non-critical)
+                        var pgEx = activateEx as Npgsql.PostgresException 
+                            ?? activateEx.InnerException as Npgsql.PostgresException
+                            ?? (activateEx.InnerException?.InnerException as Npgsql.PostgresException);
+                        if (pgEx != null && pgEx.SqlState == "42703" && pgEx.MessageText.Contains("FeaturesJson"))
+                        {
+                            _logger.LogWarning("Skipping tenant activation due to missing FeaturesJson column");
+                        }
+                        else
+                        {
+                            throw;
+                        }
                     }
                     // CRITICAL: Must not fall through to 403 - continue to set tenant context
                 }
