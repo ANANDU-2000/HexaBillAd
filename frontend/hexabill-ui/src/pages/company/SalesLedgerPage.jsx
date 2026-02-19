@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Download,
   Filter,
@@ -59,6 +59,7 @@ const SalesLedgerPage = () => {
     } catch { return true }
   })
   const [sharingSaleId, setSharingSaleId] = useState(null)
+  const fetchSalesLedgerRef = useRef(null)
 
   // Load staff users only (branches/routes from shared context)
   useEffect(() => {
@@ -91,23 +92,6 @@ const SalesLedgerPage = () => {
     const branchId = parseInt(filters.branchId, 10)
     setRoutesForBranch((routes || []).filter(r => r.branchId === branchId))
   }, [filters.branchId, routes])
-
-  useEffect(() => {
-    fetchSalesLedger()
-  }, [dateRange, filters.branchId, filters.routeId, filters.staffId])
-
-  // Listen for data update events to refresh when payments are made
-  useEffect(() => {
-    const handleDataUpdate = () => {
-      fetchSalesLedger()
-    }
-
-    window.addEventListener('dataUpdated', handleDataUpdate)
-
-    return () => {
-      window.removeEventListener('dataUpdated', handleDataUpdate)
-    }
-  }, [])
 
   const fetchSalesLedger = async () => {
     setLoading(true)
@@ -159,6 +143,20 @@ const SalesLedgerPage = () => {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchSalesLedgerRef.current = fetchSalesLedger
+  })
+
+  useEffect(() => {
+    fetchSalesLedger()
+  }, [dateRange, filters.branchId, filters.routeId, filters.staffId])
+
+  useEffect(() => {
+    const handleDataUpdate = () => fetchSalesLedgerRef.current?.()
+    window.addEventListener('dataUpdated', handleDataUpdate)
+    return () => window.removeEventListener('dataUpdated', handleDataUpdate)
+  }, [])
 
   // Apply filters to sales ledger data
   const getFilteredLedger = () => {

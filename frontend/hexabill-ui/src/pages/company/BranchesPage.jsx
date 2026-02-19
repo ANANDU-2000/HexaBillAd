@@ -4,11 +4,13 @@ import { Building2, Plus, ChevronRight, MapPin, LayoutGrid, Users } from 'lucide
 import toast from 'react-hot-toast'
 import { branchesAPI, routesAPI, adminAPI } from '../../services'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+import { useAuth } from '../../hooks/useAuth'
 import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
 
 const BranchesPage = () => {
+  const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTab = searchParams.get('tab') === 'routes' ? 'routes' : 'branches'
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -31,7 +33,7 @@ const BranchesPage = () => {
   const [branchForm, setBranchForm] = useState({ name: '', address: '', assignedStaffIds: [] })
   const [routeForm, setRouteForm] = useState({ name: '', branchId: '', assignedStaffIds: [] })
 
-  const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
+  const canManage = isAdminOrOwner(user)
 
   useEffect(() => {
     // Update URL when tab changes

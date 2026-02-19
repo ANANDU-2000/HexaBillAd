@@ -175,7 +175,7 @@ const ProductsPage = () => {
     }
   }
 
-  const handleUpdateProduct = async (id, productData) => {
+  const handleUpdateProduct = async (id, productData, imageFile = null) => {
     // Prevent multiple clicks
     if (saving) {
       toast.error('Please wait, operation in progress...')
@@ -206,7 +206,6 @@ const ProductsPage = () => {
       const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || undefined }
       const response = await productsAPI.updateProduct(id, payload)
       if (response?.success) {
-        // Upload image if provided (image upload is handled in ProductForm for existing products, but handle it here too for consistency)
         if (imageFile) {
           try {
             const uploadResponse = await productsAPI.uploadProductImage(id, imageFile)

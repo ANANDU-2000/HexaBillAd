@@ -55,12 +55,20 @@ function getDefaultDateRange() {
   }
 }
 
+function isValidDateString(str) {
+  if (typeof str !== 'string' || str.length !== 10) return false
+  const d = new Date(str)
+  return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === str
+}
+
 function loadDateRangeFromStorage() {
   try {
     const raw = localStorage.getItem(REPORTS_DATE_RANGE_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw)
-    if (parsed && typeof parsed.from === 'string' && typeof parsed.to === 'string') return parsed
+    if (parsed && typeof parsed.from === 'string' && typeof parsed.to === 'string') {
+      if (isValidDateString(parsed.from) && isValidDateString(parsed.to)) return parsed
+    }
   } catch (_) { /* ignore */ }
   return null
 }

@@ -20,7 +20,8 @@ import {
   XCircle,
   Clock,
   Repeat,
-  Download
+  Download,
+  Eye
 } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -917,7 +918,7 @@ const ExpensesPage = () => {
                         <td className="px-4 py-4 whitespace-nowrap text-center space-x-2">
                           {expense.attachmentUrl && (
                             <button
-                              onClick={() => handleDownloadAttachment(expense.attachmentUrl)}
+                              onClick={() => handleDownloadAttachment(expense)}
                               className="text-blue-600 hover:text-blue-900"
                               title="View Receipt"
                             >
@@ -1003,7 +1004,7 @@ const ExpensesPage = () => {
                           </span>
                           {expense.attachmentUrl && (
                             <button
-                              onClick={() => handleDownloadAttachment(expense.attachmentUrl)}
+                              onClick={() => handleDownloadAttachment(expense)}
                               className="text-blue-600 hover:text-blue-900"
                               title="View receipt"
                             >
@@ -1394,7 +1395,7 @@ const ExpensesPage = () => {
                 {selectedExpense?.attachmentUrl && !attachmentFile && (
                   <button
                     type="button"
-                    onClick={() => handleDownloadAttachment(selectedExpense.attachmentUrl)}
+                    onClick={() => handleDownloadAttachment(selectedExpense)}
                     className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
                   >
                     <Eye className="h-4 w-4" />
