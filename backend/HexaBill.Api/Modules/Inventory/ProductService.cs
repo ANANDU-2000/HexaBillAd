@@ -480,9 +480,12 @@ namespace HexaBill.Api.Modules.Inventory
 
         public async Task<bool> AdjustStockAsync(int productId, decimal changeQty, string reason, int userId, int tenantId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // CRITICAL: Verify product belongs to owner
                 var product = await _context.Products
                     .Where(p => p.Id == productId && p.TenantId == tenantId)
@@ -535,12 +538,13 @@ namespace HexaBill.Api.Modules.Inventory
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return true;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                return false;
-            }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+            });
         }
 
         public async Task<PagedResponse<ProductDto>> GetLowStockProductsAsync(int tenantId, int page = 1, int pageSize = 50, int? globalLowStockThreshold = null)

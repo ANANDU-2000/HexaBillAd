@@ -117,6 +117,39 @@ namespace HexaBill.Api.Modules.Reports
                     salesToday = 0;
                 }
 
+                decimal returnsToday = 0;
+                int returnsCountToday = 0;
+                try
+                {
+                    var returnsQuery = _context.SaleReturns
+                        .Where(r => r.ReturnDate >= startDate && r.ReturnDate < endDate);
+                    if (tenantId > 0)
+                        returnsQuery = returnsQuery.Where(r => r.TenantId == tenantId);
+                    if (branchId.HasValue)
+                        returnsQuery = returnsQuery.Where(r => r.BranchId == branchId.Value);
+                    if (routeId.HasValue)
+                        returnsQuery = returnsQuery.Where(r => r.RouteId == routeId.Value);
+                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                        if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                            returnsQuery = returnsQuery.Where(r => r.RouteId != null && restrictedRouteIds.Contains(r.RouteId.Value));
+                        else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                            returnsQuery = returnsQuery.Where(r => false);
+                    }
+                    returnsCountToday = await returnsQuery.CountAsync();
+                    returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
+                    Console.WriteLine($"?? Returns today: count={returnsCountToday}, total={returnsToday:C}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"? Error calculating returnsToday: {ex.Message}");
+                    returnsToday = 0;
+                    returnsCountToday = 0;
+                }
+
+                decimal netSalesToday = salesToday - returnsToday;
+
                 try
                 {
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
@@ -225,16 +258,16 @@ namespace HexaBill.Api.Modules.Reports
                     cogsToday = 0;
                 }
 
-                // Single definition: Profit = GrandTotal(Sales) - COGS - Expenses (same as ProfitService; PRODUCTION_MASTER_TODO #38)
-                var grossProfit = salesToday - cogsToday;
+                // Profit = Net Sales (Sales - Returns) - COGS - Expenses
+                var grossProfit = netSalesToday - cogsToday;
                 var profitToday = grossProfit - expensesToday;
                 
                 Console.WriteLine($"\n========== REPORT SERVICE PROFIT CALCULATION (CORRECTED) ==========");
                 Console.WriteLine($"?? Date Range: {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}");
-                Console.WriteLine($"?? Sales (GrandTotal with VAT): {salesToday:C}");
+                Console.WriteLine($"?? Sales (Gross): {salesToday:C}, Returns: {returnsToday:C}, Net Sales: {netSalesToday:C}");
                 Console.WriteLine($"?? COGS (from SaleItems × Product.CostPrice): {cogsToday:C}");
                 Console.WriteLine($"?? Purchases (for reference, not used in profit): {purchasesToday:C}");
-                Console.WriteLine($"?? Gross Profit (Sales - COGS): {grossProfit:C}");
+                Console.WriteLine($"?? Gross Profit (Net Sales - COGS): {grossProfit:C}");
                 Console.WriteLine($"?? Expenses: {expensesToday:C}");
                 Console.WriteLine($"? NET PROFIT (Gross Profit - Expenses): {profitToday:C}");
                 Console.WriteLine($"=========================================================================\n");
@@ -688,6 +721,9 @@ namespace HexaBill.Api.Modules.Reports
                 var result = new SummaryReportDto
                 {
                     SalesToday = salesToday,
+                    ReturnsToday = returnsToday,
+                    NetSalesToday = netSalesToday,
+                    ReturnsCountToday = returnsCountToday,
                     PurchasesToday = purchasesToday,
                     ExpensesToday = expensesToday,
                     CogsToday = cogsToday,
@@ -725,6 +761,9 @@ namespace HexaBill.Api.Modules.Reports
                 return new SummaryReportDto
                 {
                     SalesToday = 0,
+                    ReturnsToday = 0,
+                    NetSalesToday = 0,
+                    ReturnsCountToday = 0,
                     PurchasesToday = 0,
                     ExpensesToday = 0,
                     ProfitToday = 0,

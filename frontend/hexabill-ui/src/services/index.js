@@ -948,9 +948,29 @@ export const returnsAPI = {
     const response = await api.post('/returns/purchases', data)
     return response.data
   },
-  getSaleReturns: async (saleId = null) => {
-    const params = saleId ? { saleId } : {}
+  getSaleReturns: async (saleId = null, reportParams = null) => {
+    const params = { ...(saleId ? { saleId } : {}), ...(reportParams || {}) }
     const response = await api.get('/returns/sales', { params })
+    return response.data
+  },
+  getSaleReturnsPaged: async (params = {}) => {
+    const response = await api.get('/returns/sales', { params })
+    return response.data
+  },
+  getDamageCategories: async () => {
+    const response = await api.get('/returns/damage-categories')
+    return response.data
+  },
+  getFeatureFlags: async () => {
+    const response = await api.get('/returns/feature-flags')
+    return response.data
+  },
+  approveSaleReturn: async (id) => {
+    const response = await api.patch(`/returns/sales/${id}/approve`)
+    return response.data
+  },
+  rejectSaleReturn: async (id) => {
+    const response = await api.patch(`/returns/sales/${id}/reject`)
     return response.data
   },
   getPurchaseReturns: async (purchaseId = null) => {

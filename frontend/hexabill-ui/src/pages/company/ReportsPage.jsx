@@ -20,7 +20,8 @@ import {
   ChevronRight,
   Users,
   MapPin,
-  Phone
+  Phone,
+  RotateCcw
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -29,7 +30,7 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
-import { reportsAPI, productsAPI, customersAPI, profitAPI, paymentsAPI, adminAPI } from '../../services'
+import { reportsAPI, productsAPI, customersAPI, profitAPI, paymentsAPI, adminAPI, returnsAPI } from '../../services'
 import {
   LineChart,
   Line,
@@ -93,7 +94,9 @@ const ReportsPage = () => {
     customer: '',
     category: '',
     status: '', // Pending, Paid, Partial for sales report
-    search: '' // BUG #2.5 FIX: Add search filter for invoice number, customer name
+    search: '', // BUG #2.5 FIX: Add search filter for invoice number, customer name
+    damageCategory: '', // For Returns report
+    staffId: '' // For Returns report (CreatedBy)
   })
   const [appliedFilters, setAppliedFilters] = useState({
     branch: '',
@@ -102,7 +105,9 @@ const ReportsPage = () => {
     customer: '',
     category: '',
     status: '',
-    search: ''
+    search: '',
+    damageCategory: '',
+    staffId: ''
   })
   
   // BUG #2.5 FIX: Debounce text filter inputs (400ms delay) to prevent instant API calls
@@ -123,7 +128,10 @@ const ReportsPage = () => {
     chequeReport: [], // FIX: Add cheque report data
     staffReport: [],
     aiSuggestions: null,
+    returnsReport: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 },
+    damageCategories: [],
   })
+  const [returnsFeatureFlags, setReturnsFeatureFlags] = useState({ returnsEnabled: true, returnsRequireApproval: false })
   const [loadingSales, setLoadingSales] = useState(false)
   const [expandedBranchId, setExpandedBranchId] = useState(null) // Branch Report: which branch row is expanded for route sub-rows
   const [productsList, setProductsList] = useState([])
@@ -169,6 +177,7 @@ const ReportsPage = () => {
     { id: 'profit-loss', name: 'Profit & Loss', icon: TrendingUp, adminOnly: true },
     { id: 'branch-profit', name: 'Branch Profit', icon: Building2, adminOnly: true },
     { id: 'outstanding', name: 'Outstanding Bills', icon: DollarSign },
+    { id: 'returns', name: 'Sales Returns', icon: RotateCcw },
     { id: 'collections', name: 'Collections (with phone)', icon: Phone },
     { id: 'cheque', name: 'Cheque Report', icon: ShieldCheck, adminOnly: true }, // FIX: Add Cheque Report tab
     { id: 'staff', name: 'Staff Performance', icon: Users, adminOnly: true },
@@ -746,6 +755,53 @@ const ReportsPage = () => {
         } finally {
           setLoading(false)
         }
+      } else if (activeTab === 'returns') {
+        try {
+          setLoading(true)
+          const [returnsRes, categoriesRes, flagsRes] = await Promise.all([
+            returnsAPI.getSaleReturnsPaged({
+              fromDate: dateRange.from,
+              toDate: dateRange.to,
+              branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
+              routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
+              damageCategoryId: appliedFilters.damageCategory ? parseInt(appliedFilters.damageCategory, 10) : undefined,
+              staffId: appliedFilters.staffId ? parseInt(appliedFilters.staffId, 10) : undefined,
+              page: 1,
+              pageSize: 50
+            }),
+            returnsAPI.getDamageCategories().catch(() => ({ success: true, data: [] })),
+            returnsAPI.getFeatureFlags().catch(() => ({ success: true, data: {} }))
+          ])
+          const retData = returnsRes?.success && returnsRes?.data ? returnsRes.data : { items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 }
+          const cats = (categoriesRes?.success && categoriesRes?.data) ? categoriesRes.data : []
+          setReportData(prev => ({
+            ...prev,
+            returnsReport: {
+              items: retData.items || retData.Items || [],
+              totalCount: retData.totalCount ?? retData.TotalCount ?? 0,
+              page: retData.page ?? 1,
+              pageSize: retData.pageSize ?? retData.PageSize ?? 50,
+              totalPages: retData.totalPages ?? retData.TotalPages ?? 0
+            },
+            damageCategories: Array.isArray(cats) ? cats : []
+          }))
+          if (flagsRes?.success && flagsRes?.data) {
+            const d = flagsRes.data
+            setReturnsFeatureFlags({
+              returnsEnabled: d.returnsEnabled !== false,
+              returnsRequireApproval: !!d.returnsRequireApproval
+            })
+          }
+        } catch (error) {
+          if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load returns report')
+          setReportData(prev => ({
+            ...prev,
+            returnsReport: { items: [], totalCount: 0, page: 1, pageSize: 50, totalPages: 0 },
+            damageCategories: []
+          }))
+        } finally {
+          setLoading(false)
+        }
       } else if (activeTab === 'ai') {
         try {
           const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 })
@@ -1197,6 +1253,28 @@ const ReportsPage = () => {
               value={filters.status}
               onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
             />
+          )}
+          {/* Returns report filters */}
+          {activeTab === 'returns' && (
+            <>
+              <Select
+                label="Damage Category"
+                options={[
+                  { value: '', label: 'All Categories' },
+                  ...(reportData.damageCategories || []).map(dc => ({ value: String(dc.id), label: dc.name || 'Unknown' }))
+                ]}
+                value={filters.damageCategory}
+                onChange={(e) => setFilters(prev => ({ ...prev, damageCategory: e.target.value }))}
+              />
+              <Input
+                label="Staff User ID"
+                type="number"
+                min="1"
+                placeholder="Optional"
+                value={filters.staffId}
+                onChange={(e) => setFilters(prev => ({ ...prev, staffId: e.target.value }))}
+              />
+            </>
           )}
           <div className="flex items-end">
             <button
@@ -2446,6 +2524,138 @@ const ReportsPage = () => {
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Sales Returns Tab */}
+          {activeTab === 'returns' && (
+            <div className="space-y-6">
+              {!returnsFeatureFlags.returnsEnabled ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+                  <p className="font-medium">Sales returns are disabled</p>
+                  <p className="text-sm mt-1">Contact your administrator to enable returns.</p>
+                </div>
+              ) : (
+                <>
+              <p className="text-sm text-gray-600">Sales returns for the selected date range. Use filters to narrow by branch, route, damage category, or staff.</p>
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Sales Returns</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Total: {reportData.returnsReport?.totalCount ?? 0} return(s) · Total value: {formatCurrency((reportData.returnsReport?.items || []).reduce((s, r) => s + (parseFloat(r.grandTotal) || 0), 0))}
+                    </p>
+                  </div>
+                </div>
+                {loading ? (
+                  <LoadingCard />
+                ) : reportData.returnsReport?.items?.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Invoice No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Qty Returned</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Reason / Damage</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Staff</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Branch</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Route</th>
+                          {returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) && (
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {reportData.returnsReport.items.flatMap((ret) => {
+                          const items = ret.items || ret.Items || []
+                          const status = (ret.status || ret.Status || '').toLowerCase()
+                          const isPending = status === 'pending'
+                          const showActions = returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) && isPending
+                          const actionCell = showActions ? (
+                            <td className="px-4 py-3" rowSpan={items.length || 1}>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await returnsAPI.approveSaleReturn(ret.id)
+                                      toast.success('Return approved')
+                                      fetchReportData(true)
+                                    } catch (e) {
+                                      toast.error(e?.response?.data?.message || 'Failed to approve')
+                                    }
+                                  }}
+                                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await returnsAPI.rejectSaleReturn(ret.id)
+                                      toast.success('Return rejected')
+                                      fetchReportData(true)
+                                    } catch (e) {
+                                      toast.error(e?.response?.data?.message || 'Failed to reject')
+                                    }
+                                  }}
+                                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                >
+                                  Reject
+                                </button>
+                              </div>
+                            </td>
+                          ) : returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) ? <td className="px-4 py-3" rowSpan={items.length || 1}>—</td> : null
+                          if (items.length === 0) {
+                            return [(
+                              <tr key={ret.id} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 whitespace-nowrap text-gray-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap font-medium">{ret.saleInvoiceNo ?? '—'}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">{ret.customerName ?? '—'}</td>
+                                <td className="px-4 py-3">—</td>
+                                <td className="px-4 py-3 text-right">—</td>
+                                <td className="px-4 py-3">—</td>
+                                <td className="px-4 py-3 text-right font-medium">{formatCurrency(ret.grandTotal ?? 0)}</td>
+                                <td className="px-4 py-3">{ret.createdByName ?? '—'}</td>
+                                <td className="px-4 py-3">{ret.branchName ?? '—'}</td>
+                                <td className="px-4 py-3">{ret.routeName ?? '—'}</td>
+                                {actionCell}
+                              </tr>
+                            )]
+                          }
+                          return items.map((line, idx) => (
+                            <tr key={`${ret.id}-${line.id || idx}`} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
+                              <td className="px-4 py-3 whitespace-nowrap font-medium">{ret.saleInvoiceNo ?? '—'}</td>
+                              <td className="px-4 py-3 whitespace-nowrap">{ret.customerName ?? '—'}</td>
+                              <td className="px-4 py-3">{line.productName ?? line.ProductName ?? '—'}</td>
+                              <td className="px-4 py-3 text-right">{Number(line.qtyReturned ?? line.QtyReturned ?? 0)}</td>
+                              <td className="px-4 py-3">{line.damageCategoryName ?? line.DamageCategoryName ?? line.reason ?? line.Reason ?? '—'}</td>
+                              <td className="px-4 py-3 text-right font-medium">{formatCurrency(line.amount ?? line.Amount ?? 0)}</td>
+                              <td className="px-4 py-3">{ret.createdByName ?? '—'}</td>
+                              <td className="px-4 py-3">{ret.branchName ?? '—'}</td>
+                              <td className="px-4 py-3">{ret.routeName ?? '—'}</td>
+                              {idx === 0 ? actionCell : null}
+                            </tr>
+                          ))
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <RotateCcw className="h-12 w-12 mb-2 text-gray-400" />
+                    <p>{loading ? 'Loading returns...' : 'No returns in this period. Adjust the date range or filters.'}</p>
+                  </div>
+                )}
+              </div>
+                </>
+              )}
             </div>
           )}
 

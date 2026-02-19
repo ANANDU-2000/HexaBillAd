@@ -26,9 +26,12 @@ namespace HexaBill.Api.Modules.Inventory
 
         public async Task<StockAdjustmentDto> CreateAdjustmentAsync(CreateStockAdjustmentRequest request, int userId, int tenantId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 var product = await _context.Products
                     .FirstOrDefaultAsync(p => p.Id == request.ProductId && p.TenantId == tenantId);
                 if (product == null)
@@ -93,12 +96,13 @@ namespace HexaBill.Api.Modules.Inventory
                     AdjustedBy = userId,
                     AdjustedAt = DateTime.UtcNow
                 };
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<List<StockAdjustmentDto>> GetAdjustmentsAsync(int? productId = null, DateTime? fromDate = null, DateTime? toDate = null, int? tenantId = null)

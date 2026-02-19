@@ -402,9 +402,13 @@ namespace HexaBill.Api.Modules.Purchases
             if (purchase == null)
                 return null;
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // Reverse old stock changes (guard ConversionToBase <= 0)
                 foreach (var oldItem in purchase.Items)
                 {
@@ -559,12 +563,13 @@ namespace HexaBill.Api.Modules.Purchases
                 await transaction.CommitAsync();
 
                 return await GetPurchaseByIdAsync(id, tenantId);
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<bool> DeletePurchaseAsync(int id, int userId, int tenantId)
@@ -577,9 +582,13 @@ namespace HexaBill.Api.Modules.Purchases
             if (purchase == null)
                 return false;
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
                 // CRITICAL: Reverse all stock changes before deleting (guard ConversionToBase <= 0)
                 foreach (var item in purchase.Items)
                 {
@@ -637,13 +646,14 @@ namespace HexaBill.Api.Modules.Purchases
 
                 Console.WriteLine($"? Purchase deleted successfully: ID={id}, Invoice={purchase.InvoiceNo}");
                 return true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"? Purchase deletion failed: {ex.Message}");
-                await transaction.RollbackAsync();
-                throw;
-            }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"? Purchase deletion failed: {ex.Message}");
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<PurchaseAnalyticsDto> GetPurchaseAnalyticsAsync(int tenantId, DateTime? startDate = null, DateTime? endDate = null)

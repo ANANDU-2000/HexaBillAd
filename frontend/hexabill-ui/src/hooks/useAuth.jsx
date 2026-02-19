@@ -16,6 +16,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
   const [impersonatedTenantId, setImpersonatedTenantId] = useState(null)
 
+  // Declare logout before any useEffect that references it to avoid TDZ when minified
+  const logout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    localStorage.removeItem('selected_tenant_id') // Clear impersonation on logout
+    setUser(null)
+    setImpersonatedTenantId(null)
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     const userData = localStorage.getItem('user')
@@ -133,14 +142,6 @@ export const AuthProvider = ({ children }) => {
         message: error.response?.data?.message || 'Login failed'
       }
     }
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    localStorage.removeItem('selected_tenant_id') // Clear impersonation on logout
-    setUser(null)
-    setImpersonatedTenantId(null)
   }
 
   const updateUser = (updatedUserData) => {

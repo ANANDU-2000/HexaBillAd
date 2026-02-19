@@ -31,8 +31,12 @@ namespace HexaBill.Api.Models
         [MaxLength(500)]
         public string? Reason { get; set; } // Bad item, damaged, wrong item, etc.
         public ReturnStatus Status { get; set; } // Pending, Approved, Rejected
-        public bool RestoreStock { get; set; } = true; // Add back to stock
-        public bool IsBadItem { get; set; } = false; // If true, don't restore to sellable stock
+        public bool RestoreStock { get; set; } = true; // Add back to stock (header default)
+        public bool IsBadItem { get; set; } = false; // If true, don't restore to sellable stock (header default)
+        public int? BranchId { get; set; }
+        public int? RouteId { get; set; }
+        [MaxLength(20)]
+        public string? ReturnType { get; set; } // Full, Partial
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 
@@ -40,6 +44,8 @@ namespace HexaBill.Api.Models
         public virtual Sale Sale { get; set; } = null!;
         public virtual Customer? Customer { get; set; }
         public virtual User CreatedByUser { get; set; } = null!;
+        public virtual Branch? Branch { get; set; }
+        public virtual HexaBill.Api.Models.Route? Route { get; set; }
         public virtual ICollection<SaleReturnItem> Items { get; set; } = new List<SaleReturnItem>();
     }
 
@@ -58,11 +64,15 @@ namespace HexaBill.Api.Models
         public decimal LineTotal { get; set; }
         [MaxLength(200)]
         public string? Reason { get; set; } // Item-specific reason
+        public int? DamageCategoryId { get; set; }
+        /// <summary>True = add back to sellable stock; false = do not add (damaged).</summary>
+        public bool? StockEffect { get; set; }
 
         // Navigation properties
         public virtual SaleReturn SaleReturn { get; set; } = null!;
         public virtual SaleItem SaleItem { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;
+        public virtual DamageCategory? DamageCategory { get; set; }
     }
 
     public class PurchaseReturn

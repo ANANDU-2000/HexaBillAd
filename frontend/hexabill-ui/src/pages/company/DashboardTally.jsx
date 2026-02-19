@@ -4,7 +4,7 @@ import {
     Package, ShoppingCart, Users, Truck, FileText,
     Settings, Database, BarChart3, DollarSign, TrendingUp,
     AlertTriangle, ChevronRight, BookOpen, Wallet,
-    Building2, MapPin, RefreshCw
+    Building2, MapPin, RefreshCw, RotateCcw
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,6 +14,133 @@ import { reportsAPI, alertsAPI } from '../../services'
 import { isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+
+// Helper components defined first so they are never used before initialization (avoids TDZ after minification)
+const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly }) => {
+    const iconBgClasses = {
+        green: 'bg-green-500/10 text-green-600',
+        red: 'bg-red-500/10 text-red-600',
+        blue: 'bg-blue-500/10 text-blue-600'
+    }
+    return (
+        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+            <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-neutral-600 mb-0.5 truncate">{title}</p>
+                    {loading ? (
+                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900">...</p>
+                    ) : (
+                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900 truncate">{formatCurrency(value)}</p>
+                    )}
+                </div>
+                <div className={`p-2 rounded-lg flex-shrink-0 ${iconBgClasses[color] || iconBgClasses.blue}`}>
+                    <Icon className="h-5 w-5" />
+                </div>
+            </div>
+        </div>
+    )
+}
+
+const QuickActionButton = ({ icon: Icon, label, onClick, color, shortcut }) => {
+    const colorClasses = {
+        blue: 'bg-blue-100 hover:bg-blue-200 text-blue-900',
+        green: 'bg-green-100 hover:bg-green-200 text-green-900',
+        purple: 'bg-purple-100 hover:bg-purple-200 text-purple-900',
+        orange: 'bg-orange-100 hover:bg-orange-200 text-orange-900'
+    }
+    return (
+        <button
+            onClick={onClick}
+            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 flex flex-col items-center justify-center space-y-3 hover:shadow-lg transition-all group cursor-pointer min-h-[120px]`}
+        >
+            <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm`}>
+                <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
+            </div>
+            <span className="text-sm sm:text-base font-bold text-center">{label}</span>
+            <span className="text-xs opacity-70 group-hover:opacity-100 hidden sm:inline">{shortcut}</span>
+        </button>
+    )
+}
+
+const AlertCard = ({ title, count, icon: Icon, color, onClick }) => {
+    const colorClasses = {
+        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900',
+        red: 'bg-red-50 border-red-300 text-red-900'
+    }
+    return (
+        <button
+            onClick={onClick}
+            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 w-full text-left hover:shadow-lg transition-all group cursor-pointer`}
+        >
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
+                    <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm flex-shrink-0`}>
+                        <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-sm sm:text-base font-bold truncate">{title}</p>
+                        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-2">{count}</p>
+                    </div>
+                </div>
+                <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </div>
+        </button>
+    )
+}
+
+const GatewayGroup = ({ group, user, navigate }) => {
+    const [expanded, setExpanded] = useState(true)
+    const isAdmin = user?.role?.toLowerCase() === 'admin'
+    const isOwnerUser = user?.role?.toLowerCase() === 'owner' || user?.role?.toLowerCase() === 'systemadmin'
+    const canShowItem = (itemId) => {
+        if (isOwnerUser) return true
+        if (user?.dashboardPermissions === null || user?.dashboardPermissions === undefined) return true
+        return user.dashboardPermissions.split(',').includes(itemId)
+    }
+    const visibleItems = group.items.filter(item => {
+        if (item.adminOnly && !isAdmin && !isOwnerUser) return false
+        if (item.id && !canShowItem(item.id)) return false
+        return true
+    })
+    return (
+        <div className="border-2 border-blue-200 rounded-lg shadow-md overflow-hidden">
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between transition-colors cursor-pointer"
+            >
+                <h3 className="text-xs sm:text-sm font-bold text-blue-900">{group.title}</h3>
+                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 text-blue-700 transform transition-transform ${expanded ? 'rotate-90' : ''}`} />
+            </button>
+            {expanded && (
+                <div className="bg-white divide-y divide-blue-100">
+                    {visibleItems.map((item, idx) => {
+                        const Icon = item.icon
+                        return (
+                            <button
+                                key={idx}
+                                onClick={() => navigate(item.path)}
+                                className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between hover:bg-blue-50 transition-colors group cursor-pointer ${item.primary ? 'bg-emerald-50 hover:bg-emerald-100' : ''
+                                    }`}
+                            >
+                                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
+                                    <div className={`p-1 sm:p-1.5 rounded-lg flex-shrink-0 ${item.primary ? 'bg-emerald-200' : 'bg-blue-100'
+                                        } group-hover:shadow-md transition-shadow`}>
+                                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    </div>
+                                    <div className="text-left min-w-0 flex-1">
+                                        <p className="text-xs sm:text-xs font-medium text-gray-900 truncate">{item.label}</p>
+                                        <p className="text-xs text-gray-500 hidden sm:block">{item.shortcut}</p>
+                                    </div>
+                                </div>
+                                <ChevronRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
+                            </button>
+                        )
+                    })}
+                </div>
+            )}
+        </div>
+    )
+}
 
 const DashboardTally = () => {
     const { user, logout } = useAuth()
@@ -28,6 +155,9 @@ const DashboardTally = () => {
     const availableBranches = branches || []
     const [stats, setStats] = useState({
         salesToday: 0,
+        returnsToday: 0,
+        netSalesToday: 0,
+        returnsCountToday: 0,
         expensesToday: 0,
         profitToday: 0,
         pendingBills: 0,
@@ -112,6 +242,9 @@ const DashboardTally = () => {
 
                 setStats({
                     salesToday: parseFloat(data.salesToday || data.SalesToday) || 0,
+                    returnsToday: parseFloat(data.returnsToday ?? data.ReturnsToday) || 0,
+                    netSalesToday: parseFloat(data.netSalesToday ?? data.NetSalesToday) ?? (parseFloat(data.salesToday || data.SalesToday) || 0) - (parseFloat(data.returnsToday ?? data.ReturnsToday) || 0),
+                    returnsCountToday: parseInt(data.returnsCountToday ?? data.ReturnsCountToday) || 0,
                     expensesToday: parseFloat(data.expensesToday || data.ExpensesToday) || 0,
                     profitToday: parseFloat(data.profitToday || data.ProfitToday) || 0,
                     pendingBills: parseInt(data.pendingBills || data.PendingBills) || 0,
@@ -368,13 +501,31 @@ const DashboardTally = () => {
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {canShow('salesToday') && (
                             <StatCard
-                                title={dateRange === 'today' ? 'Sales Today' : dateRange === 'week' ? 'Sales This Week' : dateRange === 'month' ? 'Sales This Month' : 'Sales'}
+                                title={dateRange === 'today' ? 'Sales (Gross) Today' : dateRange === 'week' ? 'Sales (Gross) This Week' : dateRange === 'month' ? 'Sales (Gross) This Month' : 'Sales (Gross)'}
                                 value={stats.salesToday}
                                 icon={DollarSign}
                                 color="green"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('returnsToday') && (
+                            <StatCard
+                                title={dateRange === 'today' ? 'Return Value Today' : dateRange === 'week' ? 'Return Value This Week' : dateRange === 'month' ? 'Return Value This Month' : 'Return Value'}
+                                value={stats.returnsToday}
+                                icon={RotateCcw}
+                                color="red"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('netSalesToday') && (
+                            <StatCard
+                                title={dateRange === 'today' ? 'Net Sales Today' : dateRange === 'week' ? 'Net Sales This Week' : dateRange === 'month' ? 'Net Sales This Month' : 'Net Sales'}
+                                value={stats.netSalesToday}
+                                icon={DollarSign}
+                                color="blue"
                                 loading={loading}
                             />
                         )}
@@ -633,142 +784,6 @@ const DashboardTally = () => {
         </div>
     )
 }
-
-
-
-const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly }) => {
-    const iconBgClasses = {
-        green: 'bg-green-500/10 text-green-600',
-        red: 'bg-red-500/10 text-red-600',
-        blue: 'bg-blue-500/10 text-blue-600'
-    }
-
-    return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
-            <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-neutral-600 mb-0.5 truncate">{title}</p>
-                    {loading ? (
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900">...</p>
-                    ) : (
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900 truncate">{formatCurrency(value)}</p>
-                    )}
-                </div>
-                <div className={`p-2 rounded-lg flex-shrink-0 ${iconBgClasses[color] || iconBgClasses.blue}`}>
-                    <Icon className="h-5 w-5" />
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const QuickActionButton = ({ icon: Icon, label, onClick, color, shortcut }) => {
-    const colorClasses = {
-        blue: 'bg-blue-100 hover:bg-blue-200 text-blue-900',
-        green: 'bg-green-100 hover:bg-green-200 text-green-900',
-        purple: 'bg-purple-100 hover:bg-purple-200 text-purple-900',
-        orange: 'bg-orange-100 hover:bg-orange-200 text-orange-900'
-    }
-
-    return (
-        <button
-            onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 flex flex-col items-center justify-center space-y-3 hover:shadow-lg transition-all group cursor-pointer min-h-[120px]`}
-        >
-            <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm`}>
-                <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
-            </div>
-            <span className="text-sm sm:text-base font-bold text-center">{label}</span>
-            <span className="text-xs opacity-70 group-hover:opacity-100 hidden sm:inline">{shortcut}</span>
-        </button>
-    )
-}
-
-const AlertCard = ({ title, count, icon: Icon, color, onClick }) => {
-    const colorClasses = {
-        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900',
-        red: 'bg-red-50 border-red-300 text-red-900'
-    }
-
-    return (
-        <button
-            onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 w-full text-left hover:shadow-lg transition-all group cursor-pointer`}
-        >
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                    <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm flex-shrink-0`}>
-                        <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-sm sm:text-base font-bold truncate">{title}</p>
-                        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold mt-2">{count}</p>
-                    </div>
-                </div>
-                <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
-            </div>
-        </button>
-    )
-}
-
-const GatewayGroup = ({ group, user, navigate }) => {
-    const [expanded, setExpanded] = useState(true)
-    const isAdmin = user?.role?.toLowerCase() === 'admin'
-    const isOwnerUser = user?.role?.toLowerCase() === 'owner' || user?.role?.toLowerCase() === 'systemadmin'
-
-    const canShowItem = (itemId) => {
-        if (isOwnerUser) return true
-        if (user?.dashboardPermissions === null || user?.dashboardPermissions === undefined) return true
-        return user.dashboardPermissions.split(',').includes(itemId)
-    }
-
-    const visibleItems = group.items.filter(item => {
-        if (item.adminOnly && !isAdmin && !isOwnerUser) return false
-        if (item.id && !canShowItem(item.id)) return false
-        return true
-    })
-
-    return (
-        <div className="border-2 border-blue-200 rounded-lg shadow-md overflow-hidden">
-            <button
-                onClick={() => setExpanded(!expanded)}
-                className="w-full bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between transition-colors cursor-pointer"
-            >
-                <h3 className="text-xs sm:text-sm font-bold text-blue-900">{group.title}</h3>
-                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 text-blue-700 transform transition-transform ${expanded ? 'rotate-90' : ''}`} />
-            </button>
-            {expanded && (
-                <div className="bg-white divide-y divide-blue-100">
-                    {visibleItems.map((item, idx) => {
-                        const Icon = item.icon
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => navigate(item.path)}
-                                className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between hover:bg-blue-50 transition-colors group cursor-pointer ${item.primary ? 'bg-emerald-50 hover:bg-emerald-100' : ''
-                                    }`}
-                            >
-                                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
-                                    <div className={`p-1 sm:p-1.5 rounded-lg flex-shrink-0 ${item.primary ? 'bg-emerald-200' : 'bg-blue-100'
-                                        } group-hover:shadow-md transition-shadow`}>
-                                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </div>
-                                    <div className="text-left min-w-0 flex-1">
-                                        <p className="text-xs sm:text-xs font-medium text-gray-900 truncate">{item.label}</p>
-                                        <p className="text-xs text-gray-500 hidden sm:block">{item.shortcut}</p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
-                            </button>
-                        )
-                    })}
-                </div>
-            )}
-        </div>
-    )
-}
-
-
 
 export default DashboardTally
 

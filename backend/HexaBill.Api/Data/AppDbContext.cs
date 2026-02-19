@@ -46,6 +46,7 @@ namespace HexaBill.Api.Data
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Setting> Settings { get; set; }
+        public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<SaleReturn> SaleReturns { get; set; }
         public DbSet<SaleReturnItem> SaleReturnItems { get; set; }
         public DbSet<PurchaseReturn> PurchaseReturns { get; set; }
@@ -488,6 +489,15 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.ChangedByUser).WithMany().HasForeignKey(e => e.ChangedBy);
             });
 
+            // DamageCategory configuration
+            modelBuilder.Entity<DamageCategory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            });
+
             // SaleReturn configuration
             modelBuilder.Entity<SaleReturn>(entity =>
             {
@@ -499,9 +509,16 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.GrandTotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Status).HasConversion<string>();
+                entity.Property(e => e.ReturnType).HasMaxLength(20);
                 entity.HasOne(e => e.Sale).WithMany().HasForeignKey(e => e.SaleId);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
+                entity.HasOne(e => e.Branch).WithMany().HasForeignKey(e => e.BranchId).IsRequired(false);
+                entity.HasOne(e => e.Route).WithMany().HasForeignKey(e => e.RouteId).IsRequired(false);
+                entity.HasIndex(e => e.ReturnDate);
+                entity.HasIndex(e => new { e.TenantId, e.ReturnDate });
+                entity.HasIndex(e => e.BranchId);
+                entity.HasIndex(e => e.RouteId);
             });
 
             // SaleReturnItem configuration
@@ -516,6 +533,7 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.SaleReturn).WithMany(s => s.Items).HasForeignKey(e => e.SaleReturnId);
                 entity.HasOne(e => e.SaleItem).WithMany().HasForeignKey(e => e.SaleItemId);
                 entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
+                entity.HasOne(e => e.DamageCategory).WithMany().HasForeignKey(e => e.DamageCategoryId).IsRequired(false);
             });
 
             // PurchaseReturn configuration

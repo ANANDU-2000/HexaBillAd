@@ -1077,6 +1077,34 @@ _ = Task.Run(async () =>
                     }
                 }
             }
+
+            // Seed default damage categories per tenant (for returns)
+            try
+            {
+                if (await context.DamageCategories.AnyAsync()) { /* already seeded */ }
+                else
+                {
+                    var tenants = await context.Tenants.Select(t => t.Id).ToListAsync();
+                    var now = DateTime.UtcNow;
+                    var defaults = new (string Name, bool AffectsStock, bool AffectsLedger, bool IsResaleable, int SortOrder)[]
+                    {
+                        ("Damaged", true, true, false, 1),
+                        ("Expired", true, true, false, 2),
+                        ("Wrong Item", true, true, true, 3),
+                        ("Customer Rejection", true, true, true, 4),
+                        ("Discount Adjustment", false, true, true, 5)
+                    };
+                    foreach (var tenantId in tenants)
+                        foreach (var d in defaults)
+                            context.DamageCategories.Add(new DamageCategory { TenantId = tenantId, Name = d.Name, AffectsStock = d.AffectsStock, AffectsLedger = d.AffectsLedger, IsResaleable = d.IsResaleable, SortOrder = d.SortOrder, CreatedAt = now });
+                    await context.SaveChangesAsync();
+                    initLogger.LogInformation("Default damage categories seeded for {Count} tenant(s)", tenants.Count);
+                }
+            }
+            catch (Exception seedEx)
+            {
+                initLogger.LogWarning(seedEx, "Damage categories seed skipped (table may not exist yet or already seeded)");
+            }
             
             // CRITICAL: PostgreSQL Production Schema Validation
             if (context.Database.IsNpgsql())

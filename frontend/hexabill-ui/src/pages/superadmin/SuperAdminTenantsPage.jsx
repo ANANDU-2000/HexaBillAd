@@ -982,7 +982,7 @@ const SuperAdminTenantsPage = () => {
               type="button"
               onClick={() => {
                 const text = `Login URL: ${credentialsData?.clientAppLink || ''}\nEmail: ${credentialsData?.email || ''}\nPassword: ${credentialsData?.password || ''}`
-                navigator.clipboard.writeText(text).then(() => toast.success('Credentials copied to clipboard', { id: 'credentials-copy' }))
+                navigator.clipboard.writeText(text).then(() => toast.success('Credentials copied to clipboard', { id: 'credentials-copy' })).catch(() => toast.error('Failed to copy to clipboard'))
               }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
             >

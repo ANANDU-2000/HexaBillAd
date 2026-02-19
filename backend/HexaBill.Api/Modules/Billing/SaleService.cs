@@ -341,6 +341,10 @@ namespace HexaBill.Api.Modules.Billing
                 Console.WriteLine($"🔢 Auto-generated invoice number: {invoiceNo} for TenantId: {tenantId}");
             }
             
+            // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
             // Use serializable isolation to prevent concurrent invoice number conflicts
             using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
@@ -908,10 +912,14 @@ namespace HexaBill.Api.Modules.Billing
                 // Re-throw to be caught by controller
                 throw;
             }
+            });
         }
 
         public async Task<SaleDto> CreateSaleWithOverrideAsync(CreateSaleRequest request, string reason, int userId, int tenantId)
         {
+            var strategyCreateWithOverride = _context.Database.CreateExecutionStrategy();
+            return await strategyCreateWithOverride.ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -1179,6 +1187,7 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         public async Task<string> GenerateInvoiceNumberAsync(int tenantId)
@@ -1189,6 +1198,9 @@ namespace HexaBill.Api.Modules.Billing
 
         public async Task<SaleDto> UpdateSaleAsync(int saleId, CreateSaleRequest request, int userId, int tenantId, string? editReason = null, byte[]? expectedRowVersion = null)
         {
+            var strategyUpdate = _context.Database.CreateExecutionStrategy();
+            return await strategyUpdate.ExecuteAsync(async () =>
+            {
             // Use serializable isolation level to prevent concurrent edits
             using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
@@ -1873,10 +1885,14 @@ namespace HexaBill.Api.Modules.Billing
                 // Re-throw to be caught by controller
                 throw;
             }
+            });
         }
 
         public async Task<bool> DeleteSaleAsync(int saleId, int userId, int tenantId)
         {
+            var strategyDelete = _context.Database.CreateExecutionStrategy();
+            return await strategyDelete.ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -2046,6 +2062,7 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         public async Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId)
@@ -2233,6 +2250,9 @@ namespace HexaBill.Api.Modules.Billing
 
         public async Task<SaleDto?> RestoreInvoiceVersionAsync(int saleId, int versionNumber, int userId, int tenantId)
         {
+            var strategyRestore = _context.Database.CreateExecutionStrategy();
+            return await strategyRestore.ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -2357,6 +2377,7 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         /// <summary>VAT% from company settings (tenant-scoped). Fallback 5 when not set. PRODUCTION_MASTER_TODO #37.</summary>

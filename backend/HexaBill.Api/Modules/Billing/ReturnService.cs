@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.SuperAdmin;
 
 namespace HexaBill.Api.Modules.Billing
 {
@@ -15,25 +16,42 @@ namespace HexaBill.Api.Modules.Billing
         Task<SaleReturnDto> CreateSaleReturnAsync(CreateSaleReturnRequest request, int userId, int tenantId);
         Task<PurchaseReturnDto> CreatePurchaseReturnAsync(CreatePurchaseReturnRequest request, int userId, int tenantId);
         Task<List<SaleReturnDto>> GetSaleReturnsAsync(int tenantId, int? saleId = null);
+        Task<PagedResponse<SaleReturnDto>> GetSaleReturnsPagedAsync(int tenantId, DateTime? fromDate, DateTime? toDate, int? branchId, int? routeId, int? damageCategoryId, int? staffUserId, int page, int pageSize, string? roleForStaff = null, int? userIdForStaff = null);
+        Task<List<DamageCategoryDto>> GetDamageCategoriesAsync(int tenantId);
         Task<List<PurchaseReturnDto>> GetPurchaseReturnsAsync(int tenantId, int? purchaseId = null);
+        Task<SaleReturnDto> ApproveSaleReturnAsync(int returnId, int tenantId);
+        Task<SaleReturnDto> RejectSaleReturnAsync(int returnId, int tenantId);
+        Task<bool> GetReturnsRequireApprovalAsync(int tenantId);
+        Task<bool> GetReturnsEnabledAsync(int tenantId);
     }
 
     public class ReturnService : IReturnService
     {
         private readonly AppDbContext _context;
         private readonly ICustomerService _customerService;
+        private readonly ISettingsService _settingsService;
 
-        public ReturnService(AppDbContext context, ICustomerService customerService)
+        public ReturnService(AppDbContext context, ICustomerService customerService, ISettingsService settingsService)
         {
             _context = context;
             _customerService = customerService;
+            _settingsService = settingsService;
         }
 
         public async Task<SaleReturnDto> CreateSaleReturnAsync(CreateSaleReturnRequest request, int userId, int tenantId)
         {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
+                bool returnsEnabled = await GetReturnsEnabledAsync(tenantId);
+                if (!returnsEnabled)
+                    throw new InvalidOperationException("Sales returns are disabled for your company. Contact your administrator.");
+                bool requireApproval = string.Equals(settings.GetValueOrDefault("Returns_RequireApproval", "false"), "true", StringComparison.OrdinalIgnoreCase);
+
                 // Get original sale
                 var sale = await _context.Sales
                     .Include(s => s.Items)
@@ -57,12 +75,28 @@ namespace HexaBill.Api.Modules.Billing
                     var saleItem = sale.Items.FirstOrDefault(si => si.Id == item.SaleItemId);
                     if (saleItem == null)
                         throw new InvalidOperationException($"Sale item {item.SaleItemId} not found");
+                    if (item.Qty <= 0 || item.Qty > saleItem.Qty)
+                        throw new InvalidOperationException($"Return quantity for item {item.SaleItemId} must be greater than 0 and not exceed quantity sold ({saleItem.Qty})");
 
                     // AUDIT-4 FIX: Add TenantId filter to prevent cross-tenant product access
                     var product = await _context.Products
                         .FirstOrDefaultAsync(p => p.Id == saleItem.ProductId && p.TenantId == tenantId);
                     if (product == null)
                         throw new InvalidOperationException("Product not found or does not belong to your tenant");
+
+                    DamageCategory? damageCategory = null;
+                    if (item.DamageCategoryId.HasValue)
+                    {
+                        damageCategory = await _context.DamageCategories
+                            .FirstOrDefaultAsync(dc => dc.Id == item.DamageCategoryId.Value && dc.TenantId == tenantId);
+                        if (damageCategory == null)
+                            throw new InvalidOperationException($"Damage category {item.DamageCategoryId} not found or does not belong to your tenant");
+                    }
+
+                    // Per-item stock effect: category wins if present; else header RestoreStock/IsBadItem
+                    bool addToStock = item.StockEffect ?? (damageCategory != null
+                        ? (damageCategory.AffectsStock && damageCategory.IsResaleable)
+                        : (request.RestoreStock && !request.IsBadItem));
 
                     // Calculate return totals
                     var lineTotal = item.Qty * saleItem.UnitPrice;
@@ -72,7 +106,7 @@ namespace HexaBill.Api.Modules.Billing
                     subtotal += lineTotal;
                     vatTotal += vatAmount;
 
-                    // Create return item
+                    // Create return item with damage category and stock effect
                     var returnItem = new SaleReturnItem
                     {
                         SaleItemId = saleItem.Id,
@@ -82,15 +116,16 @@ namespace HexaBill.Api.Modules.Billing
                         UnitPrice = saleItem.UnitPrice,
                         VatAmount = vatAmount,
                         LineTotal = lineAmount,
-                        Reason = item.Reason
+                        Reason = item.Reason,
+                        DamageCategoryId = item.DamageCategoryId,
+                        StockEffect = addToStock
                     };
                     returnItems.Add(returnItem);
 
-                    // Restore stock if not bad item
-                    if (!request.IsBadItem && request.RestoreStock)
+                    // Restore stock only when addToStock is true and not requiring approval (or we apply on approve)
+                    if (addToStock && !requireApproval)
                     {
                         var baseQty = item.Qty * product.ConversionToBase;
-                        // PROD-19: Atomic stock restore
                         var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                             $@"UPDATE ""Products"" 
                                SET ""StockQty"" = ""StockQty"" + {baseQty}, 
@@ -99,15 +134,12 @@ namespace HexaBill.Api.Modules.Billing
                                  AND ""TenantId"" = {tenantId}");
                         
                         if (rowsAffected > 0)
-                        {
                             await _context.Entry(product).ReloadAsync();
-                        }
 
-                        // Create inventory transaction (Return increases stock)
                         inventoryTransactions.Add(new InventoryTransaction
                         {
-                            OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                            TenantId = tenantId, // CRITICAL: Set new TenantId
+                            OwnerId = tenantId,
+                            TenantId = tenantId,
                             ProductId = product.Id,
                             ChangeQty = baseQty,
                             TransactionType = TransactionType.Return,
@@ -119,11 +151,19 @@ namespace HexaBill.Api.Modules.Billing
 
                 var grandTotal = subtotal + vatTotal - (request.Discount ?? 0);
 
-                // Create sale return
+                // ReturnType: Full if every returned line is full qty and we cover all sale items; else Partial
+                bool allLinesFull = request.Items.All(it => {
+                    var si = sale.Items.FirstOrDefault(s => s.Id == it.SaleItemId);
+                    return si != null && it.Qty >= si.Qty;
+                });
+                bool allSaleItemsReturned = sale.Items.Count == request.Items.Count && request.Items.All(it => sale.Items.Any(s => s.Id == it.SaleItemId));
+                string returnType = (allLinesFull && allSaleItemsReturned) ? "Full" : "Partial";
+
+                // Create sale return (BranchId/RouteId from original sale)
                 var saleReturn = new SaleReturn
                 {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
+                    OwnerId = tenantId,
+                    TenantId = tenantId,
                     SaleId = request.SaleId,
                     CustomerId = sale.CustomerId,
                     ReturnNo = returnNo,
@@ -133,9 +173,12 @@ namespace HexaBill.Api.Modules.Billing
                     Discount = request.Discount ?? 0,
                     GrandTotal = grandTotal,
                     Reason = request.Reason,
-                    Status = ReturnStatus.Approved,
+                    Status = requireApproval ? ReturnStatus.Pending : ReturnStatus.Approved,
                     RestoreStock = request.RestoreStock,
                     IsBadItem = request.IsBadItem,
+                    BranchId = sale.BranchId,
+                    RouteId = sale.RouteId,
+                    ReturnType = returnType,
                     CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -150,20 +193,17 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 _context.SaleReturnItems.AddRange(returnItems);
 
-                // Update inventory transactions with return ID
-                foreach (var invTx in inventoryTransactions)
+                if (!requireApproval)
                 {
-                    invTx.RefId = saleReturn.Id;
-                }
-                _context.InventoryTransactions.AddRange(inventoryTransactions);
+                    foreach (var invTx in inventoryTransactions)
+                        invTx.RefId = saleReturn.Id;
+                    _context.InventoryTransactions.AddRange(inventoryTransactions);
 
-                // Recalculate customer balance (credit customer)
-                if (sale.CustomerId.HasValue)
-                {
-                    var customer = await _context.Customers.FindAsync(sale.CustomerId.Value);
-                    if (customer != null)
+                    if (sale.CustomerId.HasValue)
                     {
-                        await _customerService.RecalculateCustomerBalanceAsync(sale.CustomerId.Value, customer.TenantId ?? 0);
+                        var customer = await _context.Customers.FindAsync(sale.CustomerId.Value);
+                        if (customer != null)
+                            await _customerService.RecalculateCustomerBalanceAsync(sale.CustomerId.Value, customer.TenantId ?? 0);
                     }
                 }
 
@@ -189,10 +229,14 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         public async Task<PurchaseReturnDto> CreatePurchaseReturnAsync(CreatePurchaseReturnRequest request, int userId, int tenantId)
         {
+            var strategyPurchase = _context.Database.CreateExecutionStrategy();
+            return await strategyPurchase.ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -333,24 +377,75 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 throw;
             }
+            });
         }
 
         public async Task<List<SaleReturnDto>> GetSaleReturnsAsync(int tenantId, int? saleId = null)
         {
             var query = _context.SaleReturns
-                .Where(r => r.TenantId == tenantId) // CRITICAL: Multi-tenant filter
+                .Where(r => r.TenantId == tenantId)
                 .Include(r => r.Sale)
                 .Include(r => r.Customer)
+                .Include(r => r.Branch)
+                .Include(r => r.Route)
+                .Include(r => r.CreatedByUser)
                 .AsQueryable();
 
             if (saleId.HasValue)
-            {
                 query = query.Where(r => r.SaleId == saleId.Value);
-            }
 
             var returns = await query.OrderByDescending(r => r.ReturnDate).ToListAsync();
+            return returns.Select(r => MapToSaleReturnDto(r)).ToList();
+        }
 
-            return returns.Select(r => new SaleReturnDto
+        public async Task<PagedResponse<SaleReturnDto>> GetSaleReturnsPagedAsync(int tenantId, DateTime? fromDate, DateTime? toDate, int? branchId, int? routeId, int? damageCategoryId, int? staffUserId, int page, int pageSize, string? roleForStaff = null, int? userIdForStaff = null)
+        {
+            var query = _context.SaleReturns
+                .Where(r => r.TenantId == tenantId)
+                .Include(r => r.Sale)
+                .Include(r => r.Customer)
+                .Include(r => r.Branch)
+                .Include(r => r.Route)
+                .Include(r => r.CreatedByUser)
+                .Include(r => r.Items).ThenInclude(i => i.Product)
+                .Include(r => r.Items).ThenInclude(i => i.DamageCategory)
+                .AsQueryable();
+
+            if (fromDate.HasValue)
+                query = query.Where(r => r.ReturnDate >= fromDate.Value);
+            if (toDate.HasValue)
+                query = query.Where(r => r.ReturnDate < toDate.Value.AddDays(1));
+            if (branchId.HasValue)
+                query = query.Where(r => r.BranchId == branchId.Value);
+            if (routeId.HasValue)
+                query = query.Where(r => r.RouteId == routeId.Value);
+            if (staffUserId.HasValue)
+                query = query.Where(r => r.CreatedBy == staffUserId.Value);
+            if (damageCategoryId.HasValue)
+                query = query.Where(r => r.Items.Any(i => i.DamageCategoryId == damageCategoryId.Value));
+
+            // Staff: filter by allowed branches/routes if applicable (caller can pass roleForStaff and userIdForStaff)
+            var totalCount = await query.CountAsync();
+            var list = await query
+                .OrderByDescending(r => r.ReturnDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var items = list.Select(r => MapToSaleReturnDto(r)).ToList();
+            return new PagedResponse<SaleReturnDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
+        }
+
+        private static SaleReturnDto MapToSaleReturnDto(SaleReturn r)
+        {
+            return new SaleReturnDto
             {
                 Id = r.Id,
                 SaleId = r.SaleId,
@@ -362,8 +457,34 @@ namespace HexaBill.Api.Modules.Billing
                 GrandTotal = r.GrandTotal,
                 Reason = r.Reason,
                 Status = r.Status.ToString(),
-                IsBadItem = r.IsBadItem
-            }).ToList();
+                IsBadItem = r.IsBadItem,
+                BranchId = r.BranchId,
+                BranchName = r.Branch?.Name,
+                RouteId = r.RouteId,
+                RouteName = r.Route?.Name,
+                ReturnType = r.ReturnType,
+                CreatedBy = r.CreatedBy,
+                CreatedByName = r.CreatedByUser?.Name,
+                Items = r.Items?.Select(i => new SaleReturnItemDto
+                {
+                    Id = i.Id,
+                    ProductName = i.Product != null ? (i.Product.NameEn ?? i.Product.NameAr ?? "") : "",
+                    QtyReturned = i.Qty,
+                    Reason = i.Reason,
+                    DamageCategoryName = i.DamageCategory?.Name,
+                    Amount = i.LineTotal
+                }).ToList()
+            };
+        }
+
+        public async Task<List<DamageCategoryDto>> GetDamageCategoriesAsync(int tenantId)
+        {
+            var list = await _context.DamageCategories
+                .Where(dc => dc.TenantId == tenantId)
+                .OrderBy(dc => dc.SortOrder)
+                .Select(dc => new DamageCategoryDto { Id = dc.Id, Name = dc.Name, AffectsStock = dc.AffectsStock, IsResaleable = dc.IsResaleable, SortOrder = dc.SortOrder })
+                .ToListAsync();
+            return list;
         }
 
         public async Task<List<PurchaseReturnDto>> GetPurchaseReturnsAsync(int tenantId, int? purchaseId = null)
@@ -391,6 +512,85 @@ namespace HexaBill.Api.Modules.Billing
                 Reason = r.Reason,
                 Status = r.Status.ToString()
             }).ToList();
+        }
+
+        public async Task<bool> GetReturnsRequireApprovalAsync(int tenantId)
+        {
+            var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
+            return string.Equals(settings.GetValueOrDefault("Returns_RequireApproval", "false"), "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public async Task<bool> GetReturnsEnabledAsync(int tenantId)
+        {
+            var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
+            if (!settings.TryGetValue("Returns_Enabled", out var v)) return true;
+            return string.Equals(v, "true", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public async Task<SaleReturnDto> ApproveSaleReturnAsync(int returnId, int tenantId)
+        {
+            var ret = await _context.SaleReturns
+                .Include(r => r.Sale)
+                .Include(r => r.Items).ThenInclude(i => i.Product)
+                .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+            if (ret == null) throw new InvalidOperationException("Return not found");
+            if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var inventoryTransactions = new List<InventoryTransaction>();
+                    foreach (var item in ret.Items.Where(i => i.StockEffect == true))
+                    {
+                        var product = item.Product;
+                        if (product == null) continue;
+                        var baseQty = item.Qty * product.ConversionToBase;
+                        await _context.Database.ExecuteSqlInterpolatedAsync(
+                            $@"UPDATE ""Products"" SET ""StockQty"" = ""StockQty"" + {baseQty}, ""UpdatedAt"" = {DateTime.UtcNow} WHERE ""Id"" = {product.Id} AND ""TenantId"" = {tenantId}");
+                        inventoryTransactions.Add(new InventoryTransaction
+                        {
+                            OwnerId = tenantId,
+                            TenantId = tenantId,
+                            ProductId = product.Id,
+                            ChangeQty = baseQty,
+                            TransactionType = TransactionType.Return,
+                            Reason = $"Sale Return Approved: {ret.ReturnNo}",
+                            RefId = ret.Id,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    _context.InventoryTransactions.AddRange(inventoryTransactions);
+                    ret.Status = ReturnStatus.Approved;
+                    await _context.SaveChangesAsync();
+
+                    if (ret.Sale?.CustomerId != null)
+                    {
+                        var customer = await _context.Customers.FindAsync(ret.Sale.CustomerId.Value);
+                        if (customer != null)
+                            await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, customer.TenantId ?? 0);
+                    }
+                    await transaction.CommitAsync();
+                    return await GetSaleReturnByIdAsync(ret.Id);
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        public async Task<SaleReturnDto> RejectSaleReturnAsync(int returnId, int tenantId)
+        {
+            var ret = await _context.SaleReturns.FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+            if (ret == null) throw new InvalidOperationException("Return not found");
+            if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending");
+            ret.Status = ReturnStatus.Rejected;
+            await _context.SaveChangesAsync();
+            return await GetSaleReturnByIdAsync(ret.Id);
         }
 
         private async Task<string> GenerateSaleReturnNumberAsync(int tenantId)
@@ -440,25 +640,17 @@ namespace HexaBill.Api.Modules.Billing
             var saleReturn = await _context.SaleReturns
                 .Include(r => r.Sale)
                 .Include(r => r.Customer)
+                .Include(r => r.Branch)
+                .Include(r => r.Route)
+                .Include(r => r.CreatedByUser)
                 .Include(r => r.Items)
+                .ThenInclude(i => i.Product)
+                .Include(r => r.Items)
+                .ThenInclude(i => i.DamageCategory)
                 .FirstOrDefaultAsync(r => r.Id == id);
 
             if (saleReturn == null) throw new InvalidOperationException("Return not found");
-
-            return new SaleReturnDto
-            {
-                Id = saleReturn.Id,
-                SaleId = saleReturn.SaleId,
-                SaleInvoiceNo = saleReturn.Sale?.InvoiceNo ?? "",
-                CustomerId = saleReturn.CustomerId,
-                CustomerName = saleReturn.Customer?.Name,
-                ReturnNo = saleReturn.ReturnNo,
-                ReturnDate = saleReturn.ReturnDate,
-                GrandTotal = saleReturn.GrandTotal,
-                Reason = saleReturn.Reason,
-                Status = saleReturn.Status.ToString(),
-                IsBadItem = saleReturn.IsBadItem
-            };
+            return MapToSaleReturnDto(saleReturn);
         }
 
         private async Task<PurchaseReturnDto> GetPurchaseReturnByIdAsync(int id)

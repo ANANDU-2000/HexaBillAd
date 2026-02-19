@@ -131,9 +131,9 @@ const PosPage = () => {
     }
   }, [])
 
-  // Auto-select branch and route for restricted staff (branches/routes from shared context)
+  // Auto-select branch and route when only one option (all users: Owner, Admin, Staff)
   useEffect(() => {
-    if (!user || isAdminOrOwner(user)) return
+    if (!user) return
 
     // Auto-select Branch if only 1 is available
     if (branches.length === 1 && !selectedBranchId) {
@@ -142,7 +142,7 @@ const PosPage = () => {
 
     // Auto-select Route if only 1 is available (considering branch filter)
     const availableRoutes = selectedBranchId
-      ? routes.filter(r => r.branchId === parseInt(selectedBranchId))
+      ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10))
       : routes
 
     if (availableRoutes.length === 1 && !selectedRouteId) {
@@ -1099,8 +1099,9 @@ const PosPage = () => {
         return
       }
 
-      // BUG #4 FIX: Validate branch and route are selected before checkout (prevents revenue misattribution)
-      if (!selectedBranchId || !selectedRouteId) {
+      // Require branch and route only when the tenant has branches/routes configured (so revenue attribution is possible)
+      const hasBranchesOrRoutes = (branches?.length ?? 0) > 0 || (routes?.length ?? 0) > 0
+      if (hasBranchesOrRoutes && (!selectedBranchId || !selectedRouteId)) {
         toast.error('Please select Branch and Route before checkout. This ensures proper revenue attribution.', {
           duration: 6000,
           id: 'branch-route-required'

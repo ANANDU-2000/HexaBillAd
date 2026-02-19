@@ -633,6 +633,9 @@ namespace HexaBill.Api.Models
     public class SummaryReportDto
     {
         public decimal SalesToday { get; set; }
+        public decimal ReturnsToday { get; set; }
+        public decimal NetSalesToday { get; set; }
+        public int ReturnsCountToday { get; set; }
         public decimal PurchasesToday { get; set; }
         public decimal ExpensesToday { get; set; }
         public decimal CogsToday { get; set; }
@@ -994,6 +997,9 @@ namespace HexaBill.Api.Models
         [Required]
         public decimal Qty { get; set; }
         public string? Reason { get; set; }
+        public int? DamageCategoryId { get; set; }
+        /// <summary>True = add back to sellable stock; false = do not add (damaged). If null, derived from DamageCategory or header RestoreStock/IsBadItem.</summary>
+        public bool? StockEffect { get; set; }
     }
 
     public class SaleReturnDto
@@ -1009,6 +1015,33 @@ namespace HexaBill.Api.Models
         public string? Reason { get; set; }
         public string Status { get; set; } = string.Empty;
         public bool IsBadItem { get; set; }
+        public int? BranchId { get; set; }
+        public string? BranchName { get; set; }
+        public int? RouteId { get; set; }
+        public string? RouteName { get; set; }
+        public string? ReturnType { get; set; }
+        public int CreatedBy { get; set; }
+        public string? CreatedByName { get; set; }
+        public List<SaleReturnItemDto>? Items { get; set; }
+    }
+
+    public class SaleReturnItemDto
+    {
+        public int Id { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public decimal QtyReturned { get; set; }
+        public string? Reason { get; set; }
+        public string? DamageCategoryName { get; set; }
+        public decimal Amount { get; set; }
+    }
+
+    public class DamageCategoryDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool AffectsStock { get; set; }
+        public bool IsResaleable { get; set; }
+        public int SortOrder { get; set; }
     }
 
     public class CreatePurchaseReturnRequest
