@@ -400,11 +400,20 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
+                // Log full exception details for debugging
+                Console.WriteLine($"❌ Error in GetCustomerLedger for customer {id}: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    Console.WriteLine($"Inner stack trace: {ex.InnerException.StackTrace}");
+                }
+                
                 return StatusCode(500, new ApiResponse<List<CustomerLedgerEntry>>
                 {
                     Success = false,
-                    Message = "An error occurred",
-                    Errors = new List<string> { ex.Message }
+                    Message = $"An error occurred: {ex.Message}",
+                    Errors = new List<string> { ex.Message, ex.StackTrace ?? "No stack trace" }
                 });
             }
         }

@@ -633,13 +633,15 @@ namespace HexaBill.Api.Modules.Customers
         /// </summary>
         public async Task<List<CustomerLedgerEntry>> GetCustomerLedgerAsync(int customerId, int tenantId, int? branchId = null, int? routeId = null, int? staffId = null, DateTime? fromDate = null, DateTime? toDate = null)
         {
-            // CRITICAL: Ensure customerId is valid and filter out any null CustomerId records
-            if (customerId <= 0)
-                throw new ArgumentException("Invalid customer ID");
+            try
+            {
+                // CRITICAL: Ensure customerId is valid and filter out any null CustomerId records
+                if (customerId <= 0)
+                    throw new ArgumentException("Invalid customer ID");
 
-            // Sales: apply optional branch/route/staff/date filters
-            var salesQuery = _context.Sales
-                .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted);
+                // Sales: apply optional branch/route/staff/date filters
+                var salesQuery = _context.Sales
+                    .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted);
             if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
             if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
             if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
@@ -838,8 +840,19 @@ namespace HexaBill.Api.Modules.Customers
                 });
             }
 
-            Console.WriteLine($"✅ Ledger entries generated: {ledgerEntries.Count} unique transactions for customer {customerId}");
-            return ledgerEntries;
+                Console.WriteLine($"✅ Ledger entries generated: {ledgerEntries.Count} unique transactions for customer {customerId}");
+                return ledgerEntries;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Error in GetCustomerLedgerAsync for customer {customerId}, tenant {tenantId}: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                }
+                throw; // Re-throw to be caught by controller
+            }
         }
 
         /// <summary>
