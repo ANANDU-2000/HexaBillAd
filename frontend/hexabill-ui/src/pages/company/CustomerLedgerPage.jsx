@@ -2377,7 +2377,20 @@ const CustomerLedgerPage = () => {
                         onShareWhatsApp={handleShareWhatsApp}
                         onPrintPreview={handlePrintPreview}
                         filters={ledgerFilters}
-                        onFilterChange={(key, value) => setLedgerFilters(prev => ({ ...prev, [key]: value }))}
+                        onFilterChange={(key, value) => {
+                          setLedgerFilters(prev => {
+                            const updated = { ...prev }
+                            // Map 'status' key to maintain compatibility
+                            if (key === 'status') {
+                              updated.status = value
+                            } else if (key === 'type') {
+                              updated.type = value
+                            } else {
+                              updated[key] = value
+                            }
+                            return updated
+                          })
+                        }}
                       />
                     )
                   )}
@@ -3232,11 +3245,10 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 
 const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, filters, onFilterChange }) => {
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
-  // Use different property names to avoid minifier creating 'st' variable
-  const safeFilters = filters && typeof filters === 'object' ? {
-    statusFilterValue: filters.status || 'all',
-    typeFilterValue: filters.type || 'all'
-  } : DEFAULT_LEDGER_FILTERS
+  // Extract values immediately to avoid minifier creating 'st' from filters.status
+  const filterStatusValue = (filters && typeof filters === 'object' && filters.status) ? filters.status : 'all'
+  const filterTypeValue = (filters && typeof filters === 'object' && filters.type) ? filters.type : 'all'
+  const safeFilters = { statusFilterValue: filterStatusValue, typeFilterValue: filterTypeValue }
   const safeOnFilterChange = onFilterChange || (() => {})
   
   const [displayLimit, setDisplayLimit] = React.useState(100) // Show first 100 entries by default
