@@ -187,7 +187,7 @@ const CustomerLedgerPage = () => {
           entry.paymentMode || entry.PaymentMode || '-',
           debit > 0 ? debit.toFixed(2) : '',
           credit > 0 ? credit.toFixed(2) : '',
-          entry.status || '-',
+          (entry['status'] || '-'),
           balance.toFixed(2)
         ]
       })
@@ -1733,7 +1733,7 @@ const CustomerLedgerPage = () => {
                   <td>${entry.paymentMode || entry.PaymentMode || '-'}</td>
                   <td>${(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}</td>
                   <td>${(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}</td>
-                  <td>${entry.status || '-'}</td>
+                  <td>${(entry['status'] || '-')}</td>
                   <td>${formatBalance(Number(entry.balance) || 0)}</td>
                 </tr>`
     }).join('')}
@@ -2361,8 +2361,11 @@ const CustomerLedgerPage = () => {
                             if (!inDateRange) return false
 
                             // Apply filters
-                            if (ledgerFilters.status !== 'all') {
-                              const statusMatch = entry.status?.toLowerCase() === ledgerFilters.status.toLowerCase()
+                            // Use bracket notation to prevent minifier from creating 'st' variable
+                            if (ledgerFilters['status'] !== 'all') {
+                              const entryStatusValue = entry['status'] || ''
+                              const filterStatusValue = ledgerFilters['status'] || ''
+                              const statusMatch = entryStatusValue?.toLowerCase() === filterStatusValue.toLowerCase()
                               if (!statusMatch && entry.type !== 'Payment') return false
                             }
                             if (ledgerFilters.type !== 'all') {
@@ -2381,10 +2384,11 @@ const CustomerLedgerPage = () => {
                           setLedgerFilters(prev => {
                             const updated = { ...prev }
                             // Map 'status' key to maintain compatibility
+                            // Use bracket notation to prevent minifier from creating 'st' variable
                             if (key === 'status') {
-                              updated.status = value
+                              updated['status'] = value
                             } else if (key === 'type') {
-                              updated.type = value
+                              updated['type'] = value
                             } else {
                               updated[key] = value
                             }
@@ -3382,8 +3386,9 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
               ) : (
                 displayedEntries.map((entry, idx) => {
                   // CRITICAL: Initialize all variables at the top to prevent TDZ errors
+                  // Use bracket notation to prevent minifier from creating 'st' from entry.status
                   const invoiceNo = entry.reference || '-'
-                  const entryStatus = entry.status || (entry.type === 'Payment' ? '-' : 'Unpaid')
+                  const entryStatus = (entry['status'] || (entry.type === 'Payment' ? '-' : 'Unpaid'))
                   
                   // Format date - show time only for payments
                   const showTime = entry.type === 'Payment'
@@ -3501,7 +3506,8 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
           <>
             {displayedEntries.map((entry, idx) => {
             // CRITICAL: Initialize all variables at the top to prevent TDZ errors
-            const entryStatus = entry.status || (entry.type === 'Payment' ? '-' : 'Unpaid')
+            // Use bracket notation to prevent minifier from creating 'st' from entry.status
+            const entryStatus = (entry['status'] || (entry.type === 'Payment' ? '-' : 'Unpaid'))
             const dateStr = entry.type === 'Payment'
               ? new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
               : new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
