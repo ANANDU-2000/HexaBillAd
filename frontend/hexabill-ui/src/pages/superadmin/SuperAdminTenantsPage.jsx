@@ -286,7 +286,19 @@ const SuperAdminTenantsPage = () => {
 
   const tableData = tenants.map(tenant => ({
     ...tenant,
-    name: tenant.name || tenant.companyNameEn || 'Unnamed Company',
+    name: (
+      <div className="flex flex-col">
+        <span className="text-sm font-medium text-neutral-900" title={tenant.name || tenant.companyNameEn || 'Unnamed Company'}>
+          {(tenant.name && tenant.name.trim()) || (tenant.companyNameEn && tenant.companyNameEn.trim()) || 'Unnamed Company'}
+        </span>
+        {tenant.companyNameEn && tenant.companyNameEn.trim() && tenant.companyNameEn.trim() !== (tenant.name?.trim() || '') && (
+          <span className="text-xs text-neutral-500 truncate max-w-[160px]" title={tenant.companyNameEn}>{tenant.companyNameEn}</span>
+        )}
+        {tenant.companyNameAr && tenant.companyNameAr.trim() && (
+          <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl" title={tenant.companyNameAr}>{tenant.companyNameAr}</span>
+        )}
+      </div>
+    ),
     select: (
       <input
         type="checkbox"
@@ -1031,6 +1043,7 @@ const SuperAdminTenantsPage = () => {
                 setShowCredentialsModal(false)
                 setCredentialsData(null)
                 setCredentialsAcknowledged(false)
+                fetchTenants() // Refresh list after closing credentials modal
               }}
               className="px-5 py-2.5 bg-primary-600 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-700"
             >

@@ -245,7 +245,11 @@ const Login = ({ isSuperAdminLogin = false }) => {
               {isSuperAdminLogin ? 'Admin Portal' : 'Sign in'}
             </h1>
             <p className="mt-1 text-sm text-neutral-500" style={{ fontFamily: "'Inter', sans-serif" }}>
-              {isSuperAdminLogin ? 'Manage the platform' : companyName !== 'HexaBill' ? `Sign in to ${companyName} — Admins, Staff & Owners` : 'Sign in with your company account'}
+              {isSuperAdminLogin 
+                ? 'Manage the platform' 
+                : (companyName && companyName !== 'HexaBill') 
+                  ? `Sign in to ${companyName} — Admins, Staff & Owners` 
+                  : 'Sign in with your company account'}
             </p>
           </div>
 

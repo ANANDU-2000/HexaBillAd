@@ -26,7 +26,8 @@ import {
   BookOpen,
   Wallet,
   User,
-  Menu
+  Menu,
+  Shield
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../contexts/TenantBrandingContext'

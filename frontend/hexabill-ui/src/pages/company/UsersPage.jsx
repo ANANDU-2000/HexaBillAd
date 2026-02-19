@@ -40,8 +40,6 @@ const DASHBOARD_ITEMS = [
   { id: 'salesToday', label: 'Sales Today Card', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
   { id: 'expensesToday', label: 'Expenses Today Card', icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
   { id: 'purchasesToday', label: 'Purchases Today Card', icon: ShoppingCart, color: 'text-orange-600', bg: 'bg-orange-50' },
-  // PROFIT CARD REMOVED: Strictly Admin/Owner only. Not assignable to Staff.
-  // { id: 'profitToday', label: 'Profit Today Card', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', note: 'Admin/Owner only' },
   { id: 'salesLedger', label: 'Sales Ledger Link', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { id: 'expenses', label: 'Expenses Link', icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
   { id: 'salesTrend', label: 'Sales Trend Chart', icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -49,6 +47,16 @@ const DASHBOARD_ITEMS = [
   { id: 'lowStockAlert', label: 'Low Stock Alerts', icon: Package, color: 'text-yellow-600', bg: 'bg-yellow-50' },
   { id: 'quickActions', label: 'Quick Actions', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
   { id: 'pendingBills', label: 'Pending Bills Table', icon: FileText, color: 'text-rose-600', bg: 'bg-rose-50' }
+]
+
+// Page-level access permissions (can be toggled for staff)
+const PAGE_ACCESS_ITEMS = [
+  { id: 'pos', label: 'POS / Billing', icon: ShoppingCart, color: 'text-blue-600', bg: 'bg-blue-50' },
+  { id: 'invoices', label: 'Invoices', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+  { id: 'products', label: 'Products', icon: Package, color: 'text-green-600', bg: 'bg-green-50' },
+  { id: 'customers', label: 'Customers', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
+  { id: 'expenses', label: 'Expenses', icon: Wallet, color: 'text-red-600', bg: 'bg-red-50' },
+  { id: 'reports', label: 'Reports', icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' }
 ]
 
 const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, onClearAll }) => (
@@ -67,7 +75,7 @@ const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, on
     <div className="mb-3 p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start text-xs text-amber-800">
       <ShieldAlert className="h-4 w-4 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
       <div>
-        <strong>Restricted Metrics:</strong> "Profit Today" card is locked. It is visible ONLY to Admin & Owner roles.
+        <strong>Restricted Metrics:</strong> "Profit Today" card is locked — visible to Admin & Owner only.
         Staff members can never see profit data, even if assigned all other permissions.
       </div>
     </div>
@@ -304,12 +312,24 @@ const UsersPage = () => {
     setFilteredUsers(filtered)
   }
 
+  // Helper function to filter out profitToday permission (never assignable to staff)
+  const filterProfitPermission = (permissions, role) => {
+    const filtered = permissions.filter(p => p.trim() !== 'profitToday')
+    // Warn if profitToday was attempted to be assigned
+    if (permissions.includes('profitToday') && role?.toLowerCase() === 'staff') {
+      console.warn('Attempted to assign profitToday permission to staff - filtered out')
+    }
+    return filtered
+  }
+
   const handleCreateUser = async (data) => {
     try {
       setLoadingAction(true)
+      // Filter out profitToday - never assignable to staff
+      const cleanPermissions = filterProfitPermission(selectedPermissions, data.role)
       const payload = {
         ...data,
-        dashboardPermissions: selectedPermissions.join(','),
+        dashboardPermissions: cleanPermissions.join(','),
         assignedBranchIds: assignedBranches,
         assignedRouteIds: assignedRoutes
       }
@@ -335,9 +355,11 @@ const UsersPage = () => {
   const handleUpdateUser = async (data) => {
     try {
       setLoadingAction(true)
+      // Filter out profitToday - never assignable to staff
+      const cleanPermissions = filterProfitPermission(selectedPermissions, data.role || selectedUser?.role)
       const payload = {
         ...data,
-        dashboardPermissions: selectedPermissions.join(','),
+        dashboardPermissions: cleanPermissions.join(','),
         assignedBranchIds: assignedBranches,
         assignedRouteIds: assignedRoutes
       }
@@ -391,8 +413,10 @@ const UsersPage = () => {
     setEditValue('role', user.role)
 
     // Set dashboard permissions from user
+    // Filter out profitToday - it should never be assignable to staff
     if (user.dashboardPermissions) {
-      setSelectedPermissions(user.dashboardPermissions.split(','))
+      const permissions = user.dashboardPermissions.split(',').filter(p => p.trim() !== 'profitToday')
+      setSelectedPermissions(permissions)
     } else {
       setSelectedPermissions(DASHBOARD_ITEMS.map(i => i.id))
     }

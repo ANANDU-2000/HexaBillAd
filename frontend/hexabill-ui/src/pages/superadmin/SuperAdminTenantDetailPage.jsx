@@ -27,7 +27,9 @@ import {
   Settings,
   History,
   TrendingUp,
+  TrendingDown,
   CreditCard,
+  BookOpen,
   UserPlus,
   Shield,
   CheckCircle2,
@@ -2012,102 +2014,230 @@ const SuperAdminTenantDetailPage = () => {
 // --- Sub-components ---
 
 const TenantFeaturesTab = ({ tenantId }) => {
-  const [features, setFeatures] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  // Feature keys mapping: frontend key -> backend key
+  const FEATURE_KEYS = {
+    invoicing: 'invoicing',
+    pos: 'pos',
+    inventory: 'inventory',
+    purchases: 'purchases',
+    expenses: 'expenses',
+    reports: 'reports',
+    customers: 'customers',
+    multiCurrency: 'multi_currency',
+    staffLogin: 'staff_login',  // Critical: controls staff login access
+    branchManagement: 'branch_management',
+    routeManagement: 'route_management',
+    dataImport: 'data_import',
+    backup: 'backup',
+    salesLedger: 'sales_ledger',
+    priceList: 'price_list'
+  }
 
-  // Define available system features here
-  // In a real app, this might come from a metadata API or be hardcoded constants
+  // Reverse mapping: backend key -> frontend key
+  const BACKEND_TO_FRONTEND = Object.fromEntries(
+    Object.entries(FEATURE_KEYS).map(([frontend, backend]) => [backend, frontend])
+  )
+
+  const [tenantFeatures, setTenantFeatures] = useState({
+    invoicing: true,
+    pos: true,
+    inventory: true,
+    purchases: true,
+    expenses: true,
+    reports: true,
+    customers: true,
+    multiCurrency: true,
+    staffLogin: true,
+    branchManagement: true,
+    routeManagement: true,
+    dataImport: true,
+    backup: true,
+    salesLedger: true,
+    priceList: true
+  })
+  const [featuresLoading, setFeaturesLoading] = useState(false)
+  const [featuresSaving, setFeaturesSaving] = useState(false)
+
+  // Define available system features
   const AVAILABLE_FEATURES = [
-    { key: 'crm_module', label: 'CRM Module', description: 'Customer relationship management features' },
-    { key: 'inventory_advanced', label: 'Advanced Inventory', description: 'Batch tracking, low stock alerts, stock transfer' },
-    { key: 'accounting_advanced', label: 'Advanced Accounting', description: 'Journal entries, detailed ledgers' },
-    { key: 'hrm_basic', label: 'Basic HRM', description: 'Employee management, attendance' },
-    { key: 'api_access', label: 'API Access', description: 'Allow external API connectivity' },
-    { key: 'reports_advanced', label: 'Advanced Reports', description: 'Deep analytics and custom report builder' },
-    { key: 'custom_branding', label: 'Custom Branding', description: 'Remove "Powered by HexaBill"' },
-    { key: 'pos_system', label: 'POS System', description: 'Point of sale interface for retail' },
-    { key: 'manufacturing', label: 'Manufacturing', description: 'BOM and production planning' },
-    { key: 'multi_branch', label: 'Multi-Branch', description: 'Manage multiple outlets/branches' },
+    { key: 'invoicing', label: 'Invoicing & Billing', description: 'Create and manage invoices, billing cycles', icon: FileText },
+    { key: 'pos', label: 'POS System', description: 'Point of sale interface for retail transactions', icon: ShoppingCart },
+    { key: 'inventory', label: 'Inventory / Products', description: 'Product management, stock tracking, low stock alerts', icon: Package },
+    { key: 'purchases', label: 'Purchases', description: 'Purchase orders, supplier management', icon: TrendingUp },
+    { key: 'expenses', label: 'Expenses', description: 'Expense tracking and management', icon: TrendingDown },
+    { key: 'reports', label: 'Reports', description: 'Sales reports, profit & loss, analytics', icon: BarChart3 },
+    { key: 'customers', label: 'Customers', description: 'Customer management, ledger, credit limits', icon: Users },
+    { key: 'multiCurrency', label: 'Multi-Currency', description: 'Support for multiple currencies', icon: DollarSign },
+    { key: 'staffLogin', label: 'Staff Logins', description: 'Allow staff users to login (disable to block all staff)', icon: Shield },
+    { key: 'branchManagement', label: 'Branch Management', description: 'Multi-branch operations, branch assignments', icon: Building2 },
+    { key: 'routeManagement', label: 'Route Management', description: 'Delivery routes, route assignments', icon: MapPin },
+    { key: 'dataImport', label: 'Data Import', description: 'Import products, customers, invoices from CSV/Excel', icon: Download },
+    { key: 'backup', label: 'Backup', description: 'Data backup and restore functionality', icon: Database },
+    { key: 'salesLedger', label: 'Sales Ledger', description: 'Sales ledger and transaction history', icon: BookOpen },
+    { key: 'priceList', label: 'Price List', description: 'Price list management and bulk pricing', icon: List }
   ]
 
   useEffect(() => {
-    fetchFeatures()
+    if (tenantId) {
+      fetchFeatures()
+    }
   }, [tenantId])
 
   const fetchFeatures = async () => {
+    if (!tenantId) return
     try {
-      setLoading(true)
-      const data = await superAdminAPI.getTenantFeatures(tenantId)
-      // Expecting data to be an array of feature keys enabled, or object
-      // Let's assume backend returns { features: ["crm_module", "pos_system"] } or just ["crm_module"]
-      // Adjust based on actual backend implementation.
-      // For now assuming array of strings:
-      setFeatures(Array.isArray(data) ? data : (data.features || []))
+      setFeaturesLoading(true)
+      const response = await superAdminAPI.getTenantFeatures(tenantId)
+      
+      // Backend returns: { success: true, data: { features: ["invoicing", "pos", ...] } }
+      // Or API service may return response.data directly
+      const responseData = response?.data || response
+      const backendFeatures = responseData?.success && responseData?.data?.features
+        ? responseData.data.features
+        : (responseData?.features || [])
+      
+      // Convert backend array to frontend object format
+      const featuresObj = {
+        invoicing: false,
+        pos: false,
+        inventory: false,
+        purchases: false,
+        expenses: false,
+        reports: false,
+        customers: false,
+        multiCurrency: false,
+        staffLogin: false,
+        branchManagement: false,
+        routeManagement: false,
+        dataImport: false,
+        backup: false,
+        salesLedger: false,
+        priceList: false
+      }
+      
+      // Set enabled features to true
+      if (Array.isArray(backendFeatures)) {
+        backendFeatures.forEach(backendKey => {
+          const frontendKey = BACKEND_TO_FRONTEND[backendKey] || backendKey
+          if (featuresObj.hasOwnProperty(frontendKey)) {
+            featuresObj[frontendKey] = true
+          }
+        })
+      }
+      
+      // If no features returned, default to all enabled (for new tenants)
+      const hasAnyEnabled = Object.values(featuresObj).some(v => v === true)
+      if (!hasAnyEnabled && backendFeatures.length === 0) {
+        // New tenant - enable all features by default
+        Object.keys(featuresObj).forEach(key => {
+          featuresObj[key] = true
+        })
+      }
+      
+      setTenantFeatures(featuresObj)
     } catch (err) {
       console.error('Failed to fetch features:', err)
-      toast.error('Could not load features')
+      toast.error(err?.response?.data?.message || 'Could not load features. Please try again.')
+      // Keep current state on error (don't reset)
     } finally {
-      setLoading(false)
+      setFeaturesLoading(false)
     }
   }
 
-  const toggleFeature = async (featureKey) => {
-    // Optimistic update
-    const isEnabled = features.includes(featureKey)
-    const newFeatures = isEnabled
-      ? features.filter(f => f !== featureKey)
-      : [...features, featureKey]
+  const handleToggleFeature = (featureKey) => {
+    setTenantFeatures(prev => ({
+      ...prev,
+      [featureKey]: !prev[featureKey]
+    }))
+  }
 
-    setFeatures(newFeatures)
-    setSaving(true)
-
+  const handleSaveFeatures = async () => {
+    if (!tenantId) {
+      toast.error('Tenant ID is missing')
+      return
+    }
+    
+    // Validate feature keys - only allow known keys
+    const validKeys = Object.keys(FEATURE_KEYS)
+    const invalidKeys = Object.keys(tenantFeatures).filter(key => !validKeys.includes(key))
+    if (invalidKeys.length > 0) {
+      console.warn('Invalid feature keys detected:', invalidKeys)
+      toast.error('Invalid feature configuration. Please refresh and try again.')
+      return
+    }
+    
     try {
-      await superAdminAPI.updateTenantFeatures(tenantId, newFeatures)
-      toast.success('Features updated')
+      setFeaturesSaving(true)
+      await superAdminAPI.updateTenantFeatures(tenantId, tenantFeatures)
+      toast.success('Features updated successfully')
     } catch (err) {
       console.error('Failed to update features:', err)
-      toast.error('Failed to save changes')
-      // Revert
-      setFeatures(features)
+      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to save changes. Please try again.'
+      toast.error(errorMsg)
+      // Reload features to revert to server state
+      try {
+        await fetchFeatures()
+      } catch (reloadErr) {
+        console.error('Failed to reload features after save error:', reloadErr)
+      }
     } finally {
-      setSaving(false)
+      setFeaturesSaving(false)
     }
   }
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading features...</div>
+  if (featuresLoading) {
+    return (
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-8">
+        <div className="text-center text-gray-500">Loading features...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-1">Feature Management</h3>
-        <p className="text-sm text-gray-500 mb-6">Enable or disable specific modules for this tenant.</p>
+      {/* Warning banner */}
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-amber-800">
+          <strong>Super Admin Only:</strong> These toggles are Super Admin only. Company admin cannot override these settings.
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Feature toggles */}
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+          <Sliders className="h-6 w-6 text-indigo-600" />
+          Feature Management
+        </h2>
+        <p className="text-sm text-gray-600 mb-6">Enable or disable specific modules for this tenant.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {AVAILABLE_FEATURES.map((feat) => {
-            const isEnabled = features.includes(feat.key)
+            const Icon = feat.icon
+            const isEnabled = tenantFeatures[feat.key]
             return (
               <div
                 key={feat.key}
                 className={`flex items-start p-4 rounded-lg border transition-all ${isEnabled
                   ? 'border-indigo-200 bg-indigo-50/50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
                   }`}
               >
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className={`font-semibold ${isEnabled ? 'text-indigo-900' : 'text-gray-700'}`}>
+                    {Icon && <Icon className={`h-4 w-4 flex-shrink-0 ${isEnabled ? 'text-indigo-600' : 'text-gray-400'}`} />}
+                    <h4 className={`font-semibold text-sm ${isEnabled ? 'text-indigo-900' : 'text-gray-700'}`}>
                       {feat.label}
                     </h4>
-                    {isEnabled && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                    {isEnabled && <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
                   </div>
                   <p className="text-xs text-gray-500 leading-relaxed">{feat.description}</p>
                 </div>
                 <button
-                  onClick={() => toggleFeature(feat.key)}
-                  disabled={saving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? 'bg-indigo-600' : 'bg-gray-200'
-                    }`}
+                  onClick={() => handleToggleFeature(feat.key)}
+                  disabled={featuresSaving}
+                  className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-gray-200 focus:ring-gray-500'
+                    } ${featuresSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span
                     aria-hidden="true"
@@ -2118,6 +2248,17 @@ const TenantFeaturesTab = ({ tenantId }) => {
               </div>
             )
           })}
+        </div>
+
+        {/* Save button */}
+        <div className="flex justify-end pt-4 border-t border-gray-200">
+          <LoadingButton
+            onClick={handleSaveFeatures}
+            loading={featuresSaving}
+            className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-sm"
+          >
+            Save Changes
+          </LoadingButton>
         </div>
       </div>
     </div>

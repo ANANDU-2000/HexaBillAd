@@ -1375,6 +1375,54 @@ export const superAdminAPI = {
     return response.data
   },
 
+  getTenantFeatures: async (tenantId) => {
+    const response = await api.get(`/superadmin/tenant/${tenantId}/features`)
+    return response.data
+  },
+
+  updateTenantFeatures: async (tenantId, features) => {
+    // Convert object to array if needed
+    // Backend expects List<string> of enabled feature keys
+    const featuresArray = Array.isArray(features) 
+      ? features 
+      : Object.entries(features)
+          .filter(([_, enabled]) => enabled)
+          .map(([key, _]) => {
+            // Map frontend keys to backend keys
+            const keyMap = {
+              invoicing: 'invoicing',
+              pos: 'pos',
+              inventory: 'inventory',
+              purchases: 'purchases',
+              expenses: 'expenses',
+              reports: 'reports',
+              customers: 'customers',
+              multiCurrency: 'multi_currency',
+              staffLogin: 'staff_login',
+              branchManagement: 'branch_management',
+              routeManagement: 'route_management',
+              dataImport: 'data_import',
+              backup: 'backup',
+              salesLedger: 'sales_ledger',
+              priceList: 'price_list'
+            }
+            return keyMap[key] || key
+          })
+    
+    const response = await api.put(`/superadmin/tenant/${tenantId}/features`, featuresArray)
+    return response.data
+  },
+
+  updateTenantFeature: async (tenantId, key, enabled) => {
+    // Get current features, toggle one, save
+    const current = await superAdminAPI.getTenantFeatures(tenantId)
+    const currentArray = current?.data?.features || []
+    const newArray = enabled
+      ? [...currentArray.filter(k => k !== key), key] // Add if not already present
+      : currentArray.filter(k => k !== key) // Remove
+    return superAdminAPI.updateTenantFeatures(tenantId, newArray)
+  },
+
   deleteTenant: async (id) => {
     const response = await api.delete(`/superadmin/tenant/${id}`)
     return response.data
