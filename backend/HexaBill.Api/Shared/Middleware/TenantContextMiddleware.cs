@@ -101,8 +101,8 @@ namespace HexaBill.Api.Shared.Middleware
                     
                     if (pgEx != null && pgEx.SqlState == "42703" && pgEx.MessageText.Contains("FeaturesJson"))
                     {
-                        // FeaturesJson column doesn't exist yet - try to add it, then retry query
-                        _logger.LogWarning("FeaturesJson column not found - attempting to add column and retry query.");
+                        // FeaturesJson column doesn't exist yet - try to add it, then use raw SQL query
+                        _logger.LogWarning("FeaturesJson column not found - attempting to add column and use raw SQL query.");
                         var connection = dbContext.Database.GetDbConnection();
                         var wasOpen = connection.State == System.Data.ConnectionState.Open;
                         if (!wasOpen) await connection.OpenAsync();
@@ -110,40 +110,48 @@ namespace HexaBill.Api.Shared.Middleware
                         try
                         {
                             // Try to add the column if it doesn't exist
-                            using var addColumnCmd = connection.CreateCommand();
-                            addColumnCmd.CommandText = @"ALTER TABLE ""Tenants"" ADD COLUMN IF NOT EXISTS ""FeaturesJson"" character varying(2000) NULL;";
                             try
                             {
+                                using var addColumnCmd = connection.CreateCommand();
+                                addColumnCmd.CommandText = @"ALTER TABLE ""Tenants"" ADD COLUMN IF NOT EXISTS ""FeaturesJson"" character varying(2000) NULL;";
                                 await addColumnCmd.ExecuteNonQueryAsync();
                                 _logger.LogInformation("✅ Successfully added FeaturesJson column to Tenants table");
-                                // Note: EF Core model cache may still expect FeaturesJson, so use raw SQL for this request
-                                // Next request will use EF Core successfully after model cache refreshes
                             }
                             catch (Exception addColumnEx)
                             {
-                                _logger.LogWarning(addColumnEx, "Failed to add FeaturesJson column - column may already exist");
+                                // Column may already exist or we don't have permission - that's OK, continue with raw SQL
+                                _logger.LogWarning(addColumnEx, "Could not add FeaturesJson column (may already exist or permission issue) - continuing with raw SQL");
                             }
                             
                             // Always use raw SQL fallback after attempting to add column
                             // This ensures we get the tenant even if EF Core model cache hasn't refreshed yet
                             // Check if FeaturesJson column exists before including it in SELECT
-                            using var checkColumnCmd = connection.CreateCommand();
-                            checkColumnCmd.CommandText = @"
-                                SELECT EXISTS (
-                                    SELECT 1 FROM information_schema.columns 
-                                    WHERE table_schema = 'public' 
-                                    AND table_name = 'Tenants' 
-                                    AND column_name = 'FeaturesJson'
-                                )";
-                            var hasFeaturesJson = false;
-                            using (var checkReader = await checkColumnCmd.ExecuteReaderAsync())
+                            bool hasFeaturesJson = false;
+                            try
                             {
-                                if (await checkReader.ReadAsync())
+                                using var checkColumnCmd = connection.CreateCommand();
+                                checkColumnCmd.CommandText = @"
+                                    SELECT EXISTS (
+                                        SELECT 1 FROM information_schema.columns 
+                                        WHERE table_schema = 'public' 
+                                        AND table_name = 'Tenants' 
+                                        AND column_name = 'FeaturesJson'
+                                    )";
+                                using (var checkReader = await checkColumnCmd.ExecuteReaderAsync())
                                 {
-                                    hasFeaturesJson = checkReader.GetBoolean(0);
+                                    if (await checkReader.ReadAsync())
+                                    {
+                                        hasFeaturesJson = checkReader.GetBoolean(0);
+                                    }
                                 }
                             }
+                            catch (Exception checkEx)
+                            {
+                                _logger.LogWarning(checkEx, "Could not check for FeaturesJson column - assuming it doesn't exist");
+                                hasFeaturesJson = false;
+                            }
                             
+                            // Query tenant using raw SQL (without FeaturesJson if column doesn't exist)
                             using var command = connection.CreateCommand();
                             if (hasFeaturesJson)
                             {
@@ -197,7 +205,18 @@ namespace HexaBill.Api.Shared.Middleware
                                     SuspensionReason = reader.IsDBNull(17) ? null : reader.GetString(17),
                                     FeaturesJson = hasFeaturesJson && fieldCount > 18 && !reader.IsDBNull(18) ? reader.GetString(18) : null
                                 };
+                                _logger.LogInformation("✅ Successfully retrieved tenant {TenantId} using raw SQL fallback", tenantId);
                             }
+                            else
+                            {
+                                _logger.LogWarning("Tenant {TenantId} not found in database (raw SQL query returned no rows)", tenantId);
+                            }
+                        }
+                        catch (Exception rawSqlEx)
+                        {
+                            // If raw SQL also fails, log and let it fall through to tenant == null check
+                            _logger.LogError(rawSqlEx, "❌ Raw SQL fallback query also failed for tenant {TenantId}", tenantId);
+                            tenant = null; // Ensure tenant is null so we can handle it below
                         }
                         finally
                         {
