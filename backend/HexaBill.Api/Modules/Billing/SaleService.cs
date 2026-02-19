@@ -2171,8 +2171,32 @@ namespace HexaBill.Api.Modules.Billing
             if (sale == null || sale.IsDeleted)
                 return false;
 
-            // Owner and Admin can edit invoices
-            return userRole == "Admin" || userRole == "Owner";
+            // Owner and Admin can edit all invoices
+            if (userRole == "Admin" || userRole == "Owner")
+                return true;
+
+            // Staff can edit invoices they created or in their assigned branch/route
+            if (userRole == "Staff")
+            {
+                // Check if staff created this invoice
+                if (sale.CreatedBy == userId)
+                    return true;
+
+                // Check if invoice is in staff's assigned branch/route
+                if (sale.BranchId.HasValue)
+                {
+                    var staffAssignments = await _context.StaffAssignments
+                        .Where(sa => sa.UserId == userId && sa.TenantId == tenantId)
+                        .ToListAsync();
+                    
+                    return staffAssignments.Any(sa => 
+                        sa.BranchId == sale.BranchId.Value &&
+                        (!sale.RouteId.HasValue || sa.RouteId == sale.RouteId.Value)
+                    );
+                }
+            }
+
+            return false;
         }
 
         public async Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId)
