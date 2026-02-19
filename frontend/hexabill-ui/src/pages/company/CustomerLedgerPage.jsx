@@ -3281,7 +3281,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
           </div>
           <div className="flex items-center space-x-2 flex-wrap">
             <select
-              value={safeFilters.status || 'all'}
+              value={(safeFilters && safeFilters.status) ? safeFilters.status : 'all'}
               onChange={(e) => safeOnFilterChange('status', e.target.value)}
               className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
@@ -3291,7 +3291,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
               <option value="unpaid">Unpaid</option>
             </select>
             <select
-              value={safeFilters.type || 'all'}
+              value={(safeFilters && safeFilters.type) ? safeFilters.type : 'all'}
               onChange={(e) => safeOnFilterChange('type', e.target.value)}
               className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
