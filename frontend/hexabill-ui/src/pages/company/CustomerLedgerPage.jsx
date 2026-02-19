@@ -1059,19 +1059,19 @@ const CustomerLedgerPage = () => {
         return
       }
 
-      // Only attempt recovery for non-rate-limit errors, and only once
-      if (!error._recoveryAttempted) {
+      // CRITICAL: Prevent infinite retry loops - only retry once per error
+      // Only attempt recovery for 500 errors, and only once
+      if (error?.response?.status === 500 && !error._retryAttempted && !error._recoveryAttempted) {
+        error._retryAttempted = true
         error._recoveryAttempted = true
         try {
           await recalculateCustomerBalance(customerId)
-          // Don't show recovery toast - it causes flooding
-          // Retry after delay, but only once
+          // Retry after delay, but only once and only if still same customer
           setTimeout(() => {
-            if (!error._retryAttempted) {
-              error._retryAttempted = true
+            if (selectedCustomer && selectedCustomer.id === customerId && ledgerLoadInProgressRef.current !== loadKey) {
               loadCustomerData(customerId)
             }
-          }, 3000) // 3 second delay before retry
+          }, 5000) // 5 second delay before retry (increased to prevent flooding)
         } catch (recoveryError) {
           // Don't log recovery errors to prevent flooding
           if (!recoveryError._logged) {
