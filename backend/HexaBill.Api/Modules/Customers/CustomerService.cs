@@ -703,25 +703,42 @@ namespace HexaBill.Api.Modules.Customers
                 
                 // CRITICAL: For PostgreSQL, check if BranchId column exists before applying filters
                 // Skip branch/route/staff filters if column doesn't exist to prevent 500 errors
+                bool hasBranchIdColumn = false;
                 if (_context.Database.IsNpgsql())
                 {
                     try
                     {
-                        // Check if BranchId column exists using a test query
-                        var testQuery = _context.Database.ExecuteSqlRaw(@"
-                            SELECT EXISTS (
-                                SELECT 1 FROM information_schema.columns 
-                                WHERE table_schema = 'public' 
-                                AND table_name = 'Sales' 
-                                AND column_name = 'BranchId'
-                            )");
+                        // Check if BranchId column exists using raw SQL with reader
+                        var connection = _context.Database.GetDbConnection();
+                        var wasOpen = connection.State == System.Data.ConnectionState.Open;
+                        if (!wasOpen) await connection.OpenAsync();
                         
-                        // If column exists (testQuery returns 1), apply filters
-                        if (testQuery > 0)
+                        try
                         {
-                            if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
-                            if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
-                            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+                            using var checkCmd = connection.CreateCommand();
+                            checkCmd.CommandText = @"
+                                SELECT EXISTS (
+                                    SELECT 1 FROM information_schema.columns 
+                                    WHERE table_schema = 'public' 
+                                    AND table_name = 'Sales' 
+                                    AND column_name = 'BranchId'
+                                )";
+                            using (var checkReader = await checkCmd.ExecuteReaderAsync())
+                            {
+                                if (await checkReader.ReadAsync())
+                                {
+                                    hasBranchIdColumn = checkReader.GetBoolean(0);
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            if (!wasOpen) await connection.CloseAsync();
+                        }
+                        
+                        if (hasBranchIdColumn)
+                        {
+                            Console.WriteLine($"✅ BranchId column exists, applying branch/route/staff filters");
                         }
                         else
                         {
@@ -732,11 +749,18 @@ namespace HexaBill.Api.Modules.Customers
                     {
                         // If column check fails, skip filters to prevent complete failure
                         Console.WriteLine($"⚠️ Warning: Could not check BranchId column existence, skipping filters: {checkEx.Message}");
+                        hasBranchIdColumn = false;
                     }
                 }
                 else
                 {
-                    // For non-PostgreSQL databases, apply filters normally
+                    // For non-PostgreSQL databases, assume column exists
+                    hasBranchIdColumn = true;
+                }
+                
+                // Apply filters only if column exists
+                if (hasBranchIdColumn)
+                {
                     if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
                     if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
                     if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
