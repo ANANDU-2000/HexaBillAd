@@ -60,117 +60,27 @@ const DashboardTally = () => {
         return user.dashboardPermissions.split(',').includes(itemId)
     }
 
-    useEffect(() => {
-        const fetchStatsThrottled = async () => {
-            const now = Date.now()
-            const timeSinceLastFetch = now - lastFetchTimeRef.current
-
-            if (isFetchingRef.current) {
-                return // Already fetching
-            }
-
-            if (timeSinceLastFetch < DASHBOARD_THROTTLE_MS) {
-                // Schedule for later
-                if (fetchTimeoutRef.current) {
-                    clearTimeout(fetchTimeoutRef.current)
-                }
-                fetchTimeoutRef.current = setTimeout(() => {
-                    fetchStatsThrottled()
-                }, DASHBOARD_THROTTLE_MS - timeSinceLastFetch)
-                return
-            }
-
-            isFetchingRef.current = true
-            lastFetchTimeRef.current = now
-
-            try {
-                await fetchStats()
-            } finally {
-                isFetchingRef.current = false
-            }
-        }
-
-        // Initial load
-        fetchStatsThrottled()
-
-        // Declare intervals at the top level
-        let interval = null
-
-        // Auto-refresh every 30 seconds (reduced from 2 minutes for better real-time updates)
-        interval = setInterval(() => {
-            if (document.visibilityState === 'visible' && !isFetchingRef.current) {
-                fetchStatsThrottled()
-            }
-        }, 30000) // 30 seconds
-
-        // Listen for global data update events (with debouncing)
-        let debounceTimer = null
-        const handleDataUpdate = () => {
-            if (debounceTimer) {
-                clearTimeout(debounceTimer)
-            }
-            debounceTimer = setTimeout(() => {
-                if (!isFetchingRef.current) {
-                    fetchStatsThrottled()
-                }
-            }, 5000) // 5 second debounce
-        }
-
-        window.addEventListener('dataUpdated', handleDataUpdate)
-        window.addEventListener('paymentCreated', handleDataUpdate)
-        window.addEventListener('customerCreated', handleDataUpdate)
-
-        return () => {
-            if (interval) {
-                clearInterval(interval)
-            }
-            if (fetchTimeoutRef.current) {
-                clearTimeout(fetchTimeoutRef.current)
-            }
-            if (debounceTimer) {
-                clearTimeout(debounceTimer)
-            }
-            window.removeEventListener('dataUpdated', handleDataUpdate)
-            window.removeEventListener('paymentCreated', handleDataUpdate)
-            window.removeEventListener('customerCreated', handleDataUpdate)
-        }
-    }, [user, dateRange, customFromDate, customToDate, selectedBranchId]) // Re-fetch when date range or branch changes
-
-    // Calculate date range based on selected period
+    // Calculate date range based on selected period (must be before fetchStats)
     const getDateRange = () => {
         const today = new Date()
         const todayStr = today.toISOString().split('T')[0]
-        
-        switch(dateRange) {
-            case 'today':
-                return { from: todayStr, to: todayStr }
-            case 'week':
+        switch (dateRange) {
+            case 'today': return { from: todayStr, to: todayStr }
+            case 'week': {
                 const weekStart = new Date(today)
-                weekStart.setDate(today.getDate() - today.getDay()) // Start of week (Sunday = 0)
+                weekStart.setDate(today.getDate() - today.getDay())
                 return { from: weekStart.toISOString().split('T')[0], to: todayStr }
-            case 'month':
+            }
+            case 'month': {
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
                 return { from: monthStart.toISOString().split('T')[0], to: todayStr }
+            }
             case 'custom':
-                if (customFromDate && customToDate) {
-                    return { from: customFromDate, to: customToDate }
-                }
-                // Fallback to today if custom dates not set
+                if (customFromDate && customToDate) return { from: customFromDate, to: customToDate }
                 return { from: todayStr, to: todayStr }
-            default:
-                return { from: todayStr, to: todayStr }
+            default: return { from: todayStr, to: todayStr }
         }
     }
-
-    // Auto-select branch for Staff (branches from shared context - already filtered)
-    useEffect(() => {
-        if (!user || isAdminOrOwner(user)) return
-        if (availableBranches.length === 1) {
-            setSelectedBranchId(availableBranches[0].id)
-        } else if (availableBranches.length > 1 && !selectedBranchId) {
-            setSelectedBranchId(availableBranches[0].id)
-        }
-    }, [user, availableBranches])
 
     const fetchStats = async () => {
         try {
@@ -259,6 +169,57 @@ const DashboardTally = () => {
             isFetchingRef.current = false
         }
     }
+
+    useEffect(() => {
+        const fetchStatsThrottled = async () => {
+            const now = Date.now()
+            const timeSinceLastFetch = now - lastFetchTimeRef.current
+            if (isFetchingRef.current) return
+            if (timeSinceLastFetch < DASHBOARD_THROTTLE_MS) {
+                if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
+                fetchTimeoutRef.current = setTimeout(fetchStatsThrottled, DASHBOARD_THROTTLE_MS - timeSinceLastFetch)
+                return
+            }
+            isFetchingRef.current = true
+            lastFetchTimeRef.current = now
+            try {
+                await fetchStats()
+            } finally {
+                isFetchingRef.current = false
+            }
+        }
+        fetchStatsThrottled()
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible' && !isFetchingRef.current) fetchStatsThrottled()
+        }, 30000)
+        let debounceTimer = null
+        const handleDataUpdate = () => {
+            if (debounceTimer) clearTimeout(debounceTimer)
+            debounceTimer = setTimeout(() => {
+                if (!isFetchingRef.current) fetchStatsThrottled()
+            }, 5000)
+        }
+        window.addEventListener('dataUpdated', handleDataUpdate)
+        window.addEventListener('paymentCreated', handleDataUpdate)
+        window.addEventListener('customerCreated', handleDataUpdate)
+        return () => {
+            clearInterval(interval)
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
+            if (debounceTimer) clearTimeout(debounceTimer)
+            window.removeEventListener('dataUpdated', handleDataUpdate)
+            window.removeEventListener('paymentCreated', handleDataUpdate)
+            window.removeEventListener('customerCreated', handleDataUpdate)
+        }
+    }, [user, dateRange, customFromDate, customToDate, selectedBranchId])
+
+    useEffect(() => {
+        if (!user || isAdminOrOwner(user)) return
+        if (availableBranches.length === 1) {
+            setSelectedBranchId(availableBranches[0].id)
+        } else if (availableBranches.length > 1 && !selectedBranchId) {
+            setSelectedBranchId(availableBranches[0].id)
+        }
+    }, [user, availableBranches])
 
     const gatewayMenu = [
         {

@@ -368,6 +368,48 @@ const CustomerLedgerPage = () => {
     }
   }, [user, availableBranches, availableRoutes, ledgerBranchId, ledgerRouteId, ledgerStaffId, loading])
 
+  // Auto-fill branch/route from selected customer (Staff and Owner) - when customer selected, set filters
+  useEffect(() => {
+    if (!selectedCustomer?.id) return
+    if (availableBranches.length === 0 || availableRoutes.length === 0) return
+    const bid = selectedCustomer.branchId != null ? Number(selectedCustomer.branchId) : null
+    const rid = selectedCustomer.routeId != null ? Number(selectedCustomer.routeId) : null
+    if (bid != null && availableBranches.some(b => b.id === bid)) {
+      setLedgerBranchId(String(bid))
+      setFilterDraft(prev => ({ ...prev, branchId: String(bid) }))
+    }
+    if (rid != null && availableRoutes.some(r => r.id === rid)) {
+      setLedgerRouteId(String(rid))
+      setFilterDraft(prev => ({ ...prev, routeId: String(rid) }))
+    }
+  }, [selectedCustomer?.id, selectedCustomer?.branchId, selectedCustomer?.routeId, availableBranches, availableRoutes])
+
+  // If customer selected but has no branchId/routeId, fetch full customer and set branch/route
+  useEffect(() => {
+    if (!selectedCustomer?.id) return
+    if (selectedCustomer.branchId != null || selectedCustomer.routeId != null) return
+    let cancelled = false
+    customersAPI.getCustomer(selectedCustomer.id)
+      .then(res => {
+        if (cancelled) return
+        const data = res?.data ?? res
+        if (!data?.id || (data.branchId == null && data.routeId == null)) return
+        const bid = data.branchId != null ? Number(data.branchId) : null
+        const rid = data.routeId != null ? Number(data.routeId) : null
+        if (bid != null && availableBranches.some(b => b.id === bid)) {
+          setLedgerBranchId(String(bid))
+          setFilterDraft(prev => ({ ...prev, branchId: String(bid) }))
+        }
+        if (rid != null && availableRoutes.some(r => r.id === rid)) {
+          setLedgerRouteId(String(rid))
+          setFilterDraft(prev => ({ ...prev, routeId: String(rid) }))
+        }
+        setSelectedCustomer(prev => prev && prev.id === data.id ? { ...prev, branchId: data.branchId, routeId: data.routeId } : prev)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [selectedCustomer?.id, availableBranches, availableRoutes])
+
   // Refresh data when window regains focus (e.g., returning from POS edit)
   useEffect(() => {
     const handleFocus = () => {
