@@ -39,7 +39,9 @@ import {
   Info,
   Download,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  ToggleLeft,
+  XCircle
 } from 'lucide-react'
 import { superAdminAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
@@ -209,7 +211,7 @@ const SuperAdminTenantDetailPage = () => {
             })
           }
         })
-        .catch(() => {})
+        .catch(() => { })
         .finally(() => setLimitsLoading(false))
     }
   }, [id, activeTab])
@@ -324,10 +326,10 @@ const SuperAdminTenantDetailPage = () => {
       }
     } catch (error) {
       // BUG #2.2 FIX: Enhanced error handling - show detailed error messages from backend
-      const errorMsg = error?.response?.data?.errors?.[0] || 
-                      error?.response?.data?.message || 
-                      error?.message || 
-                      'An error occurred while clearing data. Please check the console for details.'
+      const errorMsg = error?.response?.data?.errors?.[0] ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'An error occurred while clearing data. Please check the console for details.'
       if (!error?._handledByInterceptor) {
         toast.error(errorMsg, { duration: 6000 }) // Show for 6 seconds for important errors
       }
@@ -657,7 +659,7 @@ const SuperAdminTenantDetailPage = () => {
       {/* Tabs - overflow-x-auto for mobile to prevent overlapping */}
       <div className="border-b border-gray-200 mb-6 font-bold overflow-x-auto scrollbar-hide">
         <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max">
-          {['overview', 'users', 'invoices', 'payments', 'subscription', 'usage', 'limits', 'reports'].map((tab) => (
+          {['overview', 'users', 'invoices', 'payments', 'subscription', 'usage', 'limits', 'features', 'reports'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -677,11 +679,10 @@ const SuperAdminTenantDetailPage = () => {
         <div className="space-y-6">
           {/* Health Score Card */}
           {tenantHealth != null && (
-            <div className={`rounded-lg border shadow-sm p-6 ${
-              tenantHealth.level === 'Green' ? 'bg-green-50 border-green-200' :
+            <div className={`rounded-lg border shadow-sm p-6 ${tenantHealth.level === 'Green' ? 'bg-green-50 border-green-200' :
               tenantHealth.level === 'Yellow' ? 'bg-amber-50 border-amber-200' :
-              'bg-red-50 border-red-200'
-            }`}>
+                'bg-red-50 border-red-200'
+              }`}>
               <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Tenant Health Score
@@ -697,17 +698,15 @@ const SuperAdminTenantDetailPage = () => {
                 <p className="text-sm text-gray-600 mb-4 max-w-2xl">{tenantHealth.scoreDescription}</p>
               )}
               <div className="flex flex-wrap items-center gap-6">
-                <div className={`text-4xl font-bold ${
-                  tenantHealth.level === 'Green' ? 'text-green-700' :
+                <div className={`text-4xl font-bold ${tenantHealth.level === 'Green' ? 'text-green-700' :
                   tenantHealth.level === 'Yellow' ? 'text-amber-700' : 'text-red-700'
-                }`}>
+                  }`}>
                   {tenantHealth.score}/100
                 </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                  tenantHealth.level === 'Green' ? 'bg-green-200 text-green-800' :
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold ${tenantHealth.level === 'Green' ? 'bg-green-200 text-green-800' :
                   tenantHealth.level === 'Yellow' ? 'bg-amber-200 text-amber-800' :
-                  'bg-red-200 text-red-800'
-                }`}>
+                    'bg-red-200 text-red-800'
+                  }`}>
                   {tenantHealth.level}
                 </span>
                 {(tenantHealth.riskFactors || []).length > 0 && (
@@ -1322,6 +1321,10 @@ const SuperAdminTenantDetailPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {activeTab === 'features' && (
+        <TenantFeaturesTab tenantId={id} />
       )}
 
       {activeTab === 'reports' && (
@@ -2002,6 +2005,121 @@ const SuperAdminTenantDetailPage = () => {
         onConfirm={dangerModal.onConfirm}
         onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
       />
+    </div>
+  )
+}
+
+// --- Sub-components ---
+
+const TenantFeaturesTab = ({ tenantId }) => {
+  const [features, setFeatures] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  // Define available system features here
+  // In a real app, this might come from a metadata API or be hardcoded constants
+  const AVAILABLE_FEATURES = [
+    { key: 'crm_module', label: 'CRM Module', description: 'Customer relationship management features' },
+    { key: 'inventory_advanced', label: 'Advanced Inventory', description: 'Batch tracking, low stock alerts, stock transfer' },
+    { key: 'accounting_advanced', label: 'Advanced Accounting', description: 'Journal entries, detailed ledgers' },
+    { key: 'hrm_basic', label: 'Basic HRM', description: 'Employee management, attendance' },
+    { key: 'api_access', label: 'API Access', description: 'Allow external API connectivity' },
+    { key: 'reports_advanced', label: 'Advanced Reports', description: 'Deep analytics and custom report builder' },
+    { key: 'custom_branding', label: 'Custom Branding', description: 'Remove "Powered by HexaBill"' },
+    { key: 'pos_system', label: 'POS System', description: 'Point of sale interface for retail' },
+    { key: 'manufacturing', label: 'Manufacturing', description: 'BOM and production planning' },
+    { key: 'multi_branch', label: 'Multi-Branch', description: 'Manage multiple outlets/branches' },
+  ]
+
+  useEffect(() => {
+    fetchFeatures()
+  }, [tenantId])
+
+  const fetchFeatures = async () => {
+    try {
+      setLoading(true)
+      const data = await superAdminAPI.getTenantFeatures(tenantId)
+      // Expecting data to be an array of feature keys enabled, or object
+      // Let's assume backend returns { features: ["crm_module", "pos_system"] } or just ["crm_module"]
+      // Adjust based on actual backend implementation.
+      // For now assuming array of strings:
+      setFeatures(Array.isArray(data) ? data : (data.features || []))
+    } catch (err) {
+      console.error('Failed to fetch features:', err)
+      toast.error('Could not load features')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleFeature = async (featureKey) => {
+    // Optimistic update
+    const isEnabled = features.includes(featureKey)
+    const newFeatures = isEnabled
+      ? features.filter(f => f !== featureKey)
+      : [...features, featureKey]
+
+    setFeatures(newFeatures)
+    setSaving(true)
+
+    try {
+      await superAdminAPI.updateTenantFeatures(tenantId, newFeatures)
+      toast.success('Features updated')
+    } catch (err) {
+      console.error('Failed to update features:', err)
+      toast.error('Failed to save changes')
+      // Revert
+      setFeatures(features)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading features...</div>
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <h3 className="text-lg font-bold text-gray-900 mb-1">Feature Management</h3>
+        <p className="text-sm text-gray-500 mb-6">Enable or disable specific modules for this tenant.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {AVAILABLE_FEATURES.map((feat) => {
+            const isEnabled = features.includes(feat.key)
+            return (
+              <div
+                key={feat.key}
+                className={`flex items-start p-4 rounded-lg border transition-all ${isEnabled
+                  ? 'border-indigo-200 bg-indigo-50/50'
+                  : 'border-gray-200 hover:border-gray-300'
+                  }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className={`font-semibold ${isEnabled ? 'text-indigo-900' : 'text-gray-700'}`}>
+                      {feat.label}
+                    </h4>
+                    {isEnabled && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                  </div>
+                  <p className="text-xs text-gray-500 leading-relaxed">{feat.description}</p>
+                </div>
+                <button
+                  onClick={() => toggleFeature(feat.key)}
+                  disabled={saving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+                    }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isEnabled ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                  />
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

@@ -403,11 +403,13 @@ const Dashboard = () => {
       <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 space-y-6 lg:space-y-8 overflow-x-hidden">
         {/* Staff with no dashboard permissions: show guidance */}
         {staffHasNoPermissions && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-5 flex items-start gap-4 shadow-sm">
+            <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+              <Shield className="h-6 w-6 text-blue-600" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-amber-900">No dashboard widgets assigned</p>
-              <p className="text-xs text-amber-800 mt-1">You’re seeing a limited view. Contact your admin to get full dashboard access.</p>
+              <p className="text-base font-semibold text-blue-900">Staff Access — Limited Dashboard</p>
+              <p className="text-sm text-blue-700 mt-1">Your administrator has not yet assigned specific dashboard permissions. You can still use Quick Actions below. Ask your admin to update your permissions in User Management.</p>
             </div>
           </div>
         )}
@@ -449,6 +451,7 @@ const Dashboard = () => {
               />
             </div>
           )}
+          {/* Profit Card: STRICTLY Admin/Owner Only. No permissions bypass. */}
           {isAdminOrOwner(user) && canShow('profitToday') && (
             <div className="lg:col-span-3">
               <StatCard

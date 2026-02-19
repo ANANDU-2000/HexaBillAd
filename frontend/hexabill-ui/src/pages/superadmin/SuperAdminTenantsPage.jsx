@@ -214,10 +214,10 @@ const SuperAdminTenantsPage = () => {
       }
     } catch (error) {
       // BUG #2.2 FIX: Enhanced error handling - show detailed error messages from backend
-      const errorMsg = error?.response?.data?.errors?.[0] || 
-                      error?.response?.data?.message || 
-                      error?.message || 
-                      'Failed to delete company. Please check the console for details.'
+      const errorMsg = error?.response?.data?.errors?.[0] ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to delete company. Please check the console for details.'
       if (!error?._handledByInterceptor) {
         toast.error(errorMsg, { duration: 6000 }) // Show for 6 seconds for important errors
       }
@@ -258,7 +258,14 @@ const SuperAdminTenantsPage = () => {
     { key: 'select', label: '' },
     { key: 'company', label: 'Company' },
     { key: 'clientId', label: 'Client ID' },
-    { key: 'name', label: 'Company Name' },
+    {
+      key: 'name', label: (
+        <div className="flex flex-col">
+          <span>Company Name</span>
+          <span className="text-[10px] font-normal text-neutral-400">English / Arabic</span>
+        </div>
+      )
+    },
     { key: 'country', label: 'Country' },
     { key: 'currency', label: 'Currency' },
     { key: 'status', label: 'Status' },
@@ -279,6 +286,7 @@ const SuperAdminTenantsPage = () => {
 
   const tableData = tenants.map(tenant => ({
     ...tenant,
+    name: tenant.name || tenant.companyNameEn || 'Unnamed Company',
     select: (
       <input
         type="checkbox"
@@ -306,7 +314,15 @@ const SuperAdminTenantsPage = () => {
             {(tenant.name || 'C').charAt(0).toUpperCase()}
           </span>
         </div>
-        <span className="font-medium text-neutral-900 truncate max-w-[140px]" title={tenant.name}>{tenant.name || '—'}</span>
+        <div className="flex flex-col">
+          <span className="font-medium text-neutral-900 truncate max-w-[140px]" title={tenant.name}>{tenant.name || '—'}</span>
+          {tenant.companyNameEn && tenant.companyNameEn !== tenant.name && (
+            <span className="text-xs text-neutral-500 truncate max-w-[160px]">{tenant.companyNameEn}</span>
+          )}
+          {tenant.companyNameAr && (
+            <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl">{tenant.companyNameAr}</span>
+          )}
+        </div>
       </div>
     ),
     totalRevenue: formatCurrency(tenant.totalRevenue || 0),
@@ -953,7 +969,7 @@ const SuperAdminTenantsPage = () => {
       {/* One-Time Credentials Modal - cannot be reopened */}
       <Modal
         isOpen={showCredentialsModal}
-        onClose={() => {}}
+        onClose={() => { }}
         title="Company Credentials — Save Now"
         size="lg"
         closeOnOverlayClick={false}

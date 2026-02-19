@@ -93,7 +93,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
     } catch (error) {
       const isConnectionError = !error.response &&
         (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' ||
-         error.message?.includes('Network Error') || error.message?.includes('Failed to fetch'))
+          error.message?.includes('Network Error') || error.message?.includes('Failed to fetch'))
       if (isConnectionError) {
         showToast.error('Service temporarily unavailable. Please try again in a moment or contact support.')
       } else if (error.response?.status === 429) {
@@ -127,7 +127,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
           <p className="mt-2 text-sm text-primary-700 leading-snug">
             Streamline invoicing, inventory, POS, customer management, and financial reporting — all in one platform for businesses in the Gulf, India, and worldwide.
           </p>
-          
+
           {/* Key Features - Compact Grid */}
           <div className="mt-5 grid grid-cols-1 gap-2.5">
             <div className="flex items-start gap-2">
@@ -141,7 +141,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 <p className="text-xs text-primary-600 mt-0.5">Create, send, track invoices. Multi-currency, automated reminders.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,7 +153,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 <p className="text-xs text-primary-600 mt-0.5">Fast checkout, barcode scanning, receipt printing, real-time updates.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +165,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 <p className="text-xs text-primary-600 mt-0.5">Track stock, low stock alerts, multi-location, automated reorder.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -177,7 +177,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 <p className="text-xs text-primary-600 mt-0.5">Customer ledger, payment tracking, credit limits, balance reports.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +189,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 <p className="text-xs text-primary-600 mt-0.5">Sales reports, profit analysis, expense tracking, tax reports.</p>
               </div>
             </div>
-            
+
             <div className="flex items-start gap-2">
               <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,7 +202,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
               </div>
             </div>
           </div>
-          
+
           {/* Business Benefits - Compact */}
           <div className="mt-5 p-4 bg-white/60 backdrop-blur-sm rounded-lg border border-primary-200">
             <h3 className="font-bold text-primary-900 text-sm mb-2">Why Choose HexaBill?</h3>
@@ -225,124 +225,124 @@ const Login = ({ isSuperAdminLogin = false }) => {
               </li>
             </ul>
           </div>
-          
+
           {/* SEO Keywords - Compact */}
           <div className="mt-4 text-xs text-primary-600 leading-snug">
             <p>
-              <strong>Perfect for:</strong> Retail, wholesale, restaurants, e-commerce, manufacturing. 
+              <strong>Perfect for:</strong> Retail, wholesale, restaurants, e-commerce, manufacturing.
               <strong className="text-primary-700"> Trusted across UAE, Saudi Arabia, India & 50+ countries.</strong>
             </p>
           </div>
         </div>
       </div>
       <div className="flex-1 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto">
-      <div className={`max-w-md w-full space-y-6 ${textAlign}`}>
-        <div className={isRtl ? 'text-right' : 'text-center'}>
-          <div className={`mb-4 lg:hidden ${isRtl ? 'flex justify-end' : 'mx-auto flex justify-center'}`}>
-            <Logo size="large" showText={true} />
+        <div className={`max-w-md w-full space-y-6 ${textAlign}`}>
+          <div className={isRtl ? 'text-right' : 'text-center'}>
+            <div className={`mb-4 lg:hidden ${isRtl ? 'flex justify-end' : 'mx-auto flex justify-center'}`}>
+              <Logo size="large" showText={true} />
+            </div>
+            <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+              {isSuperAdminLogin ? 'Admin Portal' : 'Sign in'}
+            </h1>
+            <p className="mt-1 text-sm text-neutral-500" style={{ fontFamily: "'Inter', sans-serif" }}>
+              {isSuperAdminLogin ? 'Manage the platform' : companyName !== 'HexaBill' ? `Sign in to ${companyName} — Admins, Staff & Owners` : 'Sign in with your company account'}
+            </p>
           </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {isSuperAdminLogin ? 'Admin Portal' : 'Sign in'}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-500" style={{ fontFamily: "'Inter', sans-serif" }}>
-            {isSuperAdminLogin ? 'Manage the platform' : companyName !== 'HexaBill' ? `Sign in to ${companyName}` : 'Billing & invoicing'}
-          </p>
-        </div>
 
-        <div className={`bg-white py-8 px-6 rounded-xl border border-neutral-200 ${(errors.email || errors.password) ? 'animate-shake' : ''}`}>
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
-            <Input
-              ref={emailInputRef}
-              label="Email Address"
-              type="email"
-              placeholder="Enter your email address"
-              required
-              error={errors.email?.message}
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address'
-                }
-              })}
-              icon={<Mail className="h-5 w-5 text-gray-400" />}
-            />
-
-            <div className="relative">
+          <div className={`bg-white py-8 px-6 rounded-xl border border-neutral-200 ${(errors.email || errors.password) ? 'animate-shake' : ''}`}>
+            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <Input
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                autoComplete="current-password"
+                ref={emailInputRef}
+                label="Email Address"
+                type="email"
+                placeholder="Enter your email address"
                 required
-                error={errors.password?.message}
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: {
-                    value: 6,
-                    message: 'Password must be at least 6 characters'
+                error={errors.email?.message}
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address'
                   }
                 })}
-                icon={<Lock className="h-5 w-5 text-neutral-400" />}
+                icon={<Mail className="h-5 w-5 text-gray-400" />}
               />
-              <button
-                type="button"
-                className={`absolute top-8 text-neutral-400 hover:text-neutral-600 ${isRtl ? 'left-3' : 'right-3'}`}
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
 
-            <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-              <div className={`flex items-center ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+              <div className="relative">
+                <Input
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                  error={errors.password?.message}
+                  {...register('password', {
+                    required: 'Password is required',
+                    minLength: {
+                      value: 6,
+                      message: 'Password must be at least 6 characters'
+                    }
+                  })}
+                  icon={<Lock className="h-5 w-5 text-neutral-400" />}
                 />
-                <label htmlFor="remember-me" className={isRtl ? 'mr-2 ml-0' : 'ml-2'} dir={dir}>
-                  Remember me
-                </label>
+                <button
+                  type="button"
+                  className={`absolute top-8 text-neutral-400 hover:text-neutral-600 ${isRtl ? 'left-3' : 'right-3'}`}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
               </div>
-              <div className="text-sm">
-                <a href="#" className="font-medium text-primary-600 hover:text-primary-500" dir={dir}>
-                  Forgot your password?
-                </a>
+
+              <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
+                <div className={`flex items-center ${isRtl ? 'flex-row-reverse' : ''}`}>
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                  />
+                  <label htmlFor="remember-me" className={isRtl ? 'mr-2 ml-0' : 'ml-2'} dir={dir}>
+                    Remember me
+                  </label>
+                </div>
+                <div className="text-sm">
+                  <a href="#" className="font-medium text-primary-600 hover:text-primary-500" dir={dir}>
+                    Forgot your password?
+                  </a>
+                </div>
               </div>
-            </div>
 
-            <LoadingButton
-              type="submit"
-              loading={loading}
-              disabled={loading}
-              className="w-full"
-            >
-              Sign in
-            </LoadingButton>
-          </form>
-        </div>
-
-        {/* Admin Portal: link to main app so company users don't get stuck */}
-        {isSuperAdminLogin && (
-          <div className={isRtl ? 'text-right mt-4' : 'text-center mt-4'}>
-            <a href="/login" className="text-sm text-primary-600 hover:text-primary-700 font-medium" dir={dir}>
-              {isRtl ? '← Company user? Sign in to your billing app here' : 'Company user? Sign in to your billing app here →'}
-            </a>
+              <LoadingButton
+                type="submit"
+                loading={loading}
+                disabled={loading}
+                className="w-full"
+              >
+                Sign in
+              </LoadingButton>
+            </form>
           </div>
-        )}
 
-        <div className={`text-sm text-neutral-400 ${isRtl ? 'text-right' : 'text-center'}`} style={{ fontFamily: "'Inter', sans-serif" }}>
-          <p>© 2026 HexaBill</p>
+          {/* Admin Portal: link to main app so company users don't get stuck */}
+          {isSuperAdminLogin && (
+            <div className={isRtl ? 'text-right mt-4' : 'text-center mt-4'}>
+              <a href="/login" className="text-sm text-primary-600 hover:text-primary-700 font-medium" dir={dir}>
+                {isRtl ? '← Company user? Sign in to your billing app here' : 'Company user? Sign in to your billing app here →'}
+              </a>
+            </div>
+          )}
+
+          <div className={`text-sm text-neutral-400 ${isRtl ? 'text-right' : 'text-center'}`} style={{ fontFamily: "'Inter', sans-serif" }}>
+            <p>© 2026 HexaBill</p>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   )

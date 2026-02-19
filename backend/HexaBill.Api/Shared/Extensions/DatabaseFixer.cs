@@ -42,6 +42,9 @@ namespace HexaBill.Api.Shared.Extensions
                 // Run AuditLogs FIRST so Purchase and other services don't fail with "no column named EntityId"
                 var commands = new[]
                 {
+                    // Tenants table - CRITICAL: Must run early (queried during user seeding)
+                    ("ALTER TABLE Tenants ADD COLUMN FeaturesJson TEXT NULL", "Tenants", "FeaturesJson"),
+                    
                     // AuditLogs table - MUST run first (fixes "table AuditLogs has no column named EntityId")
                     ("ALTER TABLE AuditLogs ADD COLUMN EntityType TEXT NULL", "AuditLogs", "EntityType"),
                     ("ALTER TABLE AuditLogs ADD COLUMN EntityId INTEGER NULL", "AuditLogs", "EntityId"),
@@ -141,19 +144,26 @@ namespace HexaBill.Api.Shared.Extensions
                     }
                     catch (Exception ex)
                     {
-                        // Column might already exist - only ignore duplicate column (do NOT hide "no such column" or missing table)
+                        // Column might already exist - ignore duplicate column errors
+                        // SQLite returns various error messages for duplicate columns
                         var msg = ex.Message ?? "";
                         var inner = ex.InnerException?.Message ?? "";
-                        if (msg.Contains("duplicate column", StringComparison.OrdinalIgnoreCase) ||
-                            msg.Contains("duplicate column name", StringComparison.OrdinalIgnoreCase) ||
-                            msg.Contains("already exists", StringComparison.OrdinalIgnoreCase) ||
-                            inner.Contains("duplicate column", StringComparison.OrdinalIgnoreCase))
+                        var fullError = $"{msg} {inner}".ToLowerInvariant();
+                        
+                        // Check for any indication that column already exists
+                        if (fullError.Contains("duplicate column") ||
+                            fullError.Contains("duplicate column name") ||
+                            fullError.Contains("already exists") ||
+                            fullError.Contains("sqlite error 1") || // SQLite error code 1 often means constraint violation
+                            (fullError.Contains("error") && fullError.Contains("column") && fullError.Contains("tenants")))
                         {
                             columnsSkipped++;
+                            logger?.LogDebug("Column {Table}.{Column} already exists, skipping", tableName, columnName);
                         }
                         else
                         {
-                            logger?.LogWarning("Error adding {Table}.{Column}: {Message}", tableName, columnName, msg);
+                            // Only log non-duplicate errors as warnings
+                            logger?.LogWarning("Error adding {Table}.{Column}: {Message} (Inner: {Inner})", tableName, columnName, msg, inner);
                         }
                     }
                 }

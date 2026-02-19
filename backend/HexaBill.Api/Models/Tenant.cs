@@ -61,6 +61,9 @@ namespace HexaBill.Api.Models
         
         [MaxLength(500)]
         public string? SuspensionReason { get; set; }
+
+        [MaxLength(2000)]
+        public string? FeaturesJson { get; set; } // JSON array of enabled feature keys
         
         // Navigation properties
         public virtual ICollection<User> Users { get; set; } = new List<User>();

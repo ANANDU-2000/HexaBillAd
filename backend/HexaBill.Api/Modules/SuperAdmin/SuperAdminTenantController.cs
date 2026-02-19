@@ -299,11 +299,22 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
+                // Log full exception details for debugging
+                _logger.LogError(ex, "Error getting tenants: {Message}", ex.Message);
+                if (ex.InnerException != null)
+                {
+                    _logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
+                }
+                
                 return StatusCode(500, new ApiResponse<PagedResponse<TenantDto>>
                 {
                     Success = false,
-                    Message = "An error occurred",
-                    Errors = new List<string> { ex.Message }
+                    Message = "An error occurred while retrieving tenants",
+                    Errors = new List<string> 
+                    { 
+                        ex.Message,
+                        ex.InnerException?.Message ?? "No inner exception"
+                    }.Where(e => !string.IsNullOrEmpty(e)).ToList()
                 });
             }
         }
@@ -981,6 +992,59 @@ namespace HexaBill.Api.Modules.SuperAdmin
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<DuplicateDataResultDto> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>Get tenant's enabled features (feature flags). SystemAdmin only.</summary>
+        [HttpGet("{id}/features")]
+        public async Task<ActionResult<ApiResponse<object>>> GetTenantFeatures(int id)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            try
+            {
+                var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id);
+                if (tenant == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Tenant not found" });
+
+                // Return as object { features: ["crm", "pos"] }
+                var features = new List<string>();
+                if (!string.IsNullOrEmpty(tenant.FeaturesJson))
+                {
+                    try 
+                    { 
+                        features = System.Text.Json.JsonSerializer.Deserialize<List<string>>(tenant.FeaturesJson) ?? new List<string>(); 
+                    }
+                    catch { }
+                }
+                
+                return Ok(new ApiResponse<object> { Success = true, Data = new { features } });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>Update tenant's enabled features. SystemAdmin only.</summary>
+        [HttpPut("{id}/features")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateTenantFeatures(int id, [FromBody] List<string> features)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            try
+            {
+                var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id);
+                if (tenant == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Tenant not found" });
+
+                tenant.FeaturesJson = System.Text.Json.JsonSerializer.Serialize(features ?? new List<string>());
+                
+                // Add audit log for feature change
+                await WriteSuperAdminAuditAsync("UpdateFeatures", id, $"Updated features: {string.Join(", ", features ?? new List<string>())}");
+
+                await _context.SaveChangesAsync();
+                return Ok(new ApiResponse<object> { Success = true, Message = "Features updated" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
             }
         }
     }

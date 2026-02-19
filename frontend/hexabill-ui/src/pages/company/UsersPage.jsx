@@ -40,7 +40,8 @@ const DASHBOARD_ITEMS = [
   { id: 'salesToday', label: 'Sales Today Card', icon: DollarSign, color: 'text-green-600', bg: 'bg-green-50' },
   { id: 'expensesToday', label: 'Expenses Today Card', icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
   { id: 'purchasesToday', label: 'Purchases Today Card', icon: ShoppingCart, color: 'text-orange-600', bg: 'bg-orange-50' },
-  { id: 'profitToday', label: 'Profit Today Card', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', note: 'Admin/Owner only' },
+  // PROFIT CARD REMOVED: Strictly Admin/Owner only. Not assignable to Staff.
+  // { id: 'profitToday', label: 'Profit Today Card', icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50', note: 'Admin/Owner only' },
   { id: 'salesLedger', label: 'Sales Ledger Link', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { id: 'expenses', label: 'Expenses Link', icon: Wallet, color: 'text-purple-600', bg: 'bg-purple-50' },
   { id: 'salesTrend', label: 'Sales Trend Chart', icon: BarChart3, color: 'text-emerald-600', bg: 'bg-emerald-50' },
@@ -61,6 +62,13 @@ const DashboardAccessControl = ({ selectedPermissions, onToggle, onSelectAll, on
         <button type="button" onClick={onSelectAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">All</button>
         <span className="text-blue-200">|</span>
         <button type="button" onClick={onClearAll} className="text-xs font-medium text-blue-600 hover:text-blue-800">None</button>
+      </div>
+    </div>
+    <div className="mb-3 p-3 bg-amber-50 border border-amber-100 rounded-lg flex items-start text-xs text-amber-800">
+      <ShieldAlert className="h-4 w-4 text-amber-600 mr-2 flex-shrink-0 mt-0.5" />
+      <div>
+        <strong>Restricted Metrics:</strong> "Profit Today" card is locked. It is visible ONLY to Admin & Owner roles.
+        Staff members can never see profit data, even if assigned all other permissions.
       </div>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
@@ -548,15 +556,15 @@ const UsersPage = () => {
                           const now = Date.now()
                           const fiveMinutesAgo = now - (5 * 60 * 1000) // 5 minutes in milliseconds
                           const isOnline = lastActive > 0 && lastActive > fiveMinutesAgo
-                          
+
                           return (
                             <div className="flex items-center">
                               <span
                                 className={`inline-block w-3 h-3 rounded-full mr-2 flex-shrink-0 ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}
-                                title={isOnline 
-                                  ? 'Online - Active in last 5 minutes' 
-                                  : (user.lastActiveAt 
-                                    ? `Offline - Last active: ${new Date(user.lastActiveAt).toLocaleString()}` 
+                                title={isOnline
+                                  ? 'Online - Active in last 5 minutes'
+                                  : (user.lastActiveAt
+                                    ? `Offline - Last active: ${new Date(user.lastActiveAt).toLocaleString()}`
                                     : 'No activity recorded')}
                               />
                               <span className={`text-xs font-medium ${isOnline ? 'text-green-700' : 'text-gray-500'}`}>

@@ -152,6 +152,59 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly AppDbContext _context;
         private readonly ISubscriptionService _subscriptionService;
 
+        /// <summary>
+        /// Ensures FeaturesJson column exists in Tenants table (SQLite only).
+        /// Called automatically when needed, but can be called proactively.
+        /// Completely silent - never throws exceptions to avoid breaking requests.
+        /// </summary>
+        private async Task EnsureFeaturesJsonColumnExistsAsync()
+        {
+            if (_context.Database.IsNpgsql())
+                return; // PostgreSQL uses migrations
+
+            try
+            {
+                // Check if column exists first to avoid unnecessary ALTER TABLE
+                var connection = _context.Database.GetDbConnection();
+                var wasOpen = connection.State == System.Data.ConnectionState.Open;
+                
+                if (!wasOpen)
+                {
+                    await connection.OpenAsync();
+                }
+
+                try
+                {
+                    using var checkCommand = connection.CreateCommand();
+                    checkCommand.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Tenants') WHERE name = 'FeaturesJson'";
+                    var columnCount = await checkCommand.ExecuteScalarAsync();
+                    var exists = columnCount != null && Convert.ToInt32(columnCount) > 0;
+                    
+                    if (!exists)
+                    {
+                        // Column doesn't exist, add it
+                        using var alterCommand = connection.CreateCommand();
+                        alterCommand.CommandText = "ALTER TABLE Tenants ADD COLUMN FeaturesJson TEXT NULL";
+                        await alterCommand.ExecuteNonQueryAsync();
+                    }
+                }
+                finally
+                {
+                    if (!wasOpen && connection.State == System.Data.ConnectionState.Open)
+                    {
+                        await connection.CloseAsync();
+                    }
+                }
+            }
+            catch
+            {
+                // Completely silent - swallow ALL exceptions
+                // Column might already exist, or there might be a connection issue
+                // DatabaseFixer will ensure it exists on startup anyway
+                // Never throw - this should never break a request
+            }
+        }
+
         public SuperAdminTenantService(AppDbContext context, ISubscriptionService subscriptionService)
         {
             _context = context;
@@ -708,6 +761,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             var totalCount = await query.CountAsync();
 
+            // Query tenants - DatabaseFixer should have added FeaturesJson column on startup
             var tenants = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Skip((page - 1) * pageSize)
@@ -737,56 +791,63 @@ namespace HexaBill.Api.Modules.SuperAdmin
             if (tenantIds.Any())
             {
                 // Batch query 1: User counts per tenant
-                var userCounts = await _context.Users
+                var userCounts = (await _context.Users
                     .Where(u => tenantIds.Contains(u.TenantId ?? 0))
                     .GroupBy(u => u.TenantId ?? 0)
                     .Select(g => new { TenantId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.Count);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.Count);
 
                 // Batch query 2: Invoice counts per tenant
-                var invoiceCounts = await _context.Sales
+                var invoiceCounts = (await _context.Sales
                     .Where(s => s.TenantId.HasValue && tenantIds.Contains(s.TenantId.Value) && !s.IsDeleted)
                     .GroupBy(s => s.TenantId!.Value)
                     .Select(g => new { TenantId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.Count);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.Count);
 
                 // Batch query 3: Customer counts per tenant
-                var customerCounts = await _context.Customers
+                var customerCounts = (await _context.Customers
                     .Where(c => c.TenantId.HasValue && tenantIds.Contains(c.TenantId.Value))
                     .GroupBy(c => c.TenantId!.Value)
                     .Select(g => new { TenantId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.Count);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.Count);
 
                 // Batch query 4: Product counts per tenant
-                var productCounts = await _context.Products
+                var productCounts = (await _context.Products
                     .Where(p => p.TenantId.HasValue && tenantIds.Contains(p.TenantId.Value))
                     .GroupBy(p => p.TenantId!.Value)
                     .Select(g => new { TenantId = g.Key, Count = g.Count() })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.Count);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.Count);
 
                 // Batch query 5: Total revenue per tenant
-                var revenueTotals = await _context.Sales
+                var revenueTotals = (await _context.Sales
                     .Where(s => s.TenantId.HasValue && tenantIds.Contains(s.TenantId.Value) && !s.IsDeleted)
                     .GroupBy(s => s.TenantId!.Value)
                     .Select(g => new { TenantId = g.Key, Total = g.Sum(s => (decimal?)s.GrandTotal) ?? 0 })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.Total);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.Total);
 
                 // Batch query 6: Last login per tenant (max CreatedAt from Users)
-                var lastLogins = await _context.Users
+                var lastLogins = (await _context.Users
                     .Where(u => tenantIds.Contains(u.TenantId ?? 0))
                     .GroupBy(u => u.TenantId ?? 0)
                     .Select(g => new { TenantId = g.Key, LastLogin = g.Max(u => u.CreatedAt) })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.LastLogin);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.LastLogin);
 
                 // Batch query 7: Last activity per tenant (max of LastModifiedAt or CreatedAt from Sales)
-                var lastActivities = await _context.Sales
+                var lastActivities = (await _context.Sales
                     .Where(s => s.TenantId.HasValue && tenantIds.Contains(s.TenantId.Value))
                     .GroupBy(s => s.TenantId!.Value)
                     .Select(g => new { TenantId = g.Key, LastActivity = g.Max(s => (DateTime?)(s.LastModifiedAt ?? s.CreatedAt)) })
-                    .ToDictionaryAsync(x => x.TenantId, x => x.LastActivity);
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => x.LastActivity);
 
                 // Batch query 8: Plan name and MRR per tenant (latest active/trial subscription)
-                var subscriptionInfos = await _context.Subscriptions
+                var subscriptionInfos = (await _context.Subscriptions
                     .Where(s => tenantIds.Contains(s.TenantId) && (s.Status == SubscriptionStatus.Active || s.Status == SubscriptionStatus.Trial) && s.Plan != null)
                     .GroupBy(s => s.TenantId)
                     .Select(g => new
@@ -800,7 +861,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         PlanName = x.LatestSub != null && x.LatestSub.Plan != null ? x.LatestSub.Plan.Name : null,
                         MRR = x.LatestSub != null && x.LatestSub.Plan != null ? x.LatestSub.Plan.MonthlyPrice : 0m
                     })
-                    .ToDictionaryAsync(x => x.TenantId, x => new { x.PlanName, x.MRR });
+                    .ToListAsync())
+                    .ToDictionary(x => x.TenantId, x => new { x.PlanName, x.MRR });
 
                 // Map batch results to tenant DTOs
                 foreach (var tenant in tenants)

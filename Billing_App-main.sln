@@ -4,7 +4,7 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8ACA6-933B-BF2A-3671-3E2EAC007D16}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexaBill.Api", "backend\FrozenApi\HexaBill.Api.csproj", "{339EA0EC-56B3-A1AB-00A1-F7E3E8D617B0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexaBill.Api", "backend\HexaBill.Api\HexaBill.Api.csproj", "{339EA0EC-56B3-A1AB-00A1-F7E3E8D617B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
