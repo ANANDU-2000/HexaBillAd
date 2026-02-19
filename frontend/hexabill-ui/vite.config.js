@@ -21,6 +21,20 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom']
   },
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        // Prevent variable name conflicts that cause TDZ errors
+        keep_fnames: true,
+        keep_classnames: true,
+      },
+      mangle: {
+        // Prevent mangling variables that start with 'st' to avoid conflicts
+        reserved: ['st', 'status', 'statusColor', 'entryStatus', 'invoiceStatus', 'safeFilters']
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {
