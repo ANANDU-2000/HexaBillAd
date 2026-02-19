@@ -140,6 +140,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             int companyCount = 0;
             string error = null;
 
+            object resourceUsage = null;
             try
             {
                 dbOk = await _db.Database.CanConnectAsync();
@@ -150,6 +151,36 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     var pendingList = await _db.Database.GetPendingMigrationsAsync();
                     pending = pendingList.ToArray();
                     companyCount = await _db.Tenants.CountAsync();
+
+                    // Resource usage so Super Admin can see "hitting limits" (memory + DB connections)
+                    var memoryUsed = GC.GetTotalMemory(false);
+                    var memoryMB = memoryUsed / (1024.0 * 1024.0);
+                    var workingSetMB = Environment.WorkingSet / (1024.0 * 1024.0);
+                    var memoryUsagePercent = workingSetMB > 0 ? (memoryMB / workingSetMB) * 100 : 0;
+                    int activeConnections = 0;
+                    int maxConnections = 100;
+                    double connectionPoolUsage = 0;
+                    if (_db.Database.IsNpgsql())
+                    {
+                        try
+                        {
+                            activeConnections = await _db.Database.SqlQueryRaw<int>(
+                                "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                            ).FirstOrDefaultAsync();
+                            connectionPoolUsage = maxConnections > 0 ? (double)activeConnections / maxConnections * 100 : 0;
+                        }
+                        catch { /* ignore */ }
+                    }
+                    resourceUsage = new
+                    {
+                        memoryUsedMb = Math.Round(memoryMB, 2),
+                        workingSetMb = Math.Round(workingSetMB, 2),
+                        memoryUsagePercent = Math.Round(memoryUsagePercent, 2),
+                        activeConnections,
+                        maxConnections,
+                        connectionPoolUsagePercent = Math.Round(connectionPoolUsage, 2),
+                        limitsHint = memoryUsagePercent > 90 || connectionPoolUsage > 90 ? "critical" : memoryUsagePercent > 75 || connectionPoolUsage > 75 ? "warning" : "ok"
+                    };
                 }
             }
             catch (Exception ex)
@@ -165,7 +196,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 backendUrl,
                 database = new { connected = dbOk, error },
                 migrations = new { lastApplied = lastMigration, pending },
-                companyCount
+                companyCount,
+                resourceUsage
             });
         }
 

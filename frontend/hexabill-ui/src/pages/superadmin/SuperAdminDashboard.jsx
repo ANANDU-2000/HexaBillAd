@@ -228,6 +228,31 @@ const SuperAdminDashboard = () => {
           >
             Infrastructure & health →
           </button>
+          {/* Resource usage: know when you're hitting plan limits (memory, DB connections) */}
+          {platformHealth?.resourceUsage && (
+            <div className="mt-4 pt-4 border-t border-neutral-100">
+              <h4 className="font-medium text-neutral-700 mb-2">Resource usage (backend)</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div>
+                  <p className="text-neutral-500">Memory</p>
+                  <p className="font-semibold">{platformHealth.resourceUsage.memoryUsedMb} MB / ~{platformHealth.resourceUsage.workingSetMb} MB</p>
+                  <p className={`text-xs ${platformHealth.resourceUsage.limitsHint === 'critical' ? 'text-red-600' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'text-amber-600' : 'text-neutral-500'}`}>
+                    {platformHealth.resourceUsage.memoryUsagePercent}% — {platformHealth.resourceUsage.limitsHint === 'critical' ? 'Critical' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'Warning' : 'OK'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-neutral-500">DB connections</p>
+                  <p className="font-semibold">{platformHealth.resourceUsage.activeConnections} / {platformHealth.resourceUsage.maxConnections}</p>
+                  <p className={`text-xs ${platformHealth.resourceUsage.connectionPoolUsagePercent > 90 ? 'text-red-600' : platformHealth.resourceUsage.connectionPoolUsagePercent > 75 ? 'text-amber-600' : 'text-neutral-500'}`}>
+                    {platformHealth.resourceUsage.connectionPoolUsagePercent}% pool
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-neutral-500 mt-2">
+                If memory or connections are often &gt;75%, consider upgrading the Render plan. For live CPU/RAM, check Render dashboard → your service → Metrics.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Live Activity - Top tenants by API calls (last 60 min). In-memory; resets on server restart. */}
@@ -339,10 +364,10 @@ const SuperAdminDashboard = () => {
                 +{dashboard.trialsExpiringThisWeek.length - 10} more. View in{' '}
                 <button
                   type="button"
-                  onClick={() => navigate('/superadmin/subscriptions')}
+                  onClick={() => navigate('/superadmin/tenants')}
                   className="underline font-medium"
                 >
-                  Subscriptions
+                  Companies
                 </button>
               </p>
             )}

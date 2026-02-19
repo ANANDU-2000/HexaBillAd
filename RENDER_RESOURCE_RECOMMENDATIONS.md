@@ -12,7 +12,7 @@
 
 ### Suggested starting point
 - **Production:** **Standard (2 GB RAM)** for a stable multi-tenant SaaS.
-- **Starter (512 MB)** is workable but may hit limits under load (reports, backups, many tenants).
+- **Starter (512 MB)** is workable but may hit limits under load (reports, backups, many tenants). With many pages, APIs, and GET/POST requests, Starter can cause **timeouts**, **random 500s**, or **slow responses** when several users or tabs are active. If you see those, upgrade to Standard.
 
 ---
 
@@ -27,6 +27,7 @@
 
 ### Suggested starting point
 - **Production:** **Standard (1 GB RAM, 10 GB)** for typical SaaS usage.
+- **Starter (256 MB, 1 GB)** with many tenants or heavy queries can contribute to **DB timeouts** or **500** errors from connection/memory pressure. Upgrade to Standard when you have more than a few companies.
 - Upgrade to **Pro** when you have 100+ active tenants or large report volumes.
 
 ---

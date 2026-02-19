@@ -468,13 +468,13 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => e.CreatedAt);
             });
 
-            // Setting configuration - Value is reserved in PostgreSQL; explicit mapping ensures correct SQL
+            // Setting configuration - PostgreSQL lowercases unquoted identifiers; production DB has "value" (lowercase)
             modelBuilder.Entity<Setting>(entity =>
             {
                 // MULTI-TENANT: Composite key (Key + OwnerId)
                 entity.HasKey(e => new { e.Key, e.OwnerId });
                 entity.HasIndex(e => e.OwnerId);
-                entity.Property(e => e.Value).HasColumnName("Value");
+                entity.Property(e => e.Value).HasColumnName("value");
             });
 
             // PriceChangeLog configuration

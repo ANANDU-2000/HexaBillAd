@@ -16,8 +16,6 @@ import SalesLedgerPage from './pages/company/SalesLedgerPage'
 import SettingsPage from './pages/company/SettingsPage'
 import UsersPage from './pages/company/UsersPage'
 import BackupPage from './pages/company/BackupPage'
-import DataImportPage from './pages/company/DataImportPage'
-import SalesLedgerImportPage from './pages/company/SalesLedgerImportPage'
 import ProfilePage from './pages/company/ProfilePage'
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
 import SuperAdminTenantsPage from './pages/superadmin/SuperAdminTenantsPage'
@@ -26,11 +24,9 @@ import SuperAdminDemoRequestsPage from './pages/superadmin/SuperAdminDemoRequest
 import SuperAdminHealthPage from './pages/superadmin/SuperAdminHealthPage'
 import SuperAdminErrorLogsPage from './pages/superadmin/SuperAdminErrorLogsPage'
 import SuperAdminAuditLogsPage from './pages/superadmin/SuperAdminAuditLogsPage'
-import SuperAdminSubscriptionsPage from './pages/superadmin/SuperAdminSubscriptionsPage'
 import SuperAdminSettingsPage from './pages/superadmin/SuperAdminSettingsPage'
 import SuperAdminGlobalSearchPage from './pages/superadmin/SuperAdminGlobalSearchPage'
 import SuperAdminSqlConsolePage from './pages/superadmin/SuperAdminSqlConsolePage'
-import SubscriptionPlansPage from './pages/company/SubscriptionPlansPage'
 import BranchesPage from './pages/company/BranchesPage'
 import BranchDetailPage from './pages/company/BranchDetailPage'
 import RoutesPage from './pages/company/RoutesPage'
@@ -42,7 +38,6 @@ import OnboardingWizard from './pages/OnboardingWizard'
 import ErrorPage from './pages/ErrorPage'
 import HelpPage from './pages/HelpPage'
 import FeedbackPage from './pages/FeedbackPage'
-import UpdatesPage from './pages/company/UpdatesPage'
 import Layout from './components/Layout'
 import { BranchesRoutesProvider } from './contexts/BranchesRoutesContext'
 import SuperAdminLayout from './components/SuperAdminLayout'
@@ -153,7 +148,6 @@ function App() {
             <Route path="/superadmin/health" element={<SuperAdminHealthPage />} />
             <Route path="/superadmin/error-logs" element={<SuperAdminErrorLogsPage />} />
             <Route path="/superadmin/audit-logs" element={<SuperAdminAuditLogsPage />} />
-            <Route path="/superadmin/subscriptions" element={<SuperAdminSubscriptionsPage />} />
             <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
             <Route path="/superadmin/search" element={<SuperAdminGlobalSearchPage />} />
             <Route path="/superadmin/sql-console" element={<SuperAdminSqlConsolePage />} />
@@ -187,11 +181,7 @@ function App() {
               <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/backup" element={<BackupPage />} />
-              <Route path="/import" element={<DataImportPage />} />
-              <Route path="/import/sales-ledger" element={<SalesLedgerImportPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/subscription" element={<SubscriptionPlansPage />} />
-              <Route path="/updates" element={<UpdatesPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/feedback" element={<FeedbackPage />} />
             </Route>

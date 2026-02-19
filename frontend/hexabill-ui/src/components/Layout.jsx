@@ -27,8 +27,6 @@ import {
   Lock,
   Building2,
   LayoutDashboard,
-  Upload,
-  Sparkles,
   MapPin,
   Printer,
   LayoutGrid,
@@ -130,8 +128,6 @@ const Layout = () => {
     ...(isAdminOrOwner(user) ? [{ name: 'Users', href: '/users', icon: Shield }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: FileText }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Import data', href: '/import', icon: Upload }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Updates', href: '/updates', icon: Sparkles }] : []),
   ]
 
   const isActive = (href) => {

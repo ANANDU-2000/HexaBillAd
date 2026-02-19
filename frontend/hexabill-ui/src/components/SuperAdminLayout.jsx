@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth'
 import {
   LayoutDashboard,
   Building2,
-  DollarSign,
   LogOut,
   User,
   ChevronDown,
@@ -77,7 +76,6 @@ const SuperAdminLayout = () => {
     { name: 'Dashboard', href: '/superadmin/dashboard', icon: LayoutDashboard },
     { name: 'Companies', href: '/superadmin/tenants', icon: Building2 },
     { name: 'Global Search', href: '/superadmin/search', icon: Search },
-    { name: 'Subscriptions', href: '/superadmin/subscriptions', icon: DollarSign },
     { name: 'Audit Logs', href: '/superadmin/audit-logs', icon: ClipboardList },
     { name: 'Error Logs', href: '/superadmin/error-logs', icon: AlertCircle },
     { name: 'Infrastructure', href: '/superadmin/health', icon: Activity },
