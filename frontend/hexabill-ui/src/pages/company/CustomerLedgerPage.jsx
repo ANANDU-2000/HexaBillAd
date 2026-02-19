@@ -3477,6 +3477,8 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
         ) : (
           <>
             {displayedEntries.map((entry, idx) => {
+            // CRITICAL: Initialize all variables at the top to prevent TDZ errors
+            const entryStatus = entry.status || (entry.type === 'Payment' ? '-' : 'Unpaid')
             const dateStr = entry.type === 'Payment'
               ? new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
               : new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -3495,8 +3497,8 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                 <div className="flex justify-between text-xs text-neutral-600 border-t border-neutral-200 pt-2">
                   <span>{(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}</span>
                   <span>{(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}</span>
-                  {entry.status && entry.status !== '-' && (
-                    <span className="font-medium">{entry.status}</span>
+                  {entryStatus && entryStatus !== '-' && (
+                    <span className="font-medium">{entryStatus}</span>
                   )}
                 </div>
               </div>
