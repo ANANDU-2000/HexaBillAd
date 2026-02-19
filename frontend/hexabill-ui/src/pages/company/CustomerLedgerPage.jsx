@@ -3628,12 +3628,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                 </tr>
               ) : (
                 sortedInvoices.map((invoice) => {
+                  // CRITICAL: Initialize all variables at top to prevent TDZ errors
                   // Use the actual paidAmount from backend, or calculate from grandTotal
                   const paidAmount = invoice.paidAmount ?? 0
                   const grandTotal = invoice.grandTotal || invoice.total || 0
                   const balance = grandTotal - paidAmount
                   // Use paymentStatus from backend if available, otherwise calculate
-                  const status = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
+                  const invoiceStatus = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
 
                   return (
                     <tr key={invoice.id} className="hover:bg-gray-50">
@@ -3662,8 +3663,8 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center flex-wrap gap-1">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-                            {getStatusIcon(status)} {status}
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoiceStatus)}`}>
+                            {getStatusIcon(invoiceStatus)} {invoiceStatus}
                           </span>
                           {getAgingBadge(getDaysOverdue(invoice))}
                         </div>
@@ -3756,10 +3757,11 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
           </div>
         ) : (
           sortedInvoices.map((invoice) => {
+            // CRITICAL: Initialize all variables at top to prevent TDZ errors
             const paidAmount = invoice.paidAmount ?? 0
             const grandTotal = invoice.grandTotal || invoice.total || 0
             const balance = grandTotal - paidAmount
-            const status = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
+            const invoiceStatus = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
             return (
               <div key={invoice.id} className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
                 <div className="flex justify-between items-start mb-2">
@@ -3775,8 +3777,8 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                     )}
                     {getAgingBadge(getDaysOverdue(invoice))}
                   </div>
-                  <span className={`text-sm font-bold ${getStatusColor(status)} px-2 py-0.5 rounded`}>
-                    {status}
+                  <span className={`text-sm font-bold ${getStatusColor(invoiceStatus)} px-2 py-0.5 rounded`}>
+                    {invoiceStatus}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-neutral-600 border-t border-neutral-100 pt-2 mb-3">
