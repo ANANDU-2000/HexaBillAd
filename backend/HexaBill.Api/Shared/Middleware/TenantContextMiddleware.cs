@@ -101,52 +101,69 @@ namespace HexaBill.Api.Shared.Middleware
                     
                     if (pgEx != null && pgEx.SqlState == "42703" && pgEx.MessageText.Contains("FeaturesJson"))
                     {
-                        // FeaturesJson column doesn't exist yet - query without it using raw SQL
-                        _logger.LogWarning("FeaturesJson column not found - using fallback query. Migration may not have run yet.");
+                        // FeaturesJson column doesn't exist yet - try to add it, then retry query
+                        _logger.LogWarning("FeaturesJson column not found - attempting to add column and retry query.");
                         var connection = dbContext.Database.GetDbConnection();
                         var wasOpen = connection.State == System.Data.ConnectionState.Open;
                         if (!wasOpen) await connection.OpenAsync();
                         
                         try
                         {
-                            using var command = connection.CreateCommand();
-                            command.CommandText = @"
-                                SELECT ""Id"", ""Name"", ""Subdomain"", ""Domain"", ""Country"", ""Currency"", 
-                                       ""VatNumber"", ""CompanyNameEn"", ""CompanyNameAr"", ""Address"", 
-                                       ""Phone"", ""Email"", ""LogoPath"", ""Status"", ""CreatedAt"", 
-                                       ""TrialEndDate"", ""SuspendedAt"", ""SuspensionReason""
-                                FROM ""Tenants""
-                                WHERE ""Id"" = @tenantId";
-                            var param = command.CreateParameter();
-                            param.ParameterName = "@tenantId";
-                            param.Value = tenantId;
-                            command.Parameters.Add(param);
-                            
-                            using var reader = await command.ExecuteReaderAsync();
-                            if (await reader.ReadAsync())
+                            // Try to add the column if it doesn't exist
+                            using var addColumnCmd = connection.CreateCommand();
+                            addColumnCmd.CommandText = @"ALTER TABLE ""Tenants"" ADD COLUMN IF NOT EXISTS ""FeaturesJson"" character varying(2000) NULL;";
+                            try
                             {
-                                tenant = new Tenant
+                                await addColumnCmd.ExecuteNonQueryAsync();
+                                _logger.LogInformation("Successfully added FeaturesJson column to Tenants table");
+                                // Now retry the original EF Core query
+                                tenant = await dbContext.Tenants
+                                    .AsNoTracking()
+                                    .FirstOrDefaultAsync(t => t.Id == tenantId);
+                            }
+                            catch (Exception addColumnEx)
+                            {
+                                _logger.LogWarning(addColumnEx, "Failed to add FeaturesJson column - using fallback query");
+                                // Fallback: query without FeaturesJson using raw SQL
+                                using var command = connection.CreateCommand();
+                                command.CommandText = @"
+                                    SELECT ""Id"", ""Name"", ""Subdomain"", ""Domain"", ""Country"", ""Currency"", 
+                                           ""VatNumber"", ""CompanyNameEn"", ""CompanyNameAr"", ""Address"", 
+                                           ""Phone"", ""Email"", ""LogoPath"", ""Status"", ""CreatedAt"", 
+                                           ""TrialEndDate"", ""SuspendedAt"", ""SuspensionReason""
+                                    FROM ""Tenants""
+                                    WHERE ""Id"" = @tenantId";
+                                var param = command.CreateParameter();
+                                param.ParameterName = "@tenantId";
+                                param.Value = tenantId;
+                                command.Parameters.Add(param);
+                                
+                                using var reader = await command.ExecuteReaderAsync();
+                                if (await reader.ReadAsync())
                                 {
-                                    Id = reader.GetInt32(0),
-                                    Name = reader.GetString(1),
-                                    Subdomain = reader.IsDBNull(2) ? null : reader.GetString(2),
-                                    Domain = reader.IsDBNull(3) ? null : reader.GetString(3),
-                                    Country = reader.GetString(4),
-                                    Currency = reader.GetString(5),
-                                    VatNumber = reader.IsDBNull(6) ? null : reader.GetString(6),
-                                    CompanyNameEn = reader.IsDBNull(7) ? null : reader.GetString(7),
-                                    CompanyNameAr = reader.IsDBNull(8) ? null : reader.GetString(8),
-                                    Address = reader.IsDBNull(9) ? null : reader.GetString(9),
-                                    Phone = reader.IsDBNull(10) ? null : reader.GetString(10),
-                                    Email = reader.IsDBNull(11) ? null : reader.GetString(11),
-                                    LogoPath = reader.IsDBNull(12) ? null : reader.GetString(12),
-                                    Status = (TenantStatus)reader.GetInt32(13),
-                                    CreatedAt = reader.GetDateTime(14),
-                                    TrialEndDate = reader.IsDBNull(15) ? null : reader.GetDateTime(15),
-                                    SuspendedAt = reader.IsDBNull(16) ? null : reader.GetDateTime(16),
-                                    SuspensionReason = reader.IsDBNull(17) ? null : reader.GetString(17),
-                                    FeaturesJson = null // Column doesn't exist yet
-                                };
+                                    tenant = new Tenant
+                                    {
+                                        Id = reader.GetInt32(0),
+                                        Name = reader.GetString(1),
+                                        Subdomain = reader.IsDBNull(2) ? null : reader.GetString(2),
+                                        Domain = reader.IsDBNull(3) ? null : reader.GetString(3),
+                                        Country = reader.GetString(4),
+                                        Currency = reader.GetString(5),
+                                        VatNumber = reader.IsDBNull(6) ? null : reader.GetString(6),
+                                        CompanyNameEn = reader.IsDBNull(7) ? null : reader.GetString(7),
+                                        CompanyNameAr = reader.IsDBNull(8) ? null : reader.GetString(8),
+                                        Address = reader.IsDBNull(9) ? null : reader.GetString(9),
+                                        Phone = reader.IsDBNull(10) ? null : reader.GetString(10),
+                                        Email = reader.IsDBNull(11) ? null : reader.GetString(11),
+                                        LogoPath = reader.IsDBNull(12) ? null : reader.GetString(12),
+                                        Status = (TenantStatus)reader.GetInt32(13),
+                                        CreatedAt = reader.GetDateTime(14),
+                                        TrialEndDate = reader.IsDBNull(15) ? null : reader.GetDateTime(15),
+                                        SuspendedAt = reader.IsDBNull(16) ? null : reader.GetDateTime(16),
+                                        SuspensionReason = reader.IsDBNull(17) ? null : reader.GetString(17),
+                                        FeaturesJson = null // Column doesn't exist yet
+                                    };
+                                }
                             }
                         }
                         finally
