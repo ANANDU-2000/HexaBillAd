@@ -24,7 +24,8 @@ import {
   Edit,
   Trash2,
   Wallet,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../contexts/TenantBrandingContext'
@@ -1811,6 +1812,14 @@ const CustomerLedgerPage = () => {
       <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 sm:py-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
           <div className="flex items-center space-x-3 sm:space-x-6">
+            {/* Return/Back Button */}
+            <button
+              onClick={() => navigate('/customers')}
+              className="inline-flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Back to Customers"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
             <div>
               <h1 className="text-base sm:text-xl font-bold text-gray-900">{companyName ? `${companyName} – Customer Ledger` : 'Customer Ledger'}</h1>
               <p className="text-xs sm:text-sm text-gray-600">CUSTOMER LEDGER MODULE</p>

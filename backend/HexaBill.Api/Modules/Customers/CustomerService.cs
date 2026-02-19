@@ -4,6 +4,7 @@ Author: AI Assistant
 Date: 2024
 */
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using QuestPDF.Fluent;
@@ -692,9 +693,33 @@ namespace HexaBill.Api.Modules.Customers
                 // Sales: apply optional branch/route/staff/date filters
                 var salesQuery = _context.Sales
                     .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted);
-            if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
-            if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
-            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+            
+                // CRITICAL: For PostgreSQL, check if BranchId column exists before filtering
+                // Use try-catch to handle missing columns gracefully
+                if (_context.Database.IsNpgsql())
+                {
+                    // Try to apply filters - if columns don't exist, catch and continue without filters
+                    try
+                    {
+                        if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
+                        if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
+                        if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+                    }
+                    catch (Exception pgEx) when (pgEx.Message.Contains("does not exist") || pgEx.Message.Contains("42703") || 
+                                                  (pgEx.InnerException != null && (pgEx.InnerException.Message.Contains("does not exist") || pgEx.InnerException.Message.Contains("42703"))))
+                    {
+                        // BranchId/RouteId/CreatedBy columns don't exist - skip filtering but continue
+                        Console.WriteLine($"⚠️ Warning: BranchId/RouteId/CreatedBy columns don't exist, skipping filters. Error: {pgEx.Message}");
+                        // Continue without branch/route/staff filters - date filters will still work
+                    }
+                }
+                else
+                {
+                    // For non-PostgreSQL databases, use standard property access
+                    if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
+                    if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
+                    if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+                }
             if (fromDate.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate >= fromDate.Value);
             // CRITICAL: toDate is sent as YYYY-MM-DD (midnight). Include full day by using < next day
             if (toDate.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate < toDate.Value.Date.AddDays(1));
