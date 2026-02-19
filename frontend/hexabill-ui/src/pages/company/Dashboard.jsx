@@ -99,8 +99,15 @@ const Dashboard = () => {
   }
 
   const fetchDashboardData = async () => {
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) {
+      return
+    }
+    
     try {
+      isFetchingRef.current = true
       setLoading(true)
+      lastFetchTimeRef.current = Date.now()
 
       console.log('Fetching dashboard data...')
 
@@ -249,25 +256,56 @@ const Dashboard = () => {
       setDbStatus(false)
     } finally {
       setLoading(false)
+      isFetchingRef.current = false
     }
   }
 
+  // Throttle dashboard refreshes to prevent too many requests
+  const lastFetchTimeRef = useRef(0)
+  const isFetchingRef = useRef(false)
+  const DASHBOARD_THROTTLE_MS = 30000 // 30 seconds minimum between auto-refreshes
+
   useEffect(() => {
     fetchDashboardData()
-    // Auto-refresh DISABLED - prevents UI interruption during user actions
-    // User can manually refresh with refresh button
   }, [pendingFilter, pendingSearch])
 
-  // Listen for data update events to refresh when payments are made
+  // Auto-refresh dashboard every 60 seconds (with throttling)
+  useEffect(() => {
+    const autoRefreshInterval = setInterval(() => {
+      const now = Date.now()
+      const timeSinceLastFetch = now - lastFetchTimeRef.current
+      
+      // Only refresh if enough time has passed and not currently fetching
+      if (timeSinceLastFetch >= DASHBOARD_THROTTLE_MS && !isFetchingRef.current) {
+        lastFetchTimeRef.current = now
+        fetchDashboardData()
+      }
+    }, 60000) // Check every 60 seconds
+
+    return () => clearInterval(autoRefreshInterval)
+  }, [])
+
+  // Listen for data update events to refresh when payments are made (with throttling)
   useEffect(() => {
     const handleDataUpdate = () => {
-      fetchDashboardData()
+      const now = Date.now()
+      const timeSinceLastFetch = now - lastFetchTimeRef.current
+      
+      // Throttle: only refresh if 10 seconds have passed since last fetch
+      if (timeSinceLastFetch >= 10000 && !isFetchingRef.current) {
+        lastFetchTimeRef.current = now
+        fetchDashboardData()
+      }
     }
 
     window.addEventListener('dataUpdated', handleDataUpdate)
+    window.addEventListener('paymentCreated', handleDataUpdate)
+    window.addEventListener('customerCreated', handleDataUpdate)
 
     return () => {
       window.removeEventListener('dataUpdated', handleDataUpdate)
+      window.removeEventListener('paymentCreated', handleDataUpdate)
+      window.removeEventListener('customerCreated', handleDataUpdate)
     }
   }, [])
 

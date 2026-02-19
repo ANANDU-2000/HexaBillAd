@@ -1225,10 +1225,37 @@ namespace HexaBill.Api.Modules.Billing
                 if (user == null)
                     throw new InvalidOperationException("User not found or does not belong to your tenant");
                 
-                // Allow Admin, Owner, and Staff to edit invoices (no 8-hour lock)
+                // Allow Admin, Owner, and Staff to edit invoices
+                // Staff can edit invoices they created or invoices in their assigned branch/route
                 if (user.Role != UserRole.Admin && user.Role != UserRole.Owner && user.Role != UserRole.Staff)
                 {
                     throw new InvalidOperationException("Only Admin, Owner, and Staff users can edit invoices");
+                }
+                
+                // Staff can edit if they created it OR if it's in their assigned branch/route
+                if (user.Role == UserRole.Staff)
+                {
+                    // Check if staff created this invoice OR if it's in their assigned branch/route
+                    var staffCanEdit = existingSale.CreatedBy == userId;
+                    
+                    // If staff has branch/route assignments, check if invoice matches
+                    if (!staffCanEdit && existingSale.BranchId.HasValue)
+                    {
+                        // Check if staff is assigned to this branch/route
+                        var staffAssignments = await _context.StaffAssignments
+                            .Where(sa => sa.UserId == userId && sa.TenantId == tenantId)
+                            .ToListAsync();
+                        
+                        staffCanEdit = staffAssignments.Any(sa => 
+                            sa.BranchId == existingSale.BranchId.Value &&
+                            (!existingSale.RouteId.HasValue || sa.RouteId == existingSale.RouteId.Value)
+                        );
+                    }
+                    
+                    if (!staffCanEdit)
+                    {
+                        throw new InvalidOperationException("Staff can only edit invoices they created or invoices in their assigned branch/route");
+                    }
                 }
 
                 // CONCURRENCY CHECK: Verify version hasn't changed (another user edited it)
