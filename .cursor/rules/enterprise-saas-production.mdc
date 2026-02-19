@@ -1,0 +1,24 @@
+---
+description: Enterprise SaaS production rules - ALWAYS use the rules file for all backend, API, DB, and frontend
+globs: backend/**/*, frontend/hexabill-ui/src/**/*
+alwaysApply: true
+---
+
+# Enterprise SaaS Production Rules (always apply)
+
+**Always use and follow** the single source of truth: **`ENTERPRISE_SAAS_PRODUCTION_RULES.md`** (project root). No exceptions. When changing backend, API, DB, migrations, or frontend API/async code, read that file and apply it.
+
+Summary:
+
+1. **No breaking DB schema** — additive only; no drop/rename without deprecation plan.
+2. **Migrations backward compatible** — old app must work after migration runs.
+3. **New features behind feature flag** — off by default; document flag and removal plan.
+4. **Every API endpoint must:** validate role, validate tenant isolation (TenantId), use try/catch, log errors (no sensitive data).
+5. **No unhandled promise rejection** — all async/then have catch or try/catch; backend has global exception handling.
+6. **Destructive actions in a transaction** — bulk delete, clear data, irreversible updates: wrap in DB transaction; rollback on failure.
+7. **No global state mutation** — no request-time writes to global/static state; prefer request/tenant-scoped.
+8. **No direct delete without cascade check** — handle FKs and children (cascade or explicit order in transaction).
+9. **Staging before production** — new features/migrations tested in staging (same stack as prod) before prod deploy.
+10. **Schema change = migration file** — every DB change via versioned migration file; no ad-hoc production schema changes.
+
+Before submitting backend/API/DB or frontend API-related changes, confirm: role + tenant checks, try/catch, logging, transactions for destructive ops, and a migration file for any schema change.
