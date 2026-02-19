@@ -219,6 +219,30 @@ namespace HexaBill.Api.Modules.Customers
                     rowVersion = new byte[] { 0 };
                 }
                 
+                // CRITICAL: Check for duplicate customer name within tenant scope
+                var duplicateName = await _context.Customers
+                    .AnyAsync(c => c.TenantId == tenantId && 
+                                   c.Name.Trim().ToLower() == request.Name.Trim().ToLower());
+                
+                if (duplicateName)
+                {
+                    throw new InvalidOperationException($"Customer with name '{request.Name}' already exists. Please use a different name.");
+                }
+
+                // Check for duplicate phone number if provided (within tenant scope)
+                if (!string.IsNullOrWhiteSpace(request.Phone))
+                {
+                    var duplicatePhone = await _context.Customers
+                        .AnyAsync(c => c.TenantId == tenantId && 
+                                       !string.IsNullOrWhiteSpace(c.Phone) &&
+                                       c.Phone.Trim() == request.Phone.Trim());
+                    
+                    if (duplicatePhone)
+                    {
+                        throw new InvalidOperationException($"Customer with phone number '{request.Phone}' already exists. Please use a different phone number.");
+                    }
+                }
+
                 var customer = new Customer
                 {
                     TenantId = tenantId, // CRITICAL: Set owner_id
@@ -366,6 +390,32 @@ namespace HexaBill.Api.Modules.Customers
                         $"Cannot change customer type from Credit to Cash. " +
                         $"Customer has outstanding balance of {customer.PendingBalance:N2}. " +
                         $"Please collect all payments first.");
+                }
+            }
+
+            // CRITICAL: Check for duplicate customer name (excluding current customer)
+            var duplicateName = await _context.Customers
+                .AnyAsync(c => c.TenantId == tenantId && 
+                               c.Id != id &&
+                               c.Name.Trim().ToLower() == request.Name.Trim().ToLower());
+            
+            if (duplicateName)
+            {
+                throw new InvalidOperationException($"Customer with name '{request.Name}' already exists. Please use a different name.");
+            }
+
+            // Check for duplicate phone number if provided (excluding current customer)
+            if (!string.IsNullOrWhiteSpace(request.Phone))
+            {
+                var duplicatePhone = await _context.Customers
+                    .AnyAsync(c => c.TenantId == tenantId && 
+                                   c.Id != id &&
+                                   !string.IsNullOrWhiteSpace(c.Phone) &&
+                                   c.Phone.Trim() == request.Phone.Trim());
+                
+                if (duplicatePhone)
+                {
+                    throw new InvalidOperationException($"Customer with phone number '{request.Phone}' already exists. Please use a different phone number.");
                 }
             }
 
