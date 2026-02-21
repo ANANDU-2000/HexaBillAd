@@ -51,12 +51,12 @@ Date: 2026
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="SeedData\PRICE LIST - 08.04.2025.xlsx">
+    <Content Include="SeedData\PRICE LIST - 08.04.2025.xlsx" Condition="Exists('SeedData\PRICE LIST - 08.04.2025.xlsx')">
       <Link>SeedData\PRICE LIST - 08.04.2025.xlsx</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="SeedData\PRODUCT LINE.xlsx">
+    <Content Include="SeedData\PRODUCT LINE.xlsx" Condition="Exists('SeedData\PRODUCT LINE.xlsx')">
       <Link>SeedData\PRODUCT LINE.xlsx</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
