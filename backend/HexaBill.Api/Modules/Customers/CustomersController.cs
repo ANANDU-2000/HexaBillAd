@@ -400,11 +400,16 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty list instead of 500 so Customer Ledger page keeps working
-                Console.WriteLine($"[GetCustomerLedger] Returning empty list after error for customer {id}: {ex.Message}");
-                return Ok(new ApiResponse<List<CustomerLedgerEntry>>
+                Console.WriteLine($"[GetCustomerLedger] Error for customer {id}: {ex.Message}");
+                Console.WriteLine($"[GetCustomerLedger] Stack: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"[GetCustomerLedger] Inner: {ex.InnerException.Message}");
+                // Return 500 with error so we can debug; frontend shows toast
+                return StatusCode(500, new ApiResponse<List<CustomerLedgerEntry>>
                 {
-                    Success = true,
+                    Success = false,
+                    Message = "Failed to load ledger. Check Render logs for details.",
+                    Errors = new List<string> { ex.Message },
                     Data = new List<CustomerLedgerEntry>()
                 });
             }

@@ -818,6 +818,8 @@ namespace HexaBill.Api.Modules.Customers
                     .ThenBy(s => s.Id)
                     .ToListAsync();
 
+                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, from={fromDate?.ToString("yyyy-MM-dd")}, to={toDate?.ToString("yyyy-MM-dd")}, salesCount={sales.Count}, branchId={branchId}, routeId={routeId}");
+
             var filteredSaleIds = new HashSet<int>(sales.Select(s => s.Id));
 
             // Payments: only include those linked to filtered sales or standalone (no SaleId)
