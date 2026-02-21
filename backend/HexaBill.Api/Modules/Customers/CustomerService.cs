@@ -125,6 +125,17 @@ namespace HexaBill.Api.Modules.Customers
             return hasColumn;
         }
 
+        /// <summary>True if the exception indicates a missing column (SQLite or PostgreSQL 42703). Used in exception filters for schema fallback.</summary>
+        private static bool IsMissingColumnException(Exception ex)
+        {
+            if (ex == null) return false;
+            if (ex is Microsoft.Data.Sqlite.SqliteException sqlEx && (sqlEx.Message?.Contains("no such column", StringComparison.OrdinalIgnoreCase) == true))
+                return true;
+            if (ex is Npgsql.PostgresException pgEx && (pgEx.SqlState == "42703" || (pgEx.Message?.Contains("column", StringComparison.OrdinalIgnoreCase) == true)))
+                return true;
+            return false;
+        }
+
         public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
         {
             // NOTE: DatabaseFixer should only run at application startup (Program.cs)
@@ -856,9 +867,7 @@ namespace HexaBill.Api.Modules.Customers
                     .OrderBy(sr => sr.ReturnDate)
                     .ToListAsync();
             }
-            catch (Exception dbEx) when (
-                (dbEx is Microsoft.Data.Sqlite.SqliteException sqlEx && sqlEx.Message.Contains("no such column")) ||
-                (dbEx is PostgresException pgEx && (pgEx.SqlState == "42703" /* undefined_column */ || pgEx.Message?.Contains("column") == true)))
+            catch (Exception dbEx) when (IsMissingColumnException(dbEx))
             {
                 // Schema mismatch (SQLite missing columns or PostgreSQL migrations not applied) - use safe projection
                 Console.WriteLine($"⚠️ Schema fallback - using projection to exclude possibly missing columns: {dbEx.Message}");
