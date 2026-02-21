@@ -523,12 +523,13 @@ const ReportsPage = () => {
           console.log('Expenses response:', expensesResponse)
 
           if (expensesResponse?.success && expensesResponse?.data) {
-            const expenses = (expensesResponse.data || []).map(e => ({
+            const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16']
+            const expenses = (expensesResponse.data || []).map((e, index) => ({
               categoryId: e.categoryId || e.CategoryId || 0,
-              categoryName: e.categoryName || e.CategoryName || 'Uncategorized',
-              categoryColor: e.categoryColor || e.CategoryColor || '#6B7280',
-              totalAmount: parseFloat(e.totalAmount || e.TotalAmount || 0),
-              expenseCount: parseInt(e.expenseCount || e.ExpenseCount || 0)
+              categoryName: e.categoryName || e.CategoryName || e.name || 'Uncategorized',
+              totalAmount: Number(e.totalAmount || e.TotalAmount || e.amount || e.total || 0),
+              expenseCount: Number(e.expenseCount || e.ExpenseCount || e.count || e.transactionCount || 0),
+              categoryColor: e.categoryColor || e.CategoryColor || e.color || COLORS[index % COLORS.length]
             }))
 
             console.log('Expenses data loaded:', {
@@ -557,7 +558,8 @@ const ReportsPage = () => {
             toDate: dateRange.to
           })
           if (branchRes?.success && branchRes?.data) {
-            setReportData(prev => ({ ...prev, branchComparison: branchRes.data || [] }))
+            const branchData = Array.isArray(branchRes.data) ? branchRes.data : (branchRes.data?.branches || [])
+            setReportData(prev => ({ ...prev, branchComparison: branchData }))
           } else {
             setReportData(prev => ({ ...prev, branchComparison: [] }))
           }
@@ -665,8 +667,9 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to)
-          if (res?.success && Array.isArray(res?.data)) {
-            setReportData(prev => ({ ...prev, branchProfit: res.data }))
+          if (res?.success && res?.data) {
+            const data = Array.isArray(res.data) ? res.data : (res.data?.branches || res.data?.items || [])
+            setReportData(prev => ({ ...prev, branchProfit: data }))
           } else {
             setReportData(prev => ({ ...prev, branchProfit: [] }))
           }

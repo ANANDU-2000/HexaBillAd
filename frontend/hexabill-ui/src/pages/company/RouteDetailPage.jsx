@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar } from 'lucide-react'
+import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
-import { routesAPI, salesAPI, expensesAPI } from '../../services'
+import { routesAPI, salesAPI, expensesAPI, adminAPI } from '../../services'
 import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { useAuth } from '../../hooks/useAuth'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance']
@@ -15,6 +16,7 @@ const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'perf
 const RouteDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [route, setRoute] = useState(null)
   const [summary, setSummary] = useState(null)
@@ -53,8 +55,13 @@ const RouteDetailPage = () => {
   const [showTodaysRoute, setShowTodaysRoute] = useState(false)
   const [todaysRouteCustomers, setTodaysRouteCustomers] = useState([])
   const [updatingVisitStatus, setUpdatingVisitStatus] = useState(null) // { customerId: status }
+  const [showAssignRouteStaffModal, setShowAssignRouteStaffModal] = useState(false)
+  const [routeStaffToAssign, setRouteStaffToAssign] = useState([])
+  const [routeStaffAssignLoading, setRouteStaffAssignLoading] = useState(false)
+  const [routeStaffAssignSaving, setRouteStaffAssignSaving] = useState(false)
+  const [routeStaffRemovingId, setRouteStaffRemovingId] = useState(null)
 
-  const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
+  const canManage = isAdminOrOwner(user)
 
   const loadRoute = async () => {
     if (!id) return
@@ -92,6 +99,63 @@ const RouteDetailPage = () => {
   const applyDateRange = () => {
     setFromDate(dateDraftFrom)
     setToDate(dateDraftTo)
+  }
+
+  const openAssignRouteStaffModal = async () => {
+    setShowAssignRouteStaffModal(true)
+    setRouteStaffAssignLoading(true)
+    setRouteStaffToAssign([])
+    try {
+      const res = await adminAPI.getUsers()
+      const items = Array.isArray(res?.data) ? res.data : (res?.data?.items ?? [])
+      const currentIds = new Set([
+        ...(route?.staff || []).map(s => s.userId),
+        route?.assignedUserId ? route.assignedUserId : null
+      ].filter(Boolean))
+      const available = items.filter(u => (u.role || '').toLowerCase() === 'staff' && !currentIds.has(u.id))
+      setRouteStaffToAssign(available)
+    } catch (e) {
+      toast.error('Failed to load staff')
+    } finally {
+      setRouteStaffAssignLoading(false)
+    }
+  }
+
+  const handleAssignRouteStaff = async (staffUser) => {
+    try {
+      setRouteStaffAssignSaving(true)
+      const res = await routesAPI.assignStaff(route.id, staffUser.id)
+      if (res?.success) {
+        toast.success(`${staffUser.name} assigned to this route`)
+        setShowAssignRouteStaffModal(false)
+        const updated = await routesAPI.getRoute(route.id)
+        if (updated?.success && updated?.data) setRoute(updated.data)
+      } else {
+        toast.error(res?.message || 'Failed to assign staff')
+      }
+    } catch (e) {
+      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to assign staff')
+    } finally {
+      setRouteStaffAssignSaving(false)
+    }
+  }
+
+  const handleRemoveRouteStaff = async (staffUser) => {
+    try {
+      setRouteStaffRemovingId(staffUser.userId || staffUser.id)
+      const res = await routesAPI.unassignStaff(route.id, staffUser.userId || staffUser.id)
+      if (res?.success) {
+        toast.success(`${staffUser.userName || staffUser.name} removed from this route`)
+        const updated = await routesAPI.getRoute(route.id)
+        if (updated?.success && updated?.data) setRoute(updated.data)
+      } else {
+        toast.error(res?.message || 'Failed to remove staff')
+      }
+    } catch (e) {
+      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to remove staff')
+    } finally {
+      setRouteStaffRemovingId(null)
+    }
   }
 
   // Load route on mount; load summary/expenses when id or applied date range changes.
@@ -552,33 +616,102 @@ const RouteDetailPage = () => {
 
       {activeTab === 'staff' && (
         <div>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-neutral-500">Staff assigned to this route.</p>
+            {canManage && (
+              <button
+                type="button"
+                onClick={openAssignRouteStaffModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+              >
+                <UserPlus className="h-4 w-4" />
+                Assign Staff
+              </button>
+            )}
+          </div>
           <div className="space-y-3 mb-4">
-            {route.assignedStaffName && (
+            {route?.assignedStaffName && (
               <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200">
                 <p className="text-sm text-neutral-500">Primary assigned staff</p>
                 <p className="font-medium">{route.assignedStaffName}</p>
               </div>
             )}
-            {(!route.staff || route.staff.length === 0) && !route.assignedStaffName ? (
-              <p className="text-neutral-500 py-6">No staff assigned to this route. Assign from the Users page.</p>
+            {(!route?.staff || route.staff.length === 0) && !route?.assignedStaffName ? (
+              <p className="text-neutral-500 py-6">No staff assigned to this route. Click "Assign Staff" above.</p>
             ) : (
               <div className="overflow-x-auto border border-neutral-200 rounded-lg">
                 <table className="min-w-full divide-y divide-neutral-200">
                   <thead className="bg-neutral-50 sticky top-0">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Name</th>
+                      {canManage && <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-200 bg-white">
-                    {route.assignedStaffName && <tr><td className="px-4 py-2 font-medium">{route.assignedStaffName} (Primary)</td></tr>}
-                    {(route.staff || []).filter(s => s.userName !== route.assignedStaffName).map(s => (
-                      <tr key={s.userId}><td className="px-4 py-2 font-medium">{s.userName}</td></tr>
+                    {route?.assignedStaffName && (
+                      <tr>
+                        <td className="px-4 py-2 font-medium">{route.assignedStaffName} (Primary)</td>
+                        {canManage && <td className="px-4 py-2 text-right"><span className="text-xs text-neutral-400">Primary</span></td>}
+                      </tr>
+                    )}
+                    {(route?.staff || []).filter(s => s.userName !== route.assignedStaffName).map(s => (
+                      <tr key={s.userId}>
+                        <td className="px-4 py-2 font-medium">{s.userName}</td>
+                        {canManage && (
+                          <td className="px-4 py-2 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRouteStaff(s)}
+                              disabled={routeStaffRemovingId === s.userId}
+                              className="text-red-600 hover:bg-red-50 rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
+                            >
+                              {routeStaffRemovingId === s.userId ? 'Removing…' : 'Remove'}
+                            </button>
+                          </td>
+                        )}
+                      </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
           </div>
+
+          {showAssignRouteStaffModal && (
+            <Modal
+              isOpen={true}
+              title="Assign staff to this route"
+              onClose={() => !routeStaffAssignSaving && setShowAssignRouteStaffModal(false)}
+              size="md"
+            >
+              {routeStaffAssignLoading ? (
+                <div className="py-8 flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" />
+                </div>
+              ) : routeStaffToAssign.length === 0 ? (
+                <p className="text-neutral-500 py-4">No other staff to assign. All staff are already assigned or there are no Staff users created yet.</p>
+              ) : (
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
+                  {routeStaffToAssign.map(u => (
+                    <li key={u.id} className="flex items-center justify-between p-2 rounded border border-neutral-200 hover:bg-neutral-50">
+                      <div>
+                        <span className="font-medium">{u.name}</span>
+                        <span className="text-sm text-neutral-500 ml-2">{u.email}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleAssignRouteStaff(u)}
+                        disabled={routeStaffAssignSaving}
+                        className="px-3 py-1 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 disabled:opacity-50"
+                      >
+                        Assign
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Modal>
+          )}
         </div>
       )}
 

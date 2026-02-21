@@ -9,12 +9,14 @@ import { Input, TextArea } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+import { useAuth } from '../../hooks/useAuth'
 
 const TABS = ['overview', 'routes', 'staff', 'customers', 'expenses', 'performance', 'report']
 
 const BranchDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { branches: contextBranches, routes: contextRoutes } = useBranchesRoutes()
   const [activeTab, setActiveTab] = useState('overview')
   const [branch, setBranch] = useState(null)
@@ -168,7 +170,7 @@ const BranchDetailPage = () => {
     setToDate(dateDraft.to)
   }
 
-  const canManage = isAdminOrOwner(JSON.parse(localStorage.getItem('user') || '{}'))
+  const canManage = isAdminOrOwner(user)
 
   const branchRouteIds = (summary?.routes ?? []).map(r => r.routeId ?? r.id)
   const routeIdToName = Object.fromEntries((summary?.routes ?? []).map(r => [r.routeId ?? r.id, r.routeName ?? r.name ?? '']))
@@ -681,6 +683,7 @@ const BranchDetailPage = () => {
           )}
           {showAssignStaffModal && (
             <Modal
+              isOpen={true}
               title="Assign staff to this branch"
               onClose={() => !assignStaffSaving && setShowAssignStaffModal(false)}
               size="md"

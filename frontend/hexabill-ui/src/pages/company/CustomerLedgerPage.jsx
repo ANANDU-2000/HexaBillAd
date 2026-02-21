@@ -2224,7 +2224,7 @@ const CustomerLedgerPage = () => {
                       </button>
                       <button
                         onClick={() => {
-                          handleGeneratePDF()
+                          handleExportPDF()
                           setShowSendStatementModal(false)
                         }}
                         className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -3301,7 +3301,8 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
     setDisplayLimit(prev => prev + LOAD_MORE_INCREMENT)
   }
 
-  const lastEntryBalance = displayedEntries.length > 0 ? displayedEntries[displayedEntries.length - 1].balance : (ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0)
+  // Always use the LAST entry of the full ledger (not paginated) for true closing balance
+  const lastEntryBalance = ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0
   const closingBalance = Number(lastEntryBalance) || 0
   const totalDebit = ledgerEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0)
   const totalCredit = ledgerEntries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0)
