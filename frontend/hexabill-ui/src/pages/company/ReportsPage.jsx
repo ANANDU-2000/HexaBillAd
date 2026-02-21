@@ -759,10 +759,13 @@ const ReportsPage = () => {
       } else if (activeTab === 'returns') {
         try {
           setLoading(true)
+          const saleIdFromUrl = searchParams.get('saleId')
+          const saleId = saleIdFromUrl ? parseInt(saleIdFromUrl, 10) : undefined
           const [returnsRes, categoriesRes, flagsRes] = await Promise.all([
             returnsAPI.getSaleReturnsPaged({
               fromDate: dateRange.from,
               toDate: dateRange.to,
+              saleId: Number.isFinite(saleId) ? saleId : undefined,
               branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
               routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
               damageCategoryId: appliedFilters.damageCategory ? parseInt(appliedFilters.damageCategory, 10) : undefined,

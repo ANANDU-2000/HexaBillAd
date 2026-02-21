@@ -25,7 +25,8 @@ import {
   Trash2,
   Wallet,
   AlertTriangle,
-  ArrowLeft
+  ArrowLeft,
+  RotateCcw
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../contexts/TenantBrandingContext'
@@ -3277,6 +3278,7 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 // Constants already defined at top of file - do not redefine here
 
 const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, filters, onFilterChange }) => {
+  const navigate = useNavigate()
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
   // Use constant property name to prevent minifier from creating 'st' from filters.status
   const hasFilters = filters && typeof filters === 'object'
@@ -3404,13 +3406,14 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                 <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Debit (AED)</th>
                 <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Credit (AED)</th>
                 <th className="px-3 py-2.5 text-center text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Status</th>
-                <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap">Balance</th>
+                <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Balance</th>
+                <th className="px-3 py-2.5 text-center text-xs font-bold text-neutral-700 uppercase whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
               {displayedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan="9" className="px-4 py-8 text-center text-neutral-500">
                     No transactions found
                   </td>
                 </tr>
@@ -3477,9 +3480,24 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                           <span className="text-sm text-neutral-400">-</span>
                         )}
                       </td>
-                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'
+                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold border-r border-neutral-200 ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'
                         }`}>
                         {formatBalance(Number(entry.balance) || 0)}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                        {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                            title="Create return for this bill"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Return
+                          </button>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
                       </td>
                     </tr>
                   )
@@ -3489,7 +3507,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             {hasMore && (
               <tfoot className="bg-neutral-50 border-t border-neutral-200">
                 <tr>
-                  <td colSpan="8" className="px-4 py-3 text-center">
+                  <td colSpan="9" className="px-4 py-3 text-center">
                     <button
                       onClick={handleLoadMore}
                       className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
@@ -3517,10 +3535,11 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                 <td className="px-3 py-2.5 text-center text-sm font-bold text-neutral-900 border-r border-neutral-300">
                   -
                 </td>
-                <td className={`px-3 py-2.5 text-right text-sm font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
+                <td className={`px-3 py-2.5 text-right text-sm font-bold border-r border-neutral-300 ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
                   }`}>
                   {formatBalance(Number(closingBalance) || 0)}
                 </td>
+                <td className="px-3 py-2.5 text-center text-sm font-bold">-</td>
               </tr>
             </tfoot>
           </table>
@@ -3555,11 +3574,24 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                     {formatBalance(Number(entry.balance) || 0)}
                   </span>
                 </div>
-                <div className="flex justify-between text-xs text-neutral-600 border-t border-neutral-200 pt-2">
-                  <span>{(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}</span>
-                  <span>{(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}</span>
-                  {entryStatus && entryStatus !== '-' && (
-                    <span className="font-medium">{entryStatus}</span>
+                <div className="flex justify-between items-center text-xs text-neutral-600 border-t border-neutral-200 pt-2">
+                  <div className="flex gap-2">
+                    <span>{(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}</span>
+                    <span>{(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}</span>
+                    {entryStatus && entryStatus !== '-' && (
+                      <span className="font-medium">{entryStatus}</span>
+                    )}
+                  </div>
+                  {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                      title="Create return for this bill"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Return
+                    </button>
                   )}
                 </div>
               </div>

@@ -290,8 +290,8 @@ namespace HexaBill.Api.Modules.Customers
             // DatabaseFixer runs at application startup, so columns should already exist.
             // If columns are missing, that's a migration issue that needs to be fixed separately.
 
-            // Use transaction with timeout to prevent hanging
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // CRITICAL: Do NOT use BeginTransactionAsync - NpgsqlRetryingExecutionStrategy does not support
+            // user-initiated transactions (causes 500). Run operations directly.
             try
             {
                 // CRITICAL: Ensure CreditLimit is always set to a valid non-null value
@@ -411,9 +411,6 @@ namespace HexaBill.Api.Modules.Customers
                     }
                 }
                 
-                // Commit the transaction
-                await transaction.CommitAsync();
-                
                 // Use the customer entity directly - SaveChanges already populated it with all values
                 // No need to fetch fresh - this avoids transaction scope issues
                 Console.WriteLine($"✅ Customer created successfully: {customer.Name} (ID: {customer.Id})");
@@ -440,13 +437,11 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (OperationCanceledException)
             {
-                try { await transaction.RollbackAsync(); } catch { /* Transaction might already be committed */ }
                 Console.WriteLine($"❌ Customer creation timed out after 30 seconds");
                 throw new InvalidOperationException("Customer creation timed out. Please try again.");
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
             {
-                try { await transaction.RollbackAsync(); } catch { /* Transaction might already be committed */ }
                 var errorMessage = ex.InnerException?.Message ?? ex.Message;
                 Console.WriteLine($"❌ Database Error in CreateCustomerAsync: {errorMessage}");
                 Console.WriteLine($"❌ Full Exception: {ex}");
@@ -454,18 +449,6 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                // Only rollback if transaction hasn't been committed yet
-                try 
-                { 
-                    if (transaction != null)
-                    {
-                        await transaction.RollbackAsync(); 
-                    }
-                } 
-                catch 
-                { 
-                    // Transaction might already be committed or disposed - that's OK
-                }
                 Console.WriteLine($"❌ CreateCustomerAsync Error: {ex.Message}");
                 Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
                 if (ex.InnerException != null)

@@ -1666,13 +1666,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var tenant = await _context.Tenants.FindAsync(tenantId);
             if (tenant == null) return false;
 
-            // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
-            var strategy = _context.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
+            // CRITICAL: Do NOT use CreateExecutionStrategy + BeginTransactionAsync - NpgsqlRetryingExecutionStrategy
+            // does not support user-initiated transactions (causes 500). Run deletes directly.
+            try
             {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
                 // AUDIT-1 FIX: Use ExecuteSqlInterpolatedAsync instead of ExecuteSqlRawAsync with {0} placeholders
                 // This prevents SQL syntax errors and ensures proper parameterization
                 
@@ -1826,16 +1823,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 // 4. Finally delete the tenant
                 _context.Tenants.Remove(tenant);
                 await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
                 
                 return true;
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    throw new Exception($"Failed to delete tenant {tenantId}: {ex.Message}. Inner exception: {ex.InnerException?.Message ?? "None"}", ex);
-                }
-            });
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to delete tenant {tenantId}: {ex.Message}. Inner exception: {ex.InnerException?.Message ?? "None"}", ex);
+            }
         }
 
         private const int PLATFORM_OWNER_ID = 0;

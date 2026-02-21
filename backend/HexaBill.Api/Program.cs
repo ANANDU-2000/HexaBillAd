@@ -650,18 +650,23 @@ else
 
 // Configure the HTTP request pipeline.
 // CORS very first: so /api/health and all endpoints get Access-Control-Allow-Origin from Vite (localhost:5173)
+// IMPORTANT: Skip CORS for /uploads - static file OnPrepareResponse adds it; duplicate causes "multiple values" error
 app.Use(async (context, next) =>
 {
-    var origin = context.Request.Headers.Origin.ToString();
-    var isLocalhost = origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) || origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase);
-    var isVercel = !string.IsNullOrEmpty(origin) && origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
-    var isHexaBillCompany = !string.IsNullOrEmpty(origin) && (origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase));
-    if (!string.IsNullOrEmpty(origin) && (isLocalhost || isVercel || isHexaBillCompany))
+    var isUploads = context.Request.Path.StartsWithSegments("/uploads", StringComparison.OrdinalIgnoreCase);
+    if (!isUploads)
     {
-        context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-        context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
-        context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-        context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id, Idempotency-Key");
+        var origin = context.Request.Headers.Origin.ToString();
+        var isLocalhost = origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) || origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase);
+        var isVercel = !string.IsNullOrEmpty(origin) && origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+        var isHexaBillCompany = !string.IsNullOrEmpty(origin) && (origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrEmpty(origin) && (isLocalhost || isVercel || isHexaBillCompany))
+        {
+            context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+            context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id, Idempotency-Key");
+        }
     }
     if (context.Request.Method == "OPTIONS")
     {
@@ -710,22 +715,20 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads",
     OnPrepareResponse = ctx =>
     {
-        // CORS: Static files bypass CORS middleware - add Allow-Origin for cross-origin loads (e.g. www.hexabill.company)
+        // CORS: For /uploads we skip early CORS middleware - add headers HERE only (single source prevents "multiple values" error)
         var origin = ctx.Context.Request.Headers.Origin.ToString();
-        var isAllowed = !string.IsNullOrEmpty(origin) && (
-            origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
-            origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase) ||
-            origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
-            origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase));
-        if (isAllowed)
-        {
-            ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-            ctx.Context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
-        }
+        if (!string.IsNullOrEmpty(origin) && (
+                origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
+                origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase) ||
+                origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase)))
+            {
+                ctx.Context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                ctx.Context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+            }
         else if (string.IsNullOrEmpty(origin))
         {
-            // No Origin (e.g. img src, redirect) - allow any origin for public assets
-            ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+            ctx.Context.Response.Headers["Access-Control-Allow-Origin"] = "*";
         }
         // Cache headers for images
         var path = ctx.File.Name;
@@ -758,16 +761,15 @@ app.Use(async (context, next) =>
             var filePath = Path.Combine(uploadsPath, relativePath);
             if (!File.Exists(filePath))
             {
-                var origin = context.Request.Headers.Origin.ToString();
-                var isAllowed = !string.IsNullOrEmpty(origin) && (
-                    origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) ||
-                    origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase) ||
-                    origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
-                    origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase));
-                if (isAllowed)
+                // Early CORS middleware already adds header - avoid duplicate (causes "multiple values" error)
+                if (!context.Response.Headers.ContainsKey("Access-Control-Allow-Origin"))
                 {
-                    context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-                    context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+                    var origin = context.Request.Headers.Origin.ToString();
+                    if (!string.IsNullOrEmpty(origin) && origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase))
+                    {
+                        context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                        context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+                    }
                 }
                 context.Response.StatusCode = 204;
                 context.Response.ContentLength = 0;

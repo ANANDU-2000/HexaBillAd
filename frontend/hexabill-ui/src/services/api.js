@@ -515,9 +515,9 @@ api.interceptors.request.use(
       config.headers['X-Tenant-Id'] = selectedTenantId
     }
 
-    // Add retry configuration
+    // Add retry configuration (1 retry = 2 total attempts - reduces console spam when backend is failing)
     config._retryCount = config._retryCount || 0
-    config._maxRetries = 3
+    config._maxRetries = 1
     config._requestKey = requestKey // Store for cleanup in response interceptor
 
     // REMOVED: Cache short-circuit from request interceptor - it was returning a response object
@@ -669,7 +669,7 @@ api.interceptors.response.use(
     const retryableStatuses = [500, 503, 502, 504]
     const isRetryable = isNetworkError || (error.response && retryableStatuses.includes(error.response.status))
     const retryCount = error.config?._retryCount || 0
-    const maxRetries = 3
+    const maxRetries = error.config?._maxRetries ?? 1
     const method = error.config?.method ? String(error.config.method).toUpperCase() : ''
     const isRetryableMethod = !method || ['GET', 'POST', 'PUT', 'PATCH'].includes(method)
     // Prevent retry loops on 401 - authentication errors should never be retried

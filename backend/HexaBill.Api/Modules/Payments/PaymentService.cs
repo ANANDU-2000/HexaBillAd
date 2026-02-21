@@ -184,12 +184,9 @@ namespace HexaBill.Api.Modules.Payments
                 }
             }
 
-            // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
-            // Wrap in execution strategy so the transaction is retriable (fixes 400 Bad Request on Render).
-            var strategy = _context.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
-            {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // NOTE: NpgsqlRetryingExecutionStrategy does NOT support user-initiated transactions.
+            // Do NOT use BeginTransactionAsync when EnableRetryOnFailure is enabled (causes 400).
+            // Run operations directly; EF SaveChanges uses implicit per-call transaction.
             try
             {
                 // Validate invoice belongs to customer if provided - use FOR UPDATE to lock row
@@ -438,21 +435,17 @@ namespace HexaBill.Api.Modules.Payments
                         await _context.SaveChangesAsync();
                     }
                     
-                    await transaction.CommitAsync();
-                    Console.WriteLine($"✅ Payment transaction committed. Payment ID: {paymentId}, Amount: {request.Amount}");
+                    Console.WriteLine($"✅ Payment created successfully. Payment ID: {paymentId}, Amount: {request.Amount}");
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
-                    await transaction.RollbackAsync();
                     Console.WriteLine($"❌ Concurrency conflict in payment creation: {ex.Message}");
                     throw new InvalidOperationException("Invoice was modified by another user. Please refresh and try again.", ex);
                 }
                 catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
                 {
-                    await transaction.RollbackAsync();
                     var errorMessage = ex.InnerException?.Message ?? ex.Message;
                     Console.WriteLine($"❌ Database update error in payment creation: {errorMessage}");
-                    Console.WriteLine($"❌ Full Exception: {ex}");
                     throw new InvalidOperationException($"Database error: {errorMessage}", ex);
                 }
 
@@ -484,18 +477,10 @@ namespace HexaBill.Api.Modules.Payments
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 Console.WriteLine($"❌ PaymentService.CreatePaymentAsync Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                    Console.WriteLine($"❌ Inner Stack Trace: {ex.InnerException.StackTrace}");
-                }
                 _logger.LogError(ex, "Error creating payment");
                 throw;
             }
-            });
         }
 
         public async Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId)

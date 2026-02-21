@@ -351,10 +351,12 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => e.Name).IsUnique();
             });
 
-            // ProductCategory configuration
+            // ProductCategory configuration - UseIdentityByDefaultColumn for PostgreSQL
             modelBuilder.Entity<ProductCategory>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.Description).HasMaxLength(200);
                 entity.Property(e => e.ColorCode).HasMaxLength(7);
@@ -416,6 +418,8 @@ namespace HexaBill.Api.Data
             modelBuilder.Entity<UserSession>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.UserAgent).HasMaxLength(500);
                 entity.Property(e => e.IpAddress).HasMaxLength(45);
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
@@ -440,6 +444,8 @@ namespace HexaBill.Api.Data
             modelBuilder.Entity<FailedLoginAttempt>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
                 entity.Property(e => e.FailedCount).IsRequired().HasDefaultValue(1);
                 entity.Property(e => e.LastAttemptAt).IsRequired();
@@ -489,10 +495,12 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.ChangedByUser).WithMany().HasForeignKey(e => e.ChangedBy);
             });
 
-            // DamageCategory configuration
+            // DamageCategory configuration - UseIdentityByDefaultColumn for PostgreSQL
             modelBuilder.Entity<DamageCategory>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(e => e.TenantId);
                 entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
@@ -592,37 +600,45 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => e.TenantId);
             });
 
-            // RouteCustomer configuration
+            // RouteCustomer configuration - UseIdentityByDefaultColumn for PostgreSQL (same fix as BranchStaff/RouteStaff)
             modelBuilder.Entity<RouteCustomer>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.HasOne(e => e.Route).WithMany(r => r.RouteCustomers).HasForeignKey(e => e.RouteId);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasIndex(e => new { e.RouteId, e.CustomerId }).IsUnique();
             });
 
-            // RouteStaff configuration
+            // RouteStaff configuration - UseIdentityByDefaultColumn for PostgreSQL (same fix as BranchStaff)
             modelBuilder.Entity<RouteStaff>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.HasOne(e => e.Route).WithMany(r => r.RouteStaff).HasForeignKey(e => e.RouteId);
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
                 entity.HasIndex(e => new { e.RouteId, e.UserId }).IsUnique();
             });
 
-            // BranchStaff configuration
+            // BranchStaff configuration - UseIdentityByDefaultColumn for PostgreSQL (fixes "null value in column Id" 500)
             modelBuilder.Entity<BranchStaff>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.HasOne(e => e.Branch).WithMany(b => b.BranchStaff).HasForeignKey(e => e.BranchId);
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
                 entity.HasIndex(e => new { e.BranchId, e.UserId }).IsUnique();
             });
 
-            // RouteExpense configuration
+            // RouteExpense configuration - UseIdentityByDefaultColumn for PostgreSQL (same fix as BranchStaff/RouteStaff)
             modelBuilder.Entity<RouteExpense>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Description).HasMaxLength(500);
                 entity.Property(e => e.Category).HasConversion<string>();
@@ -634,10 +650,12 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => e.ExpenseDate);
             });
 
-            // CustomerVisit configuration
+            // CustomerVisit configuration - UseIdentityByDefaultColumn for PostgreSQL (same fix as BranchStaff/RouteStaff)
             modelBuilder.Entity<CustomerVisit>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.Status).HasConversion<string>().HasDefaultValue(VisitStatus.NotVisited);
                 entity.Property(e => e.Notes).HasMaxLength(500);
                 entity.Property(e => e.PaymentCollected).HasColumnType("decimal(18,2)");
@@ -648,6 +666,22 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => new { e.RouteId, e.CustomerId, e.VisitDate }).IsUnique();
                 entity.HasIndex(e => e.TenantId);
                 entity.HasIndex(e => e.VisitDate);
+            });
+
+            // RecurringExpense configuration - UseIdentityByDefaultColumn for PostgreSQL
+            modelBuilder.Entity<RecurringExpense>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
+            });
+
+            // HeldInvoice configuration - UseIdentityByDefaultColumn for PostgreSQL
+            modelBuilder.Entity<HeldInvoice>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
             });
 
             // Seed data

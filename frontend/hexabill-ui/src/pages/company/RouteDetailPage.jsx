@@ -322,13 +322,13 @@ const RouteDetailPage = () => {
         </div>
       </div>
 
-      <div className="border-b border-neutral-200 mb-4">
-        <nav className="-mb-px flex gap-6">
+      <div className="border-b border-neutral-200 mb-4 overflow-x-auto">
+        <nav className="-mb-px flex gap-4 min-w-max">
           {ROUTE_TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-3 px-1 border-b-2 font-medium text-sm ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>

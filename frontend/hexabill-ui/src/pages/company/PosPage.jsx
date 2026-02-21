@@ -404,6 +404,15 @@ const PosPage = () => {
     }
   }, [loadProducts, loadCustomers])
 
+  // Refetch customers when user returns to POS (fixes customer list not showing after tab switch or navigation)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') loadCustomers()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [loadCustomers])
+
   // Update customer when customers are loaded and we're in edit mode
   // CRITICAL: Only set customer on INITIAL load, not when user changes it
   useEffect(() => {
