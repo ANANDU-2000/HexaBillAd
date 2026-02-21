@@ -165,7 +165,7 @@ namespace HexaBill.Api.Modules.Branches
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
 
             var routeIds = await _context.Routes.Where(r => r.BranchId == branchId && (tenantId <= 0 || r.TenantId == tenantId)).Select(r => r.Id).ToListAsync();
-            // Include sales by RouteId in branch OR by BranchId (so sales without route still count)
+            // Include sales by BranchId match OR by RouteId in branch. Legacy: include null BranchId when RouteId matches.
             var salesInBranchFilter = (tenantId <= 0 ? _context.Sales.Where(s => true) : _context.Sales.Where(s => s.TenantId == tenantId))
                 .Where(s => !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to
                     && (s.BranchId == branchId || (s.RouteId != null && routeIds.Contains(s.RouteId.Value))));

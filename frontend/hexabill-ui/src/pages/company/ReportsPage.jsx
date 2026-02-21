@@ -52,8 +52,9 @@ import {
 const REPORTS_DATE_RANGE_KEY = 'hexabill_reports_date_range'
 
 function getDefaultDateRange() {
+  // Use 365 days to capture full history - prevents "No data found" when transactions are older
   return {
-    from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
   }
 }

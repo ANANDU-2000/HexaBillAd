@@ -910,10 +910,14 @@ const CustomerLedgerPage = () => {
       // Load all data in parallel
       // CRITICAL: Use Reports API which properly filters by customerId on backend
       // This ensures ALL customer invoices are retrieved, not just first 1000 from entire database
+      // CRITICAL: Do NOT pass branchId/routeId/staffId - always fetch full ledger.
+      // Passing them filters out sales with different/null branch - causes "No transactions found"
+      // when customer has data under multiple branches or legacy null BranchId.
       const [ledgerRes, invoicesRes, outstandingRes, customerRes] = await Promise.all([
         customersAPI.getCustomerLedger(customerId, {
           fromDate: dateRange.from,
           toDate: dateRange.to
+          // branchId, routeId, staffId intentionally omitted - full ledger
         }),
         reportsAPI.getSalesReport({
           page: 1,
@@ -2407,24 +2411,9 @@ const CustomerLedgerPage = () => {
                             const inDateRange = entryDate >= fromDate && entryDate <= toDate
                             if (!inDateRange) return false
 
-                            // Client-side branch/route filter (API returns all; filter here when user selects branch/route)
-                            const entryBranchId = entry.branchId ?? entry.branchID
-                            const entryRouteId = entry.routeId ?? entry.routeID
-                            if (ledgerBranchId) {
-                              const bid = parseInt(ledgerBranchId, 10)
-                              if (entryBranchId != null && entryBranchId !== bid) return false
-                              // Include null (legacy) or matching branch
-                            }
-                            if (ledgerRouteId) {
-                              const rid = parseInt(ledgerRouteId, 10)
-                              if (entryRouteId != null && entryRouteId !== rid) return false
-                            }
-                            if (ledgerStaffId) {
-                              const sid = parseInt(ledgerStaffId, 10)
-                              const createdBy = entry.createdBy ?? entry.CreatedBy
-                              if (createdBy != null && createdBy !== sid) return false
-                              // Payments/returns may not have createdBy; include them
-                            }
+                            // Ledger entries from API don't have branchId/routeId - only date/type/amount.
+                            // Do NOT filter by branch/route here - it would exclude all (undefined != null).
+                            // Branch/route filters apply to customer list only; ledger shows full history.
 
                             // Apply status/type filters
                             if (ledgerFilters[STATUS_PROP] !== 'all') {
@@ -2547,6 +2536,7 @@ const CustomerLedgerPage = () => {
                           }
                         })
                       }}
+                      onReturnInvoice={(invoiceId) => navigate(`/reports?tab=returns&saleId=${invoiceId}`)}
                     />
                   )}
 
@@ -3656,7 +3646,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 }
 
 // Invoices Tab Component
-const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onViewPDF, onEditInvoice, onPayInvoice, onUnlockInvoice, onDeleteInvoice }) => {
+const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onViewPDF, onEditInvoice, onPayInvoice, onUnlockInvoice, onDeleteInvoice, onReturnInvoice }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
 
@@ -3847,6 +3837,15 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                               <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
+                          {onReturnInvoice && (
+                            <button
+                              onClick={() => onReturnInvoice(invoice.id)}
+                              className="text-amber-600 hover:text-amber-900 hover:bg-amber-50 p-1 rounded transition-colors"
+                              title="Create return for this invoice"
+                            >
+                              <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            </button>
+                          )}
                           <button
                             onClick={() => onViewPDF(invoice.id)}
                             className="text-green-600 hover:text-green-900 hover:bg-green-50 p-1 rounded transition-colors"
@@ -3957,6 +3956,15 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                       aria-label="Delete invoice"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {onReturnInvoice && (
+                    <button
+                      onClick={() => onReturnInvoice(invoice.id)}
+                      className="px-3 py-2 text-amber-600 hover:bg-amber-50 rounded-md text-xs font-medium flex items-center gap-1"
+                      aria-label="Create return"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" /> Return
                     </button>
                   )}
                   <button
