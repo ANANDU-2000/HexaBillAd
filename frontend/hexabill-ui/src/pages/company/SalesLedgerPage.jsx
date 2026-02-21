@@ -74,14 +74,21 @@ const SalesLedgerPage = () => {
         } else if (user) {
           setStaffUsers([user])
         }
-        // Auto-select if only 1 branch for staff
-        if (user && !isAdminOrOwner(user) && branches?.length === 1 && !filters.branchId) {
-          setFilters(prev => ({ ...prev, branchId: String(branches[0].id) }))
+        // Auto-select first branch for staff when branches load (ensures data fetches, fixes "not updating" for staff)
+        if (user && !isAdminOrOwner(user) && branches?.length > 0 && !filters.branchId) {
+          const firstBranch = branches[0]
+          const branchRoutes = (routes || []).filter(r => r.branchId === firstBranch.id)
+          setFilters(prev => ({
+            ...prev,
+            branchId: String(firstBranch.id),
+            routeId: branchRoutes.length > 0 ? String(branchRoutes[0].id) : prev.routeId,
+            staffId: String(user.id)
+          }))
         }
       } catch (_) { /* ignore */ }
     }
     load()
-  }, [user, branches, filters.branchId])
+  }, [user, branches, routes, filters.branchId])
 
   // Filter routes by selected branch (branches/routes from context)
   useEffect(() => {

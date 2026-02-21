@@ -51,7 +51,7 @@ const TYPE_PROP = 'type'
 const CustomerLedgerPage = () => {
   const { user } = useAuth()
   const { companyName } = useBranding()
-  const { branches, routes, staffHasNoAssignments } = useBranchesRoutes()
+  const { branches, routes, staffHasNoAssignments, loading: branchesRoutesLoading } = useBranchesRoutes()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [paymentLoading, setPaymentLoading] = useState(false) // Separate loading state for payment submission
@@ -287,6 +287,7 @@ const CustomerLedgerPage = () => {
   // Staff: load customers scoped to default (or current) branch/route once filter is set; if no assignments, show message
   useEffect(() => {
     if (!user || isAdminOrOwner(user)) return
+    if (branchesRoutesLoading) return // Wait for branches/routes context to load before deciding
     if (availableBranches.length === 0 && availableRoutes.length === 0) {
       // Staff with no assignments - show helpful message
       setLoading(false)
@@ -296,16 +297,30 @@ const CustomerLedgerPage = () => {
       }
       return
     }
-    const branchId = filterDraft.branchId || ledgerBranchId
-    const routeId = filterDraft.routeId || ledgerRouteId
-    if (!branchId && availableBranches.length > 0) {
-      // Auto-select first branch if available but not selected
-      return
+    let branchId = filterDraft.branchId || ledgerBranchId
+    let routeId = filterDraft.routeId || ledgerRouteId
+    // Staff with branches but no branch selected: auto-select first branch/route to break loading deadlock
+    if (!branchId && (availableBranches.length > 0 || availableRoutes.length > 0)) {
+      if (availableBranches.length > 0) {
+        const firstBranch = availableBranches[0]
+        const branchRoutes = availableRoutes.filter(r => r.branchId === firstBranch.id)
+        branchId = String(firstBranch.id)
+        routeId = routeId || (branchRoutes.length > 0 ? String(branchRoutes[0].id) : '')
+      } else if (availableRoutes.length > 0) {
+        const firstRoute = availableRoutes[0]
+        branchId = firstRoute.branchId ? String(firstRoute.branchId) : ''
+        routeId = String(firstRoute.id)
+      }
+      if (branchId || routeId) {
+        setLedgerBranchId(branchId)
+        setLedgerRouteId(routeId)
+        setFilterDraft(prev => ({ ...prev, branchId, routeId }))
+      }
     }
     if (branchId || routeId) {
       fetchCustomers({ branchId: branchId || undefined, routeId: routeId || undefined })
     }
-  }, [user, filterDraft.branchId, filterDraft.routeId, ledgerBranchId, ledgerRouteId, availableBranches.length, availableRoutes.length, staffHasNoAssignments])
+  }, [user, filterDraft.branchId, filterDraft.routeId, ledgerBranchId, ledgerRouteId, availableBranches, availableRoutes, staffHasNoAssignments, branchesRoutesLoading])
 
   // Load customer from URL parameter
   useEffect(() => {
