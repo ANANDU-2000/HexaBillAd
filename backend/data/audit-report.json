@@ -1,0 +1,38 @@
+{
+  "company": "ZAYOGA GENERAL TRADING-SOLE PROPRIETORSHIP LLC",
+  "tenant_id": 6,
+  "migration_summary": {
+    "total_csv_invoices": 241,
+    "total_db_invoices": 241,
+    "total_customers_created": 55,
+    "total_payments_inserted": 193,
+    "total_ledger_entries": 0
+  },
+  "financial_validation": {
+    "csv_total_sales": 56513.15999999995,
+    "db_total_sales": 56513.16,
+    "csv_total_received": 45648.749999999985,
+    "db_total_received": 45648.75,
+    "csv_total_balance": 10864.410000000003,
+    "db_total_balance": 10864.41,
+    "difference_sales": 5.093170329928398e-11,
+    "difference_received": 1.4551915228366852e-11,
+    "difference_balance": 3.637978807091713e-12
+  },
+  "status_validation": {
+    "unpaid_invoice_count_csv": 63,
+    "unpaid_invoice_count_db": 63,
+    "paid_invoice_count_csv": 178,
+    "paid_invoice_count_db": 178
+  },
+  "ledger_validation": {
+    "invoices_without_ledger_entry": [],
+    "payments_without_ledger_entry": [],
+    "customers_with_wrong_balance": []
+  },
+  "orphan_checks": {
+    "invoices_without_customer": [],
+    "payments_without_invoice": [],
+    "ledger_without_invoice": []
+  }
+}
