@@ -583,10 +583,14 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"[GetCustomerStatement] Error for customer {id}: {ex.Message}");
+                Console.WriteLine($"[GetCustomerStatement] Stack: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"[GetCustomerStatement] Inner: {ex.InnerException.Message}");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = "Failed to generate statement PDF. Please check Render logs for details.",
                     Errors = new List<string> { ex.Message }
                 });
             }

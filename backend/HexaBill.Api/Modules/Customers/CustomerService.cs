@@ -36,7 +36,7 @@ namespace HexaBill.Api.Modules.Customers
     public class CustomerService : ICustomerService
     {
         private readonly AppDbContext _context;
-        
+
         // Cache BranchId column check result to avoid repeated database queries
         private static bool? _cachedHasBranchIdColumn = null;
         private static DateTime? _cacheTimestamp = null;
@@ -1260,8 +1260,12 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                // Initialize QuestPDF license
+                // Initialize QuestPDF license and prevent font glyph errors on Linux (Render)
                 QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+                QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
+
+                // CRITICAL: toDate is often midnight - include full end day
+                var toEnd = toDate.Date.AddDays(1).AddTicks(-1);
                 
             // CRITICAL: Filter by both customerId and tenantId
             var customer = await _context.Customers
@@ -1308,12 +1312,12 @@ namespace HexaBill.Api.Modules.Customers
             // Opening balance = Sales (debit) - Payments (credit) - Returns (credit)
             var openingBalance = openingSales - openingPayments - openingSalesReturns;
 
-            // Get transactions within date range - STRICT filtering, exclude null CustomerId
+            // Get transactions within date range - use toEnd to include full last day
             var sales = await _context.Sales
                 .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
                            !s.IsDeleted &&
                            s.InvoiceDate >= fromDate && 
-                           s.InvoiceDate <= toDate)
+                           s.InvoiceDate <= toEnd)
                 .OrderBy(s => s.InvoiceDate)
                 .ThenBy(s => s.Id)
                 .ToListAsync();
@@ -1321,7 +1325,7 @@ namespace HexaBill.Api.Modules.Customers
             var payments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId &&
                            p.PaymentDate >= fromDate && 
-                           p.PaymentDate <= toDate)
+                           p.PaymentDate <= toEnd)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
                 .ToListAsync();
@@ -1330,7 +1334,7 @@ namespace HexaBill.Api.Modules.Customers
             var salesReturns = await _context.SaleReturns
                 .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && 
                            sr.ReturnDate >= fromDate && 
-                           sr.ReturnDate <= toDate)
+                           sr.ReturnDate <= toEnd)
                 .OrderBy(sr => sr.ReturnDate)
                 .ToListAsync();
 
@@ -1509,9 +1513,7 @@ namespace HexaBill.Api.Modules.Customers
             }
             var closingBalance = calculatedClosingBalance; // For summary section only - table uses runningBalance from loop
 
-                // Generate PDF using QuestPDF - PROFESSIONAL TEMPLATE
-                // Enable debugging for layout issues
-                QuestPDF.Settings.EnableDebugging = true;
+                // Generate PDF using QuestPDF - CheckIfAllTextGlyphsAreAvailable=false prevents Linux font errors
                 
             var document = Document.Create(container =>
             {
@@ -1520,7 +1522,7 @@ namespace HexaBill.Api.Modules.Customers
                     page.Size(PageSizes.A4);
                         page.Margin(15, Unit.Millimetre); // Reduced margin for more space
                     page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial")); // Slightly smaller font
+                        page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial")); // QuestPDF fallback when Arial missing on Linux
 
                         // Header - Professional Design
                     page.Header()

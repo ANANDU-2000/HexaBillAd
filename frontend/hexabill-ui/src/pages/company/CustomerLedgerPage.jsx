@@ -1593,19 +1593,19 @@ const CustomerLedgerPage = () => {
     const customerId = selectedCustomer.id
 
     try {
-      const fromDate = new Date(dateRange.from)
-      const toDate = new Date(dateRange.to)
-
       // Validate customer is still selected before generating statement
       if (!selectedCustomer || selectedCustomer.id !== customerId) {
         toast.error('Customer selection changed. Please try again.')
         return
       }
 
+      // Send YYYY-MM-DD for reliable backend parsing (ISO full string can have timezone issues)
+      const fromStr = dateRange.from.includes('T') ? dateRange.from.split('T')[0] : dateRange.from
+      const toStr = dateRange.to.includes('T') ? dateRange.to.split('T')[0] : dateRange.to
       const pdfBlob = await customersAPI.getCustomerStatement(
         customerId,
-        fromDate.toISOString(),
-        toDate.toISOString()
+        fromStr,
+        toStr
       )
 
       const url = window.URL.createObjectURL(pdfBlob)
