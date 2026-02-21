@@ -815,15 +815,17 @@ namespace HexaBill.Api.Modules.Customers
                     if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
                 }
                 
-                // Execute query
-                var sales = await salesQuery
+                // CRITICAL: Project to only columns we need. Avoids "column s.BranchId does not exist" when
+                // production DB has not run AddBranchAndRoute migration (EF would otherwise SELECT all columns).
+                var salesData = await salesQuery
+                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.GrandTotal })
                     .OrderBy(s => s.InvoiceDate)
                     .ThenBy(s => s.Id)
                     .ToListAsync();
 
-                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, tenantId={tenantId}, from={from?.ToString("yyyy-MM-dd")}, toEnd={toEnd?.ToString("yyyy-MM-dd")}, salesCount={sales.Count}, branchId={branchId}, routeId={routeId}");
+                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, tenantId={tenantId}, from={from?.ToString("yyyy-MM-dd")}, toEnd={toEnd?.ToString("yyyy-MM-dd")}, salesCount={salesData.Count}, branchId={branchId}, routeId={routeId}");
 
-            var filteredSaleIds = new HashSet<int>(sales.Select(s => s.Id));
+            var filteredSaleIds = new HashSet<int>(salesData.Select(s => s.Id));
 
             // Payments: only include those linked to filtered sales or standalone (no SaleId)
             var paymentsQuery = _context.Payments
@@ -911,7 +913,7 @@ namespace HexaBill.Api.Modules.Customers
             }
 
             // Create lookup for invoice numbers by SaleId
-            var invoiceLookup = sales.ToDictionary(s => s.Id, s => s.InvoiceNo);
+            var invoiceLookup = salesData.ToDictionary(s => s.Id, s => s.InvoiceNo);
 
             // Get payment totals for each sale to calculate status - STRICT filtering
             var salePayments = await _context.Payments
@@ -924,7 +926,7 @@ namespace HexaBill.Api.Modules.Customers
             var allTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks)>();
 
             // Add sales (Invoices) - DEBIT entries
-            foreach (var sale in sales)
+            foreach (var sale in salesData)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0);
                 var status = paidAmount >= sale.GrandTotal ? "Paid" 

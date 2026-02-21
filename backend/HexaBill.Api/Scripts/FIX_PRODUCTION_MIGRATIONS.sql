@@ -58,7 +58,23 @@ DO $$ BEGIN
   END IF;
 END $$;
 
--- 5. Add IsActive to Routes/Branches if missing
+-- 5. Add BranchId and RouteId to Sales (fixes 42703: column s.BranchId does not exist in GetCustomerLedgerAsync)
+ALTER TABLE "Sales" ADD COLUMN IF NOT EXISTS "BranchId" integer NULL;
+ALTER TABLE "Sales" ADD COLUMN IF NOT EXISTS "RouteId" integer NULL;
+CREATE INDEX IF NOT EXISTS "IX_Sales_BranchId" ON "Sales" ("BranchId");
+CREATE INDEX IF NOT EXISTS "IX_Sales_RouteId" ON "Sales" ("RouteId");
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Sales_Branches_BranchId') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Branches') THEN
+    ALTER TABLE "Sales" ADD CONSTRAINT "FK_Sales_Branches_BranchId" FOREIGN KEY ("BranchId") REFERENCES "Branches"("Id") ON DELETE SET NULL;
+  END IF;
+END $$;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Sales_Routes_RouteId') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Routes') THEN
+    ALTER TABLE "Sales" ADD CONSTRAINT "FK_Sales_Routes_RouteId" FOREIGN KEY ("RouteId") REFERENCES "Routes"("Id") ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- 6. Add IsActive to Routes/Branches if missing
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Routes') THEN
     ALTER TABLE "Routes" ADD COLUMN "IsActive" boolean NOT NULL DEFAULT true;
