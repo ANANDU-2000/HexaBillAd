@@ -150,6 +150,12 @@ const ReportsPage = () => {
     } catch (_) { /* ignore */ }
   }, [dateRange])
 
+  // BUG 10: Date range change — clear cache and trigger fresh fetch
+  useEffect(() => {
+    tabDataCacheRef.current = {}
+    if (fetchReportDataRef.current) fetchReportDataRef.current(true)
+  }, [dateRange.from, dateRange.to])
+
   // Request throttling and cancellation - AGGRESSIVE THROTTLING
   const fetchAbortControllerRef = useRef(null)
   const lastFetchTimeRef = useRef(0)
@@ -525,12 +531,12 @@ const ReportsPage = () => {
           if (expensesResponse?.success && expensesResponse?.data) {
             const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#F97316', '#84CC16']
             const expenses = (expensesResponse.data || []).map((e, index) => ({
-              categoryId: e.categoryId || e.CategoryId || 0,
-              categoryName: e.categoryName || e.CategoryName || e.name || 'Uncategorized',
-              totalAmount: Number(e.totalAmount || e.TotalAmount || e.amount || e.total || 0),
-              expenseCount: Number(e.expenseCount || e.ExpenseCount || e.count || e.transactionCount || 0),
-              categoryColor: e.categoryColor || e.CategoryColor || e.color || COLORS[index % COLORS.length]
-            }))
+              categoryId: e.categoryId ?? e.CategoryId ?? e.id ?? index,
+              categoryName: e.categoryName ?? e.CategoryName ?? e.name ?? e.Name ?? 'Uncategorized',
+              totalAmount: Number(e.totalAmount ?? e.TotalAmount ?? e.amount ?? e.Amount ?? 0),
+              expenseCount: Number(e.expenseCount ?? e.ExpenseCount ?? e.count ?? e.Count ?? 0),
+              categoryColor: e.categoryColor ?? e.CategoryColor ?? e.color ?? e.Color ?? COLORS[index % COLORS.length]
+            })).filter(e => e.totalAmount > 0)
 
             console.log('Expenses data loaded:', {
               categoryCount: expenses.length,
@@ -553,12 +559,16 @@ const ReportsPage = () => {
       } else if (activeTab === 'branch' || activeTab === 'route') {
         try {
           setLoading(true)
-          const branchRes = await reportsAPI.getBranchComparison({
+          const branchParams = {
             fromDate: dateRange.from,
             toDate: dateRange.to
-          })
+          }
+          if (appliedFilters.branch) branchParams.branchId = parseInt(appliedFilters.branch, 10)
+          const branchRes = await reportsAPI.getBranchComparison(branchParams)
           if (branchRes?.success && branchRes?.data) {
-            const branchData = Array.isArray(branchRes.data) ? branchRes.data : (branchRes.data?.branches || [])
+            const branchData = Array.isArray(branchRes.data)
+              ? branchRes.data
+              : (branchRes.data?.branches || branchRes.data?.items || [])
             setReportData(prev => ({ ...prev, branchComparison: branchData }))
           } else {
             setReportData(prev => ({ ...prev, branchComparison: [] }))
@@ -667,14 +677,13 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const res = await profitAPI.getBranchProfit(dateRange.from, dateRange.to)
-          if (res?.success && res?.data) {
-            const data = Array.isArray(res.data) ? res.data : (res.data?.branches || res.data?.items || [])
-            setReportData(prev => ({ ...prev, branchProfit: data }))
-          } else {
-            setReportData(prev => ({ ...prev, branchProfit: [] }))
-          }
+          const raw = res?.data ?? res ?? []
+          const branchData = Array.isArray(raw)
+            ? raw
+            : (raw?.branches || raw?.items || raw?.data || [])
+          setReportData(prev => ({ ...prev, branchProfit: branchData }))
         } catch (err) {
-          if (!err?._handledByInterceptor) toast.error('Failed to load branch profit')
+          if (!err?._handledByInterceptor) toast.error('Failed to load branch profit. Please try again.')
           setReportData(prev => ({ ...prev, branchProfit: [] }))
         } finally {
           setLoading(false)
@@ -1711,8 +1720,12 @@ const ReportsPage = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
-                      No expense data available for the selected period
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                      <p>No data found for {dateRange.from} to {dateRange.to}</p>
+                      <p className="text-sm mt-1">Try expanding the date range or check that expenses exist in this period.</p>
+                      <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
+                        Retry
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1744,8 +1757,12 @@ const ReportsPage = () => {
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
-                      No expense data available for the selected period
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                      <p>No data found for {dateRange.from} to {dateRange.to}</p>
+                      <p className="text-sm mt-1">Try expanding the date range or check that expenses exist in this period.</p>
+                      <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
+                        Retry
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1941,7 +1958,15 @@ const ReportsPage = () => {
                 </>
               ) : (
                 <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
-                  {loading ? 'Loading branch report...' : 'No branches found or no data for the selected period.'}
+                  {loading ? 'Loading branch report...' : (
+                      <>
+                        <p>No data found for {dateRange.from} to {dateRange.to}</p>
+                        <p className="text-sm mt-1">Try expanding the date range or check that transactions exist in this period.</p>
+                        <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
+                          Retry
+                        </button>
+                      </>
+                    )}
                 </div>
               )}
             </div>
@@ -1952,11 +1977,14 @@ const ReportsPage = () => {
             <div className="space-y-6">
               {(() => {
                 const routeRows = (reportData.branchComparison || []).flatMap(b =>
-                  (b.routes || []).map(r => ({
-                    ...r,
-                    branchName: b.branchName,
-                    branchId: b.branchId
-                  }))
+                  (b.routes || [])
+                    .filter(r => r.routeId || r.id)
+                    .map(r => ({
+                      ...r,
+                      branchName: b.branchName,
+                      branchId: b.branchId,
+                      routeName: r.routeName || r.name || `Route ${r.routeId ?? r.id}`
+                    }))
                 )
                 return routeRows.length > 0 ? (
                   <>
@@ -1998,7 +2026,15 @@ const ReportsPage = () => {
                   </>
                 ) : (
                   <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
-                    {loading ? 'Loading route report...' : 'No routes found or no data for the selected period.'}
+                    {loading ? 'Loading route report...' : (
+                      <>
+                        <p>No data found for {dateRange.from} to {dateRange.to}</p>
+                        <p className="text-sm mt-1">Try expanding the date range or check that transactions exist in this period.</p>
+                        <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
+                          Retry
+                        </button>
+                      </>
+                    )}
                   </div>
                 )
               })()}
@@ -2349,7 +2385,18 @@ const ReportsPage = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center h-64 text-gray-500 bg-white border border-gray-200 rounded-lg">
                   <Building2 className="h-12 w-12 mb-2 text-gray-400" />
-                  <p>{loading ? 'Loading branch profit...' : 'No branch profit data. Add branches and ensure sales/expenses have a branch assigned.'}</p>
+                  <p>{loading ? 'Loading branch profit...' : (
+                      <>
+                        No data found for {dateRange.from} to {dateRange.to}
+                        <br />
+                        <span className="text-sm">Try expanding the date range or ensure branches have sales/expenses.</span>
+                      </>
+                    )}</p>
+                    {!loading && (
+                      <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
+                        Retry
+                      </button>
+                    )}
                 </div>
               )}
             </div>

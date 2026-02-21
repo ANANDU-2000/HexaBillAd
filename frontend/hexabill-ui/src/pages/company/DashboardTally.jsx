@@ -570,23 +570,37 @@ const DashboardTally = () => {
                             </h3>
                             <div className="space-y-2">
                                 {branchBreakdown.map(branch => (
-                                    <div 
-                                        key={branch.branchId} 
-                                        className="flex items-center justify-between text-sm p-2 hover:bg-neutral-50 rounded-md cursor-pointer"
+                                    <div
+                                        key={branch.branchId}
+                                        className="p-3 hover:bg-neutral-50 rounded-md cursor-pointer border border-neutral-100 mb-2"
                                         onClick={() => navigate(`/branches/${branch.branchId}`)}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <span className="font-medium text-neutral-900">{branch.branchName}</span>
-                                            <span className="text-neutral-500">({branch.invoiceCount} invoices)</span>
-                                        </div>
-                                        <div className="flex items-center gap-4 flex-wrap">
-                                            <span className="text-neutral-700">Sales: <span className="font-medium">{formatCurrency(branch.sales)}</span></span>
-                                            <span className="text-green-600">Paid: <span className="font-medium">{formatCurrency(branch.paidAmount ?? 0)}</span></span>
-                                            <span className="text-amber-600">Unpaid: <span className="font-medium">{formatCurrency(branch.unpaidAmount ?? 0)}</span></span>
-                                            <span className="text-neutral-700">Expenses: <span className="font-medium">{formatCurrency(branch.expenses)}</span></span>
-                                            <span className={`font-medium ${branch.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                Profit: {formatCurrency(branch.profit)}
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span className="font-semibold text-neutral-900 truncate">{branch.branchName}</span>
+                                                <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">({branch.invoiceCount} invoices)</span>
+                                            </div>
+                                            <span className={`text-sm font-bold flex-shrink-0 ml-2 ${branch.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                                {formatCurrency(branch.profit)}
                                             </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                                            <div>
+                                                <span className="text-neutral-500 block">Sales</span>
+                                                <span className="font-medium text-neutral-800">{formatCurrency(branch.sales)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-neutral-500 block">Paid</span>
+                                                <span className="font-medium text-green-600">{formatCurrency(branch.paidAmount ?? 0)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-neutral-500 block">Unpaid</span>
+                                                <span className="font-medium text-amber-600">{formatCurrency(branch.unpaidAmount ?? 0)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-neutral-500 block">Expenses</span>
+                                                <span className="font-medium text-red-600">{formatCurrency(branch.expenses)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}

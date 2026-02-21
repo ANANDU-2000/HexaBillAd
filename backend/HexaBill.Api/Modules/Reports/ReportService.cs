@@ -95,15 +95,23 @@ namespace HexaBill.Api.Modules.Reports
                     {
                         salesQuery = salesQuery.Where(s => s.TenantId == tenantId);
                     }
-                    if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
-                    if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
+                    if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+                    if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
                     if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
                         var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                         if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                        {
                             salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                        }
                         else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                            salesQuery = salesQuery.Where(s => false);
+                        {
+                            var staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                            if (staffBranchIds.Count > 0)
+                                salesQuery = salesQuery.Where(s => s.BranchId == null || staffBranchIds.Contains(s.BranchId.Value));
+                            else
+                                salesQuery = salesQuery.Where(s => false);
+                        }
                     }
                     var salesCount = await salesQuery.CountAsync();
                     Console.WriteLine($"?? Found {salesCount} sales records in date range (SuperAdmin: {tenantId == 0})");
@@ -126,16 +134,24 @@ namespace HexaBill.Api.Modules.Reports
                     if (tenantId > 0)
                         returnsQuery = returnsQuery.Where(r => r.TenantId == tenantId);
                     if (branchId.HasValue)
-                        returnsQuery = returnsQuery.Where(r => r.BranchId == branchId.Value);
+                        returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
                     if (routeId.HasValue)
-                        returnsQuery = returnsQuery.Where(r => r.RouteId == routeId.Value);
+                        returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
                     if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
                         var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                         if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                        {
                             returnsQuery = returnsQuery.Where(r => r.RouteId != null && restrictedRouteIds.Contains(r.RouteId.Value));
+                        }
                         else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                            returnsQuery = returnsQuery.Where(r => false);
+                        {
+                            var staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                            if (staffBranchIds.Count > 0)
+                                returnsQuery = returnsQuery.Where(r => r.BranchId == null || staffBranchIds.Contains(r.BranchId.Value));
+                            else
+                                returnsQuery = returnsQuery.Where(r => false);
+                        }
                     }
                     returnsCountToday = await returnsQuery.CountAsync();
                     returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
@@ -806,15 +822,32 @@ namespace HexaBill.Api.Modules.Reports
             {
                 query = query.Where(s => s.TenantId == tenantId);
             }
-            if (branchId.HasValue) query = query.Where(s => s.BranchId == branchId.Value);
-            if (routeId.HasValue) query = query.Where(s => s.RouteId == routeId.Value);
+            // Include null BranchId/RouteId records (legacy data)
+            if (branchId.HasValue) query = query.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+            if (routeId.HasValue) query = query.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
             if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
             {
                 var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                 if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                {
                     query = query.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                }
                 else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                    query = query.Where(s => false);
+                {
+                    // Staff has no route assignments — fall back to branch assignments
+                    var branchIds = await _context.BranchStaff
+                        .Where(bs => bs.UserId == userIdForStaff.Value)
+                        .Select(bs => bs.BranchId)
+                        .ToListAsync();
+                    if (branchIds.Count > 0)
+                    {
+                        query = query.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                    }
+                    else
+                    {
+                        query = query.Where(s => false);
+                    }
+                }
             }
             
             Console.WriteLine($"?? GetSalesReportAsync: fromDate={fromDate:yyyy-MM-dd HH:mm:ss}, toDate={toDate:yyyy-MM-dd HH:mm:ss}, customerId={customerId}, SuperAdmin={tenantId == 0}");

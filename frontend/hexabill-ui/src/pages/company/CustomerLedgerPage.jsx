@@ -105,7 +105,7 @@ const CustomerLedgerPage = () => {
   const [showSendStatementModal, setShowSendStatementModal] = useState(false)
   const [payAllOutstandingMode, setPayAllOutstandingMode] = useState(false)
   const [dateRange, setDateRange] = useState({
-    from: new Date(new Date().setDate(1)).toISOString().split('T')[0], // First day of month
+    from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0], // Last 12 months
     to: new Date().toISOString().split('T')[0] // Today
   })
   const [ledgerFilters, setLedgerFilters] = useState({
@@ -117,7 +117,7 @@ const CustomerLedgerPage = () => {
   const [ledgerStaffId, setLedgerStaffId] = useState('')
   // Staged filter values (used by Apply button); applied values above drive API calls
   const [filterDraft, setFilterDraft] = useState(() => ({
-    from: new Date(new Date().setDate(1)).toISOString().split('T')[0],
+    from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0],
     branchId: '',
     routeId: '',
@@ -351,7 +351,7 @@ const CustomerLedgerPage = () => {
       }, 300) // 300ms debounce
       return () => clearTimeout(timeoutId)
     }
-  }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId])
+  }, [selectedCustomer?.id, dateRange.from, dateRange.to])
 
   // Load staff users only (branches/routes from shared context)
   useEffect(() => {
@@ -912,9 +912,6 @@ const CustomerLedgerPage = () => {
       // This ensures ALL customer invoices are retrieved, not just first 1000 from entire database
       const [ledgerRes, invoicesRes, outstandingRes, customerRes] = await Promise.all([
         customersAPI.getCustomerLedger(customerId, {
-          branchId: ledgerBranchId ? parseInt(ledgerBranchId, 10) : undefined,
-          routeId: ledgerRouteId ? parseInt(ledgerRouteId, 10) : undefined,
-          staffId: ledgerStaffId ? parseInt(ledgerStaffId, 10) : undefined,
           fromDate: dateRange.from,
           toDate: dateRange.to
         }),
@@ -1426,7 +1423,12 @@ const CustomerLedgerPage = () => {
           resetPaymentForm()
           const isCash = false
           setBalanceRefreshSkeleton(true)
-          await recalculateCustomerBalance(selectedCustomer.id)
+          try {
+            await customersAPI.recalculateBalance(selectedCustomer.id)
+          } catch (recalcErr) {
+            console.warn('Balance recalc after payment:', recalcErr?.message)
+          }
+          await new Promise(r => setTimeout(r, 500))
           await loadCustomerData(selectedCustomer.id)
           const fetchResp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
           if (fetchResp?.success && fetchResp?.data?.items) {
@@ -1501,8 +1503,13 @@ const CustomerLedgerPage = () => {
         const isCash = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
         if (!isCash) setBalanceRefreshSkeleton(true)
 
-        // SEQUENTIAL: Recalculate balance first, then load data (prevents race condition)
-        await recalculateCustomerBalance(isCash ? 'cash' : selectedCustomer.id)
+        // Bypass cooldown: direct recalc + short delay + load (payment is always a fresh event)
+        try {
+          await customersAPI.recalculateBalance(isCash ? 'cash' : selectedCustomer.id)
+        } catch (recalcErr) {
+          console.warn('Balance recalc after payment:', recalcErr?.message)
+        }
+        await new Promise(r => setTimeout(r, 500))
         await loadCustomerData(isCash ? 'cash' : selectedCustomer.id)
         const fetchResp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
         if (fetchResp?.success && fetchResp?.data?.items) {
@@ -2276,80 +2283,82 @@ const CustomerLedgerPage = () => {
                 </Modal>
               )}
 
-              {/* Date Range & Branch/Route/Staff Filters (staged until Apply clicked) */}
-              <div className="bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4 flex items-center gap-3 flex-wrap">
-                <label className="text-sm font-medium text-neutral-700">Date:</label>
-                <Input
-                  type="date"
-                  value={filterDraft.from}
-                  onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
-                  className="w-36"
-                />
-                <span className="text-neutral-600">to</span>
-                <Input
-                  type="date"
-                  value={filterDraft.to}
-                  onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
-                  className="w-36"
-                />
-                <span className="text-neutral-400 mx-1">|</span>
+              {/* Date Range & Branch/Route/Staff Filters — only show when customer selected */}
+              {selectedCustomer && (
+                <div className="bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4 flex items-center gap-3 flex-wrap">
+                  <label className="text-sm font-medium text-neutral-700">Date:</label>
+                  <Input
+                    type="date"
+                    value={filterDraft.from}
+                    onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
+                    className="w-36"
+                  />
+                  <span className="text-neutral-600">to</span>
+                  <Input
+                    type="date"
+                    value={filterDraft.to}
+                    onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
+                    className="w-36"
+                  />
+                  <span className="text-neutral-400 mx-1">|</span>
 
-                {/* Branch Filter */}
-                <select
-                  value={filterDraft.branchId}
-                  onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                  disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
-                  title="Filter by branch"
-                >
-                  {isAdminOrOwner(user) && <option value="">All branches</option>}
-                  {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
+                  {/* Branch Filter */}
+                  <select
+                    value={filterDraft.branchId}
+                    onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
+                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
+                    title="Filter by branch"
+                  >
+                    {isAdminOrOwner(user) && <option value="">All branches</option>}
+                    {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
 
-                {/* Route Filter */}
-                <select
-                  value={filterDraft.routeId}
-                  onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                  disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
-                  title="Filter by route"
-                >
-                  {isAdminOrOwner(user) && <option value="">All routes</option>}
-                  {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
+                  {/* Route Filter */}
+                  <select
+                    value={filterDraft.routeId}
+                    onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
+                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
+                    title="Filter by route"
+                  >
+                    {isAdminOrOwner(user) && <option value="">All routes</option>}
+                    {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
 
-                {/* Staff Filter */}
-                <select
-                  value={filterDraft.staffId}
-                  onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                  className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
-                  disabled={!isAdminOrOwner(user)}
-                  title="Filter by staff"
-                >
-                  {isAdminOrOwner(user) && <option value="">All staff</option>}
-                  {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
-                </select>
+                  {/* Staff Filter */}
+                  <select
+                    value={filterDraft.staffId}
+                    onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
+                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    disabled={!isAdminOrOwner(user)}
+                    title="Filter by staff"
+                  >
+                    {isAdminOrOwner(user) && <option value="">All staff</option>}
+                    {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
+                  </select>
 
-                <button
-                  type="button"
-                  onClick={() => applyLedgerFilters(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"
-                  title="Filters auto-apply after 0.8s. Click to apply immediately."
-                >
-                  <Filter className="h-3.5 w-3.5" />
-                  Apply Now
-                </button>
-                <span className="text-xs text-neutral-500 italic">
-                  (Auto-applies in 0.8s)
-                </span>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => applyLedgerFilters(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"
+                    title="Filters auto-apply after 0.8s. Click to apply immediately."
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    Apply Now
+                  </button>
+                  <span className="text-xs text-neutral-500 italic">
+                    (Auto-applies in 0.8s)
+                  </span>
+                </div>
+              )}
 
               {/* TAB SECTIONS - Full Width */}
               <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
                 <div className="border-b border-neutral-200 bg-white w-full sticky top-0 z-10">
-                  <div className="overflow-x-auto w-full scrollbar-hide">
+                  <div className="overflow-x-auto w-full scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
                     <div className="flex space-x-1 px-2 min-w-max">
                       {[
                         { id: 'ledger', name: 'Ledger', mobileName: 'Ledger', icon: FileText },
@@ -2378,7 +2387,7 @@ const CustomerLedgerPage = () => {
                 </div>
 
                 {/* TAB CONTENT - Full Width - Zero Padding; pb-20 for bottom nav on mobile */}
-                <div className="flex-1 overflow-auto w-full pb-20 lg:pb-0">
+                <div className="flex-1 overflow-auto w-full pb-24 lg:pb-0" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
                   {activeTab === 'ledger' && (
                     loading ? (
                       <div className="flex items-center justify-center h-full p-8">
@@ -2389,7 +2398,6 @@ const CustomerLedgerPage = () => {
                         ledgerEntries={customerLedger
                           .filter(entry => {
                             // CRITICAL: Validate entry belongs to selected customer (extra safety check)
-                            // Backend should already filter, but this prevents any data leakage
                             if (!selectedCustomer) return false
 
                             const entryDate = new Date(entry.date)
@@ -2399,15 +2407,32 @@ const CustomerLedgerPage = () => {
                             const inDateRange = entryDate >= fromDate && entryDate <= toDate
                             if (!inDateRange) return false
 
-                            // Apply filters
-                            // Use constant property name to prevent minifier from creating 'st' variable
+                            // Client-side branch/route filter (API returns all; filter here when user selects branch/route)
+                            const entryBranchId = entry.branchId ?? entry.branchID
+                            const entryRouteId = entry.routeId ?? entry.routeID
+                            if (ledgerBranchId) {
+                              const bid = parseInt(ledgerBranchId, 10)
+                              if (entryBranchId != null && entryBranchId !== bid) return false
+                              // Include null (legacy) or matching branch
+                            }
+                            if (ledgerRouteId) {
+                              const rid = parseInt(ledgerRouteId, 10)
+                              if (entryRouteId != null && entryRouteId !== rid) return false
+                            }
+                            if (ledgerStaffId) {
+                              const sid = parseInt(ledgerStaffId, 10)
+                              const createdBy = entry.createdBy ?? entry.CreatedBy
+                              if (createdBy != null && createdBy !== sid) return false
+                              // Payments/returns may not have createdBy; include them
+                            }
+
+                            // Apply status/type filters
                             if (ledgerFilters[STATUS_PROP] !== 'all') {
                               const entryStatusValue = entry[STATUS_PROP] || ''
                               const filterStatusValue = ledgerFilters[STATUS_PROP] || ''
                               const statusMatch = entryStatusValue?.toLowerCase() === filterStatusValue.toLowerCase()
                               if (!statusMatch && entry.type !== 'Payment') return false
                             }
-                            // Use constant property name to prevent minifier from creating 't' variable
                             if (ledgerFilters[TYPE_PROP] !== 'all') {
                               if (entry.type !== ledgerFilters[TYPE_PROP]) return false
                             }
