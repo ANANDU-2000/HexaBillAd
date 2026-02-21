@@ -140,9 +140,10 @@ const ReportsPage = () => {
   const [productsList, setProductsList] = useState([])
   const [customersList, setCustomersList] = useState([])
   const branchesList = branches || []
+  // When "All Branches" is selected, show all routes so user can filter by route without picking a branch
   const routesList = filters.branch
     ? (routes || []).filter(r => r.branchId === parseInt(filters.branch, 10))
-    : []
+    : (routes || [])
 
   // Persist shared date range so last used range is restored on next visit (#40)
   useEffect(() => {
@@ -1230,7 +1231,7 @@ const ReportsPage = () => {
           <Select
             label="Route"
             options={[
-              { value: '', label: filters.branch ? 'All Routes' : 'Select branch first' },
+              { value: '', label: 'All Routes' },
               ...routesList.map(r => ({ value: String(r.id), label: r.name || 'Route' }))
             ]}
             value={filters.route}

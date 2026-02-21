@@ -68,6 +68,8 @@ const Dashboard = () => {
   const [dbStatus, setDbStatus] = useState(true)
   const [lastBackup, setLastBackup] = useState(null)
   const [backupLoading, setBackupLoading] = useState(false)
+  // Period for KPI cards: 'today' | 'week' | 'month'
+  const [summaryPeriod, setSummaryPeriod] = useState('today')
 
   // Allocations Data for Admin
   const [allocations, setAllocations] = useState({ branches: [], routes: [], users: [] })
@@ -116,9 +118,16 @@ const Dashboard = () => {
       const thirtyDaysAgo = new Date(today)
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-      // For summary, use today only
-      const todayFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString().split('T')[0]
-      const todayTo = todayFrom
+      // Summary date range from period selector
+      let summaryFrom = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      let summaryTo = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      if (summaryPeriod === 'week') {
+        summaryFrom.setDate(summaryFrom.getDate() - 6)
+      } else if (summaryPeriod === 'month') {
+        summaryFrom.setDate(1)
+      }
+      const summaryFromStr = summaryFrom.toISOString().split('T')[0]
+      const summaryToStr = summaryTo.toISOString().split('T')[0]
 
       // For sales chart, use last 7 days
       const salesFrom = new Date(today)
@@ -127,15 +136,15 @@ const Dashboard = () => {
       const salesToDate = today.toISOString().split('T')[0]
 
       console.log('Date ranges:', {
-        summaryFrom: todayFrom,
-        summaryTo: todayTo,
+        summaryFrom: summaryFromStr,
+        summaryTo: summaryToStr,
         salesFrom: salesFromDate,
         salesTo: salesToDate
       })
 
       const summaryResponse = await reportsAPI.getSummaryReport({
-        fromDate: todayFrom,
-        toDate: todayTo
+        fromDate: summaryFromStr,
+        toDate: summaryToStr
       })
 
       console.log('Summary response:', summaryResponse)
@@ -155,7 +164,11 @@ const Dashboard = () => {
           salesToday: data.salesToday || 0,
           purchasesToday: data.purchasesToday || 0,
           expensesToday: data.expensesToday || 0,
-          profitToday: data.profitToday || 0,
+          profitToday: data.profitToday ?? 0,
+          pendingBillsCount: data.pendingBills ?? data.PendingBills ?? 0,
+          pendingBillsAmount: data.pendingBillsAmount ?? data.PendingBillsAmount ?? 0,
+          paidBillsCount: data.paidBills ?? data.PaidBills ?? 0,
+          paidBillsAmount: data.paidBillsAmount ?? data.PaidBillsAmount ?? 0,
           salesChange: 12,
           purchasesChange: 8,
           expensesChange: -5,
@@ -314,7 +327,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData()
-  }, [pendingFilter, pendingSearch])
+  }, [pendingFilter, pendingSearch, summaryPeriod])
 
   // Auto-refresh dashboard every 120 seconds (with throttling) - increased from 60s to reduce API requests
   useEffect(() => {
@@ -499,12 +512,30 @@ const Dashboard = () => {
             </div>
           </div>
         )}
+        {/* Period selector for KPI cards (real data, date-based) */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-primary-700">Period:</span>
+          {['today', 'week', 'month'].map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setSummaryPeriod(p)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                summaryPeriod === p
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-white border border-primary-200 text-primary-700 hover:bg-primary-50'
+              }`}
+            >
+              {p === 'today' ? 'Today' : p === 'week' ? 'This week' : 'This month'}
+            </button>
+          ))}
+        </div>
         {/* Row 1: KPI Cards — col-span-3 each on desktop (4 cards) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 lg:gap-6">
           {canShow('salesToday') && (
             <div className="lg:col-span-3">
               <StatCard
-                title="Sales Today"
+                title={summaryPeriod === 'today' ? 'Sales Today' : summaryPeriod === 'week' ? 'Sales (This week)' : 'Sales (This month)'}
                 value={summary.salesToday}
                 change={summary.salesChange}
                 changeType="positive"
@@ -516,7 +547,7 @@ const Dashboard = () => {
           {canShow('expensesToday') && (
             <div className="lg:col-span-3">
               <StatCard
-                title="Expenses Today"
+                title={summaryPeriod === 'today' ? 'Expenses Today' : summaryPeriod === 'week' ? 'Expenses (This week)' : 'Expenses (This month)'}
                 value={summary.expensesToday}
                 change={summary.expensesChange}
                 changeType="negative"
@@ -528,7 +559,7 @@ const Dashboard = () => {
           {canShow('purchasesToday') && (
             <div className="lg:col-span-3">
               <StatCard
-                title="Purchases Today"
+                title={summaryPeriod === 'today' ? 'Purchases Today' : summaryPeriod === 'week' ? 'Purchases (This week)' : 'Purchases (This month)'}
                 value={summary.purchasesToday}
                 change={summary.purchasesChange}
                 changeType="positive"
@@ -541,7 +572,7 @@ const Dashboard = () => {
           {isAdminOrOwner(user) && canShow('profitToday') && (
             <div className="lg:col-span-3">
               <StatCard
-                title="Profit Today"
+                title={summaryPeriod === 'today' ? 'Profit Today' : summaryPeriod === 'week' ? 'Profit (This week)' : 'Profit (This month)'}
                 value={summary.profitToday}
                 change={summary.profitChange}
                 changeType={summary.profitToday >= 0 ? "positive" : "negative"}

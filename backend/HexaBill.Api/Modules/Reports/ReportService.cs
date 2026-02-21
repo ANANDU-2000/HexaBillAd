@@ -41,13 +41,15 @@ namespace HexaBill.Api.Modules.Reports
         private readonly IRouteScopeService _routeScopeService;
         private readonly ISettingsService _settingsService;
         private readonly IProductService _productService;
+        private readonly ISalesSchemaService _salesSchema;
 
-        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService)
+        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema)
         {
             _context = context;
             _routeScopeService = routeScopeService;
             _settingsService = settingsService;
             _productService = productService;
+            _salesSchema = salesSchema;
         }
 
         public async Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null)
@@ -82,6 +84,8 @@ namespace HexaBill.Api.Modules.Reports
                 Console.WriteLine($"?? GetSummaryReportAsync called with tenantId={tenantId}, fromDate: {startDate:yyyy-MM-dd}, toDate: {endDate:yyyy-MM-dd}");
                 Console.WriteLine($"?? Date range: {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}");
 
+                var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+
                 decimal salesToday = 0;
                 decimal purchasesToday = 0;
                 decimal expensesToday = 0;
@@ -95,9 +99,12 @@ namespace HexaBill.Api.Modules.Reports
                     {
                         salesQuery = salesQuery.Where(s => s.TenantId == tenantId);
                     }
-                    if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
-                    if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
-                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                    if (hasSalesBranchRoute)
+                    {
+                        if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+                        if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
+                    }
+                    if (hasSalesBranchRoute && tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
                         var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                         if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
@@ -133,11 +140,14 @@ namespace HexaBill.Api.Modules.Reports
                         .Where(r => r.ReturnDate >= startDate && r.ReturnDate < endDate);
                     if (tenantId > 0)
                         returnsQuery = returnsQuery.Where(r => r.TenantId == tenantId);
-                    if (branchId.HasValue)
-                        returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
-                    if (routeId.HasValue)
-                        returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
-                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                    if (hasSalesBranchRoute)
+                    {
+                        if (branchId.HasValue)
+                            returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
+                        if (routeId.HasValue)
+                            returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
+                    }
+                    if (hasSalesBranchRoute && tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
                         var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                         if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
@@ -214,37 +224,38 @@ namespace HexaBill.Api.Modules.Reports
                 try
                 {
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
-                    // Avoid loading entire Product entity (may have missing columns like Barcode)
-                    // Use join and select only needed fields
-                    var saleItemsQuery = from si in _context.SaleItems
-                                        join s in _context.Sales on si.SaleId equals s.Id
-                                        where s.InvoiceDate >= startDate 
-                                            && s.InvoiceDate < endDate 
-                                            && !s.IsDeleted
-                                        select new { si.SaleId, si.Qty, si.ProductId, s.TenantId, s.BranchId, s.RouteId };
-                    
-                    if (tenantId > 0)
+                    // When Sales has no BranchId/RouteId, project without them to avoid 42703
+                    List<(int SaleId, decimal Qty, int ProductId)> saleItemsData;
+                    if (hasSalesBranchRoute)
                     {
-                        saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
+                        var saleItemsQuery = from si in _context.SaleItems
+                                            join s in _context.Sales on si.SaleId equals s.Id
+                                            where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
+                                            select new { si.SaleId, si.Qty, si.ProductId, s.TenantId, s.BranchId, s.RouteId };
+                        if (tenantId > 0) saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
+                        if (branchId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.BranchId == branchId.Value);
+                        if (routeId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.RouteId == routeId.Value);
+                        if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                            if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                                saleItemsQuery = saleItemsQuery.Where(x => x.RouteId != null && restrictedRouteIds.Contains(x.RouteId.Value));
+                            else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                                saleItemsQuery = saleItemsQuery.Where(x => false);
+                        }
+                        var data = await saleItemsQuery.ToListAsync();
+                        saleItemsData = data.Select(x => (x.SaleId, x.Qty, x.ProductId)).ToList();
                     }
-                    if (branchId.HasValue)
+                    else
                     {
-                        saleItemsQuery = saleItemsQuery.Where(x => x.BranchId == branchId.Value);
+                        var saleItemsQuery = from si in _context.SaleItems
+                                            join s in _context.Sales on si.SaleId equals s.Id
+                                            where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
+                                            select new { si.SaleId, si.Qty, si.ProductId, s.TenantId };
+                        if (tenantId > 0) saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
+                        var data = await saleItemsQuery.ToListAsync();
+                        saleItemsData = data.Select(x => (x.SaleId, x.Qty, x.ProductId)).ToList();
                     }
-                    if (routeId.HasValue)
-                    {
-                        saleItemsQuery = saleItemsQuery.Where(x => x.RouteId == routeId.Value);
-                    }
-                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
-                        if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
-                            saleItemsQuery = saleItemsQuery.Where(x => x.RouteId != null && restrictedRouteIds.Contains(x.RouteId.Value));
-                        else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                            saleItemsQuery = saleItemsQuery.Where(x => false);
-                    }
-                    
-                    var saleItemsData = await saleItemsQuery.ToListAsync();
                     
                     // Get Product CostPrice and ConversionToBase separately (avoid loading entire entity)
                     var productIds = saleItemsData.Select(si => si.ProductId).Distinct().ToList();
@@ -358,16 +369,15 @@ namespace HexaBill.Api.Modules.Reports
                         pendingInvoicesQuery = pendingInvoicesQuery.Where(x => x.Sale.TenantId == tenantId);
                     }
                     
-                    // Apply branch/route filters if provided
-                    if (branchId.HasValue)
+                    // Apply branch/route filters only when Sales has these columns
+                    if (hasSalesBranchRoute)
                     {
-                        pendingInvoicesQuery = pendingInvoicesQuery.Where(x => x.Sale.BranchId == branchId.Value);
+                        if (branchId.HasValue)
+                            pendingInvoicesQuery = pendingInvoicesQuery.Where(x => x.Sale.BranchId == branchId.Value);
+                        if (routeId.HasValue)
+                            pendingInvoicesQuery = pendingInvoicesQuery.Where(x => x.Sale.RouteId == routeId.Value);
                     }
-                    if (routeId.HasValue)
-                    {
-                        pendingInvoicesQuery = pendingInvoicesQuery.Where(x => x.Sale.RouteId == routeId.Value);
-                    }
-                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                    if (hasSalesBranchRoute && tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
                         var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                         if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
@@ -428,9 +438,9 @@ namespace HexaBill.Api.Modules.Reports
                 if (tenantId > 0) invoicesMonthlyQuery = invoicesMonthlyQuery.Where(s => s.TenantId == tenantId);
                 var invoicesMonthly = await invoicesMonthlyQuery.CountAsync();
 
-                // Calculate branch breakdown (only if no specific branchId/routeId filter is applied)
+                // Calculate branch breakdown (only if no specific branchId/routeId filter is applied and Sales has BranchId/RouteId)
                 List<DashboardBranchSummaryDto> branchBreakdown = new List<DashboardBranchSummaryDto>();
-                if (!branchId.HasValue && !routeId.HasValue && tenantId > 0) // Only show breakdown for owner view, not filtered
+                if (!branchId.HasValue && !routeId.HasValue && tenantId > 0 && hasSalesBranchRoute) // Only show breakdown when columns exist
                 {
                     try
                     {
@@ -541,16 +551,13 @@ namespace HexaBill.Api.Modules.Reports
                         dailySalesQuery = dailySalesQuery.Where(s => s.TenantId == tenantId);
                     }
                     
-                    // Apply branch filter if provided
-                    if (branchId.HasValue)
+                    // Apply branch/route filter only when Sales has these columns
+                    if (hasSalesBranchRoute)
                     {
-                        dailySalesQuery = dailySalesQuery.Where(s => s.BranchId == branchId.Value);
-                    }
-                    
-                    // Apply route filter if provided
-                    if (routeId.HasValue)
-                    {
-                        dailySalesQuery = dailySalesQuery.Where(s => s.RouteId == routeId.Value);
+                        if (branchId.HasValue)
+                            dailySalesQuery = dailySalesQuery.Where(s => s.BranchId == branchId.Value);
+                        if (routeId.HasValue)
+                            dailySalesQuery = dailySalesQuery.Where(s => s.RouteId == routeId.Value);
                     }
                     
                     // Group by date and calculate totals
@@ -631,7 +638,7 @@ namespace HexaBill.Api.Modules.Reports
                                            };
                     }
                     
-                    if (branchId.HasValue)
+                    if (hasSalesBranchRoute && branchId.HasValue)
                     {
                         topCustomersQuery = topCustomersQuery.Where(tc => 
                             _context.Sales.Any(s => s.CustomerId == tc.CustomerId && s.BranchId == branchId.Value));
@@ -688,7 +695,7 @@ namespace HexaBill.Api.Modules.Reports
                                            };
                     }
                     
-                    if (branchId.HasValue)
+                    if (hasSalesBranchRoute && branchId.HasValue)
                     {
                         topProductsQuery = from si in _context.SaleItems
                                            join s in _context.Sales on si.SaleId equals s.Id
@@ -822,30 +829,33 @@ namespace HexaBill.Api.Modules.Reports
             {
                 query = query.Where(s => s.TenantId == tenantId);
             }
-            // Include null BranchId/RouteId records (legacy data)
-            if (branchId.HasValue) query = query.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
-            if (routeId.HasValue) query = query.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
-            if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+            var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+            if (hasSalesBranchRoute)
             {
-                var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
-                if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                // Include null BranchId/RouteId records (legacy data)
+                if (branchId.HasValue) query = query.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+                if (routeId.HasValue) query = query.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
+                if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                 {
-                    query = query.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
-                }
-                else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                {
-                    // Staff has no route assignments — fall back to branch assignments
-                    var branchIds = await _context.BranchStaff
-                        .Where(bs => bs.UserId == userIdForStaff.Value)
-                        .Select(bs => bs.BranchId)
-                        .ToListAsync();
-                    if (branchIds.Count > 0)
+                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                    if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
                     {
-                        query = query.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                        query = query.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
                     }
-                    else
+                    else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
                     {
-                        query = query.Where(s => false);
+                        var branchIds = await _context.BranchStaff
+                            .Where(bs => bs.UserId == userIdForStaff.Value)
+                            .Select(bs => bs.BranchId)
+                            .ToListAsync();
+                        if (branchIds.Count > 0)
+                        {
+                            query = query.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                        }
+                        else
+                        {
+                            query = query.Where(s => false);
+                        }
                     }
                 }
             }
@@ -891,10 +901,11 @@ namespace HexaBill.Api.Modules.Reports
             
             var totalCount = await query.CountAsync();
             
-            // CRITICAL: Include PaidAmount to calculate actual balance for accurate reporting
-            // Calculate balance = GrandTotal - PaidAmount for each sale
-            // BUG #2.5 FIX: Include Customer in query for search filtering
-            var sales = await (from s in query
+            // When Sales has no BranchId/RouteId columns, project without them to avoid 42703
+            List<SaleDto> sales;
+            if (hasSalesBranchRoute)
+            {
+                sales = await (from s in query
                               join c in _context.Customers on s.CustomerId equals c.Id into customerGroup
                               from c in customerGroup.DefaultIfEmpty()
                               orderby s.InvoiceDate descending
@@ -911,14 +922,43 @@ namespace HexaBill.Api.Modules.Reports
                                   VatTotal = s.VatTotal,
                                   Discount = s.Discount,
                                   GrandTotal = s.GrandTotal,
-                                  PaidAmount = s.PaidAmount, // CRITICAL: Include for balance calculation
+                                  PaidAmount = s.PaidAmount,
                                   PaymentStatus = s.PaymentStatus.ToString(),
                                   Notes = s.Notes,
-                                  Items = new List<SaleItemDto>() // Items not needed for report view
+                                  Items = new List<SaleItemDto>()
                               })
                               .Skip((page - 1) * pageSize)
                               .Take(pageSize)
                               .ToListAsync();
+            }
+            else
+            {
+                sales = await (from s in query
+                              join c in _context.Customers on s.CustomerId equals c.Id into customerGroup
+                              from c in customerGroup.DefaultIfEmpty()
+                              orderby s.InvoiceDate descending
+                              select new SaleDto
+                              {
+                                  Id = s.Id,
+                                  InvoiceNo = s.InvoiceNo,
+                                  InvoiceDate = s.InvoiceDate,
+                                  CustomerId = s.CustomerId,
+                                  BranchId = null,
+                                  RouteId = null,
+                                  CustomerName = c != null ? c.Name : null,
+                                  Subtotal = s.Subtotal,
+                                  VatTotal = s.VatTotal,
+                                  Discount = s.Discount,
+                                  GrandTotal = s.GrandTotal,
+                                  PaidAmount = s.PaidAmount,
+                                  PaymentStatus = s.PaymentStatus.ToString(),
+                                  Notes = s.Notes,
+                                  Items = new List<SaleItemDto>()
+                              })
+                              .Skip((page - 1) * pageSize)
+                              .Take(pageSize)
+                              .ToListAsync();
+            }
             
             Console.WriteLine($"?? Sales Report: {totalCount} total sales, returning {sales.Count} for page {page}");
 
@@ -2059,40 +2099,47 @@ namespace HexaBill.Api.Modules.Reports
         {
             var from = (fromDate ?? DateTime.UtcNow.Date.AddDays(-365)).ToUtcKind();
             var to = (toDate ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1).ToUtcKind();
+            var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
 
             var salesQuery = _context.Sales
                 .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
-            // Include null BranchId/RouteId records (legacy data created before branch columns existed)
-            if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
-            if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
-            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
-            if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+            if (hasSalesBranchRoute)
             {
-                var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
-                if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+                if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
+                if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                 {
-                    salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
-                }
-                else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                {
-                    var branchIds = await _context.BranchStaff
-                        .Where(bs => bs.UserId == userIdForStaff.Value)
-                        .Select(bs => bs.BranchId)
-                        .ToListAsync();
-                    if (branchIds.Count > 0)
+                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                    if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                        salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                    else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
                     {
-                        salesQuery = salesQuery.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
-                    }
-                    else
-                    {
-                        salesQuery = salesQuery.Where(s => false);
+                        var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                        if (branchIds.Count > 0)
+                            salesQuery = salesQuery.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                        else
+                            salesQuery = salesQuery.Where(s => false);
                     }
                 }
             }
-            var sales = await salesQuery
-                .OrderBy(s => s.InvoiceDate)
-                .ThenBy(s => s.Id)
-                .ToListAsync();
+            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+
+            // When columns missing, project to avoid 42703; otherwise load full entities then map to same shape
+            List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)> sales;
+            if (hasSalesBranchRoute)
+            {
+                var fullSales = await salesQuery.OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
+                sales = fullSales.Select(s => (s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal)).ToList();
+            }
+            else
+            {
+                var projected = await salesQuery
+                    .OrderBy(s => s.InvoiceDate)
+                    .ThenBy(s => s.Id)
+                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
+                    .ToListAsync();
+                sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
+            }
 
             var saleIds = sales.Select(s => s.Id).ToHashSet();
 
@@ -2200,31 +2247,19 @@ namespace HexaBill.Api.Modules.Reports
             // Add payment entries (Credit)
             foreach (var payment in payments)
             {
-                // Get related sale for invoice number and status
-                var relatedSale = payment.SaleId.HasValue 
-                    ? sales.FirstOrDefault(s => s.Id == payment.SaleId.Value)
-                    : null;
+                var found = payment.SaleId.HasValue ? sales.FirstOrDefault(s => s.Id == payment.SaleId.Value) : default;
+                bool hasRelatedSale = found.Id != 0 && payment.SaleId.HasValue && found.Id == payment.SaleId.Value;
 
-                var invoiceNo = relatedSale?.InvoiceNo ?? payment.Reference ?? "-";
-                var paidAmount = salePayments.GetValueOrDefault(relatedSale?.Id ?? 0, 0m);
-                var saleBalance = relatedSale != null ? relatedSale.GrandTotal - paidAmount : 0m;
+                var invoiceNo = hasRelatedSale ? found.InvoiceNo : (payment.Reference ?? "-");
+                var paidAmount = salePayments.GetValueOrDefault(hasRelatedSale ? found.Id : 0, 0m);
+                var saleBalance = hasRelatedSale ? found.GrandTotal - paidAmount : 0m;
                 
-                // Determine status from related sale
                 string status = "Partial";
-                if (relatedSale != null)
+                if (hasRelatedSale)
                 {
-                    if (saleBalance <= 0.01m)
-                    {
-                        status = "Paid";
-                    }
-                    else if (paidAmount > 0)
-                    {
-                        status = "Partial";
-                    }
-                    else
-                    {
-                        status = "Unpaid";
-                    }
+                    if (saleBalance <= 0.01m) status = "Paid";
+                    else if (paidAmount > 0) status = "Partial";
+                    else status = "Unpaid";
                 }
 
                 // Update customer balance
@@ -2318,6 +2353,9 @@ namespace HexaBill.Api.Modules.Reports
             var from = fromDate.ToUtcKind();
             var to = toDate.AddDays(1).AddTicks(-1).ToUtcKind();
 
+            if (!await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+                return new List<StaffPerformanceDto>();
+
             // PROD-7 FIX: Batch all queries to avoid N+1 problem
             // Load all staff users in one query
             var staffUsers = await _context.Users
@@ -2360,11 +2398,8 @@ namespace HexaBill.Api.Modules.Reports
                     && staffIds.Contains(s.CreatedBy)
                     && s.InvoiceDate >= from && s.InvoiceDate < to);
             
-            // Apply route filter if provided
             if (routeId.HasValue)
-            {
                 allSalesQuery = allSalesQuery.Where(s => s.RouteId == routeId.Value);
-            }
 
             var allSales = await allSalesQuery.ToListAsync();
 

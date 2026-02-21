@@ -52,6 +52,24 @@ Old migration scripts moved to `archive/` folder:
 
 ---
 
+## Production: Branch/Route and ZAYOGA
+
+**`FIX_PRODUCTION_MIGRATIONS.sql`** – Run on production if migrations failed or if `Sales.BranchId`/`Sales.RouteId` are missing.
+
+1. **Run the script** (at least sections **5** and **5b**):
+   - Section 5: adds `Sales.BranchId` and `Sales.RouteId` (and indexes/FKs).
+   - Section 5b: backfills existing Sales with the tenant’s first branch (and route) so reports and branch/route tabs show real data.
+2. **ZAYOGA tenant:** Ensure at least one **Branch** and, if needed, one **Route** exist for the ZAYOGA company (e.g. create via app or insert into `Branches`/`Routes`). Then re-run section 5b or run the script once so backfill assigns them.
+3. **Safety:** Do not remove or weaken existing null/column-existence checks in code (BranchService, ReportService, ISalesSchemaService); the app already tolerates missing columns.
+
+Usage (from `backend/HexaBill.Api`):
+```bash
+# Set PGPASSWORD then:
+psql -h <host> -U hexabill_user hexabill -f Scripts/FIX_PRODUCTION_MIGRATIONS.sql
+```
+
+---
+
 ## Principles
 
 ✅ **PostgreSQL in production** – schema changes via **EF Core migrations only** (`dotnet ef database update`).  

@@ -106,10 +106,10 @@ const CustomerLedgerPage = () => {
   const [payAllOutstandingMode, setPayAllOutstandingMode] = useState(false)
   const [dateRange, setDateRange] = useState(() => {
     const now = new Date()
-    const twoYearsAgo = new Date(now)
-    twoYearsAgo.setFullYear(now.getFullYear() - 2)
+    const yearsAgo = new Date(now)
+    yearsAgo.setFullYear(now.getFullYear() - 5) // 5 years back so migrated ZAYOGA and legacy data visible
     return {
-      from: twoYearsAgo.toISOString().split('T')[0], // 2 years back so 2025+ data always visible
+      from: yearsAgo.toISOString().split('T')[0],
       to: now.toISOString().split('T')[0]
     }
   })
@@ -123,15 +123,15 @@ const CustomerLedgerPage = () => {
   // Staged filter values (used by Apply button); applied values above drive API calls
   const [filterDraft, setFilterDraft] = useState(() => {
     const now = new Date()
-    const twoYearsAgo = new Date(now)
-    twoYearsAgo.setFullYear(now.getFullYear() - 2)
+    const yearsAgo = new Date(now)
+    yearsAgo.setFullYear(now.getFullYear() - 5)
     return {
-      from: twoYearsAgo.toISOString().split('T')[0],
+      from: yearsAgo.toISOString().split('T')[0],
       to: now.toISOString().split('T')[0],
     branchId: '',
     routeId: '',
     staffId: ''
-  }))
+  }});
   const [staffUsers, setStaffUsers] = useState([])
   const [staffAssignmentsLoaded, setStaffAssignmentsLoaded] = useState(false)
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })

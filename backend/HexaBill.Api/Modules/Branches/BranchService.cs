@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Branches
 {
@@ -24,10 +25,12 @@ namespace HexaBill.Api.Modules.Branches
     public class BranchService : IBranchService
     {
         private readonly AppDbContext _context;
+        private readonly ISalesSchemaService _salesSchema;
 
-        public BranchService(AppDbContext context)
+        public BranchService(AppDbContext context, ISalesSchemaService salesSchema)
         {
             _context = context;
+            _salesSchema = salesSchema;
         }
 
         public async Task<bool> CheckDatabaseConnectionAsync()
@@ -166,6 +169,42 @@ namespace HexaBill.Api.Modules.Branches
 
             var from = fromDate ?? DateTime.UtcNow.Date.AddYears(-1);
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
+
+            // When Sales.BranchId/RouteId columns don't exist (e.g. production before migration), return safe summary with zeros
+            if (!await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+            {
+                var safeRouteList = await _context.Routes
+                    .AsNoTracking()
+                    .Where(r => r.BranchId == branchId && (tenantId <= 0 || r.TenantId == tenantId))
+                    .Select(r => new { r.Id, r.Name })
+                    .ToListAsync();
+                var safeRoutes = safeRouteList.Select(r => new RouteSummaryDto
+                {
+                    RouteId = r.Id,
+                    RouteName = r.Name,
+                    BranchName = branch.Name,
+                    TotalSales = 0,
+                    TotalExpenses = 0,
+                    CostOfGoodsSold = 0,
+                    Profit = 0
+                }).ToList();
+                return new BranchSummaryDto
+                {
+                    BranchId = branch.Id,
+                    BranchName = branch.Name,
+                    TotalSales = 0,
+                    TotalExpenses = 0,
+                    CostOfGoodsSold = 0,
+                    Profit = 0,
+                    Routes = safeRoutes,
+                    GrowthPercent = null,
+                    CollectionsRatio = null,
+                    AverageInvoiceSize = 0,
+                    InvoiceCount = 0,
+                    TotalPayments = 0,
+                    UnpaidAmount = 0
+                };
+            }
 
             var routeIds = await _context.Routes.Where(r => r.BranchId == branchId && (tenantId <= 0 || r.TenantId == tenantId)).Select(r => r.Id).ToListAsync();
             // Include sales by BranchId match OR by RouteId in branch. Legacy: include null BranchId when RouteId matches.
@@ -367,6 +406,9 @@ namespace HexaBill.Api.Modules.Branches
         /// <param name="toEnd">Exclusive end (e.g. to.AddDays(1) from controller). Use InvoiceDate &lt; toEnd.</param>
         public async Task<BranchSummaryDto?> GetUnassignedSalesSummaryAsync(int tenantId, DateTime from, DateTime toEnd)
         {
+            if (!await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+                return null;
+
             var salesQuery = (tenantId <= 0 ? _context.Sales : _context.Sales.Where(s => s.TenantId == tenantId))
                 .Where(s => !s.IsDeleted && s.BranchId == null && s.RouteId == null
                     && s.InvoiceDate >= from && s.InvoiceDate < toEnd);

@@ -74,6 +74,31 @@ DO $$ BEGIN
   END IF;
 END $$;
 
+-- 5b. Optional backfill: set Sales.BranchId (and RouteId) for existing sales where NULL,
+--     so branch/route reports and branch summary show data. Per tenant: assign first branch by id.
+--     Run after section 5. Safe to run multiple times (only updates WHERE "BranchId" IS NULL).
+DO $$
+DECLARE
+  r RECORD;
+  first_branch_id int;
+  first_route_id int;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND column_name='BranchId') THEN
+    RETURN;
+  END IF;
+  FOR r IN (SELECT DISTINCT "TenantId" FROM "Sales" WHERE "TenantId" IS NOT NULL AND "TenantId" > 0)
+  LOOP
+    SELECT "Id" INTO first_branch_id FROM "Branches" WHERE "TenantId" = r."TenantId" ORDER BY "Id" ASC LIMIT 1;
+    IF first_branch_id IS NOT NULL THEN
+      UPDATE "Sales" SET "BranchId" = first_branch_id WHERE "TenantId" = r."TenantId" AND "BranchId" IS NULL AND "IsDeleted" = false;
+      SELECT "Id" INTO first_route_id FROM "Routes" WHERE "BranchId" = first_branch_id AND ("TenantId" = r."TenantId" OR "TenantId" IS NULL) ORDER BY "Id" ASC LIMIT 1;
+      IF first_route_id IS NOT NULL THEN
+        UPDATE "Sales" SET "RouteId" = first_route_id WHERE "TenantId" = r."TenantId" AND "BranchId" = first_branch_id AND "RouteId" IS NULL AND "IsDeleted" = false;
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
+
 -- 6. Add IsActive to Routes/Branches if missing
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Routes' AND column_name='IsActive') AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='Routes') THEN
