@@ -5,6 +5,7 @@ Date: 2024
 */
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
@@ -853,10 +854,12 @@ namespace HexaBill.Api.Modules.Customers
                     .OrderBy(sr => sr.ReturnDate)
                     .ToListAsync();
             }
-            catch (Microsoft.Data.Sqlite.SqliteException sqlEx) when (sqlEx.Message.Contains("no such column"))
+            catch (Exception dbEx) when (
+                (dbEx is Microsoft.Data.Sqlite.SqliteException sqlEx && sqlEx.Message.Contains("no such column")) ||
+                (dbEx is PostgresException pgEx && (pgEx.SqlState == "42703" /* undefined_column */ || pgEx.Message?.Contains("column") == true)))
             {
-                // SQLite database - use projection to exclude columns that don't exist
-                Console.WriteLine($"⚠️ SQLite detected - using projection to exclude missing columns");
+                // Schema mismatch (SQLite missing columns or PostgreSQL migrations not applied) - use safe projection
+                Console.WriteLine($"⚠️ Schema fallback - using projection to exclude possibly missing columns: {dbEx.Message}");
                 var salesReturnsData = await salesReturnsQuery
                     .Select(sr => new
                     {
