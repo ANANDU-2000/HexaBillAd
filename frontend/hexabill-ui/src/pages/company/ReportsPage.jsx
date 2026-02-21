@@ -52,9 +52,9 @@ import {
 const REPORTS_DATE_RANGE_KEY = 'hexabill_reports_date_range'
 
 function getDefaultDateRange() {
-  // Use 365 days to capture full history - prevents "No data found" when transactions are older
+  // Use 2 years to capture full history (e.g. migrated 2025 data) - prevents "No data found"
   return {
-    from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    from: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     to: new Date().toISOString().split('T')[0]
   }
 }
@@ -692,17 +692,9 @@ const ReportsPage = () => {
       } else if (activeTab === 'outstanding') {
         try {
           setLoading(true)
-          // CRITICAL: Get ALL pending bills regardless of invoice date
-          // This ensures backdated invoices show as overdue
-          // Only apply date filter if user has explicitly changed from default
-          const defaultFrom = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          const defaultTo = new Date().toISOString().split('T')[0]
-          const isDefaultRange = dateRange.from === defaultFrom && dateRange.to === defaultTo
-
+          // CRITICAL: Get ALL pending bills with NO date filter so real outstanding total shows (e.g. 10,864.41 AED)
+          // Backend returns all pending/partial invoices when from/to omitted
           const pendingBillsResponse = await reportsAPI.getPendingBills({
-            // Only send date range if user explicitly changed it from default
-            from: isDefaultRange ? undefined : dateRange.from,
-            to: isDefaultRange ? undefined : dateRange.to,
             status: 'all'
           })
           console.log('Outstanding bills response:', pendingBillsResponse)

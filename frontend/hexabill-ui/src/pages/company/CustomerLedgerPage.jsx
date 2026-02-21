@@ -104,9 +104,14 @@ const CustomerLedgerPage = () => {
   const [editingCustomer, setEditingCustomer] = useState(null)
   const [showSendStatementModal, setShowSendStatementModal] = useState(false)
   const [payAllOutstandingMode, setPayAllOutstandingMode] = useState(false)
-  const [dateRange, setDateRange] = useState({
-    from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0], // Last 12 months
-    to: new Date().toISOString().split('T')[0] // Today
+  const [dateRange, setDateRange] = useState(() => {
+    const now = new Date()
+    const twoYearsAgo = new Date(now)
+    twoYearsAgo.setFullYear(now.getFullYear() - 2)
+    return {
+      from: twoYearsAgo.toISOString().split('T')[0], // 2 years back so 2025+ data always visible
+      to: now.toISOString().split('T')[0]
+    }
   })
   const [ledgerFilters, setLedgerFilters] = useState({
     status: 'all',
@@ -116,9 +121,13 @@ const CustomerLedgerPage = () => {
   const [ledgerRouteId, setLedgerRouteId] = useState('')
   const [ledgerStaffId, setLedgerStaffId] = useState('')
   // Staged filter values (used by Apply button); applied values above drive API calls
-  const [filterDraft, setFilterDraft] = useState(() => ({
-    from: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0],
+  const [filterDraft, setFilterDraft] = useState(() => {
+    const now = new Date()
+    const twoYearsAgo = new Date(now)
+    twoYearsAgo.setFullYear(now.getFullYear() - 2)
+    return {
+      from: twoYearsAgo.toISOString().split('T')[0],
+      to: now.toISOString().split('T')[0],
     branchId: '',
     routeId: '',
     staffId: ''
