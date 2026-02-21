@@ -1,11 +1,12 @@
-# Build stage - works when Docker context is backend/HexaBill.Api (as in render.yaml)
+# Build stage - supports both repo-root context (Render default) and backend/HexaBill.Api context (render.yaml)
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY HexaBill.Api.csproj ./
+# When context is repo root: use backend/HexaBill.Api/...; when context is backend/HexaBill.Api: use same path (only csproj exists)
+COPY backend/HexaBill.Api/HexaBill.Api.csproj ./
 RUN dotnet restore
 
-COPY . ./
+COPY backend/HexaBill.Api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Run stage
