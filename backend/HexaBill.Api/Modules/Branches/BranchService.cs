@@ -16,6 +16,9 @@ namespace HexaBill.Api.Modules.Branches
         Task<BranchDto?> UpdateBranchAsync(int id, CreateBranchRequest request, int tenantId);
         Task<bool> DeleteBranchAsync(int id, int tenantId);
         Task<BranchSummaryDto?> GetBranchSummaryAsync(int branchId, int tenantId, DateTime? fromDate, DateTime? toDate);
+        /// <summary>Get summary for sales with BranchId==null and RouteId==null (unassigned/legacy).</summary>
+        /// <param name="toEnd">Exclusive end date (e.g. to.AddDays(1)).</param>
+        Task<BranchSummaryDto?> GetUnassignedSalesSummaryAsync(int tenantId, DateTime from, DateTime toEnd);
     }
 
     public class BranchService : IBranchService
@@ -354,6 +357,42 @@ namespace HexaBill.Api.Modules.Branches
                 InvoiceCount = invoiceCount,
                 TotalPayments = totalPayments,
                 UnpaidAmount = totalSales > totalPayments ? totalSales - totalPayments : 0
+            };
+        }
+
+        /// <summary>
+        /// Get summary for sales with BranchId==null and RouteId==null (unassigned/legacy).
+        /// Used in Branch Comparison report so unassigned sales are visible.
+        /// </summary>
+        /// <param name="toEnd">Exclusive end (e.g. to.AddDays(1) from controller). Use InvoiceDate &lt; toEnd.</param>
+        public async Task<BranchSummaryDto?> GetUnassignedSalesSummaryAsync(int tenantId, DateTime from, DateTime toEnd)
+        {
+            var salesQuery = (tenantId <= 0 ? _context.Sales : _context.Sales.Where(s => s.TenantId == tenantId))
+                .Where(s => !s.IsDeleted && s.BranchId == null && s.RouteId == null
+                    && s.InvoiceDate >= from && s.InvoiceDate < toEnd);
+
+            var saleIds = await salesQuery.Select(s => s.Id).ToListAsync();
+            if (saleIds.Count == 0) return null;
+
+            var totalSales = await _context.Sales.Where(s => saleIds.Contains(s.Id)).SumAsync(s => s.GrandTotal);
+            var invoiceCount = saleIds.Count;
+            var averageInvoiceSize = invoiceCount > 0 ? totalSales / invoiceCount : 0m;
+
+            return new BranchSummaryDto
+            {
+                BranchId = 0,
+                BranchName = "Unassigned",
+                TotalSales = totalSales,
+                TotalExpenses = 0,
+                CostOfGoodsSold = 0,
+                Profit = totalSales,
+                Routes = new List<RouteSummaryDto>(),
+                GrowthPercent = null,
+                CollectionsRatio = null,
+                AverageInvoiceSize = averageInvoiceSize,
+                InvoiceCount = invoiceCount,
+                TotalPayments = 0,
+                UnpaidAmount = totalSales
             };
         }
     }

@@ -130,6 +130,29 @@ namespace HexaBill.Api.Modules.Reports
                     });
                 }
 
+                // Include "Unassigned" row for sales with BranchId==null and RouteId==null (legacy data)
+                try
+                {
+                    var unassigned = await _branchService.GetUnassignedSalesSummaryAsync(tenantId, from, to.AddDays(1));
+                    if (unassigned != null && unassigned.TotalSales > 0)
+                    {
+                        result.Add(new BranchComparisonItemDto
+                        {
+                            BranchId = unassigned.BranchId,
+                            BranchName = unassigned.BranchName,
+                            TotalSales = unassigned.TotalSales,
+                            TotalExpenses = unassigned.TotalExpenses,
+                            Profit = unassigned.Profit,
+                            Routes = unassigned.Routes,
+                            GrowthPercent = null
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Warning: Could not load unassigned sales for branch report: {ex.Message}");
+                }
+
                 result = result.OrderByDescending(x => x.TotalSales).ToList();
 
                 return Ok(new ApiResponse<List<BranchComparisonItemDto>>

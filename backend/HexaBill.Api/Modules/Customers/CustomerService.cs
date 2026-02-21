@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Shared.Extensions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -780,15 +781,16 @@ namespace HexaBill.Api.Modules.Customers
                     throw new ArgumentException("Invalid customer ID");
 
                 // Sales: apply optional branch/route/staff/date filters
-                // CRITICAL: For PostgreSQL, check if BranchId column exists BEFORE building query
-                // This prevents exceptions during query building
+                // CRITICAL: For PostgreSQL, normalize dates with ToUtcKind (matches ReportsController)
+                var from = fromDate.HasValue ? fromDate.Value.ToUtcKind() : (DateTime?)null;
+                var toEnd = toDate.HasValue ? toDate.Value.ToUtcKind() : (DateTime?)null;
+                // Note: Controller passes toDate as exclusive end (AddDays(1) applied), so use toEnd directly
                 var salesQuery = _context.Sales
                     .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted);
             
-                // Apply date filters first (these columns always exist)
-                if (fromDate.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate >= fromDate.Value);
-                // CRITICAL: toDate is sent as YYYY-MM-DD (midnight). Include full day by using < next day
-                if (toDate.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate < toDate.Value.Date.AddDays(1));
+                // Apply date filters (columns always exist)
+                if (from.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate >= from.Value);
+                if (toEnd.HasValue) salesQuery = salesQuery.Where(s => s.InvoiceDate < toEnd.Value);
                 
                 // CRITICAL: For PostgreSQL, check if BranchId column exists before applying filters
                 // Skip branch/route/staff filters if column doesn't exist to prevent 500 errors
@@ -818,7 +820,7 @@ namespace HexaBill.Api.Modules.Customers
                     .ThenBy(s => s.Id)
                     .ToListAsync();
 
-                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, from={fromDate?.ToString("yyyy-MM-dd")}, to={toDate?.ToString("yyyy-MM-dd")}, salesCount={sales.Count}, branchId={branchId}, routeId={routeId}");
+                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, tenantId={tenantId}, from={from?.ToString("yyyy-MM-dd")}, toEnd={toEnd?.ToString("yyyy-MM-dd")}, salesCount={sales.Count}, branchId={branchId}, routeId={routeId}");
 
             var filteredSaleIds = new HashSet<int>(sales.Select(s => s.Id));
 
@@ -830,16 +832,16 @@ namespace HexaBill.Api.Modules.Customers
                 .ThenBy(p => p.Id)
                 .ToListAsync();
             payments = payments.Where(p => !p.SaleId.HasValue || filteredSaleIds.Contains(p.SaleId.Value)).ToList();
-            if (fromDate.HasValue) payments = payments.Where(p => p.PaymentDate >= fromDate.Value).ToList();
-            if (toDate.HasValue) payments = payments.Where(p => p.PaymentDate < toDate.Value.Date.AddDays(1)).ToList();
+            if (from.HasValue) payments = payments.Where(p => p.PaymentDate >= from.Value).ToList();
+            if (toEnd.HasValue) payments = payments.Where(p => p.PaymentDate < toEnd.Value).ToList();
 
             // Sales returns: filter by date if provided (returns don't have branch/route)
             // CRITICAL FIX: SQLite may not have BranchId/RouteId columns in SaleReturns table
             // Use projection to only select columns we actually use, avoiding BranchId/RouteId
             var salesReturnsQuery = _context.SaleReturns
                 .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId);
-            if (fromDate.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate >= fromDate.Value);
-            if (toDate.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate < toDate.Value.Date.AddDays(1));
+            if (from.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate >= from.Value);
+            if (toEnd.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate < toEnd.Value);
             
             // CRITICAL FIX: SQLite may not have BranchId, RouteId, or ReturnType columns
             // Use try-catch to handle missing columns gracefully

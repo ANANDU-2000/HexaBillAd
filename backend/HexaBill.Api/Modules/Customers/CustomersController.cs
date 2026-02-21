@@ -390,7 +390,10 @@ namespace HexaBill.Api.Modules.Customers
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                var ledgerEntries = await _customerService.GetCustomerLedgerAsync(id, tenantId, branchId, routeId, staffId, fromDate, toDate);
+                // CRITICAL: Normalize dates for PostgreSQL (match ReportsController pattern)
+                var fromNorm = fromDate.HasValue ? fromDate.Value.ToUtcKind() : (DateTime?)null;
+                var toNorm = toDate.HasValue ? ((toDate.Value.Date.AddDays(1)).ToUtcKind()) : (DateTime?)null;
+                var ledgerEntries = await _customerService.GetCustomerLedgerAsync(id, tenantId, branchId, routeId, staffId, fromNorm, toNorm);
                 return Ok(new ApiResponse<List<CustomerLedgerEntry>>
                 {
                     Success = true,
