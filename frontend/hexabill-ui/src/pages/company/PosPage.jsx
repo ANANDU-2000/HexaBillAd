@@ -1159,6 +1159,8 @@ const PosPage = () => {
           const saleId = response.data?.id
           toast.success(`Invoice ${invoiceNo || editingSaleId} updated successfully!`, { id: 'invoice-update', duration: 4000 })
 
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
+
           // Refresh products and customers after update (non-blocking for better UX)
           Promise.all([
             loadProducts(),
@@ -1230,6 +1232,9 @@ const PosPage = () => {
           }
 
           toast.success(invoiceNo ? `Invoice #${invoiceNo} created successfully` : 'Invoice created successfully', { id: 'invoice-save', duration: 5000 })
+
+          // Notify all pages (Sales Ledger, Customer Ledger, Dashboard) to refresh
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
 
           // Refresh products and customers after billing (non-blocking for better UX)
           Promise.all([
@@ -2811,6 +2816,7 @@ const PosPage = () => {
                         const invoiceNo = response.data?.invoiceNo
                         const saleId = response.data?.id
                         toast.success(`Invoice ${invoiceNo || editingSaleId} updated successfully!`, { id: 'invoice-update', duration: 4000 })
+                        window.dispatchEvent(new CustomEvent('dataUpdated'))
                         await Promise.all([
                           loadProducts(),
                           loadCustomers(),
@@ -2936,6 +2942,7 @@ const PosPage = () => {
                         const invoiceNo = response.data?.invoiceNo
                         const saleId = response.data?.id
                         toast.success(`Invoice ${invoiceNo || editingSaleId} updated successfully!`, { id: 'invoice-update', duration: 4000 })
+                        window.dispatchEvent(new CustomEvent('dataUpdated'))
                         await Promise.all([
                           loadProducts(),
                           loadCustomers(),

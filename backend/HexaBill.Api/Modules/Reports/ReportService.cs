@@ -2029,16 +2029,32 @@ namespace HexaBill.Api.Modules.Reports
 
             var salesQuery = _context.Sales
                 .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
-            if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == branchId.Value);
-            if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == routeId.Value);
+            // Include null BranchId/RouteId records (legacy data created before branch columns existed)
+            if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+            if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
             if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
             if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
             {
                 var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
                 if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                {
                     salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                }
                 else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
-                    salesQuery = salesQuery.Where(s => false);
+                {
+                    var branchIds = await _context.BranchStaff
+                        .Where(bs => bs.UserId == userIdForStaff.Value)
+                        .Select(bs => bs.BranchId)
+                        .ToListAsync();
+                    if (branchIds.Count > 0)
+                    {
+                        salesQuery = salesQuery.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                    }
+                    else
+                    {
+                        salesQuery = salesQuery.Where(s => false);
+                    }
+                }
             }
             var sales = await salesQuery
                 .OrderBy(s => s.InvoiceDate)

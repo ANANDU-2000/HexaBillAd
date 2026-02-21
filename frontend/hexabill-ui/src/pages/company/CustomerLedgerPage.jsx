@@ -393,11 +393,8 @@ const CustomerLedgerPage = () => {
         setLedgerRouteId(routeIdStr)
         setFilterDraft(prev => ({ ...prev, branchId: branchIdStr, routeId: routeIdStr }))
       }
-      if (!ledgerStaffId && user.id) {
-        const staffIdStr = user.id.toString()
-        setLedgerStaffId(staffIdStr)
-        setFilterDraft(prev => ({ ...prev, staffId: staffIdStr }))
-      }
+      // NOTE: Do NOT auto-set staffId for staff users. Staff should see ALL customer transactions
+      // (from any creator). The staffId filter is only for admin/owner to filter by specific staff.
     }
   }, [user, availableBranches, availableRoutes, ledgerBranchId, ledgerRouteId, ledgerStaffId, loading])
 

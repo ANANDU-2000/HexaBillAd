@@ -473,7 +473,7 @@ namespace HexaBill.Api.Modules.Customers
         }
 
         [HttpPost("{id}/recalculate-balance")]
-        [Authorize(Roles = "Admin,Owner")] // CRITICAL: Allow Owner role
+        [Authorize(Roles = "Admin,Owner,Staff")] // Allow Staff to recalculate when viewing customer ledger
         public async Task<ActionResult<ApiResponse<CustomerDto>>> RecalculateBalance(int id)
         {
             try
