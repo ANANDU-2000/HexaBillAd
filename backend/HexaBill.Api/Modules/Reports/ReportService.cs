@@ -4,6 +4,7 @@
  * COGS = SaleItems (Qty × ConversionToBase × CostPrice). Use same in ProfitService and dashboard.
  */
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
@@ -2124,38 +2125,55 @@ namespace HexaBill.Api.Modules.Reports
             var from = (fromDate ?? DateTime.UtcNow.Date.AddDays(-365)).ToUtcKind();
             var to = (toDate ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1).ToUtcKind();
             var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
-
-            var salesQuery = _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
-            if (hasSalesBranchRoute)
+            List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)> sales;
+            try
             {
-                if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
-                if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
-                if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                var salesQuery = _context.Sales
+                    .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
+                if (hasSalesBranchRoute)
                 {
-                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
-                    if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
-                        salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
-                    else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                    if (branchId.HasValue) salesQuery = salesQuery.Where(s => s.BranchId == null || s.BranchId == branchId.Value);
+                    if (routeId.HasValue) salesQuery = salesQuery.Where(s => s.RouteId == null || s.RouteId == routeId.Value);
+                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
-                        var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
-                        if (branchIds.Count > 0)
-                            salesQuery = salesQuery.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
-                        else
-                            salesQuery = salesQuery.Where(s => false);
+                        var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                        if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                            salesQuery = salesQuery.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                        else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                        {
+                            var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                            if (branchIds.Count > 0)
+                                salesQuery = salesQuery.Where(s => s.BranchId == null || branchIds.Contains(s.BranchId.Value));
+                            else
+                                salesQuery = salesQuery.Where(s => false);
+                        }
                     }
                 }
-            }
-            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+                if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
 
-            // CRITICAL: Always project Sales to Id, InvoiceNo, InvoiceDate, CustomerId, GrandTotal only (never load full entity).
-            // Avoids 42703 when BranchId/RouteId columns missing; also safe when they exist.
-            var projected = await salesQuery
-                .OrderBy(s => s.InvoiceDate)
-                .ThenBy(s => s.Id)
-                .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
-                .ToListAsync();
-            var sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
+                // CRITICAL: Always project Sales to Id, InvoiceNo, InvoiceDate, CustomerId, GrandTotal only (never load full entity).
+                var projected = await salesQuery
+                    .OrderBy(s => s.InvoiceDate)
+                    .ThenBy(s => s.Id)
+                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
+                    .ToListAsync();
+                sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703")
+            {
+                // Column (e.g. BranchId/RouteId) does not exist - clear schema cache and retry without branch/route filters
+                _salesSchema.ClearColumnCheckCache();
+                hasSalesBranchRoute = false;
+                var salesQuery = _context.Sales
+                    .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
+                if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
+                var projected = await salesQuery
+                    .OrderBy(s => s.InvoiceDate)
+                    .ThenBy(s => s.Id)
+                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
+                    .ToListAsync();
+                sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
+            }
 
             var saleIds = sales.Select(s => s.Id).ToHashSet();
 
