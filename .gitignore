@@ -112,3 +112,12 @@ coverage/
 TestResults/
 [Tt]est[Rr]esult*/
 *.trx
+
+# Publish / build output (regenerate with dotnet publish)
+**/publish-test/
+**/publish/
+
+# Local export/data folders (invoices, PDFs, CSVs - do not commit)
+/ZAYOGA GENERAL TRADING-SOLE PROPERIETORSHIP LLC/
+**/exports/
+**/Export*/
