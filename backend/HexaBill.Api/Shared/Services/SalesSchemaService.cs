@@ -12,7 +12,7 @@ namespace HexaBill.Api.Shared.Services
         private readonly AppDbContext _context;
         private static bool? _cached;
         private static DateTime? _cacheTime;
-        private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(5);
         private static readonly object _lock = new object();
 
         public SalesSchemaService(AppDbContext context)

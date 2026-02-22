@@ -47,6 +47,8 @@ namespace HexaBill.Api.Data
         public DbSet<AuditLog> AuditLogs { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
+        public DbSet<DamageInventory> DamageInventories { get; set; }
+        public DbSet<CreditNote> CreditNotes { get; set; }
         public DbSet<SaleReturn> SaleReturns { get; set; }
         public DbSet<SaleReturnItem> SaleReturnItems { get; set; }
         public DbSet<PurchaseReturn> PurchaseReturns { get; set; }
@@ -74,7 +76,8 @@ namespace HexaBill.Api.Data
             base.OnModelCreating(modelBuilder);
 
             // PostgreSQL Sequences
-            modelBuilder.HasSequence<int>("invoice_number_seq").StartsAt(2000);
+            // All companies start at 0001; Zayorga exception handled in InvoiceNumberService
+            modelBuilder.HasSequence<int>("invoice_number_seq").StartsAt(1);
 
             // Tenant configuration
             modelBuilder.Entity<Tenant>(entity =>
@@ -504,6 +507,32 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
                 entity.HasIndex(e => e.TenantId);
                 entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+            });
+
+            // CreditNote configuration (ERP: credit note for returns on paid invoices)
+            modelBuilder.Entity<CreditNote>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Status).HasMaxLength(20);
+                entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+                entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
+                entity.HasOne(e => e.LinkedReturn).WithMany().HasForeignKey(e => e.LinkedReturnId);
+                entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
+                entity.HasIndex(e => e.TenantId);
+                entity.HasIndex(e => new { e.TenantId, e.CustomerId });
+            });
+
+            // DamageInventory configuration (ERP: damaged return stock tracking)
+            modelBuilder.Entity<DamageInventory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Quantity).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => new { e.TenantId, e.ProductId, e.BranchId });
+                entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);
+                entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
+                entity.HasOne(e => e.Branch).WithMany().HasForeignKey(e => e.BranchId).IsRequired(false);
+                entity.HasOne(e => e.SourceReturn).WithMany().HasForeignKey(e => e.SourceReturnId).IsRequired(false);
             });
 
             // SaleReturn configuration

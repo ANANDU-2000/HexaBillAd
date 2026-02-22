@@ -1292,10 +1292,16 @@ namespace HexaBill.Api.Modules.Customers
             if (customer == null)
                 throw new InvalidOperationException("Customer not found");
 
-            // Get company settings
+            // Get company settings - try TenantId first, fallback to OwnerId for legacy data
             var settings = await _context.Settings
-                .Where(s => s.TenantId == tenantId)  // CRITICAL: Filter by owner
+                .Where(s => s.TenantId == tenantId)
                 .ToDictionaryAsync(s => s.Key, s => s.Value);
+            if (settings.Count == 0)
+            {
+                settings = await _context.Settings
+                    .Where(s => s.OwnerId == tenantId)
+                    .ToDictionaryAsync(s => s.Key, s => s.Value);
+            }
             var companyName = settings.GetValueOrDefault("COMPANY_NAME_EN") ?? "HexaBill";
                 var companyAddress = settings.GetValueOrDefault("COMPANY_ADDRESS") ?? "Mussafah 44 - Abu Dhabi";
             var companyTrn = settings.GetValueOrDefault("COMPANY_TRN") ?? "";
@@ -1419,10 +1425,12 @@ namespace HexaBill.Api.Modules.Customers
 
                 // NEW GROUPED LOGIC FOR PDF: Invoice → Payment (if paid) → Next Invoice → Payment → etc.
                 // CRITICAL: Use same logic as GetCustomerLedgerAsync to prevent duplicates
-                // Create invoice lookup by SaleId (not invoice number, to avoid duplicates)
-                var invoiceLookupBySaleId = sales.ToDictionary(s => s.Id, s => s.InvoiceNo ?? "");
+                // Create invoice lookup by SaleId - use GroupBy to avoid ToDictionary duplicate-key exception
+                var invoiceLookupBySaleId = sales
+                    .GroupBy(s => s.Id)
+                    .ToDictionary(g => g.Key, g => g.First().InvoiceNo ?? "");
                 
-                // Group payments by their linked SaleId (invoice) - use payment's SaleId directly
+                // Group payments by their linked SaleId - GroupBy ensures no duplicate key
                 var paymentsBySaleId = payments
                     .Where(p => p.SaleId.HasValue)
                     .GroupBy(p => p.SaleId!.Value)
@@ -1532,7 +1540,9 @@ namespace HexaBill.Api.Modules.Customers
             var closingBalance = calculatedClosingBalance; // For summary section only - table uses runningBalance from loop
 
                 // Generate PDF using QuestPDF - CheckIfAllTextGlyphsAreAvailable=false prevents Linux font errors
-                
+                byte[] pdfBytes;
+                try
+                {
             var document = Document.Create(container =>
             {
                 container.Page(page =>
@@ -2282,7 +2292,17 @@ namespace HexaBill.Api.Modules.Customers
                 });
             });
 
-            return document.GeneratePdf();
+            pdfBytes = document.GeneratePdf();
+                }
+                catch (Exception pdfEx)
+                {
+                    Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF failed for customer {customerId}: {pdfEx.Message}");
+                    Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF Stack: {pdfEx.StackTrace}");
+                    if (pdfEx.InnerException != null)
+                        Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF Inner: {pdfEx.InnerException.Message}");
+                    throw new InvalidOperationException($"Failed to generate PDF. {pdfEx.Message}", pdfEx);
+                }
+            return pdfBytes;
             }
             catch (Exception ex)
             {

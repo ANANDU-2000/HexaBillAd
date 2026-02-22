@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Printer, Download, Share2, Mail, MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { X, Printer, Download, Share2, Mail, MessageCircle, RotateCcw } from 'lucide-react'
 import { salesAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
@@ -7,7 +8,8 @@ import { showToast } from '../utils/toast'
 import PrintOptionsModal from './PrintOptionsModal'
 import ConfirmDangerModal from './ConfirmDangerModal'
 
-const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrint, onNew }) => {
+const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrint, onNew, onReturnItems }) => {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
   const [showPrintOptions, setShowPrintOptions] = useState(false)
@@ -276,6 +278,12 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
     onClose()
   }
 
+  const handleReturnItems = () => {
+    onClose()
+    if (onReturnItems) onReturnItems(saleId)
+    else navigate(`/returns/create?saleId=${saleId}`)
+  }
+
   if (!saleId) return null
 
   return (
@@ -363,7 +371,15 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
           >
             New Invoice
           </button>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleReturnItems}
+              className="inline-flex items-center px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm"
+              title="Return Items"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Return Items
+            </button>
             <button
               onClick={handlePrint}
               className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"

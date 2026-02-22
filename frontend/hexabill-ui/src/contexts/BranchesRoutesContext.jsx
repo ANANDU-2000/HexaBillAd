@@ -68,13 +68,20 @@ export function BranchesRoutesProvider({ children }) {
         setStaffHasNoAssignments(false)
       }
 
-      const [bRes, rRes] = await Promise.all([
-        branchesAPI.getBranches().catch(() => ({ success: false })),
-        routesAPI.getRoutes().catch(() => ({ success: false }))
-      ])
-
-      let branchList = bRes?.success && bRes?.data ? bRes.data : []
-      let routeList = rRes?.success && rRes?.data ? rRes.data : []
+      let branchList = []
+      let routeList = []
+      try {
+        const [bRes, rRes] = await Promise.all([
+          branchesAPI.getBranches(),
+          routesAPI.getRoutes()
+        ])
+        branchList = (bRes?.success && Array.isArray(bRes?.data)) ? bRes.data : (Array.isArray(bRes?.data) ? bRes.data : (Array.isArray(bRes) ? bRes : []))
+        routeList = (rRes?.success && Array.isArray(rRes?.data)) ? rRes.data : (Array.isArray(rRes?.data) ? rRes.data : (Array.isArray(rRes) ? rRes : []))
+      } catch (apiErr) {
+        const msg = apiErr?.response?.data?.message || apiErr?.message || 'Failed to load branches and routes'
+        setError(msg)
+        console.error('[BranchesRoutesContext]', msg, apiErr?.response?.data)
+      }
 
       if (!isManagerOrAdmin && (serverAssignedBranchIds.length > 0 || serverAssignedRouteIds.length > 0)) {
         if (serverAssignedBranchIds.length > 0) {

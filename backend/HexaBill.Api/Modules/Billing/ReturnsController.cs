@@ -73,6 +73,31 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
+        [HttpGet("sales/{id}/pdf")]
+        public async Task<ActionResult> GetReturnBillPdf(int id)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var pdfBytes = await _returnService.GenerateReturnBillPdfAsync(id, tenantId);
+                return File(pdfBytes, "application/pdf", $"return_bill_{id}_{DateTime.UtcNow:yyyyMMdd}.pdf");
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[GetReturnBillPdf] Error for return {id}: {ex.Message}");
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Failed to generate return bill PDF.",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpGet("sales")]
         public async Task<ActionResult<ApiResponse<object>>> GetSaleReturns(
             [FromQuery] int? saleId = null,
@@ -165,6 +190,63 @@ namespace HexaBill.Api.Modules.Billing
             catch (Exception ex)
             {
                 return BadRequest(new ApiResponse<SaleReturnDto> { Success = false, Message = ex.Message });
+            }
+        }
+
+        [HttpGet("credit-notes")]
+        public async Task<ActionResult<ApiResponse<List<CreditNoteDto>>>> GetCreditNotes(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? customerId = null)
+        {
+            try
+            {
+                var list = await _returnService.GetCreditNotesAsync(CurrentTenantId, fromDate, toDate, customerId);
+                return Ok(new ApiResponse<List<CreditNoteDto>>
+                {
+                    Success = true,
+                    Message = "Credit notes retrieved successfully",
+                    Data = list
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new ApiResponse<List<CreditNoteDto>>
+                {
+                    Success = false,
+                    Message = ex.Message ?? "Failed to load credit notes",
+                    Data = new List<CreditNoteDto>(),
+                    Errors = new List<string> { ex.Message ?? "" }
+                });
+            }
+        }
+
+        [HttpGet("damage-report")]
+        public async Task<ActionResult<ApiResponse<List<DamageReportEntryDto>>>> GetDamageReport(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? branchId = null,
+            [FromQuery] int? routeId = null)
+        {
+            try
+            {
+                var list = await _returnService.GetDamageReportAsync(CurrentTenantId, fromDate, toDate, branchId, routeId);
+                return Ok(new ApiResponse<List<DamageReportEntryDto>>
+                {
+                    Success = true,
+                    Message = "Damage report retrieved successfully",
+                    Data = list
+                });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new ApiResponse<List<DamageReportEntryDto>>
+                {
+                    Success = false,
+                    Message = ex.Message ?? "Failed to load damage report",
+                    Data = new List<DamageReportEntryDto>(),
+                    Errors = new List<string> { ex.Message ?? "" }
+                });
             }
         }
 

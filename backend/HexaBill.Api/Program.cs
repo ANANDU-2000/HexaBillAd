@@ -1861,12 +1861,12 @@ _ = Task.Run(async () =>
                 {
                     initLogger.LogInformation("Syncing invoice number sequence with existing data...");
                     
-                    // Get the highest invoice number from Sales table
+                    // Get the highest invoice number from Sales table (default 1 so new companies start at 0001)
                     var maxInvoiceQuery = @"
-                        SELECT COALESCE(MAX(CAST(""InvoiceNo"" AS INTEGER)), 2000) 
+                        SELECT COALESCE(MAX(CAST(TRIM(""InvoiceNo"") AS INTEGER)), 1) 
                         FROM ""Sales"" 
                         WHERE ""IsDeleted"" = false 
-                        AND ""InvoiceNo"" ~ '^[0-9]+$'";
+                        AND ""InvoiceNo"" ~ '^\s*[0-9]+\s*$'";
                     
                     using (var command = context.Database.GetDbConnection().CreateCommand())
                     {
@@ -1877,18 +1877,16 @@ _ = Task.Run(async () =>
                         }
                         
                         var result = await command.ExecuteScalarAsync();
-                        if (result != null && int.TryParse(result.ToString(), out int maxNum))
+                        int nextValue = 1;
+                        if (result != null && int.TryParse(result.ToString(), out int maxNum) && maxNum >= 1)
+                            nextValue = maxNum + 1;
+                        using (var syncCommand = context.Database.GetDbConnection().CreateCommand())
                         {
-                            // Set sequence to max + 1
-                            var nextValue = maxNum + 1;
-                            var syncSequenceQuery = $"SELECT setval('invoice_number_seq', {nextValue});";
-                            
-                            using (var syncCommand = context.Database.GetDbConnection().CreateCommand())
-                            {
-                                syncCommand.CommandText = syncSequenceQuery;
-                                await syncCommand.ExecuteScalarAsync();
-                                initLogger.LogInformation("✅ Invoice sequence synced: Current max = {MaxInvoice}, Next will be = {NextValue}", maxNum, nextValue);
-                            }
+                            syncCommand.CommandText = $"SELECT setval('invoice_number_seq', {nextValue});";
+                            if (syncCommand.Connection?.State != System.Data.ConnectionState.Open)
+                                await context.Database.OpenConnectionAsync();
+                            await syncCommand.ExecuteScalarAsync();
+                            initLogger.LogInformation("✅ Invoice sequence synced: Next value = {NextValue}", nextValue);
                         }
                     }
                 }

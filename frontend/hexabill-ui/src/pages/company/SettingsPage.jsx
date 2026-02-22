@@ -17,7 +17,8 @@ import {
   HardDrive,
   FolderDown,
   Shield,
-  History
+  History,
+  RotateCcw
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { Input, Select, TextArea } from '../../components/Form'
@@ -68,7 +69,11 @@ const SettingsPage = () => {
     cloudBackupClientSecret: '',
     cloudBackupRefreshToken: '',
     cloudBackupFolderId: '',
-    lowStockGlobalThreshold: '' // #55: optional global fallback when product ReorderLevel is 0
+    lowStockGlobalThreshold: '', // #55: optional global fallback when product ReorderLevel is 0
+    returnPolicyHeader: '',
+    returnPolicyBody: '',
+    returnPolicyFooter: '',
+    returnBillTitle: 'SALES RETURN NOTE'
   })
 
   const [dangerModal, setDangerModal] = useState({
@@ -323,7 +328,11 @@ const SettingsPage = () => {
           cloudBackupClientSecret: response.data.CLOUD_BACKUP_CLIENT_SECRET || response.data.cloudBackupClientSecret || '',
           cloudBackupRefreshToken: response.data.CLOUD_BACKUP_REFRESH_TOKEN || response.data.cloudBackupRefreshToken || '',
           cloudBackupFolderId: response.data.CLOUD_BACKUP_FOLDER_ID || response.data.cloudBackupFolderId || '',
-          lowStockGlobalThreshold: response.data.LOW_STOCK_GLOBAL_THRESHOLD ?? response.data.lowStockGlobalThreshold ?? ''
+          lowStockGlobalThreshold: response.data.LOW_STOCK_GLOBAL_THRESHOLD ?? response.data.lowStockGlobalThreshold ?? '',
+          returnPolicyHeader: response.data.RETURN_POLICY_HEADER ?? response.data.returnPolicyHeader ?? '',
+          returnPolicyBody: response.data.RETURN_POLICY_BODY ?? response.data.returnPolicyBody ?? '',
+          returnPolicyFooter: response.data.RETURN_POLICY_FOOTER ?? response.data.returnPolicyFooter ?? '',
+          returnBillTitle: response.data.RETURN_BILL_TITLE ?? response.data.returnBillTitle ?? 'SALES RETURN NOTE'
         }
         setSettings(mappedSettings)
         setInitialSettings(JSON.parse(JSON.stringify(mappedSettings))) // Deep copy for comparison
@@ -360,7 +369,11 @@ const SettingsPage = () => {
         CLOUD_BACKUP_CLIENT_SECRET: data.cloudBackupClientSecret || '',
         CLOUD_BACKUP_REFRESH_TOKEN: data.cloudBackupRefreshToken || '',
         CLOUD_BACKUP_FOLDER_ID: data.cloudBackupFolderId || '',
-        LOW_STOCK_GLOBAL_THRESHOLD: (data.lowStockGlobalThreshold !== undefined && data.lowStockGlobalThreshold !== null && String(data.lowStockGlobalThreshold).trim() !== '') ? String(data.lowStockGlobalThreshold).trim() : ''
+        LOW_STOCK_GLOBAL_THRESHOLD: (data.lowStockGlobalThreshold !== undefined && data.lowStockGlobalThreshold !== null && String(data.lowStockGlobalThreshold).trim() !== '') ? String(data.lowStockGlobalThreshold).trim() : '',
+        RETURN_POLICY_HEADER: data.returnPolicyHeader ?? '',
+        RETURN_POLICY_BODY: data.returnPolicyBody ?? '',
+        RETURN_POLICY_FOOTER: data.returnPolicyFooter ?? '',
+        RETURN_BILL_TITLE: (data.returnBillTitle && data.returnBillTitle.trim() !== '') ? data.returnBillTitle.trim() : 'SALES RETURN NOTE'
       }
 
       // Only include logoUrl if it's set
@@ -791,6 +804,45 @@ const SettingsPage = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Return Template (Print template for return bill) */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center mb-6">
+                <RotateCcw className="h-6 w-6 text-primary-600 mr-3" />
+                <h2 className="text-lg font-semibold text-neutral-900">Return Template</h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">Print template for the sales return bill PDF. Set the document title and return policy text. Header and footer appear at the top and bottom of the return document.</p>
+              <div className="space-y-4">
+                <Input
+                  label="Return document title"
+                  placeholder="SALES RETURN NOTE"
+                  error={errors.returnBillTitle?.message}
+                  {...register('returnBillTitle')}
+                />
+                <p className="text-xs text-neutral-500 -mt-2">Title shown on the return bill PDF (e.g. SALES RETURN NOTE or RETURN BILL).</p>
+                <TextArea
+                  label="Return Policy Header"
+                  placeholder="Returns accepted within 7 days of purchase. Contact support for returns."
+                  rows={2}
+                  error={errors.returnPolicyHeader?.message}
+                  {...register('returnPolicyHeader')}
+                />
+                <TextArea
+                  label="Return Policy Body"
+                  placeholder="Items must be returned in original packaging. Damaged or used items may not be eligible for return. Refunds are processed within 5-7 business days."
+                  rows={4}
+                  error={errors.returnPolicyBody?.message}
+                  {...register('returnPolicyBody')}
+                />
+                <TextArea
+                  label="Return Policy Footer"
+                  placeholder="For questions about returns, contact us at support@company.com"
+                  rows={2}
+                  error={errors.returnPolicyFooter?.message}
+                  {...register('returnPolicyFooter')}
+                />
               </div>
             </div>
           </>

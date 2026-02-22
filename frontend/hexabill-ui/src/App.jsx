@@ -32,6 +32,7 @@ import BranchesPage from './pages/company/BranchesPage'
 import BranchDetailPage from './pages/company/BranchDetailPage'
 import RoutesPage from './pages/company/RoutesPage'
 import RouteDetailPage from './pages/company/RouteDetailPage'
+import ReturnCreatePage from './pages/company/ReturnCreatePage'
 import CustomersPage from './pages/company/CustomersPage'
 import CustomerDetailPage from './pages/company/CustomerDetailPage'
 import SignupPage from './pages/SignupPage'
@@ -190,6 +191,7 @@ function App() {
               <Route path="/ledger" element={<CustomerLedgerPage />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/sales-ledger" element={<SalesLedgerPage />} />
+              <Route path="/returns/create" element={<ReturnCreatePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
               {/* Staff cannot access branches/routes — redirect (defense in depth with early return above) */}

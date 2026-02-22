@@ -2545,7 +2545,7 @@ const CustomerLedgerPage = () => {
                           }
                         })
                       }}
-                      onReturnInvoice={(invoiceId) => navigate(`/reports?tab=returns&saleId=${invoiceId}`)}
+                      onReturnInvoice={(invoiceId) => navigate(`/returns/create?saleId=${invoiceId}`)}
                     />
                   )}
 

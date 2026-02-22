@@ -648,6 +648,8 @@ namespace HexaBill.Api.Models
         public decimal ReturnsToday { get; set; }
         public decimal NetSalesToday { get; set; }
         public int ReturnsCountToday { get; set; }
+        /// <summary>Sum of return line amounts where condition is damaged or write-off (ERP damage loss).</summary>
+        public decimal DamageLossToday { get; set; }
         public decimal PurchasesToday { get; set; }
         public decimal ExpensesToday { get; set; }
         public decimal CogsToday { get; set; }
@@ -1006,6 +1008,8 @@ namespace HexaBill.Api.Models
         public bool RestoreStock { get; set; } = true;
         public bool IsBadItem { get; set; } = false;
         public decimal? Discount { get; set; }
+        /// <summary>When true and invoice is paid, create a credit note linked to this return (for refund/future adjustment).</summary>
+        public bool CreateCreditNote { get; set; }
     }
 
     public class SaleReturnItemRequest
@@ -1016,8 +1020,11 @@ namespace HexaBill.Api.Models
         public decimal Qty { get; set; }
         public string? Reason { get; set; }
         public int? DamageCategoryId { get; set; }
-        /// <summary>True = add back to sellable stock; false = do not add (damaged). If null, derived from DamageCategory or header RestoreStock/IsBadItem.</summary>
+        /// <summary>True = add back to sellable stock; false = do not add (damaged). If null, derived from Condition or DamageCategory or header.</summary>
         public bool? StockEffect { get; set; }
+        /// <summary>Condition per line: resellable, damaged, writeoff. Maps to StockEffect when provided.</summary>
+        [MaxLength(20)]
+        public string? Condition { get; set; }
     }
 
     public class SaleReturnDto
@@ -1038,6 +1045,7 @@ namespace HexaBill.Api.Models
         public int? RouteId { get; set; }
         public string? RouteName { get; set; }
         public string? ReturnType { get; set; }
+        public string? ReturnCategory { get; set; }
         public int CreatedBy { get; set; }
         public string? CreatedByName { get; set; }
         public List<SaleReturnItemDto>? Items { get; set; }
@@ -1050,6 +1058,7 @@ namespace HexaBill.Api.Models
         public decimal QtyReturned { get; set; }
         public string? Reason { get; set; }
         public string? DamageCategoryName { get; set; }
+        public string? Condition { get; set; }
         public decimal Amount { get; set; }
     }
 
@@ -1060,6 +1069,36 @@ namespace HexaBill.Api.Models
         public bool AffectsStock { get; set; }
         public bool IsResaleable { get; set; }
         public int SortOrder { get; set; }
+    }
+
+    public class CreditNoteDto
+    {
+        public int Id { get; set; }
+        public int CustomerId { get; set; }
+        public string? CustomerName { get; set; }
+        public int LinkedReturnId { get; set; }
+        public string? LinkedReturnNo { get; set; }
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "AED";
+        public string Status { get; set; } = "unused";
+        public DateTime CreatedAt { get; set; }
+        public string? CreatedByName { get; set; }
+    }
+
+    /// <summary>One line in the Damage Report: return line where condition is damaged or write-off.</summary>
+    public class DamageReportEntryDto
+    {
+        public int ReturnId { get; set; }
+        public string ReturnNo { get; set; } = string.Empty;
+        public DateTime ReturnDate { get; set; }
+        public string? InvoiceNo { get; set; }
+        public string? CustomerName { get; set; }
+        public string? ProductName { get; set; }
+        public decimal Qty { get; set; }
+        public string Condition { get; set; } = string.Empty; // damaged | writeoff
+        public decimal LineTotal { get; set; }
+        public string? BranchName { get; set; }
+        public string? RouteName { get; set; }
     }
 
     public class CreatePurchaseReturnRequest
@@ -1332,7 +1371,7 @@ namespace HexaBill.Api.Models
     public class SalesLedgerEntryDto
     {
         public DateTime Date { get; set; }
-        public string Type { get; set; } = string.Empty; // "Sale" or "Payment"
+        public string Type { get; set; } = string.Empty; // "Sale", "Payment", or "Return"
         public string InvoiceNo { get; set; } = string.Empty;
         public int? CustomerId { get; set; }
         public string? CustomerName { get; set; }
@@ -1346,6 +1385,7 @@ namespace HexaBill.Api.Models
         public DateTime? PlanDate { get; set; } // Due date (Invoice Date + 30 days)
         public int? SaleId { get; set; }
         public int? PaymentId { get; set; }
+        public int? ReturnId { get; set; }
     }
 
     public class SalesLedgerReportDto
@@ -1361,6 +1401,8 @@ namespace HexaBill.Api.Models
         public decimal OutstandingBalance { get; set; }
         public decimal TotalSales { get; set; }
         public decimal TotalPayments { get; set; }
+        public decimal TotalReturns { get; set; }
+        public decimal NetSales { get; set; }
     }
 }
 

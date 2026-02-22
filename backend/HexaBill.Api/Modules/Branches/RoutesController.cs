@@ -43,9 +43,15 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty list instead of 500 so POS/Branches pages keep working
-                Console.WriteLine($"[GetRoutes] Returning empty list after error: {ex.Message}");
-                return Ok(new ApiResponse<List<RouteDto>> { Success = true, Data = new List<RouteDto>() });
+                Console.WriteLine($"[GetRoutes] Error: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"[GetRoutes] Inner: {ex.InnerException.Message}");
+                return StatusCode(500, new ApiResponse<List<RouteDto>>
+                {
+                    Success = false,
+                    Message = "Failed to load routes. Please try again.",
+                    Data = new List<RouteDto>(),
+                    Errors = new List<string> { ex.Message }
+                });
             }
         }
 

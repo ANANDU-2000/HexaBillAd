@@ -43,9 +43,15 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty list instead of 500 so POS/Branches pages keep working
-                Console.WriteLine($"[GetBranches] Returning empty list after error: {ex.Message}");
-                return Ok(new ApiResponse<List<BranchDto>> { Success = true, Data = new List<BranchDto>() });
+                Console.WriteLine($"[GetBranches] Error: {ex.Message}");
+                if (ex.InnerException != null) Console.WriteLine($"[GetBranches] Inner: {ex.InnerException.Message}");
+                return StatusCode(500, new ApiResponse<List<BranchDto>>
+                {
+                    Success = false,
+                    Message = "Failed to load branches. Please try again.",
+                    Data = new List<BranchDto>(),
+                    Errors = new List<string> { ex.Message }
+                });
             }
         }
 
@@ -72,8 +78,10 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetBranchSummary Error: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
+                Console.WriteLine($"❌ GetBranchSummary Error (branchId={id}): {ex.Message}");
+                Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"❌ InnerException: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}");
                 // Graceful fallback: return empty summary so UI doesn't break (Render/DB schema issues)
                 var fallback = new BranchSummaryDto { BranchId = id, BranchName = "Branch", TotalSales = 0, TotalExpenses = 0, CostOfGoodsSold = 0, Profit = 0, Routes = new List<RouteSummaryDto>() };
                 return Ok(new ApiResponse<BranchSummaryDto> { Success = true, Data = fallback });

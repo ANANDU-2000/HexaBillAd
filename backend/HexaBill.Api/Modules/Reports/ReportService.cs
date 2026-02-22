@@ -174,6 +174,28 @@ namespace HexaBill.Api.Modules.Reports
                     returnsCountToday = 0;
                 }
 
+                decimal damageLossToday = 0;
+                try
+                {
+                    var damageLossQuery = _context.SaleReturnItems
+                        .Where(sri => sri.SaleReturn.ReturnDate >= startDate && sri.SaleReturn.ReturnDate < endDate
+                            && (sri.Condition == "damaged" || sri.Condition == "writeoff"));
+                    if (tenantId > 0)
+                        damageLossQuery = damageLossQuery.Where(sri => sri.SaleReturn.TenantId == tenantId);
+                    if (hasSalesBranchRoute)
+                    {
+                        if (branchId.HasValue)
+                            damageLossQuery = damageLossQuery.Where(sri => sri.SaleReturn.BranchId == null || sri.SaleReturn.BranchId == branchId.Value);
+                        if (routeId.HasValue)
+                            damageLossQuery = damageLossQuery.Where(sri => sri.SaleReturn.RouteId == null || sri.SaleReturn.RouteId == routeId.Value);
+                    }
+                    damageLossToday = await damageLossQuery.SumAsync(sri => (decimal?)sri.LineTotal) ?? 0;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"? Error calculating damageLossToday: {ex.Message}");
+                }
+
                 decimal netSalesToday = salesToday - returnsToday;
 
                 try
@@ -752,6 +774,7 @@ namespace HexaBill.Api.Modules.Reports
                     ReturnsToday = returnsToday,
                     NetSalesToday = netSalesToday,
                     ReturnsCountToday = returnsCountToday,
+                    DamageLossToday = damageLossToday,
                     PurchasesToday = purchasesToday,
                     ExpensesToday = expensesToday,
                     CogsToday = cogsToday,
@@ -792,6 +815,7 @@ namespace HexaBill.Api.Modules.Reports
                     ReturnsToday = 0,
                     NetSalesToday = 0,
                     ReturnsCountToday = 0,
+                    DamageLossToday = 0,
                     PurchasesToday = 0,
                     ExpensesToday = 0,
                     ProfitToday = 0,
@@ -2153,6 +2177,31 @@ namespace HexaBill.Api.Modules.Reports
                 .ThenBy(p => p.Id)
                 .ToListAsync();
 
+            // Get returns in same date range and filters (ERP: Type = Return in sales ledger)
+            var returnsQuery = _context.SaleReturns
+                .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
+            if (hasSalesBranchRoute)
+            {
+                if (branchId.HasValue) returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
+                if (routeId.HasValue) returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
+                if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                {
+                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                    if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                        returnsQuery = returnsQuery.Where(r => r.RouteId != null && restrictedRouteIds.Contains(r.RouteId.Value));
+                    else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                    {
+                        var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                        if (branchIds.Count > 0)
+                            returnsQuery = returnsQuery.Where(r => r.BranchId == null || branchIds.Contains(r.BranchId.Value));
+                        else
+                            returnsQuery = returnsQuery.Where(r => false);
+                    }
+                }
+            }
+            if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
+            var returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+
             // Get payment totals per sale for status calculation
             var salePayments = await _context.Payments
                 .Where(p => p.TenantId == tenantId && p.SaleId.HasValue)
@@ -2160,8 +2209,8 @@ namespace HexaBill.Api.Modules.Reports
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
 
-            // Load all customers in one query for efficiency
-            var customerIds = sales.Select(s => s.CustomerId).Concat(payments.Select(p => p.CustomerId))
+            // Load all customers in one query for efficiency (include return customers)
+            var customerIds = sales.Select(s => s.CustomerId).Concat(payments.Select(p => p.CustomerId)).Concat(returns.Select(r => r.CustomerId))
                 .Where(id => id.HasValue)
                 .Distinct()
                 .ToList();
@@ -2292,10 +2341,41 @@ namespace HexaBill.Api.Modules.Reports
                 });
             }
 
-            // Sort by date, then by type (Sales before Payments on same date)
+            // Add return entries (Credit - reduces customer balance)
+            foreach (var ret in returns)
+            {
+                var customerKey = ret.CustomerId ?? 0;
+                if (!customerBalances.ContainsKey(customerKey))
+                {
+                    customerBalances[customerKey] = 0m;
+                }
+                customerBalances[customerKey] -= ret.GrandTotal;
+
+                ledgerEntries.Add(new SalesLedgerEntryDto
+                {
+                    Date = ret.ReturnDate,
+                    Type = "Return",
+                    InvoiceNo = ret.ReturnNo ?? "-",
+                    CustomerId = ret.CustomerId,
+                    CustomerName = ret.CustomerId.HasValue && customers.ContainsKey(ret.CustomerId.Value)
+                        ? customers[ret.CustomerId.Value]
+                        : "Cash Customer",
+                    PaymentMode = "",
+                    GrandTotal = ret.GrandTotal,
+                    PaidAmount = 0,
+                    RealPending = 0,
+                    RealGotPayment = ret.GrandTotal,
+                    Status = "Returned",
+                    CustomerBalance = customerBalances[customerKey],
+                    PlanDate = null,
+                    ReturnId = ret.Id
+                });
+            }
+
+            // Sort by date, then by type (Sale=0, Return=1, Payment=2)
             ledgerEntries = ledgerEntries
                 .OrderBy(e => e.Date)
-                .ThenBy(e => e.Type == "Payment" ? 1 : 0)
+                .ThenBy(e => e.Type == "Sale" ? 0 : e.Type == "Return" ? 1 : 2)
                 .ToList();
 
             // Calculate summary totals - CORRECTED CALCULATIONS
@@ -2330,20 +2410,25 @@ namespace HexaBill.Api.Modules.Reports
             // 4. Total Real Got Payment = Total Payments (same value, different name)
             var totalRealGotPayment = totalPayments;
             
-            // 5. Pending Balance = Total Sales - Total Payments (net outstanding)
-            // This is the actual amount still owed after all payments
-            var pendingBalance = totalSales - totalPayments;
+            // 5. Total Returns and Net Sales (ERP)
+            var totalReturns = returns.Sum(r => r.GrandTotal);
+            var netSales = totalSales - totalReturns;
+
+            // 6. Pending Balance = Total Sales - Total Returns - Total Payments (net outstanding)
+            var pendingBalance = totalSales - totalReturns - totalPayments;
 
             return new SalesLedgerReportDto
             {
                 Entries = ledgerEntries,
                 Summary = new SalesLedgerSummary
                 {
-                    TotalDebit = totalRealPending, // Keep for backward compatibility
-                    TotalCredit = totalRealGotPayment, // Keep for backward compatibility
-                    OutstandingBalance = pendingBalance, // CORRECTED: Use calculated pending balance
-                    TotalSales = totalSales, // CORRECTED: Sum of all invoice amounts
-                    TotalPayments = totalPayments // CORRECTED: Sum of all payments
+                    TotalDebit = totalRealPending,
+                    TotalCredit = totalRealGotPayment,
+                    OutstandingBalance = pendingBalance,
+                    TotalSales = totalSales,
+                    TotalPayments = totalPayments,
+                    TotalReturns = totalReturns,
+                    NetSales = netSales
                 }
             };
         }

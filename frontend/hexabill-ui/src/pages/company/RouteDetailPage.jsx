@@ -69,8 +69,11 @@ const RouteDetailPage = () => {
       const res = await routesAPI.getRoute(id)
       if (res?.success && res?.data) setRoute(res.data)
       else setRoute(null)
-    } catch {
+    } catch (e) {
       setRoute(null)
+      if (e?.response?.status === 404) {
+        toast.error('Route not found')
+      }
     }
   }
 
@@ -366,7 +369,7 @@ const RouteDetailPage = () => {
     return (
       <div className="p-6">
         <p className="text-neutral-600">Route not found.</p>
-        <Link to="/branches?tab=routes" className="text-primary-600 hover:underline mt-2 inline-block">Back to Routes</Link>
+        <Link to="/routes" className="text-primary-600 hover:underline mt-2 inline-block">Back to Routes</Link>
       </div>
     )
   }

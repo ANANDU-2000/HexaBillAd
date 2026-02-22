@@ -4,6 +4,11 @@
  *
  * Usage: node ensure-zayoga-branch-route.js
  * Uses .env from backend/HexaBill.Api/.env (DATABASE_URL_EXTERNAL)
+ *
+ * Branch/Route still showing zeros in Reports or Branch detail?
+ * 1. Run FIX_PRODUCTION_MIGRATIONS.sql sections 5 and 5b on production (add columns, backfill Sales)
+ * 2. Run: node backend/Scripts/ensure-zayoga-branch-route.js
+ * 3. Restart API if schema cache was stale, or wait ~5 min for cache expiry
  */
 
 const { Client } = require('pg');

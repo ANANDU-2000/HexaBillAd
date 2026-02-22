@@ -573,12 +573,22 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                // Set default dates if not provided (last 30 days)
+                if (id <= 0)
+                {
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid customer ID." });
+                }
                 var from = fromDate ?? DateTime.UtcNow.AddDays(-30);
                 var to = toDate ?? DateTime.UtcNow;
-                
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
+                if (from > to)
+                {
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be before or equal to To date." });
+                }
+                var tenantId = CurrentTenantId;
                 var pdfBytes = await _customerService.GenerateCustomerStatementAsync(id, from, to, tenantId);
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Statement PDF generation returned empty data." });
+                }
                 return File(pdfBytes, "application/pdf", $"customer_statement_{id}_{DateTime.UtcNow:yyyyMMdd}.pdf");
             }
             catch (InvalidOperationException ex)
@@ -586,7 +596,7 @@ namespace HexaBill.Api.Modules.Customers
                 return NotFound(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = ex.Message
+                    Message = ex.Message ?? "Customer not found or unable to generate statement."
                 });
             }
             catch (Exception ex)
@@ -595,11 +605,14 @@ namespace HexaBill.Api.Modules.Customers
                 Console.WriteLine($"[GetCustomerStatement] Stack: {ex.StackTrace}");
                 if (ex.InnerException != null)
                     Console.WriteLine($"[GetCustomerStatement] Inner: {ex.InnerException.Message}");
+                var userMessage = ex.Message ?? "Failed to generate statement PDF.";
+                if (ex.InnerException != null)
+                    userMessage += " " + ex.InnerException.Message;
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "Failed to generate statement PDF. Please check Render logs for details.",
-                    Errors = new List<string> { ex.Message }
+                    Message = userMessage,
+                    Errors = new List<string> { ex.Message ?? "" }
                 });
             }
         }

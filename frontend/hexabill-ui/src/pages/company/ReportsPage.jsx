@@ -17,12 +17,14 @@ import {
   Building2,
   Clock,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Users,
   MapPin,
   Phone,
   RotateCcw,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -133,6 +135,9 @@ const ReportsPage = () => {
     aiSuggestions: null,
     returnsReport: { items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 },
     damageCategories: [],
+    damageReport: [],
+    creditNotesReport: [],
+    netSalesReport: null, // { totalSales, totalReturns, netSales } from summary
   })
   const [returnsFeatureFlags, setReturnsFeatureFlags] = useState({ returnsEnabled: true, returnsRequireApproval: false })
   const [loadingSales, setLoadingSales] = useState(false)
@@ -172,6 +177,7 @@ const ReportsPage = () => {
   const hasInitialLoadRef = useRef(false) // Track if initial load has happened
   const initialLoadTimeoutRef = useRef(null) // Timeout for initial load
   const tabDataCacheRef = useRef({}) // Lazy load: cache loaded tab data keyed by tab+params to avoid refetch on tab switch
+  const reportsTabsRef = useRef(null) // Tab nav scroll container for left/right buttons
 
   const { user } = useAuth()
 
@@ -188,6 +194,9 @@ const ReportsPage = () => {
     { id: 'branch-profit', name: 'Branch Profit', shortLabel: 'Branch P&L', icon: Building2, adminOnly: true },
     { id: 'outstanding', name: 'Outstanding Bills', shortLabel: 'Outstanding', icon: DollarSign },
     { id: 'returns', name: 'Sales Returns', shortLabel: 'Returns', icon: RotateCcw },
+    { id: 'damage', name: 'Damage Report', shortLabel: 'Damage', icon: AlertTriangle },
+    { id: 'credit-notes', name: 'Credit Note Report', shortLabel: 'Credit Notes', icon: FileText },
+    { id: 'net-sales', name: 'Net Sales Report', shortLabel: 'Net Sales', icon: TrendingUp },
     { id: 'collections', name: 'Collections (with phone)', shortLabel: 'Collections', icon: Phone },
     { id: 'cheque', name: 'Cheque Report', shortLabel: 'Cheque', icon: ShieldCheck, adminOnly: true },
     { id: 'staff', name: 'Staff Performance', shortLabel: 'Staff', icon: Users, adminOnly: true },
@@ -804,6 +813,61 @@ const ReportsPage = () => {
         } finally {
           setLoading(false)
         }
+      } else if (activeTab === 'damage') {
+        try {
+          setLoading(true)
+          const res = await returnsAPI.getDamageReport({
+            fromDate: dateRange.from,
+            toDate: dateRange.to,
+            branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
+            routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
+          })
+          const list = (res?.success && res?.data) ? res.data : []
+          setReportData(prev => ({ ...prev, damageReport: Array.isArray(list) ? list : [] }))
+        } catch (error) {
+          if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load damage report')
+          setReportData(prev => ({ ...prev, damageReport: [] }))
+        } finally {
+          setLoading(false)
+        }
+      } else if (activeTab === 'credit-notes') {
+        try {
+          setLoading(true)
+          const res = await returnsAPI.getCreditNotes({
+            fromDate: dateRange.from,
+            toDate: dateRange.to,
+            customerId: appliedFilters.customer ? parseInt(appliedFilters.customer, 10) : undefined
+          })
+          const list = (res?.success && res?.data) ? res.data : []
+          setReportData(prev => ({ ...prev, creditNotesReport: Array.isArray(list) ? list : [] }))
+        } catch (error) {
+          if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load credit notes')
+          setReportData(prev => ({ ...prev, creditNotesReport: [] }))
+        } finally {
+          setLoading(false)
+        }
+      } else if (activeTab === 'net-sales') {
+        try {
+          setLoading(true)
+          const res = await reportsAPI.getSummaryReport({
+            fromDate: dateRange.from,
+            toDate: dateRange.to,
+            branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
+            routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
+          })
+          const d = (res?.success && res?.data) ? res.data : null
+          const totalSales = d ? (parseFloat(d.totalSales ?? d.TotalSales ?? d.salesToday ?? d.SalesToday) || 0) : 0
+          const totalReturns = d ? (parseFloat(d.totalReturns ?? d.TotalReturns ?? d.returnsToday ?? d.ReturnsToday) || 0) : 0
+          setReportData(prev => ({
+            ...prev,
+            netSalesReport: d ? { totalSales, totalReturns, netSales: totalSales - totalReturns } : null
+          }))
+        } catch (error) {
+          if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load net sales report')
+          setReportData(prev => ({ ...prev, netSalesReport: null }))
+        } finally {
+          setLoading(false)
+        }
       } else if (activeTab === 'ai') {
         try {
           const aiResponse = await reportsAPI.getAISuggestions({ periodDays: 30 })
@@ -1303,11 +1367,20 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      {/* Tabs — full width, scrollable with affordance (Phase 2: Collections visible) */}
+      {/* Tabs — full width, scrollable with visible affordance (scrollbar + arrows) */}
       <div className="bg-white rounded-lg border border-[#E5E7EB] w-full">
-        <div className="px-2 sm:px-4 py-2 w-full">
+        <div className="px-2 sm:px-4 py-2 w-full flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => reportsTabsRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
+            className="flex-shrink-0 p-1.5 rounded-md text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#334155] transition-colors"
+            aria-label="Scroll tabs left"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
           <nav
-            className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 w-full"
+            ref={reportsTabsRef}
+            className="flex gap-2 overflow-x-auto pb-1 -mx-1 w-full min-w-0"
             role="tablist"
             aria-label="Report sections; scroll horizontally for more tabs"
           >
@@ -1324,15 +1397,22 @@ const ReportsPage = () => {
                   className={`flex-shrink-0 flex items-center gap-1.5 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 ${active
                     ? 'bg-primary-600 text-white shadow-sm'
                     : 'text-[#475569] bg-[#F8FAFC] border border-[#E5E7EB] hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
-                    }`}
+                  }`}
                 >
                   <Icon className="h-4 w-4 flex-shrink-0" />
                   <span>{label}</span>
                 </button>
               )
             })}
-            <span className="flex-shrink-0 self-center text-xs text-[#94A3B8] ml-1" aria-hidden>Scroll for more</span>
           </nav>
+          <button
+            type="button"
+            onClick={() => reportsTabsRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
+            className="flex-shrink-0 p-1.5 rounded-md text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#334155] transition-colors"
+            aria-label="Scroll tabs right"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
 
         <div className="p-6">
@@ -2600,6 +2680,70 @@ const ReportsPage = () => {
                       Total: {reportData.returnsReport?.totalCount ?? 0} return(s) · Total value: {formatCurrency((reportData.returnsReport?.items || []).reduce((s, r) => s + (parseFloat(r.grandTotal) || 0), 0))}
                     </p>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const items = reportData.returnsReport?.items || []
+                        if (items.length === 0) {
+                          toast.error('No data to export')
+                          return
+                        }
+                        const headers = ['Date', 'Return No', 'Invoice No', 'Customer', 'Product', 'Qty Returned', 'Reason/Damage', 'Amount', 'Staff', 'Branch', 'Route']
+                        const rows = items.flatMap(ret => {
+                          const lines = ret.items || ret.Items || []
+                          if (lines.length === 0) {
+                            return [[
+                              ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—',
+                              ret.returnNo ?? '—',
+                              ret.saleInvoiceNo ?? '—',
+                              (ret.customerName ?? '').replace(/"/g, '""'),
+                              '—', '—', '—',
+                              String(Number(ret.grandTotal ?? 0).toFixed(2)),
+                              (ret.createdByName ?? '').replace(/"/g, '""'),
+                              (ret.branchName ?? '').replace(/"/g, '""'),
+                              (ret.routeName ?? '').replace(/"/g, '""')
+                            ]]
+                          }
+                          return lines.map(line => [
+                            ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—',
+                            ret.returnNo ?? '—',
+                            ret.saleInvoiceNo ?? '—',
+                            (ret.customerName ?? '').replace(/"/g, '""'),
+                            ((line.productName ?? line.ProductName) ?? '').replace(/"/g, '""'),
+                            String(Number(line.qtyReturned ?? line.QtyReturned ?? 0)),
+                            ((line.damageCategoryName ?? line.DamageCategoryName ?? line.reason ?? line.Reason) ?? '').replace(/"/g, '""'),
+                            String(Number(line.amount ?? line.Amount ?? 0).toFixed(2)),
+                            (ret.createdByName ?? '').replace(/"/g, '""'),
+                            (ret.branchName ?? '').replace(/"/g, '""'),
+                            (ret.routeName ?? '').replace(/"/g, '""')
+                          ])
+                        })
+                        const csv = [headers.join(','), ...rows.map(r => r.map(cell => `"${cell}"`).join(','))].join('\r\n')
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `returns_report_${dateRange.from}_to_${dateRange.to}.csv`
+                        a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success('Returns report exported to CSV')
+                      }}
+                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+                      disabled={!reportData.returnsReport?.items?.length}
+                    >
+                      <Download className="h-4 w-4" />
+                      Export Excel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 text-sm"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Print
+                    </button>
+                  </div>
                 </div>
                 {loading ? (
                   <LoadingCard />
@@ -2621,6 +2765,7 @@ const ReportsPage = () => {
                           {returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) && (
                             <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
                           )}
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">PDF</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
@@ -2665,6 +2810,34 @@ const ReportsPage = () => {
                               </div>
                             </td>
                           ) : returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) ? <td className="px-4 py-3" rowSpan={items.length || 1}>—</td> : null
+                          const pdfCell = (
+                            <td className="px-4 py-3" rowSpan={items.length || 1}>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const blob = await returnsAPI.getReturnBillPdf(ret.id)
+                                    const url = window.URL.createObjectURL(blob)
+                                    const a = document.createElement('a')
+                                    a.href = url
+                                    a.download = `Return_${ret.returnNo || ret.id}_${new Date().toISOString().split('T')[0]}.pdf`
+                                    document.body.appendChild(a)
+                                    a.click()
+                                    window.URL.revokeObjectURL(url)
+                                    document.body.removeChild(a)
+                                    toast.success('Return bill PDF downloaded')
+                                  } catch (e) {
+                                    if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                                  }
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                title="Download return bill PDF"
+                              >
+                                <FileText className="h-3 w-3" />
+                                PDF
+                              </button>
+                            </td>
+                          )
                           if (items.length === 0) {
                             return [(
                               <tr key={ret.id} className="hover:bg-gray-50">
@@ -2679,6 +2852,7 @@ const ReportsPage = () => {
                                 <td className="px-4 py-3">{ret.branchName ?? '—'}</td>
                                 <td className="px-4 py-3">{ret.routeName ?? '—'}</td>
                                 {actionCell}
+                                {pdfCell}
                               </tr>
                             )]
                           }
@@ -2695,6 +2869,7 @@ const ReportsPage = () => {
                               <td className="px-4 py-3">{ret.branchName ?? '—'}</td>
                               <td className="px-4 py-3">{ret.routeName ?? '—'}</td>
                               {idx === 0 ? actionCell : null}
+                              {idx === 0 ? pdfCell : null}
                             </tr>
                           ))
                         })}
@@ -2710,6 +2885,240 @@ const ReportsPage = () => {
               </div>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Damage Report – return lines where condition = damaged or write-off */}
+          {activeTab === 'damage' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Damage Report</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Return lines with condition Damaged or Write-off. Product, qty, amount, branch, route.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = reportData.damageReport || []
+                        if (list.length === 0) {
+                          toast.error('No data to export')
+                          return
+                        }
+                        const headers = ['Return No', 'Date', 'Invoice No', 'Customer', 'Product', 'Qty', 'Condition', 'Amount', 'Branch', 'Route']
+                        const rows = list.map(r => [
+                          (r.returnNo ?? '').replace(/"/g, '""'),
+                          r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—',
+                          (r.invoiceNo ?? '—').replace(/"/g, '""'),
+                          (r.customerName ?? '').replace(/"/g, '""'),
+                          (r.productName ?? '').replace(/"/g, '""'),
+                          String(Number(r.qty ?? 0)),
+                          (r.condition ?? '').replace(/"/g, '""'),
+                          String(Number(r.lineTotal ?? 0).toFixed(2)),
+                          (r.branchName ?? '').replace(/"/g, '""'),
+                          (r.routeName ?? '').replace(/"/g, '""')
+                        ])
+                        const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\r\n')
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `damage_report_${dateRange.from}_to_${dateRange.to}.csv`
+                        a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success('Damage report exported to CSV')
+                      }}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+                      disabled={!reportData.damageReport?.length}
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Print
+                    </button>
+                  </div>
+                </div>
+                {loading ? (
+                  <LoadingCard />
+                ) : (reportData.damageReport?.length ?? 0) > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Return No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Invoice No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Qty</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Condition</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Branch</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Route</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {(reportData.damageReport || []).map((r, idx) => (
+                          <tr key={`${r.returnId}-${idx}`} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap font-medium">{r.returnNo ?? '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{r.invoiceNo ?? '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{r.customerName ?? '—'}</td>
+                            <td className="px-4 py-3">{r.productName ?? '—'}</td>
+                            <td className="px-4 py-3 text-right">{Number(r.qty ?? 0)}</td>
+                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(r.condition || '').toLowerCase() === 'writeoff' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>{r.condition ?? '—'}</span></td>
+                            <td className="px-4 py-3 text-right font-medium">{formatCurrency(r.lineTotal ?? 0)}</td>
+                            <td className="px-4 py-3">{r.branchName ?? '—'}</td>
+                            <td className="px-4 py-3">{r.routeName ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <AlertTriangle className="h-12 w-12 mb-2 text-gray-400" />
+                    <p>{loading ? 'Loading...' : 'No damage or write-off return lines in this period.'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Credit Note Report */}
+          {activeTab === 'credit-notes' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Credit Note Report</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Credit notes linked to returns (cash/paid invoice flow). Status: unused / used / cancelled.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const list = reportData.creditNotesReport || []
+                        if (list.length === 0) {
+                          toast.error('No data to export')
+                          return
+                        }
+                        const headers = ['Date', 'Customer', 'Linked Return No', 'Amount', 'Currency', 'Status', 'Created By']
+                        const rows = list.map(c => [
+                          c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—',
+                          (c.customerName ?? '').replace(/"/g, '""'),
+                          (c.linkedReturnNo ?? '').replace(/"/g, '""'),
+                          String(Number(c.amount ?? 0).toFixed(2)),
+                          (c.currency ?? 'AED').replace(/"/g, '""'),
+                          (c.status ?? '').replace(/"/g, '""'),
+                          (c.createdByName ?? '').replace(/"/g, '""')
+                        ])
+                        const csv = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\r\n')
+                        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `credit_notes_${dateRange.from}_to_${dateRange.to}.csv`
+                        a.click()
+                        URL.revokeObjectURL(url)
+                        toast.success('Credit notes exported to CSV')
+                      }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                      disabled={!reportData.creditNotesReport?.length}
+                    >
+                      <Download className="h-4 w-4" />
+                      Export CSV
+                    </button>
+                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Print
+                    </button>
+                  </div>
+                </div>
+                {loading ? (
+                  <LoadingCard />
+                ) : (reportData.creditNotesReport?.length ?? 0) > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-100">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Linked Return No</th>
+                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Currency</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
+                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Created By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {(reportData.creditNotesReport || []).map((c) => (
+                          <tr key={c.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap font-medium">{c.customerName ?? '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap">{c.linkedReturnNo ?? '—'}</td>
+                            <td className="px-4 py-3 text-right font-medium">{formatCurrency(c.amount ?? 0)}</td>
+                            <td className="px-4 py-3">{c.currency ?? 'AED'}</td>
+                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(c.status || '').toLowerCase() === 'used' ? 'bg-green-100 text-green-800' : (c.status || '').toLowerCase() === 'cancelled' ? 'bg-gray-100 text-gray-800' : 'bg-indigo-100 text-indigo-800'}`}>{c.status ?? 'unused'}</span></td>
+                            <td className="px-4 py-3">{c.createdByName ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <FileText className="h-12 w-12 mb-2 text-gray-400" />
+                    <p>{loading ? 'Loading...' : 'No credit notes in this period.'}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Net Sales Report – Total Sales − Returns by period */}
+          {activeTab === 'net-sales' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">Net Sales Report</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Net Sales = Total Sales − Returns for the selected period and filters.
+                  </p>
+                </div>
+                {loading ? (
+                  <LoadingCard />
+                ) : reportData.netSalesReport ? (
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                        <p className="text-sm font-medium text-green-700">Total Sales</p>
+                        <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(reportData.netSalesReport.totalSales ?? 0)}</p>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                        <p className="text-sm font-medium text-amber-700">Total Returns</p>
+                        <p className="text-2xl font-bold text-amber-900 mt-1">{formatCurrency(reportData.netSalesReport.totalReturns ?? 0)}</p>
+                      </div>
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                        <p className="text-sm font-medium text-blue-700">Net Sales</p>
+                        <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
+                    <TrendingUp className="h-12 w-12 mb-2 text-gray-400" />
+                    <p>{loading ? 'Loading...' : 'No data for the selected period.'}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

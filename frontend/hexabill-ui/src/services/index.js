@@ -454,22 +454,79 @@ export const customersAPI = {
   },
 
   getCustomerStatement: async (id, fromDate, toDate) => {
-    const response = await api.get(`/customers/${id}/statement`, {
-      params: { fromDate: toYYYYMMDD(fromDate), toDate: toYYYYMMDD(toDate) },
-      responseType: 'blob'
-    })
-    return response.data
+    try {
+      const params = {}
+      if (fromDate) params.fromDate = typeof fromDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fromDate) ? fromDate : toYYYYMMDD(fromDate)
+      if (toDate) params.toDate = typeof toDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(toDate) ? toDate : toYYYYMMDD(toDate)
+      const response = await api.get(`/customers/${id}/statement`, {
+        params,
+        responseType: 'blob'
+      })
+      const contentType = response.headers['content-type'] || ''
+      if (response.status >= 400 || contentType.includes('application/json')) {
+        const text = await response.data.text()
+        try {
+          const errorData = JSON.parse(text)
+          throw new Error(errorData?.message || errorData?.errors?.join(', ') || 'Failed to generate statement PDF')
+        } catch (parseError) {
+          throw new Error(`Server error: ${response.status}`)
+        }
+      }
+      return response.data
+    } catch (error) {
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          if (text.trim().startsWith('{')) {
+            const errorData = JSON.parse(text)
+            throw new Error(errorData.message || errorData.errors?.join(', ') || 'Failed to generate statement PDF')
+          }
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        } catch (parseError) {
+          if (parseError.message) throw parseError
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        }
+      }
+      throw new Error(error.message || 'Failed to generate statement PDF')
+    }
   },
 
   getCustomerPendingBillsPdf: async (id, fromDate, toDate) => {
-    const params = {}
-    if (fromDate) params.fromDate = toYYYYMMDD(fromDate)
-    if (toDate) params.toDate = toYYYYMMDD(toDate)
-    const response = await api.get(`/customers/${id}/pending-bills-pdf`, {
-      params,
-      responseType: 'blob'
-    })
-    return response.data
+    try {
+      const params = {}
+      if (fromDate) params.fromDate = toYYYYMMDD(fromDate)
+      if (toDate) params.toDate = toYYYYMMDD(toDate)
+      const response = await api.get(`/customers/${id}/pending-bills-pdf`, {
+        params,
+        responseType: 'blob'
+      })
+      const contentType = response.headers['content-type'] || ''
+      if (response.status >= 400 || contentType.includes('application/json')) {
+        const text = await response.data.text()
+        try {
+          const errorData = JSON.parse(text)
+          throw new Error(errorData?.message || errorData?.errors?.join(', ') || 'Failed to generate pending bills PDF')
+        } catch (parseError) {
+          throw new Error(`Server error: ${response.status}`)
+        }
+      }
+      return response.data
+    } catch (error) {
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          if (text.trim().startsWith('{')) {
+            const errorData = JSON.parse(text)
+            throw new Error(errorData.message || errorData.errors?.join(', ') || 'Failed to generate pending bills PDF')
+          }
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        } catch (parseError) {
+          if (parseError.message) throw parseError
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        }
+      }
+      throw new Error(error.message || 'Failed to generate pending bills PDF')
+    }
   },
 }
 
@@ -971,6 +1028,14 @@ export const returnsAPI = {
     const response = await api.get('/returns/sales', { params })
     return response.data
   },
+  getCreditNotes: async (params = {}) => {
+    const response = await api.get('/returns/credit-notes', { params })
+    return response.data
+  },
+  getDamageReport: async (params = {}) => {
+    const response = await api.get('/returns/damage-report', { params })
+    return response.data
+  },
   getDamageCategories: async () => {
     const response = await api.get('/returns/damage-categories')
     return response.data
@@ -986,6 +1051,37 @@ export const returnsAPI = {
   rejectSaleReturn: async (id) => {
     const response = await api.patch(`/returns/sales/${id}/reject`)
     return response.data
+  },
+  getReturnBillPdf: async (returnId) => {
+    try {
+      const response = await api.get(`/returns/sales/${returnId}/pdf`, { responseType: 'blob' })
+      const contentType = response.headers['content-type'] || ''
+      if (response.status >= 400 || contentType.includes('application/json')) {
+        const text = await response.data.text()
+        try {
+          const errorData = JSON.parse(text)
+          throw new Error(errorData?.message || errorData?.errors?.join(', ') || 'Failed to generate return bill PDF')
+        } catch (parseError) {
+          throw new Error(`Server error: ${response.status}`)
+        }
+      }
+      return response.data
+    } catch (error) {
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          if (text.trim().startsWith('{')) {
+            const errorData = JSON.parse(text)
+            throw new Error(errorData.message || errorData.errors?.join(', ') || 'Failed to generate return bill PDF')
+          }
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        } catch (parseError) {
+          if (parseError.message) throw parseError
+          throw new Error(`Server error: ${error.response?.status || 500}`)
+        }
+      }
+      throw new Error(error.message || 'Failed to generate return bill PDF')
+    }
   },
   getPurchaseReturns: async (purchaseId = null) => {
     const params = purchaseId ? { purchaseId } : {}

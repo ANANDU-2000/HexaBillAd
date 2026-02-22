@@ -37,6 +37,9 @@ namespace HexaBill.Api.Models
         public int? RouteId { get; set; }
         [MaxLength(20)]
         public string? ReturnType { get; set; } // Full, Partial
+        /// <summary>ERP category: resellable, damaged, writeoff, not_liked (for filtering/reports).</summary>
+        [MaxLength(20)]
+        public string? ReturnCategory { get; set; }
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 
@@ -67,6 +70,9 @@ namespace HexaBill.Api.Models
         public int? DamageCategoryId { get; set; }
         /// <summary>True = add back to sellable stock; false = do not add (damaged).</summary>
         public bool? StockEffect { get; set; }
+        /// <summary>Explicit condition: resellable, damaged, writeoff (for ERP reports).</summary>
+        [MaxLength(20)]
+        public string? Condition { get; set; }
 
         // Navigation properties
         public virtual SaleReturn SaleReturn { get; set; } = null!;

@@ -364,11 +364,16 @@ const SalesLedgerPage = () => {
   // Summary from filtered data only (PRODUCTION_MASTER_TODO #8): totals must match the displayed list.
   // Do not use reportData.salesLedgerSummary for UI totals — it is server summary for initial query only.
   const salesEntries = filteredLedger.filter(e => e.type === 'Sale')
+  const returnEntries = filteredLedger.filter(e => e.type === 'Return')
   const paymentEntries = filteredLedger.filter(e => e.type === 'Payment')
 
   // CRITICAL CORRECTIONS - REAL DATA CALCULATIONS (from filteredLedger):
   // 1. Total Sales = Sum of GrandTotal from all sales (invoice amounts) - REAL BILL AMOUNTS
   const totalSales = salesEntries.reduce((sum, e) => sum + (e.grandTotal || 0), 0)
+
+  // 1b. Total Returns (ERP)
+  const totalReturns = returnEntries.reduce((sum, e) => sum + (e.grandTotal || 0), 0)
+  const netSales = totalSales - totalReturns
 
   // 2. Total Paid Amount = ONLY from sales entries (paidAmount field)
   // CRITICAL: paidAmount on sales already includes all payments received for that invoice
@@ -391,21 +396,21 @@ const SalesLedgerPage = () => {
   // This is the amount still owed on invoices
   const totalRealPending = salesEntries.reduce((sum, e) => sum + (e.realPending || 0), 0)
 
-  // 4. Pending Balance = Total Sales - Total Payments (net outstanding)
-  // This is the actual amount still owed after all payments
-  // CRITICAL: Ensure payments never exceed sales (logically impossible)
-  const pendingBalance = Math.max(0, totalSales - totalPayments)
+  // 4. Pending Balance = Total Sales - Total Returns - Total Payments (net outstanding)
+  const pendingBalance = Math.max(0, totalSales - totalReturns - totalPayments)
 
   // Total Invoices = Count of sales entries (not transactions)
   const totalInvoices = salesEntries.length
 
   const filteredSummary = {
-    totalSales,           // Total bill amounts (invoices)
-    totalPayments,        // Total paid (from sales + payments)
-    totalRealPending,     // Total pending (unpaid amounts)
-    totalRealGotPayment: totalPayments, // Alias for compatibility
-    pendingBalance,       // Net balance (Sales - Payments)
-    totalInvoices         // Count of invoices
+    totalSales,
+    totalReturns,
+    netSales,
+    totalPayments,
+    totalRealPending,
+    totalRealGotPayment: totalPayments,
+    pendingBalance,
+    totalInvoices
   }
 
   const handleShareInvoiceWhatsApp = async (entry) => {
@@ -623,6 +628,7 @@ const SalesLedgerPage = () => {
               options={[
                 { value: '', label: 'All Types' },
                 { value: 'Sale', label: 'Sale' },
+                { value: 'Return', label: 'Return' },
                 { value: 'Payment', label: 'Payment' }
               ]}
               value={filters.type}
@@ -745,11 +751,23 @@ const SalesLedgerPage = () => {
       )}
 
       {/* Summary Cards - Fixed */}
-      <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-1.5 md:gap-2 lg:gap-3 px-2 md:px-4 py-2 md:py-3 bg-white border-b border-gray-200">
+      <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-1.5 md:gap-2 lg:gap-3 px-2 md:px-4 py-2 md:py-3 bg-white border-b border-gray-200">
         <div className="bg-blue-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-blue-500">
           <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Sales</div>
           <div className="text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">
             {formatCurrency(filteredSummary.totalSales)}
+          </div>
+        </div>
+        <div className="bg-amber-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-amber-500">
+          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Returns</div>
+          <div className="text-sm md:text-base lg:text-lg font-bold text-amber-700 truncate">
+            {formatCurrency(filteredSummary.totalReturns ?? 0)}
+          </div>
+        </div>
+        <div className="bg-indigo-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-indigo-500">
+          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Net Sales</div>
+          <div className="text-sm md:text-base lg:text-lg font-bold text-indigo-700 truncate">
+            {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
           </div>
         </div>
         <div className="bg-green-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-green-500">
@@ -896,9 +914,12 @@ const SalesLedgerPage = () => {
 
                       const rowBgColor = entry.type === 'Payment'
                         ? 'bg-green-50 hover:bg-green-100'
-                        : 'hover:bg-gray-50'
+                        : entry.type === 'Return'
+                          ? 'bg-amber-50 hover:bg-amber-100'
+                          : 'hover:bg-gray-50'
 
                       const normalizeStatusForDisplay = (status) => {
+                        if (entry.type === 'Return') return 'Returned'
                         if (!status || status === '-') return 'Unpaid'
                         const statusUpper = (status || '').toUpperCase()
                         if (statusUpper === 'PAID' || statusUpper === 'CLEARED') return 'Paid'
@@ -910,13 +931,15 @@ const SalesLedgerPage = () => {
                       const displayStatus = normalizeStatusForDisplay(entry.status)
 
                       const statusColor =
-                        displayStatus === 'Paid'
-                          ? 'bg-green-100 text-green-800 border-green-300'
-                          : displayStatus === 'Partial'
-                            ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                            : displayStatus === 'Unpaid'
-                              ? 'bg-red-100 text-red-800 border-red-300'
-                              : 'bg-gray-100 text-gray-800 border-gray-300'
+                        displayStatus === 'Returned'
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : displayStatus === 'Paid'
+                            ? 'bg-green-100 text-green-800 border-green-300'
+                            : displayStatus === 'Partial'
+                              ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
+                              : displayStatus === 'Unpaid'
+                                ? 'bg-red-100 text-red-800 border-red-300'
+                                : 'bg-gray-100 text-gray-800 border-gray-300'
 
                       const customerBalance = entry.customerBalance || 0
 
@@ -928,7 +951,9 @@ const SalesLedgerPage = () => {
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-gray-900 border-r border-gray-200">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
                             ? 'bg-green-100 text-green-800'
-                            : 'bg-blue-100 text-blue-800'
+                            : entry.type === 'Return'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-blue-100 text-blue-800'
                             }`}>
                             {entry.type}
                           </span>
@@ -942,21 +967,25 @@ const SalesLedgerPage = () => {
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-gray-600 border-r border-gray-200">
                           {entry.paymentMode || '-'}
                         </td>
-                        {/* Bill Amount - Show GrandTotal for Sales, payment amount for Payments */}
+                        {/* Bill Amount - Sales: GrandTotal; Return: -; Payment: credit amount */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-blue-600 border-r border-gray-200">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
-                            : entry.type === 'Payment'
-                              ? formatCurrency(entry.realGotPayment || 0)
-                              : '-'}
+                            : entry.type === 'Return'
+                              ? '-'
+                              : entry.type === 'Payment'
+                                ? formatCurrency(entry.realGotPayment || 0)
+                                : '-'}
                         </td>
-                        {/* Paid Amount - Show actual paid amount for Sales, payment amount for Payments */}
+                        {/* Paid Amount - Sales: paid; Return: return amount (credit); Payment: amount */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-green-600 border-r border-gray-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
-                            : entry.type === 'Payment'
-                              ? formatCurrency(entry.realGotPayment || 0)
-                              : '-'}
+                            : entry.type === 'Return'
+                              ? formatCurrency(entry.grandTotal || 0)
+                              : entry.type === 'Payment'
+                                ? formatCurrency(entry.realGotPayment || 0)
+                                : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-red-600 border-r border-gray-200">

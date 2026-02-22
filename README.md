@@ -98,5 +98,17 @@ npm run dev
 
 **Enterprise roadmap:** See PLAN.txt (metrics, risk score, cost estimation, automation).
 
+---
+
+## Production: Branch & Route Data
+
+If Branch/Route pages or Reports tabs show zeros or "No data found":
+
+1. Run `FIX_PRODUCTION_MIGRATIONS.sql` **sections 5 and 5b** on production (adds `Sales.BranchId`/`RouteId`, backfills data)
+2. Run: `node backend/Scripts/ensure-zayoga-branch-route.js`
+3. Restart the API or wait ~5 minutes for the schema cache to refresh
+
+---
+
 **Status:** Active Development  
 **Version:** 2.0

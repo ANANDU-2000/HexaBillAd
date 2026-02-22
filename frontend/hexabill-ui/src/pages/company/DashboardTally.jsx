@@ -158,6 +158,7 @@ const DashboardTally = () => {
         salesToday: 0,
         returnsToday: 0,
         netSalesToday: 0,
+        damageLossToday: 0,
         returnsCountToday: 0,
         expensesToday: 0,
         profitToday: 0,
@@ -239,6 +240,7 @@ const DashboardTally = () => {
                     salesToday: parseFloat(data.salesToday || data.SalesToday) || 0,
                     returnsToday: parseFloat(data.returnsToday ?? data.ReturnsToday) || 0,
                     netSalesToday: parseFloat(data.netSalesToday ?? data.NetSalesToday) ?? (parseFloat(data.salesToday || data.SalesToday) || 0) - (parseFloat(data.returnsToday ?? data.ReturnsToday) || 0),
+                    damageLossToday: parseFloat(data.damageLossToday ?? data.DamageLossToday) || 0,
                     returnsCountToday: parseInt(data.returnsCountToday ?? data.ReturnsCountToday) || 0,
                     expensesToday: parseFloat(data.expensesToday || data.ExpensesToday) || 0,
                     profitToday: parseFloat(data.profitToday || data.ProfitToday) || 0,
@@ -538,6 +540,15 @@ const DashboardTally = () => {
                                 value={stats.netSalesToday}
                                 icon={DollarSign}
                                 color="blue"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('damageLossToday') !== false && (
+                            <StatCard
+                                title={dateRange === 'today' ? 'Total Damage Loss Today' : dateRange === 'week' ? 'Total Damage Loss This Week' : dateRange === 'month' ? 'Total Damage Loss This Month' : 'Total Damage Loss'}
+                                value={stats.damageLossToday}
+                                icon={AlertTriangle}
+                                color="red"
                                 loading={loading}
                             />
                         )}

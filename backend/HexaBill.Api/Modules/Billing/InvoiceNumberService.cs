@@ -66,9 +66,12 @@ namespace HexaBill.Api.Modules.Billing
             int startingNumber = DEFAULT_STARTING_NUMBER;
             var tenant = await _context.Tenants.AsNoTracking()
                 .Where(t => t.Id == tenantId)
-                .Select(t => new { t.Email })
+                .Select(t => new { t.Email, t.Name })
                 .FirstOrDefaultAsync();
-            if (tenant != null && string.Equals(tenant.Email?.Trim(), ZAYOGA_EMAIL, StringComparison.OrdinalIgnoreCase))
+            var isZayorga = tenant != null && (
+                string.Equals(tenant.Email?.Trim(), ZAYOGA_EMAIL, StringComparison.OrdinalIgnoreCase) ||
+                (tenant.Name != null && tenant.Name.Trim().Contains("Zayorga", StringComparison.OrdinalIgnoreCase)));
+            if (isZayorga)
                 startingNumber = Math.Max(startingNumber, ZAYOGA_MIN_NEXT);
 
             for (int attempt = 0; attempt < MAX_RETRIES; attempt++)
