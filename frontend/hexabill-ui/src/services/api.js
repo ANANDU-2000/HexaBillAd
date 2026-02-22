@@ -680,7 +680,9 @@ api.interceptors.response.use(
     if (retryCount >= maxRetries) {
       error._handledByInterceptor = true
       if (!is401Error) {
-        showThrottledError('Request failed after multiple attempts. Please refresh the page.', false)
+        const serverMsg = error.response?.data?.message || error.response?.data?.errors?.[0]
+        const msg = serverMsg || 'Request failed after multiple attempts. Please refresh the page.'
+        showThrottledError(msg, false)
       }
       return Promise.reject(error)
     }
