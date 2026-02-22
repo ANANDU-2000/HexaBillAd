@@ -2124,7 +2124,9 @@ namespace HexaBill.Api.Modules.Reports
         {
             var from = (fromDate ?? DateTime.UtcNow.Date.AddDays(-365)).ToUtcKind();
             var to = (toDate ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1).ToUtcKind();
-            var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+            // If schema check throws (e.g. connection), assume no BranchId/RouteId so we don't add filters that could 42703
+            bool hasSalesBranchRoute = false;
+            try { hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync(); } catch { hasSalesBranchRoute = false; }
             List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)> sales;
             try
             {
