@@ -145,6 +145,19 @@ namespace HexaBill.Api.Modules.Customers
             return false;
         }
 
+        /// <summary>True if the exception (or inner) is PostgreSQL 42703 undefined_column. Handles wrapped exceptions and message-based detection.</summary>
+        private static bool Is42703(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is Npgsql.PostgresException pg && pg.SqlState == "42703") return true;
+                var msg = e.Message ?? "";
+                if (msg.Contains("42703", StringComparison.Ordinal) || (msg.Contains("column", StringComparison.OrdinalIgnoreCase) && msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase)))
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>Raw SQL for statement opening sales sum when Sales.BranchId does not exist (42703). Selects only GrandTotal.</summary>
         private async Task<decimal> GetStatementOpeningSalesRawAsync(int customerId, int tenantId, DateTime fromDate)
         {
@@ -1395,18 +1408,20 @@ namespace HexaBill.Api.Modules.Customers
             if (customerId <= 0)
                 throw new InvalidOperationException("Invalid customer ID");
 
-            // CRITICAL: Calculate opening balance EXACTLY like ledger tab logic
-            // Opening balance = All sales (debit) - All payments (credit) - All sales returns (credit) BEFORE fromDate
-            // Schema-safe: use only columns that exist (no BranchId/RouteId) to avoid 42703 on production.
+            // CRITICAL: Calculate opening balance and sales list. On PostgreSQL use raw SQL so we never reference BranchId (column may not exist).
             decimal openingSales;
             List<StatementSaleRow> sales;
-            try
+            if (_context.Database.IsNpgsql())
+            {
+                openingSales = await GetStatementOpeningSalesRawAsync(customerId, tenantId, fromDate);
+                sales = await GetStatementSalesRawAsync(customerId, tenantId, fromDate, toEnd);
+            }
+            else
             {
                 openingSales = await _context.Sales
                     .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate < fromDate)
                     .Select(s => new { s.GrandTotal })
                     .SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
-
                 var salesData = await _context.Sales
                     .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
                                !s.IsDeleted &&
@@ -1417,13 +1432,6 @@ namespace HexaBill.Api.Modules.Customers
                     .ThenBy(s => s.Id)
                     .ToListAsync();
                 sales = salesData.Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal }).ToList();
-            }
-            catch (PostgresException ex) when (ex.SqlState == "42703")
-            {
-                // Production DB may not have BranchId/RouteId on Sales – use raw SQL selecting only existing columns.
-                lock (_cacheLock) { _cachedHasBranchIdColumn = false; _cacheTimestamp = DateTime.UtcNow; }
-                openingSales = await GetStatementOpeningSalesRawAsync(customerId, tenantId, fromDate);
-                sales = await GetStatementSalesRawAsync(customerId, tenantId, fromDate, toEnd);
             }
 
             // Include ALL payments (not just CLEARED) to match ledger tab logic

@@ -43,6 +43,19 @@ namespace HexaBill.Api.Modules.Branches
             _salesSchema = salesSchema;
         }
 
+        /// <summary>True if the exception (or inner) is PostgreSQL 42P01 undefined_table. Handles wrapped exceptions and message-based detection.</summary>
+        private static bool IsRelationMissing42P01(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is PostgresException pg && pg.SqlState == "42P01") return true;
+                var msg = e.Message ?? "";
+                if (msg.Contains("42P01", StringComparison.Ordinal) || (msg.Contains("relation", StringComparison.OrdinalIgnoreCase) && msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase)))
+                    return true;
+            }
+            return false;
+        }
+
         public async Task<bool> CheckDatabaseConnectionAsync()
         {
             try
@@ -466,7 +479,7 @@ namespace HexaBill.Api.Modules.Branches
                     .Where(v => v.RouteId == routeId && v.VisitDate >= from && v.VisitDate <= to && (tenantId <= 0 || v.TenantId == tenantId))
                     .CountAsync();
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
                 // CustomerVisits table may not exist on production (migration not applied)
                 visitCount = 0;
@@ -529,7 +542,7 @@ namespace HexaBill.Api.Modules.Branches
                     .Where(v => v.RouteId == routeId && v.VisitDate >= dateStart && v.VisitDate < dateEnd && (tenantId <= 0 || v.TenantId == tenantId))
                     .ToDictionaryAsync(v => v.CustomerId, v => v);
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
                 visits = new Dictionary<int, CustomerVisit>();
             }
@@ -618,7 +631,7 @@ namespace HexaBill.Api.Modules.Branches
 
                 await _context.SaveChangesAsync();
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
                 // CustomerVisits table does not exist
                 return null;
@@ -673,7 +686,7 @@ namespace HexaBill.Api.Modules.Branches
                     CreatedAt = v.CreatedAt
                 }).ToList();
             }
-            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
                 return new List<CustomerVisitDto>();
             }

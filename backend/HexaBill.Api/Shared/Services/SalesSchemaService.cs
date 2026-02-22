@@ -39,10 +39,10 @@ namespace HexaBill.Api.Shared.Services
                     try
                     {
                         using var cmd = conn.CreateCommand();
-                        // PostgreSQL: column_name can be 'BranchId' (quoted) or 'branchid' (lowercase) - check case-insensitively
+                        // PostgreSQL: table_name in information_schema is lowercase for unquoted identifiers; column_name check case-insensitive
                         cmd.CommandText = @"
-                            SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND LOWER(column_name)='branchid')
-                            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Sales' AND LOWER(column_name)='routeid')";
+                            SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)='sales' AND LOWER(column_name)='branchid')
+                            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)='sales' AND LOWER(column_name)='routeid')";
                         var result = await cmd.ExecuteScalarAsync();
                         hasColumns = result is bool b && b;
                     }
