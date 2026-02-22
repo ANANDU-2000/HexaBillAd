@@ -765,12 +765,16 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty ledger instead of 500 so Sales Ledger page keeps working
-                Console.WriteLine($"[GetComprehensiveSalesLedger] Returning empty data after error: {ex.Message}");
-                return Ok(new ApiResponse<SalesLedgerReportDto>
+                // Return 500 with real error so we can fix the cause (was hiding with empty data and data never showed).
+                var msg = ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : "");
+                Console.WriteLine($"[GetComprehensiveSalesLedger] ERROR: {msg}");
+                Console.WriteLine($"[GetComprehensiveSalesLedger] Stack: {ex.StackTrace}");
+                return StatusCode(500, new ApiResponse<SalesLedgerReportDto>
                 {
-                    Success = true,
-                    Data = new SalesLedgerReportDto { Entries = new List<SalesLedgerEntryDto>(), Summary = new SalesLedgerSummary() }
+                    Success = false,
+                    Message = "Sales ledger failed: " + msg,
+                    Data = new SalesLedgerReportDto { Entries = new List<SalesLedgerEntryDto>(), Summary = new SalesLedgerSummary() },
+                    Errors = new List<string> { ex.Message }
                 });
             }
         }

@@ -144,7 +144,8 @@ const SalesLedgerPage = () => {
       }
     } catch (error) {
       console.error('Error loading sales ledger:', error)
-      if (!error?._handledByInterceptor) toast.error('Failed to load sales ledger')
+      const msg = error?.response?.data?.message || error?.message || 'Failed to load sales ledger'
+      if (!error?._handledByInterceptor) toast.error(msg)
       setReportData({ salesLedger: [], salesLedgerSummary: null })
     } finally {
       setLoading(false)
