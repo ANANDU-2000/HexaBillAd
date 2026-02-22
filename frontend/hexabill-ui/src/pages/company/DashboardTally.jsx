@@ -162,6 +162,8 @@ const DashboardTally = () => {
         expensesToday: 0,
         profitToday: 0,
         pendingBills: 0,
+        pendingBillsAmount: 0,
+        purchasesToday: 0,
         lowStockCount: 0,
         invoicesToday: 0,
         invoicesWeekly: 0,
@@ -241,6 +243,8 @@ const DashboardTally = () => {
                     expensesToday: parseFloat(data.expensesToday || data.ExpensesToday) || 0,
                     profitToday: parseFloat(data.profitToday || data.ProfitToday) || 0,
                     pendingBills: parseInt(data.pendingBills || data.PendingBills) || 0,
+                    pendingBillsAmount: parseFloat(data.pendingBillsAmount ?? data.PendingBillsAmount) || 0,
+                    purchasesToday: parseFloat(data.purchasesToday || data.PurchasesToday) || 0,
                     lowStockCount: Array.isArray(data.lowStockProducts || data.LowStockProducts) ? (data.lowStockProducts || data.LowStockProducts || []).length : 0,
                     invoicesToday: parseInt(data.invoicesToday || data.InvoicesToday) || 0,
                     invoicesWeekly: parseInt(data.invoicesWeekly || data.InvoicesWeekly) || 0,
@@ -546,6 +550,28 @@ const DashboardTally = () => {
                                 }
                                 value={stats.expensesToday}
                                 icon={TrendingUp}
+                                color="red"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('purchasesToday') !== false && (
+                            <StatCard
+                                title={
+                                    dateRange === 'today' ? 'Purchases Today' :
+                                    dateRange === 'week' ? 'Purchases This Week' :
+                                    dateRange === 'month' ? 'Purchases This Month' : 'Purchases'
+                                }
+                                value={stats.purchasesToday}
+                                icon={Truck}
+                                color="green"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('pendingAmount') !== false && (
+                            <StatCard
+                                title="Pending Total Amount"
+                                value={stats.pendingBillsAmount}
+                                icon={Wallet}
                                 color="red"
                                 loading={loading}
                             />

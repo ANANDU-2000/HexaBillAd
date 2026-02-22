@@ -161,14 +161,15 @@ const RouteDetailPage = () => {
   // Load route on mount; load summary/expenses when id or applied date range changes.
   useEffect(() => {
     if (!id) return
-    loadRoute()
+    setLoading(true)
+    loadRoute().finally(() => setLoading(false))
   }, [id])
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !route) return
     setLoading(true)
     Promise.all([loadSummary(), loadExpenses()]).finally(() => setLoading(false))
-  }, [id, fromDate, toDate])
+  }, [id, fromDate, toDate, route])
 
   useEffect(() => {
     if (activeTab === 'sales' && id) {
@@ -361,7 +362,7 @@ const RouteDetailPage = () => {
     )
   }
 
-  if (!route) {
+  if (!route && !loading) {
     return (
       <div className="p-6">
         <p className="text-neutral-600">Route not found.</p>
