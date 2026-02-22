@@ -49,6 +49,7 @@ namespace HexaBill.Api.Modules.Branches
         {
             try
             {
+                // Schema-safe: do not select Address/Location (production DB may not have those columns → 42703).
                 return await _context.Branches
                     .AsNoTracking()
                     .Where(b => tenantId <= 0 || b.TenantId == tenantId)
@@ -57,7 +58,7 @@ namespace HexaBill.Api.Modules.Branches
                         Id = b.Id,
                         TenantId = b.TenantId,
                         Name = b.Name,
-                        Address = b.Address,
+                        Address = null,
                         CreatedAt = b.CreatedAt,
                         RouteCount = b.Routes.Count,
                         AssignedStaffIds = b.BranchStaff.Select(bs => bs.UserId).ToList()
