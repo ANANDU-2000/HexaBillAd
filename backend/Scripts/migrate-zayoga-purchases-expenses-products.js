@@ -104,7 +104,7 @@ function loadJson() {
   return { purchases, expenses, products, _path: jsonPath };
 }
 
-function validateTotals(purchases, expenses) {
+function validateTotals(purchases, expenses, products) {
   const purchaseTotal = purchases.reduce((s, p) => s + num(p.amount), 0);
   const unpaidTotal = purchases
     .filter((p) => String(p.status || '').toLowerCase() === 'unpaid')
@@ -144,7 +144,7 @@ async function main() {
   const { purchases, expenses, products, _path } = loadJson();
   console.log('Loaded from', _path, ':', purchases.length, 'purchases,', expenses.length, 'expenses,', products.length, 'products');
 
-  validateTotals(purchases, expenses);
+  validateTotals(purchases, expenses, products);
   console.log('Totals validation passed.');
 
   const client = new Client(getDbConfig());

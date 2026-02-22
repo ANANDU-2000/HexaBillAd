@@ -1,5 +1,8 @@
 # ZAYOGA Purchase / Expense / Product migration
 
+**Status:** This migration has **not** been run yet. The file `zayoga-purchases-expenses-products.json` is required in `backend/data/` but was not present. Invoices were rebuilt (241 invoices, next #242); purchases, expenses, and products still need this JSON and then:  
+`cd backend/Scripts` → `node migrate-zayoga-purchases-expenses-products.js --execute`.
+
 Script: **backend/Scripts/migrate-zayoga-purchases-expenses-products.js**
 
 Imports purchases, expenses, and products from a single JSON file with strict totals validation. No partial insert: if validation fails, the script aborts and no data is written.

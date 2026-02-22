@@ -568,6 +568,18 @@ const Dashboard = () => {
               />
             </div>
           )}
+          {/* Pending Total Amount - dynamic from summary API (all unpaid) */}
+          {canShow('pendingAmount') !== false && (
+            <div className="lg:col-span-3">
+              <StatCard
+                title="Pending Total Amount"
+                value={summary.pendingBillsAmount ?? 0}
+                changeType="negative"
+                icon={CreditCard}
+                iconColor="primary"
+              />
+            </div>
+          )}
           {/* Profit Card: STRICTLY Admin/Owner Only. No permissions bypass. */}
           {isAdminOrOwner(user) && canShow('profitToday') && (
             <div className="lg:col-span-3">
