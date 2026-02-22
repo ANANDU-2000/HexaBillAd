@@ -122,7 +122,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ""IX_BranchStaff_BranchId_UserId"" ON ""Branch
                 await context.Database.ExecuteSqlRawAsync(@"
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND column_name = 'BranchId') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND LOWER(column_name) = 'branchid') THEN
         ALTER TABLE ""Customers"" ADD COLUMN ""BranchId"" integer NULL;
         CREATE INDEX IF NOT EXISTS ""IX_Customers_BranchId"" ON ""Customers"" (""BranchId"");
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Customers_Branches_BranchId') THEN
@@ -134,7 +134,7 @@ END $$;
                 await context.Database.ExecuteSqlRawAsync(@"
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND column_name = 'RouteId') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Customers' AND LOWER(column_name) = 'routeid') THEN
         ALTER TABLE ""Customers"" ADD COLUMN ""RouteId"" integer NULL;
         CREATE INDEX IF NOT EXISTS ""IX_Customers_RouteId"" ON ""Customers"" (""RouteId"");
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Customers_Routes_RouteId') THEN
@@ -144,11 +144,11 @@ BEGIN
 END $$;
 ");
 
-                // Add BranchId and RouteId to Sales if missing
+                // Add BranchId and RouteId to Sales if missing (LOWER(column_name) for PostgreSQL lowercase names)
                 await context.Database.ExecuteSqlRawAsync(@"
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sales' AND column_name = 'BranchId') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sales' AND LOWER(column_name) = 'branchid') THEN
         ALTER TABLE ""Sales"" ADD COLUMN ""BranchId"" integer NULL;
         CREATE INDEX IF NOT EXISTS ""IX_Sales_BranchId"" ON ""Sales"" (""BranchId"");
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Sales_Branches_BranchId') THEN
@@ -160,7 +160,7 @@ END $$;
                 await context.Database.ExecuteSqlRawAsync(@"
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sales' AND column_name = 'RouteId') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Sales' AND LOWER(column_name) = 'routeid') THEN
         ALTER TABLE ""Sales"" ADD COLUMN ""RouteId"" integer NULL;
         CREATE INDEX IF NOT EXISTS ""IX_Sales_RouteId"" ON ""Sales"" (""RouteId"");
         IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'FK_Sales_Routes_RouteId') THEN

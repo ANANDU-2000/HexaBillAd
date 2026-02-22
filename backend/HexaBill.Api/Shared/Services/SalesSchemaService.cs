@@ -69,5 +69,29 @@ namespace HexaBill.Api.Shared.Services
             }
             return hasColumns;
         }
+
+        /// <summary>
+        /// Clear the cached column check so the next request re-checks (call after startup migration that may add BranchId/RouteId).
+        /// </summary>
+        public void ClearColumnCheckCache()
+        {
+            lock (_lock)
+            {
+                _cached = null;
+                _cacheTime = null;
+            }
+        }
+
+        /// <summary>
+        /// Static clear for use at startup (e.g. after EnsureBranchesAndRoutesSchemaAsync) so first request re-checks columns.
+        /// </summary>
+        public static void ClearColumnCheckCacheStatic()
+        {
+            lock (_lock)
+            {
+                _cached = null;
+                _cacheTime = null;
+            }
+        }
     }
 }

@@ -778,13 +778,13 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Handle 404 Not Found (with special message for Branches/Routes API)
+    // Handle 404 Not Found (with special message only for Branches/Routes list endpoints)
     if (error.response?.status === 404) {
       connectionManager.markConnected()
       const url = (error.config?.url || '').toLowerCase()
-      const isBranchesOrRoutes = url.includes('/branches') || url.includes('/routes')
+      const isBranchesOrRoutesList = /\/branches\/?(\?|$)/.test(url) || /\/routes\/?(\?|$)/.test(url)
       let msg
-      if (isBranchesOrRoutes && !sessionStorage.getItem('hexabill_branches_routes_404_shown')) {
+      if (isBranchesOrRoutesList && !sessionStorage.getItem('hexabill_branches_routes_404_shown')) {
         sessionStorage.setItem('hexabill_branches_routes_404_shown', '1')
         msg = 'Branches & Routes feature is currently unavailable. Please try again later or contact support.'
       } else {

@@ -1250,6 +1250,8 @@ _ = Task.Run(async () =>
                     try
                     {
                         await HexaBill.Api.Shared.Extensions.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
+                        // So first branch summary / report request re-checks and sees the new columns (no stale "false" cache)
+                        HexaBill.Api.Shared.Services.SalesSchemaService.ClearColumnCheckCacheStatic();
                     }
                     catch (Exception ex)
                     {
