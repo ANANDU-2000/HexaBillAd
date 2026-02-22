@@ -2,6 +2,7 @@
  * Route service: CRUD routes, assign customers/staff, route expenses, route summary.
  */
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Services;
@@ -458,9 +459,18 @@ namespace HexaBill.Api.Modules.Branches
                     costOfGoodsSold = 0m;
                 }
             }
-            var visitCount = await _context.CustomerVisits
-                .Where(v => v.RouteId == routeId && v.VisitDate >= from && v.VisitDate <= to && (tenantId <= 0 || v.TenantId == tenantId))
-                .CountAsync();
+            int visitCount;
+            try
+            {
+                visitCount = await _context.CustomerVisits
+                    .Where(v => v.RouteId == routeId && v.VisitDate >= from && v.VisitDate <= to && (tenantId <= 0 || v.TenantId == tenantId))
+                    .CountAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                // CustomerVisits table may not exist on production (migration not applied)
+                visitCount = 0;
+            }
             var totalPayments = invoiceCount > 0
                 ? await _context.Payments
                     .Where(p => p.SaleId.HasValue && saleIds.Contains(p.SaleId.Value) && p.PaymentDate >= from && p.PaymentDate <= to)
@@ -511,10 +521,18 @@ namespace HexaBill.Api.Modules.Branches
                 .GroupBy(x => x.CustomerId!.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(x => x.GrandTotal));
 
-            // Get visit statuses for this route and date
-            var visits = await _context.CustomerVisits
-                .Where(v => v.RouteId == routeId && v.VisitDate >= dateStart && v.VisitDate < dateEnd && (tenantId <= 0 || v.TenantId == tenantId))
-                .ToDictionaryAsync(v => v.CustomerId, v => v);
+            // Get visit statuses for this route and date (table may not exist on production – 42P01)
+            Dictionary<int, CustomerVisit> visits;
+            try
+            {
+                visits = await _context.CustomerVisits
+                    .Where(v => v.RouteId == routeId && v.VisitDate >= dateStart && v.VisitDate < dateEnd && (tenantId <= 0 || v.TenantId == tenantId))
+                    .ToDictionaryAsync(v => v.CustomerId, v => v);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                visits = new Dictionary<int, CustomerVisit>();
+            }
 
             var entries = new List<RouteCollectionSheetEntryDto>();
             decimal totalOutstanding = 0;
@@ -563,39 +581,48 @@ namespace HexaBill.Api.Modules.Branches
 
             var visitDate = request.VisitDate.Date;
 
-            // Find or create visit record
-            var visit = await _context.CustomerVisits
-                .FirstOrDefaultAsync(v => v.RouteId == routeId && 
-                                         v.CustomerId == customerId && 
-                                         v.VisitDate.Date == visitDate &&
-                                         (tenantId <= 0 || v.TenantId == tenantId));
-
-            if (visit == null)
+            CustomerVisit? visit;
+            try
             {
-                visit = new CustomerVisit
+                // Find or create visit record
+                visit = await _context.CustomerVisits
+                    .FirstOrDefaultAsync(v => v.RouteId == routeId &&
+                                             v.CustomerId == customerId &&
+                                             v.VisitDate.Date == visitDate &&
+                                             (tenantId <= 0 || v.TenantId == tenantId));
+
+                if (visit == null)
                 {
-                    RouteId = routeId,
-                    CustomerId = customerId,
-                    TenantId = tenantId,
-                    StaffId = userId,
-                    VisitDate = visitDate,
-                    Status = Enum.Parse<VisitStatus>(request.Status),
-                    Notes = request.Notes,
-                    PaymentCollected = request.PaymentCollected,
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.CustomerVisits.Add(visit);
-            }
-            else
-            {
-                visit.Status = Enum.Parse<VisitStatus>(request.Status);
-                visit.Notes = request.Notes;
-                visit.PaymentCollected = request.PaymentCollected;
-                visit.StaffId = userId;
-                visit.UpdatedAt = DateTime.UtcNow;
-            }
+                    visit = new CustomerVisit
+                    {
+                        RouteId = routeId,
+                        CustomerId = customerId,
+                        TenantId = tenantId,
+                        StaffId = userId,
+                        VisitDate = visitDate,
+                        Status = Enum.Parse<VisitStatus>(request.Status),
+                        Notes = request.Notes,
+                        PaymentCollected = request.PaymentCollected,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.CustomerVisits.Add(visit);
+                }
+                else
+                {
+                    visit.Status = Enum.Parse<VisitStatus>(request.Status);
+                    visit.Notes = request.Notes;
+                    visit.PaymentCollected = request.PaymentCollected;
+                    visit.StaffId = userId;
+                    visit.UpdatedAt = DateTime.UtcNow;
+                }
 
-            await _context.SaveChangesAsync();
+                await _context.SaveChangesAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                // CustomerVisits table does not exist
+                return null;
+            }
 
             return new CustomerVisitDto
             {
@@ -614,35 +641,42 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date)
         {
-            var query = _context.CustomerVisits
-                .Include(v => v.Customer)
-                .Include(v => v.Staff)
-                .Where(v => v.RouteId == routeId && (tenantId <= 0 || v.TenantId == tenantId))
-                .AsQueryable();
-
-            if (date.HasValue)
+            try
             {
-                var dateStart = date.Value.Date;
-                var dateEnd = dateStart.AddDays(1);
-                query = query.Where(v => v.VisitDate >= dateStart && v.VisitDate < dateEnd);
+                var query = _context.CustomerVisits
+                    .Include(v => v.Customer)
+                    .Include(v => v.Staff)
+                    .Where(v => v.RouteId == routeId && (tenantId <= 0 || v.TenantId == tenantId))
+                    .AsQueryable();
+
+                if (date.HasValue)
+                {
+                    var dateStart = date.Value.Date;
+                    var dateEnd = dateStart.AddDays(1);
+                    query = query.Where(v => v.VisitDate >= dateStart && v.VisitDate < dateEnd);
+                }
+
+                var visits = await query.ToListAsync();
+
+                return visits.Select(v => new CustomerVisitDto
+                {
+                    Id = v.Id,
+                    RouteId = v.RouteId,
+                    CustomerId = v.CustomerId,
+                    CustomerName = v.Customer.Name ?? "",
+                    VisitDate = v.VisitDate,
+                    Status = v.Status.ToString(),
+                    Notes = v.Notes,
+                    PaymentCollected = v.PaymentCollected,
+                    StaffId = v.StaffId,
+                    StaffName = v.Staff?.Name,
+                    CreatedAt = v.CreatedAt
+                }).ToList();
             }
-
-            var visits = await query.ToListAsync();
-
-            return visits.Select(v => new CustomerVisitDto
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
             {
-                Id = v.Id,
-                RouteId = v.RouteId,
-                CustomerId = v.CustomerId,
-                CustomerName = v.Customer.Name ?? "",
-                VisitDate = v.VisitDate,
-                Status = v.Status.ToString(),
-                Notes = v.Notes,
-                PaymentCollected = v.PaymentCollected,
-                StaffId = v.StaffId,
-                StaffName = v.Staff?.Name,
-                CreatedAt = v.CreatedAt
-            }).ToList();
+                return new List<CustomerVisitDto>();
+            }
         }
     }
 }

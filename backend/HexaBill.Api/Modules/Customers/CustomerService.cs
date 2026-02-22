@@ -145,6 +145,75 @@ namespace HexaBill.Api.Modules.Customers
             return false;
         }
 
+        /// <summary>Raw SQL for statement opening sales sum when Sales.BranchId does not exist (42703). Selects only GrandTotal.</summary>
+        private async Task<decimal> GetStatementOpeningSalesRawAsync(int customerId, int tenantId, DateTime fromDate)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT COALESCE(SUM(""GrandTotal""), 0) FROM ""Sales"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""IsDeleted"" = false AND ""InvoiceDate"" < @p2";
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
+                var result = await cmd.ExecuteScalarAsync();
+                return result is decimal d ? d : (result is double dbl ? (decimal)dbl : 0m);
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
+        /// <summary>Raw SQL for statement sales list when Sales.BranchId does not exist (42703). Selects only Id, InvoiceDate, InvoiceNo, GrandTotal.</summary>
+        private async Task<List<StatementSaleRow>> GetStatementSalesRawAsync(int customerId, int tenantId, DateTime fromDate, DateTime toEnd)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT ""Id"", ""InvoiceDate"", ""InvoiceNo"", ""GrandTotal"" FROM ""Sales"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p2 AND ""InvoiceDate"" <= @p3 ORDER BY ""InvoiceDate"", ""Id""";
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
+                var p3 = cmd.CreateParameter(); p3.ParameterName = "p3"; p3.Value = toEnd; cmd.Parameters.Add(p3);
+                var list = new List<StatementSaleRow>();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        list.Add(new StatementSaleRow
+                        {
+                            Id = reader.GetInt32(0),
+                            InvoiceDate = reader.GetDateTime(1),
+                            InvoiceNo = reader.IsDBNull(2) ? null : reader.GetString(2),
+                            GrandTotal = reader.GetDecimal(3)
+                        });
+                    }
+                }
+                return list;
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
+        /// <summary>Raw SQL for single Sale InvoiceNo when Sales.BranchId does not exist (42703).</summary>
+        private async Task<string?> GetSaleInvoiceNoRawAsync(int saleId)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT ""InvoiceNo"" FROM ""Sales"" WHERE ""Id"" = @p0 AND ""IsDeleted"" = false LIMIT 1";
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = saleId; cmd.Parameters.Add(p0);
+                var result = await cmd.ExecuteScalarAsync();
+                return result?.ToString();
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
         public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
         {
             // NOTE: DatabaseFixer should only run at application startup (Program.cs)
@@ -1328,12 +1397,35 @@ namespace HexaBill.Api.Modules.Customers
 
             // CRITICAL: Calculate opening balance EXACTLY like ledger tab logic
             // Opening balance = All sales (debit) - All payments (credit) - All sales returns (credit) BEFORE fromDate
-            // Schema-safe: project only GrandTotal so SQL never selects BranchId/RouteId (42703 when columns missing).
-            var openingSales = await _context.Sales
-                .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate < fromDate)
-                .Select(s => new { s.GrandTotal })
-                .SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
-            
+            // Schema-safe: use only columns that exist (no BranchId/RouteId) to avoid 42703 on production.
+            decimal openingSales;
+            List<StatementSaleRow> sales;
+            try
+            {
+                openingSales = await _context.Sales
+                    .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate < fromDate)
+                    .Select(s => new { s.GrandTotal })
+                    .SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+
+                var salesData = await _context.Sales
+                    .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
+                               !s.IsDeleted &&
+                               s.InvoiceDate >= fromDate &&
+                               s.InvoiceDate <= toEnd)
+                    .Select(s => new { s.Id, s.InvoiceDate, s.InvoiceNo, s.GrandTotal })
+                    .OrderBy(s => s.InvoiceDate)
+                    .ThenBy(s => s.Id)
+                    .ToListAsync();
+                sales = salesData.Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal }).ToList();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42703")
+            {
+                // Production DB may not have BranchId/RouteId on Sales – use raw SQL selecting only existing columns.
+                lock (_cacheLock) { _cachedHasBranchIdColumn = false; _cacheTimestamp = DateTime.UtcNow; }
+                openingSales = await GetStatementOpeningSalesRawAsync(customerId, tenantId, fromDate);
+                sales = await GetStatementSalesRawAsync(customerId, tenantId, fromDate, toEnd);
+            }
+
             // Include ALL payments (not just CLEARED) to match ledger tab logic
             var openingPayments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.PaymentDate < fromDate)
@@ -1346,19 +1438,6 @@ namespace HexaBill.Api.Modules.Customers
             
             // Opening balance = Sales (debit) - Payments (credit) - Returns (credit)
             var openingBalance = openingSales - openingPayments - openingSalesReturns;
-
-            // Get transactions within date range - use toEnd to include full last day.
-            // CRITICAL: Project to anonymous type only (no BranchId/RouteId) so SQL never selects those columns (42703 when missing). Then map to StatementSaleRow.
-            var salesData = await _context.Sales
-                .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
-                           !s.IsDeleted &&
-                           s.InvoiceDate >= fromDate &&
-                           s.InvoiceDate <= toEnd)
-                .Select(s => new { s.Id, s.InvoiceDate, s.InvoiceNo, s.GrandTotal })
-                .OrderBy(s => s.InvoiceDate)
-                .ThenBy(s => s.Id)
-                .ToListAsync();
-            var sales = salesData.Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal }).ToList();
 
             var payments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId &&
@@ -1413,12 +1492,19 @@ namespace HexaBill.Api.Modules.Customers
                         }
                         else
                         {
-                            // If not in current range, fetch from database
-                            var saleFromDb = await _context.Sales
-                                .Where(s => s.Id == payment.SaleId.Value && !s.IsDeleted)
-                                .Select(s => s.InvoiceNo)
-                                .FirstOrDefaultAsync();
-                            invoiceRef = saleFromDb ?? "";
+                            // If not in current range, fetch from database (schema-safe: may use raw SQL if BranchId missing)
+                            try
+                            {
+                                var saleFromDb = await _context.Sales
+                                    .Where(s => s.Id == payment.SaleId.Value && !s.IsDeleted)
+                                    .Select(s => s.InvoiceNo)
+                                    .FirstOrDefaultAsync();
+                                invoiceRef = saleFromDb ?? "";
+                            }
+                            catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                            {
+                                invoiceRef = await GetSaleInvoiceNoRawAsync(payment.SaleId.Value) ?? "";
+                            }
                         }
                     }
                     
