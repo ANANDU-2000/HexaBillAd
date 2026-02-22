@@ -1,3 +1,5 @@
+// Security: disable console in production first (before any other code)
+import './security/disableConsoleInProduction.js'
 import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

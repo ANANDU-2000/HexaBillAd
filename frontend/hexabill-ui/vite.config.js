@@ -22,6 +22,8 @@ export default defineConfig({
     dedupe: ['react', 'react-dom']
   },
   build: {
+    // Security: no source maps in production so source code and stack traces are not exposed
+    sourcemap: false,
     // Enable minification with safe settings to prevent 'st' variable TDZ errors
     minify: 'terser',
     terserOptions: {

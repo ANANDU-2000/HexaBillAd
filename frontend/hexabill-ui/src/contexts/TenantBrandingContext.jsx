@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { adminAPI } from '../services'
 import { clearAllCache } from '../services/api'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
@@ -22,6 +23,7 @@ export const useBranding = () => {
 
 export const BrandingProvider = ({ children }) => {
   const { impersonatedTenantId } = useAuth()
+  const location = useLocation()
   const [branding, setBranding] = useState({
     companyName: 'HexaBill',
     companyLogo: null,
@@ -65,7 +67,7 @@ export const BrandingProvider = ({ children }) => {
       const data = response?.data ?? response
       if (data) {
         const name = data.COMPANY_NAME_EN || data.companyNameEn || data.companyName || 'HexaBill'
-        const logoUrl = data.COMPANY_LOGO || data.logoUrl || data.companyLogo || null
+        const logoUrl = data.COMPANY_LOGO || data.logoUrl || data.companyLogo || data.company_logo || null
         const primary = data.primaryColor || data.primary_color || '#2563EB'
         const accent = data.accentColor || data.accent_color || '#10B981'
 
@@ -109,6 +111,14 @@ export const BrandingProvider = ({ children }) => {
   useEffect(() => {
     loadBranding()
   }, [loadBranding])
+
+  // After login or refresh: refetch branding when user navigates into the app (so logo/settings show)
+  useEffect(() => {
+    const path = location.pathname || ''
+    if (path !== '/login' && path !== '/Admin26' && typeof localStorage !== 'undefined' && localStorage.getItem('token')) {
+      loadBranding()
+    }
+  }, [location.pathname, loadBranding])
 
   // After Super Admin impersonation, clear cache and refetch settings/logo for the selected tenant
   useEffect(() => {

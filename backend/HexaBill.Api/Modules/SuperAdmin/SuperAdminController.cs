@@ -46,9 +46,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Dictionary<string, string> settings;
                 try
                 {
-                    settings = await _context.Settings
-                        .Where(s => s.TenantId == CurrentTenantId)  // CRITICAL: Filter by owner
-                        .ToDictionaryAsync(s => s.Key, s => s.Value ?? "");
+                    // Include both TenantId and OwnerId so settings persist after refresh/logout-login (legacy rows may use OwnerId only)
+                    var list = await _context.Settings
+                        .Where(s => s.TenantId == CurrentTenantId || s.OwnerId == CurrentTenantId)
+                        .ToListAsync();
+                    settings = list.ToDictionary(s => s.Key, s => s.Value ?? "");
+                    // Ensure COMPANY_LOGO is set from company_logo if backend saved only lowercase (so logo shows after refresh)
+                    if (!settings.ContainsKey("COMPANY_LOGO") && settings.TryGetValue("company_logo", out var relPath) && !string.IsNullOrEmpty(relPath))
+                    {
+                        var logoUrl = relPath.StartsWith("/") ? relPath : $"/uploads/{relPath}";
+                        settings["COMPANY_LOGO"] = logoUrl;
+                    }
                 }
                 catch (Exception ex)
                 {
