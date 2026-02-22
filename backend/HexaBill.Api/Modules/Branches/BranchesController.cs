@@ -81,10 +81,14 @@ namespace HexaBill.Api.Modules.Branches
                 Console.WriteLine($"❌ GetBranchSummary Error (branchId={id}): {ex.Message}");
                 Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
                 if (ex.InnerException != null)
-                    Console.WriteLine($"❌ InnerException: {ex.InnerException.Message}\n{ex.InnerException.StackTrace}");
-                // Graceful fallback: return empty summary so UI doesn't break (Render/DB schema issues)
-                var fallback = new BranchSummaryDto { BranchId = id, BranchName = "Branch", TotalSales = 0, TotalExpenses = 0, CostOfGoodsSold = 0, Profit = 0, Routes = new List<RouteSummaryDto>() };
-                return Ok(new ApiResponse<BranchSummaryDto> { Success = true, Data = fallback });
+                    Console.WriteLine($"❌ InnerException: {ex.InnerException.Message}");
+                return StatusCode(500, new ApiResponse<BranchSummaryDto>
+                {
+                    Success = false,
+                    Message = "Failed to load branch summary. Check backend logs.",
+                    Data = null,
+                    Errors = new List<string> { ex.Message }
+                });
             }
         }
 

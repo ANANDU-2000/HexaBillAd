@@ -22,6 +22,7 @@ const BranchDetailPage = () => {
   const [branch, setBranch] = useState(null)
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [summaryError, setSummaryError] = useState(null)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showAddRouteModal, setShowAddRouteModal] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', address: '' })
@@ -119,11 +120,19 @@ const BranchDetailPage = () => {
     const loadSummary = async () => {
       try {
         setLoading(true)
+        setSummaryError(null)
         const res = await branchesAPI.getBranchSummary(id, fromDate, toDate)
-        if (res?.success && res?.data) setSummary(res.data)
-        else setSummary(null)
+        if (res?.success && res?.data) {
+          setSummary(res.data)
+          setSummaryError(null)
+        } else {
+          setSummary(null)
+          setSummaryError(res?.message || 'No data returned')
+        }
       } catch (e) {
-        if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to load branch summary')
+        const msg = e?.response?.data?.message || e?.message || 'Failed to load branch summary'
+        if (!e?._handledByInterceptor) toast.error(msg)
+        setSummaryError(msg)
         setSummary(null)
       } finally {
         setLoading(false)
@@ -168,6 +177,26 @@ const BranchDetailPage = () => {
   const applyDateRange = () => {
     setFromDate(dateDraft.from)
     setToDate(dateDraft.to)
+  }
+
+  const retrySummary = () => {
+    setSummaryError(null)
+    if (!id) return
+    setLoading(true)
+    branchesAPI.getBranchSummary(id, fromDate, toDate)
+      .then(res => {
+        if (res?.success && res?.data) {
+          setSummary(res.data)
+          setSummaryError(null)
+        } else {
+          setSummaryError(res?.message || 'No data returned')
+        }
+      })
+      .catch(e => {
+        setSummaryError(e?.response?.data?.message || e?.message || 'Failed to load')
+        setSummary(null)
+      })
+      .finally(() => setLoading(false))
   }
 
   const canManage = isAdminOrOwner(user)
@@ -498,29 +527,37 @@ const BranchDetailPage = () => {
           </div>
         )}
       </div>
-      <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 rounded-lg bg-primary-50">
-          <Building2 className="h-6 w-6 text-primary-600" />
+      {summaryError && (
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <span>Failed to load summary. Check backend logs.</span>
+          <button type="button" onClick={retrySummary} className="shrink-0 font-medium text-amber-700 hover:underline">Retry</button>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 mb-4">
+        <div className="p-1.5 rounded-lg bg-primary-50">
+          <Building2 className="h-5 w-5 text-primary-600" />
         </div>
         <div>
-          <h1 className="text-xl font-semibold text-neutral-900">{displayBranch.name}</h1>
-          {displayBranch.address && (
-            <p className="text-sm text-neutral-500 flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5" />
+          <h1 className="text-lg font-semibold text-neutral-900">{displayBranch.name}</h1>
+          {displayBranch.address ? (
+            <p className="text-xs text-neutral-500 flex items-center gap-1">
+              <MapPin className="h-3 w-3" />
               {displayBranch.address}
             </p>
+          ) : (
+            <p className="text-xs text-neutral-500">Branch summary</p>
           )}
-          {!displayBranch.address && <p className="text-sm text-neutral-500">Branch summary</p>}
         </div>
       </div>
 
-      <div className="border-b border-neutral-200 mb-4 overflow-x-auto">
-        <nav className="-mb-px flex gap-4 min-w-max">
+      <div className="border-b border-neutral-200 mb-3 overflow-x-auto">
+        <nav className="-mb-px flex gap-2 min-w-max">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`py-2 px-1.5 border-b-2 font-medium text-xs whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -530,52 +567,52 @@ const BranchDetailPage = () => {
 
       {activeTab === 'overview' && (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div className="bg-white rounded-lg border border-neutral-200 p-4 relative">
-              <p className="text-sm text-neutral-500">Total Sales</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-lg font-semibold text-neutral-900">{formatCurrency(summary?.totalSales ?? 0)}</p>}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">Total Sales</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-neutral-900">{formatCurrency(summary?.totalSales ?? 0)}</p>}
             </div>
-            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">Paid</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-lg font-semibold text-emerald-600">{formatCurrency(summary?.totalPayments ?? 0)}</p>}
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">Paid</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-emerald-600">{formatCurrency(summary?.totalPayments ?? 0)}</p>}
             </div>
-            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">Unpaid / Pending</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-lg font-semibold text-amber-600">{formatCurrency(summary?.unpaidAmount ?? 0)}</p>}
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">Unpaid</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-amber-600">{formatCurrency(summary?.unpaidAmount ?? 0)}</p>}
             </div>
-            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">Cost of Goods Sold</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-lg font-semibold text-neutral-900">{formatCurrency(summary?.costOfGoodsSold ?? 0)}</p>}
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">COGS</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-neutral-900">{formatCurrency(summary?.costOfGoodsSold ?? 0)}</p>}
             </div>
-            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">Total Expenses</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-lg font-semibold text-neutral-900">{formatCurrency(summary?.totalExpenses ?? 0)}</p>}
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">Expenses</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-neutral-900">{formatCurrency(summary?.totalExpenses ?? 0)}</p>}
             </div>
-            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-              <p className="text-sm text-neutral-500">Profit (Sales − COGS − Expenses)</p>
-              {loading ? <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div> : <p className={`text-lg font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary?.profit ?? 0)}</p>}
+            <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
+              <p className="text-xs text-neutral-500">Profit / Loss</p>
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className={`text-base font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary?.profit ?? 0)}</p>}
             </div>
           </div>
-          <p className="text-sm text-neutral-500 mb-2">Date range: {fromDate} to {toDate}</p>
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <span className="text-neutral-500">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"><Filter className="h-3.5 w-3.5" />Apply</button>
+          <p className="text-xs text-neutral-500 mb-1">Date range: {fromDate} to {toDate}</p>
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <span className="text-neutral-500 text-sm">to</span>
+            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700"><Filter className="h-3 w-3" />Apply</button>
           </div>
-          <h2 className="text-lg font-medium text-neutral-800 mb-3">Routes</h2>
+          <h2 className="text-sm font-medium text-neutral-800 mb-2">Routes</h2>
           {(!summary?.routes || summary.routes.length === 0) ? (
-            <p className="text-neutral-500">No routes in this branch.{canManage && ' Click "Add Route" to create one.'}</p>
+            <p className="text-sm text-neutral-500">No routes in this branch.{canManage && ' Click "Add Route" to create one.'}</p>
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-1.5">
               {summary.routes?.map((r) => (
-                <li key={r.routeId || r.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-neutral-200">
+                <li key={r.routeId || r.id} className="flex items-center justify-between py-2 px-2.5 bg-white rounded border border-neutral-200 text-sm">
                   <Link to={`/routes/${r.routeId || r.id}`} className="font-medium text-primary-600 hover:underline">{r.routeName || r.name}</Link>
-                  <div className="flex gap-4 text-sm flex-wrap">
+                  <div className="flex gap-3 flex-wrap text-xs">
+                    {(r.invoiceCount ?? 0) > 0 && <span className="text-neutral-500">{r.invoiceCount} inv.</span>}
                     <span className="text-neutral-600">Sales: {formatCurrency(r.totalSales)}</span>
-                    <span className="text-neutral-600">COGS: {formatCurrency(r.costOfGoodsSold ?? 0)}</span>
-                    <span className="text-neutral-600">Expenses: {formatCurrency(r.totalExpenses)}</span>
-                    <span className={r.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}>Profit: {formatCurrency(r.profit)}</span>
+                    <span className="text-neutral-600">Exp: {formatCurrency(r.totalExpenses)}</span>
+                    <span className={r.profit >= 0 ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>P/L: {formatCurrency(r.profit)}</span>
                   </div>
                 </li>
               ))}
@@ -586,35 +623,37 @@ const BranchDetailPage = () => {
 
       {activeTab === 'routes' && (
         <div>
-          <p className="text-sm text-neutral-500 mb-2">Date range: {fromDate} to {toDate}</p>
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
-            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <span className="text-neutral-500">to</span>
-            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
-            <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"><Filter className="h-3.5 w-3.5" />Apply</button>
+          <p className="text-xs text-neutral-500 mb-1">Date range: {fromDate} to {toDate}</p>
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <input type="date" value={dateDraft.from} onChange={(e) => setDateDraft(prev => ({ ...prev, from: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <span className="text-neutral-500 text-sm">to</span>
+            <input type="date" value={dateDraft.to} onChange={(e) => setDateDraft(prev => ({ ...prev, to: e.target.value }))} className="border border-neutral-300 rounded px-2 py-1 text-xs" />
+            <button type="button" onClick={applyDateRange} className="inline-flex items-center gap-1 px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded hover:bg-primary-700"><Filter className="h-3 w-3" />Apply</button>
           </div>
           {(!summary?.routes || summary.routes.length === 0) ? (
-            <p className="text-neutral-500 py-6">No routes yet. Routes let you organize customers by delivery area or salesperson. {canManage && 'Click "Add Route" above.'}</p>
+            <p className="text-sm text-neutral-500 py-4">No routes yet. {canManage && 'Click "Add Route" above.'}</p>
           ) : (
             <div className="overflow-x-auto border border-neutral-200 rounded-lg">
-              <table className="min-w-full divide-y divide-neutral-200">
+              <table className="min-w-full divide-y divide-neutral-200 text-sm">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Sales</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Expenses</th>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Profit</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Invoices</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Sales</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Expenses</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Profit / Loss</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
                   {summary.routes?.map((r) => (
                     <tr key={r.routeId || r.id} className="hover:bg-neutral-50">
-                      <td className="px-4 py-2"><Link to={`/routes/${r.routeId || r.id}`} className="font-medium text-primary-600 hover:underline">{r.routeName || r.name}</Link></td>
-                      <td className="px-4 py-2 text-sm">{formatCurrency(r.totalSales)}</td>
-                      <td className="px-4 py-2 text-sm">{formatCurrency(r.totalExpenses)}</td>
-                      <td className={`px-4 py-2 text-sm font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
-                      <td className="px-4 py-2 text-right"><Link to={`/routes/${r.routeId || r.id}`} className="text-primary-600 hover:underline text-sm">View</Link></td>
+                      <td className="px-2 py-1.5"><Link to={`/routes/${r.routeId || r.id}`} className="font-medium text-primary-600 hover:underline">{r.routeName || r.name}</Link></td>
+                      <td className="px-2 py-1.5 text-right text-neutral-600">{r.invoiceCount ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalSales)}</td>
+                      <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalExpenses)}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
+                      <td className="px-2 py-1.5 text-right"><Link to={`/routes/${r.routeId || r.id}`} className="text-primary-600 hover:underline text-xs">View</Link></td>
                     </tr>
                   ))}
                 </tbody>
@@ -968,32 +1007,34 @@ const BranchDetailPage = () => {
               <p className="text-xl font-semibold text-neutral-900">{formatCurrency(summary?.totalExpenses ?? 0)}</p>
             </div>
           </div>
-          <h3 className="text-md font-medium text-neutral-800 mb-2 flex items-center gap-2"><BarChart3 className="h-4 w-4" />Route performance in this branch</h3>
+          <h3 className="text-sm font-medium text-neutral-800 mb-2 flex items-center gap-2"><BarChart3 className="h-4 w-4" />Route performance in this branch</h3>
           {summary?.routes?.length > 0 ? (
             <div className="overflow-x-auto border border-neutral-200 rounded-lg">
-              <table className="min-w-full divide-y divide-neutral-200">
+              <table className="min-w-full divide-y divide-neutral-200 text-sm">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Sales</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Expenses</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-neutral-600 uppercase">Profit</th>
+                    <th className="px-2 py-1.5 text-left text-xs font-medium text-neutral-600 uppercase">Route</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Invoices</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Sales</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Expenses</th>
+                    <th className="px-2 py-1.5 text-right text-xs font-medium text-neutral-600 uppercase">Profit / Loss</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
                   {summary.routes.map((r) => (
                     <tr key={r.routeId || r.id}>
-                      <td className="px-4 py-2 font-medium">{r.routeName || r.name}</td>
-                      <td className="px-4 py-2 text-sm text-right">{formatCurrency(r.totalSales)}</td>
-                      <td className="px-4 py-2 text-sm text-right">{formatCurrency(r.totalExpenses)}</td>
-                      <td className={`px-4 py-2 text-sm text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
+                      <td className="px-2 py-1.5 font-medium">{r.routeName || r.name}</td>
+                      <td className="px-2 py-1.5 text-right">{r.invoiceCount ?? 0}</td>
+                      <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalSales)}</td>
+                      <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalExpenses)}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <p className="text-neutral-500 py-4">No routes in this branch to report on.</p>
+            <p className="text-sm text-neutral-500 py-4">No routes in this branch to report on.</p>
           )}
         </div>
       )}

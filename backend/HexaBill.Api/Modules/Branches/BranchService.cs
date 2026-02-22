@@ -214,7 +214,7 @@ namespace HexaBill.Api.Modules.Branches
             var salesByRoute = await salesInBranchFilter
                 .Where(s => s.RouteId != null && routeIds.Contains(s.RouteId!.Value))
                 .GroupBy(s => s.RouteId)
-                .Select(g => new { RouteId = g.Key!.Value, Total = g.Sum(s => s.GrandTotal) })
+                .Select(g => new { RouteId = g.Key!.Value, Total = g.Sum(s => s.GrandTotal), Count = g.Count() })
                 .ToListAsync();
 
             var saleIdsInBranch = await salesInBranchFilter.Select(s => s.Id).ToListAsync();
@@ -283,12 +283,12 @@ namespace HexaBill.Api.Modules.Branches
 
             var routes = routeList.Select(r =>
             {
-                var sales = salesByRoute.FirstOrDefault(x => x.RouteId == r.Id)?.Total ?? 0;
+                var routeSales = salesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
+                var sales = routeSales?.Total ?? 0;
                 var expEntry = expensesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
                 var expenses = expEntry.RouteId == r.Id ? expEntry.Total : 0m;
-                // CRITICAL FIX: Handle case where FirstOrDefault returns default tuple (0, 0)
                 var cogsEntry = cogsByRouteList.FirstOrDefault(x => x.RouteId == r.Id);
-                var cogs = cogsEntry.RouteId == r.Id ? cogsEntry.Cogs : 0m; // Only use if RouteId matches
+                var cogs = cogsEntry.RouteId == r.Id ? cogsEntry.Cogs : 0m;
                 return new RouteSummaryDto
                 {
                     RouteId = r.Id,
@@ -297,7 +297,8 @@ namespace HexaBill.Api.Modules.Branches
                     TotalSales = sales,
                     TotalExpenses = expenses,
                     CostOfGoodsSold = cogs,
-                    Profit = sales - cogs - expenses
+                    Profit = sales - cogs - expenses,
+                    InvoiceCount = routeSales?.Count ?? 0
                 };
             }).ToList();
 

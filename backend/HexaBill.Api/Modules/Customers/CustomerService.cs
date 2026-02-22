@@ -35,6 +35,15 @@ namespace HexaBill.Api.Modules.Customers
         Task<int> RecalculateCashCustomerInvoiceStatusesAsync(int tenantId);
     }
 
+    /// <summary>Minimal sale data for statement PDF; avoids selecting BranchId/RouteId when they don't exist in DB.</summary>
+    internal class StatementSaleRow
+    {
+        public int Id { get; set; }
+        public DateTime InvoiceDate { get; set; }
+        public string? InvoiceNo { get; set; }
+        public decimal GrandTotal { get; set; }
+    }
+
     public class CustomerService : ICustomerService
     {
         private readonly AppDbContext _context;
@@ -1336,14 +1345,16 @@ namespace HexaBill.Api.Modules.Customers
             // Opening balance = Sales (debit) - Payments (credit) - Returns (credit)
             var openingBalance = openingSales - openingPayments - openingSalesReturns;
 
-            // Get transactions within date range - use toEnd to include full last day
+            // Get transactions within date range - use toEnd to include full last day.
+            // CRITICAL: Project to StatementSaleRow only (no BranchId/RouteId) so statement works when Sales table lacks those columns (e.g. production before migration).
             var sales = await _context.Sales
                 .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
                            !s.IsDeleted &&
-                           s.InvoiceDate >= fromDate && 
+                           s.InvoiceDate >= fromDate &&
                            s.InvoiceDate <= toEnd)
                 .OrderBy(s => s.InvoiceDate)
                 .ThenBy(s => s.Id)
+                .Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal })
                 .ToListAsync();
 
             var payments = await _context.Payments
