@@ -207,7 +207,10 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating damageLossToday: {ex.Message}");
+                    // SaleReturnItems.Condition or SaleReturn.BranchId/RouteId may not exist (42703)
+                    damageLossToday = 0;
+                    if (!IsMissingColumn42703(ex))
+                        Console.WriteLine($"? Error calculating damageLossToday: {ex.Message}");
                 }
 
                 decimal netSalesToday = salesToday - returnsToday;
@@ -2133,29 +2136,85 @@ namespace HexaBill.Api.Modules.Reports
             };
         }
 
+        /// <summary>Raw SQL to load returns for ledger when SaleReturns.BranchId may not exist. Only selects Id, ReturnDate, ReturnNo, CustomerId, GrandTotal.</summary>
+        private async Task<List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal)>> GetSalesLedgerReturnsRawAsync(int tenantId, DateTime from, DateTime to, int? staffId)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                string sql = @"SELECT ""Id"", ""ReturnDate"", ""ReturnNo"", ""CustomerId"", ""GrandTotal"" FROM ""SaleReturns"" WHERE ""TenantId"" = @p0 AND ""ReturnDate"" >= @p1 AND ""ReturnDate"" < @p2";
+                if (staffId.HasValue) sql += " AND \"CreatedBy\" = @p3";
+                sql += " ORDER BY \"ReturnDate\", \"Id\"";
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = tenantId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = from; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = to; cmd.Parameters.Add(p2);
+                if (staffId.HasValue) { var p3 = cmd.CreateParameter(); p3.ParameterName = "p3"; p3.Value = staffId.Value; cmd.Parameters.Add(p3); }
+                var list = new List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal)>();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        list.Add((
+                            reader.GetInt32(0),
+                            reader.GetDateTime(1),
+                            reader.IsDBNull(2) ? null : reader.GetString(2),
+                            reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
+                            reader.GetDecimal(4)));
+                    }
+                }
+                return list;
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
+        /// <summary>Raw SQL to load sales for ledger when Sales.BranchId may not exist. Only selects Id, InvoiceNo, InvoiceDate, CustomerId, GrandTotal.</summary>
+        private async Task<List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)>> GetSalesLedgerSalesRawAsync(int tenantId, DateTime from, DateTime to, int? staffId)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                string sql = @"SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CustomerId"", ""GrandTotal"" FROM ""Sales"" WHERE ""TenantId"" = @p0 AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p1 AND ""InvoiceDate"" < @p2";
+                if (staffId.HasValue) sql += " AND \"CreatedBy\" = @p3";
+                sql += " ORDER BY \"InvoiceDate\", \"Id\"";
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = sql;
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = tenantId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = from; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = to; cmd.Parameters.Add(p2);
+                if (staffId.HasValue) { var p3 = cmd.CreateParameter(); p3.ParameterName = "p3"; p3.Value = staffId.Value; cmd.Parameters.Add(p3); }
+                var list = new List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)>();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        var customerId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3);
+                        list.Add((reader.GetInt32(0), reader.IsDBNull(1) ? "" : reader.GetString(1), reader.GetDateTime(2), customerId, reader.GetDecimal(4)));
+                    }
+                }
+                return list;
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
         public async Task<SalesLedgerReportDto> GetComprehensiveSalesLedgerAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? staffId = null, int? userIdForStaff = null, string? roleForStaff = null)
         {
             var from = (fromDate ?? DateTime.UtcNow.Date.AddDays(-365)).ToUtcKind();
             var to = (toDate ?? DateTime.UtcNow.Date).AddDays(1).AddTicks(-1).ToUtcKind();
-            // PRODUCTION FIX: Do not use BranchId/RouteId filters on Sales/SaleReturns when DB may not have these columns (42703).
-            // Use schema-safe path only: filter by TenantId, IsDeleted, InvoiceDate, CreatedBy. Branch/route filters are skipped for this report.
+            // PRODUCTION FIX: On PostgreSQL use raw SQL for sales list so we never reference BranchId (column may not exist).
             List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)> sales;
-            var salesQuery = _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
-            if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
-            try
+            if (_context.Database.IsNpgsql())
             {
-                var projected = await salesQuery
-                    .OrderBy(s => s.InvoiceDate)
-                    .ThenBy(s => s.Id)
-                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
-                    .ToListAsync();
-                sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
+                sales = await GetSalesLedgerSalesRawAsync(tenantId, from, to, staffId);
             }
-            catch (Exception ex) when (IsMissingColumn42703(ex))
+            else
             {
-                _salesSchema.ClearColumnCheckCache();
-                salesQuery = _context.Sales
+                var salesQuery = _context.Sales
                     .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
                 if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
                 var projected = await salesQuery
@@ -2178,21 +2237,22 @@ namespace HexaBill.Api.Modules.Reports
                 .ThenBy(p => p.Id)
                 .ToListAsync();
 
-            // Get returns in same date range. Schema-safe: do not filter by BranchId/RouteId (columns may not exist).
-            var returnsQuery = _context.SaleReturns
-                .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
-            if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
-            List<SaleReturn> returns;
-            try
+            // Get returns in same date range. On PostgreSQL use raw SQL so we never select BranchId/RouteId (columns may not exist).
+            List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal)> returns;
+            if (_context.Database.IsNpgsql())
             {
-                returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+                returns = await GetSalesLedgerReturnsRawAsync(tenantId, from, to, staffId);
             }
-            catch (Exception ex) when (IsMissingColumn42703(ex))
+            else
             {
-                returnsQuery = _context.SaleReturns
+                var returnsQuery = _context.SaleReturns
                     .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
                 if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
-                returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+                var projected = await returnsQuery
+                    .OrderBy(r => r.ReturnDate).ThenBy(r => r.Id)
+                    .Select(r => new { r.Id, r.ReturnDate, r.ReturnNo, r.CustomerId, r.GrandTotal })
+                    .ToListAsync();
+                returns = projected.Select(x => (x.Id, x.ReturnDate, (string?)x.ReturnNo, x.CustomerId, x.GrandTotal)).ToList();
             }
 
             // Get payment totals per sale for status calculation
