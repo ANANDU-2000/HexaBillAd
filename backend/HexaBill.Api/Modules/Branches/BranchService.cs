@@ -162,10 +162,13 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<BranchSummaryDto?> GetBranchSummaryAsync(int branchId, int tenantId, DateTime? fromDate, DateTime? toDate)
         {
-            var branch = await _context.Branches
+            // Project only Id, Name so we never select Location/Address (may not exist on production Branches table)
+            var branchData = await _context.Branches
                 .AsNoTracking()
-                .FirstOrDefaultAsync(b => b.Id == branchId && (tenantId <= 0 || b.TenantId == tenantId));
-            if (branch == null) return null;
+                .Where(b => b.Id == branchId && (tenantId <= 0 || b.TenantId == tenantId))
+                .Select(b => new { b.Id, b.Name })
+                .FirstOrDefaultAsync();
+            if (branchData == null) return null;
 
             var from = fromDate ?? DateTime.UtcNow.Date.AddYears(-1);
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
@@ -182,7 +185,7 @@ namespace HexaBill.Api.Modules.Branches
                 {
                     RouteId = r.Id,
                     RouteName = r.Name,
-                    BranchName = branch.Name,
+                    BranchName = branchData.Name,
                     TotalSales = 0,
                     TotalExpenses = 0,
                     CostOfGoodsSold = 0,
@@ -190,8 +193,8 @@ namespace HexaBill.Api.Modules.Branches
                 }).ToList();
                 return new BranchSummaryDto
                 {
-                    BranchId = branch.Id,
-                    BranchName = branch.Name,
+                    BranchId = branchData.Id,
+                    BranchName = branchData.Name,
                     TotalSales = 0,
                     TotalExpenses = 0,
                     CostOfGoodsSold = 0,
@@ -293,7 +296,7 @@ namespace HexaBill.Api.Modules.Branches
                 {
                     RouteId = r.Id,
                     RouteName = r.Name,
-                    BranchName = branch.Name,
+                    BranchName = branchData.Name,
                     TotalSales = sales,
                     TotalExpenses = expenses,
                     CostOfGoodsSold = cogs,
@@ -355,7 +358,7 @@ namespace HexaBill.Api.Modules.Branches
                     var prevFrom = prevTo.AddDays(-periodDays);
                     // CRITICAL: Prevent deep recursion - limit to 1 level only
                     // Use Task.Run with timeout to prevent hanging
-                    var prevSummaryTask = GetBranchSummaryAsync(branch.Id, tenantId, prevFrom, prevTo.AddDays(1));
+                    var prevSummaryTask = GetBranchSummaryAsync(branchData.Id, tenantId, prevFrom, prevTo.AddDays(1));
                     var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5)); // 5 second timeout
                     var completedTask = await Task.WhenAny(prevSummaryTask, timeoutTask);
                     
@@ -384,8 +387,8 @@ namespace HexaBill.Api.Modules.Branches
 
             return new BranchSummaryDto
             {
-                BranchId = branch.Id,
-                BranchName = branch.Name,
+                BranchId = branchData.Id,
+                BranchName = branchData.Name,
                 TotalSales = totalSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = totalCogs,

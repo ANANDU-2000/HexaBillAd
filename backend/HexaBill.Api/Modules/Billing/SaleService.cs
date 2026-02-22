@@ -50,6 +50,7 @@ namespace HexaBill.Api.Modules.Billing
         private readonly IBalanceService _balanceService;
         private readonly ITimeZoneService _timeZoneService;
         private readonly IRouteScopeService _routeScopeService;
+        private readonly ISalesSchemaService _salesSchema;
 
         public SaleService(
             AppDbContext context, 
@@ -60,7 +61,8 @@ namespace HexaBill.Api.Modules.Billing
             IAlertService alertService,
             IBalanceService balanceService,
             ITimeZoneService timeZoneService,
-            IRouteScopeService routeScopeService)
+            IRouteScopeService routeScopeService,
+            ISalesSchemaService salesSchema)
         {
             _context = context;
             _pdfService = pdfService;
@@ -71,6 +73,7 @@ namespace HexaBill.Api.Modules.Billing
             _balanceService = balanceService;
             _timeZoneService = timeZoneService;
             _routeScopeService = routeScopeService;
+            _salesSchema = salesSchema;
         }
 
         public async Task<PagedResponse<SaleDto>> GetSalesAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null)
@@ -192,42 +195,129 @@ namespace HexaBill.Api.Modules.Billing
 
         public async Task<SaleDto?> GetSaleByIdAsync(int id, int tenantId, HashSet<int>? allowedRouteIdsForStaff = null)
         {
-            // CRITICAL: Filter by tenantId and use AsNoTracking for read-only queries
-            // SUPER ADMIN (TenantId = 0): Can access ALL tenants' data
+            // CRITICAL: When Sales.BranchId/RouteId columns don't exist (e.g. production before migration),
+            // use projection only so we never SELECT those columns.
+            var hasBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+            if (hasBranchRoute)
+            {
+                return await GetSaleByIdWithBranchRouteAsync(id, tenantId, allowedRouteIdsForStaff);
+            }
+            return await GetSaleByIdProjectionAsync(id, tenantId);
+        }
+
+        private async Task<SaleDto?> GetSaleByIdWithBranchRouteAsync(int id, int tenantId, HashSet<int>? allowedRouteIdsForStaff)
+        {
             IQueryable<Sale> baseQuery = _context.Sales
                 .AsNoTracking()
                 .Where(s => s.Id == id && !s.IsDeleted);
-            
-            // Apply tenant filter only for non-super-admin
-            if (tenantId > 0)
-            {
-                baseQuery = baseQuery.Where(s => s.TenantId == tenantId);
-            }
-            
+            if (tenantId > 0) baseQuery = baseQuery.Where(s => s.TenantId == tenantId);
+
             var sale = await baseQuery
                 .Include(s => s.Customer)
-                .Include(s => s.Items)
-                    .ThenInclude(i => i.Product)
+                .Include(s => s.Items).ThenInclude(i => i.Product)
+                .Include(s => s.CreatedByUser)
+                .Include(s => s.LastModifiedByUser)
                 .FirstOrDefaultAsync();
-
             if (sale == null) return null;
+            if (allowedRouteIdsForStaff != null && (!sale.RouteId.HasValue || !allowedRouteIdsForStaff.Contains(sale.RouteId.Value)))
+                return null;
 
-            // Staff scope: if allowedRouteIdsForStaff is set, sale must belong to one of those routes (or 404)
-            if (allowedRouteIdsForStaff != null)
-            {
-                if (!sale.RouteId.HasValue || !allowedRouteIdsForStaff.Contains(sale.RouteId.Value))
-                    return null;
-            }
+            return MapSaleToDto(sale, sale.BranchId, sale.RouteId);
+        }
+
+        private async Task<SaleDto?> GetSaleByIdProjectionAsync(int id, int tenantId)
+        {
+            var baseQuery = _context.Sales.AsNoTracking().Where(s => s.Id == id && !s.IsDeleted);
+            if (tenantId > 0) baseQuery = baseQuery.Where(s => s.TenantId == tenantId);
+
+            var header = await baseQuery
+                .Select(s => new
+                {
+                    s.Id,
+                    s.TenantId,
+                    s.InvoiceNo,
+                    s.InvoiceDate,
+                    s.CustomerId,
+                    s.Subtotal,
+                    s.VatTotal,
+                    s.Discount,
+                    s.GrandTotal,
+                    s.PaymentStatus,
+                    s.Notes,
+                    s.CreatedAt,
+                    s.CreatedBy,
+                    s.Version,
+                    s.IsLocked,
+                    s.LastModifiedAt,
+                    s.LastModifiedBy,
+                    s.EditReason,
+                    s.RowVersion
+                })
+                .FirstOrDefaultAsync();
+            if (header == null) return null;
+
+            var customer = header.CustomerId.HasValue
+                ? await _context.Customers.AsNoTracking().Where(c => c.Id == header.CustomerId.Value).Select(c => new { c.Name }).FirstOrDefaultAsync()
+                : null;
+            var items = await _context.SaleItems.AsNoTracking()
+                .Where(si => si.SaleId == id)
+                .Include(si => si.Product)
+                .ToListAsync();
+            var createdByUser = await _context.Users.AsNoTracking().Where(u => u.Id == header.CreatedBy).Select(u => new { u.Name }).FirstOrDefaultAsync();
+            var lastModifiedByUser = header.LastModifiedBy.HasValue
+                ? await _context.Users.AsNoTracking().Where(u => u.Id == header.LastModifiedBy!.Value).Select(u => new { u.Name }).FirstOrDefaultAsync()
+                : null;
 
             return new SaleDto
             {
+                Id = header.Id,
+                OwnerId = header.TenantId ?? 0,
+                InvoiceNo = header.InvoiceNo,
+                InvoiceDate = header.InvoiceDate,
+                CustomerId = header.CustomerId,
+                BranchId = null,
+                RouteId = null,
+                CustomerName = customer?.Name,
+                Subtotal = header.Subtotal,
+                VatTotal = header.VatTotal,
+                Discount = header.Discount,
+                GrandTotal = header.GrandTotal,
+                PaymentStatus = header.PaymentStatus.ToString(),
+                Notes = header.Notes,
+                Items = items.Select(i => new SaleItemDto
+                {
+                    Id = i.Id,
+                    ProductId = i.ProductId,
+                    ProductName = i.Product?.NameEn ?? $"Product {i.ProductId}",
+                    UnitType = string.IsNullOrWhiteSpace(i.UnitType) ? (i.Product?.UnitType ?? "CRTN") : i.UnitType.ToUpper(),
+                    Qty = i.Qty,
+                    UnitPrice = i.UnitPrice,
+                    Discount = i.Discount,
+                    VatAmount = i.VatAmount,
+                    LineTotal = i.LineTotal
+                }).ToList(),
+                CreatedAt = header.CreatedAt,
+                CreatedBy = createdByUser?.Name ?? "Unknown",
+                Version = header.Version,
+                IsLocked = header.IsLocked,
+                LastModifiedAt = header.LastModifiedAt,
+                LastModifiedBy = lastModifiedByUser?.Name,
+                EditReason = header.EditReason,
+                RowVersion = header.RowVersion != null && header.RowVersion.Length > 0 ? Convert.ToBase64String(header.RowVersion) : null
+            };
+        }
+
+        private static SaleDto MapSaleToDto(Sale sale, int? branchId, int? routeId)
+        {
+            return new SaleDto
+            {
                 Id = sale.Id,
-                OwnerId = sale.TenantId ?? 0, // CRITICAL: Must include tenantId for PDF generation (mapped to OwnerId)
+                OwnerId = sale.TenantId ?? 0,
                 InvoiceNo = sale.InvoiceNo,
                 InvoiceDate = sale.InvoiceDate,
                 CustomerId = sale.CustomerId,
-                BranchId = sale.BranchId,
-                RouteId = sale.RouteId,
+                BranchId = branchId,
+                RouteId = routeId,
                 CustomerName = sale.Customer?.Name,
                 Subtotal = sale.Subtotal,
                 VatTotal = sale.VatTotal,
@@ -239,7 +329,7 @@ namespace HexaBill.Api.Modules.Billing
                 {
                     Id = i.Id,
                     ProductId = i.ProductId,
-                    ProductName = i.Product?.NameEn ?? $"Product {i.ProductId}", // CRITICAL: Null check to prevent NRE
+                    ProductName = i.Product?.NameEn ?? $"Product {i.ProductId}",
                     UnitType = string.IsNullOrWhiteSpace(i.UnitType) ? (i.Product?.UnitType ?? "CRTN") : i.UnitType.ToUpper(),
                     Qty = i.Qty,
                     UnitPrice = i.UnitPrice,
@@ -253,10 +343,8 @@ namespace HexaBill.Api.Modules.Billing
                 IsLocked = sale.IsLocked,
                 LastModifiedAt = sale.LastModifiedAt,
                 LastModifiedBy = sale.LastModifiedByUser?.Name,
-                EditReason = sale.EditReason, // Reason for editing invoice
-                RowVersion = sale.RowVersion != null && sale.RowVersion.Length > 0 
-                    ? Convert.ToBase64String(sale.RowVersion) 
-                    : null
+                EditReason = sale.EditReason,
+                RowVersion = sale.RowVersion != null && sale.RowVersion.Length > 0 ? Convert.ToBase64String(sale.RowVersion) : null
             };
         }
 

@@ -31,6 +31,24 @@ CREATE TABLE IF NOT EXISTS ""Branches"" (
 CREATE INDEX IF NOT EXISTS ""IX_Branches_TenantId"" ON ""Branches"" (""TenantId"");
 ");
 
+                // Add Location (and ManagerUserId) to Branches if missing (production may have been created without them)
+                await context.Database.ExecuteSqlRawAsync(@"
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Branches' AND LOWER(column_name) = 'location') THEN
+        ALTER TABLE ""Branches"" ADD COLUMN ""Location"" character varying(200) NULL;
+    END IF;
+END $$;
+");
+                await context.Database.ExecuteSqlRawAsync(@"
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'Branches' AND LOWER(column_name) = 'manageruserid') THEN
+        ALTER TABLE ""Branches"" ADD COLUMN ""ManagerUserId"" integer NULL;
+    END IF;
+END $$;
+");
+
                 // Routes (depends on Branches)
                 await context.Database.ExecuteSqlRawAsync(@"
 CREATE TABLE IF NOT EXISTS ""Routes"" (

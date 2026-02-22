@@ -8,12 +8,25 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Shared.Services;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 
 namespace HexaBill.Api.Modules.Billing
 {
+    /// <summary>Minimal sale data for return creation when Sales.BranchId/RouteId may not exist in DB.</summary>
+    internal class SaleInfoForReturn
+    {
+        public int Id { get; set; }
+        public int TenantId { get; set; }
+        public int? CustomerId { get; set; }
+        public decimal GrandTotal { get; set; }
+        public int? BranchId { get; set; }
+        public int? RouteId { get; set; }
+        public List<SaleItem> Items { get; set; } = new();
+    }
+
     public interface IReturnService
     {
         Task<SaleReturnDto> CreateSaleReturnAsync(CreateSaleReturnRequest request, int userId, int tenantId);
@@ -36,12 +49,14 @@ namespace HexaBill.Api.Modules.Billing
         private readonly AppDbContext _context;
         private readonly ICustomerService _customerService;
         private readonly ISettingsService _settingsService;
+        private readonly ISalesSchemaService _salesSchema;
 
-        public ReturnService(AppDbContext context, ICustomerService customerService, ISettingsService settingsService)
+        public ReturnService(AppDbContext context, ICustomerService customerService, ISettingsService settingsService, ISalesSchemaService salesSchema)
         {
             _context = context;
             _customerService = customerService;
             _settingsService = settingsService;
+            _salesSchema = salesSchema;
         }
 
         public async Task<SaleReturnDto> CreateSaleReturnAsync(CreateSaleReturnRequest request, int userId, int tenantId)
@@ -58,14 +73,51 @@ namespace HexaBill.Api.Modules.Billing
                     throw new InvalidOperationException("Sales returns are disabled for your company. Contact your administrator.");
                 bool requireApproval = string.Equals(settings.GetValueOrDefault("Returns_RequireApproval", "false"), "true", StringComparison.OrdinalIgnoreCase);
 
-                // Get original sale
-                var sale = await _context.Sales
-                    .Include(s => s.Items)
-                    .ThenInclude(i => i.Product)
-                    .FirstOrDefaultAsync(s => s.Id == request.SaleId && s.TenantId == tenantId);
-
-                if (sale == null)
-                    throw new InvalidOperationException("Original sale not found");
+                // Get original sale (schema-safe: when Sales.BranchId/RouteId don't exist, load without them)
+                SaleInfoForReturn saleInfo;
+                var hasBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+                if (hasBranchRoute)
+                {
+                    var sale = await _context.Sales
+                        .Include(s => s.Items)
+                        .ThenInclude(i => i.Product)
+                        .FirstOrDefaultAsync(s => s.Id == request.SaleId && s.TenantId == tenantId);
+                    if (sale == null)
+                        throw new InvalidOperationException("Original sale not found");
+                    saleInfo = new SaleInfoForReturn
+                    {
+                        Id = sale.Id,
+                        TenantId = sale.TenantId ?? tenantId,
+                        CustomerId = sale.CustomerId,
+                        GrandTotal = sale.GrandTotal,
+                        BranchId = sale.BranchId,
+                        RouteId = sale.RouteId,
+                        Items = sale.Items.ToList()
+                    };
+                }
+                else
+                {
+                    var header = await _context.Sales
+                        .Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
+                        .Select(s => new { s.Id, s.TenantId, s.CustomerId, s.GrandTotal })
+                        .FirstOrDefaultAsync();
+                    if (header == null)
+                        throw new InvalidOperationException("Original sale not found");
+                    var items = await _context.SaleItems
+                        .Where(si => si.SaleId == request.SaleId)
+                        .Include(si => si.Product)
+                        .ToListAsync();
+                    saleInfo = new SaleInfoForReturn
+                    {
+                        Id = header.Id,
+                        TenantId = header.TenantId ?? tenantId,
+                        CustomerId = header.CustomerId,
+                        GrandTotal = header.GrandTotal,
+                        BranchId = null,
+                        RouteId = null,
+                        Items = items
+                    };
+                }
 
                 // Already-returned qty per SaleItemId (all returns for this sale, tenant-scoped)
                 var alreadyReturnedBySaleItemId = await _context.SaleReturnItems
@@ -75,7 +127,7 @@ namespace HexaBill.Api.Modules.Billing
                     .ToDictionaryAsync(x => x.SaleItemId, x => x.Total);
 
                 // Reject if nothing left to return
-                var anyRemaining = sale.Items.Any(si =>
+                var anyRemaining = saleInfo.Items.Any(si =>
                 {
                     var returned = alreadyReturnedBySaleItemId.GetValueOrDefault(si.Id, 0m);
                     return returned < si.Qty;
@@ -95,7 +147,7 @@ namespace HexaBill.Api.Modules.Billing
 
                 foreach (var item in request.Items)
                 {
-                    var saleItem = sale.Items.FirstOrDefault(si => si.Id == item.SaleItemId);
+                    var saleItem = saleInfo.Items.FirstOrDefault(si => si.Id == item.SaleItemId);
                     if (saleItem == null)
                         throw new InvalidOperationException($"Sale item {item.SaleItemId} not found");
 
@@ -188,10 +240,10 @@ namespace HexaBill.Api.Modules.Billing
 
                 // ReturnType: Full if every returned line is full qty and we cover all sale items; else Partial
                 bool allLinesFull = request.Items.All(it => {
-                    var si = sale.Items.FirstOrDefault(s => s.Id == it.SaleItemId);
+                    var si = saleInfo.Items.FirstOrDefault(s => s.Id == it.SaleItemId);
                     return si != null && it.Qty >= si.Qty;
                 });
-                bool allSaleItemsReturned = sale.Items.Count == request.Items.Count && request.Items.All(it => sale.Items.Any(s => s.Id == it.SaleItemId));
+                bool allSaleItemsReturned = saleInfo.Items.Count == request.Items.Count && request.Items.All(it => saleInfo.Items.Any(s => s.Id == it.SaleItemId));
                 string returnType = (allLinesFull && allSaleItemsReturned) ? "Full" : "Partial";
 
                 // ReturnCategory for ERP: writeoff > damaged > resellable > not_liked
@@ -200,13 +252,13 @@ namespace HexaBill.Api.Modules.Billing
                     : conditionFlags.Contains("resellable") && conditionFlags.Count == 1 ? "resellable"
                     : conditionFlags.Count > 0 ? "not_liked" : null;
 
-                // Create sale return (BranchId/RouteId from original sale)
+                // Create sale return (BranchId/RouteId from original sale when columns exist)
                 var saleReturn = new SaleReturn
                 {
                     OwnerId = tenantId,
                     TenantId = tenantId,
                     SaleId = request.SaleId,
-                    CustomerId = sale.CustomerId,
+                    CustomerId = saleInfo.CustomerId,
                     ReturnNo = returnNo,
                     ReturnDate = DateTime.UtcNow,
                     Subtotal = subtotal,
@@ -217,8 +269,8 @@ namespace HexaBill.Api.Modules.Billing
                     Status = requireApproval ? ReturnStatus.Pending : ReturnStatus.Approved,
                     RestoreStock = request.RestoreStock,
                     IsBadItem = request.IsBadItem,
-                    BranchId = sale.BranchId,
-                    RouteId = sale.RouteId,
+                    BranchId = saleInfo.BranchId,
+                    RouteId = saleInfo.RouteId,
                     ReturnType = returnType,
                     ReturnCategory = returnCategory,
                     CreatedBy = userId,
@@ -249,14 +301,14 @@ namespace HexaBill.Api.Modules.Billing
                         if (product == null) continue;
                         var baseQty = ri.Qty * product.ConversionToBase;
                         var inv = await _context.DamageInventories
-                            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == ri.ProductId && d.BranchId == sale.BranchId);
+                            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == ri.ProductId && d.BranchId == saleInfo.BranchId);
                         if (inv == null)
                         {
                             inv = new DamageInventory
                             {
                                 TenantId = tenantId,
                                 ProductId = ri.ProductId,
-                                BranchId = sale.BranchId,
+                                BranchId = saleInfo.BranchId,
                                 Quantity = 0,
                                 CreatedAt = DateTime.UtcNow,
                                 UpdatedAt = DateTime.UtcNow
@@ -279,8 +331,8 @@ namespace HexaBill.Api.Modules.Billing
                         {
                             OwnerId = tenantId,
                             TenantId = tenantId,
-                            BranchId = sale.BranchId,
-                            RouteId = sale.RouteId,
+                            BranchId = saleInfo.BranchId,
+                            RouteId = saleInfo.RouteId,
                             CategoryId = writeOffCategoryId,
                             Amount = ri.LineTotal,
                             Date = DateTime.UtcNow.Date,
@@ -291,26 +343,26 @@ namespace HexaBill.Api.Modules.Billing
                         });
                     }
 
-                    if (sale.CustomerId.HasValue)
+                    if (saleInfo.CustomerId.HasValue)
                     {
-                        var customer = await _context.Customers.FindAsync(sale.CustomerId.Value);
+                        var customer = await _context.Customers.FindAsync(saleInfo.CustomerId.Value);
                         if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(sale.CustomerId.Value, customer.TenantId ?? 0);
+                            await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, customer.TenantId ?? 0);
                     }
                 }
 
                 // Credit note for cash (paid) invoice when requested
-                if (request.CreateCreditNote && sale.CustomerId.HasValue)
+                if (request.CreateCreditNote && saleInfo.CustomerId.HasValue)
                 {
                     var totalPaidForSale = await _context.Payments
                         .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0;
-                    if (totalPaidForSale >= sale.GrandTotal)
+                    if (totalPaidForSale >= saleInfo.GrandTotal)
                     {
                         _context.CreditNotes.Add(new CreditNote
                         {
                             TenantId = tenantId,
-                            CustomerId = sale.CustomerId.Value,
+                            CustomerId = saleInfo.CustomerId.Value,
                             LinkedReturnId = saleReturn.Id,
                             Amount = grandTotal,
                             Currency = "AED",
