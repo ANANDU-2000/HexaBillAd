@@ -58,17 +58,24 @@ namespace HexaBill.Api.Modules.Branches
         {
             try
             {
+                // Load routes without Branch to avoid loading Branch.Address/Location (may not exist in DB).
                 var query = _context.Routes
                     .AsNoTracking()
                     .Where(r => (tenantId <= 0 || r.TenantId == tenantId) && (!branchId.HasValue || r.BranchId == branchId.Value))
-                    .Include(r => r.Branch)
-                    .Include(r => r.AssignedStaff);
-                return await query
+                    .Include(r => r.AssignedStaff)
+                    .Include(r => r.RouteStaff)
+                    .Include(r => r.RouteCustomers);
+                var routes = await query.ToListAsync();
+                var branchIds = routes.Select(r => r.BranchId).Distinct().ToList();
+                var branchNames = branchIds.Count > 0
+                    ? await _context.Branches.Where(b => branchIds.Contains(b.Id)).Select(b => new { b.Id, b.Name }).ToDictionaryAsync(x => x.Id, x => x.Name)
+                    : new Dictionary<int, string>();
+                return routes
                     .Select(r => new RouteDto
                     {
                         Id = r.Id,
                         BranchId = r.BranchId,
-                        BranchName = r.Branch != null ? r.Branch.Name : "",
+                        BranchName = branchNames.ContainsKey(r.BranchId) ? branchNames[r.BranchId] : "",
                         TenantId = r.TenantId,
                         Name = r.Name,
                         AssignedStaffId = r.AssignedStaffId,
@@ -79,7 +86,7 @@ namespace HexaBill.Api.Modules.Branches
                         StaffCount = r.RouteStaff.Count
                     })
                     .OrderBy(r => r.BranchName ?? "").ThenBy(r => r.Name)
-                    .ToListAsync();
+                    .ToList();
             }
             catch (Exception ex)
             {
@@ -91,14 +98,16 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<RouteDetailDto?> GetRouteByIdAsync(int id, int tenantId)
         {
+            // Load route without Branch to avoid Branch.Address/Location (may not exist in DB).
             var r = await _context.Routes
                 .AsNoTracking()
-                .Include(x => x.Branch)
                 .Include(x => x.AssignedStaff)
                 .Include(x => x.RouteCustomers).ThenInclude(rc => rc.Customer)
                 .Include(x => x.RouteStaff).ThenInclude(rs => rs.User)
                 .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId);
             if (r == null) return null;
+
+            var branchName = (await _context.Branches.Where(b => b.Id == r.BranchId).Select(b => b.Name).FirstOrDefaultAsync()) ?? "";
 
             var from = DateTime.UtcNow.AddYears(-1);
             var to = DateTime.UtcNow;
@@ -117,7 +126,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 Id = r.Id,
                 BranchId = r.BranchId,
-                BranchName = r.Branch?.Name ?? "",
+                BranchName = branchName,
                 TenantId = r.TenantId,
                 Name = r.Name,
                 AssignedStaffId = r.AssignedStaffId,
@@ -400,9 +409,9 @@ namespace HexaBill.Api.Modules.Branches
         {
             var route = await _context.Routes
                 .AsNoTracking()
-                .Include(r => r.Branch)
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
             if (route == null) return null;
+            var branchName = (await _context.Branches.Where(b => b.Id == route.BranchId).Select(b => b.Name).FirstOrDefaultAsync()) ?? "";
             var from = fromDate ?? DateTime.UtcNow.AddYears(-1);
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
             decimal totalSales = 0m;
@@ -462,7 +471,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 RouteId = route.Id,
                 RouteName = route.Name,
-                BranchName = route.Branch?.Name ?? "",
+                BranchName = branchName,
                 TotalSales = totalSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = costOfGoodsSold,
@@ -478,11 +487,11 @@ namespace HexaBill.Api.Modules.Branches
         {
             var route = await _context.Routes
                 .AsNoTracking()
-                .Include(r => r.Branch)
                 .Include(r => r.AssignedStaff)
                 .Include(r => r.RouteCustomers).ThenInclude(rc => rc.Customer)
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
             if (route == null) return null;
+            var branchName = (await _context.Branches.Where(b => b.Id == route.BranchId).Select(b => b.Name).FirstOrDefaultAsync()) ?? "";
 
             var dateStart = date.Date;
             var dateEnd = dateStart.AddDays(1).AddTicks(-1);
@@ -532,7 +541,7 @@ namespace HexaBill.Api.Modules.Branches
             return new RouteCollectionSheetDto
             {
                 RouteName = route.Name,
-                BranchName = route.Branch?.Name ?? "",
+                BranchName = branchName,
                 Date = date.ToString("yyyy-MM-dd"),
                 StaffName = route.AssignedStaff?.Name,
                 Customers = entries,

@@ -2148,22 +2148,14 @@ namespace HexaBill.Api.Modules.Reports
             }
             if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
 
-            // When columns missing, project to avoid 42703; otherwise load full entities then map to same shape
-            List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal)> sales;
-            if (hasSalesBranchRoute)
-            {
-                var fullSales = await salesQuery.OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id).ToListAsync();
-                sales = fullSales.Select(s => (s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal)).ToList();
-            }
-            else
-            {
-                var projected = await salesQuery
-                    .OrderBy(s => s.InvoiceDate)
-                    .ThenBy(s => s.Id)
-                    .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
-                    .ToListAsync();
-                sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
-            }
+            // CRITICAL: Always project Sales to Id, InvoiceNo, InvoiceDate, CustomerId, GrandTotal only (never load full entity).
+            // Avoids 42703 when BranchId/RouteId columns missing; also safe when they exist.
+            var projected = await salesQuery
+                .OrderBy(s => s.InvoiceDate)
+                .ThenBy(s => s.Id)
+                .Select(s => new { s.Id, s.InvoiceNo, s.InvoiceDate, s.CustomerId, s.GrandTotal })
+                .ToListAsync();
+            var sales = projected.Select(x => (x.Id, x.InvoiceNo, x.InvoiceDate, x.CustomerId, x.GrandTotal)).ToList();
 
             var saleIds = sales.Select(s => s.Id).ToHashSet();
 
