@@ -2187,30 +2187,43 @@ namespace HexaBill.Api.Modules.Reports
                 .ThenBy(p => p.Id)
                 .ToListAsync();
 
-            // Get returns in same date range and filters (ERP: Type = Return in sales ledger)
-            var returnsQuery = _context.SaleReturns
-                .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
-            if (hasSalesBranchRoute)
+            // Get returns in same date range and filters (ERP: Type = Return in sales ledger).
+            // SaleReturns may not have BranchId/RouteId in production → wrap in 42703 catch so we don't return empty report.
+            List<SaleReturn> returns;
+            try
             {
-                if (branchId.HasValue) returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
-                if (routeId.HasValue) returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
-                if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
+                var returnsQuery = _context.SaleReturns
+                    .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
+                if (hasSalesBranchRoute)
                 {
-                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
-                    if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
-                        returnsQuery = returnsQuery.Where(r => r.RouteId != null && restrictedRouteIds.Contains(r.RouteId.Value));
-                    else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                    if (branchId.HasValue) returnsQuery = returnsQuery.Where(r => r.BranchId == null || r.BranchId == branchId.Value);
+                    if (routeId.HasValue) returnsQuery = returnsQuery.Where(r => r.RouteId == null || r.RouteId == routeId.Value);
+                    if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
                     {
-                        var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
-                        if (branchIds.Count > 0)
-                            returnsQuery = returnsQuery.Where(r => r.BranchId == null || branchIds.Contains(r.BranchId.Value));
-                        else
-                            returnsQuery = returnsQuery.Where(r => false);
+                        var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff ?? "");
+                        if (restrictedRouteIds != null && restrictedRouteIds.Length > 0)
+                            returnsQuery = returnsQuery.Where(r => r.RouteId != null && restrictedRouteIds.Contains(r.RouteId.Value));
+                        else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
+                        {
+                            var branchIds = await _context.BranchStaff.Where(bs => bs.UserId == userIdForStaff.Value).Select(bs => bs.BranchId).ToListAsync();
+                            if (branchIds.Count > 0)
+                                returnsQuery = returnsQuery.Where(r => r.BranchId == null || branchIds.Contains(r.BranchId.Value));
+                            else
+                                returnsQuery = returnsQuery.Where(r => false);
+                        }
                     }
                 }
+                if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
+                returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
             }
-            if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
-            var returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+            catch (PostgresException ex) when (ex.SqlState == "42703")
+            {
+                // SaleReturns table may not have BranchId/RouteId columns
+                var returnsQuery = _context.SaleReturns
+                    .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
+                if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
+                returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id).ToListAsync();
+            }
 
             // Get payment totals per sale for status calculation
             var salePayments = await _context.Payments
