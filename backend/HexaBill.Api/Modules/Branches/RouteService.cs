@@ -4,6 +4,7 @@
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Shared.Services;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches
@@ -33,10 +34,12 @@ namespace HexaBill.Api.Modules.Branches
     public class RouteService : IRouteService
     {
         private readonly AppDbContext _context;
+        private readonly ISalesSchemaService _salesSchema;
 
-        public RouteService(AppDbContext context)
+        public RouteService(AppDbContext context, ISalesSchemaService salesSchema)
         {
             _context = context;
+            _salesSchema = salesSchema;
         }
 
         public async Task<bool> CheckDatabaseConnectionAsync()
@@ -99,9 +102,13 @@ namespace HexaBill.Api.Modules.Branches
 
             var from = DateTime.UtcNow.AddYears(-1);
             var to = DateTime.UtcNow;
-            var totalSales = await _context.Sales
-                .Where(s => s.RouteId == id && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
-                .SumAsync(s => s.GrandTotal);
+            decimal totalSales = 0;
+            if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+            {
+                totalSales = await _context.Sales
+                    .Where(s => s.RouteId == id && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .SumAsync(s => s.GrandTotal);
+            }
             var totalExpenses = await _context.RouteExpenses
                 .Where(e => e.RouteId == id && e.ExpenseDate >= from && e.ExpenseDate <= to)
                 .SumAsync(e => e.Amount);
@@ -397,16 +404,21 @@ namespace HexaBill.Api.Modules.Branches
             if (route == null) return null;
             var from = fromDate ?? DateTime.UtcNow.AddYears(-1);
             var to = (toDate ?? DateTime.UtcNow).Date.AddDays(1).AddTicks(-1);
-            var totalSales = await _context.Sales
-                .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
-                .SumAsync(s => s.GrandTotal);
+            decimal totalSales = 0m;
+            List<int> saleIds = new List<int>();
+            if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+            {
+                totalSales = await _context.Sales
+                    .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .SumAsync(s => s.GrandTotal);
+                saleIds = await _context.Sales
+                    .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .Select(s => s.Id)
+                    .ToListAsync();
+            }
             var totalExpenses = await _context.RouteExpenses
                 .Where(e => e.RouteId == routeId && e.ExpenseDate >= from && e.ExpenseDate <= to)
                 .SumAsync(e => e.Amount);
-            var saleIds = await _context.Sales
-                .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
-                .Select(s => s.Id)
-                .ToListAsync();
             var invoiceCount = saleIds.Count;
             decimal costOfGoodsSold = 0m;
             if (invoiceCount > 0)
@@ -475,11 +487,16 @@ namespace HexaBill.Api.Modules.Branches
             var dateEnd = dateStart.AddDays(1).AddTicks(-1);
 
             var customerIds = route.RouteCustomers.Select(rc => rc.CustomerId).ToList();
-            var todayInvoices = await _context.Sales
-                .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= dateStart && s.InvoiceDate <= dateEnd && s.CustomerId != null)
-                .Select(s => new { s.CustomerId, s.GrandTotal })
-                .ToListAsync();
-            var todayByCustomer = todayInvoices
+            var todayInvoicesList = new List<(int? CustomerId, decimal GrandTotal)>();
+            if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+            {
+                var q = await _context.Sales
+                    .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= dateStart && s.InvoiceDate <= dateEnd && s.CustomerId != null)
+                    .Select(s => new { s.CustomerId, s.GrandTotal })
+                    .ToListAsync();
+                todayInvoicesList = q.Select(x => (x.CustomerId, x.GrandTotal)).ToList();
+            }
+            var todayByCustomer = todayInvoicesList
                 .Where(x => x.CustomerId.HasValue)
                 .GroupBy(x => x.CustomerId!.Value)
                 .ToDictionary(g => g.Key, g => g.Sum(x => x.GrandTotal));

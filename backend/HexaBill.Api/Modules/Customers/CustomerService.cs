@@ -1328,8 +1328,10 @@ namespace HexaBill.Api.Modules.Customers
 
             // CRITICAL: Calculate opening balance EXACTLY like ledger tab logic
             // Opening balance = All sales (debit) - All payments (credit) - All sales returns (credit) BEFORE fromDate
+            // Schema-safe: project only GrandTotal so SQL never selects BranchId/RouteId (42703 when columns missing).
             var openingSales = await _context.Sales
                 .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate < fromDate)
+                .Select(s => new { s.GrandTotal })
                 .SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
             
             // Include ALL payments (not just CLEARED) to match ledger tab logic
@@ -1346,16 +1348,17 @@ namespace HexaBill.Api.Modules.Customers
             var openingBalance = openingSales - openingPayments - openingSalesReturns;
 
             // Get transactions within date range - use toEnd to include full last day.
-            // CRITICAL: Project to StatementSaleRow only (no BranchId/RouteId) so statement works when Sales table lacks those columns (e.g. production before migration).
-            var sales = await _context.Sales
+            // CRITICAL: Project to anonymous type only (no BranchId/RouteId) so SQL never selects those columns (42703 when missing). Then map to StatementSaleRow.
+            var salesData = await _context.Sales
                 .Where(s => s.CustomerId.HasValue && s.CustomerId.Value == customerId && s.TenantId == tenantId &&
                            !s.IsDeleted &&
                            s.InvoiceDate >= fromDate &&
                            s.InvoiceDate <= toEnd)
+                .Select(s => new { s.Id, s.InvoiceDate, s.InvoiceNo, s.GrandTotal })
                 .OrderBy(s => s.InvoiceDate)
                 .ThenBy(s => s.Id)
-                .Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal })
                 .ToListAsync();
+            var sales = salesData.Select(s => new StatementSaleRow { Id = s.Id, InvoiceDate = s.InvoiceDate, InvoiceNo = s.InvoiceNo, GrandTotal = s.GrandTotal }).ToList();
 
             var payments = await _context.Payments
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId &&
