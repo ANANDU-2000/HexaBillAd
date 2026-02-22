@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Reports
 {
@@ -22,10 +23,12 @@ namespace HexaBill.Api.Modules.Reports
     public class ProfitService : IProfitService
     {
         private readonly AppDbContext _context;
+        private readonly ISalesSchemaService _salesSchema;
 
-        public ProfitService(AppDbContext context)
+        public ProfitService(AppDbContext context, ISalesSchemaService salesSchema)
         {
             _context = context;
+            _salesSchema = salesSchema;
         }
 
         /// <summary>Single definition: Profit = GrandTotal(Sales) - COGS - Expenses. COGS from SaleItems (Qty×ConversionToBase×CostPrice).</summary>
@@ -53,19 +56,15 @@ namespace HexaBill.Api.Modules.Reports
 
             var totalSalesVat = await salesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0;
 
-            // CRITICAL: Calculate COGS (Cost of Goods Sold) - use actual product cost prices + OWNER FILTER
-            // SUPER ADMIN (TenantId = 0): See ALL owners' data
-            var saleItemsQuery = _context.SaleItems
-                .Include(si => si.Sale)
+            // CRITICAL: COGS - get sale IDs by projection only (avoid Include(Sale) which would SELECT Sales.BranchId and fail when column missing)
+            var saleIdsInRange = await _context.Sales
+                .Where(s => s.InvoiceDate >= from && s.InvoiceDate <= to && !s.IsDeleted && (tenantId <= 0 || s.TenantId == tenantId))
+                .Select(s => s.Id)
+                .ToListAsync();
+            var saleItems = await _context.SaleItems
                 .Include(si => si.Product)
-                .Where(si => si.Sale.InvoiceDate >= from && 
-                            si.Sale.InvoiceDate <= to && 
-                            !si.Sale.IsDeleted);
-            if (tenantId > 0)
-            {
-                saleItemsQuery = saleItemsQuery.Where(si => si.Sale.TenantId == tenantId);
-            }
-            var saleItems = await saleItemsQuery.ToListAsync();
+                .Where(si => saleIdsInRange.Contains(si.SaleId))
+                .ToListAsync();
             
             // COGS = SaleItems (Qty × conversion × CostPrice) — same as ReportService dashboard (no VAT on COGS for consistency)
             var cogs = saleItems.Sum(si =>
@@ -237,6 +236,8 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<List<BranchProfitDto>> CalculateBranchProfitAsync(int tenantId, DateTime fromDate, DateTime toDate)
         {
             if (tenantId <= 0) return new List<BranchProfitDto>();
+            if (!await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+                return new List<BranchProfitDto>();
 
             var from = new DateTime(fromDate.Year, fromDate.Month, fromDate.Day, 0, 0, 0, DateTimeKind.Utc);
             var to = toDate.AddDays(1).AddTicks(-1).ToUtcKind();
@@ -260,7 +261,6 @@ namespace HexaBill.Api.Modules.Reports
                         && s.InvoiceDate >= from && s.InvoiceDate <= to)
                     .Select(s => s.Id);
                 var saleItemsQuery = _context.SaleItems
-                    .Include(si => si.Sale)
                     .Include(si => si.Product)
                     .Where(si => saleIdsQuery.Contains(si.SaleId));
                 var saleItems = await saleItemsQuery.ToListAsync();

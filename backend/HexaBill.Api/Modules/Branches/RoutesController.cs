@@ -69,7 +69,8 @@ namespace HexaBill.Api.Modules.Branches
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ GetRoute Error: {ex.Message}");
-                return NotFound(new ApiResponse<RouteDetailDto> { Success = false, Message = "Route not found." });
+                if (ex.InnerException != null) Console.WriteLine($"❌ GetRoute Inner: {ex.InnerException.Message}");
+                return StatusCode(500, new ApiResponse<RouteDetailDto> { Success = false, Message = ex.Message ?? "Error loading route.", Errors = new List<string> { ex.Message ?? "Unknown error" } });
             }
         }
 
@@ -87,7 +88,7 @@ namespace HexaBill.Api.Modules.Branches
             catch (Exception ex)
             {
                 Console.WriteLine($"❌ GetRouteSummary Error: {ex.Message}");
-                return NotFound(new ApiResponse<RouteSummaryDto> { Success = false, Message = "Route not found." });
+                return StatusCode(500, new ApiResponse<RouteSummaryDto> { Success = false, Message = ex.Message ?? "Error loading route summary.", Errors = new List<string> { ex.Message ?? "Unknown error" } });
             }
         }
 

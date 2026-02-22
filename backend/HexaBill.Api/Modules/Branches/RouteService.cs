@@ -204,7 +204,8 @@ namespace HexaBill.Api.Modules.Branches
                 var hasCustomers = await _context.RouteCustomers.AnyAsync(rc => rc.RouteId == id) ||
                                    await _context.Customers.AnyAsync(c => c.RouteId == id && c.TenantId == tenantId);
                 
-                var hasSales = await _context.Sales.AnyAsync(s => s.RouteId == id && s.TenantId == tenantId && !s.IsDeleted);
+                var hasSales = await _salesSchema.SalesHasBranchIdAndRouteIdAsync()
+                    && await _context.Sales.AnyAsync(s => s.RouteId == id && s.TenantId == tenantId && !s.IsDeleted);
                 
                 if (hasCustomers || hasSales)
                 {

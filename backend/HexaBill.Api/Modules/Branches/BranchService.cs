@@ -75,21 +75,23 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<BranchDto?> GetBranchByIdAsync(int id, int tenantId)
         {
+            // Schema-safe: project only Id, Name, TenantId, CreatedAt (omit Address/Location so production DB without those columns does not 500)
             var b = await _context.Branches
                 .AsNoTracking()
                 .Where(x => x.Id == id && (tenantId <= 0 || x.TenantId == tenantId))
-                .Select(x => new BranchDto
-                {
-                    Id = x.Id,
-                    TenantId = x.TenantId,
-                    Name = x.Name,
-                    Address = x.Address,
-                    CreatedAt = x.CreatedAt,
-                    RouteCount = x.Routes.Count,
-                    AssignedStaffIds = x.BranchStaff.Select(bs => bs.UserId).ToList()
-                })
+                .Select(x => new { x.Id, x.TenantId, x.Name, x.CreatedAt, RouteCount = x.Routes.Count, StaffIds = x.BranchStaff.Select(bs => bs.UserId).ToList() })
                 .FirstOrDefaultAsync();
-            return b;
+            if (b == null) return null;
+            return new BranchDto
+            {
+                Id = b.Id,
+                TenantId = b.TenantId,
+                Name = b.Name,
+                Address = null,
+                CreatedAt = b.CreatedAt,
+                RouteCount = b.RouteCount,
+                AssignedStaffIds = b.StaffIds ?? new List<int>()
+            };
         }
 
         public async Task<BranchDto> CreateBranchAsync(CreateBranchRequest request, int tenantId)
@@ -128,26 +130,27 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<BranchDto?> UpdateBranchAsync(int id, CreateBranchRequest request, int tenantId)
         {
-            var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == id && b.TenantId == tenantId);
-            if (branch == null) return null;
-            branch.Name = request.Name.Trim();
-            branch.Address = request.Address?.Trim();
-            branch.UpdatedAt = DateTime.UtcNow;
+            // Schema-safe: avoid loading full Branch entity (Address/Location may not exist). Check existence by Id only, then update only Name/UpdatedAt.
+            var exists = await _context.Branches.Where(b => b.Id == id && b.TenantId == tenantId).Select(b => b.Id).AnyAsync();
+            if (!exists) return null;
+
+            await _context.Branches
+                .Where(b => b.Id == id && b.TenantId == tenantId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(b => b.Name, request.Name.Trim())
+                    .SetProperty(b => b.UpdatedAt, DateTime.UtcNow));
 
             if (request.AssignedStaffIds != null)
             {
-                // Remove existing
                 var existing = await _context.BranchStaff.Where(bs => bs.BranchId == id).ToListAsync();
                 _context.BranchStaff.RemoveRange(existing);
-
-                // Add new
                 foreach (var staffId in request.AssignedStaffIds)
                 {
-                    _context.BranchStaff.Add(new BranchStaff { BranchId = branch.Id, UserId = staffId, AssignedAt = DateTime.UtcNow });
+                    _context.BranchStaff.Add(new BranchStaff { BranchId = id, UserId = staffId, AssignedAt = DateTime.UtcNow });
                 }
+                await _context.SaveChangesAsync();
             }
 
-            await _context.SaveChangesAsync();
             return await GetBranchByIdAsync(id, tenantId);
         }
 

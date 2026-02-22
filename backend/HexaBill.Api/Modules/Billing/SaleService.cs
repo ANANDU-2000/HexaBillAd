@@ -101,20 +101,23 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 // Super admin (TenantId = 0) sees ALL tenants
 
-                // Staff scope: restrict to assigned routes only
-                if (tenantId > 0 && userIdForStaff.HasValue && !string.IsNullOrEmpty(roleForStaff) && roleForStaff.Trim().Equals("Staff", StringComparison.OrdinalIgnoreCase))
+                var hasBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
+                if (hasBranchRoute)
                 {
-                    var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff);
-                    if (restrictedRouteIds != null)
+                    // Staff scope: restrict to assigned routes only
+                    if (tenantId > 0 && userIdForStaff.HasValue && !string.IsNullOrEmpty(roleForStaff) && roleForStaff.Trim().Equals("Staff", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (restrictedRouteIds.Length == 0)
-                            return new PagedResponse<SaleDto> { Items = new List<SaleDto>(), TotalCount = 0, Page = page, PageSize = pageSize, TotalPages = 0 };
-                        query = query.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                        var restrictedRouteIds = await _routeScopeService.GetRestrictedRouteIdsAsync(userIdForStaff.Value, tenantId, roleForStaff);
+                        if (restrictedRouteIds != null)
+                        {
+                            if (restrictedRouteIds.Length == 0)
+                                return new PagedResponse<SaleDto> { Items = new List<SaleDto>(), TotalCount = 0, Page = page, PageSize = pageSize, TotalPages = 0 };
+                            query = query.Where(s => s.RouteId != null && restrictedRouteIds.Contains(s.RouteId.Value));
+                        }
                     }
+                    if (branchId.HasValue) query = query.Where(s => s.BranchId == branchId.Value);
+                    if (routeId.HasValue) query = query.Where(s => s.RouteId == routeId.Value);
                 }
-
-                if (branchId.HasValue) query = query.Where(s => s.BranchId == branchId.Value);
-                if (routeId.HasValue) query = query.Where(s => s.RouteId == routeId.Value);
 
                 // Filter deleted sales (after migration)
                 query = query.Where(s => !s.IsDeleted);
