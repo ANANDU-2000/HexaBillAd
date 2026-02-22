@@ -227,6 +227,52 @@ namespace HexaBill.Api.Modules.Customers
             finally { if (!wasOpen) await conn.CloseAsync(); }
         }
 
+        /// <summary>Raw SQL for statement opening sales returns sum when SaleReturns.BranchId may not exist.</summary>
+        private async Task<decimal> GetStatementOpeningSalesReturnsRawAsync(int customerId, int tenantId, DateTime fromDate)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT COALESCE(SUM(""GrandTotal""), 0) FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" < @p2";
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
+                var result = await cmd.ExecuteScalarAsync();
+                return result is decimal d ? d : (result is double dbl ? (decimal)dbl : 0m);
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
+        /// <summary>Raw SQL for statement sales returns list when SaleReturns.BranchId may not exist. Returns ReturnDate, ReturnNo, GrandTotal.</summary>
+        private async Task<List<(DateTime ReturnDate, string? ReturnNo, decimal GrandTotal)>> GetStatementSalesReturnsRawAsync(int customerId, int tenantId, DateTime fromDate, DateTime toEnd)
+        {
+            var conn = _context.Database.GetDbConnection();
+            var wasOpen = conn.State == System.Data.ConnectionState.Open;
+            if (!wasOpen) await conn.OpenAsync();
+            try
+            {
+                using var cmd = conn.CreateCommand();
+                cmd.CommandText = @"SELECT ""ReturnDate"", ""ReturnNo"", ""GrandTotal"" FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" >= @p2 AND ""ReturnDate"" <= @p3 ORDER BY ""ReturnDate"", ""Id""";
+                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
+                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
+                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
+                var p3 = cmd.CreateParameter(); p3.ParameterName = "p3"; p3.Value = toEnd; cmd.Parameters.Add(p3);
+                var list = new List<(DateTime ReturnDate, string? ReturnNo, decimal GrandTotal)>();
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        list.Add((reader.GetDateTime(0), reader.IsDBNull(1) ? null : reader.GetString(1), reader.GetDecimal(2)));
+                    }
+                }
+                return list;
+            }
+            finally { if (!wasOpen) await conn.CloseAsync(); }
+        }
+
         public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
         {
             // NOTE: DatabaseFixer should only run at application startup (Program.cs)
@@ -1439,10 +1485,27 @@ namespace HexaBill.Api.Modules.Customers
                 .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.PaymentDate < fromDate)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0;
             
-            // Include sales returns (credit) in opening balance
-            var openingSalesReturns = await _context.SaleReturns
-                .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && sr.ReturnDate < fromDate)
-                .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0;
+            // Include sales returns (credit) in opening balance. On PostgreSQL use raw SQL so we never touch SaleReturns.BranchId.
+            decimal openingSalesReturns;
+            List<(DateTime ReturnDate, string? ReturnNo, decimal GrandTotal)> salesReturnsList;
+            if (_context.Database.IsNpgsql())
+            {
+                openingSalesReturns = await GetStatementOpeningSalesReturnsRawAsync(customerId, tenantId, fromDate);
+                salesReturnsList = await GetStatementSalesReturnsRawAsync(customerId, tenantId, fromDate, toEnd);
+            }
+            else
+            {
+                openingSalesReturns = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && sr.ReturnDate < fromDate)
+                    .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0;
+                var returnsData = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId &&
+                               sr.ReturnDate >= fromDate && sr.ReturnDate <= toEnd)
+                    .OrderBy(sr => sr.ReturnDate)
+                    .Select(sr => new { sr.ReturnDate, sr.ReturnNo, sr.GrandTotal })
+                    .ToListAsync();
+                salesReturnsList = returnsData.Select(x => (x.ReturnDate, (string?)x.ReturnNo, x.GrandTotal)).ToList();
+            }
             
             // Opening balance = Sales (debit) - Payments (credit) - Returns (credit)
             var openingBalance = openingSales - openingPayments - openingSalesReturns;
@@ -1453,14 +1516,6 @@ namespace HexaBill.Api.Modules.Customers
                            p.PaymentDate <= toEnd)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
-                .ToListAsync();
-
-            // Get sales returns in date range - STRICT filtering
-            var salesReturns = await _context.SaleReturns
-                .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && 
-                           sr.ReturnDate >= fromDate && 
-                           sr.ReturnDate <= toEnd)
-                .OrderBy(sr => sr.ReturnDate)
                 .ToListAsync();
 
                 // Get payment details for each sale to calculate status - STRICT filtering
@@ -1500,18 +1555,23 @@ namespace HexaBill.Api.Modules.Customers
                         }
                         else
                         {
-                            // If not in current range, fetch from database (schema-safe: may use raw SQL if BranchId missing)
-                            try
-                            {
-                                var saleFromDb = await _context.Sales
-                                    .Where(s => s.Id == payment.SaleId.Value && !s.IsDeleted)
-                                    .Select(s => s.InvoiceNo)
-                                    .FirstOrDefaultAsync();
-                                invoiceRef = saleFromDb ?? "";
-                            }
-                            catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
-                            {
+                            // If not in current range, fetch InvoiceNo. On PostgreSQL use raw SQL only (no EF on Sales).
+                            if (_context.Database.IsNpgsql())
                                 invoiceRef = await GetSaleInvoiceNoRawAsync(payment.SaleId.Value) ?? "";
+                            else
+                            {
+                                try
+                                {
+                                    var saleFromDb = await _context.Sales
+                                        .Where(s => s.Id == payment.SaleId.Value && !s.IsDeleted)
+                                        .Select(s => s.InvoiceNo)
+                                        .FirstOrDefaultAsync();
+                                    invoiceRef = saleFromDb ?? "";
+                                }
+                                catch (PostgresException pgEx) when (pgEx.SqlState == "42703")
+                                {
+                                    invoiceRef = await GetSaleInvoiceNoRawAsync(payment.SaleId.Value) ?? "";
+                                }
                             }
                         }
                     }
@@ -1526,7 +1586,7 @@ namespace HexaBill.Api.Modules.Customers
                     allTransactions.Add((payment.PaymentDate, invoiceRef, invoiceRef, 0, payment.Amount, "", 0, 0, payment.Mode.ToString()));
             }
 
-            foreach (var saleReturn in salesReturns)
+            foreach (var saleReturn in salesReturnsList)
             {
                     allTransactions.Add((saleReturn.ReturnDate, saleReturn.ReturnNo ?? "", saleReturn.ReturnNo ?? "", 0, saleReturn.GrandTotal, "", 0, 0, ""));
             }
@@ -1552,7 +1612,7 @@ namespace HexaBill.Api.Modules.Customers
                     .ToList();
                 
                 // Get sales returns (standalone)
-                var standaloneReturns = salesReturns
+                var standaloneReturns = salesReturnsList
                     .OrderBy(sr => sr.ReturnDate)
                     .ToList();
 
