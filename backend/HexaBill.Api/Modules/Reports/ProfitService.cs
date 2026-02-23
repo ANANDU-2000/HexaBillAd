@@ -242,9 +242,12 @@ namespace HexaBill.Api.Modules.Reports
             var from = new DateTime(fromDate.Year, fromDate.Month, fromDate.Day, 0, 0, 0, DateTimeKind.Utc);
             var to = toDate.AddDays(1).AddTicks(-1).ToUtcKind();
 
+            // Schema-safe: select only Id, Name to avoid missing ManagerId column (42703) on some DBs
             var branches = await _context.Branches
+                .AsNoTracking()
                 .Where(b => b.TenantId == tenantId)
                 .OrderBy(b => b.Name)
+                .Select(b => new { b.Id, b.Name })
                 .ToListAsync();
 
             var result = new List<BranchProfitDto>();

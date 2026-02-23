@@ -2,6 +2,7 @@
  * Branch + Route services for enterprise branch/route architecture.
  */
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Services;
@@ -26,11 +27,13 @@ namespace HexaBill.Api.Modules.Branches
     {
         private readonly AppDbContext _context;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly IServiceScopeFactory _scopeFactory;
 
-        public BranchService(AppDbContext context, ISalesSchemaService salesSchema)
+        public BranchService(AppDbContext context, ISalesSchemaService salesSchema, IServiceScopeFactory scopeFactory)
         {
             _context = context;
             _salesSchema = salesSchema;
+            _scopeFactory = scopeFactory;
         }
 
         public async Task<bool> CheckDatabaseConnectionAsync()
@@ -360,15 +363,11 @@ namespace HexaBill.Api.Modules.Branches
                 {
                     var prevTo = from.AddDays(-1);
                     var prevFrom = prevTo.AddDays(-periodDays);
-                    // CRITICAL: Prevent deep recursion - limit to 1 level only
-                    // Use Task.Run with timeout to prevent hanging
-                    var prevSummaryTask = GetBranchSummaryAsync(branchData.Id, tenantId, prevFrom, prevTo.AddDays(1));
-                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5)); // 5 second timeout
-                    var completedTask = await Task.WhenAny(prevSummaryTask, timeoutTask);
-                    
-                    if (completedTask == prevSummaryTask && !prevSummaryTask.IsFaulted)
+                    // Use a new scope so the inner call has its own DbContext (avoids "second operation started" / ObjectDisposedException)
+                    using (var scope = _scopeFactory.CreateScope())
                     {
-                        var prevSummary = await prevSummaryTask;
+                        var branchService = scope.ServiceProvider.GetRequiredService<IBranchService>();
+                        var prevSummary = await branchService.GetBranchSummaryAsync(branchData.Id, tenantId, prevFrom, prevTo.AddDays(1));
                         if (prevSummary != null && prevSummary.TotalSales > 0)
                         {
                             growthPercent = ((totalSales - prevSummary.TotalSales) / prevSummary.TotalSales * 100);
@@ -378,7 +377,6 @@ namespace HexaBill.Api.Modules.Branches
                             growthPercent = 100; // 100% growth if no previous sales
                         }
                     }
-                    // If timeout or faulted, growthPercent remains null (graceful degradation)
                 }
                 catch (Exception ex)
                 {
