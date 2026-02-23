@@ -396,6 +396,7 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnCategory"" character varying(20) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnType"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
@@ -1058,6 +1059,7 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnCategory"" character varying(20) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnType"" character varying(20) NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");

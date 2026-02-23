@@ -484,7 +484,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var missingTables = expectedTables.Where(t => !existingTables.Contains(t)).OrderBy(t => t).ToList();
 
                 // Critical columns we've hit in production (table, column) - report if missing
-                var criticalColumns = new[] { ("ErrorLogs", "ResolvedAt"), ("SaleReturns", "ReturnCategory"), ("SaleReturnItems", "DamageCategoryId"), ("SaleReturnItems", "Condition"), ("Sales", "BranchId"), ("Sales", "RouteId"), ("Branches", "IsActive"), ("Routes", "IsActive") };
+                var criticalColumns = new[] { ("ErrorLogs", "ResolvedAt"), ("SaleReturns", "ReturnCategory"), ("SaleReturns", "ReturnType"), ("SaleReturnItems", "DamageCategoryId"), ("SaleReturnItems", "Condition"), ("Sales", "BranchId"), ("Sales", "RouteId"), ("Branches", "IsActive"), ("Routes", "IsActive") };
                 var missingColumns = new List<object>();
                 if (!wasOpen) await connection.OpenAsync();
                 foreach (var (tableName, columnName) in criticalColumns)
