@@ -198,12 +198,24 @@ namespace HexaBill.Api.Modules.Billing
 
         public async Task<SaleDto?> GetSaleByIdAsync(int id, int tenantId, HashSet<int>? allowedRouteIdsForStaff = null)
         {
-            // CRITICAL: When Sales.BranchId/RouteId columns don't exist (e.g. production before migration),
-            // use projection only so we never SELECT those columns.
+            // CRITICAL: When Sales.BranchId/RouteId columns don't exist (e.g. production), use projection only.
             var hasBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
             if (hasBranchRoute)
             {
-                return await GetSaleByIdWithBranchRouteAsync(id, tenantId, allowedRouteIdsForStaff);
+                try
+                {
+                    return await GetSaleByIdWithBranchRouteAsync(id, tenantId, allowedRouteIdsForStaff);
+                }
+                catch (Exception ex)
+                {
+                    var pg = ex is PostgresException p ? p : ex.InnerException as PostgresException;
+                    if (pg?.SqlState == "42703") // undefined_column (e.g. BranchId/RouteId missing)
+                    {
+                        SalesSchemaService.ClearColumnCheckCacheStatic();
+                        return await GetSaleByIdProjectionAsync(id, tenantId);
+                    }
+                    throw;
+                }
             }
             return await GetSaleByIdProjectionAsync(id, tenantId);
         }

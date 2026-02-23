@@ -73,51 +73,28 @@ namespace HexaBill.Api.Modules.Billing
                     throw new InvalidOperationException("Sales returns are disabled for your company. Contact your administrator.");
                 bool requireApproval = string.Equals(settings.GetValueOrDefault("Returns_RequireApproval", "false"), "true", StringComparison.OrdinalIgnoreCase);
 
-                // Get original sale (schema-safe: when Sales.BranchId/RouteId don't exist, load without them)
-                SaleInfoForReturn saleInfo;
-                var hasBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
-                if (hasBranchRoute)
+                // Get original sale (always schema-safe: never SELECT BranchId/RouteId to avoid 42703 on DBs that don't have those columns)
+                var header = await _context.Sales
+                    .AsNoTracking()
+                    .Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
+                    .Select(s => new { s.Id, s.TenantId, s.CustomerId, s.GrandTotal })
+                    .FirstOrDefaultAsync();
+                if (header == null)
+                    throw new InvalidOperationException("Original sale not found");
+                var items = await _context.SaleItems
+                    .Where(si => si.SaleId == request.SaleId)
+                    .Include(si => si.Product)
+                    .ToListAsync();
+                var saleInfo = new SaleInfoForReturn
                 {
-                    var sale = await _context.Sales
-                        .Include(s => s.Items)
-                        .ThenInclude(i => i.Product)
-                        .FirstOrDefaultAsync(s => s.Id == request.SaleId && s.TenantId == tenantId);
-                    if (sale == null)
-                        throw new InvalidOperationException("Original sale not found");
-                    saleInfo = new SaleInfoForReturn
-                    {
-                        Id = sale.Id,
-                        TenantId = sale.TenantId ?? tenantId,
-                        CustomerId = sale.CustomerId,
-                        GrandTotal = sale.GrandTotal,
-                        BranchId = sale.BranchId,
-                        RouteId = sale.RouteId,
-                        Items = sale.Items.ToList()
-                    };
-                }
-                else
-                {
-                    var header = await _context.Sales
-                        .Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
-                        .Select(s => new { s.Id, s.TenantId, s.CustomerId, s.GrandTotal })
-                        .FirstOrDefaultAsync();
-                    if (header == null)
-                        throw new InvalidOperationException("Original sale not found");
-                    var items = await _context.SaleItems
-                        .Where(si => si.SaleId == request.SaleId)
-                        .Include(si => si.Product)
-                        .ToListAsync();
-                    saleInfo = new SaleInfoForReturn
-                    {
-                        Id = header.Id,
-                        TenantId = header.TenantId ?? tenantId,
-                        CustomerId = header.CustomerId,
-                        GrandTotal = header.GrandTotal,
-                        BranchId = null,
-                        RouteId = null,
-                        Items = items
-                    };
-                }
+                    Id = header.Id,
+                    TenantId = header.TenantId ?? tenantId,
+                    CustomerId = header.CustomerId,
+                    GrandTotal = header.GrandTotal,
+                    BranchId = null,
+                    RouteId = null,
+                    Items = items
+                };
 
                 // Already-returned qty per SaleItemId (all returns for this sale, tenant-scoped)
                 var alreadyReturnedBySaleItemId = await _context.SaleReturnItems
