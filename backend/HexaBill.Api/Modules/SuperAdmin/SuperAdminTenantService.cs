@@ -1773,8 +1773,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 await _context.Database.ExecuteSqlInterpolatedAsync(
                     $@"DELETE FROM ""ProductCategories"" WHERE ""TenantId"" = {tenantId}");
                 
-                // Delete DamageCategories (tenant-scoped, referenced by SaleReturnItem.DamageCategoryId)
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete DamageCategories (tenant-scoped; optional table - use ignore so delete company works when table missing)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""DamageCategories"" WHERE ""TenantId"" = {tenantId}");
                 
                 // Delete UserSessions

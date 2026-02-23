@@ -240,6 +240,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
             }
+            catch (Exception ex) when (GetDeepPostgresState(ex) is string state && (state == "42P01" || state == "42703"))
+            {
+                return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
+            }
         }
 
         /// <summary>Enterprise: last 100 server errors. SuperAdmin/Admin only. includeResolved=true to show resolved/suppressed entries.</summary>
@@ -280,6 +284,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
             }
             catch (Exception ex) when (ex.InnerException is PostgresException pg && (pg.SqlState == "42P01" || pg.SqlState == "42703"))
+            {
+                return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
+            }
+            catch (Exception ex) when (GetDeepPostgresState(ex) is string state && (state == "42P01" || state == "42703"))
             {
                 return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
             }
@@ -432,6 +440,86 @@ namespace HexaBill.Api.Modules.SuperAdmin
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+            }
+        }
+
+        /// <summary>Compare EF model vs production DB: report missing tables and optional critical columns. SystemAdmin only. Use in production to find migration/schema drift (42P01, 42703).</summary>
+        [HttpGet("schema-check")]
+        [Authorize(Roles = "SystemAdmin")]
+        public async Task<IActionResult> SchemaCheck()
+        {
+            if (!_db.Database.IsNpgsql())
+            {
+                return Ok(new { success = true, message = "Schema check is only supported for PostgreSQL.", missingTables = Array.Empty<string>(), missingColumns = Array.Empty<object>() });
+            }
+            try
+            {
+                // Tables the app expects (from EF model / migrations). Add new ones here when you add entities.
+                var expectedTables = new[]
+                {
+                    "Alerts", "AuditLogs", "BranchStaff", "Branches", "CreditNotes", "CustomerVisits", "Customers", "DamageCategories", "DamageInventories",
+                    "DemoRequests", "ErrorLogs", "ExpenseCategories", "Expenses", "FailedLoginAttempts", "HeldInvoices", "InventoryTransactions", "InvoiceTemplates",
+                    "InvoiceVersions", "PaymentIdempotencies", "Payments", "PriceChangeLogs", "ProductCategories", "Products", "PurchaseReturnItems", "PurchaseReturns",
+                    "PurchaseItems", "Purchases", "RecurringExpenses", "RouteCustomers", "RouteExpenses", "RouteStaff", "Routes", "SaleReturnItems", "SaleReturns",
+                    "SaleItems", "Sales", "Settings", "SubscriptionPlans", "Subscriptions", "Tenants", "UserSessions", "Users"
+                };
+
+                var existingTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var connection = _db.Database.GetDbConnection();
+                var wasOpen = connection.State == System.Data.ConnectionState.Open;
+                if (!wasOpen) await connection.OpenAsync();
+                try
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'";
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                        existingTables.Add(reader.GetString(0));
+                }
+                finally
+                {
+                    if (!wasOpen) connection.Close();
+                }
+
+                var missingTables = expectedTables.Where(t => !existingTables.Contains(t)).OrderBy(t => t).ToList();
+
+                // Critical columns we've hit in production (table, column) - report if missing
+                var criticalColumns = new[] { ("ErrorLogs", "ResolvedAt"), ("SaleReturnItems", "DamageCategoryId"), ("Sales", "BranchId"), ("Sales", "RouteId"), ("Branches", "IsActive"), ("Routes", "IsActive") };
+                var missingColumns = new List<object>();
+                if (!wasOpen) await connection.OpenAsync();
+                foreach (var (tableName, columnName) in criticalColumns)
+                {
+                    if (!existingTables.Contains(tableName)) continue; // table missing is already in missingTables
+                    using var cmd2 = connection.CreateCommand();
+                    cmd2.CommandText = "SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND LOWER(table_name) = @t AND LOWER(column_name) = @c LIMIT 1";
+                    var pt = cmd2.CreateParameter();
+                    pt.ParameterName = "t";
+                    pt.Value = tableName.ToLowerInvariant();
+                    cmd2.Parameters.Add(pt);
+                    var pc = cmd2.CreateParameter();
+                    pc.ParameterName = "c";
+                    pc.Value = columnName.ToLowerInvariant();
+                    cmd2.Parameters.Add(pc);
+                    var exists = await cmd2.ExecuteScalarAsync();
+                    if (exists == null || exists is DBNull)
+                        missingColumns.Add(new { table = tableName, column = columnName });
+                }
+
+                return Ok(new
+                {
+                    success = true,
+                    expectedTableCount = expectedTables.Length,
+                    existingTableCount = existingTables.Count,
+                    missingTables,
+                    missingColumns,
+                    message = missingTables.Count > 0 || missingColumns.Count > 0
+                        ? "Fix by running migrations (POST /api/migrate) or adding CREATE TABLE/ALTER in Program.cs startup."
+                        : "Schema matches EF model (no missing tables or critical columns)."
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message, stackTrace = ex.StackTrace });
             }
         }
 
@@ -600,6 +688,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
             }
+        }
+
+        /// <summary>Unwrap nested exceptions to find PostgresException.SqlState (42P01, 42703) for missing table/column.</summary>
+        private static string? GetDeepPostgresState(Exception? ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is PostgresException pg)
+                    return pg.SqlState;
+            }
+            return null;
         }
     }
 

@@ -443,7 +443,23 @@ using (var scope = app.Services.CreateScope())
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS ""IX_ProductCategories_TenantId_Name"" ON ""ProductCategories"" (""TenantId"", ""Name"");
                 ");
+            // DamageCategories (fixes 42P01 and CreateBranch DbUpdateException when table was never created by migration)
+            ctx.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS ""DamageCategories"" (
+                    ""Id"" serial PRIMARY KEY,
+                    ""TenantId"" integer NOT NULL,
+                    ""Name"" character varying(100) NOT NULL,
+                    ""AffectsStock"" boolean NOT NULL DEFAULT true,
+                    ""AffectsLedger"" boolean NOT NULL DEFAULT true,
+                    ""IsResaleable"" boolean NOT NULL DEFAULT true,
+                    ""SortOrder"" integer NOT NULL DEFAULT 0,
+                    ""CreatedAt"" timestamp with time zone NOT NULL,
+                    CONSTRAINT ""FK_DamageCategories_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants""(""Id"") ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS ""IX_DamageCategories_TenantId"" ON ""DamageCategories"" (""TenantId"");
+                ");
             try { ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CategoryId"" integer NULL;"); } catch { }
+            try { ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""DamageCategoryId"" integer NULL;"); } catch { }
         }
         catch (Exception ex)
         {

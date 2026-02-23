@@ -357,8 +357,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                // AUDIT-8 FIX: Use tenantId from query or CurrentTenantId
-                var targetTenantId = tenantId ?? CurrentTenantId;
+                // SECURITY: Only SystemAdmin can backup another tenant; others can only backup their own
+                var current = CurrentTenantId;
+                int targetTenantId;
+                if (tenantId.HasValue && tenantId.Value != current)
+                {
+                    if (!IsSystemAdmin)
+                        return Forbid(); // Prevent cross-tenant backup
+                    targetTenantId = tenantId.Value;
+                }
+                else
+                    targetTenantId = tenantId ?? current;
                 var fileName = await _comprehensiveBackupService.CreateFullBackupAsync(targetTenantId, exportToDesktop);
                 return Ok(new ApiResponse<string>
                 {
@@ -424,9 +433,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                // AUDIT-8 FIX: Restore requires tenantId and backupFilePath
-                var tenantId = request.TenantId ?? CurrentTenantId;
-                var success = await _comprehensiveBackupService.RestoreFromBackupAsync(tenantId, request.FileName ?? "", request.UploadedFilePath);
+                // SECURITY: Only allow restore into current tenant unless SystemAdmin
+                var current = CurrentTenantId;
+                var requestedTenantId = request.TenantId ?? current;
+                if (requestedTenantId != current && !IsSystemAdmin)
+                    return Forbid();
+                var success = await _comprehensiveBackupService.RestoreFromBackupAsync(requestedTenantId, request.FileName ?? "", request.UploadedFilePath);
                 if (success)
                 {
                     return Ok(new ApiResponse<object>
