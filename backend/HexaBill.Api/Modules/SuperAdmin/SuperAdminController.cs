@@ -51,10 +51,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         .Where(s => s.TenantId == CurrentTenantId || s.OwnerId == CurrentTenantId)
                         .ToListAsync();
                     settings = list.ToDictionary(s => s.Key, s => s.Value ?? "");
-                    // Ensure COMPANY_LOGO is set from company_logo if backend saved only lowercase (so logo shows after refresh)
-                    if (!settings.ContainsKey("COMPANY_LOGO") && settings.TryGetValue("company_logo", out var relPath) && !string.IsNullOrEmpty(relPath))
+                    // Ensure COMPANY_LOGO is always set so logo persists after refresh/login (key may be COMPANY_LOGO, company_logo, or Company_Logo)
+                    var logoEntry = list.FirstOrDefault(s => (string.Equals(s.Key, "company_logo", StringComparison.OrdinalIgnoreCase) || string.Equals(s.Key, "COMPANY_LOGO", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(s.Value));
+                    if (logoEntry != null)
                     {
-                        var logoUrl = relPath.StartsWith("/") ? relPath : $"/uploads/{relPath}";
+                        var logoUrl = (logoEntry.Value ?? "").StartsWith("/") ? logoEntry.Value : $"/uploads/{logoEntry.Value}";
                         settings["COMPANY_LOGO"] = logoUrl;
                     }
                 }

@@ -398,6 +398,7 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnCategory"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnType"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""StockEffect"" boolean NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             // UserSessions table for "who is logged in" / recent logins
@@ -462,6 +463,48 @@ using (var scope = app.Services.CreateScope())
                 ");
             try { ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CategoryId"" integer NULL;"); } catch { }
             try { ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""DamageCategoryId"" integer NULL;"); } catch { }
+            // CreditNotes and DamageInventories (for return save and Save & Print Credit Note when migrations not applied)
+            try
+            {
+                ctx.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""CreditNotes"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""TenantId"" integer NOT NULL,
+                        ""CustomerId"" integer NOT NULL,
+                        ""LinkedReturnId"" integer NOT NULL,
+                        ""Amount"" numeric(18,2) NOT NULL,
+                        ""Currency"" character varying(10) NOT NULL,
+                        ""Status"" character varying(20) NOT NULL,
+                        ""CreatedAt"" timestamp with time zone NOT NULL,
+                        ""CreatedBy"" integer NOT NULL,
+                        CONSTRAINT ""FK_CreditNotes_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants""(""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_CreditNotes_Customers_CustomerId"" FOREIGN KEY (""CustomerId"") REFERENCES ""Customers""(""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_CreditNotes_SaleReturns_LinkedReturnId"" FOREIGN KEY (""LinkedReturnId"") REFERENCES ""SaleReturns""(""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_CreditNotes_Users_CreatedBy"" FOREIGN KEY (""CreatedBy"") REFERENCES ""Users""(""Id"")
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_CreditNotes_TenantId"" ON ""CreditNotes"" (""TenantId"");
+                    CREATE INDEX IF NOT EXISTS ""IX_CreditNotes_CustomerId"" ON ""CreditNotes"" (""CustomerId"");
+                    CREATE INDEX IF NOT EXISTS ""IX_CreditNotes_LinkedReturnId"" ON ""CreditNotes"" (""LinkedReturnId"");
+                ");
+                ctx.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""DamageInventories"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""TenantId"" integer NOT NULL,
+                        ""ProductId"" integer NOT NULL,
+                        ""BranchId"" integer NULL,
+                        ""Quantity"" numeric(18,2) NOT NULL DEFAULT 0,
+                        ""SourceReturnId"" integer NULL,
+                        ""CreatedAt"" timestamp with time zone NOT NULL,
+                        ""UpdatedAt"" timestamp with time zone NOT NULL,
+                        CONSTRAINT ""FK_DamageInventories_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants""(""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_DamageInventories_Products_ProductId"" FOREIGN KEY (""ProductId"") REFERENCES ""Products""(""Id"") ON DELETE CASCADE,
+                        CONSTRAINT ""FK_DamageInventories_Branches_BranchId"" FOREIGN KEY (""BranchId"") REFERENCES ""Branches""(""Id""),
+                        CONSTRAINT ""FK_DamageInventories_SaleReturns_SourceReturnId"" FOREIGN KEY (""SourceReturnId"") REFERENCES ""SaleReturns""(""Id"")
+                    );
+                    CREATE INDEX IF NOT EXISTS ""IX_DamageInventories_TenantId_ProductId_BranchId"" ON ""DamageInventories"" (""TenantId"", ""ProductId"", ""BranchId"");
+                ");
+            }
+            catch (Exception ex) when (ex.Message?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true || ex.Message?.Contains("42P01", StringComparison.Ordinal) == true) { /* tables may already exist */ }
         }
         catch (Exception ex)
         {
@@ -1061,6 +1104,7 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnCategory"" character varying(20) NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnType"" character varying(20) NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""StockEffect"" boolean NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
                     HexaBill.Api.Shared.Services.SalesSchemaService.ClearColumnCheckCacheStatic();
