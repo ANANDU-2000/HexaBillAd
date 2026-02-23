@@ -35,7 +35,7 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI } from '../../services'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI } from '../../services'
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
@@ -2442,6 +2442,27 @@ const CustomerLedgerPage = () => {
                         onGeneratePDF={handleExportStatement}
                         onShareWhatsApp={handleShareWhatsApp}
                         onPrintPreview={handlePrintPreview}
+                        onDeleteReturn={isAdminOrOwner(user) ? (returnId) => {
+                          setDangerModal({
+                            isOpen: true,
+                            title: 'Delete return',
+                            message: 'This will reverse stock, remove any refund payment and credit note for this return. This cannot be undone. Are you sure?',
+                            confirmLabel: 'Delete return',
+                            onConfirm: async () => {
+                              try {
+                                const response = await returnsAPI.deleteSaleReturn(returnId)
+                                if (response?.success !== false) {
+                                  toast.success('Return deleted successfully.', { id: 'return-delete', duration: 4000 })
+                                  if (selectedCustomer) await loadCustomerData(selectedCustomer.id)
+                                } else {
+                                  toast.error(response?.message || 'Failed to delete return')
+                                }
+                              } catch (error) {
+                                if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to delete return')
+                              }
+                            }
+                          })
+                        } : undefined}
                         filters={ledgerFilters}
                         onFilterChange={(key, value) => {
                           setLedgerFilters(prev => {
@@ -3313,7 +3334,7 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 
 // Constants already defined at top of file - do not redefine here
 
-const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, filters, onFilterChange }) => {
+const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, filters, onFilterChange }) => {
   const navigate = useNavigate()
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
   // Use constant property name to prevent minifier from creating 'st' from filters.status
@@ -3532,6 +3553,44 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                             <RotateCcw className="h-3 w-3" />
                             Return
                           </button>
+                        ) : entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
+                          <div className="inline-flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                try {
+                                  const blob = await returnsAPI.getReturnBillPdf(entry.returnId ?? entry.ReturnId)
+                                  const url = window.URL.createObjectURL(blob)
+                                  const a = document.createElement('a')
+                                  a.href = url
+                                  a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${new Date().toISOString().split('T')[0]}.pdf`
+                                  document.body.appendChild(a)
+                                  a.click()
+                                  window.URL.revokeObjectURL(url)
+                                  document.body.removeChild(a)
+                                  toast.success('Return bill PDF downloaded')
+                                } catch (e) {
+                                  if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                              title="View / download return bill PDF"
+                            >
+                              <FileText className="h-3 w-3" />
+                              Return bill
+                            </button>
+                            {onDeleteReturn && (
+                              <button
+                                type="button"
+                                onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded hover:bg-red-200"
+                                title="Delete this return"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Delete return
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-neutral-400">-</span>
                         )}
@@ -3619,17 +3678,58 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       <span className="font-medium">{entryStatus}</span>
                     )}
                   </div>
-                  {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
-                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
-                      title="Create return for this bill"
-                    >
-                      <RotateCcw className="h-3 w-3" />
-                      Return
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) && (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                        title="Create return for this bill"
+                      >
+                        <RotateCcw className="h-3 w-3" />
+                        Return
+                      </button>
+                    )}
+                    {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const blob = await returnsAPI.getReturnBillPdf(entry.returnId ?? entry.ReturnId)
+                              const url = window.URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${new Date().toISOString().split('T')[0]}.pdf`
+                              document.body.appendChild(a)
+                              a.click()
+                              window.URL.revokeObjectURL(url)
+                              document.body.removeChild(a)
+                              toast.success('Return bill PDF downloaded')
+                            } catch (e) {
+                              if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                          title="View / download return bill PDF"
+                        >
+                          <FileText className="h-3 w-3" />
+                          Return bill
+                        </button>
+                        {onDeleteReturn && (
+                          <button
+                            type="button"
+                            onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded hover:bg-red-200"
+                            title="Delete this return"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete return
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )

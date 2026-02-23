@@ -1052,6 +1052,10 @@ export const returnsAPI = {
     const response = await api.patch(`/returns/sales/${id}/reject`)
     return response.data
   },
+  deleteSaleReturn: async (id) => {
+    const response = await api.delete(`/returns/sales/${id}`)
+    return response.data
+  },
   getReturnBillPdf: async (returnId) => {
     try {
       const response = await api.get(`/returns/sales/${returnId}/pdf`, { responseType: 'blob' })
