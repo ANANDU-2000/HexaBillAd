@@ -712,7 +712,8 @@ const SuperAdminTenantsPage = () => {
               vatNumber: createFormData.vatNumber?.trim() || undefined,
               address: createFormData.address?.trim() || undefined,
               trialDays: createFormData.status === 'Trial' ? Number(createFormData.trialDays) : undefined,
-              trialEndDate: undefined // Let backend handle via trialDays
+              trialEndDate: undefined, // Let backend handle via trialDays
+              clientAppBaseUrl: typeof window !== 'undefined' ? window.location.origin : undefined // So credentials modal shows production login URL
             })
 
             const newId = response?.data?.tenant?.id ?? response?.data?.tenantId ?? response?.data?.id ?? response?.data?.Id ?? response?.data?.TenantId

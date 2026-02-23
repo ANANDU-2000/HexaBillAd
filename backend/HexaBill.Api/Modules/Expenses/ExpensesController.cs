@@ -614,7 +614,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty list instead of 500; avoid log noise when RecurringExpenses table does not exist (42P01)
+                // PRODUCTION: Return empty list instead of 500 when RecurringExpenses table does not exist (42P01). Do not log 42P01 to avoid ERROR noise.
                 var msg = ex.Message ?? "";
                 if (!msg.Contains("42P01") && !msg.Contains("RecurringExpenses") && !msg.Contains("does not exist"))
                     Console.WriteLine($"[GetRecurringExpenses] Returning empty list after error: {msg}");

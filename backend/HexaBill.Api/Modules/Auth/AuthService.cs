@@ -66,8 +66,9 @@ namespace HexaBill.Api.Modules.Auth
         {
             // Normalize email to lowercase for case-insensitive comparison
             var normalizedEmail = request.Email?.Trim().ToLowerInvariant() ?? string.Empty;
-            
-            if (string.IsNullOrEmpty(normalizedEmail))
+            var password = request.Password?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(normalizedEmail) || string.IsNullOrEmpty(password))
             {
                 return null;
             }
@@ -83,6 +84,21 @@ namespace HexaBill.Api.Modules.Auth
                 return null;
             }
 
+            // Block login if tenant is suspended (optional: load tenant; skip if tenant not found)
+            try
+            {
+                var tenantId = user.TenantId ?? 0;
+                if (tenantId > 0)
+                {
+                    var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
+                    if (tenant != null && tenant.Status == TenantStatus.Suspended)
+                    {
+                        return null; // or throw with "Account suspended" - frontend will show invalid credentials
+                    }
+                }
+            }
+            catch { /* non-fatal */ }
+
             // Fix legacy users: if they have OwnerId but no TenantId, set TenantId = OwnerId so JWT and frontend get correct tenant
             if (!user.TenantId.HasValue && user.OwnerId.HasValue && user.OwnerId.Value > 0)
             {
@@ -90,7 +106,7 @@ namespace HexaBill.Api.Modules.Auth
                 await _context.SaveChangesAsync();
             }
 
-            // Verify password - with better error handling
+            // Verify password - with better error handling (use trimmed password)
             try
             {
                 if (string.IsNullOrEmpty(user.PasswordHash))
@@ -98,15 +114,13 @@ namespace HexaBill.Api.Modules.Auth
                     return null;
                 }
 
-                if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+                if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
                 {
                     return null;
                 }
             }
             catch (Exception ex)
             {
-                // Log password verification errors for debugging
-                // Note: In production, you might want to use ILogger here
                 System.Diagnostics.Debug.WriteLine($"Password verification error for {normalizedEmail}: {ex.Message}");
                 return null;
             }
@@ -139,21 +153,19 @@ namespace HexaBill.Api.Modules.Auth
             catch { /* session recording is optional */ }
 
             // Determine token expiry: 30 days if RememberMe, otherwise 8 hours.
-            // Mitigation: long-lived tokens are still invalidated when an admin uses Force Logout — SessionVersion is checked on every JWT request (SecurityConfiguration OnTokenValidated); mismatch returns 401. See docs (e.g. PRODUCTION_DEPLOYMENT_VERCEL_RENDER.md) and PRODUCTION_MASTER_TODO #36.
             var expiryHours = request.RememberMe ? 24 * 30 : 8;
             var token = GenerateJwtToken(user, expiryHours);
-            var companyName = await GetCompanyNameAsync();
-            
-            // Fetch assigned branches and routes
-            var assignedBranchIds = await _context.BranchStaff
-                .Where(bs => bs.UserId == user.Id)
-                .Select(bs => bs.BranchId)
-                .ToListAsync();
 
-            var assignedRouteIds = await _context.RouteStaff
-                .Where(rs => rs.UserId == user.Id)
-                .Select(rs => rs.RouteId)
-                .ToListAsync();
+            string companyName = "HexaBill";
+            List<int> assignedBranchIds = new List<int>();
+            List<int> assignedRouteIds = new List<int>();
+            try
+            {
+                companyName = await GetCompanyNameAsync();
+                assignedBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == user.Id).Select(bs => bs.BranchId).ToListAsync();
+                assignedRouteIds = await _context.RouteStaff.Where(rs => rs.UserId == user.Id).Select(rs => rs.RouteId).ToListAsync();
+            }
+            catch { /* do not fail login if Settings/BranchStaff/RouteStaff query fails (e.g. missing column) */ }
 
             return new LoginResponse
             {
@@ -403,6 +415,7 @@ namespace HexaBill.Api.Modules.Auth
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim("UserId", user.Id.ToString()),
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role.ToString()),
                 new Claim(ClaimTypes.Name, user.Name),

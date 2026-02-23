@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
@@ -206,28 +207,39 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [Authorize(Roles = "SystemAdmin")]
         public async Task<IActionResult> GetAlertSummary()
         {
-            var now = DateTime.UtcNow;
-            var last24h = now.AddHours(-24);
-            var last1h = now.AddHours(-1);
-            var unresolvedCount = await _db.ErrorLogs.CountAsync(e => e.ResolvedAt == null);
-            var last24hCount = await _db.ErrorLogs.CountAsync(e => e.CreatedAt >= last24h);
-            var last1hCount = await _db.ErrorLogs.CountAsync(e => e.CreatedAt >= last1h);
-            var recent = await (from e in _db.ErrorLogs
-                join t in _db.Tenants on e.TenantId equals t.Id into tj
-                from t in tj.DefaultIfEmpty()
-                where e.ResolvedAt == null
-                orderby e.CreatedAt descending
-                select new { e.Id, e.Message, e.TenantId, e.CreatedAt, TenantName = t != null ? t.Name : (string?)null })
-                .Take(5)
-                .ToListAsync();
-            return Ok(new
+            try
             {
-                success = true,
-                unresolvedCount,
-                last24hCount,
-                last1hCount,
-                recent = recent.Select(r => new { r.Id, r.Message, r.TenantId, r.TenantName, r.CreatedAt })
-            });
+                var now = DateTime.UtcNow;
+                var last24h = now.AddHours(-24);
+                var last1h = now.AddHours(-1);
+                var unresolvedCount = await _db.ErrorLogs.CountAsync(e => e.ResolvedAt == null);
+                var last24hCount = await _db.ErrorLogs.CountAsync(e => e.CreatedAt >= last24h);
+                var last1hCount = await _db.ErrorLogs.CountAsync(e => e.CreatedAt >= last1h);
+                var recent = await (from e in _db.ErrorLogs
+                    join t in _db.Tenants on e.TenantId equals t.Id into tj
+                    from t in tj.DefaultIfEmpty()
+                    where e.ResolvedAt == null
+                    orderby e.CreatedAt descending
+                    select new { e.Id, e.Message, e.TenantId, e.CreatedAt, TenantName = t != null ? t.Name : (string?)null })
+                    .Take(5)
+                    .ToListAsync();
+                return Ok(new
+                {
+                    success = true,
+                    unresolvedCount,
+                    last24hCount,
+                    last1hCount,
+                    recent = recent.Select(r => new { r.Id, r.Message, r.TenantId, r.TenantName, r.CreatedAt })
+                });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
+            }
+            catch (Exception ex) when (ex.InnerException is PostgresException pg && (pg.SqlState == "42P01" || pg.SqlState == "42703"))
+            {
+                return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
+            }
         }
 
         /// <summary>Enterprise: last 100 server errors. SuperAdmin/Admin only. includeResolved=true to show resolved/suppressed entries.</summary>
@@ -235,31 +247,42 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [Authorize(Roles = "Admin,Owner,SystemAdmin")]
         public async Task<IActionResult> GetErrorLogs([FromQuery] int limit = 100, [FromQuery] bool includeResolved = false)
         {
-            limit = Math.Clamp(limit, 1, 500);
-            var query = _db.ErrorLogs.AsQueryable();
-            if (!includeResolved)
-                query = query.Where(e => e.ResolvedAt == null);
-            var list = await (from e in query
-                join t in _db.Tenants on e.TenantId equals t.Id into tj
-                from t in tj.DefaultIfEmpty()
-                orderby e.CreatedAt descending
-                select new
-                {
-                    e.Id,
-                    e.TraceId,
-                    e.ErrorCode,
-                    e.Message,
-                    e.Path,
-                    e.Method,
-                    e.TenantId,
-                    e.UserId,
-                    e.CreatedAt,
-                    e.ResolvedAt,
-                    TenantName = t != null ? t.Name : (string?)null
-                })
-                .Take(limit)
-                .ToListAsync();
-            return Ok(new { success = true, count = list.Count, items = list });
+            try
+            {
+                limit = Math.Clamp(limit, 1, 500);
+                var query = _db.ErrorLogs.AsQueryable();
+                if (!includeResolved)
+                    query = query.Where(e => e.ResolvedAt == null);
+                var list = await (from e in query
+                    join t in _db.Tenants on e.TenantId equals t.Id into tj
+                    from t in tj.DefaultIfEmpty()
+                    orderby e.CreatedAt descending
+                    select new
+                    {
+                        e.Id,
+                        e.TraceId,
+                        e.ErrorCode,
+                        e.Message,
+                        e.Path,
+                        e.Method,
+                        e.TenantId,
+                        e.UserId,
+                        e.CreatedAt,
+                        e.ResolvedAt,
+                        TenantName = t != null ? t.Name : (string?)null
+                    })
+                    .Take(limit)
+                    .ToListAsync();
+                return Ok(new { success = true, count = list.Count, items = list });
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703")
+            {
+                return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
+            }
+            catch (Exception ex) when (ex.InnerException is PostgresException pg && (pg.SqlState == "42P01" || pg.SqlState == "42703"))
+            {
+                return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
+            }
         }
 
         /// <summary>Mark an error log as resolved/suppressed so it can be hidden from the default list.</summary>

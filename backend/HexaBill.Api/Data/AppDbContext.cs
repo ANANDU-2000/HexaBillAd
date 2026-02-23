@@ -607,7 +607,7 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.DeletedByUser).WithMany().HasForeignKey(e => e.DeletedBy).OnDelete(DeleteBehavior.NoAction);
             });
 
-            // Branch configuration (ManagerUserId maps to ManagerId in DB for migration compatibility)
+            // Branch configuration (ManagerUserId maps to ManagerId in DB; Manager navigation uses same FK to avoid EF generating ManagerId1)
             modelBuilder.Entity<Branch>(entity =>
             {
                 entity.HasKey(e => e.Id);
@@ -615,6 +615,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Address).HasMaxLength(500);
                 entity.Property(e => e.ManagerUserId).HasColumnName("ManagerId");
                 entity.HasOne(e => e.Tenant).WithMany(t => t.Branches).HasForeignKey(e => e.TenantId);
+                entity.HasOne(e => e.Manager).WithMany().HasForeignKey(e => e.ManagerUserId).IsRequired(false);
                 entity.HasIndex(e => e.TenantId);
             });
 

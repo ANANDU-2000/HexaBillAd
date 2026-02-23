@@ -13,6 +13,7 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Modules.Subscription;
+using Npgsql;
 
 namespace HexaBill.Api.Modules.SuperAdmin
 {
@@ -1039,6 +1040,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         Role = UserRole.Owner,
                         Phone = request.Phone,
                         TenantId = tenant.Id,
+                        OwnerId = tenant.Id, // So JWT and legacy code get correct tenant
                         CreatedAt = DateTime.UtcNow
                     };
 
@@ -1679,6 +1681,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
+        /// <summary>Execute delete SQL; ignore 42P01 (relation does not exist) so DeleteTenant works when optional tables are missing.</summary>
+        private async Task DeleteIgnoreMissingTableAsync(FormattableString sql)
+        {
+            try
+            {
+                await _context.Database.ExecuteSqlInterpolatedAsync(sql);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01") { /* table does not exist */ }
+            catch (Exception ex) when (ex.InnerException is PostgresException pg && pg.SqlState == "42P01") { /* table does not exist */ }
+        }
+
         public async Task<bool> DeleteTenantAsync(int tenantId)
         {
             var tenant = await _context.Tenants.FindAsync(tenantId);
@@ -1694,14 +1707,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 // Delete all tenant data in correct order (respecting foreign keys)
                 // 1. Delete dependent records first (child tables)
                 
-                // Delete PaymentIdempotencies first (has FK to Payments and Users)
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete PaymentIdempotencies first (optional table - may not exist)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""PaymentIdempotencies"" 
                        WHERE ""PaymentId"" IN (SELECT ""Id"" FROM ""Payments"" WHERE ""TenantId"" = {tenantId})
                           OR ""UserId"" IN (SELECT ""Id"" FROM ""Users"" WHERE ""TenantId"" = {tenantId})");
                 
-                // Delete InvoiceTemplates (has FK to Users via CreatedBy)
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete InvoiceTemplates (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""InvoiceTemplates"" 
                        WHERE ""CreatedBy"" IN (SELECT ""Id"" FROM ""Users"" WHERE ""TenantId"" = {tenantId})");
                 
@@ -1726,13 +1739,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     $@"DELETE FROM ""PurchaseReturnItems"" 
                        WHERE ""PurchaseReturnId"" IN (SELECT ""Id"" FROM ""PurchaseReturns"" WHERE ""TenantId"" = {tenantId})");
                 
-                // Delete InvoiceVersions (has FK to Sales)
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete InvoiceVersions (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""InvoiceVersions"" 
                        WHERE ""SaleId"" IN (SELECT ""Id"" FROM ""Sales"" WHERE ""TenantId"" = {tenantId})");
                 
-                // Delete PriceChangeLogs
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete PriceChangeLogs (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""PriceChangeLogs"" WHERE ""TenantId"" = {tenantId}");
                 
                 // Delete RouteCustomers (has FK to Routes)
@@ -1748,8 +1761,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 await _context.Database.ExecuteSqlInterpolatedAsync(
                     $@"DELETE FROM ""Expenses"" WHERE ""TenantId"" = {tenantId}");
                 
-                // Delete RecurringExpenses (use OwnerId OR TenantId for multi-tenant compatibility)
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete RecurringExpenses (optional table - may not exist)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""RecurringExpenses"" WHERE ""TenantId"" = {tenantId} OR ""OwnerId"" = {tenantId}");
                 
                 // Delete InventoryTransactions
@@ -1768,16 +1781,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 await _context.Database.ExecuteSqlInterpolatedAsync(
                     $@"DELETE FROM ""UserSessions"" WHERE ""TenantId"" = {tenantId}");
                 
-                // Delete CustomerVisits
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete CustomerVisits (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""CustomerVisits"" WHERE ""TenantId"" = {tenantId}");
                 
-                // Delete HeldInvoices
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete HeldInvoices (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""HeldInvoices"" WHERE ""TenantId"" = {tenantId}");
                 
-                // Delete Alerts
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete Alerts (optional table)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""Alerts"" WHERE ""TenantId"" = {tenantId}");
                 
                 // Delete BranchStaff (has FK to Branches)
@@ -1799,8 +1812,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     $@"DELETE FROM ""AuditLogs"" 
                        WHERE ""TenantId"" = {tenantId} OR ""OwnerId"" = {tenantId}");
                 
-                // Delete ErrorLogs
-                await _context.Database.ExecuteSqlInterpolatedAsync(
+                // Delete ErrorLogs (optional - table/column may not exist on some DBs)
+                await DeleteIgnoreMissingTableAsync(
                     $@"DELETE FROM ""ErrorLogs"" WHERE ""TenantId"" = {tenantId}");
                 
                 // 2. Delete main records (parent tables)
@@ -2166,6 +2179,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public TenantStatus? Status { get; set; }
         public DateTime? TrialEndDate { get; set; }
         public int? TrialDays { get; set; }
+        /// <summary>Optional. Frontend sends window.location.origin so credentials modal shows production login URL.</summary>
+        public string? ClientAppBaseUrl { get; set; }
     }
 
     public class UpdateTenantRequest

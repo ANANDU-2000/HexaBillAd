@@ -389,9 +389,15 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RejectionReason"" text NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId1"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""Location"" character varying(200) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" timestamp with time zone NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""ErrorLogs"" ADD COLUMN IF NOT EXISTS ""ResolvedAt"" timestamp with time zone NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
             // UserSessions table for "who is logged in" / recent logins
             ctx.Database.ExecuteSqlRaw(@"
                 CREATE TABLE IF NOT EXISTS ""UserSessions"" (
@@ -406,9 +412,10 @@ using (var scope = app.Services.CreateScope())
                 CREATE INDEX IF NOT EXISTS ""IX_UserSessions_TenantId"" ON ""UserSessions"" (""TenantId"");
                 CREATE INDEX IF NOT EXISTS ""IX_UserSessions_LoginAt"" ON ""UserSessions"" (""LoginAt"");
                 ");
-            // BUG #2.7 FIX: FailedLoginAttempts table - persistent login lockout (CRITICAL: was in SQLite block only, never ran for PostgreSQL!)
-            ctx.Database.ExecuteSqlRaw(@"
-                CREATE TABLE IF NOT EXISTS ""FailedLoginAttempts"" (
+            // BUG #2.7 FIX: FailedLoginAttempts table - persistent login lockout (separate statements to avoid mixed errors)
+            try
+            {
+                ctx.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS ""FailedLoginAttempts"" (
                     ""Id"" serial PRIMARY KEY,
                     ""Email"" character varying(100) NOT NULL,
                     ""FailedCount"" integer NOT NULL DEFAULT 1,
@@ -416,11 +423,12 @@ using (var scope = app.Services.CreateScope())
                     ""LastAttemptAt"" timestamp with time zone NOT NULL,
                     ""CreatedAt"" timestamp with time zone NOT NULL,
                     ""UpdatedAt"" timestamp with time zone NULL
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_Email"" ON ""FailedLoginAttempts"" (""Email"");
-                CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LockoutUntil"" ON ""FailedLoginAttempts"" (""LockoutUntil"");
-                CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LastAttemptAt"" ON ""FailedLoginAttempts"" (""LastAttemptAt"");
-                ");
+                )");
+                ctx.Database.ExecuteSqlRaw(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_Email"" ON ""FailedLoginAttempts"" (""Email"")");
+                ctx.Database.ExecuteSqlRaw(@"CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LockoutUntil"" ON ""FailedLoginAttempts"" (""LockoutUntil"")");
+                ctx.Database.ExecuteSqlRaw(@"CREATE INDEX IF NOT EXISTS ""IX_FailedLoginAttempts_LastAttemptAt"" ON ""FailedLoginAttempts"" (""LastAttemptAt"")");
+            }
+            catch (Exception ex) when (ex.Message?.Contains("already exists", StringComparison.OrdinalIgnoreCase) == true || ex.Message?.Contains("42701", StringComparison.Ordinal) == true) { /* table/index may already exist */ }
             // ProductCategories table - ensure exists for product category CRUD (fixes 500 on POST /productcategories)
             ctx.Database.ExecuteSqlRaw(@"
                 CREATE TABLE IF NOT EXISTS ""ProductCategories"" (
@@ -1027,9 +1035,15 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" timestamp with time zone NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""ErrorLogs"" ADD COLUMN IF NOT EXISTS ""ResolvedAt"" timestamp with time zone NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId1"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""Location"" character varying(200) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" timestamp with time zone NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
+                    HexaBill.Api.Shared.Services.SalesSchemaService.ClearColumnCheckCacheStatic();
                     initLogger.LogInformation("PostgreSQL: Safety check for critical columns completed");
                 }
                 catch (Exception ex)

@@ -284,10 +284,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private async Task BackupDatabaseAsync(ZipArchive zipArchive, string timestamp, int tenantId, AppDbContext? backupContext = null)
         {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+            var ctx = backupContext ?? _context;
+            // Render/DATABASE_URL: config may not have DefaultConnection; use DbContext's connection
+            var connectionString = _configuration.GetConnectionString("DefaultConnection")
+                ?? ctx.Database.GetDbConnection().ConnectionString;
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException("Database connection string not found");
+                throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
             }
 
             // Check if PostgreSQL
@@ -295,7 +298,6 @@ namespace HexaBill.Api.Modules.SuperAdmin
             
             if (isPostgreSQL)
             {
-                var ctx = backupContext ?? _context;
                 await BackupPostgreSQLDatabaseAsync(zipArchive, timestamp, connectionString, tenantId, ctx);
             }
             else
@@ -720,8 +722,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var returnsCsv = GenerateSalesReturnsCsv(salesReturns);
             AddCsvToZip(zipArchive, "database/sales_returns.csv", returnsCsv);
 
-            // Export Purchases
-            var purchases = await _context.Purchases
+            // Export Purchases (use same db context to avoid concurrent context use)
+            var purchases = await db.Purchases
                 .Include(p => p.Items)
                 .Where(p => p.TenantId == tenantId)
                 .ToListAsync();
@@ -1398,10 +1400,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private Task RestoreDatabaseAsync(string dbFilePath)
         {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+            var connectionString = _configuration.GetConnectionString("DefaultConnection")
+                ?? _context.Database.GetDbConnection().ConnectionString;
             if (string.IsNullOrEmpty(connectionString))
             {
-                throw new InvalidOperationException("Database connection string not found");
+                throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
             }
 
             var dbPath = ExtractValue(connectionString.Split(';'), "Data Source");
@@ -1429,10 +1432,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var connectionString = _configuration.GetConnectionString("DefaultConnection");
+                var connectionString = _configuration.GetConnectionString("DefaultConnection")
+                    ?? _context.Database.GetDbConnection().ConnectionString;
                 if (string.IsNullOrEmpty(connectionString))
                 {
-                    throw new InvalidOperationException("Database connection string not found");
+                    throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
                 }
 
                 // Parse connection string

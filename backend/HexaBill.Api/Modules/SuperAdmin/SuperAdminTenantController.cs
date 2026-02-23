@@ -389,7 +389,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var (tenant, generatedPassword) = await _tenantService.CreateTenantAsync(request);
                 await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Email: {tenant.Email ?? request.Email ?? "N/A"}");
 
-                var clientAppLink = _configuration["ClientApp:BaseUrl"] ?? "http://localhost:5176";
+                // Login URL for credentials modal: prefer frontend-supplied origin, then server env (FRONTEND_URL / ClientApp__BaseUrl), else localhost in dev
+                var clientAppLink = request.ClientAppBaseUrl?.Trim()
+                    ?? (_configuration["ClientApp:BaseUrl"] ?? Environment.GetEnvironmentVariable("FRONTEND_URL") ?? Environment.GetEnvironmentVariable("ClientApp__BaseUrl"))?.Trim();
+                if (string.IsNullOrWhiteSpace(clientAppLink))
+                {
+                    var isProd = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Production", StringComparison.OrdinalIgnoreCase);
+                    clientAppLink = isProd
+                        ? "(Set FRONTEND_URL or ClientApp__BaseUrl on server, or ensure frontend sends ClientAppBaseUrl)"
+                        : "http://localhost:5176";
+                }
+                clientAppLink = clientAppLink.TrimEnd('/');
                 var clientEmail = tenant.Email ?? request.Email ?? "";
 
                 var response = new CreateTenantResponseDto
