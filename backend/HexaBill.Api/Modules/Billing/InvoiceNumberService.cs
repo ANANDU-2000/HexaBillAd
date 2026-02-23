@@ -57,9 +57,8 @@ namespace HexaBill.Api.Modules.Billing
 
         private async Task<string> GenerateNextInvoiceNumberFallbackAsync(int tenantId)
         {
-            // New tenants start at 0001; ZAYOGA (info@zayoga.ae) must start from 239 as next
+            // New companies: start at 0001. Existing company Zayoga: do not change — use only existing sequence (max+1).
             const int DEFAULT_STARTING_NUMBER = 1;
-            const int ZAYOGA_MIN_NEXT = 239;
             const string ZAYOGA_EMAIL = "info@zayoga.ae";
             const int MAX_RETRIES = 50;
 
@@ -68,11 +67,11 @@ namespace HexaBill.Api.Modules.Billing
                 .Where(t => t.Id == tenantId)
                 .Select(t => new { t.Email, t.Name })
                 .FirstOrDefaultAsync();
-            var isZayorga = tenant != null && (
+            // Zayoga: keep existing sequence (1000, 1001, …); do not apply any minimum
+            var isZayoga = tenant != null && (
                 string.Equals(tenant.Email?.Trim(), ZAYOGA_EMAIL, StringComparison.OrdinalIgnoreCase) ||
+                (tenant.Name != null && tenant.Name.Trim().Contains("Zayoga", StringComparison.OrdinalIgnoreCase)) ||
                 (tenant.Name != null && tenant.Name.Trim().Contains("Zayorga", StringComparison.OrdinalIgnoreCase)));
-            if (isZayorga)
-                startingNumber = Math.Max(startingNumber, ZAYOGA_MIN_NEXT);
 
             for (int attempt = 0; attempt < MAX_RETRIES; attempt++)
             {
@@ -102,7 +101,8 @@ namespace HexaBill.Api.Modules.Billing
                                 if (!string.IsNullOrEmpty(numericPart) && int.TryParse(numericPart, out int invoiceNum))
                                     maxNumber = Math.Max(maxNumber, invoiceNum);
                             }
-                            nextNumber = Math.Max(maxNumber + 1, startingNumber);
+                            // Zayoga: use existing sequence only (max+1). Others: at least startingNumber (0001).
+                            nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, startingNumber);
                         }
 
                         var generatedInvoice = await FormatInvoiceNumberAsync(nextNumber);
@@ -151,7 +151,7 @@ namespace HexaBill.Api.Modules.Billing
             if (!isValidFormat)
                 return false;
 
-            // Extract numeric value to check minimum (allow 1+ for new tenants; ZAYOGA uses 239+)
+            // Extract numeric value to check minimum (allow 1+ for all tenants)
             var numericPart = new string(invoiceNumber.Trim().Where(char.IsDigit).ToArray());
             if (int.TryParse(numericPart, out int invoiceNum))
             {
