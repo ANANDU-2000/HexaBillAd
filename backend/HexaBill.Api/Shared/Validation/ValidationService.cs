@@ -226,16 +226,24 @@ namespace HexaBill.Api.Shared.Validation
                 return ValidationResult.Failure(errors);
             }
 
-            // Recalculate actual balance from all sales and payments
+            // Recalculate actual balance (same formula as CustomerService/BalanceService: Sales - Payments - Returns + RefundsPaid)
             var totalSales = await _context.Sales
                 .Where(s => s.CustomerId == customerId && !s.IsDeleted)
                 .SumAsync(s => s.GrandTotal);
 
             var totalPayments = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.Status == PaymentStatus.CLEARED)
+                .Where(p => p.CustomerId == customerId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => p.Amount);
 
-            var calculatedBalance = totalSales - totalPayments;
+            var totalSalesReturns = await _context.SaleReturns
+                .Where(sr => sr.CustomerId == customerId)
+                .SumAsync(sr => sr.GrandTotal);
+
+            var refundsPaid = await _context.Payments
+                .Where(p => p.CustomerId == customerId && p.SaleReturnId != null)
+                .SumAsync(p => p.Amount);
+
+            var calculatedBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
             var storedBalance = customer.Balance;
 
             // Check for balance discrepancy

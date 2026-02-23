@@ -2227,9 +2227,9 @@ namespace HexaBill.Api.Modules.Reports
 
             var saleIds = sales.Select(s => s.Id).ToHashSet();
 
-            // Get payments within date range; when branch/route/staff filter is active, only include payments linked to filtered sales
+            // Get payments within date range (exclude refund payments - they are Type "Refund" and reduce balance differently)
             var paymentsQuery = _context.Payments
-                .Where(p => p.TenantId == tenantId && p.PaymentDate >= from && p.PaymentDate <= to);
+                .Where(p => p.TenantId == tenantId && p.SaleReturnId == null && p.PaymentDate >= from && p.PaymentDate <= to);
             if (branchId.HasValue || routeId.HasValue || staffId.HasValue)
                 paymentsQuery = paymentsQuery.Where(p => !p.SaleId.HasValue || saleIds.Contains(p.SaleId.Value));
             var payments = await paymentsQuery
@@ -2255,9 +2255,9 @@ namespace HexaBill.Api.Modules.Reports
                 returns = projected.Select(x => (x.Id, x.ReturnDate, (string?)x.ReturnNo, x.CustomerId, x.GrandTotal)).ToList();
             }
 
-            // Get payment totals per sale for status calculation
+            // Get payment totals per sale for status calculation (exclude refunds)
             var salePayments = await _context.Payments
-                .Where(p => p.TenantId == tenantId && p.SaleId.HasValue)
+                .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null)
                 .GroupBy(p => p.SaleId!.Value)
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
@@ -2467,8 +2467,13 @@ namespace HexaBill.Api.Modules.Reports
             var totalReturns = returns.Sum(r => r.GrandTotal);
             var netSales = totalSales - totalReturns;
 
-            // 6. Pending Balance = Total Sales - Total Returns - Total Payments (net outstanding)
-            var pendingBalance = totalSales - totalReturns - totalPayments;
+            // Refunds paid (money out) in period - so balance = Sales - Payments - Returns + RefundsPaid
+            var refundsPaid = await _context.Payments
+                .Where(p => p.TenantId == tenantId && p.SaleReturnId != null && p.PaymentDate >= from && p.PaymentDate <= to)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            // 6. Pending Balance = Total Sales - Total Payments - Total Returns + RefundsPaid (never treat returns as unpaid)
+            var pendingBalance = totalSales - totalPayments - totalReturns + refundsPaid;
 
             return new SalesLedgerReportDto
             {

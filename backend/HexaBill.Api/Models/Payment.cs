@@ -19,6 +19,8 @@ namespace HexaBill.Api.Models
         public int? TenantId { get; set; }
         
         public int? SaleId { get; set; } // Invoice ID
+        /// <summary>When set, this payment is a refund (money out); ledger shows as Debit. Excluded from TotalPayments for balance.</summary>
+        public int? SaleReturnId { get; set; }
         public int? CustomerId { get; set; }
         public decimal Amount { get; set; }
         public PaymentMode Mode { get; set; } // CASH, CHEQUE, ONLINE, CREDIT

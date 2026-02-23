@@ -43,9 +43,8 @@ namespace HexaBill.Api.Modules.Customers
 
         /// <summary>
         /// Recalculate customer balance from scratch using actual database data.
-        /// UNIFIED WITH INVOICE (PRODUCTION_MASTER_TODO #7): TotalPayments = CLEARED only, so PendingBalance
-        /// matches "amount still owed" and aligns with Sale.PaidAmount (also CLEARED only). Pending cheques
-        /// do not reduce customer balance until cleared.
+        /// UNIFIED: TotalPayments = CLEARED only, excluding refund payments (SaleReturnId != null).
+        /// PendingBalance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid (matches CustomerService).
         /// </summary>
         public async Task RecalculateCustomerBalanceAsync(int customerId)
         {
@@ -59,18 +58,30 @@ namespace HexaBill.Api.Modules.Customers
                     return;
                 }
 
-                // Calculate TotalSales from all non-deleted invoices
+                var tenantId = customer.TenantId;
+
+                // TotalSales from all non-deleted invoices
                 var totalSales = await _context.Sales
-                    .Where(s => s.CustomerId == customerId && !s.IsDeleted)
+                    .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                     .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
-                // CLEARED only: so customer balance = what they really still owe; matches invoice (PaidAmount = cleared only)
+                // CLEARED only; exclude refund payments (SaleReturnId != null)
                 var totalPayments = await _context.Payments
-                    .Where(p => p.CustomerId == customerId && p.Status == PaymentStatus.CLEARED)
+                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-                // Calculate PendingBalance (what customer still owes; pending cheques not counted)
-                var pendingBalance = totalSales - totalPayments;
+                // Total sales returns (credit/refund reduces what they owe)
+                var totalSalesReturns = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                    .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+
+                // Refunds paid (payments linked to returns)
+                var refundsPaid = await _context.Payments
+                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+                // PendingBalance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
+                var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
 
                 // Update customer record
                 customer.TotalSales = totalSales;
@@ -81,7 +92,7 @@ namespace HexaBill.Api.Modules.Customers
 
                 // Update LastPaymentDate
                 var lastPayment = await _context.Payments
-                    .Where(p => p.CustomerId == customerId)
+                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
                     .OrderByDescending(p => p.PaymentDate)
                     .FirstOrDefaultAsync();
                 customer.LastPaymentDate = lastPayment?.PaymentDate;
@@ -90,8 +101,8 @@ namespace HexaBill.Api.Modules.Customers
                 await transaction.CommitAsync();
 
                 _logger.LogInformation(
-                    "Customer {CustomerId} balance recalculated: TotalSales={TotalSales}, TotalPayments(Cleared)={TotalPayments}, PendingBalance={Pending}",
-                    customerId, totalSales, totalPayments, pendingBalance);
+                    "Customer {CustomerId} balance recalculated: TotalSales={TotalSales}, TotalPayments(Cleared)={TotalPayments}, Returns={Returns}, RefundsPaid={Refunds}, PendingBalance={Pending}",
+                    customerId, totalSales, totalPayments, totalSalesReturns, refundsPaid, pendingBalance);
             }
             catch (Exception ex)
             {
@@ -102,107 +113,51 @@ namespace HexaBill.Api.Modules.Customers
         }
 
         /// <summary>
-        /// Update customer balance when invoice is created
+        /// Update customer balance when invoice is created. Uses full recalc so returns/refunds are included.
         /// </summary>
         public async Task UpdateCustomerBalanceOnInvoiceCreatedAsync(int customerId, decimal invoiceTotal)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
-            if (customer == null) return;
-
-            customer.TotalSales += invoiceTotal;
-            customer.PendingBalance = customer.TotalSales - customer.TotalPayments;
-            customer.Balance = customer.PendingBalance;
-            customer.LastActivity = DateTime.UtcNow;
-            customer.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
+            await RecalculateCustomerBalanceAsync(customerId);
 
             _logger.LogInformation(
-                "Customer {CustomerId} balance updated on invoice created: +{Amount}, NewPending={Pending}",
-                customerId, invoiceTotal, customer.PendingBalance);
+                "Customer {CustomerId} balance updated on invoice created: +{Amount}",
+                customerId, invoiceTotal);
         }
 
         /// <summary>
-        /// Update customer balance when invoice is deleted
+        /// Update customer balance when invoice is deleted. Uses full recalc so returns/refunds are included.
         /// </summary>
         public async Task UpdateCustomerBalanceOnInvoiceDeletedAsync(int customerId, decimal invoiceTotal)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
-            if (customer == null) return;
-
-            customer.TotalSales -= invoiceTotal;
-            customer.PendingBalance = customer.TotalSales - customer.TotalPayments;
-            customer.Balance = customer.PendingBalance;
-            customer.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Customer {CustomerId} balance updated on invoice deleted: -{Amount}, NewPending={Pending}",
-                customerId, invoiceTotal, customer.PendingBalance);
+            await RecalculateCustomerBalanceAsync(customerId);
+            _logger.LogInformation("Customer {CustomerId} balance updated on invoice deleted: -{Amount}", customerId, invoiceTotal);
         }
 
         /// <summary>
-        /// Update customer balance when invoice is edited
+        /// Update customer balance when invoice is edited. Uses full recalc so returns/refunds are included.
         /// </summary>
         public async Task UpdateCustomerBalanceOnInvoiceEditedAsync(int customerId, decimal oldTotal, decimal newTotal)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
-            if (customer == null) return;
-
-            var difference = newTotal - oldTotal;
-            customer.TotalSales += difference;
-            customer.PendingBalance = customer.TotalSales - customer.TotalPayments;
-            customer.Balance = customer.PendingBalance;
-            customer.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Customer {CustomerId} balance updated on invoice edited: Delta={Delta}, NewPending={Pending}",
-                customerId, difference, customer.PendingBalance);
+            await RecalculateCustomerBalanceAsync(customerId);
+            _logger.LogInformation("Customer {CustomerId} balance updated on invoice edited: Delta={Delta}", customerId, newTotal - oldTotal);
         }
 
         /// <summary>
-        /// Update customer balance when payment is created
+        /// Update customer balance when payment is created. Uses full recalc so returns/refunds are included.
         /// </summary>
         public async Task UpdateCustomerBalanceOnPaymentCreatedAsync(int customerId, decimal paymentAmount)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
-            if (customer == null) return;
-
-            customer.TotalPayments += paymentAmount;
-            customer.PendingBalance = customer.TotalSales - customer.TotalPayments;
-            customer.Balance = customer.PendingBalance;
-            customer.LastPaymentDate = DateTime.UtcNow;
-            customer.LastActivity = DateTime.UtcNow;
-            customer.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Customer {CustomerId} balance updated on payment created: +{Amount}, NewPending={Pending}",
-                customerId, paymentAmount, customer.PendingBalance);
+            await RecalculateCustomerBalanceAsync(customerId);
+            _logger.LogInformation("Customer {CustomerId} balance updated on payment created: +{Amount}", customerId, paymentAmount);
         }
 
         /// <summary>
-        /// Update customer balance when payment is deleted
+        /// Update customer balance when payment is deleted. Uses full recalc so returns/refunds are included.
         /// </summary>
         public async Task UpdateCustomerBalanceOnPaymentDeletedAsync(int customerId, decimal paymentAmount)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
-            if (customer == null) return;
-
-            customer.TotalPayments -= paymentAmount;
-            customer.PendingBalance = customer.TotalSales - customer.TotalPayments;
-            customer.Balance = customer.PendingBalance;
-            customer.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            _logger.LogInformation(
-                "Customer {CustomerId} balance updated on payment deleted: -{Amount}, NewPending={Pending}",
-                customerId, paymentAmount, customer.PendingBalance);
+            await RecalculateCustomerBalanceAsync(customerId);
+            _logger.LogInformation("Customer {CustomerId} balance updated on payment deleted: -{Amount}", customerId, paymentAmount);
         }
 
         /// <summary>
@@ -220,17 +175,27 @@ namespace HexaBill.Api.Modules.Customers
                 };
             }
 
-            // Calculate actual values from database
+            var tenantId = customer.TenantId;
+
+            // Calculate actual values from database (same formula as RecalculateCustomerBalanceAsync)
             var actualTotalSales = await _context.Sales
-                .Where(s => s.CustomerId == customerId && !s.IsDeleted)
+                .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                 .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
-            // Match RecalculateCustomerBalanceAsync: CLEARED only (unified with invoice PaidAmount)
+            // CLEARED only; exclude refund payments (SaleReturnId != null)
             var actualTotalPayments = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.Status == PaymentStatus.CLEARED)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-            var actualPendingBalance = actualTotalSales - actualTotalPayments;
+            var totalSalesReturns = await _context.SaleReturns
+                .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+
+            var refundsPaid = await _context.Payments
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            var actualPendingBalance = actualTotalSales - actualTotalPayments - totalSalesReturns + refundsPaid;
 
             // Check for mismatches (allow 0.01 tolerance for rounding)
             var salesMismatch = Math.Abs(customer.TotalSales - actualTotalSales) > 0.01m;

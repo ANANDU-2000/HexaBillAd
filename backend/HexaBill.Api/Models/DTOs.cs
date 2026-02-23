@@ -519,7 +519,8 @@ namespace HexaBill.Api.Models
         public decimal Balance { get; set; }
         public int? SaleId { get; set; } // For linking to invoices
         public int? PaymentId { get; set; } // For linking to payments
-        public string? Status { get; set; } // Paid, Partial, Unpaid
+        public int? ReturnId { get; set; } // For linking to returns (delete action)
+        public string? Status { get; set; } // Paid, Partial, Unpaid; for returns: Refunded, Credit Issued, Pending Refund
         public decimal PaidAmount { get; set; } // Amount paid for invoice
     }
 
@@ -998,6 +999,14 @@ namespace HexaBill.Api.Models
     }
 
     // Return DTOs
+    /// <summary>Disposition at create: RefundNow = pay back now (creates refund payment); CreditIssued = keep as credit; AdjustNextInvoice = pending adjustment.</summary>
+    public static class ReturnType
+    {
+        public const string RefundNow = "RefundNow";
+        public const string CreditIssued = "CreditIssued";
+        public const string AdjustNextInvoice = "AdjustNextInvoice";
+    }
+
     public class CreateSaleReturnRequest
     {
         [Required]
@@ -1008,8 +1017,11 @@ namespace HexaBill.Api.Models
         public bool RestoreStock { get; set; } = true;
         public bool IsBadItem { get; set; } = false;
         public decimal? Discount { get; set; }
-        /// <summary>When true and invoice is paid, create a credit note linked to this return (for refund/future adjustment).</summary>
+        /// <summary>When true and invoice is paid, create a credit note linked to this return (for refund/future adjustment). Backward compat: if ReturnType not set, true => CreditIssued, false => PendingRefund.</summary>
         public bool CreateCreditNote { get; set; }
+        /// <summary>RefundNow = refund now (creates refund payment, RefundStatus Refunded); CreditIssued = keep as credit; AdjustNextInvoice = pending. If not set, derived from CreateCreditNote.</summary>
+        [MaxLength(20)]
+        public string? ReturnType { get; set; }
     }
 
     public class SaleReturnItemRequest

@@ -193,6 +193,25 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
+        [HttpDelete("sales/{id}")]
+        [Authorize(Policy = "AdminOrOwner")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteSaleReturn(int id)
+        {
+            try
+            {
+                await _returnService.DeleteSaleReturnAsync(id, CurrentTenantId);
+                return Ok(new ApiResponse<object> { Success = true, Message = "Return deleted successfully" });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
         [HttpGet("credit-notes")]
         public async Task<ActionResult<ApiResponse<List<CreditNoteDto>>>> GetCreditNotes(
             [FromQuery] DateTime? fromDate = null,

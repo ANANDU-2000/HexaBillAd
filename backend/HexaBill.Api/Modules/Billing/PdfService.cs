@@ -875,21 +875,30 @@ namespace HexaBill.Api.Modules.Billing
                     return new CustomerPendingBalanceInfo();
                 }
 
-                // CRITICAL: Calculate REAL pending balance from database (not cached values)
-                // This ensures 100% accuracy for business-critical balance information
-                
-                // Total sales for this customer (excluding deleted)
+                // CRITICAL: Calculate REAL pending balance from database (matches CustomerService/BalanceService)
+                // Formula: TotalSales - TotalPayments (cleared, excl refunds) - TotalSalesReturns + RefundsPaid
                 var totalSales = await _context.Sales
                     .Where(s => s.CustomerId == customerId.Value 
                                && s.TenantId == tenantId 
                                && !s.IsDeleted)
                     .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
-                // Total payments for this customer (excluding voided)
+                // Cleared payments only; exclude refund payments (SaleReturnId != null)
                 var totalPayments = await _context.Payments
                     .Where(p => p.CustomerId == customerId.Value 
                                && p.TenantId == tenantId 
-                               && p.Status != PaymentStatus.VOID)
+                               && p.Status == PaymentStatus.CLEARED 
+                               && p.SaleReturnId == null)
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+                var totalSalesReturns = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId == customerId.Value && sr.TenantId == tenantId)
+                    .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+
+                var refundsPaid = await _context.Payments
+                    .Where(p => p.CustomerId == customerId.Value 
+                               && p.TenantId == tenantId 
+                               && p.SaleReturnId != null)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                 // Count of pending invoices
@@ -900,14 +909,14 @@ namespace HexaBill.Api.Modules.Billing
                                && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
                     .CountAsync();
 
-                // Calculate balances
-                var totalBalanceDue = totalSales - totalPayments;
-                var previousBalance = totalBalanceDue; // Total balance is shown (including all invoices)
+                // Pending balance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
+                var totalBalanceDue = totalSales - totalPayments - totalSalesReturns + refundsPaid;
 
                 Console.WriteLine($"\n?? Customer Balance Calculation for Invoice Footer:");
                 Console.WriteLine($"   Customer ID: {customerId.Value}");
                 Console.WriteLine($"   Total Sales: {totalSales:N2}");
                 Console.WriteLine($"   Total Payments: {totalPayments:N2}");
+                Console.WriteLine($"   Returns: {totalSalesReturns:N2}, RefundsPaid: {refundsPaid:N2}");
                 Console.WriteLine($"   Pending Bills Count: {totalPendingBills}");
                 Console.WriteLine($"   Total Balance Due: {totalBalanceDue:N2}\n");
 

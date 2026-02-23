@@ -40,6 +40,9 @@ namespace HexaBill.Api.Models
         /// <summary>ERP category: resellable, damaged, writeoff, not_liked (for filtering/reports).</summary>
         [MaxLength(20)]
         public string? ReturnCategory { get; set; }
+        /// <summary>Ledger disposition: Refunded, CreditIssued, PendingRefund. Never "Unpaid".</summary>
+        [MaxLength(20)]
+        public string? RefundStatus { get; set; }
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 

@@ -314,6 +314,7 @@ namespace HexaBill.Api.Data
                     .HasColumnType(Database.IsNpgsql() ? "bytea" : "BLOB")
                     .IsRequired(false); // Make nullable for PostgreSQL
                 entity.HasOne(e => e.Sale).WithMany().HasForeignKey(e => e.SaleId);
+                entity.HasOne<SaleReturn>().WithMany().HasForeignKey(e => e.SaleReturnId).IsRequired(false);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
             });
@@ -547,6 +548,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.GrandTotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Status).HasConversion<string>();
                 entity.Property(e => e.ReturnType).HasMaxLength(20);
+                entity.Property(e => e.RefundStatus).HasMaxLength(20);
                 entity.HasOne(e => e.Sale).WithMany().HasForeignKey(e => e.SaleId);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);

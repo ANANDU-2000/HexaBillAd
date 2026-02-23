@@ -116,18 +116,47 @@ namespace HexaBill.Api.Shared.Middleware
         {
             _logger.LogInformation("Starting data integrity validation...");
 
-            // 1. Validate customer balances
-            var customersWithMismatches = await dbContext.Customers
-                .Select(c => new
+            // 1. Validate customer balances (formula: TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid)
+            var customers = await dbContext.Customers
+                .Select(c => new { c.Id, c.TenantId, c.OwnerId, c.Name, StoredPendingBalance = c.PendingBalance })
+                .ToListAsync();
+
+            var salesByCustomer = await dbContext.Sales
+                .Where(s => !s.IsDeleted)
+                .GroupBy(s => new { s.CustomerId, s.TenantId })
+                .Select(g => new { g.Key.CustomerId, g.Key.TenantId, Total = g.Sum(s => s.GrandTotal) })
+                .ToListAsync();
+
+            var paymentsByCustomer = await dbContext.Payments
+                .Where(p => p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                .GroupBy(p => new { p.CustomerId, p.TenantId })
+                .Select(g => new { g.Key.CustomerId, g.Key.TenantId, Total = g.Sum(p => p.Amount) })
+                .ToListAsync();
+
+            var returnsByCustomer = await dbContext.SaleReturns
+                .GroupBy(sr => new { sr.CustomerId, sr.TenantId })
+                .Select(g => new { g.Key.CustomerId, g.Key.TenantId, Total = g.Sum(sr => sr.GrandTotal) })
+                .ToListAsync();
+
+            var refundsByCustomer = await dbContext.Payments
+                .Where(p => p.SaleReturnId != null)
+                .GroupBy(p => new { p.CustomerId, p.TenantId })
+                .Select(g => new { g.Key.CustomerId, g.Key.TenantId, Total = g.Sum(p => p.Amount) })
+                .ToListAsync();
+
+            var customersWithMismatches = customers
+                .Where(c => c.Id > 0)
+                .Select(c =>
                 {
-                    c.Id,
-                    c.OwnerId,
-                    c.Name,
-                    StoredPendingBalance = c.PendingBalance,
-                    CalculatedPendingBalance = c.TotalSales - c.TotalPayments
+                    var totalSales = salesByCustomer.FirstOrDefault(x => x.CustomerId == c.Id && x.TenantId == c.TenantId)?.Total ?? 0m;
+                    var totalPayments = paymentsByCustomer.FirstOrDefault(x => x.CustomerId == c.Id && x.TenantId == c.TenantId)?.Total ?? 0m;
+                    var totalReturns = returnsByCustomer.FirstOrDefault(x => x.CustomerId == c.Id && x.TenantId == c.TenantId)?.Total ?? 0m;
+                    var refundsPaid = refundsByCustomer.FirstOrDefault(x => x.CustomerId == c.Id && x.TenantId == c.TenantId)?.Total ?? 0m;
+                    var calculated = totalSales - totalPayments - totalReturns + refundsPaid;
+                    return new { c.Id, c.OwnerId, c.Name, c.StoredPendingBalance, CalculatedPendingBalance = calculated };
                 })
                 .Where(c => Math.Abs(c.StoredPendingBalance - c.CalculatedPendingBalance) > 0.01m)
-                .ToListAsync();
+                .ToList();
 
             if (customersWithMismatches.Any())
             {

@@ -42,6 +42,8 @@ namespace HexaBill.Api.Modules.Billing
         Task<byte[]> GenerateReturnBillPdfAsync(int returnId, int tenantId);
         Task<List<CreditNoteDto>> GetCreditNotesAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? customerId = null);
         Task<List<DamageReportEntryDto>> GetDamageReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null);
+        /// <summary>Delete a mistaken return. Owner/Admin only. Reverses stock, balance, removes CreditNote and refund payment.</summary>
+        Task DeleteSaleReturnAsync(int returnId, int tenantId);
     }
 
     public class ReturnService : IReturnService
@@ -229,7 +231,12 @@ namespace HexaBill.Api.Modules.Billing
                     : conditionFlags.Contains("resellable") && conditionFlags.Count == 1 ? "resellable"
                     : conditionFlags.Count > 0 ? "not_liked" : null;
 
-                // Create sale return (BranchId/RouteId from original sale when columns exist)
+                // RefundStatus from ReturnType (RefundNow / CreditIssued / AdjustNextInvoice); backward compat: CreateCreditNote => CreditIssued else PendingRefund
+                var rt = string.IsNullOrWhiteSpace(request.ReturnType) ? null : request.ReturnType.Trim();
+                var refundStatus = rt == ReturnType.RefundNow ? "Refunded"
+                    : (rt == ReturnType.CreditIssued || request.CreateCreditNote) ? "CreditIssued"
+                    : "PendingRefund";
+
                 var saleReturn = new SaleReturn
                 {
                     OwnerId = tenantId,
@@ -250,6 +257,7 @@ namespace HexaBill.Api.Modules.Billing
                     RouteId = saleInfo.RouteId,
                     ReturnType = returnType,
                     ReturnCategory = returnCategory,
+                    RefundStatus = refundStatus,
                     CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -326,10 +334,33 @@ namespace HexaBill.Api.Modules.Billing
                         if (customer != null)
                             await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, customer.TenantId ?? 0);
                     }
+
+                    // Refund Now: create refund payment (money out) so ledger balance can go to 0
+                    if (rt == ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
+                    {
+                        _context.Payments.Add(new Payment
+                        {
+                            TenantId = tenantId,
+                            SaleReturnId = saleReturn.Id,
+                            CustomerId = saleInfo.CustomerId,
+                            Amount = grandTotal,
+                            Mode = PaymentMode.CASH,
+                            Status = PaymentStatus.CLEARED,
+                            PaymentDate = DateTime.UtcNow,
+                            Reference = $"Refund for return {returnNo}",
+                            CreatedBy = userId,
+                            CreatedAt = DateTime.UtcNow,
+                            OwnerId = tenantId
+                        });
+                        await _context.SaveChangesAsync();
+                        var customer = await _context.Customers.FindAsync(saleInfo.CustomerId.Value);
+                        if (customer != null)
+                            await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, customer.TenantId ?? 0);
+                    }
                 }
 
-                // Credit note for cash (paid) invoice when requested
-                if (request.CreateCreditNote && saleInfo.CustomerId.HasValue)
+                // Credit note when Keep as Credit (not when Refund Now)
+                if ((request.CreateCreditNote || rt == ReturnType.CreditIssued) && rt != ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
                 {
                     var totalPaidForSale = await _context.Payments
                         .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId)
@@ -755,6 +786,75 @@ namespace HexaBill.Api.Modules.Billing
             ret.Status = ReturnStatus.Rejected;
             await _context.SaveChangesAsync();
             return await GetSaleReturnByIdAsync(ret.Id);
+        }
+
+        public async Task DeleteSaleReturnAsync(int returnId, int tenantId)
+        {
+            var strategy = _context.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var ret = await _context.SaleReturns
+                        .Include(r => r.Items)
+                        .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+                    if (ret == null) throw new InvalidOperationException("Return not found");
+
+                    var customerId = ret.CustomerId;
+                    var branchId = ret.BranchId;
+
+                    // Reverse stock for items that had stock restored (StockEffect == true)
+                    foreach (var item in ret.Items)
+                    {
+                        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
+                        if (product == null) continue;
+                        if (item.StockEffect == true)
+                        {
+                            var baseQty = item.Qty * product.ConversionToBase;
+                            await _context.Database.ExecuteSqlInterpolatedAsync(
+                                $@"UPDATE ""Products"" SET ""StockQty"" = ""StockQty"" - {baseQty}, ""UpdatedAt"" = {DateTime.UtcNow} WHERE ""Id"" = {product.Id} AND ""TenantId"" = {tenantId}");
+                        }
+                        // Reverse damage inventory for damaged items
+                        if (item.Condition == "damaged")
+                        {
+                            var inv = await _context.DamageInventories
+                                .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == item.ProductId && d.BranchId == branchId);
+                            if (inv != null)
+                            {
+                                var baseQty = item.Qty * product.ConversionToBase;
+                                inv.Quantity = Math.Max(0, inv.Quantity - baseQty);
+                                inv.UpdatedAt = DateTime.UtcNow;
+                            }
+                        }
+                    }
+
+                    // Remove refund payment(s) linked to this return
+                    var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId).ToListAsync();
+                    _context.Payments.RemoveRange(refundPayments);
+
+                    // Remove linked credit note(s)
+                    var creditNotes = await _context.CreditNotes.Where(cn => cn.LinkedReturnId == returnId).ToListAsync();
+                    _context.CreditNotes.RemoveRange(creditNotes);
+
+                    _context.SaleReturnItems.RemoveRange(ret.Items);
+                    _context.SaleReturns.Remove(ret);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    if (customerId.HasValue)
+                    {
+                        var customer = await _context.Customers.FindAsync(customerId.Value);
+                        if (customer != null)
+                            await _customerService.RecalculateCustomerBalanceAsync(customerId.Value, customer.TenantId ?? 0);
+                    }
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         private async Task<string> GenerateSaleReturnNumberAsync(int tenantId)

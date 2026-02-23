@@ -975,9 +975,9 @@ namespace HexaBill.Api.Modules.Customers
 
             var filteredSaleIds = new HashSet<int>(salesData.Select(s => s.Id));
 
-            // Payments: only include those linked to filtered sales or standalone (no SaleId)
+            // Payments: only include incoming payments (exclude refunds - those are Type "Refund" below)
             var paymentsQuery = _context.Payments
-                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId);
+                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null);
             var payments = await paymentsQuery
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
@@ -1061,15 +1061,15 @@ namespace HexaBill.Api.Modules.Customers
             // Create lookup for invoice numbers by SaleId
             var invoiceLookup = salesData.ToDictionary(s => s.Id, s => s.InvoiceNo);
 
-            // Get payment totals for each sale to calculate status - STRICT filtering
+            // Get payment totals for each sale to calculate status (exclude refunds)
             var salePayments = await _context.Payments
-                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleId.HasValue)
+                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null)
                 .GroupBy(p => p.SaleId!.Value)
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
 
-            // Build unified transaction list - ONE entry per transaction
-            var allTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks)>();
+            // Build unified transaction list - ONE entry per transaction (with ReturnId for delete action)
+            var allTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks, int? ReturnId)>();
 
             // Add sales (Invoices) - DEBIT entries
             foreach (var sale in salesData)
@@ -1080,55 +1080,89 @@ namespace HexaBill.Api.Modules.Customers
                     : "Unpaid";
                 
                 allTransactions.Add((
-                    Date: sale.InvoiceDate,
-                    Type: "Invoice",
-                    InvoiceNo: sale.InvoiceNo,
-                    PaymentMode: null,
-                    Debit: sale.GrandTotal,
-                    Credit: 0,
-                    Status: status,
-                    SaleId: sale.Id,
-                    PaymentId: null,
-                    Remarks: null
+                    sale.InvoiceDate,
+                    "Invoice",
+                    sale.InvoiceNo,
+                    (string?)null,
+                    sale.GrandTotal,
+                    0m,
+                    status,
+                    sale.Id,
+                    (int?)null,
+                    (string?)null,
+                    (int?)null
                 ));
             }
 
             // Add payments - CREDIT entries (show linked invoice number if available)
             foreach (var payment in payments)
             {
-                // If payment is linked to invoice, show that invoice number
                 var invoiceNo = payment.SaleId.HasValue && invoiceLookup.ContainsKey(payment.SaleId.Value)
                     ? invoiceLookup[payment.SaleId.Value]
                     : (payment.Reference ?? "");
                 
                 allTransactions.Add((
-                    Date: payment.PaymentDate,
-                    Type: "Payment",
-                    InvoiceNo: invoiceNo,
-                    PaymentMode: payment.Mode.ToString(),
-                    Debit: 0,
-                    Credit: payment.Amount,
-                    Status: "", // Payments don't have status
-                    SaleId: payment.SaleId,
-                    PaymentId: payment.Id,
-                    Remarks: payment.Reference
+                    payment.PaymentDate,
+                    "Payment",
+                    invoiceNo,
+                    payment.Mode.ToString(),
+                    0m,
+                    payment.Amount,
+                    "",
+                    payment.SaleId,
+                    payment.Id,
+                    payment.Reference,
+                    (int?)null
                 ));
             }
 
-            // Add sales returns - CREDIT entries
+            // Add sales returns - CREDIT entries; Status = Refunded | Credit Issued | Pending Refund (never Unpaid)
             foreach (var saleReturn in salesReturns)
             {
+                var refundStatus = string.IsNullOrWhiteSpace(saleReturn.RefundStatus)
+                    ? "Credit Issued"
+                    : saleReturn.RefundStatus switch
+                    {
+                        "Refunded" => "Refunded",
+                        "CreditIssued" => "Credit Issued",
+                        "PendingRefund" => "Pending Refund",
+                        _ => "Credit Issued"
+                    };
                 allTransactions.Add((
-                    Date: saleReturn.ReturnDate,
-                    Type: "Sale Return",
-                    InvoiceNo: saleReturn.ReturnNo,
-                    PaymentMode: null,
-                    Debit: 0,
-                    Credit: saleReturn.GrandTotal,
-                    Status: "",
-                    SaleId: null,
-                    PaymentId: null,
-                    Remarks: null
+                    saleReturn.ReturnDate,
+                    "Sale Return",
+                    saleReturn.ReturnNo,
+                    (string?)null,
+                    0m,
+                    saleReturn.GrandTotal,
+                    refundStatus,
+                    (int?)null,
+                    (int?)null,
+                    (string?)null,
+                    saleReturn.Id
+                ));
+            }
+
+            // Refund payments (money out) - show as "Refund" rows, ordered after linked Sale Return
+            var refundPaymentsQuery = _context.Payments
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null);
+            if (from.HasValue) refundPaymentsQuery = refundPaymentsQuery.Where(p => p.PaymentDate >= from.Value);
+            if (toEnd.HasValue) refundPaymentsQuery = refundPaymentsQuery.Where(p => p.PaymentDate < toEnd.Value);
+            var refundPayments = await refundPaymentsQuery.OrderBy(p => p.PaymentDate).ThenBy(p => p.Id).ToListAsync();
+            foreach (var payment in refundPayments)
+            {
+                allTransactions.Add((
+                    payment.PaymentDate,
+                    "Refund",
+                    "Refund",
+                    payment.Mode.ToString(),
+                    payment.Amount,
+                    0m,
+                    "",
+                    (int?)null,
+                    payment.Id,
+                    (string?)null,
+                    payment.SaleReturnId
                 ));
             }
 
@@ -1146,11 +1180,15 @@ namespace HexaBill.Api.Modules.Customers
                 .ThenBy(t => t.PaymentId ?? int.MaxValue)
                 .ToList();
             
-            // Get sales returns (standalone)
             var standaloneReturns = allTransactions
                 .Where(t => t.Type == "Sale Return")
                 .OrderBy(t => t.Date)
+                .ThenBy(t => t.ReturnId ?? int.MaxValue)
                 .ToList();
+            var refundsByReturnId = allTransactions
+                .Where(t => t.Type == "Refund" && t.ReturnId.HasValue)
+                .GroupBy(t => t.ReturnId!.Value)
+                .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Date).ThenBy(x => x.PaymentId ?? int.MaxValue).ToList());
             
             // Get invoices sorted by date
             var invoices = allTransactions
@@ -1159,58 +1197,45 @@ namespace HexaBill.Api.Modules.Customers
                 .ThenBy(t => t.SaleId ?? int.MaxValue)
                 .ToList();
 
-            // Build grouped transaction list: Invoice → Its Payments → Next Invoice → Its Payments
-            var groupedTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks)>();
+            // Build grouped transaction list: Invoice → Its Payments → Next Invoice → Its Payments (with ReturnId)
+            var groupedTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks, int? ReturnId)>();
             
-            // Process each invoice with its payments immediately after
             foreach (var invoice in invoices)
             {
-                // Add the invoice first
                 groupedTransactions.Add(invoice);
-                
-                // Immediately add all payments for this invoice (if any)
                 if (invoice.SaleId.HasValue && paymentsBySaleId.ContainsKey(invoice.SaleId.Value))
                 {
                     foreach (var payment in paymentsBySaleId[invoice.SaleId.Value])
-                    {
                         groupedTransactions.Add(payment);
-                    }
                 }
             }
-            
-            // Add standalone payments (not linked to invoices) at the end, sorted by date
             groupedTransactions.AddRange(standalonePayments);
-            
-            // Add sales returns at the end, sorted by date
-            groupedTransactions.AddRange(standaloneReturns);
+            foreach (var ret in standaloneReturns)
+            {
+                groupedTransactions.Add(ret);
+                if (ret.ReturnId.HasValue && refundsByReturnId.TryGetValue(ret.ReturnId.Value, out var refs))
+                    foreach (var r in refs) groupedTransactions.Add(r);
+            }
 
-            // Build ledger entries with running balance - PREVENT DUPLICATES
             var ledgerEntries = new List<CustomerLedgerEntry>();
-            var seenTransactions = new HashSet<(int? SaleId, int? PaymentId, DateTime Date, decimal Amount)>();
+            var seenTransactions = new HashSet<(int? SaleId, int? PaymentId, int? ReturnId, DateTime Date, decimal Amount)>();
             decimal runningBalance = 0;
 
             foreach (var transaction in groupedTransactions)
             {
-                // CRITICAL: Check for duplicates using SaleId/PaymentId combination
-                var transactionKey = (transaction.SaleId, transaction.PaymentId, transaction.Date, transaction.Debit + transaction.Credit);
-                
-                // Skip if we've already seen this exact transaction
+                var transactionKey = (transaction.SaleId, transaction.PaymentId, transaction.ReturnId, transaction.Date, transaction.Debit + transaction.Credit);
                 if (seenTransactions.Contains(transactionKey))
                 {
-                    Console.WriteLine($"⚠️ Duplicate transaction detected and skipped: SaleId={transaction.SaleId}, PaymentId={transaction.PaymentId}, Date={transaction.Date:yyyy-MM-dd}, Amount={transaction.Debit + transaction.Credit}");
+                    Console.WriteLine($"⚠️ Duplicate transaction detected and skipped: SaleId={transaction.SaleId}, PaymentId={transaction.PaymentId}, ReturnId={transaction.ReturnId}, Date={transaction.Date:yyyy-MM-dd}, Amount={transaction.Debit + transaction.Credit}");
                     continue;
                 }
-                
                 seenTransactions.Add(transactionKey);
-                
-                // Update running balance: Debit increases, Credit decreases
                 runningBalance += transaction.Debit - transaction.Credit;
-                
                 ledgerEntries.Add(new CustomerLedgerEntry
                 {
                     Date = transaction.Date,
                     Type = transaction.Type,
-                    Reference = transaction.InvoiceNo, // Invoice number or payment reference
+                    Reference = transaction.InvoiceNo,
                     PaymentMode = transaction.PaymentMode,
                     Remarks = transaction.Remarks,
                     Debit = transaction.Debit,
@@ -1218,8 +1243,9 @@ namespace HexaBill.Api.Modules.Customers
                     Balance = runningBalance,
                     SaleId = transaction.SaleId,
                     PaymentId = transaction.PaymentId,
+                    ReturnId = transaction.ReturnId,
                     Status = transaction.Status,
-                    PaidAmount = 0 // Not needed in ledger view
+                    PaidAmount = 0
                 });
             }
 
@@ -1253,9 +1279,8 @@ namespace HexaBill.Api.Modules.Customers
                 .ThenBy(s => s.Id)
                 .ToListAsync();
 
-            // Get ALL cash customer payments (CustomerId is null) - Filter by tenantId
             var payments = await _context.Payments
-                .Where(p => p.CustomerId == null && p.TenantId == tenantId)
+                .Where(p => p.CustomerId == null && p.TenantId == tenantId && p.SaleReturnId == null)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
                 .ToListAsync();
@@ -1269,116 +1294,132 @@ namespace HexaBill.Api.Modules.Customers
             // Create lookup for invoice numbers by SaleId
             var invoiceLookup = sales.ToDictionary(s => s.Id, s => s.InvoiceNo);
 
-            // Get payment totals for each sale to calculate status
             var salePayments = await _context.Payments
-                .Where(p => p.CustomerId == null && p.TenantId == tenantId && p.SaleId.HasValue)
+                .Where(p => p.CustomerId == null && p.TenantId == tenantId && p.SaleId.HasValue && p.SaleReturnId == null)
                 .GroupBy(p => p.SaleId!.Value)
                 .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                 .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
 
-            // Build transaction list: Invoice → Its Payments → Next Invoice → Its Payments
-            var groupedTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks)>();
+            var refundPaymentsCash = await _context.Payments
+                .Where(p => p.CustomerId == null && p.TenantId == tenantId && p.SaleReturnId != null)
+                .OrderBy(p => p.PaymentDate)
+                .ThenBy(p => p.Id)
+                .ToListAsync();
+            var refundsByReturnIdCash = refundPaymentsCash.GroupBy(p => p.SaleReturnId!.Value).ToDictionary(g => g.Key, g => g.ToList());
 
-            // Process each invoice with its payments immediately after
+            // Build transaction list: Invoice → Its Payments → Next Invoice → Its Payments (with ReturnId for returns)
+            var groupedTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks, int? ReturnId)>();
+
             foreach (var sale in sales)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0m);
                 var balance = sale.GrandTotal - paidAmount;
-                
-                // Determine status
-                string status = "Unpaid";
-                if (balance <= 0.01m)
-                {
-                    status = "Paid";
-                }
-                else if (paidAmount > 0)
-                {
-                    status = "Partial";
-                }
-
-                // Get payment mode from first payment
+                string status = balance <= 0.01m ? "Paid" : paidAmount > 0 ? "Partial" : "Unpaid";
                 var firstPayment = payments.FirstOrDefault(p => p.SaleId == sale.Id);
                 var paymentMode = (string?)(firstPayment?.Mode.ToString().ToUpper() ?? "NOT PAID");
 
-                // Add invoice transaction
                 groupedTransactions.Add((
-                    Date: sale.InvoiceDate,
-                    Type: "Sale",
-                    InvoiceNo: sale.InvoiceNo,
-                    PaymentMode: paymentMode,
-                    Debit: sale.GrandTotal,
-                    Credit: 0m,
-                    Status: status,
-                    SaleId: sale.Id,
-                    PaymentId: (int?)null,
-                    Remarks: sale.Notes
+                    sale.InvoiceDate,
+                    "Sale",
+                    sale.InvoiceNo,
+                    paymentMode,
+                    sale.GrandTotal,
+                    0m,
+                    status,
+                    sale.Id,
+                    (int?)null,
+                    sale.Notes,
+                    (int?)null
                 ));
 
-                // Add payments for this invoice
-                var invoicePayments = payments.Where(p => p.SaleId == sale.Id).OrderBy(p => p.PaymentDate).ThenBy(p => p.Id);
-                foreach (var payment in invoicePayments)
+                foreach (var payment in payments.Where(p => p.SaleId == sale.Id).OrderBy(p => p.PaymentDate).ThenBy(p => p.Id))
                 {
                     groupedTransactions.Add((
-                        Date: payment.PaymentDate,
-                        Type: "Payment",
-                        InvoiceNo: sale.InvoiceNo,
-                        PaymentMode: (string?)payment.Mode.ToString().ToUpper(),
-                        Debit: 0m,
-                        Credit: payment.Amount,
-                        Status: "Paid",
-                        SaleId: sale.Id,
-                        PaymentId: (int?)payment.Id,
-                        Remarks: (string?)payment.Reference
+                        payment.PaymentDate,
+                        "Payment",
+                        sale.InvoiceNo,
+                        (string?)payment.Mode.ToString().ToUpper(),
+                        0m,
+                        payment.Amount,
+                        "Paid",
+                        sale.Id,
+                        (int?)payment.Id,
+                        (string?)payment.Reference,
+                        (int?)null
                     ));
                 }
             }
 
-            // Add standalone payments (not linked to invoices)
             var standalonePayments = payments
                 .Where(p => !p.SaleId.HasValue)
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
                 .Select(p => (
-                    Date: p.PaymentDate,
-                    Type: "Payment",
-                    InvoiceNo: p.Reference ?? "-",
-                    PaymentMode: (string?)p.Mode.ToString().ToUpper(),
-                    Debit: 0m,
-                    Credit: p.Amount,
-                    Status: "Paid",
-                    SaleId: (int?)null,
-                    PaymentId: (int?)p.Id,
-                    Remarks: (string?)p.Reference
+                    p.PaymentDate,
+                    "Payment",
+                    p.Reference ?? "-",
+                    (string?)p.Mode.ToString().ToUpper(),
+                    0m,
+                    p.Amount,
+                    "Paid",
+                    (int?)null,
+                    (int?)p.Id,
+                    (string?)p.Reference,
+                    (int?)null
                 ));
-
             groupedTransactions.AddRange(standalonePayments);
 
-            // Add sales returns
             foreach (var returnItem in salesReturns)
             {
+                var refundStatus = string.IsNullOrWhiteSpace(returnItem.RefundStatus)
+                    ? "Credit Issued"
+                    : returnItem.RefundStatus switch
+                    {
+                        "Refunded" => "Refunded",
+                        "CreditIssued" => "Credit Issued",
+                        "PendingRefund" => "Pending Refund",
+                        _ => "Credit Issued"
+                    };
                 groupedTransactions.Add((
-                    Date: returnItem.ReturnDate,
-                    Type: "Return",
-                    InvoiceNo: returnItem.ReturnNo ?? "-",
-                    PaymentMode: (string?)"RETURN",
-                    Debit: 0m,
-                    Credit: returnItem.GrandTotal,
-                    Status: "Returned",
-                    SaleId: (int?)null,
-                    PaymentId: (int?)returnItem.Id,
-                    Remarks: (string?)returnItem.Reason
+                    returnItem.ReturnDate,
+                    "Sale Return",
+                    returnItem.ReturnNo ?? "-",
+                    (string?)"RETURN",
+                    0m,
+                    returnItem.GrandTotal,
+                    refundStatus,
+                    (int?)null,
+                    (int?)null,
+                    (string?)returnItem.Reason,
+                    returnItem.Id
                 ));
+                if (refundsByReturnIdCash.TryGetValue(returnItem.Id, out var refPayments))
+                {
+                    foreach (var refP in refPayments)
+                    {
+                        groupedTransactions.Add((
+                            refP.PaymentDate,
+                            "Refund",
+                            "Refund",
+                            (string?)refP.Mode.ToString(),
+                            refP.Amount,
+                            0m,
+                            "",
+                            (int?)null,
+                            (int?)refP.Id,
+                            (string?)null,
+                            refP.SaleReturnId
+                        ));
+                    }
+                }
             }
 
-            // Build ledger entries with running balance
             var ledgerEntries = new List<CustomerLedgerEntry>();
             decimal runningBalance = 0;
 
             foreach (var transaction in groupedTransactions.OrderBy(t => t.Date).ThenBy(t => t.Type == "Payment" ? 1 : 0))
             {
-                // Update running balance: Debit increases, Credit decreases
                 runningBalance += transaction.Debit - transaction.Credit;
-
                 ledgerEntries.Add(new CustomerLedgerEntry
                 {
                     Date = transaction.Date,
@@ -1391,6 +1432,7 @@ namespace HexaBill.Api.Modules.Customers
                     Balance = runningBalance,
                     SaleId = transaction.SaleId,
                     PaymentId = transaction.PaymentId,
+                    ReturnId = transaction.ReturnId,
                     Status = transaction.Status,
                     PaidAmount = 0
                 });
@@ -2544,18 +2586,22 @@ namespace HexaBill.Api.Modules.Customers
                 .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                 .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
-            // CLEARED only (PRODUCTION_MASTER_TODO #7): aligns with Sale.PaidAmount; pending cheques don't reduce balance
+            // CLEARED only; exclude refund payments (SaleReturnId != null) - they are money out, not in
             var totalPayments = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-            // Calculate total sales returns (credits)
             var totalSalesReturns = await _context.SaleReturns
                 .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
                 .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
 
-            // Calculate pending balance: Sales - Payments - SalesReturns = Outstanding Balance
-            var pendingBalance = totalSales - totalPayments - totalSalesReturns;
+            // Refunds paid (money out) - payments linked to returns
+            var refundsPaid = await _context.Payments
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            // Closing balance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
+            var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
 
             // Get last payment date
             var lastPaymentDate = await _context.Payments
@@ -2573,7 +2619,7 @@ namespace HexaBill.Api.Modules.Customers
             customer.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ Recalculated balance for {customer.Name}: PendingBalance={pendingBalance:N2} (Sales: {totalSales:N2}, Payments: {totalPayments:N2}, Returns: {totalSalesReturns:N2})");
+            Console.WriteLine($"✅ Recalculated balance for {customer.Name}: PendingBalance={pendingBalance:N2} (Sales: {totalSales:N2}, Payments: {totalPayments:N2}, Returns: {totalSalesReturns:N2}, RefundsPaid: {refundsPaid:N2})");
         }
 
         /// <summary>
@@ -2594,16 +2640,19 @@ namespace HexaBill.Api.Modules.Customers
                     .Where(s => s.CustomerId == customer.Id && s.TenantId == tenantId && !s.IsDeleted)
                     .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
 
-                // CLEARED only (aligns with Sale.PaidAmount; pending cheques don't reduce balance)
                 var totalPayments = await _context.Payments
-                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
+                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                 var totalSalesReturns = await _context.SaleReturns
                     .Where(sr => sr.CustomerId == customer.Id && sr.TenantId == tenantId)
                     .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
 
-                var pendingBalance = totalSales - totalPayments - totalSalesReturns;
+                var refundsPaid = await _context.Payments
+                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.SaleReturnId != null)
+                    .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+                var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
                 
                 // Get last payment date
                 var lastPaymentDate = await _context.Payments
