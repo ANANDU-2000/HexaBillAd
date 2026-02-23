@@ -614,8 +614,10 @@ namespace HexaBill.Api.Modules.Expenses
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty list instead of 500 so Expenses page keeps working
-                Console.WriteLine($"[GetRecurringExpenses] Returning empty list after error: {ex.Message}");
+                // PRODUCTION: Return empty list instead of 500; avoid log noise when RecurringExpenses table does not exist (42P01)
+                var msg = ex.Message ?? "";
+                if (!msg.Contains("42P01") && !msg.Contains("RecurringExpenses") && !msg.Contains("does not exist"))
+                    Console.WriteLine($"[GetRecurringExpenses] Returning empty list after error: {msg}");
                 return Ok(new ApiResponse<List<RecurringExpenseDto>>
                 {
                     Success = true,

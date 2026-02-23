@@ -388,6 +388,10 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""ApprovedAt"" timestamp with time zone NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RejectionReason"" text NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Expenses"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
             // UserSessions table for "who is logged in" / recent logins
             ctx.Database.ExecuteSqlRaw(@"
                 CREATE TABLE IF NOT EXISTS ""UserSessions"" (
@@ -1022,6 +1026,10 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" timestamp with time zone NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""ErrorLogs"" ADD COLUMN IF NOT EXISTS ""ResolvedAt"" timestamp with time zone NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RouteId"" integer NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
                     initLogger.LogInformation("PostgreSQL: Safety check for critical columns completed");
                 }
                 catch (Exception ex)

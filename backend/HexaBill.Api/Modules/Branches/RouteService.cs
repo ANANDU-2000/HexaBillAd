@@ -171,14 +171,14 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<RouteDto> CreateRouteAsync(CreateRouteRequest request, int tenantId)
         {
-            // PROD-12: Validate Branch exists and belongs to tenant
-            var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == request.BranchId && b.TenantId == tenantId);
-            if (branch == null) 
+            // PROD-12: Validate Branch exists and belongs to tenant (schema-safe: no ManagerId)
+            var branchExists = await _context.Branches
+                .AsNoTracking()
+                .Where(b => b.Id == request.BranchId && b.TenantId == tenantId)
+                .Select(b => b.Id)
+                .AnyAsync();
+            if (!branchExists)
                 throw new InvalidOperationException($"Branch with ID {request.BranchId} not found or does not belong to your tenant.");
-            
-            // PROD-12: Validate Route.BranchId matches Branch.TenantId (data integrity)
-            if (branch.TenantId != tenantId)
-                throw new InvalidOperationException($"Branch {request.BranchId} does not belong to tenant {tenantId}.");
             
             var route = new HexaBill.Api.Models.Route
             {
@@ -212,16 +212,16 @@ namespace HexaBill.Api.Modules.Branches
             var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId);
             if (route == null) return null;
             
-            // PROD-12: Validate Branch exists and belongs to tenant if BranchId is being changed
+            // PROD-12: Validate Branch exists and belongs to tenant if BranchId is being changed (schema-safe: no ManagerId)
             if (request.BranchId != route.BranchId)
             {
-                var branch = await _context.Branches.FirstOrDefaultAsync(b => b.Id == request.BranchId && b.TenantId == tenantId);
-                if (branch == null)
+                var branchExists = await _context.Branches
+                    .AsNoTracking()
+                    .Where(b => b.Id == request.BranchId && b.TenantId == tenantId)
+                    .Select(b => b.Id)
+                    .AnyAsync();
+                if (!branchExists)
                     throw new InvalidOperationException($"Branch with ID {request.BranchId} not found or does not belong to your tenant.");
-                
-                // PROD-12: Validate Route.BranchId matches Branch.TenantId
-                if (branch.TenantId != tenantId)
-                    throw new InvalidOperationException($"Branch {request.BranchId} does not belong to tenant {tenantId}.");
                 
                 // AUDIT-9 FIX: Prevent branch change if route has customers or sales (data consistency)
                 var hasCustomers = await _context.RouteCustomers.AnyAsync(rc => rc.RouteId == id) ||

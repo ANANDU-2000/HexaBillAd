@@ -988,10 +988,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 // Existing code allows email to be null.
             }
 
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
+            // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions unless run inside ExecuteAsync
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                var trialEndDate = request.TrialEndDate;
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var trialEndDate = request.TrialEndDate;
                 if (!trialEndDate.HasValue && request.TrialDays.HasValue)
                 {
                     trialEndDate = DateTime.UtcNow.AddDays(request.TrialDays.Value);
@@ -1114,13 +1118,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     VatNumber = tenant.VatNumber
                 };
 
-                return (tenantDto, generatedPassword);
-            }
-            catch (Exception)
-            {
-                await transaction.RollbackAsync();
-                throw;
-            }
+                    return (tenantDto, generatedPassword);
+                }
+                catch (Exception)
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         /// <summary>Generate a secure random default password (no hardcoded passwords).</summary>

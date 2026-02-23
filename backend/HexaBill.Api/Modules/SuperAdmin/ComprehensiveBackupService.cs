@@ -12,6 +12,7 @@ See docs/BACKUP_AND_IMPORT_STRATEGY.md.
 using System.IO.Compression;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
@@ -81,120 +82,97 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var zipFileName = $"HexaBill_Backup_Tenant{tenantId}_{timestamp}.zip";
             var zipPath = Path.Combine(_backupDirectory, zipFileName);
 
-            try
+            // Run entire backup in a single scope so DbContext is valid for full duration (avoids disposed/second-operation errors)
+            using (var scope = _serviceProvider.CreateScope())
             {
-                using (var zipArchive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
+                var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                try
                 {
-                    // 1. Backup Database (SQL dump)
-                    // AUDIT-8 FIX: Pass tenantId for per-tenant backup
-                    try
+                    using (var zipArchive = ZipFile.Open(zipPath, ZipArchiveMode.Create))
                     {
-                        await BackupDatabaseAsync(zipArchive, timestamp, tenantId);
-                        Console.WriteLine("✅ Database backup completed");
+                        try
+                        {
+                            await BackupDatabaseAsync(zipArchive, timestamp, tenantId, ctx);
+                            Console.WriteLine("✅ Database backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Database backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupCsvExportsAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ CSV exports completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ CSV exports failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupInvoicesAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ Invoice PDFs backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Invoice PDFs backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupCustomerStatementsAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ Customer statements backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Customer statements backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupMonthlySalesLedgerAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ Monthly sales ledger backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Monthly sales ledger backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupReportsAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ Reports backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Reports backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupUploadedFilesAsync(zipArchive, tenantId);
+                            Console.WriteLine("✅ Uploaded files backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Uploaded files backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await BackupSettingsAsync(zipArchive, tenantId, ctx);
+                            await BackupUsersAsync(zipArchive, tenantId, ctx);
+                            Console.WriteLine("✅ Settings and users backup completed");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Settings backup failed: {ex.Message}");
+                        }
+                        try
+                        {
+                            await CreateManifestAsync(zipArchive, timestamp, tenantId, ctx);
+                            Console.WriteLine("✅ Manifest created");
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ Manifest creation failed: {ex.Message}");
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Database backup failed: {ex.Message}");
-                        // Continue with other backups
-                    }
-
-                    // 2. Backup CSV Exports (customers, sales, payments, expenses, products, ledger)
-                    // AUDIT-8 FIX: Pass tenantId to filter data
-                    try
-                    {
-                        await BackupCsvExportsAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ CSV exports completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ CSV exports failed: {ex.Message}");
-                    }
-
-                    // 3. Backup all sales invoices (PDFs)
-                    // AUDIT-8 FIX: Pass tenantId to filter invoices
-                    try
-                    {
-                        await BackupInvoicesAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Invoice PDFs backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Invoice PDFs backup failed: {ex.Message}");
-                    }
-
-                    // 4. Backup customer statements
-                    // AUDIT-8 FIX: Pass tenantId to filter statements
-                    try
-                    {
-                        await BackupCustomerStatementsAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Customer statements backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Customer statements backup failed: {ex.Message}");
-                    }
-
-                    // 5. Backup monthly sales ledger reports
-                    // AUDIT-8 FIX: Pass tenantId to filter reports
-                    try
-                    {
-                        await BackupMonthlySalesLedgerAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Monthly sales ledger backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Monthly sales ledger backup failed: {ex.Message}");
-                    }
-
-                    // 6. Backup reports (daily, profit, etc.)
-                    // AUDIT-8 FIX: Pass tenantId to filter reports
-                    try
-                    {
-                        await BackupReportsAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Reports backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Reports backup failed: {ex.Message}");
-                    }
-
-                    // 7. Backup uploaded files (purchases, attachments)
-                    // AUDIT-8 FIX: Pass tenantId to filter storage files
-                    try
-                    {
-                        await BackupUploadedFilesAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Uploaded files backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Uploaded files backup failed: {ex.Message}");
-                    }
-
-                    // 8. Backup settings and users
-                    try
-                    {
-                        // AUDIT-8 FIX: Pass tenantId to filter settings and users
-                        await BackupSettingsAsync(zipArchive, tenantId);
-                        await BackupUsersAsync(zipArchive, tenantId);
-                        Console.WriteLine("✅ Settings and users backup completed");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Settings backup failed: {ex.Message}");
-                    }
-
-                    // 9. Create manifest file
-                    try
-                    {
-                        // AUDIT-8 FIX: Pass tenantId to manifest
-                        await CreateManifestAsync(zipArchive, timestamp, tenantId);
-                        Console.WriteLine("✅ Manifest created");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"⚠️ Manifest creation failed: {ex.Message}");
-                    }
-                }
 
                 // Copy to desktop if requested
                 if (exportToDesktop)
@@ -301,9 +279,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Console.WriteLine($"Stack trace: {ex.StackTrace}");
                 throw new Exception($"Failed to create backup: {ex.Message}", ex);
             }
+            }
         }
 
-        private async Task BackupDatabaseAsync(ZipArchive zipArchive, string timestamp, int tenantId)
+        private async Task BackupDatabaseAsync(ZipArchive zipArchive, string timestamp, int tenantId, AppDbContext? backupContext = null)
         {
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
             if (string.IsNullOrEmpty(connectionString))
@@ -316,9 +295,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             
             if (isPostgreSQL)
             {
-                // PostgreSQL: Use EF Core export with tenant filtering (pg_dump exports entire DB)
-                // AUDIT-8 FIX: Use tenant-filtered export instead of full pg_dump
-                await BackupPostgreSQLDatabaseAsync(zipArchive, timestamp, connectionString, tenantId);
+                var ctx = backupContext ?? _context;
+                await BackupPostgreSQLDatabaseAsync(zipArchive, timestamp, connectionString, tenantId, ctx);
             }
             else
             {
@@ -366,7 +344,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupPostgreSQLDatabaseAsync(ZipArchive zipArchive, string timestamp, string connectionString, int tenantId)
+        private async Task BackupPostgreSQLDatabaseAsync(ZipArchive zipArchive, string timestamp, string connectionString, int tenantId, AppDbContext dbContext)
         {
             try
             {
@@ -426,7 +404,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 {
                     // Fallback: Use Npgsql to export data via EF Core
                     Console.WriteLine("⚠️ pg_dump not found, using EF Core export (slower but works)");
-                    await ExportPostgreSQLViaEfCoreAsync(tempDumpPath, tenantId);
+                    await ExportPostgreSQLViaEfCoreAsync(tempDumpPath, tenantId, dbContext);
                 }
 
                 // Add SQL dump to ZIP
@@ -452,7 +430,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     {
                         var tempDumpPath = Path.Combine(Path.GetTempPath(), $"pg_dump_{timestamp}.sql");
                         // AUDIT-8 FIX: Use tenant-filtered export
-                        await ExportPostgreSQLViaEfCoreAsync(tempDumpPath, tenantId);
+                        await ExportPostgreSQLViaEfCoreAsync(tempDumpPath, tenantId, dbContext);
                     
                     var entry = zipArchive.CreateEntry($"data/db_dump.sql");
                     using (var entryStream = entry.Open())
@@ -532,36 +510,33 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return null;
         }
 
-        private async Task ExportPostgreSQLViaEfCoreAsync(string outputPath, int tenantId)
+        private async Task ExportPostgreSQLViaEfCoreAsync(string outputPath, int tenantId, AppDbContext dbContext)
         {
-            // AUDIT-8 FIX: Export only tenant-specific data using EF Core
             using var writer = new StreamWriter(outputPath);
-            
             await writer.WriteLineAsync("-- HexaBill PostgreSQL Backup SQL Dump");
             await writer.WriteLineAsync($"-- Generated: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
             await writer.WriteLineAsync($"-- Tenant ID: {tenantId}");
-            await writer.WriteLineAsync($"-- Database: {_context.Database.GetConnectionString()}");
+            await writer.WriteLineAsync($"-- Database: {dbContext.Database.GetConnectionString()}");
             await writer.WriteLineAsync();
             await writer.WriteLineAsync("BEGIN;");
             await writer.WriteLineAsync();
 
-            // AUDIT-8 FIX: Export all tables filtered by TenantId
-            await ExportTableAsync(writer, "Products", async () => await _context.Products.Where(p => p.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Customers", async () => await _context.Customers.Where(c => c.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Sales", async () => await _context.Sales.Where(s => s.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "SaleItems", async () => await _context.SaleItems.Where(si => si.Sale.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Purchases", async () => await _context.Purchases.Where(p => p.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "PurchaseItems", async () => await _context.PurchaseItems.Where(pi => pi.Purchase.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Payments", async () => await _context.Payments.Where(p => p.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Expenses", async () => await _context.Expenses.Where(e => e.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Users", async () => await _context.Users.Where(u => u.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Settings", async () => await _context.Settings.Where(s => s.OwnerId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Branches", async () => await _context.Branches.Where(b => b.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "Routes", async () => await _context.Routes.Where(r => r.Branch.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "BranchStaff", async () => await _context.BranchStaff.Where(bs => bs.Branch.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "RouteCustomers", async () => await _context.RouteCustomers.Where(rc => rc.Route.Branch.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "RouteExpenses", async () => await _context.RouteExpenses.Where(re => re.Route.Branch.TenantId == tenantId).ToListAsync());
-            await ExportTableAsync(writer, "CustomerVisits", async () => await _context.CustomerVisits.Where(cv => cv.Customer.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Products", async () => await dbContext.Products.Where(p => p.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Customers", async () => await dbContext.Customers.Where(c => c.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Sales", async () => await dbContext.Sales.Where(s => s.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "SaleItems", async () => await dbContext.SaleItems.Where(si => si.Sale.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Purchases", async () => await dbContext.Purchases.Where(p => p.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "PurchaseItems", async () => await dbContext.PurchaseItems.Where(pi => pi.Purchase.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Payments", async () => await dbContext.Payments.Where(p => p.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Expenses", async () => await dbContext.Expenses.Where(e => e.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Users", async () => await dbContext.Users.Where(u => u.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Settings", async () => await dbContext.Settings.Where(s => s.OwnerId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Branches", async () => await dbContext.Branches.Where(b => b.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "Routes", async () => await dbContext.Routes.Where(r => r.Branch.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "BranchStaff", async () => await dbContext.BranchStaff.Where(bs => bs.Branch.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "RouteCustomers", async () => await dbContext.RouteCustomers.Where(rc => rc.Route.Branch.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "RouteExpenses", async () => await dbContext.RouteExpenses.Where(re => re.Route.Branch.TenantId == tenantId).ToListAsync());
+            await ExportTableAsync(writer, "CustomerVisits", async () => await dbContext.CustomerVisits.Where(cv => cv.Customer.TenantId == tenantId).ToListAsync());
             
             await writer.WriteLineAsync();
             await writer.WriteLineAsync("COMMIT;");
@@ -580,15 +555,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupInvoicesAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupInvoicesAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // IMPROVED: Backup ALL invoice PDFs from invoices directory (not just those matching Sales records)
-            // This ensures manually generated PDFs and any other invoice PDFs are included
+            var db = backupContext ?? _context;
             var invoicesDir = Path.Combine(Directory.GetCurrentDirectory(), "invoices");
             if (Directory.Exists(invoicesDir))
             {
-                // Get all invoice numbers for this tenant from Sales table
-                var tenantInvoiceNos = await _context.Sales
+                var tenantInvoiceNos = await db.Sales
                     .Where(s => s.TenantId == tenantId && !s.IsDeleted && !string.IsNullOrEmpty(s.InvoiceNo))
                     .Select(s => s.InvoiceNo)
                     .ToListAsync();
@@ -693,24 +666,21 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupCsvExportsAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupCsvExportsAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // AUDIT-8 FIX: Export only tenant-specific data
-            // Export Customers
-            var customers = await _context.Customers.Where(c => c.TenantId == tenantId).ToListAsync();
+            var db = backupContext ?? _context;
+            var customers = await db.Customers.Where(c => c.TenantId == tenantId).ToListAsync();
             var customersCsv = GenerateCustomersCsv(customers);
             AddCsvToZip(zipArchive, "database/customers.csv", customersCsv);
 
-            // Export Sales
-            var sales = await _context.Sales
+            var sales = await db.Sales
                 .Include(s => s.Items)
                 .Where(s => s.TenantId == tenantId && !s.IsDeleted)
                 .ToListAsync();
             var salesCsv = GenerateSalesCsv(sales);
             AddCsvToZip(zipArchive, "database/sales.csv", salesCsv);
 
-            // Export Sale Items
-            var saleItems = await _context.SaleItems
+            var saleItems = await db.SaleItems
                 .Include(si => si.Product)
                 .Include(si => si.Sale)
                 .Where(si => si.Sale.TenantId == tenantId && !si.Sale.IsDeleted)
@@ -718,37 +688,32 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var saleItemsCsv = GenerateSaleItemsCsv(saleItems);
             AddCsvToZip(zipArchive, "database/sale_items.csv", saleItemsCsv);
 
-            // Export Payments
-            var payments = await _context.Payments
+            var payments = await db.Payments
                 .Include(p => p.Customer)
                 .Where(p => p.TenantId == tenantId)
                 .ToListAsync();
             var paymentsCsv = GeneratePaymentsCsv(payments);
             AddCsvToZip(zipArchive, "database/payments.csv", paymentsCsv);
 
-            // Export Expenses
-            var expenses = await _context.Expenses
+            var expenses = await db.Expenses
                 .Include(e => e.Category)
                 .Where(e => e.TenantId == tenantId)
                 .ToListAsync();
             var expensesCsv = GenerateExpensesCsv(expenses);
             AddCsvToZip(zipArchive, "database/expenses.csv", expensesCsv);
 
-            // Export Products
-            var products = await _context.Products.Where(p => p.TenantId == tenantId).ToListAsync();
+            var products = await db.Products.Where(p => p.TenantId == tenantId).ToListAsync();
             var productsCsv = GenerateProductsCsv(products);
             AddCsvToZip(zipArchive, "database/products.csv", productsCsv);
 
-            // Export Inventory Transactions
-            var inventoryTx = await _context.InventoryTransactions
+            var inventoryTx = await db.InventoryTransactions
                 .Include(it => it.Product)
                 .Where(it => it.Product.TenantId == tenantId)
                 .ToListAsync();
             var inventoryCsv = GenerateInventoryCsv(inventoryTx);
             AddCsvToZip(zipArchive, "database/inventory_transactions.csv", inventoryCsv);
 
-            // Export Sales Returns
-            var salesReturns = await _context.SaleReturns
+            var salesReturns = await db.SaleReturns
                 .Include(sr => sr.Items)
                 .Where(sr => sr.TenantId == tenantId)
                 .ToListAsync();
@@ -766,15 +731,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
             Console.WriteLine("✅ CSV exports completed");
         }
 
-        private async Task BackupCustomerStatementsAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupCustomerStatementsAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // AUDIT-8 FIX: Backup only tenant-specific customer statement PDFs
-            // Statement files may be named by customer ID or customer name, so we query Customers to filter
+            var db = backupContext ?? _context;
             var statementsDir = Path.Combine(Directory.GetCurrentDirectory(), "statements");
             if (Directory.Exists(statementsDir))
             {
-                // Get all customer IDs for this tenant
-                var tenantCustomerIds = await _context.Customers
+                var tenantCustomerIds = await db.Customers
                     .Where(c => c.TenantId == tenantId)
                     .Select(c => c.Id)
                     .ToListAsync();
@@ -810,7 +773,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupMonthlySalesLedgerAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupMonthlySalesLedgerAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
             // AUDIT-8 FIX: Generate and backup tenant-specific monthly sales ledger reports
             try
@@ -853,7 +816,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupReportsAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupReportsAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
             // AUDIT-8 FIX: Backup only tenant-specific report files
             // Reports may be stored with tenant ID in filename or path, or we need to query which reports belong to tenant
@@ -900,10 +863,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupUsersAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupUsersAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // AUDIT-8 FIX: Filter users by TenantId
-            var users = await _context.Users.Where(u => u.TenantId == tenantId).ToListAsync();
+            var db = backupContext ?? _context;
+            var users = await db.Users.Where(u => u.TenantId == tenantId).ToListAsync();
             
             // Create JSON file with users (without passwords)
             var usersJson = System.Text.Json.JsonSerializer.Serialize(
@@ -919,17 +882,29 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupSettingsAsync(ZipArchive zipArchive, int tenantId)
+        private async Task BackupSettingsAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // AUDIT-8 FIX: Filter settings by OwnerId (which equals TenantId for tenant settings)
-            var settings = await _context.Settings.Where(s => s.OwnerId == tenantId).ToListAsync();
-            
-            // Create JSON file with settings
+            if (backupContext != null)
+            {
+                await BackupSettingsCoreAsync(zipArchive, tenantId, backupContext);
+            }
+            else
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    await BackupSettingsCoreAsync(zipArchive, tenantId, ctx);
+                }
+            }
+        }
+
+        private async Task BackupSettingsCoreAsync(ZipArchive zipArchive, int tenantId, AppDbContext ctx)
+        {
+            var settings = await ctx.Settings.Where(s => s.OwnerId == tenantId).ToListAsync();
             var settingsJson = System.Text.Json.JsonSerializer.Serialize(
                 settings.Select(s => new { s.Key, s.Value }),
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true }
             );
-
             var entry = zipArchive.CreateEntry("settings.json");
             using (var stream = entry.Open())
             {
@@ -938,29 +913,51 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task CreateManifestAsync(ZipArchive zipArchive, string timestamp, int tenantId)
+        private async Task CreateManifestAsync(ZipArchive zipArchive, string timestamp, int tenantId, AppDbContext? backupContext = null)
         {
             var userIdClaim = System.Security.Claims.ClaimsPrincipal.Current?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
             var exportedBy = userIdClaim?.Value ?? "System";
 
-            // AUDIT-8 FIX: Include tenantId in manifest and filter counts by tenantId
+            RecordCounts recordCounts;
+            if (backupContext != null)
+            {
+                recordCounts = new RecordCounts
+                {
+                    Products = await backupContext.Products.Where(p => p.TenantId == tenantId).CountAsync(),
+                    Customers = await backupContext.Customers.Where(c => c.TenantId == tenantId).CountAsync(),
+                    Sales = await backupContext.Sales.Where(s => s.TenantId == tenantId).CountAsync(),
+                    Purchases = await backupContext.Purchases.Where(p => p.TenantId == tenantId).CountAsync(),
+                    Payments = await backupContext.Payments.Where(p => p.TenantId == tenantId).CountAsync(),
+                    Expenses = await backupContext.Expenses.Where(e => e.TenantId == tenantId).CountAsync(),
+                    Users = await backupContext.Users.Where(u => u.TenantId == tenantId).CountAsync()
+                };
+            }
+            else
+            {
+                using (var scope = _serviceProvider.CreateScope())
+                {
+                    var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                    recordCounts = new RecordCounts
+                    {
+                        Products = await ctx.Products.Where(p => p.TenantId == tenantId).CountAsync(),
+                        Customers = await ctx.Customers.Where(c => c.TenantId == tenantId).CountAsync(),
+                        Sales = await ctx.Sales.Where(s => s.TenantId == tenantId).CountAsync(),
+                        Purchases = await ctx.Purchases.Where(p => p.TenantId == tenantId).CountAsync(),
+                        Payments = await ctx.Payments.Where(p => p.TenantId == tenantId).CountAsync(),
+                        Expenses = await ctx.Expenses.Where(e => e.TenantId == tenantId).CountAsync(),
+                        Users = await ctx.Users.Where(u => u.TenantId == tenantId).CountAsync()
+                    };
+                }
+            }
+
             var manifest = new BackupManifest
             {
-                SchemaVersion = "1.0", // Current schema version
+                SchemaVersion = "1.0",
                 BackupDate = DateTime.UtcNow,
                 AppVersion = "1.0.0",
                 DatabaseType = "SQLite",
                 TenantId = tenantId,
-                RecordCounts = new RecordCounts
-                {
-                    Products = await _context.Products.Where(p => p.TenantId == tenantId).CountAsync(),
-                    Customers = await _context.Customers.Where(c => c.TenantId == tenantId).CountAsync(),
-                    Sales = await _context.Sales.Where(s => s.TenantId == tenantId).CountAsync(),
-                    Purchases = await _context.Purchases.Where(p => p.TenantId == tenantId).CountAsync(),
-                    Payments = await _context.Payments.Where(p => p.TenantId == tenantId).CountAsync(),
-                    Expenses = await _context.Expenses.Where(e => e.TenantId == tenantId).CountAsync(),
-                    Users = await _context.Users.Where(u => u.TenantId == tenantId).CountAsync()
-                },
+                RecordCounts = recordCounts,
                 ExportedBy = exportedBy,
                 Notes = $"Full backup for tenant {tenantId}"
             };

@@ -300,12 +300,18 @@ namespace HexaBill.Api.Modules.Notifications
                     }
                 }
             }
-            catch (PostgresException pgEx) when (pgEx.Message.Contains("does not exist"))
+            catch (PostgresException pgEx) when (pgEx.SqlState == "42P01" || pgEx.SqlState == "42703" || pgEx.Message.Contains("does not exist"))
             {
-                _logger.LogWarning("Alerts table does not exist yet. Skipping backup alert check.");
+                _logger.LogDebug("Alerts table or column missing ({SqlState}). Skipping backup alert check.", pgEx.SqlState);
             }
             catch (Exception ex)
             {
+                var pg = ex.InnerException as PostgresException ?? ex as PostgresException;
+                if (pg?.SqlState == "42P01" || pg?.SqlState == "42703")
+                {
+                    _logger.LogDebug("Alerts schema issue. Skipping backup alert check.");
+                    return;
+                }
                 _logger.LogWarning(ex, "Error checking backup alerts");
             }
         }
