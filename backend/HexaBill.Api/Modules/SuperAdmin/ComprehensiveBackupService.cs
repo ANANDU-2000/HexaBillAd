@@ -69,6 +69,36 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
+        /// <summary>Resolve connection string for backup/restore. On Render, DATABASE_URL is set but DefaultConnection may not be in config; Npgsql may not expose password in ConnectionString.</summary>
+        private string? GetResolvedConnectionString(AppDbContext? ctx = null)
+        {
+            var conn = _configuration.GetConnectionString("DefaultConnection");
+            if (!string.IsNullOrWhiteSpace(conn)) return conn.Trim();
+            if (ctx != null)
+            {
+                try
+                {
+                    conn = ctx.Database.GetDbConnection().ConnectionString;
+                    if (!string.IsNullOrWhiteSpace(conn)) return conn;
+                }
+                catch { /* Npgsql may not expose full connection string */ }
+            }
+            var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+            if (string.IsNullOrWhiteSpace(databaseUrl)) return null;
+            try
+            {
+                var cleanUrl = databaseUrl.Trim().TrimEnd('?');
+                var uri = new Uri(cleanUrl);
+                var dbPort = uri.Port > 0 ? uri.Port : 5432;
+                var userInfo = uri.UserInfo ?? "";
+                var firstColon = userInfo.IndexOf(':');
+                var username = firstColon >= 0 ? userInfo.Substring(0, firstColon) : userInfo;
+                var password = firstColon >= 0 ? userInfo.Substring(firstColon + 1) : "";
+                return $"Host={uri.Host};Port={dbPort};Database={uri.AbsolutePath.TrimStart('/')};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+            }
+            catch { return null; }
+        }
+
         public async Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false)
         {
             // AUDIT-8 FIX: Validate tenantId
@@ -285,9 +315,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private async Task BackupDatabaseAsync(ZipArchive zipArchive, string timestamp, int tenantId, AppDbContext? backupContext = null)
         {
             var ctx = backupContext ?? _context;
-            // Render/DATABASE_URL: config may not have DefaultConnection; use DbContext's connection
-            var connectionString = _configuration.GetConnectionString("DefaultConnection")
-                ?? ctx.Database.GetDbConnection().ConnectionString;
+            var connectionString = GetResolvedConnectionString(ctx);
             if (string.IsNullOrEmpty(connectionString))
             {
                 throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
@@ -777,44 +805,46 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private async Task BackupMonthlySalesLedgerAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
         {
-            // AUDIT-8 FIX: Generate and backup tenant-specific monthly sales ledger reports
+            // AUDIT-8 FIX: Generate and backup tenant-specific monthly sales ledger reports.
+            // Uses its own scope so DbContext is valid for the whole operation (avoids disposed object).
             try
             {
                 using var scope = _serviceProvider.CreateScope();
                 var reportService = scope.ServiceProvider.GetRequiredService<IReportService>();
                 var pdfService = scope.ServiceProvider.GetRequiredService<IPdfService>();
-                
-                // Get current month and previous month
+
                 var now = DateTime.Now;
                 var currentMonthStart = new DateTime(now.Year, now.Month, 1);
                 var currentMonthEnd = currentMonthStart.AddMonths(1).AddDays(-1);
                 var previousMonthStart = currentMonthStart.AddMonths(-1);
                 var previousMonthEnd = currentMonthStart.AddDays(-1);
-                
-                // Generate current month sales ledger PDF for this tenant
+
                 var currentMonthLedger = await reportService.GetComprehensiveSalesLedgerAsync(tenantId, currentMonthStart, currentMonthEnd);
                 var currentMonthPdf = await pdfService.GenerateSalesLedgerPdfAsync(currentMonthLedger, currentMonthStart, currentMonthEnd, tenantId);
                 var currentMonthEntry = zipArchive.CreateEntry($"reports/monthly_sales_ledger_{currentMonthStart:yyyy-MM}.pdf");
-                using (var entryStream = currentMonthEntry.Open())
+                await using (var entryStream = currentMonthEntry.Open())
                 {
                     await entryStream.WriteAsync(currentMonthPdf, 0, currentMonthPdf.Length);
                 }
-                
-                // Generate previous month sales ledger PDF for this tenant
+
                 var previousMonthLedger = await reportService.GetComprehensiveSalesLedgerAsync(tenantId, previousMonthStart, previousMonthEnd);
                 var previousMonthPdf = await pdfService.GenerateSalesLedgerPdfAsync(previousMonthLedger, previousMonthStart, previousMonthEnd, tenantId);
                 var previousMonthEntry = zipArchive.CreateEntry($"reports/monthly_sales_ledger_{previousMonthStart:yyyy-MM}.pdf");
-                using (var entryStream = previousMonthEntry.Open())
+                await using (var entryStream = previousMonthEntry.Open())
                 {
                     await entryStream.WriteAsync(previousMonthPdf, 0, previousMonthPdf.Length);
                 }
-                
+
                 Console.WriteLine($"   Backed up monthly sales ledger reports for tenant {tenantId} ({currentMonthStart:yyyy-MM} and {previousMonthStart:yyyy-MM})");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                Console.WriteLine($"⚠️ Monthly sales ledger skipped (disposed): {ex.Message}");
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"⚠️ Monthly sales ledger generation failed: {ex.Message}");
-                // Continue - this is not critical
+                // 42703 (missing TenantId) or other DB errors: run FIX_PRODUCTION_MIGRATIONS.sql sections 6b, 7, 8
             }
         }
 
@@ -978,7 +1008,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private Task<string> GetDatabasePathAsync()
         {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection");
+            var connectionString = GetResolvedConnectionString(_context);
             if (connectionString?.Contains("Data Source") == true)
             {
                 var dbPath = ExtractValue(connectionString.Split(';'), "Data Source");
@@ -1400,8 +1430,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private Task RestoreDatabaseAsync(string dbFilePath)
         {
-            var connectionString = _configuration.GetConnectionString("DefaultConnection")
-                ?? _context.Database.GetDbConnection().ConnectionString;
+            var connectionString = GetResolvedConnectionString(_context);
             if (string.IsNullOrEmpty(connectionString))
             {
                 throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");
@@ -1432,8 +1461,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var connectionString = _configuration.GetConnectionString("DefaultConnection")
-                    ?? _context.Database.GetDbConnection().ConnectionString;
+                var connectionString = GetResolvedConnectionString(_context);
                 if (string.IsNullOrEmpty(connectionString))
                 {
                     throw new InvalidOperationException("Database connection string not found. Set ConnectionStrings__DefaultConnection or DATABASE_URL.");

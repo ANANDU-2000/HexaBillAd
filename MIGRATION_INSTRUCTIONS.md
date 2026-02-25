@@ -1,5 +1,25 @@
 # Data Isolation Fixes - Migration Instructions
 
+## ⚠️ Production: Expenses Will Fail Until You Run the Fix
+
+If you deployed to **Render** (or any host) and see:
+
+- **Error creating expense category: 42703: column e.TenantId does not exist**
+- **CSV exports failed: 42703: column e0.TenantId does not exist**
+- **User seeding failed** / **Menu** / **errorMissingColumn** (often caused by missing columns)
+
+Then your **production database has not had the schema update**. The app code expects `TenantId` on **Expenses** and **ExpenseCategories**; without it, expenses and backup CSV export will fail.
+
+**Fix (one-time):**
+
+1. **Render Dashboard** → Your **PostgreSQL** service → **Connect** → **PSQL** (or use local `psql $DATABASE_URL`).
+2. Run **sections 6b, 7, and 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql` (or run the whole file).
+3. **Restart** the API service on Render.
+
+After that, expenses and related features will work. See **Production Fix** below for the same steps in detail.
+
+---
+
 ## Summary of Changes
 
 Four fixes have been implemented:

@@ -30,10 +30,12 @@ Use this checklist when deploying or troubleshooting Ledger, Reports, and Dashbo
 
 ## Production DB Fix (42703 TenantId errors)
 
-If you see `column e.TenantId does not exist` or similar:
+If you see `column e.TenantId does not exist`, `column e0.TenantId does not exist`, or **expenses / CSV export failing**:
 1. Render Dashboard → PostgreSQL → Connect → PSQL.
-2. Run sections **6b, 7, 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql`.
+2. Run sections **6b, 7, 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql` (or the full file).
 3. Restart the API. See [MIGRATION_INSTRUCTIONS.md](MIGRATION_INSTRUCTIONS.md).
+
+**Backup:** On Render, backup uses `DATABASE_URL` when `ConnectionStrings__DefaultConnection` is not set; no extra env var needed.
 
 ## Live Verification
 
