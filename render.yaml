@@ -1,15 +1,12 @@
-# HexaBill – Render blueprint (reference only)
-# Root Directory for backend must be: backend/HexaBill.Api
-# Use this if you create services via Render Dashboard or Blueprint.
-# NOTE: If Docker build fails with "COPY failed", set Root Directory to empty and dockerContext to "."
-#       so Dockerfile can use COPY backend/HexaBill.Api/ — then use Dockerfile from repo root.
+# HexaBill – Render blueprint
+# In Render Dashboard: Root Directory = empty (repo root). Dockerfile = backend/HexaBill.Api/Dockerfile.
+# Build context = repo root so COPY backend/HexaBill.Api/... in Dockerfile works.
 
 services:
   - type: web
     name: hexabill-api
     runtime: docker
-    rootDir: backend/HexaBill.Api
-    dockerfilePath: Dockerfile
+    dockerfilePath: backend/HexaBill.Api/Dockerfile
     healthCheckPath: /health
     envVars:
       - key: ASPNETCORE_ENVIRONMENT

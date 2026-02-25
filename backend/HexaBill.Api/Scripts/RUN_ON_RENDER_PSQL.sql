@@ -1,8 +1,12 @@
 -- =============================================================================
 -- PASTE THIS ENTIRE FILE INTO RENDER PSQL (Connect → PSQL)
--- Fixes: 42703 column e.TenantId / e0.TenantId does not exist (Expenses, ExpenseCategories)
+-- Fixes: 42703 column e.TenantId / e0.TenantId, errorMissingColumn (ErrorLogs.ResolvedAt, etc.)
 -- Run once, then restart your HexaBill API on Render.
 -- =============================================================================
+
+-- ErrorLogs.ResolvedAt (fixes errorMissingColumn for /api/error-logs, alert-summary)
+ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
+CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
 
 -- 6b. Add TenantId to Expenses
 ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "TenantId" integer NULL;

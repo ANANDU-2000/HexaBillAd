@@ -1,4 +1,6 @@
-# Run This Migration on Render (Fix Expenses 42703)
+# Run This Migration on Render (Fix Expenses 42703 + errorMissingColumn)
+
+**If deploy failed with "HexaBill.Api.csproj not found":** In Render Dashboard → your Web Service → Settings → **Root Directory** must be **empty** (repo root). Then redeploy.
 
 Your production DB is missing `TenantId` on **Expenses** and **ExpenseCategories**. Run the SQL below **once** in Render PSQL, then restart the API.
 

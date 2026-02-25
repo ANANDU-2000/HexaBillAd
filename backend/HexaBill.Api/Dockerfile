@@ -1,11 +1,12 @@
-# Build stage - context is backend/HexaBill.Api (per render.yaml dockerContext)
+# Build stage - context must be REPO ROOT (Render: Root Directory empty, dockerContext: .)
+# If Render Root Directory is backend/HexaBill.Api, set dockerContext: . in Dashboard and Root Dir to empty.
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-COPY HexaBill.Api.csproj ./
+COPY backend/HexaBill.Api/HexaBill.Api.csproj ./
 RUN dotnet restore
 
-COPY . ./
+COPY backend/HexaBill.Api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Run stage

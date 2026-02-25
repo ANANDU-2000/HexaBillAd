@@ -24,8 +24,8 @@ Use this checklist when deploying or troubleshooting Ledger, Reports, and Dashbo
 
 ## Backend (Render) – Docker
 
-- **Root Directory**: `backend/HexaBill.Api` per render.yaml.
-- **Dockerfile**: Uses `COPY . ./` (context = backend/HexaBill.Api).
+- **Root Directory**: Must be **empty** (repo root). If set to `backend/HexaBill.Api`, deploy fails with "HexaBill.Api.csproj not found" because the Dockerfile uses `COPY backend/HexaBill.Api/...` (repo-root context).
+- **Dockerfile**: `backend/HexaBill.Api/Dockerfile`; context = repo root.
 - **Health check**: `/health` — verify `GET https://hexabill.onrender.com/health` returns 200.
 
 ## Production DB Fix (42703 TenantId errors)
