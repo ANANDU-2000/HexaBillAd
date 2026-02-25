@@ -34,7 +34,19 @@ Your production DB is missing `TenantId` on **Expenses** and **ExpenseCategories
 
 ---
 
-## If you prefer to run from your PC (with psql installed)
+## Or run from your PC (MigrationFixer – no psql needed)
+
+```powershell
+cd backend/HexaBill.Api/MigrationFixer
+$env:DATABASE_URL = 'postgresql://USER:PASSWORD@HOST/DATABASE'   # use your Render external DB URL
+dotnet run
+```
+
+Then restart the API on Render.
+
+---
+
+## If you have psql installed
 
 ```bash
 # Install PostgreSQL client if needed (Windows: https://www.postgresql.org/download/windows/)

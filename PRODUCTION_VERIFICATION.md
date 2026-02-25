@@ -2,6 +2,8 @@
 
 Use this checklist when deploying or troubleshooting Ledger, Reports, and Dashboard in production (Render + Vercel).
 
+**Full step-by-step:** See [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md).
+
 ## Environment Variables
 
 | Item | Location | Action |
