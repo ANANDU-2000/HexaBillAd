@@ -254,12 +254,14 @@ builder.Services.AddScoped<ITenantContextService, TenantContextService>();
 builder.Services.AddScoped<HexaBill.Api.Shared.Services.IAuditService, HexaBill.Api.Shared.Services.AuditService>();
 
 // Services
+builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IFontService, FontService>(); // Singleton for font registration
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Import.ISalesLedgerImportService, HexaBill.Api.Modules.Import.SalesLedgerImportService>();
 builder.Services.AddScoped<IInvoiceTemplateService, InvoiceTemplateService>();
+builder.Services.AddScoped<ISaleValidationService, SaleValidationService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
@@ -337,6 +339,7 @@ builder.Services.AddSingleton<HexaBill.Api.Shared.Services.ITenantActivityServic
 builder.Services.AddHostedService<DailyBackupScheduler>();
 builder.Services.AddHostedService<AlertCheckBackgroundService>();
 builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.TrialExpiryCheckJob>();
+builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.BalanceReconciliationJob>();
 // Data integrity validation service - temporarily disabled
 // builder.Services.AddHostedService<HexaBill.Api.Shared.Middleware.DataIntegrityValidationService>();
 

@@ -45,15 +45,15 @@ namespace HexaBill.Api.Modules.SuperAdmin
         Task<DuplicateDataPreviewDto> GetDuplicateDataPreviewAsync(int targetTenantId, int sourceTenantId, IReadOnlyList<string> dataTypes);
         Task<TenantLimitsDto> GetTenantLimitsAsync(int tenantId);
         Task UpdateTenantLimitsAsync(int tenantId, TenantLimitsDto dto);
-        /// <summary>Onboarding tracker: completion steps per tenant; list incomplete. (PRODUCTION_MASTER_TODO #46)</summary>
+        /// <summary>Onboarding tracker: completion steps per tenant; list incomplete. See NOT_BUILT.md.</summary>
         Task<OnboardingReportDto> GetOnboardingReportAsync(bool incompleteOnly = false);
-        /// <summary>Bulk tenant actions: extend trial, send announcement. (PRODUCTION_MASTER_TODO #48)</summary>
+        /// <summary>Bulk tenant actions: extend trial, send announcement. See NOT_BUILT.md.</summary>
         Task<BulkActionResultDto> ExecuteBulkActionAsync(BulkActionRequest request);
-        /// <summary>List tenant invoices (read-only, no impersonation). (PRODUCTION_MASTER_TODO #50)</summary>
+        /// <summary>List tenant invoices (read-only, no impersonation). See NOT_BUILT.md.</summary>
         Task<PagedResponse<TenantInvoiceListItemDto>> GetTenantInvoicesAsync(int tenantId, int page = 1, int pageSize = 20);
-        /// <summary>Subscription/payment history for tenant (when paid, renewals, payment method). (PRODUCTION_MASTER_TODO #51)</summary>
+        /// <summary>Subscription/payment history for tenant (when paid, renewals, payment method). See NOT_BUILT.md.</summary>
         Task<List<TenantPaymentHistoryItemDto>> GetTenantPaymentHistoryAsync(int tenantId);
-        /// <summary>Export tenant key data (invoices, customers, products) as ZIP of CSVs for offboarding/compliance. (PRODUCTION_MASTER_TODO #52)</summary>
+        /// <summary>Export tenant key data (invoices, customers, products) as ZIP of CSVs for offboarding/compliance. See NOT_BUILT.md.</summary>
         Task<(Stream stream, string fileName)> ExportTenantDataAsync(int tenantId);
     }
 
@@ -87,7 +87,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public DateTime CreatedAt { get; set; }
     }
 
-    /// <summary>Internal DTO for tenant data export CSV. (PRODUCTION_MASTER_TODO #52)</summary>
+    /// <summary>Internal DTO for tenant data export CSV. See NOT_BUILT.md.</summary>
     internal record ExportInvoiceRow(int Id, string InvoiceNo, DateTime InvoiceDate, string? CustomerName, decimal Subtotal, decimal VatTotal, decimal Discount, decimal GrandTotal, decimal PaidAmount, string Status, DateTime? DueDate, string? Notes, DateTime CreatedAt);
 
     internal record ExportCustomerRow(int Id, string Name, string? Phone, string? Email, string? Trn, string? Address, decimal CreditLimit, string CustomerType, string? PaymentTerms, DateTime CreatedAt);
@@ -615,7 +615,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return list;
         }
 
-        /// <summary>Export tenant data as ZIP containing invoices.csv, customers.csv, products.csv. (PRODUCTION_MASTER_TODO #52)</summary>
+        /// <summary>Export tenant data as ZIP containing invoices.csv, customers.csv, products.csv. See NOT_BUILT.md.</summary>
         public async Task<(Stream stream, string fileName)> ExportTenantDataAsync(int tenantId)
         {
             var tenant = await _context.Tenants.AsNoTracking()

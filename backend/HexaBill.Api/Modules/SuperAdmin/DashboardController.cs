@@ -23,19 +23,22 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
     private readonly IReportService _reportService;
     private readonly IBranchService _branchService;
     private readonly IRouteService _routeService;
+    private readonly ILogger<DashboardController> _logger;
 
     public DashboardController(
         AppDbContext context, 
         ITimeZoneService timeZoneService,
         IReportService reportService,
         IBranchService branchService,
-        IRouteService routeService)
+        IRouteService routeService,
+        ILogger<DashboardController> logger)
     {
         _context = context;
         _timeZoneService = timeZoneService;
         _reportService = reportService;
         _branchService = branchService;
         _routeService = routeService;
+        _logger = logger;
     }
 
     [HttpGet]
@@ -95,16 +98,8 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
             var grossProfit = totalSales - purchasesTodayCash;
             profitToday = grossProfit - totalExpenses;
             
-            // CRITICAL LOGGING for debugging profit mismatch
-            Console.WriteLine($"\n========== DASHBOARD PROFIT CALCULATION (SIMPLIFIED CASH) ==========");
-            Console.WriteLine($"?? User: {(isSystemAdmin ? "SUPER ADMIN (ALL OWNERS)" : $"Owner {tenantId}")}");
-            Console.WriteLine($"?? Date Range (UTC): {startOfDayUtc:yyyy-MM-dd HH:mm:ss} to {endOfDayUtc:yyyy-MM-dd HH:mm:ss}");
-            Console.WriteLine($"?? Sales (GrandTotal with VAT): {totalSales:C}");
-            Console.WriteLine($"?? Purchases (with VAT): {purchasesTodayCash:C}");
-            Console.WriteLine($"?? Gross Profit (CASH: Sales - Purchases): {grossProfit:C}");
-            Console.WriteLine($"?? Expenses: {totalExpenses:C}");
-            Console.WriteLine($"? NET PROFIT (Cash): {profitToday:C}");
-            Console.WriteLine($"====================================================================\n");
+            _logger.LogDebug("Dashboard profit: User={User}, Sales={Sales}, Purchases={Purchases}, GrossProfit={GrossProfit}, Expenses={Expenses}, NetProfit={Profit}",
+                isSystemAdmin ? "SUPER ADMIN" : $"Owner {tenantId}", totalSales, purchasesTodayCash, grossProfit, totalExpenses, profitToday);
         }
 
         // Pending Bills Count (sales where PaymentStatus is Pending or Partial, excluding deleted)
@@ -229,9 +224,7 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"❌ GetDashboardBatch Error: {ex.Message}");
-            if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
-            Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+            _logger.LogError(ex, "GetDashboardBatch Error: {Message}", ex.Message);
 
             return StatusCode(500, new ApiResponse<DashboardBatchDto>
             {

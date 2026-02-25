@@ -51,6 +51,8 @@ namespace HexaBill.Api.Modules.Billing
         private readonly ITimeZoneService _timeZoneService;
         private readonly IRouteScopeService _routeScopeService;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly ISaleValidationService _saleValidation;
+        private readonly ILogger<SaleService> _logger;
 
         public SaleService(
             AppDbContext context, 
@@ -62,9 +64,13 @@ namespace HexaBill.Api.Modules.Billing
             IBalanceService balanceService,
             ITimeZoneService timeZoneService,
             IRouteScopeService routeScopeService,
-            ISalesSchemaService salesSchema)
+            ISalesSchemaService salesSchema,
+            ISaleValidationService saleValidation,
+            ILogger<SaleService> logger)
         {
             _context = context;
+            _saleValidation = saleValidation;
+            _logger = logger;
             _pdfService = pdfService;
             _backupService = backupService;
             _invoiceNumberService = invoiceNumberService;
@@ -186,11 +192,10 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetSalesAsync Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogError(ex, "GetSalesAsync Error: {Message}", ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner Exception: {Message}", ex.InnerException.Message);
                 }
                 throw;
             }
@@ -382,7 +387,7 @@ namespace HexaBill.Api.Modules.Billing
                     if (retryCount < maxRetries - 1)
                     {
                         // Race condition: Another transaction saved the same invoice number
-                        Console.WriteLine($"⚠️ Invoice number conflict detected (attempt {retryCount + 1}/{maxRetries}). Retrying with new number...");
+                        _logger.LogWarning("Invoice number conflict detected (attempt {Attempt}/{Max}). Retrying with new number", retryCount + 1, maxRetries);
                         
                         // Clear the invoice number to force regeneration
                         request.InvoiceNo = null;
@@ -394,21 +399,17 @@ namespace HexaBill.Api.Modules.Billing
                 catch (Exception ex)
                 {
                     // Log non-duplicate errors
-                    Console.WriteLine($"❌ CreateSaleAsync Error: {ex.GetType().Name}");
-                    Console.WriteLine($"❌ Message: {ex.Message}");
-                    Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "CreateSaleAsync Error: {Type}, Message: {Message}", ex.GetType().Name, ex.Message);
                     if (ex.InnerException != null)
                     {
-                        Console.WriteLine($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
-                        Console.WriteLine($"❌ Inner Message: {ex.InnerException.Message}");
-                        Console.WriteLine($"❌ Inner Stack Trace: {ex.InnerException.StackTrace}");
+                        _logger.LogError(ex.InnerException, "Inner Exception: {Type}, Message: {Message}", ex.InnerException.GetType().Name, ex.InnerException.Message);
                     }
                     throw; // Re-throw non-duplicate errors immediately
                 }
             }
             
             // All retries exhausted
-            Console.WriteLine($"❌ Failed to create sale after {maxRetries} attempts due to invoice number conflicts.");
+            _logger.LogError("Failed to create sale after {Retries} attempts due to invoice number conflicts", maxRetries);
             throw new InvalidOperationException(
                 "Unable to generate unique invoice number after multiple attempts. This may be due to high concurrent activity. Please try again.",
                 lastException
@@ -428,7 +429,7 @@ namespace HexaBill.Api.Modules.Billing
         private async Task<SaleDto> CreateSaleInternalAsync(CreateSaleRequest request, int userId, int tenantId)
         {
             // Log incoming request for debugging
-            Console.WriteLine($"📝 CreateSaleInternalAsync called with InvoiceNo: '{request.InvoiceNo ?? "NULL"}' for TenantId: {tenantId}, UserId: {userId}");
+            _logger.LogDebug("CreateSaleInternalAsync called with InvoiceNo: {InvoiceNo} for TenantId: {TenantId}, UserId: {UserId}", request.InvoiceNo ?? "NULL", tenantId, userId);
                     
             // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -443,7 +444,7 @@ namespace HexaBill.Api.Modules.Billing
                 string invoiceNo;
                 if (!string.IsNullOrWhiteSpace(request.InvoiceNo))
                 {
-                    Console.WriteLine($"🔢 Frontend provided invoice number: {request.InvoiceNo}");
+                    _logger.LogDebug("Frontend provided invoice number: {InvoiceNo}", request.InvoiceNo);
                     invoiceNo = request.InvoiceNo.Trim();
                 }
                 else
@@ -451,7 +452,7 @@ namespace HexaBill.Api.Modules.Billing
                     // CRITICAL: Auto-generate invoice number with tenantId INSIDE transaction
                     // This ensures the advisory lock is held until transaction commits
                     invoiceNo = await _invoiceNumberService.GenerateNextInvoiceNumberAsync(tenantId);
-                    Console.WriteLine($"🔢 Auto-generated invoice number: {invoiceNo} for TenantId: {tenantId}");
+                    _logger.LogDebug("Auto-generated invoice number: {InvoiceNo} for TenantId: {TenantId}", invoiceNo, tenantId);
                 }
 
                 // IDEMPOTENCY CHECK: If ExternalReference provided, check for duplicate
@@ -461,7 +462,7 @@ namespace HexaBill.Api.Modules.Billing
                         .FirstOrDefaultAsync(s => s.ExternalReference == request.ExternalReference && !s.IsDeleted);
                     if (existingSale != null)
                     {
-                        Console.WriteLine($"⚠️ Duplicate external reference detected: {request.ExternalReference}. Returning existing sale ID: {existingSale.Id}");
+                        _logger.LogWarning("Duplicate external reference detected: {Ref}. Returning existing sale ID: {Id}", request.ExternalReference, existingSale.Id);
                         await transaction.CommitAsync();
                         return await GetSaleByIdAsync(existingSale.Id, tenantId);
                     }
@@ -475,7 +476,7 @@ namespace HexaBill.Api.Modules.Billing
                 
                 if (duplicateInvoice != null)
                 {
-                    Console.WriteLine($"❌ Invoice {invoiceNo} already exists for owner {tenantId} (ID: {duplicateInvoice.Id}). Throwing error to trigger retry.");
+                    _logger.LogWarning("Invoice {InvoiceNo} already exists for owner {TenantId} (ID: {Id}). Throwing error to trigger retry", invoiceNo, tenantId, duplicateInvoice.Id);
                     
                     // Send admin alert (tenant-specific)
                     await _alertService.CreateAlertAsync(
@@ -500,7 +501,7 @@ namespace HexaBill.Api.Modules.Billing
                         throw new InvalidOperationException($"Invoice number '{invoiceNo}' is invalid. Please use a different number.");
                     }
                 }
-                Console.WriteLine($"✅ Using invoice number: {invoiceNo}");
+                _logger.LogDebug("Using invoice number: {InvoiceNo}", invoiceNo);
 
                 // CRITICAL MULTI-TENANT FIX: Validate customer belongs to this owner and load customer
                 Customer? customer = null;
@@ -600,7 +601,7 @@ namespace HexaBill.Api.Modules.Billing
                         // Log warnings but don't fail
                         foreach (var warning in stockResult.Warnings)
                         {
-                            Console.WriteLine($"⚠️ Stock Warning: {warning}");
+                            _logger.LogWarning("Stock Warning: {Warning}", warning);
                         }
                     }
                 }
@@ -747,7 +748,7 @@ namespace HexaBill.Api.Modules.Billing
                     {
                         creditLimitExceeded = true;
                         creditLimitWarning = $"Customer credit limit of {customer.CreditLimit:C} exceeded. Current outstanding: {currentOutstanding:C}, New sale amount: {grandTotal:C}, New outstanding balance: {newOutstandingBalance:C}";
-                        Console.WriteLine($"⚠️ Credit Limit Warning: {creditLimitWarning}");
+                        _logger.LogWarning("Credit Limit Warning: {Warning}", creditLimitWarning);
                     }
                 }
 
@@ -972,7 +973,7 @@ namespace HexaBill.Api.Modules.Billing
                     }
                     catch (Exception balanceEx)
                     {
-                        Console.WriteLine($"⚠️ Failed to update balance: {balanceEx.Message}");
+                        _logger.LogWarning(balanceEx, "Failed to update balance: {Message}", balanceEx.Message);
                         // Don't fail the sale, but create alert
                         await _alertService.CreateAlertAsync(
                             AlertType.BalanceMismatch,
@@ -996,17 +997,16 @@ namespace HexaBill.Api.Modules.Billing
                             var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(savedSale);
                             if (pdfBytes == null || pdfBytes.Length == 0)
                             {
-                                Console.WriteLine($"❌ PDF Generation Failed: Generated PDF is empty for invoice {savedSale.InvoiceNo}");
+                                _logger.LogError("PDF Generation Failed: Generated PDF is empty for invoice {InvoiceNo}", savedSale.InvoiceNo);
                             }
                             else
                             {
-                                Console.WriteLine($"✅ PDF Generated Successfully: {pdfBytes.Length} bytes for invoice {savedSale.InvoiceNo}");
+                                _logger.LogDebug("PDF Generated Successfully: {Bytes} bytes for invoice {InvoiceNo}", pdfBytes.Length, savedSale.InvoiceNo);
                             }
                         }
                         catch (Exception pdfEx)
                         {
-                            Console.WriteLine($"❌ CRITICAL: PDF Generation Failed for invoice {savedSale.InvoiceNo}: {pdfEx.Message}");
-                            Console.WriteLine($"   Stack Trace: {pdfEx.StackTrace}");
+                            _logger.LogError(pdfEx, "CRITICAL: PDF Generation Failed for invoice {InvoiceNo}: {Message}", savedSale.InvoiceNo, pdfEx.Message);
                             // Log but don't fail sale creation - PDF can be regenerated later
                         }
                         
@@ -1018,19 +1018,18 @@ namespace HexaBill.Api.Modules.Billing
                             try
                             {
                                 await _backupService.CreateFullBackupAsync(backupTenantId, exportToDesktop: true);
-                                Console.WriteLine("✅ Auto-backup completed to Desktop");
+                                _logger.LogInformation("Auto-backup completed to Desktop");
                             }
                             catch (Exception backupEx)
                             {
-                                Console.WriteLine($"⚠️ Auto-backup failed: {backupEx.Message}");
+                                _logger.LogWarning(backupEx, "Auto-backup failed: {Message}", backupEx.Message);
                             }
                         });
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Failed to generate PDF after invoice save: {ex.Message}");
-                    Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
+                    _logger.LogWarning(ex, "Failed to generate PDF after invoice save: {Message}", ex.Message);
                     // Don't fail the sale creation if PDF generation fails
                 }
 
@@ -1045,14 +1044,10 @@ namespace HexaBill.Api.Modules.Billing
                 await transaction.RollbackAsync();
                 
                 // Log detailed error for debugging
-                Console.WriteLine($"❌ CreateSaleAsync Error: {ex.GetType().Name}");
-                Console.WriteLine($"❌ Message: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogError(ex, "CreateSaleAsync Error: {Type}, Message: {Message}", ex.GetType().Name, ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
-                    Console.WriteLine($"❌ Inner Message: {ex.InnerException.Message}");
-                    Console.WriteLine($"❌ Inner Stack Trace: {ex.InnerException.StackTrace}");
+                    _logger.LogError(ex.InnerException, "Inner Exception: {Type}, Message: {Message}", ex.InnerException.GetType().Name, ex.InnerException.Message);
                 }
                 
                 // Re-throw to be caught by controller
@@ -1288,17 +1283,16 @@ namespace HexaBill.Api.Modules.Billing
                             var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(savedSale);
                             if (pdfBytes == null || pdfBytes.Length == 0)
                             {
-                                Console.WriteLine($"❌ PDF Generation Failed: Generated PDF is empty for invoice {savedSale.InvoiceNo}");
+                                _logger.LogError("PDF Generation Failed: Generated PDF is empty for invoice {InvoiceNo}", savedSale.InvoiceNo);
                             }
                             else
                             {
-                                Console.WriteLine($"✅ PDF Generated Successfully: {pdfBytes.Length} bytes for invoice {savedSale.InvoiceNo}");
+                                _logger.LogDebug("PDF Generated Successfully: {Bytes} bytes for invoice {InvoiceNo}", pdfBytes.Length, savedSale.InvoiceNo);
                             }
                         }
                         catch (Exception pdfEx)
                         {
-                            Console.WriteLine($"❌ CRITICAL: PDF Generation Failed for invoice {savedSale.InvoiceNo}: {pdfEx.Message}");
-                            Console.WriteLine($"   Stack Trace: {pdfEx.StackTrace}");
+                            _logger.LogError(pdfEx, "CRITICAL: PDF Generation Failed for invoice {InvoiceNo}: {Message}", savedSale.InvoiceNo, pdfEx.Message);
                             // Log but don't fail sale creation - PDF can be regenerated later
                         }
                         
@@ -1310,19 +1304,18 @@ namespace HexaBill.Api.Modules.Billing
                             try
                             {
                                 await _backupService.CreateFullBackupAsync(backupTenantId, exportToDesktop: true);
-                                Console.WriteLine("✅ Auto-backup completed to Desktop");
+                                _logger.LogInformation("Auto-backup completed to Desktop");
                             }
                             catch (Exception backupEx)
                             {
-                                Console.WriteLine($"⚠️ Auto-backup failed: {backupEx.Message}");
+                                _logger.LogWarning(backupEx, "Auto-backup failed: {Message}", backupEx.Message);
                             }
                         });
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Failed to generate PDF after invoice save: {ex.Message}");
-                    Console.WriteLine($"   Stack Trace: {ex.StackTrace}");
+                    _logger.LogWarning(ex, "Failed to generate PDF after invoice save: {Message}", ex.Message);
                     // Don't fail the sale creation if PDF generation fails
                 }
 
@@ -2063,9 +2056,7 @@ namespace HexaBill.Api.Modules.Billing
                 Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
-                    Console.WriteLine($"❌ Inner Message: {ex.InnerException.Message}");
-                    Console.WriteLine($"❌ Inner Stack Trace: {ex.InnerException.StackTrace}");
+                    _logger.LogError(ex.InnerException, "Inner Exception: {Type}, Message: {Message}", ex.InnerException.GetType().Name, ex.InnerException.Message);
                 }
                 
                 // Re-throw to be caught by controller
@@ -2322,87 +2313,11 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
-        public async Task<bool> CanEditInvoiceAsync(int saleId, int userId, string userRole, int tenantId)
-        {
-            // CRITICAL: Verify sale belongs to owner
-            var sale = await _context.Sales
-                .Where(s => s.Id == saleId && s.TenantId == tenantId)
-                .FirstOrDefaultAsync();
-                
-            if (sale == null || sale.IsDeleted)
-                return false;
+        public Task<bool> CanEditInvoiceAsync(int saleId, int userId, string userRole, int tenantId)
+            => _saleValidation.CanEditInvoiceAsync(saleId, userId, userRole, tenantId);
 
-            // Owner and Admin can edit all invoices
-            if (userRole == "Admin" || userRole == "Owner")
-                return true;
-
-            // Staff can edit invoices they created or in their assigned branch/route
-            if (userRole == "Staff")
-            {
-                // Check if staff created this invoice
-                if (sale.CreatedBy == userId)
-                    return true;
-
-                // Check if invoice is in staff's assigned branch/route
-                if (sale.BranchId.HasValue)
-                {
-                    // Check if staff is assigned to this branch
-                    var branchStaff = await _context.BranchStaff
-                        .Where(bs => bs.UserId == userId)
-                        .Include(bs => bs.Branch)
-                        .Where(bs => bs.Branch.TenantId == tenantId && bs.BranchId == sale.BranchId.Value)
-                        .AnyAsync();
-                    
-                    if (branchStaff)
-                    {
-                        return true;
-                    }
-                    
-                    // Check if staff is assigned to this route
-                    if (sale.RouteId.HasValue)
-                    {
-                        var routeStaff = await _context.RouteStaff
-                            .Where(rs => rs.UserId == userId)
-                            .Include(rs => rs.Route)
-                            .Where(rs => rs.Route.TenantId == tenantId && rs.RouteId == sale.RouteId.Value)
-                            .AnyAsync();
-                        
-                        return routeStaff;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        public async Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId)
-        {
-            // CRITICAL: Verify sale belongs to owner
-            var sale = await _context.Sales
-                .Where(s => s.Id == saleId && s.TenantId == tenantId)
-                .FirstOrDefaultAsync();
-                
-            if (sale == null)
-                return false;
-
-            sale.IsLocked = false;
-            sale.LockedAt = null;
-
-            // Create audit log
-            var auditLog = new AuditLog
-            {
-                OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                TenantId = tenantId, // CRITICAL: Set new TenantId
-                UserId = userId,
-                Action = "Invoice Unlocked",
-                Details = $"Invoice: {sale.InvoiceNo} unlocked. Reason: {unlockReason}",
-                CreatedAt = DateTime.UtcNow
-            };
-            _context.AuditLogs.Add(auditLog);
-
-            await _context.SaveChangesAsync();
-            return true;
-        }
+        public Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId)
+            => _saleValidation.UnlockInvoiceAsync(saleId, userId, unlockReason, tenantId);
 
         public async Task<List<InvoiceVersion>> GetInvoiceVersionsAsync(int saleId, int tenantId)
         {
@@ -2414,28 +2329,8 @@ namespace HexaBill.Api.Modules.Billing
                 .ToListAsync();
         }
 
-        public async Task<bool> LockOldInvoicesAsync(int tenantId)
-        {
-            // CRITICAL: Lock invoices created more than 8 hours ago for this owner only (Gulf trading context - disputes happen same-day)
-            var cutoffTime = DateTime.UtcNow.AddHours(-8);
-            var invoicesToLock = await _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsLocked && !s.IsDeleted && s.CreatedAt < cutoffTime)
-                .ToListAsync();
-
-            foreach (var invoice in invoicesToLock)
-            {
-                invoice.IsLocked = true;
-                invoice.LockedAt = DateTime.UtcNow;
-            }
-
-            if (invoicesToLock.Any())
-            {
-                await _context.SaveChangesAsync();
-                return true;
-            }
-
-            return false;
-        }
+        public Task<bool> LockOldInvoicesAsync(int tenantId)
+            => _saleValidation.LockOldInvoicesAsync(tenantId);
 
         private string CalculateInvoiceDiff(dynamic oldVersion, CreateSaleRequest newRequest, Sale oldSale, string editorName, int newVersion)
         {

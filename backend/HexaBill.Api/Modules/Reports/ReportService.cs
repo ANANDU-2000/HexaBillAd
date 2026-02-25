@@ -4,6 +4,7 @@
  * COGS = SaleItems (Qty × ConversionToBase × CostPrice). Use same in ProfitService and dashboard.
  */
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
@@ -43,14 +44,19 @@ namespace HexaBill.Api.Modules.Reports
         private readonly ISettingsService _settingsService;
         private readonly IProductService _productService;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<ReportService> _logger;
+        private static readonly TimeSpan SummaryReportCacheDuration = TimeSpan.FromMinutes(5);
 
-        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema)
+        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger)
         {
             _context = context;
             _routeScopeService = routeScopeService;
             _settingsService = settingsService;
             _productService = productService;
             _salesSchema = salesSchema;
+            _cache = cache;
+            _logger = logger;
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42703 undefined_column. Handles wrapped exceptions from EF/Npgsql and message-based detection.</summary>
@@ -67,6 +73,22 @@ namespace HexaBill.Api.Modules.Reports
         }
 
         public async Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null)
+        {
+            // Build cache key from normalized date range
+            var utcNow = DateTime.UtcNow;
+            var today = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
+            var startForKey = fromDate.HasValue ? new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Utc) : today;
+            var endForKey = toDate.HasValue ? toDate.Value.AddDays(1) : today.AddDays(1);
+            var cacheKey = $"report:summary:{tenantId}:{startForKey:yyyyMMdd}:{endForKey:yyyyMMdd}:{branchId}:{routeId}:{userIdForStaff}:{roleForStaff ?? ""}";
+
+            return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = SummaryReportCacheDuration;
+                return await GetSummaryReportInternalAsync(tenantId, fromDate, toDate, branchId, routeId, userIdForStaff, roleForStaff);
+            });
+        }
+
+        private async Task<SummaryReportDto> GetSummaryReportInternalAsync(int tenantId, DateTime? fromDate, DateTime? toDate, int? branchId, int? routeId, int? userIdForStaff, string? roleForStaff)
         {
             try
             {
@@ -95,8 +117,8 @@ namespace HexaBill.Api.Modules.Reports
                     endDate = today.AddDays(1).ToUtcKind();
                 }
                 
-                Console.WriteLine($"?? GetSummaryReportAsync called with tenantId={tenantId}, fromDate: {startDate:yyyy-MM-dd}, toDate: {endDate:yyyy-MM-dd}");
-                Console.WriteLine($"?? Date range: {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}");
+                _logger.LogDebug("GetSummaryReportAsync called with tenantId={TenantId}, fromDate: {FromDate}, toDate: {ToDate}", tenantId, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
+                _logger.LogDebug("Date range: {Start} to {End}", startDate.ToString("yyyy-MM-dd HH:mm:ss"), endDate.ToString("yyyy-MM-dd HH:mm:ss"));
 
                 var hasSalesBranchRoute = await _salesSchema.SalesHasBranchIdAndRouteIdAsync();
 
@@ -135,14 +157,13 @@ namespace HexaBill.Api.Modules.Reports
                         }
                     }
                     var salesCount = await salesQuery.CountAsync();
-                    Console.WriteLine($"?? Found {salesCount} sales records in date range (SuperAdmin: {tenantId == 0})");
+                    _logger.LogDebug("Found {SalesCount} sales records in date range (SuperAdmin: {IsSuperAdmin})", salesCount, tenantId == 0);
                     salesToday = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
-                    Console.WriteLine($"?? Total sales today: {salesToday}");
+                    _logger.LogDebug("Total sales today: {SalesToday}", salesToday);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating salesToday: {ex.Message}");
-                    Console.WriteLine($"? Stack trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "Error calculating salesToday: {Message}", ex.Message);
                     salesToday = 0;
                 }
 
@@ -179,11 +200,11 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     returnsCountToday = await returnsQuery.CountAsync();
                     returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
-                    Console.WriteLine($"?? Returns today: count={returnsCountToday}, total={returnsToday:C}");
+                    _logger.LogDebug("Returns today: count={Count}, total={Total}", returnsCountToday, returnsToday);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating returnsToday: {ex.Message}");
+                    _logger.LogError(ex, "Error calculating returnsToday: {Message}", ex.Message);
                     returnsToday = 0;
                     returnsCountToday = 0;
                 }
@@ -210,7 +231,7 @@ namespace HexaBill.Api.Modules.Reports
                     // SaleReturnItems.Condition or SaleReturn.BranchId/RouteId may not exist (42703)
                     damageLossToday = 0;
                     if (!IsMissingColumn42703(ex))
-                        Console.WriteLine($"? Error calculating damageLossToday: {ex.Message}");
+                        _logger.LogError(ex, "Error calculating damageLossToday: {Message}", ex.Message);
                 }
 
                 decimal netSalesToday = salesToday - returnsToday;
@@ -225,14 +246,13 @@ namespace HexaBill.Api.Modules.Reports
                         purchasesQuery = purchasesQuery.Where(p => p.TenantId == tenantId);
                     }
                     var purchasesCount = await purchasesQuery.CountAsync();
-                    Console.WriteLine($"?? Found {purchasesCount} purchase records in date range (SuperAdmin: {tenantId == 0})");
+                    _logger.LogDebug("Found {Count} purchase records in date range (SuperAdmin: {IsSuperAdmin})", purchasesCount, tenantId == 0);
                     purchasesToday = await purchasesQuery.SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
-                    Console.WriteLine($"?? Total purchases today: {purchasesToday}");
+                    _logger.LogDebug("Total purchases today: {PurchasesToday}", purchasesToday);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating purchasesToday: {ex.Message}");
-                    Console.WriteLine($"? Stack trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "Error calculating purchasesToday: {Message}", ex.Message);
                     purchasesToday = 0;
                 }
 
@@ -246,14 +266,13 @@ namespace HexaBill.Api.Modules.Reports
                         expensesQuery = expensesQuery.Where(e => e.TenantId == tenantId);
                     }
                     var expensesCount = await expensesQuery.CountAsync();
-                    Console.WriteLine($"?? Found {expensesCount} expense records in date range (SuperAdmin: {tenantId == 0})");
+                    _logger.LogDebug("Found {Count} expense records in date range (SuperAdmin: {IsSuperAdmin})", expensesCount, tenantId == 0);
                     expensesToday = await expensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0;
-                    Console.WriteLine($"?? Total expenses today: {expensesToday}");
+                    _logger.LogDebug("Total expenses today: {ExpensesToday}", expensesToday);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating expensesToday: {ex.Message}");
-                    Console.WriteLine($"? Stack trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "Error calculating expensesToday: {Message}", ex.Message);
                     expensesToday = 0;
                 }
 
@@ -315,12 +334,11 @@ namespace HexaBill.Api.Modules.Reports
                             return cogs;
                         });
                     
-                    Console.WriteLine($"?? Calculated COGS from {saleItemsData.Count} sale items: {cogsToday:C}");
+                    _logger.LogDebug("Calculated COGS from {Count} sale items: {Cogs}", saleItemsData.Count, cogsToday);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Error calculating COGS: {ex.Message}");
-                    Console.WriteLine($"? Stack trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "Error calculating COGS: {Message}", ex.Message);
                     cogsToday = 0;
                 }
 
@@ -328,15 +346,8 @@ namespace HexaBill.Api.Modules.Reports
                 var grossProfit = netSalesToday - cogsToday;
                 var profitToday = grossProfit - expensesToday;
                 
-                Console.WriteLine($"\n========== REPORT SERVICE PROFIT CALCULATION (CORRECTED) ==========");
-                Console.WriteLine($"?? Date Range: {startDate:yyyy-MM-dd HH:mm:ss} to {endDate:yyyy-MM-dd HH:mm:ss}");
-                Console.WriteLine($"?? Sales (Gross): {salesToday:C}, Returns: {returnsToday:C}, Net Sales: {netSalesToday:C}");
-                Console.WriteLine($"?? COGS (from SaleItems × Product.CostPrice): {cogsToday:C}");
-                Console.WriteLine($"?? Purchases (for reference, not used in profit): {purchasesToday:C}");
-                Console.WriteLine($"?? Gross Profit (Net Sales - COGS): {grossProfit:C}");
-                Console.WriteLine($"?? Expenses: {expensesToday:C}");
-                Console.WriteLine($"? NET PROFIT (Gross Profit - Expenses): {profitToday:C}");
-                Console.WriteLine($"=========================================================================\n");
+                _logger.LogDebug("Report profit: Sales={Sales}, Returns={Returns}, NetSales={NetSales}, COGS={Cogs}, GrossProfit={GrossProfit}, Expenses={Expenses}, Profit={Profit}",
+                    salesToday, returnsToday, netSalesToday, cogsToday, grossProfit, expensesToday, profitToday);
 
                 List<ProductDto> lowStockProducts = new List<ProductDto>();
                 try
@@ -354,7 +365,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error loading low stock products: {ex.Message}");
+                    _logger.LogError(ex, "Error loading low stock products: {Message}", ex.Message);
                     lowStockProducts = new List<ProductDto>();
                 }
 
@@ -390,8 +401,7 @@ namespace HexaBill.Api.Modules.Reports
                     paidBillsCount = await paidBillsQuery.CountAsync(); // Count in database
                     paidBillsAmount = await paidBillsQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m; // Sum in database
                     
-                    Console.WriteLine($"?? Pending Bills: {pendingBillsCount} invoices, Amount: {pendingBillsAmount:C}");
-                    Console.WriteLine($"? Paid Bills: {paidBillsCount} invoices, Amount: {paidBillsAmount:C}");
+                    _logger.LogDebug("Pending Bills: {Count} invoices, Amount: {Amount}; Paid: {PaidCount}, Amount: {PaidAmount}", pendingBillsCount, pendingBillsAmount, paidBillsCount, paidBillsAmount);
                     
                     // Get pending invoices for display (with customer info) - Limited to top 10 for performance
                     // CRITICAL: Get pending invoices with actual balance calculation
@@ -448,11 +458,11 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error loading pending invoices: {ex.Message}");
-                    Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                    _logger.LogError(ex, "Error loading pending invoices: {Message}", ex.Message);
                     if (ex.InnerException != null)
                     {
-                        Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                        if (ex.InnerException != null)
+                            _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                     }
                     pendingInvoices = new List<SaleDto>();
                     pendingBillsCount = 0;
@@ -557,7 +567,7 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error calculating branch breakdown: {ex.Message}");
+                        _logger.LogError(ex, "Error calculating branch breakdown: {Message}", ex.Message);
                         branchBreakdown = new List<DashboardBranchSummaryDto>();
                     }
                 }
@@ -575,7 +585,7 @@ namespace HexaBill.Api.Modules.Reports
                     if (daysDiff > 90)
                     {
                         trendFromDate = trendToDate.AddDays(-90);
-                        Console.WriteLine($"⚠️ Date range too large ({daysDiff} days), limiting to last 90 days for daily sales trend");
+                        _logger.LogWarning("Date range too large ({Days} days), limiting to last 90 days for daily sales trend", daysDiff);
                     }
                     
                     // Build query with proper date range
@@ -630,12 +640,11 @@ namespace HexaBill.Api.Modules.Reports
                         currentDate = currentDate.AddDays(1);
                     }
                     
-                    Console.WriteLine($"✅ Daily sales trend calculated for {dailySalesTrend.Count} days (from {trendFromDate:yyyy-MM-dd} to {trendToDate:yyyy-MM-dd})");
+                    _logger.LogDebug("Daily sales trend calculated for {Count} days (from {From} to {To})", dailySalesTrend.Count, trendFromDate.ToString("yyyy-MM-dd"), trendToDate.ToString("yyyy-MM-dd"));
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Error calculating daily sales trend: {ex.Message}");
-                    if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
+                    _logger.LogError(ex, "Error calculating daily sales trend: {Message}", ex.Message);
                     dailySalesTrend = new List<DailySalesDto>();
                 }
 
@@ -690,7 +699,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error calculating top customers: {ex.Message}");
+                    _logger.LogError(ex, "Error calculating top customers: {Message}", ex.Message);
                     topCustomers = new List<TopCustomerDto>();
                 }
 
@@ -781,7 +790,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error calculating top products: {ex.Message}");
+                    _logger.LogError(ex, "Error calculating top products: {Message}", ex.Message);
                     topProducts = new List<TopProductDto>();
                 }
 
@@ -811,18 +820,16 @@ namespace HexaBill.Api.Modules.Reports
                     TopProductsToday = topProducts
                 };
                 
-                Console.WriteLine($"? SummaryReportDto created: Sales={salesToday}, COGS={cogsToday}, Purchases={purchasesToday}, Expenses={expensesToday}, Profit={profitToday}");
-                Console.WriteLine($"? Bills Summary: Pending={pendingBillsCount} (${pendingBillsAmount:C}), Paid={paidBillsCount} (${paidBillsAmount:C})");
+                _logger.LogDebug("SummaryReportDto created: Sales={Sales}, COGS={Cogs}, Purchases={Purchases}, Expenses={Expenses}, Profit={Profit}", salesToday, cogsToday, purchasesToday, expensesToday, profitToday);
                 
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Critical error in GetSummaryReportAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Critical error in GetSummaryReportAsync: {Message}", ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
                 
                 // Return a safe default response
@@ -901,7 +908,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
             }
             
-            Console.WriteLine($"?? GetSalesReportAsync: fromDate={fromDate:yyyy-MM-dd HH:mm:ss}, toDate={toDate:yyyy-MM-dd HH:mm:ss}, customerId={customerId}, SuperAdmin={tenantId == 0}");
+            _logger.LogDebug("GetSalesReportAsync: fromDate={From}, toDate={To}, customerId={CustomerId}, SuperAdmin={IsSuperAdmin}", fromDate.ToString("yyyy-MM-dd HH:mm:ss"), toDate.ToString("yyyy-MM-dd HH:mm:ss"), customerId, tenantId == 0);
             
             // Apply customer filter
             if (customerId.HasValue)
@@ -1001,7 +1008,7 @@ namespace HexaBill.Api.Modules.Reports
                               .ToListAsync();
             }
             
-            Console.WriteLine($"?? Sales Report: {totalCount} total sales, returning {sales.Count} for page {page}");
+            _logger.LogDebug("Sales Report: {Total} total sales, returning {Count} for page {Page}", totalCount, sales.Count, page);
 
             return new PagedResponse<SaleDto>
             {
@@ -1079,11 +1086,10 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetProductSalesReportAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error in GetProductSalesReportAsync: {Message}", ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
                 // Return empty list instead of throwing
                 return new List<ProductSalesDto>();
@@ -1121,11 +1127,10 @@ namespace HexaBill.Api.Modules.Reports
                     })
                     .ToListAsync();
 
-                Console.WriteLine($"? GetOutstandingCustomersAsync: Found {totalCount} customers with outstanding balance (showing page {page})");
+                _logger.LogDebug("GetOutstandingCustomersAsync: Found {Total} customers with outstanding balance (showing page {Page})", totalCount, page);
                 if (customers.Any())
                 {
-                    Console.WriteLine($"? Total outstanding: {customers.Sum(c => c.Balance):C}");
-                    Console.WriteLine($"? Highest balance: {customers.First().Balance:C} ({customers.First().Name})");
+                    _logger.LogDebug("Total outstanding: {Total}, Highest: {Highest} ({Name})", customers.Sum(c => c.Balance), customers.First().Balance, customers.First().Name);
                 }
                 
                 return new PagedResponse<CustomerDto>
@@ -1139,11 +1144,10 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"? Error in GetOutstandingCustomersAsync: {ex.Message}");
-                Console.WriteLine($"? Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error in GetOutstandingCustomersAsync: {Message}", ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"? Inner exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
                 // Return empty paged response instead of throwing
                 return new PagedResponse<CustomerDto>
@@ -1241,7 +1245,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching top sellers: {ex.Message}");
+                    _logger.LogError(ex, "Error fetching top sellers: {Message}", ex.Message);
                 }
 
                 // Restock candidates (low stock)
@@ -1271,7 +1275,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching restock candidates: {ex.Message}");
+                    _logger.LogError(ex, "Error fetching restock candidates: {Message}", ex.Message);
                 }
 
                 // Low margin products
@@ -1302,7 +1306,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching low margin products: {ex.Message}");
+                    _logger.LogError(ex, "Error fetching low margin products: {Message}", ex.Message);
                 }
 
                 // Pending customers
@@ -1327,7 +1331,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching pending customers: {ex.Message}");
+                    _logger.LogError(ex, "Error fetching pending customers: {Message}", ex.Message);
                 }
 
                 // Promotion candidates
@@ -1357,7 +1361,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error fetching promotion candidates: {ex.Message}");
+                    _logger.LogError(ex, "Error fetching promotion candidates: {Message}", ex.Message);
                 }
 
                 return new AISuggestionsDto
@@ -1371,8 +1375,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Critical error in GetAISuggestionsAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Critical error in GetAISuggestionsAsync: {Message}", ex.Message);
                 // Return empty suggestions instead of crashing
                 return new AISuggestionsDto
                 {
@@ -1530,11 +1533,10 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetExpensesByCategoryAsync: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Error in GetExpensesByCategoryAsync: {Message}", ex.Message);
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
                 // Return empty list instead of throwing
                 return new List<ExpenseByCategoryDto>();

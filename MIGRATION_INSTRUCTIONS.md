@@ -9,7 +9,22 @@ Four fixes have been implemented:
 3. **Console.WriteLine removed** - Replaced with ILogger in PdfService, ExpenseService, ExpensesController, SettingsController, ValidationService
 4. **OwnerId → TenantId** - New code uses TenantId; ensure data migration has run
 
-## Database Migrations to Run
+## Production Fix: 42703 column TenantId does not exist
+
+If you see **Error creating expense category: 42703: column e.TenantId does not exist** in production:
+
+1. Open Render Dashboard → Your PostgreSQL service → **Connect** → **PSQL**
+2. Run the SQL in **Sections 7 and 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql`
+
+Or from local (with DATABASE_URL set):
+
+```bash
+psql $DATABASE_URL -f backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql
+```
+
+This adds TenantId to ExpenseCategories and InvoiceTemplates, backfills data, and creates indexes. Restart the API after running.
+
+## Database Migrations to Run (Local / CI)
 
 ### 1. EF Core Migrations (InvoiceTemplate, ExpenseCategory)
 

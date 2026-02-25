@@ -203,7 +203,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Tenant onboarding tracker: completion steps per tenant; optional filter to incomplete only. SystemAdmin only. (PRODUCTION_MASTER_TODO #46)
+        /// Tenant onboarding tracker: completion steps per tenant; optional filter to incomplete only. SystemAdmin only. See NOT_BUILT.md.
         /// </summary>
         [HttpGet("/api/superadmin/onboarding-report")]
         public async Task<ActionResult<ApiResponse<OnboardingReportDto>>> GetOnboardingReport([FromQuery] bool incompleteOnly = false)
@@ -482,7 +482,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// List tenant invoices (read-only, no impersonation). SystemAdmin only. (PRODUCTION_MASTER_TODO #50)
+        /// List tenant invoices (read-only, no impersonation). SystemAdmin only. See NOT_BUILT.md.
         /// </summary>
         [HttpGet("{id}/invoices")]
         public async Task<ActionResult<ApiResponse<PagedResponse<TenantInvoiceListItemDto>>>> GetTenantInvoices(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
@@ -500,7 +500,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Subscription/payment history for tenant (when paid, renewals, payment method). SystemAdmin only. (PRODUCTION_MASTER_TODO #51)
+        /// Subscription/payment history for tenant (when paid, renewals, payment method). SystemAdmin only. See NOT_BUILT.md.
         /// </summary>
         [HttpGet("{id}/payment-history")]
         public async Task<ActionResult<ApiResponse<List<TenantPaymentHistoryItemDto>>>> GetTenantPaymentHistory(int id)
@@ -518,7 +518,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Export tenant key data (invoices, customers, products) as ZIP of CSVs for offboarding/compliance. SystemAdmin only. (PRODUCTION_MASTER_TODO #52)
+        /// Export tenant key data (invoices, customers, products) as ZIP of CSVs for offboarding/compliance. SystemAdmin only. See NOT_BUILT.md.
         /// </summary>
         [HttpGet("{id}/export")]
         public async Task<IActionResult> ExportTenantData(int id)
@@ -537,7 +537,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Bulk tenant actions: extend trial, send announcement. SystemAdmin only. (PRODUCTION_MASTER_TODO #48)
+        /// Bulk tenant actions: extend trial, send announcement. SystemAdmin only. See NOT_BUILT.md.
         /// </summary>
         [HttpPost("bulk-actions")]
         public async Task<ActionResult<ApiResponse<BulkActionResultDto>>> ExecuteBulkAction([FromBody] BulkActionRequest request)

@@ -110,3 +110,47 @@ DO $$ BEGIN
     ALTER TABLE "Branches" ADD COLUMN "IsActive" boolean NOT NULL DEFAULT true;
   END IF;
 END $$;
+
+-- 6b. Add TenantId to Expenses if missing (Expenses uses "e" alias; error may say "e.TenantId")
+ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "TenantId" integer NULL;
+CREATE INDEX IF NOT EXISTS "IX_Expenses_TenantId" ON "Expenses" ("TenantId");
+-- Backfill from OwnerId
+UPDATE "Expenses" SET "TenantId" = "OwnerId" WHERE "TenantId" IS NULL AND "OwnerId" IS NOT NULL;
+UPDATE "Expenses" SET "TenantId" = (SELECT "Id" FROM "Tenants" ORDER BY "Id" ASC LIMIT 1) WHERE "TenantId" IS NULL;
+
+-- 7. Add TenantId to ExpenseCategories (fixes 42703: column e.TenantId does not exist on ExpenseCategories)
+--    Required for Expenses page and CreateCategory to work. Run in Render PostgreSQL Shell.
+ALTER TABLE "ExpenseCategories" ADD COLUMN IF NOT EXISTS "TenantId" integer NULL;
+DROP INDEX IF EXISTS "IX_ExpenseCategories_Name";
+-- Backfill: set TenantId from first Expense that uses this category (only if Expenses has TenantId)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='Expenses' AND column_name='TenantId') THEN
+    UPDATE "ExpenseCategories" ec
+    SET "TenantId" = (
+      SELECT e."TenantId" FROM "Expenses" e
+      WHERE e."CategoryId" = ec."Id" AND e."TenantId" IS NOT NULL
+      LIMIT 1
+    )
+    WHERE ec."TenantId" IS NULL AND EXISTS (
+      SELECT 1 FROM "Expenses" e2 WHERE e2."CategoryId" = ec."Id"
+    );
+  END IF;
+END $$;
+-- For categories with no expenses (or Expenses has no TenantId), assign to first tenant
+UPDATE "ExpenseCategories" ec
+SET "TenantId" = (SELECT "Id" FROM "Tenants" ORDER BY "Id" ASC LIMIT 1)
+WHERE ec."TenantId" IS NULL;
+-- Create new unique index on (TenantId, Name)
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_ExpenseCategories_TenantId_Name" ON "ExpenseCategories" ("TenantId", "Name");
+
+-- 8. Add TenantId to InvoiceTemplates (fixes cross-tenant template leak)
+ALTER TABLE "InvoiceTemplates" ADD COLUMN IF NOT EXISTS "TenantId" integer NULL;
+CREATE INDEX IF NOT EXISTS "IX_InvoiceTemplates_TenantId" ON "InvoiceTemplates" ("TenantId");
+-- Backfill from CreatedBy user's TenantId
+UPDATE "InvoiceTemplates" t
+SET "TenantId" = (SELECT u."TenantId" FROM "Users" u WHERE u."Id" = t."CreatedBy" AND u."TenantId" IS NOT NULL LIMIT 1)
+WHERE t."TenantId" IS NULL;
+UPDATE "InvoiceTemplates" t
+SET "TenantId" = (SELECT "Id" FROM "Tenants" ORDER BY "Id" ASC LIMIT 1)
+WHERE t."TenantId" IS NULL;
