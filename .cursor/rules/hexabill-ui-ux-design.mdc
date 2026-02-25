@@ -1,0 +1,27 @@
+---
+description: HexaBill UI/UX design system - always follow when editing frontend pages or components
+globs: frontend/hexabill-ui/**/*
+alwaysApply: false
+---
+
+# HexaBill UI/UX Design System
+
+When editing any file under `frontend/hexabill-ui`, **always** align with the project design lock and master prompt.
+
+## Must read (or recall)
+
+- **Full design system & page fixes:** `docs/HEXABILL_UX_UI_MASTER_PROMPT.md`
+- **Lock & quick reference:** `docs/UI_UX_DESIGN_LOCK.md`
+
+## Non-negotiable rules
+
+1. **Mobile-first, zero horizontal scroll** — `overflow-x: hidden`, `max-width: 100%`; tables become cards on &lt; 768px.
+2. **8px grid** — Mobile: p-4, gap-4; Desktop: p-6, gap-6. No random p-1/p-2 or p-8+.
+3. **Icons** — **Lucide only** (from `lucide-react`). Remove all emojis and other icon sets.
+4. **Colors** — Neutrals (neutral-50…900) for most UI; primary-500/600 only for main actions; no gradients or colored shadows.
+5. **Cards** — `bg-white border border-neutral-200 rounded-xl`; **no shadow** except dropdowns (shadow-md) and modals (shadow-lg).
+6. **Typography** — Min 12px; use the scale in the master prompt (e.g. text-sm 14px mobile, text-base 16px body).
+
+Before finishing UI work, run the validation checklist in the master prompt (mobile/tablet/desktop + visual).
+
+Design inspiration: Linear, Notion, YouTube Analytics, Stripe. **Not** Material, Bootstrap defaults, or generic AI-style templates.

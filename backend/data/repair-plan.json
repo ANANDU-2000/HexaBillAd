@@ -1,0 +1,16 @@
+{
+  "company": "ZAYOGA GENERAL TRADING-SOLE PROPRIETORSHIP LLC",
+  "tenant_id": 6,
+  "actions_taken": [
+    "Recalculated Balance/PendingBalance/TotalSales/TotalPayments for all 55 customers from Sales + CLEARED Payments - SaleReturns."
+  ],
+  "recommendations": [
+    "Ledger is computed at runtime from Sales + Payments (no ledger_entries table). If a customer shows empty ledger, check: 1) Date range includes invoice dates (use 2-year range). 2) Customer name match: CSV has \"AL ANSARI\" (2 invoices); if UI shows \"AL ANSARI EXCHANGE\" it may be a different customer with 0 sales.",
+    "Dashboard \"This Month\" shows only current month; migrated data is mostly 2025 – use Reports with date range 01-01-2025 to 31-12-2026 to see full data.",
+    "Reports default date range: set From 01-01-2025 to include all migrated invoices."
+  ],
+  "schema_notes": [
+    "No ledger_entries table; ledger built from Sales + Payments in CustomerService.GetCustomerLedgerAsync.",
+    "Sales with null BranchId/RouteId are included in ledger (legacy data)."
+  ]
+}

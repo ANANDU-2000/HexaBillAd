@@ -1,0 +1,29 @@
+# Build outputs (avoid copying into image; restore/publish will run in container)
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+publish-test/
+
+# Git and IDE
+.git/
+.gitignore
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Env (never in image)
+.env
+.env.*
+!.env.example
+
+# Docs and scripts not needed at build
+*.md
+!Templates/
+
+# Avoid large or irrelevant files
+*.db
+*.sqlite
+*.pdf
+backups/

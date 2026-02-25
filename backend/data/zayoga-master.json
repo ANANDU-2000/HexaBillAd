@@ -1,0 +1,7399 @@
+{
+  "company": {
+    "name": "ZAYOGA GENERAL TRADING-SOLE PROPRIETORSHIP LLC",
+    "company_id": null
+  },
+  "invoices": [
+    {
+      "invoice_number": "INV0201",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 296.63,
+      "received_amount": 0,
+      "balance_amount": 296.63,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 296.63,
+          "line_total": 296.63
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0202",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 166.43,
+      "received_amount": 166.43,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 166.43,
+          "line_total": 166.43
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 166.43,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0203",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 192.94,
+      "received_amount": 192.06,
+      "balance_amount": 0.88,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 192.94,
+          "line_total": 192.94
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Credit",
+          "amount": 192.06,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0204",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 304.5,
+      "received_amount": 304.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 304.5,
+          "line_total": 304.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 304.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0205",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 278.77,
+      "received_amount": 278.77,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 278.77,
+          "line_total": 278.77
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 278.77,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0206",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 287.44,
+      "received_amount": 287.44,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 287.44,
+          "line_total": 287.44
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 287.44,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0207",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 181.65,
+      "received_amount": 181.65,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 181.65,
+          "line_total": 181.65
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 181.65,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0208",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 270.11,
+      "received_amount": 270,
+      "balance_amount": 0.11,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 270.11,
+          "line_total": 270.11
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Credit",
+          "amount": 270,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0209",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 421.31,
+      "received_amount": 0,
+      "balance_amount": 421.31,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 421.31,
+          "line_total": 421.31
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0210",
+      "invoice_date": "2026-01-30",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-30",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0211",
+      "invoice_date": "2026-01-31",
+      "customer": {
+        "name": "IDUKKI GOLD RESTURANT BR2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 410.81,
+      "received_amount": 0,
+      "balance_amount": 410.81,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 410.81,
+          "line_total": 410.81
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0212",
+      "invoice_date": "2026-01-31",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BR 1",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 396.38,
+      "received_amount": 0,
+      "balance_amount": 396.38,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 396.38,
+          "line_total": 396.38
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0213",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 291.38,
+      "received_amount": 291.38,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 291.38,
+          "line_total": 291.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 291.38,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0214",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 92.92,
+      "received_amount": 92.92,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 92.92,
+          "line_total": 92.92
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 92.92,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0215",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 210.79,
+      "received_amount": 0,
+      "balance_amount": 210.79,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 210.79,
+          "line_total": 210.79
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0216",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 215.25,
+      "received_amount": 215.25,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 215.25,
+          "line_total": 215.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 215.25,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0217",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "GREAT RASOI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 371.44,
+      "received_amount": 0,
+      "balance_amount": 371.44,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 371.44,
+          "line_total": 371.44
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0218",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.75,
+      "received_amount": 78.75,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.75,
+          "line_total": 78.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 78.75,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0219",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 291.38,
+      "received_amount": 291.38,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 291.38,
+          "line_total": 291.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 291.38,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0220",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 396.38,
+      "received_amount": 396,
+      "balance_amount": 0.38,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 396.38,
+          "line_total": 396.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Credit",
+          "amount": 396,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0221",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 143.32,
+      "received_amount": 143.32,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 143.32,
+          "line_total": 143.32
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 143.32,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0222",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 222.07,
+      "received_amount": 222.07,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 222.07,
+          "line_total": 222.07
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 222.07,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0223",
+      "invoice_date": "2026-01-04",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 444.68,
+      "received_amount": 0,
+      "balance_amount": 444.68,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 444.68,
+          "line_total": 444.68
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0224",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 240.19,
+      "received_amount": 0,
+      "balance_amount": 240.19,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 240.19,
+          "line_total": 240.19
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0225",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC -ME9",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 152.25,
+      "received_amount": 0.12,
+      "balance_amount": 152.13,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 152.25,
+          "line_total": 152.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-04",
+          "payment_method": "Credit",
+          "amount": 0.12,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0226",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "BAKE OF SWEETS PASTREES AND SWEETS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 106.31,
+      "received_amount": 106.31,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 106.31,
+          "line_total": 106.31
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-04",
+          "payment_method": "Cash",
+          "amount": 106.31,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0227",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "IDUKKI GOLD RESTURANT BR2 CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 396.38,
+      "received_amount": 0,
+      "balance_amount": 396.38,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 396.38,
+          "line_total": 396.38
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0228",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 216.56,
+      "received_amount": 216.56,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 216.56,
+          "line_total": 216.56
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-04",
+          "payment_method": "Cash",
+          "amount": 216.56,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0229",
+      "invoice_date": "2026-02-04",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 52.5,
+      "received_amount": 0,
+      "balance_amount": 52.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0230",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 333.9,
+      "received_amount": 0,
+      "balance_amount": 333.9,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 333.9,
+          "line_total": 333.9
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0231",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 149.36,
+      "received_amount": 0,
+      "balance_amount": 149.36,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 149.36,
+          "line_total": 149.36
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0232",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 131.25,
+      "received_amount": 131.25,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 131.25,
+          "line_total": 131.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-07",
+          "payment_method": "Cash",
+          "amount": 131.25,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0233",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 274.05,
+      "received_amount": 0,
+      "balance_amount": 274.05,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 274.05,
+          "line_total": 274.05
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0234",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 346.5,
+      "received_amount": 346.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 346.5,
+          "line_total": 346.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-07",
+          "payment_method": "Cash",
+          "amount": 346.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0235",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 227.85,
+      "received_amount": 0,
+      "balance_amount": 227.85,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 227.85,
+          "line_total": 227.85
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0236",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 17.85,
+      "received_amount": 17.85,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 17.85,
+          "line_total": 17.85
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-07",
+          "payment_method": "Cash",
+          "amount": 17.85,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0237",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 277.73,
+      "received_amount": 277.73,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 277.73,
+          "line_total": 277.73
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-07",
+          "payment_method": "Cash",
+          "amount": 277.73,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0238",
+      "invoice_date": "2026-02-07",
+      "customer": {
+        "name": "IDUKKI GOLD RESTURANT BR2",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 1429.58,
+      "received_amount": 1429.58,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 1429.58,
+          "line_total": 1429.58
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-07",
+          "payment_method": "Cash",
+          "amount": 1429.58,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0239",
+      "invoice_date": "2025-12-15",
+      "customer": {
+        "name": "ISC INDIA FEST EVENTS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 2254.05,
+      "received_amount": 2254.05,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 2254.05,
+          "line_total": 2254.05
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-15",
+          "payment_method": "Cash",
+          "amount": 2254.05,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0240",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "MERCADO EVENTS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 1295.7,
+      "received_amount": 1295.7,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 1295.7,
+          "line_total": 1295.7
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 1295.7,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0241",
+      "invoice_date": "2026-02-02",
+      "customer": {
+        "name": "ISC INDIA FEST EVENTS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 1421.7,
+      "received_amount": 1421.7,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 1421.7,
+          "line_total": 1421.7
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-02-02",
+          "payment_method": "Cash",
+          "amount": 1421.7,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0001",
+      "invoice_date": "2025-10-25",
+      "customer": {
+        "name": "IDUKKI GOLD RESTURANT BR2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 1340.06,
+      "received_amount": 1227,
+      "balance_amount": 113.06,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 1340.06,
+          "line_total": 1340.06
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-10-25",
+          "payment_method": "Credit",
+          "amount": 1227,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0002",
+      "invoice_date": "2025-11-03",
+      "customer": {
+        "name": "DEEBHA RESTAURANTVLLC OPC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0003",
+      "invoice_date": "2025-11-03",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0004",
+      "invoice_date": "2025-11-03",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0005",
+      "invoice_date": "2025-11-03",
+      "customer": {
+        "name": "PAYYANNUR RESTAURANT BR2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 336,
+      "received_amount": 336,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 336,
+          "line_total": 336
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-03",
+          "payment_method": "Credit",
+          "amount": 336,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0006",
+      "invoice_date": "2025-11-04",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0007",
+      "invoice_date": "2025-11-04",
+      "customer": {
+        "name": "ANRA ASSOCIATION",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 340,
+      "received_amount": 340,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 340,
+          "line_total": 340
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-04",
+          "payment_method": "Cash",
+          "amount": 340,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0008",
+      "invoice_date": "2025-11-04",
+      "customer": {
+        "name": "PANDIYAN BROS RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0009",
+      "invoice_date": "2025-11-04",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0010",
+      "invoice_date": "2025-11-04",
+      "customer": {
+        "name": "BLUE STAR SCHOOL BUS TRANSPORTATION",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 168,
+      "received_amount": 0,
+      "balance_amount": 168,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 168,
+          "line_total": 168
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0011",
+      "invoice_date": "2025-11-06",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52,
+      "received_amount": 52,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52,
+          "line_total": 52
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-06",
+          "payment_method": "Cash",
+          "amount": 52,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0012",
+      "invoice_date": "2025-11-10",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 414,
+      "received_amount": 414,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 414,
+          "line_total": 414
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-10",
+          "payment_method": "Cash",
+          "amount": 414,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0013",
+      "invoice_date": "2025-11-12",
+      "customer": {
+        "name": "GREAT RASOI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0014",
+      "invoice_date": "2025-11-12",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0015",
+      "invoice_date": "2025-11-12",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0016",
+      "invoice_date": "2025-11-12",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0017",
+      "invoice_date": "2025-11-13",
+      "customer": {
+        "name": "MALABAR MAGIC RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 176,
+      "received_amount": 176,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 176,
+          "line_total": 176
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-13",
+          "payment_method": "Credit",
+          "amount": 176,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0018",
+      "invoice_date": "2025-11-13",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 157,
+      "received_amount": 157,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 157,
+          "line_total": 157
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-13",
+          "payment_method": "Cash",
+          "amount": 157,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0019",
+      "invoice_date": "2025-11-13",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 79,
+      "received_amount": 79,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 79,
+          "line_total": 79
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-13",
+          "payment_method": "Cash",
+          "amount": 79,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0020",
+      "invoice_date": "2025-11-13",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 312,
+      "received_amount": 312,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 312,
+          "line_total": 312
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-13",
+          "payment_method": "Cash",
+          "amount": 312,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0021",
+      "invoice_date": "2025-11-14",
+      "customer": {
+        "name": "MALABAR CHAYAKADA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78,
+      "received_amount": 78,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78,
+          "line_total": 78
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-14",
+          "payment_method": "Cash",
+          "amount": 78,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0022",
+      "invoice_date": "2025-11-14",
+      "customer": {
+        "name": "CHEF LATHAS KITCHEN LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 1100,
+      "received_amount": 0,
+      "balance_amount": 1100,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 1100,
+          "line_total": 1100
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0023",
+      "invoice_date": "2025-11-15",
+      "customer": {
+        "name": "KISMATH STAR RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 439,
+      "received_amount": 439,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 439,
+          "line_total": 439
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-15",
+          "payment_method": "Credit",
+          "amount": 439,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0024",
+      "invoice_date": "2025-11-15",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 272,
+      "received_amount": 272,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 272,
+          "line_total": 272
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-15",
+          "payment_method": "Cash",
+          "amount": 272,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0025",
+      "invoice_date": "2025-11-16",
+      "customer": {
+        "name": "ZEE STORES INTERNATIONAL LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 945,
+      "received_amount": 945,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 945,
+          "line_total": 945
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-16",
+          "payment_method": "Cash",
+          "amount": 945,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0026",
+      "invoice_date": "2025-11-16",
+      "customer": {
+        "name": "THE FOOD FACTORY GRILLS RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 433,
+      "received_amount": 0,
+      "balance_amount": 433,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 433,
+          "line_total": 433
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0027",
+      "invoice_date": "2025-11-16",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 275,
+      "received_amount": 275,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 275,
+          "line_total": 275
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-16",
+          "payment_method": "Cash",
+          "amount": 275,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0028",
+      "invoice_date": "2025-11-17",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 354,
+      "received_amount": 354,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 354,
+          "line_total": 354
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-17",
+          "payment_method": "Credit",
+          "amount": 354,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0029",
+      "invoice_date": "2025-11-17",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC - ME9",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 152,
+      "received_amount": 152,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 152,
+          "line_total": 152
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-17",
+          "payment_method": "Credit",
+          "amount": 152,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0030",
+      "invoice_date": "2025-11-17",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 236,
+      "received_amount": 236,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 236,
+          "line_total": 236
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-17",
+          "payment_method": "Credit",
+          "amount": 236,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0031",
+      "invoice_date": "2025-11-19",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 433,
+      "received_amount": 433,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 433,
+          "line_total": 433
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-19",
+          "payment_method": "Credit",
+          "amount": 433,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0032",
+      "invoice_date": "2025-11-19",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 433,
+      "received_amount": 433,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 433,
+          "line_total": 433
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-19",
+          "payment_method": "Credit",
+          "amount": 433,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0033",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "AL ANSARI EXCHANGE",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 248,
+      "received_amount": 248,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 248,
+          "line_total": 248
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 248,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0034",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 26,
+      "received_amount": 26,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 26,
+          "line_total": 26
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 26,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0035",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 140,
+      "received_amount": 140,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 140,
+          "line_total": 140
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 140,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0036",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "GREAT RASOI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 65,
+      "received_amount": 65,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 65,
+          "line_total": 65
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 65,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0037",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 81,
+      "received_amount": 81,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 81,
+          "line_total": 81
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 81,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0038",
+      "invoice_date": "2025-11-20",
+      "customer": {
+        "name": "DEEBHA RESTAURANTVLLC OPC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 76,
+      "received_amount": 76,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 76,
+          "line_total": 76
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-20",
+          "payment_method": "Cash",
+          "amount": 76,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0039",
+      "invoice_date": "2025-11-21",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 296,
+      "received_amount": 296,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 296,
+          "line_total": 296
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-21",
+          "payment_method": "Cash",
+          "amount": 296,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0040",
+      "invoice_date": "2025-11-21",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 208,
+      "received_amount": 208,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 208,
+          "line_total": 208
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-21",
+          "payment_method": "Credit",
+          "amount": 208,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0041",
+      "invoice_date": "2025-11-21",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 218,
+      "received_amount": 218,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 218,
+          "line_total": 218
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-21",
+          "payment_method": "Cash",
+          "amount": 218,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0042",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 327,
+      "received_amount": 327,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 327,
+          "line_total": 327
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 327,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0043",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "PAYYANNUR RESTAURANT BR2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 221,
+      "received_amount": 221,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 221,
+          "line_total": 221
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Credit",
+          "amount": 221,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0044",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 26.25,
+      "received_amount": 26.25,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 26.25,
+          "line_total": 26.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 26.25,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0045",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.75,
+      "received_amount": 78.75,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.75,
+          "line_total": 78.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 78.75,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0046",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.75,
+      "received_amount": 78.75,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.75,
+          "line_total": 78.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 78.75,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0047",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 196.88,
+      "received_amount": 196.88,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 196.88,
+          "line_total": 196.88
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 196.88,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0048",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "BAKE OF SWEETS PASTREES AND SWEETS LLC CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0049",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 293.48,
+      "received_amount": 293.48,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 293.48,
+          "line_total": 293.48
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 293.48,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0050",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 144.38,
+      "received_amount": 144.38,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 144.38,
+          "line_total": 144.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 144.38,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0051",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 82.69,
+      "received_amount": 82,
+      "balance_amount": 0.69,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 82.69,
+          "line_total": 82.69
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Credit",
+          "amount": 82,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0052",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 317.5,
+      "received_amount": 317.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 317.5,
+          "line_total": 317.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Credit",
+          "amount": 317.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0053",
+      "invoice_date": "2025-11-25",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 196.88,
+      "received_amount": 196.88,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 196.88,
+          "line_total": 196.88
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-25",
+          "payment_method": "Cash",
+          "amount": 196.88,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0054",
+      "invoice_date": "2025-11-29",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 178.5,
+      "received_amount": 178.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 178.5,
+          "line_total": 178.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-11-29",
+          "payment_method": "Cash",
+          "amount": 178.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0055",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0056",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 415,
+      "received_amount": 415,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 415,
+          "line_total": 415
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Credit",
+          "amount": 415,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0057",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 182,
+      "received_amount": 182,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 182,
+          "line_total": 182
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Cash",
+          "amount": 182,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0058",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78,
+      "received_amount": 78,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78,
+          "line_total": 78
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Cash",
+          "amount": 78,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0059",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 267.75,
+      "received_amount": 250,
+      "balance_amount": 17.75,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 267.75,
+          "line_total": 267.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Credit",
+          "amount": 250,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0060",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "CHEF LATHAS KITCHEN LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 348.6,
+      "received_amount": 347,
+      "balance_amount": 1.6,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 348.6,
+          "line_total": 348.6
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Credit",
+          "amount": 347,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0061",
+      "invoice_date": "2025-12-01",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 396.38,
+      "received_amount": 396,
+      "balance_amount": 0.38,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 396.38,
+          "line_total": 396.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-01",
+          "payment_method": "Credit",
+          "amount": 396,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0062",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 515,
+      "received_amount": 515,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 515,
+          "line_total": 515
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Credit",
+          "amount": 515,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0063",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 115.5,
+      "received_amount": 115,
+      "balance_amount": 0.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 115.5,
+          "line_total": 115.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Credit",
+          "amount": 115,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0064",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 268,
+      "received_amount": 268,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 268,
+          "line_total": 268
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 268,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0065",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 315,
+      "received_amount": 315,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 315,
+          "line_total": 315
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 315,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0066",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 26,
+      "received_amount": 26,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 26,
+          "line_total": 26
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 26,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0067",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "GREAT RASOI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0068",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 337,
+      "received_amount": 337,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 337,
+          "line_total": 337
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 337,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0069",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 173,
+      "received_amount": 173,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 173,
+          "line_total": 173
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Cash",
+          "amount": 173,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0070",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "SWEET PALACE TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 414,
+      "received_amount": 414,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 414,
+          "line_total": 414
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Credit",
+          "amount": 414,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0071",
+      "invoice_date": "2025-12-04",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 157.5,
+      "received_amount": 157.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 157.5,
+          "line_total": 157.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-04",
+          "payment_method": "Credit",
+          "amount": 157.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0072",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "ZEE STORES INTERNATIONAL LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 420,
+      "received_amount": 420,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 420,
+          "line_total": 420
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 420,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0073",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "ZEE STORES INTERNATIONAL LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 577.5,
+      "received_amount": 577.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 577.5,
+          "line_total": 577.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 577.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0074",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 315,
+      "received_amount": 315,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 315,
+          "line_total": 315
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 315,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0075",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 34,
+      "received_amount": 34,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 34,
+          "line_total": 34
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Cash",
+          "amount": 34,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0076",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 270,
+      "received_amount": 270,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 270,
+          "line_total": 270
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 270,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0077",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 354,
+      "received_amount": 354,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 354,
+          "line_total": 354
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Cash",
+          "amount": 354,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0078",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 227,
+      "received_amount": 227,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 227,
+          "line_total": 227
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 227,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0079",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 187.69,
+      "received_amount": 187,
+      "balance_amount": 0.69,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 187.69,
+          "line_total": 187.69
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Credit",
+          "amount": 187,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0080",
+      "invoice_date": "2025-12-07",
+      "customer": {
+        "name": "BAKE OF SWEETS PASTREES AND SWEETS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 354,
+      "received_amount": 354,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 354,
+          "line_total": 354
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-07",
+          "payment_method": "Cash",
+          "amount": 354,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0081",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-09",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0082",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 143,
+      "received_amount": 143,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 143,
+          "line_total": 143
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-09",
+          "payment_method": "Cash",
+          "amount": 143,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0083",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 543,
+      "received_amount": 543,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 543,
+          "line_total": 543
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-09",
+          "payment_method": "Cash",
+          "amount": 543,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0084",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 370,
+      "received_amount": 342,
+      "balance_amount": 28,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 370,
+          "line_total": 370
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-09",
+          "payment_method": "Credit",
+          "amount": 342,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0085",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0086",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 391,
+      "received_amount": 0,
+      "balance_amount": 391,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 391,
+          "line_total": 391
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0087",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 278,
+      "received_amount": 278,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 278,
+          "line_total": 278
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-09",
+          "payment_method": "Cash",
+          "amount": 278,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0088",
+      "invoice_date": "2025-12-12",
+      "customer": {
+        "name": "THE FOOD FACTORY GRILLS RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 170.63,
+      "received_amount": 0,
+      "balance_amount": 170.63,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 170.63,
+          "line_total": 170.63
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0089",
+      "invoice_date": "2025-12-12",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 283.5,
+      "received_amount": 283.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 283.5,
+          "line_total": 283.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-12",
+          "payment_method": "Cash",
+          "amount": 283.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0090",
+      "invoice_date": "2025-12-13",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 157.5,
+      "received_amount": 157,
+      "balance_amount": 0.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 157.5,
+          "line_total": 157.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-13",
+          "payment_method": "Credit",
+          "amount": 157,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0091",
+      "invoice_date": "2025-12-14",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 157.5,
+      "received_amount": 157.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 157.5,
+          "line_total": 157.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-14",
+          "payment_method": "Cash",
+          "amount": 157.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0092",
+      "invoice_date": "2025-12-14",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 317.63,
+      "received_amount": 317.63,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 317.63,
+          "line_total": 317.63
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-14",
+          "payment_method": "Credit",
+          "amount": 317.63,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0093",
+      "invoice_date": "2025-12-09",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 143.06,
+      "received_amount": 0,
+      "balance_amount": 143.06,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 143.06,
+          "line_total": 143.06
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0094",
+      "invoice_date": "2025-12-15",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 0,
+      "received_amount": 0,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 0,
+          "line_total": 0
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0095",
+      "invoice_date": "2025-12-16",
+      "customer": {
+        "name": "AL ANSARI EXCHANGE",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 175.35,
+      "received_amount": 175.35,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 175.35,
+          "line_total": 175.35
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-16",
+          "payment_method": "Cash",
+          "amount": 175.35,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0096",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 80.85,
+      "received_amount": 80.85,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 80.85,
+          "line_total": 80.85
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Credit",
+          "amount": 80.85,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0097",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 126,
+      "received_amount": 126,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 126,
+          "line_total": 126
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Cash",
+          "amount": 126,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0098",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "DEEBHA RESTAURANTVLLC OPC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 211.31,
+      "received_amount": 211.31,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 211.31,
+          "line_total": 211.31
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Cash",
+          "amount": 211.31,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0099",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 145.69,
+      "received_amount": 145.69,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 145.69,
+          "line_total": 145.69
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Cash",
+          "amount": 145.69,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0100",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.75,
+      "received_amount": 78.75,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.75,
+          "line_total": 78.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Cash",
+          "amount": 78.75,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0101",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "GREAT RASOI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 278.25,
+      "received_amount": 0,
+      "balance_amount": 278.25,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 278.25,
+          "line_total": 278.25
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0102",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 233.1,
+      "received_amount": 233.1,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 233.1,
+          "line_total": 233.1
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Cash",
+          "amount": 233.1,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0103",
+      "invoice_date": "2025-12-17",
+      "customer": {
+        "name": "SWEET PALACE TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 130.2,
+      "received_amount": 130,
+      "balance_amount": 0.2,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 130.2,
+          "line_total": 130.2
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-17",
+          "payment_method": "Credit",
+          "amount": 130,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0104",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 113.92,
+      "received_amount": 113.92,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 113.92,
+          "line_total": 113.92
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Cash",
+          "amount": 113.92,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0105",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 129.94,
+      "received_amount": 129.94,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 129.94,
+          "line_total": 129.94
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Cash",
+          "amount": 129.94,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0106",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 515.81,
+      "received_amount": 515,
+      "balance_amount": 0.81,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 515.81,
+          "line_total": 515.81
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Credit",
+          "amount": 515,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0107",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 107.1,
+      "received_amount": 107.1,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 107.1,
+          "line_total": 107.1
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Cash",
+          "amount": 107.1,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0108",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 157.5,
+      "received_amount": 157,
+      "balance_amount": 0.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 157.5,
+          "line_total": 157.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Credit",
+          "amount": 157,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0109",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 147,
+      "received_amount": 147,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 147,
+          "line_total": 147
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Cash",
+          "amount": 147,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0110",
+      "invoice_date": "2025-12-19",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 140.7,
+      "received_amount": 140.7,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 140.7,
+          "line_total": 140.7
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-19",
+          "payment_method": "Cash",
+          "amount": 140.7,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0111",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 131.25,
+      "received_amount": 131.25,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 131.25,
+          "line_total": 131.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 131.25,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0112",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 172.2,
+      "received_amount": 172,
+      "balance_amount": 0.2,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 172.2,
+          "line_total": 172.2
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Credit",
+          "amount": 172,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0113",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 433.13,
+      "received_amount": 433,
+      "balance_amount": 0.13,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 433.13,
+          "line_total": 433.13
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Credit",
+          "amount": 433,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0114",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0115",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 338.63,
+      "received_amount": 338.63,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 338.63,
+          "line_total": 338.63
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 338.63,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0116",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 297.41,
+      "received_amount": 297.15,
+      "balance_amount": 0.26,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 297.41,
+          "line_total": 297.41
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Credit",
+          "amount": 297.15,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0117",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0118",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0119",
+      "invoice_date": "2025-12-22",
+      "customer": {
+        "name": "FRESH SAMOVER",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-22",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0120",
+      "invoice_date": "2025-12-24",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 237.3,
+      "received_amount": 237.3,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 237.3,
+          "line_total": 237.3
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-24",
+          "payment_method": "Cash",
+          "amount": 237.3,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0121",
+      "invoice_date": "2025-12-25",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-25",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0122",
+      "invoice_date": "2025-12-25",
+      "customer": {
+        "name": "PURE ESSENSE FLOWER MILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 52.5,
+      "received_amount": 0,
+      "balance_amount": 52.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0123",
+      "invoice_date": "2025-12-25",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 192.68,
+      "received_amount": 192,
+      "balance_amount": 0.68,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 192.68,
+          "line_total": 192.68
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-25",
+          "payment_method": "Credit",
+          "amount": 192,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0124",
+      "invoice_date": "2025-12-25",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-25",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0125",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Credit",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0126",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.75,
+      "received_amount": 78.75,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.75,
+          "line_total": 78.75
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 78.75,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0127",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 239.93,
+      "received_amount": 239.93,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 239.93,
+          "line_total": 239.93
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 239.93,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0128",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0129",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 47.77,
+      "received_amount": 47,
+      "balance_amount": 0.77,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 47.77,
+          "line_total": 47.77
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Credit",
+          "amount": 47,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0130",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 300.56,
+      "received_amount": 300.56,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 300.56,
+          "line_total": 300.56
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 300.56,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0131",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "FRESH SAMOVER CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0132",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "BAKE OF SWEETS PASTREES AND SWEETS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 144.38,
+      "received_amount": 144.38,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 144.38,
+          "line_total": 144.38
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Cash",
+          "amount": 144.38,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0133",
+      "invoice_date": "2025-12-27",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 241.5,
+      "received_amount": 231,
+      "balance_amount": 10.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 241.5,
+          "line_total": 241.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-27",
+          "payment_method": "Credit",
+          "amount": 231,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0134",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 200.03,
+      "received_amount": 200.03,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 200.03,
+          "line_total": 200.03
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Cash",
+          "amount": 200.03,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0135",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "M 10 CAFTERIYA",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 35.7,
+      "received_amount": 35.7,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 35.7,
+          "line_total": 35.7
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Cash",
+          "amount": 35.7,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0136",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC - ME9",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 133.88,
+      "received_amount": 133.88,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 133.88,
+          "line_total": 133.88
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Credit",
+          "amount": 133.88,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0137",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "KISMATH STAR RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 65.63,
+      "received_amount": 65.63,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 65.63,
+          "line_total": 65.63
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Cash",
+          "amount": 65.63,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0138",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 216.56,
+      "received_amount": 215,
+      "balance_amount": 1.56,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 216.56,
+          "line_total": 216.56
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Credit",
+          "amount": 215,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0139",
+      "invoice_date": "2025-12-29",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 310,
+      "received_amount": 310,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 310,
+          "line_total": 310
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2025-12-29",
+          "payment_method": "Cash",
+          "amount": 310,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0140",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 399,
+      "received_amount": 399,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 399,
+          "line_total": 399
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Credit",
+          "amount": 399,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0141",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 137,
+      "received_amount": 137,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 137,
+          "line_total": 137
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Credit",
+          "amount": 137,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0142",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 250,
+      "received_amount": 250,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 250,
+          "line_total": 250
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Cash",
+          "amount": 250,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0143",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 290,
+      "received_amount": 290,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 290,
+          "line_total": 290
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Credit",
+          "amount": 290,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0144",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 259,
+      "received_amount": 259,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 259,
+          "line_total": 259
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Credit",
+          "amount": 259,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0145",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 249,
+      "received_amount": 249,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 249,
+          "line_total": 249
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Cash",
+          "amount": 249,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0146",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 191,
+      "received_amount": 190,
+      "balance_amount": 1,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 191,
+          "line_total": 191
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Credit",
+          "amount": 190,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0147",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "TALAL RESTAURANT CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 260,
+      "received_amount": 260,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 260,
+          "line_total": 260
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Cash",
+          "amount": 260,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0148",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "CHEF LATHAS KITCHEN LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 161,
+      "received_amount": 0,
+      "balance_amount": 161,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 161,
+          "line_total": 161
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0149",
+      "invoice_date": "2026-01-02",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 152,
+      "received_amount": 152,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 152,
+          "line_total": 152
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-02",
+          "payment_method": "Cash",
+          "amount": 152,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0150",
+      "invoice_date": "2026-01-03",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 366,
+      "received_amount": 365,
+      "balance_amount": 1,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 366,
+          "line_total": 366
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-03",
+          "payment_method": "Credit",
+          "amount": 365,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0151",
+      "invoice_date": "2026-01-05",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 380,
+      "received_amount": 0,
+      "balance_amount": 380,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 380,
+          "line_total": 380
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0152",
+      "invoice_date": "2026-01-05",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 165,
+      "received_amount": 165,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 165,
+          "line_total": 165
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-05",
+          "payment_method": "Cash",
+          "amount": 165,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0153",
+      "invoice_date": "2026-01-05",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-05",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0154",
+      "invoice_date": "2026-01-05",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 291,
+      "received_amount": 290,
+      "balance_amount": 1,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 291,
+          "line_total": 291
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-05",
+          "payment_method": "Credit",
+          "amount": 290,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0155",
+      "invoice_date": "2026-01-05",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 198,
+      "received_amount": 198,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 198,
+          "line_total": 198
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-05",
+          "payment_method": "Credit",
+          "amount": 198,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0156",
+      "invoice_date": "2026-01-06",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 215,
+      "received_amount": 215,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 215,
+          "line_total": 215
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-06",
+          "payment_method": "Cash",
+          "amount": 215,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0157",
+      "invoice_date": "2026-01-06",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 270,
+      "received_amount": 270,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 270,
+          "line_total": 270
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-06",
+          "payment_method": "Cash",
+          "amount": 270,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0158",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-08",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0159",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "GODAVARI RESTURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 114,
+      "received_amount": 114,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 114,
+          "line_total": 114
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-08",
+          "payment_method": "Cash",
+          "amount": 114,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0160",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 344,
+      "received_amount": 0,
+      "balance_amount": 344,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 344,
+          "line_total": 344
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0161",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 344,
+      "received_amount": 0,
+      "balance_amount": 344,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 344,
+          "line_total": 344
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0162",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-08",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0163",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "AL SAGAR FISH GRILL",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 116,
+      "received_amount": 116,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 116,
+          "line_total": 116
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-08",
+          "payment_method": "Cash",
+          "amount": 116,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0164",
+      "invoice_date": "2026-01-08",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-08",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0165",
+      "invoice_date": "2026-01-11",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 229,
+      "received_amount": 229,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 229,
+          "line_total": 229
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-11",
+          "payment_method": "Cash",
+          "amount": 229,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0166",
+      "invoice_date": "2026-01-11",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 155,
+      "received_amount": 155,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 155,
+          "line_total": 155
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-11",
+          "payment_method": "Credit",
+          "amount": 155,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0167",
+      "invoice_date": "2026-01-12",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 182,
+      "received_amount": 182,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 182,
+          "line_total": 182
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-12",
+          "payment_method": "Credit",
+          "amount": 182,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0168",
+      "invoice_date": "2026-01-12",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 105,
+      "received_amount": 105,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 105,
+          "line_total": 105
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-12",
+          "payment_method": "Cash",
+          "amount": 105,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0169",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 189,
+      "received_amount": 189,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 189,
+          "line_total": 189
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Credit",
+          "amount": 189,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0170",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 472.5,
+      "received_amount": 0,
+      "balance_amount": 472.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 472.5,
+          "line_total": 472.5
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0171",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "DINE OUT RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 260,
+      "received_amount": 260,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 260,
+          "line_total": 260
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 260,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0172",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 177,
+      "received_amount": 177,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 177,
+          "line_total": 177
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 177,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0173",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 134,
+      "received_amount": 134,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 134,
+          "line_total": 134
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 134,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0174",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "BAKE OF SWEETS PASTREES AND SWEETS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 172,
+      "received_amount": 172,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 172,
+          "line_total": 172
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 172,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0175",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 124,
+      "received_amount": 124,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 124,
+          "line_total": 124
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 124,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0176",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 92,
+      "received_amount": 92,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 92,
+          "line_total": 92
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Credit",
+          "amount": 92,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0177",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "RAHMATH CALLICUTT. BR-2",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 208.43,
+      "received_amount": 208,
+      "balance_amount": 0.43,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 208.43,
+          "line_total": 208.43
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Credit",
+          "amount": 208,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0178",
+      "invoice_date": "2026-01-14",
+      "customer": {
+        "name": "MALABAR CHAYAKADA CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 131,
+      "received_amount": 131,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 131,
+          "line_total": 131
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-14",
+          "payment_method": "Cash",
+          "amount": 131,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0179",
+      "invoice_date": "2026-01-16",
+      "customer": {
+        "name": "BLUE STAR SCHOOL BUS TRANSPORTATION",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 168,
+      "received_amount": 168,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 168,
+          "line_total": 168
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-16",
+          "payment_method": "Cash",
+          "amount": 168,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0180",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "MAMAS CUSINE CATERING SOLE PRO LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0181",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "CALICUT PARADISE RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 114,
+      "received_amount": 114,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 114,
+          "line_total": 114
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 114,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0182",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "ARMANIS BBQ RESTAURANT AND GRILL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 79,
+      "received_amount": 79,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 79,
+          "line_total": 79
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Credit",
+          "amount": 79,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0183",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "HOUSE BOAT RESTAURANT SOLE PROPRIETORS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 78.63,
+      "received_amount": 78.63,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 78.63,
+          "line_total": 78.63
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 78.63,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0184",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 300.82,
+      "received_amount": 300.37,
+      "balance_amount": 0.45,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 300.82,
+          "line_total": 300.82
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Credit",
+          "amount": 300.37,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0185",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "SAGAR AL YEMEN MANDI RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 283.5,
+      "received_amount": 0,
+      "balance_amount": 283.5,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 283.5,
+          "line_total": 283.5
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0186",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 310,
+      "received_amount": 0,
+      "balance_amount": 310,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 310,
+          "line_total": 310
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0187",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "TIRUR JUNCTION RESTAURANT AND GRILLS LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 76.13,
+      "received_amount": 76.13,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 76.13,
+          "line_total": 76.13
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 76.13,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0188",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 236.78,
+      "received_amount": 236.78,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 236.78,
+          "line_total": 236.78
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 236.78,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0189",
+      "invoice_date": "2026-01-19",
+      "customer": {
+        "name": "TALAL RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 236.78,
+      "received_amount": 236.78,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 236.78,
+          "line_total": 236.78
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-19",
+          "payment_method": "Cash",
+          "amount": 236.78,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0190",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "SWEET PALACE TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 308.18,
+      "received_amount": 0,
+      "balance_amount": 308.18,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 308.18,
+          "line_total": 308.18
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0191",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "SWEET WORLD GENERAL TRADING LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 148.05,
+      "received_amount": 148.05,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 148.05,
+          "line_total": 148.05
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-20",
+          "payment_method": "Cash",
+          "amount": 148.05,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0192",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "IDUKKI GOLD RESTAURANT BHAVANS SCHOOL",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 183.75,
+      "received_amount": 0,
+      "balance_amount": 183.75,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 183.75,
+          "line_total": 183.75
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0193",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "CHENNAI SOUTH INDIAN RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 85.31,
+      "received_amount": 0,
+      "balance_amount": 85.31,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 85.31,
+          "line_total": 85.31
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0194",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "FRESH AND TASTY CAFTERIA CUSTOMER NAME",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 108.15,
+      "received_amount": 108.15,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 108.15,
+          "line_total": 108.15
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-20",
+          "payment_method": "Cash",
+          "amount": 108.15,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0195",
+      "invoice_date": "2026-01-20",
+      "customer": {
+        "name": "SAMOVER TEA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 87.94,
+      "received_amount": 87.94,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 87.94,
+          "line_total": 87.94
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-20",
+          "payment_method": "Credit",
+          "amount": 87.94,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0196",
+      "invoice_date": "2026-01-22",
+      "customer": {
+        "name": "PACHA NELLIKKA RESTAURANT",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 366.45,
+      "received_amount": 0,
+      "balance_amount": 366.45,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 366.45,
+          "line_total": 366.45
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0197",
+      "invoice_date": "2026-01-23",
+      "customer": {
+        "name": "CHEF LATHAS KITCHEN LLC",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 326.81,
+      "received_amount": 0,
+      "balance_amount": 326.81,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 326.81,
+          "line_total": 326.81
+        }
+      ],
+      "payments": [],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0198",
+      "invoice_date": "2026-01-23",
+      "customer": {
+        "name": "CHICKIES RESTAURANT AND GRILLS",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 52.5,
+      "received_amount": 52.5,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 52.5,
+          "line_total": 52.5
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-23",
+          "payment_method": "Cash",
+          "amount": 52.5,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0199",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "PANOOR RESTAURANT LLC",
+        "customer_id": null
+      },
+      "type": "Cash",
+      "amount": 131.25,
+      "received_amount": 131.25,
+      "balance_amount": 0,
+      "status": "Paid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 131.25,
+          "line_total": 131.25
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Cash",
+          "amount": 131.25,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    },
+    {
+      "invoice_number": "INV0200",
+      "invoice_date": "2026-01-26",
+      "customer": {
+        "name": "RAHMATH CALICUT RESTAURANT -3",
+        "customer_id": null
+      },
+      "type": "Credit",
+      "amount": 237.04,
+      "received_amount": 237,
+      "balance_amount": 0.04,
+      "status": "Unpaid",
+      "branch": null,
+      "route": null,
+      "invoice_items": [
+        {
+          "item_name": "Legacy Invoice",
+          "quantity": 1,
+          "rate": 237.04,
+          "line_total": 237.04
+        }
+      ],
+      "payments": [
+        {
+          "payment_date": "2026-01-26",
+          "payment_method": "Credit",
+          "amount": 237,
+          "reference": null
+        }
+      ],
+      "ledger_entries": []
+    }
+  ],
+  "totals": {
+    "total_invoices": 241,
+    "total_sales": 56513.15999999995,
+    "total_received": 45648.749999999985,
+    "total_outstanding": 10864.410000000003,
+    "total_paid_count": 178,
+    "total_unpaid_count": 63
+  },
+  "validation": {
+    "amount_mismatch_invoices": [],
+    "missing_customers": [],
+    "orphan_payments": [],
+    "missing_ledger_entries": [],
+    "ui_visibility_issues": []
+  }
+}

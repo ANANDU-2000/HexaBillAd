@@ -1,0 +1,19 @@
+<svg width="1200" height="300" viewBox="0 0 1200 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Hexagon Icon -->
+  <g transform="translate(50, 25) scale(0.5)">
+    <path d="M256 40L443.062 148V364L256 472L68.9378 364V148L256 40Z" fill="url(#logo-gradient)" />
+    <path d="M180 160V352M332 160V352M180 256H332" stroke="white" stroke-width="45" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M332 352L390 294" stroke="white" stroke-width="45" stroke-linecap="round" stroke-linejoin="round" opacity="0.8" />
+    <circle cx="332" cy="352" r="22.5" fill="white" />
+  </g>
+
+  <!-- Text -->
+  <text x="320" y="200" fill="#111827" style="font-family: 'Inter', sans-serif; font-size: 160px; font-weight: 700;">HexaBill</text>
+</svg>

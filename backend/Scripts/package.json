@@ -1,0 +1,16 @@
+{
+  "name": "hexabill-migrate-zayoga",
+  "version": "1.0.0",
+  "description": "ZAYOGA CSV migration script for HexaBill",
+  "private": true,
+  "scripts": {
+    "migrate": "node migrate-zayoga.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.0"
+  }
+}

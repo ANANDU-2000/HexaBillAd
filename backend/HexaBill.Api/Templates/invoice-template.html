@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Tax Invoice</title>
+    <style>
+        /* Arabic Font Embedding for Print & Production */
+        @font-face {
+            font-family: 'NotoKufiArabic';
+            src: url('https://fonts.gstatic.com/s/notokufiarabic/v22/CSRz4zRZlAU2zjotv6yOKpGE5D4.woff2') format('woff2');
+            font-weight: normal;
+            font-style: normal;
+            unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+        }
+        
+        @font-face {
+            font-family: 'NotoKufiArabic';
+            src: url('https://fonts.gstatic.com/s/notokufiarabic/v22/CSRz4zRZlAU2zjotv6yOKpGE5D4.woff2') format('woff2');
+            font-weight: bold;
+            font-style: normal;
+            unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF;
+        }
+        @page { 
+            size: A4 portrait; 
+            margin: 5mm; 
+        }
+        
+        body {
+            font-family: "Arial", "Calibri", "Noto Sans Arabic", "NotoKufiArabic", sans-serif;
+            font-size: 10px;
+            color: #000;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .invoice-box {
+            width: 100%;
+            max-width: 6.5in;
+            margin: 0 auto;
+            border: 2px solid #000;
+            padding: 3px;
+            box-sizing: border-box;
+            min-height: 100%;
+        }
+        
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .left { text-align: left; }
+        .bold { font-weight: bold; }
+        
+        .arabic { 
+            display: block; 
+            font-family: "Noto Sans Arabic", "NotoKufiArabic", "Arial", sans-serif; 
+            direction: rtl; 
+            font-size: 11px; 
+            margin-top: 2px; 
+            text-align: center;
+            line-height: 1.3;
+        }
+        
+        .header-title {
+            font-weight: bold;
+            font-size: 18pt;
+            text-align: center;
+            margin-bottom: 2px;
+        }
+        
+        .header-sub { 
+            text-align: center; 
+            font-size: 11pt; 
+            margin-bottom: 2px; 
+        }
+        
+        .header-info {
+            text-align: center;
+            font-size: 9pt;
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        
+        .tax-title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12pt;
+            border-top: 1px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 2px 0;
+            margin: 2px 0;
+        }
+        
+        .trn-date-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10pt;
+            margin-bottom: 2px;
+            font-weight: bold;
+        }
+        
+        .meta-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 2px;
+        }
+        
+        .meta-table td {
+            padding: 2px;
+            border: none;
+            width: 33.33%;
+        }
+        
+        .item-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-top: 2px;
+        }
+        
+        .item-table th, .item-table td {
+            border: 1px solid #000;
+            padding: 1px;
+            height: auto;
+            line-height: 1.1;
+            vertical-align: middle;
+            text-align: center;
+        }
+        
+        .item-table th {
+            font-weight: bold;
+            text-align: center;
+            font-size: 9pt;
+            background-color: transparent;
+        }
+        
+        .item-table th .arabic {
+            text-align: center;
+            font-size: 9px;
+            line-height: 1.2;
+        }
+        
+        .item-table td {
+            font-size: 9pt;
+        }
+        
+        .item-table td:last-child {
+            font-size: 11pt;
+            font-weight: bold;
+        }
+        
+        /* Totals rows - increased size, bold */
+        .totals-row {
+            height: auto;
+            vertical-align: middle;
+            font-size: 10pt;
+            font-weight: bold;
+        }
+        
+        .totals-row .arabic {
+            font-size: 10px;
+            line-height: 1.1;
+            margin-top: 0px;
+            float: right;
+        }
+        
+        .totals {
+            font-weight: 700;
+            font-size: 10pt;
+        }
+        
+        .total-amount-box {
+            border: 1px solid #000 !important;
+            background-color: transparent;
+        }
+        
+        .leader-dots {
+            display: inline;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Separator line below totals */
+        .totals-separator {
+            border-top: 1px solid #000;
+            margin: 3px 0;
+        }
+        
+        .footer-section {
+            font-size: 10pt;
+            margin-top: 3px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .footer-section .arabic {
+            font-size: 10px;
+            margin-top: 3px;
+            text-align: right;
+        }
+        
+        .sign {
+            width: 100%;
+            font-size: 10pt;
+            font-weight: bold;
+            margin-top: 4px;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .sign td {
+            border: none;
+            padding-top: 8px;
+            width: 50%;
+            vertical-align: top;
+        }
+        
+        .sign-left {
+            text-align: left;
+        }
+        
+        .sign-right {
+            text-align: right;
+        }
+        
+        .dot-line {
+            border-top: 1px dotted #000;
+            width: 100%;
+            margin-top: 4px;
+            height: 1px;
+        }
+        
+        /* Column widths to match RAFCO original - Combined Amount column */
+        .w-sl { width: 5%; }
+        .w-desc { width: 42%; }
+        .w-unit { width: 8%; }
+        .w-qty { width: 8%; }
+        .w-up { width: 13%; }
+        .w-total { width: 12%; }
+        .w-amt-combined { width: 12%; } /* Combined VAT + Amount */
+        
+        @media print {
+            * {
+                font-family: "Arial", "Tahoma", "NotoKufiArabic", "Arial Unicode MS", sans-serif !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            .invoice-box {
+                border: 2px solid #000;
+                max-width: 100%;
+            }
+            /* Force Arabic font on print */
+            .arabic {
+                font-family: "NotoKufiArabic", "Arial Unicode MS", "Tahoma", sans-serif !important;
+                direction: rtl !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="invoice-box">
+        <!-- HEADER - Company Name Block (Centered, Bold, Larger Font) -->
+        <div class="header" style="text-align:center; margin-bottom:2px;">
+            <div class="company" style="font-size:18pt; font-weight:bold; text-align:center; text-transform:uppercase; line-height:1.3; letter-spacing:1px; font-family:'Arial','Tahoma','NotoKufiArabic',sans-serif;">
+                {{company_name_en}}
+            </div>
+            <div class="arabic" style="font-size:16pt; font-weight:bold; text-align:center; line-height:1.2; margin-top:2px; direction:rtl; font-family:'NotoKufiArabic','Amiri','Tahoma','Arial Unicode MS',sans-serif;">
+                {{company_name_ar}}
+            </div>
+        </div>
+        
+        <!-- Address Line - Centered, Bold -->
+        <div style="text-align:center; font-size:12pt; font-weight:bold; line-height:1.3; margin-top:4px; font-family:'Arial','Tahoma','NotoKufiArabic',sans-serif;">
+            Mob: {{company_phone}}, {{company_address}}, Abu Dhabi
+        </div>
+        
+        <!-- TRN and Date Row - Inline with space between -->
+        <div style="display:flex; justify-content:space-between; font-size:10pt; font-weight:bold; margin-top:2px; margin-bottom:2px; font-family:'Arial','Tahoma','NotoKufiArabic',sans-serif;">
+            <span>TRN : No : {{company_trn}}</span>
+            <span>DATE : {{date}}</span>
+        </div>
+        
+        <!-- TAX INVOICE Title - Centered with Black Border Lines Above & Below -->
+        <div style="text-align:center; font-size:12pt; font-weight:bold; margin-top:2px; padding:2px 0; border-top:1px solid #000; border-bottom:1px solid #000; margin-bottom:2px;">
+            TAX INVOICE
+        </div>
+        
+        <!-- Customer & Invoice Info - Invoice No and Customer Name on one line (left), TRN on same line (right) -->
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; font-size:10pt; font-weight:bold; margin-top:1px; margin-bottom:1px; font-family:'Arial','Tahoma','NotoKufiArabic',sans-serif;">
+            <div style="flex:0 0 65%; text-align:left; line-height:1.3;">
+                <div><strong>INVOICE : NO :</strong> {{invoice_no}}</div>
+                <div><strong>Customer Name :</strong> {{customer_name}}</div>
+            </div>
+            <div style="flex:0 0 35%; text-align:right; white-space:nowrap;">
+                <strong>CUSTOMER TRN : NO :</strong> {{customer_trn}}
+            </div>
+        </div>
+        
+        <!-- ITEM TABLE -->
+        <table class="item-table">
+            <thead>
+                <tr>
+                    <th class="w-sl center">SL.No<br><span class="arabic">رقم</span></th>
+                    <th class="w-desc center">Description<br><span class="arabic">التفاصيل</span></th>
+                    <th class="w-qty center">Qty<br><span class="arabic">الكمية</span></th>
+                    <th class="w-unit center">Unit<br><span class="arabic">الوحدة</span></th>
+                    <th class="w-up center">Unit Price<br><span class="arabic">سعر الوحدة</span></th>
+                    <th class="w-total center">Total<br><span class="arabic">الإجمالي</span></th>
+                    <th class="w-amt-combined center">Amount<br><span style="font-size:7pt;">(incl. 5% VAT)</span><br><span class="arabic">المبلغ</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                {{items}}
+                
+                <!-- Totals Section - Single Column Layout like Client Image -->
+                <!-- Row 1: AMOUNT (Subtotal before VAT) -->
+                <tr class="totals-row" style="background-color:transparent;">
+                    <td colspan="6" class="right bold" style="vertical-align: middle; padding:3px; font-size:12pt; text-align:right;">
+                        <strong>AMOUNT</strong>
+                    </td>
+                    <td class="center bold totals" style="vertical-align: middle; padding:3px; font-size:12pt; border:2px solid #000;">{{subtotal}}</td>
+                </tr>
+                <!-- Row 2: DISCOUNT -->
+                <tr class="totals-row" style="background-color:transparent;">
+                    <td colspan="6" class="right bold" style="vertical-align: middle; padding:3px; font-size:12pt; text-align:right;">
+                        <strong>DISCOUNT</strong>
+                    </td>
+                    <td class="center bold totals" style="vertical-align: middle; padding:3px; font-size:12pt; border:2px solid #000;">{{discount}}</td>
+                </tr>
+                <!-- Row 3: VAT 5% -->
+                <tr class="totals-row" style="background-color:transparent;">
+                    <td colspan="6" class="right bold" style="vertical-align: middle; padding:3px; font-size:12pt; text-align:right;">
+                        <strong>VAT 5%</strong><br><span class="arabic" style="font-size:10px; direction:rtl;">ضريبة القيمة المضافة</span>
+                    </td>
+                    <td class="center bold totals" style="vertical-align: middle; padding:3px; font-size:12pt; border:2px solid #000;">{{vat_amount}}</td>
+                </tr>
+                <!-- Row 4: TOTAL AMOUNT -->
+                <tr class="totals-row" style="background-color:transparent;">
+                    <td colspan="6" class="right bold" style="vertical-align: middle; padding:3px; font-size:12pt; text-align:right;">
+                        <strong>TOTAL AMOUNT</strong><br><span class="arabic" style="font-size:10px; direction:rtl;">المبلغ المجموع</span>
+                    </td>
+                    <td class="center bold total-amount-box totals" style="vertical-align: middle; padding:3px; font-size:14pt; font-weight:900; border:3px solid #000; background:#f0f0f0;">{{grand_total}}</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <!-- Separator line below totals -->
+        <div class="totals-separator"></div>
+        
+        <!-- FOOTER - Left-aligned with proper spacing -->
+        <div class="footer-section">
+            <div class="bold" style="font-size:10pt; font-weight:bold;">Received the above goods in good order</div>
+        </div>
+        
+        <!-- Signature Section with dotted lines under each label -->
+        <table class="sign">
+            <tr>
+                <td class="sign-left" style="width:50%; vertical-align:top;">
+                    <div style="margin-bottom:8px;">
+                        <strong style="font-size:10pt; font-weight:bold;">Receive's Name</strong>
+                        <div class="dot-line"></div>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <strong style="font-size:10pt; font-weight:bold;">Receiver's Sign</strong>
+                        <div class="dot-line"></div>
+                    </div>
+                </td>
+                <td class="sign-right" style="width:50%; text-align:right; vertical-align:top;">
+                    <div style="margin-bottom:8px;">
+                        <strong style="font-size:10pt; font-weight:bold;">For {{company_name_en}}</strong>
+                        <div style="border-top:1px dotted #000; width:100%; margin-top:2px; height:1px;"></div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+    </div>
+</body>
+</html>

@@ -1,0 +1,96 @@
+/*
+ * Shared check for Sales.BranchId/RouteId column existence (PostgreSQL production may lack these).
+ * Cached to avoid repeated information_schema queries.
+ */
+using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Data;
+
+namespace HexaBill.Api.Shared.Services
+{
+    public class SalesSchemaService : ISalesSchemaService
+    {
+        private readonly AppDbContext _context;
+        private static bool? _cached;
+        private static DateTime? _cacheTime;
+        private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(5);
+        private static readonly object _lock = new object();
+
+        public SalesSchemaService(AppDbContext context)
+        {
+            _context = context;
+        }
+
+        public async Task<bool> SalesHasBranchIdAndRouteIdAsync()
+        {
+            lock (_lock)
+            {
+                if (_cached.HasValue && _cacheTime.HasValue && (DateTime.UtcNow - _cacheTime.Value) < CacheExpiry)
+                    return _cached.Value;
+            }
+
+            bool hasColumns = false;
+            if (_context.Database.IsNpgsql())
+            {
+                try
+                {
+                    var conn = _context.Database.GetDbConnection();
+                    var wasOpen = conn.State == System.Data.ConnectionState.Open;
+                    if (!wasOpen) await conn.OpenAsync();
+                    try
+                    {
+                        using var cmd = conn.CreateCommand();
+                        // PostgreSQL: table_name in information_schema is lowercase for unquoted identifiers; column_name check case-insensitive
+                        cmd.CommandText = @"
+                            SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)='sales' AND LOWER(column_name)='branchid')
+                            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND LOWER(table_name)='sales' AND LOWER(column_name)='routeid')";
+                        var result = await cmd.ExecuteScalarAsync();
+                        hasColumns = result is bool b && b;
+                    }
+                    finally
+                    {
+                        if (!wasOpen) await conn.CloseAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    hasColumns = false;
+                }
+            }
+            else
+            {
+                hasColumns = true; // SQLite / other: assume columns exist
+            }
+
+            lock (_lock)
+            {
+                _cached = hasColumns;
+                _cacheTime = DateTime.UtcNow;
+            }
+            return hasColumns;
+        }
+
+        /// <summary>
+        /// Clear the cached column check so the next request re-checks (call after startup migration that may add BranchId/RouteId).
+        /// </summary>
+        public void ClearColumnCheckCache()
+        {
+            lock (_lock)
+            {
+                _cached = null;
+                _cacheTime = null;
+            }
+        }
+
+        /// <summary>
+        /// Static clear for use at startup (e.g. after EnsureBranchesAndRoutesSchemaAsync) so first request re-checks columns.
+        /// </summary>
+        public static void ClearColumnCheckCacheStatic()
+        {
+            lock (_lock)
+            {
+                _cached = null;
+                _cacheTime = null;
+            }
+        }
+    }
+}
