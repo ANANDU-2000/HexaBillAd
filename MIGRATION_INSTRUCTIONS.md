@@ -11,18 +11,21 @@ Four fixes have been implemented:
 
 ## Production Fix: 42703 column TenantId does not exist
 
-If you see **Error creating expense category: 42703: column e.TenantId does not exist** in production:
+If you see **Error creating expense category: 42703: column e.TenantId does not exist** (or similar TenantId errors on Expenses/ExpenseCategories/InvoiceTemplates) in production:
 
 1. Open Render Dashboard → Your PostgreSQL service → **Connect** → **PSQL**
-2. Run the SQL in **Sections 7 and 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql`
+2. Run **Sections 6b, 7, and 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql`:
+   - **6b**: Add TenantId to Expenses, backfill from OwnerId
+   - **7**: Add TenantId to ExpenseCategories, backfill, create unique (TenantId, Name)
+   - **8**: Add TenantId to InvoiceTemplates, backfill from Users
 
-Or from local (with DATABASE_URL set):
+Or run the full script from local (with DATABASE_URL set):
 
 ```bash
 psql $DATABASE_URL -f backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql
 ```
 
-This adds TenantId to ExpenseCategories and InvoiceTemplates, backfills data, and creates indexes. Restart the API after running.
+Restart the API after running.
 
 ## Database Migrations to Run (Local / CI)
 

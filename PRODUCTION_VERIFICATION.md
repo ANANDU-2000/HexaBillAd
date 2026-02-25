@@ -6,9 +6,10 @@ Use this checklist when deploying or troubleshooting Ledger, Reports, and Dashbo
 
 | Item | Location | Action |
 |------|----------|--------|
-| `VITE_API_BASE_URL` | Vercel env | Must be `https://hexabill.onrender.com` (no trailing slash). Frontend uses this for API calls in production. |
-| `DATABASE_URL` | Render env | Must point to production PostgreSQL. Invoices and Ledger both read from this DB. |
-| `ALLOWED_ORIGINS` | Render env | Must include your Vercel frontend URL (e.g. `https://your-app.vercel.app`). See `.env.example`. |
+| `VITE_API_BASE_URL` | Vercel env | Set to `https://hexabill.onrender.com` (no trailing slash). apiConfig adds `/api` automatically. |
+| `DATABASE_URL` | Render env | Must point to production PostgreSQL. Use internal URL when backend runs on Render. |
+| `ALLOWED_ORIGINS` | Render env | Must include your Vercel frontend URL (e.g. `https://hexabill.vercel.app`). CORS fallback allows `*.vercel.app` and `hexabill.company`. |
+| `JwtSettings__SecretKey` or `JWT_SECRET_KEY` | Render env | Required. Generate: `openssl rand -base64 48`. render.yaml may auto-generate via `generateValue: true`. |
 
 ## Backend (Render)
 
@@ -17,8 +18,27 @@ Use this checklist when deploying or troubleshooting Ledger, Reports, and Dashbo
 
 ## Frontend (Vercel)
 
+- **Root Directory**: Must be **empty** (repo root). vercel.json uses `cd frontend/hexabill-ui` — this fails if Root Directory is `frontend/hexabill-ui`.
 - **API base**: [apiConfig.js](frontend/hexabill-ui/src/services/apiConfig.js) uses `PRODUCTION_API` when hostname is not localhost. If `VITE_API_BASE_URL` is set, it overrides.
 - **Date format**: Dates are sent as `YYYY-MM-DD` via `toYYYYMMDD()` in services. No changes needed.
+
+## Backend (Render) – Docker
+
+- **Root Directory**: `backend/HexaBill.Api` per render.yaml.
+- **Dockerfile**: Uses `COPY . ./` (context = backend/HexaBill.Api).
+- **Health check**: `/health` — verify `GET https://hexabill.onrender.com/health` returns 200.
+
+## Production DB Fix (42703 TenantId errors)
+
+If you see `column e.TenantId does not exist` or similar:
+1. Render Dashboard → PostgreSQL → Connect → PSQL.
+2. Run sections **6b, 7, 8** of `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql`.
+3. Restart the API. See [MIGRATION_INSTRUCTIONS.md](MIGRATION_INSTRUCTIONS.md).
+
+## Live Verification
+
+- **Backend health**: `GET https://hexabill.onrender.com/health` → `{"status":"ok","timestamp":"..."}`
+- **API base**: Frontend must call `https://hexabill.onrender.com/api` (set `VITE_API_BASE_URL=https://hexabill.onrender.com` on Vercel).
 
 ## API Quick Test
 

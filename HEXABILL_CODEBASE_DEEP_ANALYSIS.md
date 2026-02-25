@@ -1,7 +1,7 @@
-# 🔥 HEXABILL FULL CODEBASE DEEP ANALYSIS
+# HEXABILL FULL CODEBASE DEEP ANALYSIS
 
 **Senior SaaS architect technical audit**  
-**Date:** 2026-02-25  
+**Date:** 2026-02-25 (updated)  
 **Scope:** Entire HexaBill codebase — facts from code, no guessing
 
 ---
@@ -13,52 +13,56 @@
 ```
 HexaBillAd-main/
 ├── backend/
-│   ├── HexaBill.Api/                    # ASP.NET Core 9 API
-│   │   ├── Modules/                     # Feature modules (15 modules)
-│   │   │   ├── Auth/                   # Authentication, JWT, Signup, LoginLockout
-│   │   │   ├── Billing/                # SaleService, Returns, PDF, InvoiceNumber, InvoiceTemplate
-│   │   │   ├── Branches/               # BranchService, RouteService, CustomerVisits, RouteExpenses
-│   │   │   ├── Customers/              # CustomerService, BalanceService
-│   │   │   ├── Expenses/               # ExpenseService
-│   │   │   ├── Import/                 # SalesLedgerImport
-│   │   │   ├── Inventory/             # ProductService, StockAdjustmentService
-│   │   │   ├── Notifications/         # AlertService
-│   │   │   ├── Payments/              # PaymentService
-│   │   │   ├── Purchases/             # PurchaseService, SupplierService
-│   │   │   ├── Reports/               # ReportService, ProfitService
-│   │   │   ├── Seed/                  # Data seeding
-│   │   │   ├── Subscription/          # Stripe subscription management
-│   │   │   ├── SuperAdmin/            # Platform administration (11+ services)
-│   │   │   └── Users/                 # User management
-│   │   ├── Shared/
-│   │   │   ├── Authorization/         # AdminOrOwnerPolicy, AdminOrOwnerOrStaffPolicy
-│   │   │   ├── Extensions/             # SecurityConfiguration, TenantIdExtensions, OwnerIdExtensions
-│   │   │   ├── Middleware/             # JWT, TenantContext, Subscription, Audit, Exception handling
-│   │   │   ├── Security/               # R2FileUpload, FileUpload
-│   │   │   ├── Services/               # AuditService, TenantContext, RouteScope, ErrorLog
-│   │   │   └── Validation/            # ValidationService, CurrencyService
-│   │   ├── BackgroundJobs/             # TrialExpiryCheck, DailyBackupScheduler
-│   │   ├── Data/                       # AppDbContext
-│   │   ├── Models/                     # 43+ entity/DTO files
-│   │   ├── Migrations/                 # EF Core migrations
-│   │   ├── Scripts/                    # SQL scripts, backfill, fix scripts
-│   │   ├── Templates/                  # Invoice templates
-│   │   ├── Fonts/                      # PDF fonts
-│   │   └── Program.cs
-│   └── Scripts/
+│   └── HexaBill.Api/                    # ASP.NET Core 9 API
+│       ├── Modules/                    # Feature modules (16 modules)
+│       │   ├── Auth/                   # Authentication, JWT, Signup, LoginLockout
+│       │   ├── Automation/             # EmailAutomationProvider (TODO: not implemented)
+│       │   ├── Billing/                # SaleService, SaleValidationService, Returns, PDF, InvoiceNumber, InvoiceTemplate
+│       │   ├── Branches/               # BranchService, RouteService, CustomerVisits, RouteExpenses
+│       │   ├── Customers/              # CustomerService, BalanceService
+│       │   ├── Expenses/               # ExpenseService
+│       │   ├── Import/                 # SalesLedgerImport
+│       │   ├── Inventory/              # ProductService, StockAdjustmentService
+│       │   ├── Notifications/          # AlertService
+│       │   ├── Payments/               # PaymentService
+│       │   ├── Purchases/              # PurchaseService, SupplierService
+│       │   ├── Reports/                # ReportService, ProfitService
+│       │   ├── Seed/                   # Data seeding
+│       │   ├── Subscription/           # Stripe subscription management
+│       │   ├── SuperAdmin/             # Platform administration (12+ services)
+│       │   └── Users/                  # User management
+│       ├── Shared/
+│       │   ├── Authorization/          # AdminOrOwnerPolicy, AdminOrOwnerOrStaffPolicy
+│       │   ├── Extensions/             # SecurityConfiguration, TenantIdExtensions
+│       │   ├── Middleware/             # JWT, TenantContext, Subscription, Audit, Exception handling
+│       │   ├── Security/               # R2FileUpload, FileUpload
+│       │   ├── Services/               # AuditService, TenantContext, RouteScope, ErrorLog, SalesSchemaService
+│       │   └── Validation/             # ValidationService, CurrencyService
+│       ├── BackgroundJobs/             # TrialExpiryCheck, DailyBackupScheduler, BalanceReconciliationJob
+│       ├── Data/                       # AppDbContext
+│       ├── Models/                     # 43+ entity/DTO files
+│       ├── Migrations/                 # EF Core migrations (PostgreSQL)
+│       ├── Scripts/                    # SQL scripts, FIX_PRODUCTION_MIGRATIONS.sql
+│       ├── Templates/                  # Invoice templates
+│       ├── Fonts/                      # PDF fonts
+│       └── Program.cs
 ├── frontend/
-│   └── hexabill-ui/                    # React 18 + Vite
+│   └── hexabill-ui/                    # React 18 + Vite 5
 │       └── src/
 │           ├── pages/                  # 44 page components
-│           │   ├── company/            # 30+ tenant pages
-│           │   └── superadmin/          # 11 SuperAdmin pages
+│           │   ├── company/            # 32 tenant pages
+│           │   └── superadmin/         # 11 SuperAdmin pages
 │           ├── components/
 │           ├── hooks/
 │           ├── services/
-│           ├── utils/                  # roles.js
+│           ├── utils/                  # roles.js (Staff page access)
 │           └── security/
-├── DATABASE_SCHEMA.md
-└── README.md
+├── render.yaml                         # Render Docker deploy
+├── vercel.json                         # Vercel SPA deploy
+├── MIGRATION_INSTRUCTIONS.md
+├── NOT_BUILT.md
+├── PRODUCTION_VERIFICATION.md
+└── DATABASE_SCHEMA.md
 ```
 
 ### 1.2 Technology Identification
@@ -67,51 +71,55 @@ HexaBillAd-main/
 |-------|------------|
 | **Frontend** | React 18.3.1, Vite 5.0.8, Tailwind CSS 3.3.6, Zustand 5.0.8, Recharts 2.8.0, Axios 1.6.0 |
 | **Backend** | ASP.NET Core 9.0, .NET 9.0 |
-| **Database** | PostgreSQL (Npgsql 9.0.1, EF Core 9.0) — SQLite supported for dev |
-| **Auth** | JWT Bearer, BCrypt.Net-Next 4.0.3 |
-| **PDF** | QuestPDF 2024.12.2 |
-| **Excel** | EPPlus 7.5.2 |
-| **Payments** | Stripe.net 47.0.0 |
+| **Database** | PostgreSQL (Npgsql 9.0.1, EF Core 9.0) — SQLite for local dev |
+| **Auth** | JWT Bearer, BCrypt.Net-Next |
+| **PDF** | QuestPDF |
+| **Excel** | EPPlus |
+| **Payments** | Stripe.net |
 | **Storage** | AWSSDK.S3 / Cloudflare R2 |
-| **Logging** | Serilog, file + console |
 
 ### 1.3 What Is Clean
 
 - **Modular backend** — Feature folders (Auth, Billing, Customers, etc.) with clear separation
-- **Consistent multi-tenant pattern** — `tenantId` passed to service methods; middleware enforces
-- **Index strategy** — `AddPerformanceIndexes.sql` defines 40+ composite indexes for tenant+date, tenant+branch, etc.
-- **Concurrency tokens** — `RowVersion` on Sale, Product, Customer, Payment to prevent race conditions
-- **Idempotency** — `PaymentIdempotencies` table for duplicate payment prevention
-- **Audit trail** — `AuditService` with field-level change tracking (OldValues/NewValues JSON)
-- **Role-based access** — Admin, Owner, Staff, SystemAdmin with `PageAccess` for Staff granularity
+- **Multi-tenant pattern** — TenantId on 25+ entities; middleware enforces; InvoiceTemplate and ExpenseCategory **now tenant-scoped** (fixed 2026-02)
+- **Index strategy** — AddPerformanceIndexes.sql defines composite indexes for tenant+date, tenant+branch
+- **Concurrency tokens** — RowVersion on Sale, Product, Customer, Payment
+- **Idempotency** — PaymentIdempotencies table
+- **Audit trail** — AuditService with field-level change tracking
+- **Role-based access** — Admin, Owner, Staff, SystemAdmin with PageAccess for Staff
+- **SaleValidationService** — Extracted from SaleService (lock, edit window, unlock)
+- **ReportService** — GetSummaryReportAsync cached 5 min (IMemoryCache)
+- **BalanceService** — 4 aggregates run in parallel (Task.WhenAll)
+- **BalanceReconciliationJob** — Nightly job for async balance verification
 
 ### 1.4 What Is Messy
 
-- **OwnerId vs TenantId dual schema** — Both exist across 25+ entities. `MigrateOwnerIdToTenantId.sql` exists; migration in progress. Causes: inconsistent filtering, potential cross-tenant leaks if wrong field used
-- **InvoiceTemplates NOT tenant-scoped** — `InvoiceTemplate` model has no TenantId/OwnerId. `InvoiceTemplateService.GetTemplatesAsync()` returns ALL templates globally. **Data isolation violation**
-- **ExpenseCategories global** — `ExpenseCategory` has `Name` unique globally, not per-tenant (no TenantId)
-- **Console.WriteLine in production code** — 50+ occurrences in ReportService, DashboardController, SettingsController, SuperAdminTenantController, etc. Debug output in production
-- **PRODUCTION_MASTER_TODO comments** — 15+ unimplemented features referenced (e.g. #46 onboarding tracker, #47 SQL console, #48 bulk tenant actions, #49 diagnostics, #50 tenant invoices, #51 subscription history, #52 tenant export)
+- **Console.WriteLine in production** — 60+ occurrences: SaleService (~25), ComprehensiveBackupService (~60), ResetService, SuperAdminTenantController, SuperAdminController, PlatformSettingsController, UsersController, PostgreSqlErrorMonitoringMiddleware, SecurityConfiguration, FixMissingColumns, BackfillPurchaseVAT
+- **OwnerId vs TenantId dual schema** — OwnerId still on Alerts, AuditLogs, Settings; migration scripts exist; inconsistent filtering in legacy code
+- **PRODUCTION_MASTER_TODO comments** — 15+ references (#6, #7, #9, #22, #31, #33, #34, #37, #38, #43, #44, #45, #47, #49, #57) — mostly documentation; some are unimplemented features (see NOT_BUILT.md)
+- **Large monolithic services** — SaleService ~2,900 lines; ReportService ~2,600 lines; SuperAdminTenantService ~1,300 lines
 
 ### 1.5 What Causes Future Merge Conflicts
 
-- **SaleService.cs** — 2,893 lines; monolithic; many responsibilities (CRUD, PDF, validation, balance updates, lock logic)
+- **SaleService.cs** — 2,900+ lines; many responsibilities (CRUD, PDF, validation, balance, reconciliation)
 - **ReportService.cs** — 2,600+ lines; single class handles all report types
-- **SuperAdminTenantService.cs** — 1,300+ lines; tenant CRUD + demo + export logic
-- **AppDbContext.OnModelCreating** — 530+ lines; all entity config in one place
+- **SuperAdminTenantService.cs** — 1,300+ lines
+- **ComprehensiveBackupService.cs** — 1,500+ lines; restore, backup, CSV, PDF, S3, manifest
+- **AppDbContext.OnModelCreating** — 530+ lines
 
 ### 1.6 Tight Coupling
 
-- **BalanceService** — Every invoice/payment event calls `RecalculateCustomerBalanceAsync` (full table scan per customer). No incremental updates
-- **SaleService** → **BalanceService, AlertService, PdfService, InvoiceNumberService, ValidationService** — Heavy service orchestration; SaleService knows too many modules
-- **ReportService** → **SalesSchemaService** — Dynamic schema check `SalesHasBranchIdAndRouteIdAsync()` on every report; runtime column detection
-- **Settings** — Key-value with composite PK (Key, OwnerId); `SettingsService` has fallback logic for missing columns
+- **BalanceService** — Full recalc per invoice/payment event (4 parallel aggregates, but no incremental engine)
+- **SaleService** → BalanceService, AlertService, PdfService, InvoiceNumberService, ValidationService — Heavy orchestration
+- **ReportService** → SalesSchemaService — Runtime column detection `SalesHasBranchIdAndRouteIdAsync()` on reports
+- **Settings** — Key-value with composite PK (Key, OwnerId); TenantId nullable
 
 ### 1.7 Environment Config
 
-- **Backend:** `.env.example` — DATABASE_URL, JwtSettings__SecretKey, ALLOWED_ORIGINS, R2_*, SMTP_*, STRIPE_API_KEY
-- **Frontend:** `.env.example` — VITE_API_BASE_URL, VITE_GROQ_API_KEY, VITE_GEMINI_API_KEY
-- **Database fix at startup** — Program.cs adds `PageAccess` column if missing (runtime migration workaround)
+- **Backend:** .env.example — DATABASE_URL, JwtSettings__SecretKey, ALLOWED_ORIGINS, R2_*, SMTP_*, STRIPE_API_KEY
+- **Frontend:** env.example — VITE_API_BASE_URL (localhost or production URL)
+- **Render:** render.yaml — Docker, rootDir backend/HexaBill.Api, healthCheckPath /health
+- **Vercel:** vercel.json — Root must be repo root; buildCommand cd frontend/hexabill-ui
 
 ---
 
@@ -121,22 +129,23 @@ HexaBillAd-main/
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Create/Update/Delete | ✅ Complete | SaleService with soft delete, 8-hour edit window, locking |
-| Invoice numbering | ✅ Complete | InvoiceNumberService, per-tenant sequence, Zayorga exception handled |
-| PDF generation | ✅ Complete | QuestPDF, customizable templates |
-| Versioning | ✅ Complete | InvoiceVersions table, DataJson snapshot, DiffSummary |
-| Held/draft invoices | ✅ Complete | HeldInvoices table |
-| Duplicate prevention | ✅ Complete | ExternalReference unique, RowVersion concurrency |
+| Create/Update/Delete | ✅ Complete | SaleService, soft delete, 8-hour edit window, locking via SaleValidationService |
+| Invoice numbering | ✅ Complete | InvoiceNumberService, per-tenant sequence |
+| PDF generation | ✅ Complete | QuestPDF, tenant-scoped templates |
+| Templates | ✅ Fixed | InvoiceTemplateService filters by TenantId |
+| Versioning | ✅ Complete | InvoiceVersions, DataJson, DiffSummary |
+| Held/draft | ✅ Complete | HeldInvoices |
+| Duplicate prevention | ✅ Complete | ExternalReference unique, RowVersion |
 
-**Scalability:** Invoice list paginated (max 100/page). Full `Include` on Customer, Items, Product for list — N+1 risk on large datasets.
+**Scalability:** List paginated (max 100/page). Full Include on Customer, Items, Product — N+1 risk at scale.
 
 ### 2.2 VAT Calculation
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
 | Sales VAT | ✅ Complete | Sale.VatTotal, SaleItem.VatAmount |
-| Purchase VAT | ⚠️ Half-built | Purchase.Subtotal, VatTotal nullable; BackfillPurchaseVAT.cs exists for legacy |
-| VAT rate | ⚠️ Configurable | Via Settings; no global VAT rate constant in code |
+| Purchase VAT | ⚠️ Half-built | VatTotal nullable; BackfillPurchaseVAT.cs for legacy |
+| Rate | ⚠️ Configurable | Via Settings; fallback 5% in code |
 
 ### 2.3 Credit Sales
 
@@ -144,138 +153,101 @@ HexaBillAd-main/
 |--------|--------|-------|
 | Credit limit | ✅ Complete | Customer.CreditLimit |
 | Pending balance | ✅ Complete | Customer.PendingBalance, TotalSales, TotalPayments |
-| Balance recalculation | ⚠️ Inefficient | Full recalc (4 table scans) on every invoice/payment change |
-| Credit validation | ✅ Complete | BalanceService.CanCustomerReceiveCreditAsync |
+| Recalculation | ⚠️ Inefficient | Full recalc (4 parallel aggregates) per event; no incremental engine |
+| Validation | ✅ Complete | CanCustomerReceiveCreditAsync |
 | Mismatch detection | ✅ Complete | DetectAllBalanceMismatchesAsync, FixBalanceMismatchAsync |
-
-**Scaling risk:** `RecalculateCustomerBalanceAsync` does:
-- Sum Sales where CustomerId
-- Sum Payments where CustomerId (CLEARED, non-refund)
-- Sum SaleReturns
-- Sum refunds
-- Update Customer
-
-Per customer, per event. For 10K customers × 100 events/day = 1M aggregate queries/day. No incremental engine.
+| Nightly job | ✅ Added | BalanceReconciliationJob (configurable time) |
 
 ### 2.4 Inventory
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
-| Products CRUD | ✅ Complete | ProductService, multi-unit (ConversionToBase) |
-| Stock adjustments | ✅ Complete | StockAdjustmentService, InventoryTransactions audit |
-| Low stock alerts | ✅ Complete | ReorderLevel per product, global fallback |
-| Atomic updates | ✅ Complete | RowVersion on Product |
+| Products CRUD | ✅ Complete | ProductService, ConversionToBase |
+| Stock adjustments | ✅ Complete | StockAdjustmentService |
+| Low stock alerts | ✅ Complete | ReorderLevel |
 | Categories | ✅ Complete | ProductCategories, tenant-scoped |
-| Price change log | ✅ Complete | PriceChangeLogs table |
-| Damage tracking | ✅ Complete | DamageCategories, DamageInventory, SaleReturnItem.DamageCategoryId |
-
-**Modular:** ProductService, StockAdjustmentService separated. Logic not heavily duplicated.
+| Damage tracking | ✅ Complete | DamageCategories, SaleReturnItem.DamageCategoryId |
 
 ### 2.5 Reporting Engine
 
-| Report Type | Status | Performance |
-|-------------|--------|-------------|
-| Summary (sales, purchases, expenses) | ✅ Complete | Multiple queries; branch/route filter |
-| Sales report (paged) | ✅ Complete | Paginated |
-| Product sales | ✅ Complete | Top N, filtering |
-| Outstanding customers | ✅ Complete | Paged |
-| Customer report | ✅ Complete | Min outstanding filter |
-| Cheque report | ✅ Complete | Paged |
-| Pending bills | ✅ Complete | Paged |
-| Aging report | ✅ Complete | AsOfDate |
-| Stock report | ✅ Complete | Low stock filter |
-| Expenses by category | ✅ Complete | Date range |
-| Sales vs Expenses | ✅ Complete | Group by day/week/month |
-| Sales ledger | ✅ Complete | Comprehensive, staff-scoped |
-| Staff performance | ✅ Complete | Route filter |
-| AI suggestions | ✅ Complete | Period-based |
+| Report | Status | Caching |
+|--------|--------|--------|
+| Summary | ✅ Complete | 5-min IMemoryCache |
+| Sales, Product, Customer, Aging, Stock | ✅ Complete | None |
+| Ledger, Staff performance | ✅ Complete | None |
+| AI suggestions | ✅ Complete | None |
 
-**Scaling:** No materialized views. All reports query live data. `GetSummaryReportAsync` runs 6+ separate queries. `DetectAllBalanceMismatchesAsync` iterates ALL customers and validates each — O(n) full recalc.
+**Scaling:** No materialized views. DetectAllBalanceMismatchesAsync iterates all customers — O(n).
 
 ### 2.6 Dashboard
 
-- **Backend:** DashboardController.GetDashboardBatch — single batch endpoint
-- **Metrics:** Sales today, outstanding customers, low stock, recent transactions
-- **Staff scope:** Route-restricted for Staff role
-- **Profit calculation:** Cash-based (Sales - Purchases - Expenses)
+- DashboardController.GetDashboardBatch — single endpoint
+- Metrics: Sales today, outstanding, low stock, recent transactions
+- Staff scope: Route-restricted
 
 ### 2.7 Role-Based Permissions
 
-| Role | Capability | Implementation |
-|------|------------|----------------|
-| SystemAdmin | Full platform access, tenant_id=0 | JWT claim, AdminOrOwnerPolicy |
-| Owner | Full tenant access | JWT claim |
-| Admin | Full tenant access | Same as Owner |
-| Staff | Page-level + route-level | PageAccess (comma-separated), BranchStaff, RouteStaff |
+| Role | Capability |
+|------|------------|
+| SystemAdmin | tenant_id=0, full platform |
+| Owner/Admin | Full tenant access |
+| Staff | PageAccess (pos, invoices, products, customers, expenses, reports); RouteStaff/BranchStaff scoped |
 
-**PageAccess:** Staff can access pos, invoices, products, customers, expenses, reports. Never: users, settings, backup, branches, routes, purchases. Enforced in `roles.js` and backend route scope.
-
-**DashboardPermissions:** JSON on User; used for dashboard widget visibility. Not deeply enforced in code audit.
+**Staff never:** users, settings, backup, branches, routes, purchases (enforced in roles.js + backend)
 
 ### 2.8 Audit Logs
 
-- **AuditService** — Action, EntityType, EntityId, OldValues, NewValues (JSON), IpAddress, UserId
-- **AuditMiddleware** — Logs requests
-- **SuperAdminAuditLogsPage** — Frontend exists
-- **Indexes:** TenantId, UserId, CreatedAt, (EntityType, EntityId)
+- AuditService — Action, EntityType, EntityId, OldValues, NewValues (JSON)
+- Indexes: TenantId, UserId, CreatedAt, (EntityType, EntityId)
+- **Retention:** AUDIT_RETENTION_POLICY.md exists; no automatic purge in code
 
 ### 2.9 Customer Ledger
 
-- **CustomerLedgerPage.jsx** exists
-- **BalanceService** + **CustomerService** provide balance and transaction data
-- **Sales ledger** — ReportService.GetComprehensiveSalesLedgerAsync
+- CustomerLedgerPage.jsx, BalanceService, ReportService.GetComprehensiveSalesLedgerAsync
+- Date normalization, inclusive end date
 
 ### 2.10 Expense Module
 
-- **ExpenseService** — CRUD, category, branch/route, recurring
-- **RecurringExpenses** — Frequency, DayOfRecurrence
-- **Expense approval** — Status: Draft, Approved, Rejected
-- **RouteExpenses** — Route-level expenses (CustomerVisits, route staff)
+- ExpenseService — CRUD, category (tenant-scoped), branch/route, recurring
+- **ExpenseCategory** — TenantId added; GetExpenseCategoriesAsync filters by tenant
+- RecurringExpenses, approval workflow (Draft/Approved/Rejected)
 
 ### 2.11 Purchase Module
 
-- **PurchaseService** — CRUD, items, stock increment
-- **PurchaseReturns** — Return tracking
-- **Suppliers** — SupplierService exists; Purchases use SupplierName (string), not FK to Supplier entity in many cases
-- **VAT** — Subtotal, VatTotal on Purchase; backfill script for legacy
+- PurchaseService, PurchaseReturns
+- SupplierService exists; Purchase uses SupplierName (string), not FK in many cases
 
 ---
 
 ## 3. DATABASE ANALYSIS
 
-### 3.1 Tables (40 total)
+### 3.1 Tables (40+)
 
 Tenants, Users, SubscriptionPlans, Subscriptions, Branches, Routes, BranchStaff, RouteStaff, RouteCustomers, RouteExpenses, CustomerVisits, Products, ProductCategories, PriceChangeLogs, InventoryTransactions, Customers, Sales, SaleItems, SaleReturns, SaleReturnItems, Payments, PaymentIdempotencies, Purchases, PurchaseItems, PurchaseReturns, PurchaseReturnItems, Expenses, ExpenseCategories, RecurringExpenses, InvoiceVersions, InvoiceTemplates, DamageCategories, Settings, AuditLogs, Alerts, ErrorLogs, HeldInvoices, UserSessions, FailedLoginAttempts, DemoRequests
 
-### 3.2 Relationships
+### 3.2 Tenant Isolation (Current State)
 
-- **Tenant** → Users, Branches, Customers, Products, Sales, Payments, etc. (TenantId FK)
-- **Legacy OwnerId** still on Sales, Purchases, Customers, Products, etc.
-- **Branch** → Routes → RouteStaff, RouteCustomers, RouteExpenses, CustomerVisits
-- **Sale** → SaleItems, InvoiceVersions, SaleReturns
-- **Customer** → Sales, Payments, SaleReturns
+| Entity | TenantId | Status |
+|--------|----------|--------|
+| InvoiceTemplates | ✅ | Migration 20260225120000 |
+| ExpenseCategories | ✅ | Migration 20260225130000 |
+| Expenses | ✅ | FIX_PRODUCTION_MIGRATIONS section 6b |
+| 25+ others | ✅ | TenantId FK |
+
+**Production:** Run FIX_PRODUCTION_MIGRATIONS.sql sections 6b, 7, 8 if 42703 errors occur.
 
 ### 3.3 Index Usage
 
-- **AddPerformanceIndexes.sql** — 40+ indexes: TenantId+CreatedAt, TenantId+BranchId, TenantId+RouteId, TenantId+CustomerId, TenantId+PaymentStatus, etc.
-- **Unique:** (OwnerId, InvoiceNo) on Sales with IsDeleted filter; (TenantId, Sku) on Products; Email on Users
+- AddPerformanceIndexes.sql — 40+ composite indexes
+- Unique: (TenantId, Sku) Products; (TenantId, Name) ExpenseCategories; Email Users
 
-### 3.4 Missing Constraints / Risks
-
-| Issue | Risk |
-|-------|------|
-| InvoiceTemplates no TenantId | Cross-tenant data leak — Tenant A sees Tenant B templates |
-| ExpenseCategories no TenantId | All tenants share categories |
-| OwnerId/TenantId dual schema | Migration incomplete; inconsistent queries |
-| Settings composite PK (Key, OwnerId) | OwnerId used; TenantId nullable — inconsistency |
-
-### 3.5 Scaling Assessment
+### 3.4 Scaling Assessment
 
 | Scenario | Assessment |
 |----------|------------|
-| 100+ concurrent users | **Risky** — No connection pooling config visible; BalanceService full recalc per event. ReportService multiple queries per request. |
-| 10M invoices | **Risky** — Sales table indexed on TenantId+InvoiceDate. No partitioning. List sales does full table scan with pagination; date range filters help. AuditLogs, InvoiceVersions will grow unbounded. |
-| Credit calculation | **Not efficient** — Full recalculation per customer per event. No event-sourced or incremental balance engine. |
+| 100+ concurrent | **Risky** — BalanceService full recalc per event; no connection pool config visible |
+| 10M invoices | **Risky** — No partitioning; AuditLogs/InvoiceVersions unbounded |
+| Credit calculation | **Not efficient** — Full recalc; parallel aggregates help but not incremental |
 
 ---
 
@@ -283,72 +255,71 @@ Tenants, Users, SubscriptionPlans, Subscriptions, Branches, Routes, BranchStaff,
 
 ### 4.1 Maturity Level
 
-**Between MVP and production-ready.** Core billing, inventory, reporting work. Multi-tenant isolation mostly correct. But: dual schema, InvoiceTemplate leak, BalanceService scaling, debug Console output, unimplemented PRODUCTION_MASTER_TODOs.
+**Between MVP and production-ready.** Core billing, inventory, reporting work. Multi-tenant isolation correct after migrations. InvoiceTemplate and ExpenseCategory tenant-scope fixed. BalanceService optimized (parallel aggregates, nightly job). ReportService summary cached.
 
-### 4.2 What Will Break First Under Heavy Load
+### 4.2 What Will Break First Under Load
 
-1. **BalanceService.RecalculateCustomerBalanceAsync** — Called on every invoice/payment change. 4 aggregate queries per customer. High-frequency tenants will hit DB hard.
-2. **ReportService** — Multiple sequential queries per report; no caching; no async batching.
-3. **SaleService.GetSalesAsync** — Include(Customer, Items, Product) for list — large result sets.
-4. **AuditLogs** — Unbounded growth; no retention/archive policy in code.
-5. **Dashboard batch** — Multiple metric queries; no caching.
+1. **BalanceService** — Full recalc per invoice/payment; high-frequency tenants hit DB hard
+2. **ReportService** — Most reports uncached; multiple sequential queries
+3. **SaleService.GetSalesAsync** — Include(Customer, Items, Product) — large result sets
+4. **AuditLogs** — Unbounded; no retention/archive in code
+5. **DetectAllBalanceMismatchesAsync** — O(n) over all customers
 
-### 4.3 Security Risks
+### 4.3 Security
 
-| Risk | Severity | Evidence |
-|------|----------|----------|
-| InvoiceTemplate cross-tenant | **High** | No TenantId; GetTemplatesAsync returns all |
-| ExpenseCategory cross-tenant | Medium | Global unique Name |
-| SQL console (SuperAdmin) | Medium | Read-only, blacklist, but raw SQL execution |
-| Console.WriteLine leaking data | Low | Debug output may expose PII in logs |
-| JWT secret in env | Standard | Must be kept secret |
+| Risk | Severity | Status |
+|------|----------|--------|
+| InvoiceTemplate cross-tenant | High | **Fixed** — TenantId, filter by tenant |
+| ExpenseCategory cross-tenant | Medium | **Fixed** — TenantId, unique (TenantId, Name) |
+| Console.WriteLine PII leakage | Low | **Not fixed** — 60+ in production code |
+| SQL console (SuperAdmin) | Medium | Exists; read-only, blacklist |
 
-### 4.4 Data Integrity Risks
+### 4.4 Data Integrity
 
-| Risk | Evidence |
-|------|----------|
-| Balance drift | BalanceService detects mismatches; alerts. But full recalc can race with concurrent payments. |
-| Sale/Payment consistency | PaymentStatus on Sale can desync from Payments; ReconcileAllPaymentStatusAsync exists to fix |
-| Stock oversell | RowVersion on Product; atomic adjustment. Sale finalization decrements stock. |
-| Invoice number collision | Unique (OwnerId, InvoiceNo) with IsDeleted filter; sequence per tenant. |
+- Balance drift detection; ReconcileAllPaymentStatusAsync
+- Stock: RowVersion, atomic adjustment
+- Invoice number: Unique (OwnerId, InvoiceNo) with IsDeleted
 
 ---
 
-## 5. BUSINESS CAPABILITY ANALYSIS (CODE ONLY)
+## 5. BUSINESS CAPABILITY (CODE ONLY)
 
 ### 5.1 What HexaBill ACTUALLY Solves
 
-- **B2B invoicing** — Create, edit (8hr window), lock, PDF, version history
-- **Credit sales** — Customer credit limit, pending balance, payment terms
-- **Multi-branch / route sales** — Branches, routes, route staff, customer visits
-- **Inventory** — Products, categories, stock, adjustments, low stock alerts, damage tracking
-- **Purchases** — PO entry, returns, supplier name (no full supplier master)
-- **Expenses** — Categories, recurring, branch/route scoped, approval workflow
-- **Payments** — Multiple modes, idempotency, link to sale/customer
-- **Returns** — Sale returns, purchase returns, damage categories
-- **Reporting** — Sales, product, customer, aging, stock, profit, ledger
-- **Multi-tenant SaaS** — Tenant isolation, subscription plans, Stripe billing
-- **Audit** — Field-level change tracking
-- **Roles** — Owner, Admin, Staff (page + route scoped)
+- B2B invoicing — Create, edit (8hr), lock, PDF, version history
+- Credit sales — Credit limit, pending balance, payment terms
+- Multi-branch / route sales — Branches, routes, route staff, customer visits
+- Inventory — Products, categories, stock, adjustments, low stock, damage
+- Purchases — PO entry, returns (supplier name, not FK)
+- Expenses — Categories (tenant-scoped), recurring, approval
+- Payments — Modes, idempotency
+- Returns — Sale returns, purchase returns, damage categories
+- Reporting — Sales, product, customer, aging, stock, profit, ledger
+- Multi-tenant SaaS — Tenant isolation, Stripe subscriptions
+- Audit — Field-level change tracking
+- Roles — Owner, Admin, Staff (page + route scope)
 
-### 5.2 What It Partially Solves
+### 5.2 Partially Solves
 
-- **VAT** — Sales VAT complete; purchase VAT backfilled, not always populated
-- **Profit calculation** — Cash-based (Sales - Purchases - Expenses); no accrual
-- **Supplier management** — SupplierService exists but Purchase uses SupplierName string
-- **API access** — SubscriptionPlan.HasApiAccess; no public API routes found in codebase
+- VAT — Sales complete; purchase backfill
+- Profit — Cash-based (Sales - COGS - Expenses)
+- Supplier — SupplierService; Purchase uses SupplierName string
+- API — HasApiAccess in plan; no public API in code
 
-### 5.3 What It Does NOT Solve Yet
+### 5.3 Does NOT Solve (see NOT_BUILT.md)
 
-- **Public API / webhooks** — HasApiAccess in plan; no API key or webhook implementation found
-- **Offboarding export** — PRODUCTION_MASTER_TODO #52; export ZIP mentioned, not confirmed complete
-- **Onboarding tracker** — PRODUCTION_MASTER_TODO #46
-- **Bulk tenant actions** — PRODUCTION_MASTER_TODO #48
-- **Email backup delivery** — TODO in SuperAdminController: "Implement email service to send backup file"
+- Public API / webhooks
+- Offboarding export ZIP
+- Bulk tenant actions
+- Email backup delivery
+- Accrual accounting
+- Incremental balance engine
+- Report materialized views / Redis
+- AuditLogs retention/archive
 
 ---
 
-## 6. MARKETING POSITIONING BASED ON REAL CODE
+## 6. MARKETING POSITIONING (REAL CODE)
 
 ### 6.1 Real Positioning
 
@@ -356,102 +327,69 @@ Tenants, Users, SubscriptionPlans, Subscriptions, Branches, Routes, BranchStaff,
 
 - Branches, routes, route staff, customer visits
 - Credit sales with limits and aging
-- Arabic + English support (NameEn, NameAr)
-- UAE-focused (default country AE, currency AED)
-- Stripe subscriptions for SaaS monetization
+- Arabic + English (NameEn, NameAr)
+- UAE-focused (currency AED)
+- Stripe subscriptions
 
 ### 6.2 Real Competitive Edge
 
-- **Route-based sales** — Route staff, customer visits, route expenses. Competitors often lack this.
-- **8-hour invoice edit window** — Lock after 8hr; version history with diff. Good for compliance.
-- **Damage categories on returns** — AffectsStock, AffectsLedger, IsResaleable. Return handling is nuanced.
-- **Held/draft invoices** — POS can hold and resume
+- Route-based sales — Route staff, customer visits, route expenses
+- 8-hour invoice edit window — Lock, version history with diff
+- Damage categories on returns — AffectsStock, AffectsLedger, IsResaleable
+- Held/draft invoices — POS hold and resume
+- Tenant-scoped templates — Per-tenant branding (fixed)
 
-### 6.3 Real Differentiation
+### 6.3 Real Limitations
 
-- **Staff role with page + route scope** — Granular: Staff sees only assigned routes/branches
-- **Multi-unit products** — ConversionToBase (e.g. 1 box = 12 pieces)
-- **Invoice template customization** — HTML/CSS templates (but not tenant-scoped — fix before marketing)
-
-### 6.4 Real Limitations
-
-- No public API yet (despite HasApiAccess in plans)
-- Credit balance: full recalc, not incremental — scaling concern
-- InvoiceTemplates shared across tenants — do not market "per-tenant branding" until fixed
-- Expense categories global — not per-tenant
-- Profit is cash-based only
+- No public API
+- Credit: full recalc, not incremental
+- Profit: cash-based only
 - No automated backup email
+- Console.WriteLine in production (debug output)
 
 ---
 
 ## 7. REFACTOR RECOMMENDATION
 
-### 7.1 Folder Restructuring
+### 7.1 Immediate (Before Marketing)
 
-- Split **SaleService** into: SaleCrudService, SalePdfService, SaleValidationService
-- Split **ReportService** into report-type modules (SalesReportService, CustomerReportService, etc.)
-- Extract **BalanceEngine** from BalanceService — incremental balance updates or event-sourced design
-- Move **Console.WriteLine** to proper ILogger
+1. **Replace Console.WriteLine** — Use ILogger in SaleService, ComprehensiveBackupService, ResetService, SuperAdmin*, SecurityConfiguration, etc.
+2. **Run production migrations** — Sections 6b, 7, 8 of FIX_PRODUCTION_MIGRATIONS.sql if 42703
+3. **Document NOT_BUILT** — Already in NOT_BUILT.md; keep updated
 
-### 7.2 Module Separation
+### 7.2 Medium Term
 
-- InvoiceTemplateService: add TenantId to InvoiceTemplate, filter by tenant
-- ExpenseCategory: add TenantId, unique (TenantId, Name)
-- Complete OwnerId → TenantId migration; remove OwnerId from new code paths
+- Split **SaleService** — SaleCrudService, SalePdfService (SaleValidationService done)
+- Split **ReportService** — Per-report-type services
+- **BalanceEngine** — Incremental or event-sourced; or move recalc to background job only
+- **AuditLogs retention** — Implement policy from AUDIT_RETENTION_POLICY.md
 
-### 7.3 Backend Cleanup
+### 7.3 Long Term
 
-- Remove or guard all Console.WriteLine (use ILogger)
-- Resolve PRODUCTION_MASTER_TODOs or remove misleading comments
-- Consolidate tenant filtering: single helper (e.g. TenantFilterExtensions) instead of ad-hoc `TenantId == tenantId`
-
-### 7.4 Permission System Improvement
-
-- Formalize DashboardPermissions schema (JSON structure)
-- Add permission checks at API level for each Staff-restricted endpoint (not just frontend)
-- Document STAFF_NEVER_ACCESS in backend
-
-### 7.5 Credit Engine Improvement
-
-- Option A: Incremental balance — on Payment create, add to TotalPayments, subtract from PendingBalance (single row update)
-- Option B: Event-sourced ledger — append-only transactions; balance = SUM(transactions)
-- Option C: Background reconciliation job — async recalc, don’t block invoice creation
-- Add DB index on (CustomerId, TenantId) for Payments/Sales if not exists
-
-### 7.6 Reporting Engine Scaling
-
-- Add response caching for summary/aggregate reports (e.g. Redis, in-memory with TTL)
-- Consider materialized views for daily/monthly sales aggregates
-- Paginate `DetectAllBalanceMismatchesAsync` or run as nightly job
-- Add date-partitioning strategy for AuditLogs, InvoiceVersions
-
-### 7.7 Immediate Fixes (Before Marketing)
-
-1. **InvoiceTemplate tenant scope** — Add TenantId, backfill, filter all reads
-2. **ExpenseCategory tenant scope** — Add TenantId, migrate
-3. **Remove Console.WriteLine** — Replace with ILogger
-4. **Document what is NOT built** — Update marketing to avoid promising API, advanced onboarding, etc.
+- Report caching (Redis) for heavy reports
+- Materialized views for daily/monthly aggregates
+- Date-partitioning AuditLogs, InvoiceVersions
+- Complete OwnerId → TenantId migration; remove OwnerId
 
 ---
 
-## APPENDIX: File Counts & Key Paths
+## APPENDIX: Key Paths & Counts
 
 | Area | Count |
 |------|-------|
-| Backend modules | 15 |
+| Backend modules | 16 |
 | Frontend pages | 44 |
 | Database tables | 40 |
-| EF Models | 43+ |
-| Migrations | 15+ |
+| Console.WriteLine remaining | 60+ |
+| PRODUCTION_MASTER_TODO refs | 15+ |
 
 **Key files:**
-- `SaleService.cs` — 2,893 lines
-- `ReportService.cs` — 2,600+ lines
-- `BalanceService.cs` — 356 lines
-- `AppDbContext.cs` — 530 lines OnModelCreating
-- `roles.js` — 101 lines (Staff page access)
-- `DATABASE_SCHEMA.md` — 886 lines
+- SaleService.cs — ~2,900 lines
+- ReportService.cs — ~2,600 lines
+- ComprehensiveBackupService.cs — ~1,500 lines
+- SuperAdminTenantService.cs — ~1,300 lines
+- BalanceService.cs — ~356 lines (optimized)
 
 ---
 
-**End of Analysis.** Use this document for positioning, refactor planning, and scaling strategy. No fluff. Facts only.
+**End of Analysis.** Facts from code only. Use for positioning, refactor planning, scaling strategy.
