@@ -2479,6 +2479,7 @@ namespace HexaBill.Api.Modules.Reports
 
             // 6. Pending Balance = Total Sales - Total Payments - Total Returns + RefundsPaid (never treat returns as unpaid)
             var pendingBalance = totalSales - totalPayments - totalReturns + refundsPaid;
+            var netCashIn = totalPayments - refundsPaid;
 
             return new SalesLedgerReportDto
             {
@@ -2491,7 +2492,9 @@ namespace HexaBill.Api.Modules.Reports
                     TotalSales = totalSales,
                     TotalPayments = totalPayments,
                     TotalReturns = totalReturns,
-                    NetSales = netSales
+                    NetSales = netSales,
+                    RefundsPaid = refundsPaid,
+                    NetCashIn = netCashIn
                 }
             };
         }

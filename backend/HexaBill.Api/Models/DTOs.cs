@@ -1421,6 +1421,8 @@ namespace HexaBill.Api.Models
         public decimal TotalPayments { get; set; }
         public decimal TotalReturns { get; set; }
         public decimal NetSales { get; set; }
+        public decimal RefundsPaid { get; set; }
+        public decimal NetCashIn { get; set; }
     }
 }
 
