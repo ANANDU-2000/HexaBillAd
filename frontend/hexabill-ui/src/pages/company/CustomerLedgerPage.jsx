@@ -3643,7 +3643,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                   // CRITICAL: Initialize all variables at the top to prevent TDZ errors
                   // Use constant property name to prevent minifier from creating 'st' from entry.status
                   const invoiceNo = entry.reference || '-'
-                  const entryStatus = (entry[STATUS_PROP] || (entry.type === 'Payment' ? '-' : 'Unpaid'))
+                  const entryStatus = entry[STATUS_PROP] ?? (entry.type === 'Payment' ? '-' : '-')
                   
                   // Format date - show time only for payments
                   const showTime = entry.type === 'Payment'
@@ -3828,7 +3828,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             {displayedEntries.map((entry, idx) => {
             // CRITICAL: Initialize all variables at the top to prevent TDZ errors
             // Use constant property name to prevent minifier from creating 'st' from entry.status
-            const entryStatus = (entry[STATUS_PROP] || (entry.type === 'Payment' ? '-' : 'Unpaid'))
+            const entryStatus = entry[STATUS_PROP] ?? (entry.type === 'Payment' ? '-' : '-')
             const dateStr = entry.type === 'Payment'
               ? new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
               : new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
