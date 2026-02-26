@@ -3458,6 +3458,11 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
                 </option>
               ))}
             </select>
+            {(outstandingInvoices || []).length === 0 && (
+              <p className="text-xs text-amber-700 mb-2">
+                This customer has no outstanding invoices. Use <strong>Issue refund</strong> below to settle the credit in cash.
+              </p>
+            )}
             <input
               type="number"
               min="0.01"
