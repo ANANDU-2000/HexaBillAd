@@ -31,6 +31,7 @@ const BackupPage = () => {
     frequency: 'daily', // daily, weekly
     retentionDays: 30
   })
+  const [includeInvoicePdfs, setIncludeInvoicePdfs] = useState(false)
 
   useEffect(() => {
     loadBackups()
@@ -66,7 +67,7 @@ const BackupPage = () => {
   const handleCreateBackup = async () => {
     try {
       setLoading(true)
-      const response = await backupAPI.createBackup()
+      const response = await backupAPI.createBackup(false, false, false, includeInvoicePdfs)
       if (response.success) {
         toast.success('Backup created successfully!')
         await loadBackups()
@@ -83,7 +84,7 @@ const BackupPage = () => {
   const handleCreateFullBackup = async (downloadToBrowser = false) => {
     try {
       setLoading(true)
-      const response = await backupAPI.createFullBackup(downloadToBrowser)
+      const response = await backupAPI.createFullBackup(downloadToBrowser, includeInvoicePdfs)
       if (response.success) {
         if (downloadToBrowser) {
           toast.success('Backup downloaded to your computer!')
@@ -217,8 +218,8 @@ const BackupPage = () => {
     <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-6">
       <div className="w-full">
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">Backup & Restore</h1>
-          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Manage database backups and restore from previous backups</p>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">My Data Export</h1>
+          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Export your company&apos;s data (CSV, database, optional invoice PDFs). Use this to download a backup of your tenant data only. Restore from a previous export if needed.</p>
         </div>
 
         {/* Last Successful Backup Indicator */}
@@ -396,6 +397,17 @@ const BackupPage = () => {
             </p>
           </div>
 
+          <div className="flex flex-wrap items-center gap-4 mb-3">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={includeInvoicePdfs}
+                onChange={(e) => setIncludeInvoicePdfs(e.target.checked)}
+                className="h-4 w-4 text-indigo-600 rounded border-gray-300"
+              />
+              Include invoice PDFs (may take longer)
+            </label>
+          </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleCreateFullBackup(true)}

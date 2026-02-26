@@ -322,6 +322,14 @@ const ReportsPage = () => {
     try {
       setLoading(true)
 
+      // P3: For Returns/Damage tabs, ensure "to" includes today so recent returns are visible
+      const todayStr = new Date().toISOString().split('T')[0]
+      let effectiveDateRange = dateRange
+      if ((activeTab === 'returns' || activeTab === 'damage') && dateRange.to < todayStr) {
+        setDateRange(prev => ({ ...prev, to: todayStr }))
+        effectiveDateRange = { ...dateRange, to: todayStr }
+      }
+
       // Fetch summary report (with abort signal support if API supports it)
       const summaryParams = {
         fromDate: dateRange.from,
@@ -770,8 +778,8 @@ const ReportsPage = () => {
           const saleId = saleIdFromUrl ? parseInt(saleIdFromUrl, 10) : undefined
           const [returnsRes, categoriesRes, flagsRes] = await Promise.all([
             returnsAPI.getSaleReturnsPaged({
-              fromDate: dateRange.from,
-              toDate: dateRange.to,
+              fromDate: effectiveDateRange.from,
+              toDate: effectiveDateRange.to,
               saleId: Number.isFinite(saleId) ? saleId : undefined,
               branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
               routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
@@ -817,8 +825,8 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const res = await returnsAPI.getDamageReport({
-            fromDate: dateRange.from,
-            toDate: dateRange.to,
+            fromDate: effectiveDateRange.from,
+            toDate: effectiveDateRange.to,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined
           })

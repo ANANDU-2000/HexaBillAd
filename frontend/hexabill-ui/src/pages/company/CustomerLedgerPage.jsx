@@ -84,6 +84,8 @@ const CustomerLedgerPage = () => {
   // UI State
   const [activeTab, setActiveTab] = useState('ledger') // ledger, invoices, payments, reports
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showSettleCreditModal, setShowSettleCreditModal] = useState(false)
+  const [settleCreditEntry, setSettleCreditEntry] = useState(null)
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
     title: '',
@@ -2463,6 +2465,10 @@ const CustomerLedgerPage = () => {
                             }
                           })
                         } : undefined}
+                        onSettleCredit={isAdminOrOwner(user) ? (entry) => {
+                          setSettleCreditEntry(entry)
+                          setShowSettleCreditModal(true)
+                        } : undefined}
                         filters={ledgerFilters}
                         onFilterChange={(key, value) => {
                           setLedgerFilters(prev => {
@@ -2798,6 +2804,26 @@ const CustomerLedgerPage = () => {
         watch={watchPayment}
         loading={paymentLoading}
       />
+
+      {/* Settle Credit Modal — Apply to invoice or Issue refund */}
+      {showSettleCreditModal && settleCreditEntry && selectedCustomer && (
+        <SettleCreditModal
+          isOpen={showSettleCreditModal}
+          onClose={() => {
+            setShowSettleCreditModal(false)
+            setSettleCreditEntry(null)
+          }}
+          entry={settleCreditEntry}
+          customerId={selectedCustomer.id}
+          customerName={selectedCustomer.name}
+          outstandingInvoices={outstandingInvoices || []}
+          onSuccess={async () => {
+            setShowSettleCreditModal(false)
+            setSettleCreditEntry(null)
+            if (selectedCustomer) await loadCustomerData(selectedCustomer.id)
+          }}
+        />
+      )}
 
       {/* Invoice Preview Modal */}
       {showInvoiceModal && selectedInvoiceForView && (
@@ -3326,7 +3352,144 @@ const CustomerLedgerPage = () => {
   )
 }
 
-// Add Customer Modal Component removed - now using inline Modal in main component
+// Settle Credit Modal — Apply to invoice or Issue refund for Credit Issued returns
+const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, outstandingInvoices, onSuccess }) => {
+  const [creditNote, setCreditNote] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [applySaleId, setApplySaleId] = useState('')
+  const [amountToApply, setAmountToApply] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isOpen || !customerId || !entry?.returnId) return
+    let cancelled = false
+    const run = async () => {
+      setLoading(true)
+      try {
+        const res = await returnsAPI.getCreditNotes({ customerId })
+        const list = (res?.success && res?.data) ? res.data : []
+        const cn = list.find(c => (c.linkedReturnId ?? c.LinkedReturnId) === entry.returnId)
+        if (!cancelled) {
+          if (!cn) {
+            toast.error('Credit note not found for this return.')
+            onClose()
+            return
+          }
+          setCreditNote(cn)
+          setApplySaleId('')
+          setAmountToApply('')
+        }
+      } catch (e) {
+        if (!cancelled) toast.error(e?.response?.data?.message || 'Failed to load credit note')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    run()
+    return () => { cancelled = true }
+  }, [isOpen, customerId, entry?.returnId, onClose])
+
+  const remaining = creditNote ? (Number(creditNote.amount ?? creditNote.Amount) || 0) - (Number(creditNote.appliedAmount ?? creditNote.AppliedAmount) || 0) : 0
+  const handleApply = async () => {
+    const saleId = parseInt(applySaleId, 10)
+    const amount = parseFloat(amountToApply)
+    if (!creditNote || !saleId || amount <= 0 || amount > remaining) {
+      toast.error('Select an invoice and enter a valid amount.')
+      return
+    }
+    setActionLoading(true)
+    try {
+      const res = await returnsAPI.applyCreditNote(creditNote.id ?? creditNote.Id, { saleId, amountToApply: amount })
+      if (res?.success !== false) {
+        toast.success('Credit applied to invoice successfully.')
+        onSuccess()
+      } else {
+        toast.error(res?.message || 'Failed to apply credit')
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to apply credit')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+  const handleRefund = async () => {
+    if (!creditNote || remaining <= 0) return
+    if (!window.confirm(`Issue cash refund of ${remaining.toFixed(2)} AED for this credit?`)) return
+    setActionLoading(true)
+    try {
+      const res = await returnsAPI.refundCreditNote(creditNote.id ?? creditNote.Id)
+      if (res?.success !== false) {
+        toast.success('Refund issued successfully.')
+        onSuccess()
+      } else {
+        toast.error(res?.message || 'Failed to issue refund')
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to issue refund')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  if (!isOpen) return null
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Settle Credit" size="md">
+      {loading ? (
+        <p className="text-sm text-gray-500">Loading...</p>
+      ) : creditNote ? (
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Return <strong>{entry.reference || entry.returnId}</strong> · Credit: <strong>{remaining.toFixed(2)} AED</strong> remaining
+          </p>
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Apply to invoice</p>
+            <select
+              value={applySaleId}
+              onChange={(e) => setApplySaleId(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2"
+            >
+              <option value="">Select invoice</option>
+              {(outstandingInvoices || []).filter(inv => (Number(inv.grandTotal) || 0) > 0).map(inv => (
+                <option key={inv.id ?? inv.Id} value={inv.id ?? inv.Id}>
+                  {inv.invoiceNo ?? inv.InvoiceNo} — {(inv.grandTotal ?? inv.GrandTotal ?? 0).toFixed(2)} AED
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={remaining}
+              value={amountToApply}
+              onChange={(e) => setAmountToApply(e.target.value)}
+              placeholder="Amount to apply"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2"
+            />
+            <button
+              type="button"
+              onClick={handleApply}
+              disabled={actionLoading || !applySaleId || !amountToApply}
+              className="inline-flex items-center px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700 disabled:opacity-50"
+            >
+              {actionLoading ? 'Applying...' : 'Apply to invoice'}
+            </button>
+          </div>
+          <div className="border-t pt-4">
+            <p className="text-sm font-medium text-gray-700 mb-2">Issue refund</p>
+            <button
+              type="button"
+              onClick={handleRefund}
+              disabled={actionLoading || remaining <= 0}
+              className="inline-flex items-center px-3 py-2 bg-amber-600 text-white text-sm font-medium rounded hover:bg-amber-700 disabled:opacity-50"
+            >
+              {actionLoading ? 'Processing...' : `Issue refund (${remaining.toFixed(2)} AED)`}
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </Modal>
+  )
+}
 
 // Ledger Statement Tab Component - Tally Style Redesign
 // CRITICAL: Define default filters OUTSIDE component to prevent TDZ errors
@@ -3334,7 +3497,7 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 
 // Constants already defined at top of file - do not redefine here
 
-const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, filters, onFilterChange }) => {
+const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, onSettleCredit, filters, onFilterChange }) => {
   const navigate = useNavigate()
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
   // Use constant property name to prevent minifier from creating 'st' from filters.status
@@ -3590,6 +3753,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                                 Delete return
                               </button>
                             )}
+                            {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit && (
+                              <button
+                                type="button"
+                                onClick={() => onSettleCredit(entry)}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded hover:bg-emerald-200"
+                                title="Apply credit to invoice or issue refund"
+                              >
+                                <CreditCard className="h-3 w-3" />
+                                Settle credit
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <span className="text-neutral-400">-</span>
@@ -3725,6 +3899,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                           >
                             <Trash2 className="h-3 w-3" />
                             Delete return
+                          </button>
+                        )}
+                        {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit && (
+                          <button
+                            type="button"
+                            onClick={() => onSettleCredit(entry)}
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded hover:bg-emerald-200"
+                            title="Apply credit to invoice or issue refund"
+                          >
+                            <CreditCard className="h-3 w-3" />
+                            Settle credit
                           </button>
                         )}
                       </>

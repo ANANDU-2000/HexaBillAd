@@ -1071,7 +1071,12 @@ namespace HexaBill.Api.Models
         public string? Reason { get; set; }
         public string? DamageCategoryName { get; set; }
         public string? Condition { get; set; }
+        /// <summary>Line total (incl. VAT). For PDF display only; use UnitPrice + VatAmount for FTA-compliant breakdown.</summary>
         public decimal Amount { get; set; }
+        /// <summary>Unit price excl. VAT (FTA-compliant return note).</summary>
+        public decimal UnitPrice { get; set; }
+        /// <summary>VAT amount for this line (FTA-compliant return note).</summary>
+        public decimal VatAmount { get; set; }
     }
 
     public class DamageCategoryDto
@@ -1091,6 +1096,7 @@ namespace HexaBill.Api.Models
         public int LinkedReturnId { get; set; }
         public string? LinkedReturnNo { get; set; }
         public decimal Amount { get; set; }
+        public decimal AppliedAmount { get; set; }
         public string Currency { get; set; } = "AED";
         public string Status { get; set; } = "unused";
         public DateTime CreatedAt { get; set; }

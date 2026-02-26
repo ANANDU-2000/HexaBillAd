@@ -17,10 +17,12 @@ namespace HexaBill.Api.Modules.Billing
     public class ReturnsController : TenantScopedController // MULTI-TENANT: Owner-scoped returns
     {
         private readonly IReturnService _returnService;
+        private readonly ILogger<ReturnsController> _logger;
 
-        public ReturnsController(IReturnService returnService)
+        public ReturnsController(IReturnService returnService, ILogger<ReturnsController> logger)
         {
             _returnService = returnService;
+            _logger = logger;
         }
 
         [HttpPost("sales")]
@@ -88,7 +90,7 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetReturnBillPdf] Error for return {id}: {ex.Message}");
+                _logger.LogError(ex, "GetReturnBillPdf error for return {ReturnId}", id);
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -318,6 +320,58 @@ namespace HexaBill.Api.Modules.Billing
                 });
             }
         }
+
+        [HttpPost("credit-notes/{creditNoteId}/apply")]
+        public async Task<ActionResult<ApiResponse<object>>> ApplyCreditNote(int creditNoteId, [FromBody] ApplyCreditRequest request)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+                await _returnService.ApplyCreditNoteAsync(creditNoteId, request.SaleId, request.AmountToApply, userId, CurrentTenantId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Credit applied to invoice successfully."
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Ok(new ApiResponse<object> { Success = false, Message = ex.Message, Errors = new List<string> { ex.Message } });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new ApiResponse<object> { Success = false, Message = ex.Message ?? "Failed to apply credit", Errors = new List<string> { ex.Message ?? "" } });
+            }
+        }
+
+        [HttpPost("credit-notes/{creditNoteId}/refund")]
+        public async Task<ActionResult<ApiResponse<object>>> RefundCreditNote(int creditNoteId)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+                await _returnService.RefundCreditNoteAsync(creditNoteId, userId, CurrentTenantId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Refund issued successfully."
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Ok(new ApiResponse<object> { Success = false, Message = ex.Message, Errors = new List<string> { ex.Message } });
+            }
+            catch (Exception ex)
+            {
+                return Ok(new ApiResponse<object> { Success = false, Message = ex.Message ?? "Failed to issue refund", Errors = new List<string> { ex.Message ?? "" } });
+            }
+        }
+    }
+
+    public class ApplyCreditRequest
+    {
+        public int SaleId { get; set; }
+        public decimal AmountToApply { get; set; }
     }
 }
 

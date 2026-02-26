@@ -17,9 +17,11 @@ namespace HexaBill.Api.Models
         public int CustomerId { get; set; }
         public int LinkedReturnId { get; set; }
         public decimal Amount { get; set; }
+        /// <summary>Amount already applied to invoices. Remaining credit = Amount - AppliedAmount.</summary>
+        public decimal AppliedAmount { get; set; }
         [MaxLength(10)]
         public string Currency { get; set; } = "AED";
-        /// <summary>unused, used, cancelled</summary>
+        /// <summary>unused, used, partial, refunded, cancelled</summary>
         [MaxLength(20)]
         public string Status { get; set; } = "unused";
         public DateTime CreatedAt { get; set; }

@@ -134,7 +134,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public async Task<ActionResult> CreateBackup(
             [FromQuery] bool downloadToBrowser = false,
             [FromQuery] bool uploadToGoogleDrive = false,
-            [FromQuery] bool sendEmail = false)
+            [FromQuery] bool sendEmail = false,
+            [FromQuery] bool includeInvoicePdfs = false)
         {
             try
             {
@@ -148,10 +149,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         Message = "Tenant ID is required for backup. SystemAdmin must specify tenant."
                     });
                 }
-                
+
                 // Note: downloadToBrowser replaces exportToDesktop - backups are always created on server
                 // If downloadToBrowser=true, return the file directly for browser download
-                var fileName = await _backupService.CreateFullBackupAsync(tenantId, false, uploadToGoogleDrive, sendEmail);
+                var fileName = await _backupService.CreateFullBackupAsync(tenantId, false, uploadToGoogleDrive, sendEmail, includeInvoicePdfs);
                 
                 if (downloadToBrowser)
                 {

@@ -761,12 +761,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ClearTenantData Error: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(
+                    ex,
+                    "ClearTenantData error for tenant {TenantId}. InnerMessage={Inner}",
+                    id,
+                    ex.InnerException?.Message);
+
                 return StatusCode(500, new ApiResponse<object> 
                 { 
                     Success = false, 

@@ -1151,13 +1151,14 @@ const SettingsPage = () => {
               </div>
             </div>
 
-            {/* Backup & Restore Section */}
+            {/* Platform Backup — full DB/files for system admin */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="mb-6">
                 <div className="flex items-center mb-4">
                   <Database className="h-6 w-6 text-indigo-600 mr-3" />
-                  <h2 className="text-lg font-semibold text-neutral-900">Backup & Restore</h2>
+                  <h2 className="text-lg font-semibold text-neutral-900">Platform Backup</h2>
                 </div>
+                <p className="text-sm text-gray-500 mb-4">Full database and files for system administration. Use &quot;My Data Export&quot; (Backup menu) to export only your company&apos;s data.</p>
 
                 <div className="flex flex-wrap gap-2">
                   <button

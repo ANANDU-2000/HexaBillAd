@@ -44,6 +44,10 @@ namespace HexaBill.Api.Modules.Billing
         Task<List<DamageReportEntryDto>> GetDamageReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null);
         /// <summary>Delete a mistaken return. Owner/Admin only. Reverses stock, balance, removes CreditNote and refund payment.</summary>
         Task DeleteSaleReturnAsync(int returnId, int tenantId);
+        /// <summary>Apply credit note (or remaining amount) to an invoice. Creates a Payment (Mode CREDIT) and updates CreditNote AppliedAmount.</summary>
+        Task ApplyCreditNoteAsync(int creditNoteId, int saleId, decimal amountToApply, int userId, int tenantId);
+        /// <summary>Issue cash refund for (remaining) credit note. Creates refund Payment and sets CreditNote Status to Refunded.</summary>
+        Task RefundCreditNoteAsync(int creditNoteId, int userId, int tenantId);
     }
 
     public class ReturnService : IReturnService
@@ -105,7 +109,7 @@ namespace HexaBill.Api.Modules.Billing
                     .Select(g => new { SaleItemId = g.Key, Total = g.Sum(x => x.Qty) })
                     .ToDictionaryAsync(x => x.SaleItemId, x => x.Total);
 
-                // Reject if nothing left to return
+                // Reject if nothing left to return. Ledger is append-only: original sale status (e.g. Paid) is never changed; credit/refund creates separate rows.
                 var anyRemaining = saleInfo.Items.Any(si =>
                 {
                     var returned = alreadyReturnedBySaleItemId.GetValueOrDefault(si.Id, 0m);
@@ -668,7 +672,9 @@ namespace HexaBill.Api.Modules.Billing
                     Reason = i.Reason,
                     DamageCategoryName = i.DamageCategory?.Name,
                     Condition = i.Condition,
-                    Amount = i.LineTotal
+                    Amount = i.LineTotal,
+                    UnitPrice = i.UnitPrice,
+                    VatAmount = i.VatAmount
                 }).ToList()
             };
         }
@@ -941,6 +947,7 @@ namespace HexaBill.Api.Modules.Billing
                 LinkedReturnId = cn.LinkedReturnId,
                 LinkedReturnNo = cn.LinkedReturn?.ReturnNo,
                 Amount = cn.Amount,
+                AppliedAmount = cn.AppliedAmount,
                 Currency = cn.Currency ?? "AED",
                 Status = cn.Status ?? "unused",
                 CreatedAt = cn.CreatedAt,
@@ -948,10 +955,103 @@ namespace HexaBill.Api.Modules.Billing
             }).ToList();
         }
 
+        public async Task ApplyCreditNoteAsync(int creditNoteId, int saleId, decimal amountToApply, int userId, int tenantId)
+        {
+            if (amountToApply <= 0)
+                throw new InvalidOperationException("Amount to apply must be greater than zero.");
+            var cn = await _context.CreditNotes
+                .Include(c => c.Customer)
+                .Include(c => c.LinkedReturn)
+                .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.TenantId == tenantId);
+            if (cn == null)
+                throw new InvalidOperationException("Credit note not found.");
+            if (cn.Status == "Refunded" || cn.Status == "used")
+                throw new InvalidOperationException("This credit note has already been fully used or refunded.");
+            var remaining = cn.Amount - cn.AppliedAmount;
+            if (amountToApply > remaining)
+                throw new InvalidOperationException($"Amount to apply ({amountToApply:N2}) exceeds remaining credit ({remaining:N2}).");
+            var sale = await _context.Sales
+                .Include(s => s.Customer)
+                .FirstOrDefaultAsync(s => s.Id == saleId && s.TenantId == tenantId);
+            if (sale == null)
+                throw new InvalidOperationException("Sale not found.");
+            if (sale.CustomerId != cn.CustomerId)
+                throw new InvalidOperationException("Sale does not belong to the same customer as the credit note.");
+            if (sale.IsDeleted)
+                throw new InvalidOperationException("Cannot apply credit to a deleted sale.");
+            var paidSoFar = await _context.Payments
+                .Where(p => p.SaleId == saleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0;
+            var outstanding = sale.GrandTotal - paidSoFar;
+            if (outstanding <= 0)
+                throw new InvalidOperationException("This invoice is already fully paid.");
+            var applyAmount = amountToApply > outstanding ? outstanding : amountToApply;
+            var returnNo = cn.LinkedReturn?.ReturnNo ?? $"RET-{cn.LinkedReturnId}";
+            _context.Payments.Add(new Payment
+            {
+                TenantId = tenantId,
+                OwnerId = tenantId,
+                SaleId = saleId,
+                SaleReturnId = null,
+                CustomerId = cn.CustomerId,
+                Amount = applyAmount,
+                Mode = PaymentMode.CREDIT,
+                Reference = $"Credit applied from return {returnNo}",
+                Status = PaymentStatus.CLEARED,
+                PaymentDate = DateTime.UtcNow,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+            cn.AppliedAmount += applyAmount;
+            cn.Status = cn.AppliedAmount >= cn.Amount ? "used" : "partial";
+            await _context.SaveChangesAsync();
+            var customer = await _context.Customers.FindAsync(cn.CustomerId);
+            if (customer != null)
+                await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
+        }
+
+        public async Task RefundCreditNoteAsync(int creditNoteId, int userId, int tenantId)
+        {
+            var cn = await _context.CreditNotes
+                .Include(c => c.Customer)
+                .Include(c => c.LinkedReturn)
+                .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.TenantId == tenantId);
+            if (cn == null)
+                throw new InvalidOperationException("Credit note not found.");
+            if (cn.Status == "Refunded")
+                throw new InvalidOperationException("This credit note has already been refunded.");
+            var remaining = cn.Amount - cn.AppliedAmount;
+            if (remaining <= 0)
+                throw new InvalidOperationException("No remaining credit to refund.");
+            var returnNo = cn.LinkedReturn?.ReturnNo ?? $"RET-{cn.LinkedReturnId}";
+            _context.Payments.Add(new Payment
+            {
+                TenantId = tenantId,
+                OwnerId = tenantId,
+                SaleId = null,
+                SaleReturnId = cn.LinkedReturnId,
+                CustomerId = cn.CustomerId,
+                Amount = remaining,
+                Mode = PaymentMode.CASH,
+                Reference = $"Refund for credit note (return {returnNo})",
+                Status = PaymentStatus.CLEARED,
+                PaymentDate = DateTime.UtcNow,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+            cn.Status = "Refunded";
+            cn.AppliedAmount = cn.Amount;
+            await _context.SaveChangesAsync();
+            var customer = await _context.Customers.FindAsync(cn.CustomerId);
+            if (customer != null)
+                await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
+        }
+
         public async Task<List<DamageReportEntryDto>> GetDamageReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null)
         {
             var query = _context.SaleReturnItems
-                .Where(sri => (sri.Condition == "damaged" || sri.Condition == "writeoff")
+                .Where(sri => sri.Condition != null
+                    && (sri.Condition.ToLower() == "damaged" || sri.Condition.ToLower() == "writeoff")
                     && sri.SaleReturn != null
                     && sri.SaleReturn.TenantId == tenantId)
                 .Include(sri => sri.SaleReturn!).ThenInclude(r => r!.Sale)
@@ -1060,7 +1160,8 @@ namespace HexaBill.Api.Modules.Billing
                                 table.ColumnsDefinition(columns =>
                                 {
                                     columns.RelativeColumn();
-                                    columns.ConstantColumn(60);
+                                    columns.ConstantColumn(50);
+                                    columns.ConstantColumn(70);
                                     columns.ConstantColumn(70);
                                     columns.ConstantColumn(90);
                                 });
@@ -1068,14 +1169,16 @@ namespace HexaBill.Api.Modules.Billing
                                 {
                                     header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Product").Bold());
                                     header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Qty").Bold());
-                                    header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Unit Price").Bold());
-                                    header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Amount").Bold());
+                                    header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Unit Price (excl. VAT)").Bold());
+                                    header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text($"VAT 5% ({currency})").Bold());
+                                    header.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Black).Padding(4).Text("Total (incl. VAT)").Bold());
                                 });
                                 foreach (var item in dto.Items ?? new List<SaleReturnItemDto>())
                                 {
                                     table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text(item.ProductName));
                                     table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text(item.QtyReturned.ToString("N2")));
-                                    table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text((item.Amount / (item.QtyReturned > 0 ? item.QtyReturned : 1)).ToString("N2")));
+                                    table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text(item.UnitPrice.ToString("N2")));
+                                    table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text(item.VatAmount.ToString("N2")));
                                     table.Cell().Element(c => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).Padding(4).Text(item.Amount.ToString("N2")));
                                 }
                             });

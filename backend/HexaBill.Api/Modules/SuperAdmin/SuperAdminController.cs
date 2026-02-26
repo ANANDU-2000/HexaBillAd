@@ -28,14 +28,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly AppDbContext _context;
         private readonly IFileUploadService _fileUploadService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AdminController> _logger;
 
-        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, IConfiguration configuration)
+        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, IConfiguration configuration, ILogger<AdminController> logger)
         {
             _backupService = backupService;
             _comprehensiveBackupService = comprehensiveBackupService;
             _context = context;
             _fileUploadService = fileUploadService;
             _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpGet("settings")]
@@ -385,12 +387,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Backup failed in controller: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"   Inner exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(
+                    ex,
+                    "SuperAdmin full backup failed for tenant {TenantId}. InnerMessage={Inner}",
+                    tenantId ?? CurrentTenantId,
+                    ex.InnerException?.Message);
                 
                 return StatusCode(500, new ApiResponse<string>
                 {

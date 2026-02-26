@@ -221,7 +221,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
     
     // PROD-16: Enable slow query logging (>500ms) via EF Core logging
-    // Log slow queries to console with details
+    // Log slow queries with details using structured logging
     options.LogTo(
         message => 
         {
@@ -232,7 +232,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
                 var msMatch = System.Text.RegularExpressions.Regex.Match(message, @"\((\d+)ms\)");
                 if (msMatch.Success && int.TryParse(msMatch.Groups[1].Value, out var duration) && duration > 500)
                 {
-                    Console.WriteLine($"[SLOW QUERY] {message}");
+                    logger.LogWarning("SLOW QUERY ({Duration}ms): {Message}", duration, message);
                 }
             }
         },
@@ -402,6 +402,7 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""ReturnType"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturns"" ADD COLUMN IF NOT EXISTS ""RefundStatus"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Payments"" ADD COLUMN IF NOT EXISTS ""SaleReturnId"" integer NULL;");
+            ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""CreditNotes"" ADD COLUMN IF NOT EXISTS ""AppliedAmount"" numeric(18,2) NOT NULL DEFAULT 0;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""Condition"" character varying(20) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""SaleReturnItems"" ADD COLUMN IF NOT EXISTS ""StockEffect"" boolean NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Sales"" ADD COLUMN IF NOT EXISTS ""BranchId"" integer NULL;");

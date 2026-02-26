@@ -1770,9 +1770,15 @@ namespace HexaBill.Api.Modules.Billing
                 int? oldCustomerId = existingSale.CustomerId;
                 int? newCustomerId = request.CustomerId;
                 
-                Console.WriteLine($"\n🔄 SALE UPDATE: Invoice {existingSale.InvoiceNo}");
-                Console.WriteLine($"   Old: CustomerId={oldCustomerId?.ToString() ?? "CASH"}, GrandTotal={existingSale.GrandTotal:C}, Paid={existingSale.PaidAmount:C}, Status={existingSale.PaymentStatus}");
-                Console.WriteLine($"   New: CustomerId={newCustomerId?.ToString() ?? "CASH"}, GrandTotal={grandTotal:C}");
+                _logger.LogInformation(
+                    "SALE UPDATE Invoice {InvoiceNo}. Old: CustomerId={OldCustomerId}, GrandTotal={OldGrandTotal}, Paid={OldPaid}, Status={OldStatus}. New: CustomerId={NewCustomerId}, GrandTotal={NewGrandTotal}",
+                    existingSale.InvoiceNo,
+                    oldCustomerId?.ToString() ?? "CASH",
+                    existingSale.GrandTotal,
+                    existingSale.PaidAmount,
+                    existingSale.PaymentStatus,
+                    newCustomerId?.ToString() ?? "CASH",
+                    grandTotal);
                 
                 // Get old payments to properly reverse their effects
                 var oldPayments = await _context.Payments.Where(p => p.SaleId == saleId).ToListAsync();
@@ -1783,14 +1789,17 @@ namespace HexaBill.Api.Modules.Billing
                     // PROD-4: Filter by TenantId for tenant isolation
                     var oldCustomer = await _context.Customers
                         .FirstOrDefaultAsync(c => c.Id == oldCustomerId.Value && c.TenantId == tenantId);
-                    if (oldCustomer != null)
-                    {
-                        // Remove old invoice from old customer's balance
-                        decimal oldOutstanding = existingSale.GrandTotal - existingSale.PaidAmount;
-                        oldCustomer.Balance -= oldOutstanding;
-                        oldCustomer.UpdatedAt = DateTime.UtcNow;
-                        Console.WriteLine($"   ✅ Removed old invoice from Customer {oldCustomerId}: -{oldOutstanding:C}");
-                    }
+                        if (oldCustomer != null)
+                        {
+                            // Remove old invoice from old customer's balance
+                            decimal oldOutstanding = existingSale.GrandTotal - existingSale.PaidAmount;
+                            oldCustomer.Balance -= oldOutstanding;
+                            oldCustomer.UpdatedAt = DateTime.UtcNow;
+                            _logger.LogInformation(
+                                "Removed old invoice from Customer {CustomerId}: -{Outstanding}",
+                                oldCustomerId,
+                                oldOutstanding);
+                        }
                 }
                 
                 // Reverse old payment effects on customer balance (if any)
@@ -1808,7 +1817,10 @@ namespace HexaBill.Api.Modules.Billing
                                 // Reverse old payment: customer owes more
                                 customer.Balance += oldPayment.Amount;
                                 customer.UpdatedAt = DateTime.UtcNow;
-                                Console.WriteLine($"   ✅ Reversed old payment from Customer {oldPayment.CustomerId}: +{oldPayment.Amount:C}");
+                                _logger.LogInformation(
+                                    "Reversed old payment from Customer {CustomerId}: +{Amount}",
+                                    oldPayment.CustomerId,
+                                    oldPayment.Amount);
                             }
                         }
                     }
@@ -1848,7 +1860,10 @@ namespace HexaBill.Api.Modules.Billing
                     };
                     _context.Payments.Add(cashPayment);
                     
-                    Console.WriteLine($"   ✅ CASH SALE: Auto-created cash payment for {grandTotal:C}, Status=Paid");
+                    _logger.LogInformation(
+                        "CASH SALE: Auto-created cash payment for {Amount}, Status={Status}",
+                        grandTotal,
+                        SalePaymentStatus.Paid);
                 }
                 else if (request.Payments != null && request.Payments.Any())
                 {
@@ -1935,7 +1950,11 @@ namespace HexaBill.Api.Modules.Billing
                         saleForUpdate.LastPaymentDate = null;
                     }
                     
-                    Console.WriteLine($"   ✅ CREDIT SALE with payments: Paid {totalPaidCleared:C} of {grandTotal:C}, Status={saleForUpdate.PaymentStatus}");
+                    _logger.LogInformation(
+                        "CREDIT SALE with payments: Paid {Paid} of {GrandTotal}, Status={Status}",
+                        totalPaidCleared,
+                        grandTotal,
+                        saleForUpdate.PaymentStatus);
                 }
                 else
                 {
@@ -1945,7 +1964,10 @@ namespace HexaBill.Api.Modules.Billing
                     saleForUpdate.PaidAmount = 0;
                     saleForUpdate.LastPaymentDate = null;
                     
-                    Console.WriteLine($"   ✅ CREDIT SALE (unpaid): Outstanding {grandTotal:C}, Status=Pending");
+                    _logger.LogInformation(
+                        "CREDIT SALE (unpaid): Outstanding {GrandTotal}, Status={Status}",
+                        grandTotal,
+                        SalePaymentStatus.Pending);
                 }
                 
                 // STEP 4: Add new invoice to new customer's balance (if credit sale)
@@ -2049,14 +2071,21 @@ namespace HexaBill.Api.Modules.Billing
             {
                 await transaction.RollbackAsync();
                 
-                // Log detailed error for debugging
-                Console.WriteLine($"❌ UpdateSaleAsync Error for SaleId {saleId}:");
-                Console.WriteLine($"❌ Error Type: {ex.GetType().Name}");
-                Console.WriteLine($"❌ Message: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogError(
+                    ex,
+                    "UpdateSaleAsync Error for SaleId {SaleId}. Type={Type}, Message={Message}",
+                    saleId,
+                    ex.GetType().Name,
+                    ex.Message);
+
                 if (ex.InnerException != null)
                 {
-                    _logger.LogError(ex.InnerException, "Inner Exception: {Type}, Message: {Message}", ex.InnerException.GetType().Name, ex.InnerException.Message);
+                    _logger.LogError(
+                        ex.InnerException,
+                        "UpdateSaleAsync Inner Exception for SaleId {SaleId}. Type={Type}, Message={Message}",
+                        saleId,
+                        ex.InnerException.GetType().Name,
+                        ex.InnerException.Message);
                 }
                 
                 // Re-throw to be caught by controller

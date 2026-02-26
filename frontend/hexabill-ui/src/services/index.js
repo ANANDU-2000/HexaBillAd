@@ -1056,6 +1056,14 @@ export const returnsAPI = {
     const response = await api.delete(`/returns/sales/${id}`)
     return response.data
   },
+  applyCreditNote: async (creditNoteId, body) => {
+    const response = await api.post(`/returns/credit-notes/${creditNoteId}/apply`, body)
+    return response.data
+  },
+  refundCreditNote: async (creditNoteId) => {
+    const response = await api.post(`/returns/credit-notes/${creditNoteId}/refund`)
+    return response.data
+  },
   getReturnBillPdf: async (returnId) => {
     try {
       const response = await api.get(`/returns/sales/${returnId}/pdf`, { responseType: 'blob' })
@@ -1167,9 +1175,9 @@ export const suppliersAPI = {
 
 // Backup API
 export const backupAPI = {
-  createBackup: async (downloadToBrowser = false, uploadToGoogleDrive = false, sendEmail = false) => {
+  createBackup: async (downloadToBrowser = false, uploadToGoogleDrive = false, sendEmail = false, includeInvoicePdfs = false) => {
     const response = await api.post('/backup/create', null, {
-      params: { downloadToBrowser, uploadToGoogleDrive, sendEmail },
+      params: { downloadToBrowser, uploadToGoogleDrive, sendEmail, includeInvoicePdfs },
       responseType: downloadToBrowser ? 'blob' : 'json'
     })
     if (downloadToBrowser && response.data instanceof Blob) {
@@ -1186,9 +1194,9 @@ export const backupAPI = {
     }
     return response.data
   },
-  createFullBackup: async (downloadToBrowser = false) => {
+  createFullBackup: async (downloadToBrowser = false, includeInvoicePdfs = false) => {
     const response = await api.post('/backup/create', null, {
-      params: { downloadToBrowser, uploadToGoogleDrive: false, sendEmail: false },
+      params: { downloadToBrowser, uploadToGoogleDrive: false, sendEmail: false, includeInvoicePdfs },
       responseType: downloadToBrowser ? 'blob' : 'json'
     })
     if (downloadToBrowser && response.data instanceof Blob) {

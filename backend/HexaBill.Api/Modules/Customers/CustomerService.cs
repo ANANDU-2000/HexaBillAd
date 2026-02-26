@@ -12,6 +12,8 @@ using HexaBill.Api.Shared.Extensions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HexaBill.Api.Modules.Customers
 {
@@ -47,6 +49,7 @@ namespace HexaBill.Api.Modules.Customers
     public class CustomerService : ICustomerService
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<CustomerService> _logger;
 
         // Cache BranchId column check result to avoid repeated database queries
         private static bool? _cachedHasBranchIdColumn = null;
@@ -54,10 +57,16 @@ namespace HexaBill.Api.Modules.Customers
         private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(30); // Refresh cache every 30 minutes
         private static readonly object _cacheLock = new object();
 
-        public CustomerService(AppDbContext context)
+        public CustomerService(AppDbContext context, ILogger<CustomerService> logger)
         {
             _context = context;
+            _logger = logger;
             QuestPDF.Settings.License = LicenseType.Community;
+        }
+
+        // Backwards-compatible constructor for existing manual instantiations
+        public CustomerService(AppDbContext context) : this(context, NullLogger<CustomerService>.Instance)
+        {
         }
         
         /// <summary>
@@ -113,7 +122,7 @@ namespace HexaBill.Api.Modules.Customers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Warning: Could not check BranchId column existence: {ex.Message}");
+                    _logger.LogWarning(ex, "Could not check BranchId column existence when loading customers");
                     // Default to false (safer - skip filters) if check fails
                     hasColumn = false;
                 }

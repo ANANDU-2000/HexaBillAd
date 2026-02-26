@@ -25,7 +25,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 {
     public interface IComprehensiveBackupService
     {
-        Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false);
+        Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false, bool includeInvoicePdfs = false);
         Task<bool> RestoreFromBackupAsync(int tenantId, string backupFilePath, string? uploadedFilePath = null);
         Task<List<BackupInfo>> GetBackupListAsync();
         /// <summary>Returns a stream and filename for download. Caller must dispose the stream. For S3, stream is a temp-file stream that deletes on dispose.</summary>
@@ -41,14 +41,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
+        private readonly ILogger<ComprehensiveBackupService> _logger;
         private readonly string _backupDirectory;
         private readonly string _desktopPath;
 
-        public ComprehensiveBackupService(AppDbContext context, IConfiguration configuration, IServiceProvider serviceProvider)
+        public ComprehensiveBackupService(AppDbContext context, IConfiguration configuration, IServiceProvider serviceProvider, ILogger<ComprehensiveBackupService> logger)
         {
             _context = context;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
+            _logger = logger;
             _backupDirectory = Path.Combine(Directory.GetCurrentDirectory(), "backups");
             // BUG #13 FIX: Use /tmp on Linux (Render), Desktop on Windows (dev)
             // SpecialFolder.Desktop returns empty string on Linux, causing silent failures
@@ -99,7 +101,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             catch { return null; }
         }
 
-        public async Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false)
+        public async Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false, bool includeInvoicePdfs = false)
         {
             // AUDIT-8 FIX: Validate tenantId
             if (tenantId <= 0)
@@ -123,84 +125,84 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         try
                         {
                             await BackupDatabaseAsync(zipArchive, timestamp, tenantId, ctx);
-                            Console.WriteLine("✅ Database backup completed");
+                            _logger.LogInformation("Database backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Database backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Database backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupCsvExportsAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ CSV exports completed");
+                            _logger.LogInformation("CSV exports completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ CSV exports failed: {ex.Message}");
+                            _logger.LogWarning(ex, "CSV exports failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
-                            await BackupInvoicesAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ Invoice PDFs backup completed");
+                            await BackupInvoicesAsync(zipArchive, tenantId, ctx, includeInvoicePdfs, scope.ServiceProvider);
+                            _logger.LogInformation("Invoice PDFs backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Invoice PDFs backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Invoice PDFs backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupCustomerStatementsAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ Customer statements backup completed");
+                            _logger.LogInformation("Customer statements backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Customer statements backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Customer statements backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupMonthlySalesLedgerAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ Monthly sales ledger backup completed");
+                            _logger.LogInformation("Monthly sales ledger backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Monthly sales ledger backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Monthly sales ledger backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupReportsAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ Reports backup completed");
+                            _logger.LogInformation("Reports backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Reports backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Reports backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupUploadedFilesAsync(zipArchive, tenantId);
-                            Console.WriteLine("✅ Uploaded files backup completed");
+                            _logger.LogInformation("Uploaded files backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Uploaded files backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Uploaded files backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await BackupSettingsAsync(zipArchive, tenantId, ctx);
                             await BackupUsersAsync(zipArchive, tenantId, ctx);
-                            Console.WriteLine("✅ Settings and users backup completed");
+                            _logger.LogInformation("Settings and users backup completed for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Settings backup failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Settings/users backup failed for tenant {TenantId}", tenantId);
                         }
                         try
                         {
                             await CreateManifestAsync(zipArchive, timestamp, tenantId, ctx);
-                            Console.WriteLine("✅ Manifest created");
+                            _logger.LogInformation("Backup manifest created for tenant {TenantId}", tenantId);
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"⚠️ Manifest creation failed: {ex.Message}");
+                            _logger.LogWarning(ex, "Manifest creation failed for tenant {TenantId}", tenantId);
                         }
                     }
 
@@ -222,25 +224,21 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                         
                         File.Copy(zipPath, desktopBackup, overwrite: true);
-                        Console.WriteLine($"✅ Backup copied to Desktop: {desktopBackup}");
+                        _logger.LogInformation("Backup copied to Desktop: {Path}", desktopBackup);
                     }
                     catch (UnauthorizedAccessException ex)
                     {
-                        Console.WriteLine($"⚠️ Desktop copy failed - Permission denied: {ex.Message}");
-                        Console.WriteLine($"   Backup file saved at: {zipPath}");
+                        _logger.LogWarning(ex, "Desktop copy failed - Permission denied. Backup file saved at {Path}", zipPath);
                         // Don't throw - backup succeeded, just desktop copy failed
                     }
                     catch (DirectoryNotFoundException ex)
                     {
-                        Console.WriteLine($"⚠️ Desktop copy failed - Directory not found: {ex.Message}");
-                        Console.WriteLine($"   Backup file saved at: {zipPath}");
+                        _logger.LogWarning(ex, "Desktop copy failed - Directory not found. Backup file saved at {Path}", zipPath);
                         // Don't throw - backup succeeded, just desktop copy failed
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Desktop copy failed: {ex.Message}");
-                        Console.WriteLine($"   Backup file saved at: {zipPath}");
-                        Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                        _logger.LogWarning(ex, "Desktop copy failed. Backup file saved at {Path}", zipPath);
                         // Don't throw - backup succeeded, just desktop copy failed
                     }
                 }
@@ -254,7 +252,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Google Drive upload failed: {ex.Message}");
+                        _logger.LogWarning(ex, "Google Drive upload failed for backup {Path}", zipPath);
                     }
                 }
 
@@ -265,7 +263,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ S3 upload failed: {ex.Message}");
+                    _logger.LogWarning(ex, "S3 upload failed for backup {Path}", zipPath);
                 }
 
                 // Send email if requested
@@ -277,7 +275,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Email send failed: {ex.Message}");
+                        _logger.LogWarning(ex, "Email send failed for backup {Path}", zipPath);
                     }
                 }
 
@@ -288,7 +286,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Audit log failed: {ex.Message}");
+                    _logger.LogWarning(ex, "Audit log failed for backup {FileName}", zipFileName);
                 }
 
                 return zipFileName;
@@ -305,8 +303,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 catch { }
                 
-                Console.WriteLine($"❌ Backup creation failed: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogError(ex, "Backup creation failed for tenant {TenantId}", tenantId);
                 throw new Exception($"Failed to create backup: {ex.Message}", ex);
             }
             }
@@ -361,7 +358,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     {
                         await fileStream.CopyToAsync(entryStream);
                     }
-                    Console.WriteLine($"   Database file backed up: {dbFileName}");
+                    _logger.LogInformation("Database file backed up: {FileName}", dbFileName);
                 }
                 catch (UnauthorizedAccessException ex)
                 {
@@ -378,7 +375,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                Console.WriteLine("📦 Creating PostgreSQL database dump...");
+                _logger.LogInformation("Creating PostgreSQL database dump...");
                 
                 // Parse connection string to extract connection details
                 var connectionParts = connectionString.Split(';');
@@ -433,7 +430,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 else
                 {
                     // Fallback: Use Npgsql to export data via EF Core
-                    Console.WriteLine("⚠️ pg_dump not found, using EF Core export (slower but works)");
+                    _logger.LogWarning("pg_dump not found, using EF Core export (slower but works)");
                     await ExportPostgreSQLViaEfCoreAsync(tempDumpPath, tenantId, dbContext);
                 }
 
@@ -446,7 +443,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     {
                         await fileStream.CopyToAsync(entryStream);
                     }
-                    Console.WriteLine($"   PostgreSQL dump backed up: db_dump.sql");
+                    _logger.LogInformation("PostgreSQL dump backed up: db_dump.sql");
                     
                     // Clean up temp file
                     File.Delete(tempDumpPath);
@@ -454,7 +451,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ PostgreSQL backup failed: {ex.Message}");
+                    _logger.LogWarning(ex, "PostgreSQL backup via pg_dump failed, attempting EF Core fallback");
                     // Try fallback: export via EF Core
                     try
                     {
@@ -468,13 +465,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     {
                         await fileStream.CopyToAsync(entryStream);
                     }
-                    Console.WriteLine($"   PostgreSQL dump backed up via EF Core: db_dump.sql");
+                    _logger.LogInformation("PostgreSQL dump backed up via EF Core: db_dump.sql");
                     File.Delete(tempDumpPath);
                 }
                 catch (Exception fallbackEx)
                 {
-                    Console.WriteLine($"❌ PostgreSQL backup fallback also failed: {fallbackEx.Message}");
-                    throw new Exception($"PostgreSQL backup failed: {ex.Message}. Fallback also failed: {fallbackEx.Message}", ex);
+                    _logger.LogError(fallbackEx, "PostgreSQL backup fallback via EF Core also failed");
+                    throw new Exception($"PostgreSQL backup failed: {ex.Message}. Fallback also failed: {fallbackEx.Message}", fallbackEx);
                 }
             }
         }
@@ -585,59 +582,48 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        private async Task BackupInvoicesAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
+        private async Task BackupInvoicesAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null, bool includeInvoicePdfs = false, IServiceProvider? serviceProvider = null)
         {
             var db = backupContext ?? _context;
             var invoicesDir = Path.Combine(Directory.GetCurrentDirectory(), "invoices");
+            var backedUpCount = 0;
+            var skippedCount = 0;
+            var existingInZip = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             if (Directory.Exists(invoicesDir))
             {
                 var tenantInvoiceNos = await db.Sales
                     .Where(s => s.TenantId == tenantId && !s.IsDeleted && !string.IsNullOrEmpty(s.InvoiceNo))
                     .Select(s => s.InvoiceNo)
                     .ToListAsync();
-                
-                // Also get all PDF files in the invoices directory
+
                 var allPdfFiles = Directory.GetFiles(invoicesDir, "*.pdf", SearchOption.TopDirectoryOnly)
                     .Select(f => Path.GetFileName(f))
                     .ToList();
-                
-                var backedUpCount = 0;
-                var skippedCount = 0;
-                
-                // Backup PDFs that match tenant invoices OR all PDFs if tenant filtering is not strict
+
                 foreach (var pdfFile in allPdfFiles)
                 {
-                    // Extract invoice number from filename (format: INV-{InvoiceNo}.pdf or similar)
                     var invoiceNoMatch = System.Text.RegularExpressions.Regex.Match(pdfFile, @"INV-([^.]+)\.pdf", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
                     var shouldInclude = false;
-                    
                     if (invoiceNoMatch.Success)
-                    {
-                        var invoiceNo = invoiceNoMatch.Groups[1].Value;
-                        // Include if it matches a tenant invoice
-                        shouldInclude = tenantInvoiceNos.Contains(invoiceNo);
-                    }
+                        shouldInclude = tenantInvoiceNos.Contains(invoiceNoMatch.Groups[1].Value);
                     else
-                    {
-                        // Include all PDFs that don't match the pattern (manual PDFs, etc.)
-                        // For safety, only include PDFs that start with common prefixes
-                        shouldInclude = pdfFile.StartsWith("INV-", StringComparison.OrdinalIgnoreCase) ||
-                                      pdfFile.StartsWith("Invoice-", StringComparison.OrdinalIgnoreCase) ||
-                                      pdfFile.StartsWith("invoice-", StringComparison.OrdinalIgnoreCase);
-                    }
-                    
+                        shouldInclude = pdfFile.StartsWith("INV-", StringComparison.OrdinalIgnoreCase) || pdfFile.StartsWith("Invoice-", StringComparison.OrdinalIgnoreCase) || pdfFile.StartsWith("invoice-", StringComparison.OrdinalIgnoreCase);
+
                     if (shouldInclude)
                     {
                         var filePath = Path.Combine(invoicesDir, pdfFile);
                         try
                         {
-                            var entry = zipArchive.CreateEntry($"invoices/{pdfFile}");
+                            var entryName = $"invoices/{pdfFile}";
+                            var entry = zipArchive.CreateEntry(entryName);
                             using (var entryStream = entry.Open())
                             using (var fileStream = File.OpenRead(filePath))
                             {
                                 await fileStream.CopyToAsync(entryStream);
                             }
                             backedUpCount++;
+                            existingInZip.Add(entryName);
                         }
                         catch (Exception ex)
                         {
@@ -646,21 +632,48 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                     }
                     else
-                    {
                         skippedCount++;
+                }
+            }
+
+            if (includeInvoicePdfs && serviceProvider != null)
+            {
+                var sales = await (backupContext ?? _context).Sales
+                    .Where(s => s.TenantId == tenantId && !s.IsDeleted && !string.IsNullOrEmpty(s.InvoiceNo))
+                    .Select(s => new { s.Id, s.InvoiceNo })
+                    .ToListAsync();
+                var saleService = serviceProvider.GetService<ISaleService>();
+                if (saleService != null)
+                {
+                    foreach (var sale in sales)
+                    {
+                        var entryName = $"invoices/INV-{sale.InvoiceNo}.pdf";
+                        if (existingInZip.Contains(entryName)) continue;
+                        try
+                        {
+                            var pdfBytes = await saleService.GenerateInvoicePdfAsync(sale.Id, tenantId);
+                            if (pdfBytes != null && pdfBytes.Length > 0)
+                            {
+                                var entry = zipArchive.CreateEntry(entryName);
+                                using (var stream = entry.Open())
+                                    await stream.WriteAsync(pdfBytes);
+                                backedUpCount++;
+                                existingInZip.Add(entryName);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"   ⚠️ Failed to generate PDF for invoice {sale.InvoiceNo}: {ex.Message}");
+                        }
                     }
                 }
-                
-                Console.WriteLine($"   ✅ Backed up {backedUpCount} invoice PDF(s) for tenant {tenantId}");
-                if (skippedCount > 0)
-                {
-                    Console.WriteLine($"   ⚠️ Skipped {skippedCount} PDF(s) (not matching tenant invoices)");
-                }
             }
-            else
-            {
+
+            Console.WriteLine($"   ✅ Backed up {backedUpCount} invoice PDF(s) for tenant {tenantId}");
+            if (skippedCount > 0)
+                Console.WriteLine($"   ⚠️ Skipped {skippedCount} PDF(s) (not matching tenant invoices)");
+            if (!Directory.Exists(invoicesDir))
                 Console.WriteLine($"   ⚠️ Invoices directory not found: {invoicesDir}");
-            }
         }
 
         private async Task BackupUploadedFilesAsync(ZipArchive zipArchive, int tenantId)

@@ -14,6 +14,7 @@ using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.Inventory;
 using HexaBill.Api.Shared.Services;
+using HexaBill.Api.Shared.Validation;
 
 namespace HexaBill.Api.Modules.Reports
 {
@@ -46,9 +47,10 @@ namespace HexaBill.Api.Modules.Reports
         private readonly ISalesSchemaService _salesSchema;
         private readonly IMemoryCache _cache;
         private readonly ILogger<ReportService> _logger;
+        private readonly ITimeZoneService _timeZoneService;
         private static readonly TimeSpan SummaryReportCacheDuration = TimeSpan.FromMinutes(5);
 
-        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger)
+        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger, ITimeZoneService timeZoneService)
         {
             _context = context;
             _routeScopeService = routeScopeService;
@@ -57,6 +59,7 @@ namespace HexaBill.Api.Modules.Reports
             _salesSchema = salesSchema;
             _cache = cache;
             _logger = logger;
+            _timeZoneService = timeZoneService;
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42703 undefined_column. Handles wrapped exceptions from EF/Npgsql and message-based detection.</summary>
@@ -74,9 +77,8 @@ namespace HexaBill.Api.Modules.Reports
 
         public async Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null)
         {
-            // Build cache key from normalized date range
-            var utcNow = DateTime.UtcNow;
-            var today = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
+            // Build cache key from normalized date range (use tenant timezone for "today")
+            var today = _timeZoneService.GetCurrentDate();
             var startForKey = fromDate.HasValue ? new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Utc) : today;
             var endForKey = toDate.HasValue ? toDate.Value.AddDays(1) : today.AddDays(1);
             var cacheKey = $"report:summary:{tenantId}:{startForKey:yyyyMMdd}:{endForKey:yyyyMMdd}:{branchId}:{routeId}:{userIdForStaff}:{roleForStaff ?? ""}";
@@ -92,31 +94,31 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                // CRITICAL FIX: Never use .Date property, it creates Unspecified
-                var utcNow = DateTime.UtcNow;
-                var today = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
+                // P5: Use tenant timezone (e.g. Asia/Dubai) for "today" so dashboard metrics match tenant day
+                var today = _timeZoneService.GetCurrentDate();
                 DateTime startDate;
                 DateTime endDate;
-                
-                // CRITICAL: Handle date parsing and ensure UTC Kind for PostgreSQL
+
                 if (fromDate.HasValue)
                 {
-                    startDate = new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Utc); // CRITICAL FIX: Never use .Date
+                    var fromLocal = new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Unspecified);
+                    startDate = _timeZoneService.ConvertToUtc(fromLocal);
                 }
                 else
                 {
                     startDate = today;
                 }
-                
+
                 if (toDate.HasValue)
                 {
-                    endDate = toDate.Value.AddDays(1).ToUtcKind(); // Include the entire day and convert to UTC Kind - FIX: Don't use .Date
+                    var toEndLocal = new DateTime(toDate.Value.Year, toDate.Value.Month, toDate.Value.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
+                    endDate = _timeZoneService.ConvertToUtc(toEndLocal).ToUtcKind();
                 }
                 else
                 {
                     endDate = today.AddDays(1).ToUtcKind();
                 }
-                
+
                 _logger.LogDebug("GetSummaryReportAsync called with tenantId={TenantId}, fromDate: {FromDate}, toDate: {ToDate}", tenantId, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
                 _logger.LogDebug("Date range: {Start} to {End}", startDate.ToString("yyyy-MM-dd HH:mm:ss"), endDate.ToString("yyyy-MM-dd HH:mm:ss"));
 
@@ -214,7 +216,8 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     var damageLossQuery = _context.SaleReturnItems
                         .Where(sri => sri.SaleReturn.ReturnDate >= startDate && sri.SaleReturn.ReturnDate < endDate
-                            && (sri.Condition == "damaged" || sri.Condition == "writeoff"));
+                            && sri.Condition != null
+                            && (sri.Condition.ToLower() == "damaged" || sri.Condition.ToLower() == "writeoff"));
                     if (tenantId > 0)
                         damageLossQuery = damageLossQuery.Where(sri => sri.SaleReturn.TenantId == tenantId);
                     if (hasSalesBranchRoute)
