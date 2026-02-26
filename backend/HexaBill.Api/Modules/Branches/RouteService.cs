@@ -179,12 +179,25 @@ namespace HexaBill.Api.Modules.Branches
                 .AnyAsync();
             if (!branchExists)
                 throw new InvalidOperationException($"Branch with ID {request.BranchId} not found or does not belong to your tenant.");
+
+            // Enforce unique route name per branch (case-insensitive)
+            var trimmedName = request.Name.Trim();
+            var nameLower = trimmedName.ToLower();
+            var duplicateExists = await _context.Routes
+                .AsNoTracking()
+                .AnyAsync(r => r.TenantId == tenantId
+                               && r.BranchId == request.BranchId
+                               && r.Name.ToLower() == nameLower);
+            if (duplicateExists)
+            {
+                throw new InvalidOperationException($"A route named '{trimmedName}' already exists in this branch. Please choose a different name.");
+            }
             
             var route = new HexaBill.Api.Models.Route
             {
                 BranchId = request.BranchId,
                 TenantId = tenantId,
-                Name = request.Name.Trim(),
+                Name = trimmedName,
                 AssignedStaffId = request.AssignedStaffId,
                 CreatedAt = DateTime.UtcNow
             };
@@ -211,7 +224,7 @@ namespace HexaBill.Api.Modules.Branches
         {
             var route = await _context.Routes.FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantId);
             if (route == null) return null;
-            
+
             // PROD-12: Validate Branch exists and belongs to tenant if BranchId is being changed (schema-safe: no ManagerId)
             if (request.BranchId != route.BranchId)
             {
@@ -238,8 +251,22 @@ namespace HexaBill.Api.Modules.Branches
                         "Please reassign customers and sales to another route before changing branch.");
                 }
             }
-            
-            route.Name = request.Name.Trim();
+
+            var trimmedName = request.Name.Trim();
+            var nameLower = trimmedName.ToLower();
+            // Enforce unique route name within (branch, tenant) excluding current route
+            var duplicateExists = await _context.Routes
+                .AsNoTracking()
+                .AnyAsync(r => r.Id != id
+                               && r.TenantId == tenantId
+                               && r.BranchId == request.BranchId
+                               && r.Name.ToLower() == nameLower);
+            if (duplicateExists)
+            {
+                throw new InvalidOperationException($"A route named '{trimmedName}' already exists in this branch. Please choose a different name.");
+            }
+
+            route.Name = trimmedName;
             route.AssignedStaffId = request.AssignedStaffId;
             route.BranchId = request.BranchId;
             route.UpdatedAt = DateTime.UtcNow;
@@ -444,6 +471,26 @@ namespace HexaBill.Api.Modules.Branches
                 .Where(e => e.RouteId == routeId && e.ExpenseDate >= from && e.ExpenseDate <= to)
                 .SumAsync(e => e.Amount);
             var invoiceCount = saleIds.Count;
+
+            // Route-level returns and net sales
+            decimal totalReturns = 0m;
+            try
+            {
+                var returnsQuery = _context.SaleReturns.AsQueryable();
+                returnsQuery = returnsQuery.Where(r =>
+                    r.ReturnDate >= from && r.ReturnDate <= to &&
+                    (tenantId <= 0 || r.TenantId == tenantId) &&
+                    r.RouteId == routeId);
+                totalReturns = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ RouteService SaleReturns: {ex.Message}");
+                totalReturns = 0m;
+            }
+
+            var netSales = totalSales - totalReturns;
+
             decimal costOfGoodsSold = 0m;
             if (invoiceCount > 0)
             {
@@ -489,16 +536,18 @@ namespace HexaBill.Api.Modules.Branches
                     .Where(p => p.SaleId.HasValue && saleIds.Contains(p.SaleId.Value) && p.PaymentDate >= from && p.PaymentDate <= to)
                     .SumAsync(p => p.Amount)
                 : 0m;
-            var unpaidAmount = totalSales > totalPayments ? totalSales - totalPayments : 0m;
+            var unpaidAmount = netSales > totalPayments ? netSales - totalPayments : 0m;
             return new RouteSummaryDto
             {
                 RouteId = route.Id,
                 RouteName = route.Name,
                 BranchName = branchName,
                 TotalSales = totalSales,
+                TotalReturns = totalReturns,
+                NetSales = netSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = costOfGoodsSold,
-                Profit = totalSales - costOfGoodsSold - totalExpenses,
+                Profit = netSales - costOfGoodsSold - totalExpenses,
                 InvoiceCount = invoiceCount,
                 VisitCount = visitCount,
                 TotalPayments = totalPayments,

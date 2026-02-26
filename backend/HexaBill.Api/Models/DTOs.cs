@@ -900,6 +900,8 @@ namespace HexaBill.Api.Models
         public string RouteName { get; set; } = string.Empty;
         public string BranchName { get; set; } = string.Empty;
         public decimal TotalSales { get; set; }
+        public decimal TotalReturns { get; set; }
+        public decimal NetSales { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal CostOfGoodsSold { get; set; }
         public decimal Profit { get; set; }
@@ -918,6 +920,8 @@ namespace HexaBill.Api.Models
         public int BranchId { get; set; }
         public string BranchName { get; set; } = string.Empty;
         public decimal TotalSales { get; set; }
+        public decimal TotalReturns { get; set; }
+        public decimal NetSales { get; set; }
         public decimal TotalExpenses { get; set; }
         public decimal CostOfGoodsSold { get; set; }
         public decimal Profit { get; set; }

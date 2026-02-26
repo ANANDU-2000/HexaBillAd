@@ -285,30 +285,93 @@ namespace HexaBill.Api.Modules.Branches
             }
             var expensesByRoute = expensesByRouteList;
 
+            // Branch-level returns: include returns tagged with this branch or with routes in this branch
+            decimal branchReturnsTotal = 0m;
+            try
+            {
+                var returnsQuery = _context.SaleReturns.AsQueryable();
+                returnsQuery = returnsQuery.Where(r =>
+                    r.ReturnDate >= from && r.ReturnDate <= to &&
+                    (tenantId <= 0 || r.TenantId == tenantId) &&
+                    (r.BranchId == branchId || (r.RouteId != null && routeIds.Contains(r.RouteId.Value))));
+                branchReturnsTotal = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ BranchService SaleReturns: {ex.Message}");
+                branchReturnsTotal = 0m;
+            }
+
             var routeList = await _context.Routes
                 .AsNoTracking()
                 .Where(r => r.BranchId == branchId && (tenantId <= 0 || r.TenantId == tenantId))
                 .Select(r => new { r.Id, r.Name })
                 .ToListAsync();
 
+            // Payments for this branch's sales, grouped by route (and branch-only)
+            var paymentsBySaleWithRoute = new List<(int? RouteId, decimal Amount)>();
+            decimal totalPayments = 0m;
+            if (saleIdsInBranch.Count > 0)
+            {
+                try
+                {
+                    var paymentsQuery = _context.Payments
+                        .Where(p => p.SaleId.HasValue
+                                    && saleIdsInBranch.Contains(p.SaleId.Value)
+                                    && p.SaleReturnId == null
+                                    && (tenantId <= 0 || p.TenantId == tenantId)
+                                    && p.PaymentDate >= from && p.PaymentDate <= to);
+
+                    var paymentsWithRoute = await (from p in paymentsQuery
+                                                   join s in _context.Sales on p.SaleId equals s.Id
+                                                   select new { p.Amount, s.RouteId }).ToListAsync();
+
+                    paymentsBySaleWithRoute = paymentsWithRoute
+                        .Select(x => (x.RouteId, x.Amount))
+                        .ToList();
+
+                    totalPayments = paymentsBySaleWithRoute.Sum(x => x.Amount);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ BranchService Payments: {ex.Message}");
+                    paymentsBySaleWithRoute = new List<(int? RouteId, decimal Amount)>();
+                    totalPayments = 0m;
+                }
+            }
+
+            var paymentsByRoute = paymentsBySaleWithRoute
+                .Where(x => x.RouteId.HasValue && routeIds.Contains(x.RouteId.Value))
+                .GroupBy(x => x.RouteId!.Value)
+                .Select(g => new { RouteId = g.Key, Total = g.Sum(x => x.Amount) })
+                .ToList();
+
             var routes = routeList.Select(r =>
             {
                 var routeSales = salesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
                 var sales = routeSales?.Total ?? 0;
+                var routeReturns = 0m; // Route-level returns can be added later; currently only branch aggregate is used
                 var expEntry = expensesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
                 var expenses = expEntry.RouteId == r.Id ? expEntry.Total : 0m;
                 var cogsEntry = cogsByRouteList.FirstOrDefault(x => x.RouteId == r.Id);
                 var cogs = cogsEntry.RouteId == r.Id ? cogsEntry.Cogs : 0m;
+                var routePayments = paymentsByRoute.FirstOrDefault(x => x.RouteId == r.Id)?.Total ?? 0m;
+                var routeNetSales = sales - routeReturns;
+                var routeUnpaid = routeNetSales > routePayments ? routeNetSales - routePayments : 0m;
                 return new RouteSummaryDto
                 {
                     RouteId = r.Id,
                     RouteName = r.Name,
                     BranchName = branchData.Name,
                     TotalSales = sales,
+                    TotalReturns = routeReturns,
+                    NetSales = routeNetSales,
                     TotalExpenses = expenses,
                     CostOfGoodsSold = cogs,
-                    Profit = sales - cogs - expenses,
-                    InvoiceCount = routeSales?.Count ?? 0
+                    Profit = routeNetSales - cogs - expenses,
+                    InvoiceCount = routeSales?.Count ?? 0,
+                    TotalPayments = routePayments,
+                    UnpaidAmount = routeUnpaid
                 };
             }).ToList();
 
@@ -319,37 +382,16 @@ namespace HexaBill.Api.Modules.Branches
                 ? await _context.Sales.Where(s => saleIdsInBranch.Contains(s.Id)).SumAsync(s => s.GrandTotal)
                 : routes.Sum(r => r.TotalSales);
             var totalCogs = routes.Sum(r => r.CostOfGoodsSold);
+            var netSales = totalSales - branchReturnsTotal;
 
             // Performance metrics
             var invoiceCount = saleIdsInBranch.Count;
             var averageInvoiceSize = invoiceCount > 0 ? totalSales / invoiceCount : 0m;
 
-            // Calculate total payments for this branch's customers in the period
-            List<int> branchCustomerIds;
-            try
-            {
-                branchCustomerIds = await _context.Customers
-                    .Where(c => c.BranchId == branchId && (tenantId <= 0 || c.TenantId == tenantId))
-                    .Select(c => c.Id)
-                    .ToListAsync();
-            }
-            catch
-            {
-                branchCustomerIds = new List<int>(); // BranchId may not exist on Customers in some schemas
-            }
-            
-            var totalPayments = 0m;
-            if (branchCustomerIds.Any())
-            {
-                totalPayments = await _context.Payments
-                    .Where(p => p.CustomerId != null && branchCustomerIds.Contains(p.CustomerId.Value) && 
-                                (tenantId <= 0 || p.TenantId == tenantId) && 
-                                p.PaymentDate >= from && p.PaymentDate <= to)
-                    .SumAsync(p => p.Amount);
-            }
+            // totalPayments already computed using payments linked to this branch's sales
 
-            // Collections ratio: Payments / Total Sales (for credit customers)
-            var collectionsRatio = totalSales > 0 ? (totalPayments / totalSales * 100) : (decimal?)null;
+            // Collections ratio: Payments / Net Sales (for credit customers)
+            var collectionsRatio = netSales > 0 ? (totalPayments / netSales * 100) : (decimal?)null;
 
             // Calculate growth percent (compare with previous period of same duration)
             decimal? growthPercent = null;
@@ -392,16 +434,18 @@ namespace HexaBill.Api.Modules.Branches
                 BranchId = branchData.Id,
                 BranchName = branchData.Name,
                 TotalSales = totalSales,
+                TotalReturns = branchReturnsTotal,
+                NetSales = netSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = totalCogs,
-                Profit = totalSales - totalCogs - totalExpenses,
+                Profit = netSales - totalCogs - totalExpenses,
                 Routes = routes,
                 GrowthPercent = growthPercent,
                 CollectionsRatio = collectionsRatio,
                 AverageInvoiceSize = averageInvoiceSize,
                 InvoiceCount = invoiceCount,
                 TotalPayments = totalPayments,
-                UnpaidAmount = totalSales > totalPayments ? totalSales - totalPayments : 0
+                UnpaidAmount = netSales > totalPayments ? netSales - totalPayments : 0
             };
         }
 

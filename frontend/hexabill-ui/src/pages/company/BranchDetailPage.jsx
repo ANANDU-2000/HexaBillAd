@@ -607,7 +607,12 @@ const BranchDetailPage = () => {
             <ul className="space-y-1.5">
               {summary.routes?.map((r) => (
                 <li key={r.routeId || r.id} className="flex items-center justify-between py-2 px-2.5 bg-white rounded border border-neutral-200 text-sm">
-                  <Link to={`/routes/${r.routeId || r.id}`} className="font-medium text-primary-600 hover:underline">{r.routeName || r.name}</Link>
+                  <Link
+                    to={`/routes/${r.routeId || r.id}?fromDate=${fromDate}&toDate=${toDate}`}
+                    className="font-medium text-primary-600 hover:underline"
+                  >
+                    {r.routeName || r.name}
+                  </Link>
                   <div className="flex gap-3 flex-wrap text-xs">
                     {(r.invoiceCount ?? 0) > 0 && <span className="text-neutral-500">{r.invoiceCount} inv.</span>}
                     <span className="text-neutral-600">Sales: {formatCurrency(r.totalSales)}</span>
@@ -647,13 +652,27 @@ const BranchDetailPage = () => {
                 </thead>
                 <tbody className="divide-y divide-neutral-200 bg-white">
                   {summary.routes?.map((r) => (
-                    <tr key={r.routeId || r.id} className="hover:bg-neutral-50">
-                      <td className="px-2 py-1.5"><Link to={`/routes/${r.routeId || r.id}`} className="font-medium text-primary-600 hover:underline">{r.routeName || r.name}</Link></td>
+                  <tr key={r.routeId || r.id} className="hover:bg-neutral-50">
+                      <td className="px-2 py-1.5">
+                        <Link
+                          to={`/routes/${r.routeId || r.id}?fromDate=${fromDate}&toDate=${toDate}`}
+                          className="font-medium text-primary-600 hover:underline"
+                        >
+                          {r.routeName || r.name}
+                        </Link>
+                      </td>
                       <td className="px-2 py-1.5 text-right text-neutral-600">{r.invoiceCount ?? 0}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalSales)}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalExpenses)}</td>
                       <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
-                      <td className="px-2 py-1.5 text-right"><Link to={`/routes/${r.routeId || r.id}`} className="text-primary-600 hover:underline text-xs">View</Link></td>
+                      <td className="px-2 py-1.5 text-right">
+                        <Link
+                          to={`/routes/${r.routeId || r.id}?fromDate=${fromDate}&toDate=${toDate}`}
+                          className="text-primary-600 hover:underline text-xs"
+                        >
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -17,21 +17,26 @@ const RouteDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
   const [route, setRoute] = useState(null)
   const [summary, setSummary] = useState(null)
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
-  const defaultFrom = (() => {
+  const urlFrom = searchParams.get('fromDate')
+  const urlTo = searchParams.get('toDate')
+  const computedDefaultFrom = (() => {
+    if (urlFrom) return urlFrom
     const d = new Date()
     d.setMonth(d.getMonth() - 1)
     return d.toISOString().split('T')[0]
   })()
-  const defaultTo = new Date().toISOString().split('T')[0]
-  const [fromDate, setFromDate] = useState(defaultFrom)
-  const [toDate, setToDate] = useState(defaultTo)
-  const [dateDraftFrom, setDateDraftFrom] = useState(defaultFrom)
-  const [dateDraftTo, setDateDraftTo] = useState(defaultTo)
+  const computedDefaultTo = urlTo || new Date().toISOString().split('T')[0]
+
+  const [fromDate, setFromDate] = useState(computedDefaultFrom)
+  const [toDate, setToDate] = useState(computedDefaultTo)
+  const [dateDraftFrom, setDateDraftFrom] = useState(computedDefaultFrom)
+  const [dateDraftTo, setDateDraftTo] = useState(computedDefaultTo)
   const [showExpenseModal, setShowExpenseModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [expenseCategory, setExpenseCategory] = useState('Misc')
