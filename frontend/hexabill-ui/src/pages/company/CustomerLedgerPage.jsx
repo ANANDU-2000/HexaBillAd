@@ -998,7 +998,10 @@ const CustomerLedgerPage = () => {
         })
 
         // Calculate totals from filtered ledger data (matching LedgerStatementTab logic)
-        const totalSales = filteredLedgerData.reduce((sum, entry) => sum + (Number(entry.debit) || 0), 0)
+        // IMPORTANT: Only count invoice/sale debits as Total Sales, exclude refunds/other debits
+        const totalSales = filteredLedgerData
+          .filter(entry => entry.type === 'Invoice' || entry.type === 'Sale')
+          .reduce((sum, entry) => sum + (Number(entry.debit) || 0), 0)
         const totalPayments = filteredLedgerData
           .filter(entry => entry.type === 'Payment')
           .reduce((sum, entry) => sum + (Number(entry.credit) || 0), 0)
@@ -3524,8 +3527,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
   // Always use the LAST entry of the full ledger (not paginated) for true closing balance
   const lastEntryBalance = ledgerEntries.length > 0 ? ledgerEntries[ledgerEntries.length - 1].balance : 0
   const closingBalance = Number(lastEntryBalance) || 0
-  const totalDebit = ledgerEntries.reduce((sum, e) => sum + (Number(e.debit) || 0), 0)
-  const totalCredit = ledgerEntries.reduce((sum, e) => sum + (Number(e.credit) || 0), 0)
+  // Totals for summary cards and closing balance footer:
+  // - Total Sales (debit) should only include invoice/sale rows
+  // - Payments Received (credit) should only include payment rows
+  const totalDebit = ledgerEntries.reduce(
+    (sum, e) => sum + ((e.type === 'Invoice' || e.type === 'Sale') ? (Number(e.debit) || 0) : 0),
+    0
+  )
+  const totalCredit = ledgerEntries.reduce(
+    (sum, e) => sum + (e.type === 'Payment' ? (Number(e.credit) || 0) : 0),
+    0
+  )
 
   return (
     <div className="w-full h-full flex flex-col bg-neutral-50 min-w-0">
