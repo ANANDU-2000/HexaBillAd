@@ -1023,6 +1023,15 @@ namespace HexaBill.Api.Modules.Billing
             var remaining = cn.Amount - cn.AppliedAmount;
             if (remaining <= 0)
                 throw new InvalidOperationException("No remaining credit to refund.");
+
+            // Link back to the originating sale return for ledger status
+            SaleReturn? linkedReturn = null;
+            if (cn.LinkedReturnId != null)
+            {
+                linkedReturn = await _context.SaleReturns
+                    .FirstOrDefaultAsync(sr => sr.Id == cn.LinkedReturnId && sr.TenantId == tenantId);
+            }
+
             var returnNo = cn.LinkedReturn?.ReturnNo ?? $"RET-{cn.LinkedReturnId}";
             _context.Payments.Add(new Payment
             {
@@ -1041,6 +1050,11 @@ namespace HexaBill.Api.Modules.Billing
             });
             cn.Status = "Refunded";
             cn.AppliedAmount = cn.Amount;
+            if (linkedReturn != null)
+            {
+                // Ledger disposition: this return has been fully refunded
+                linkedReturn.RefundStatus = "Refunded";
+            }
             await _context.SaveChangesAsync();
             var customer = await _context.Customers.FindAsync(cn.CustomerId);
             if (customer != null)

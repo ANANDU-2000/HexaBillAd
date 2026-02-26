@@ -1167,7 +1167,7 @@ namespace HexaBill.Api.Modules.Customers
                     payment.Mode.ToString(),
                     payment.Amount,
                     0m,
-                    "",
+                    "Paid",
                     (int?)null,
                     payment.Id,
                     (string?)null,
