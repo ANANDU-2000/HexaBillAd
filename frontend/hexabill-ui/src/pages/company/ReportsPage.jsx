@@ -866,9 +866,10 @@ const ReportsPage = () => {
           const d = (res?.success && res?.data) ? res.data : null
           const totalSales = d ? (parseFloat(d.totalSales ?? d.TotalSales ?? d.salesToday ?? d.SalesToday) || 0) : 0
           const totalReturns = d ? (parseFloat(d.totalReturns ?? d.TotalReturns ?? d.returnsToday ?? d.ReturnsToday) || 0) : 0
+          const refundsPaid = d ? (parseFloat(d.refundsPaid ?? d.RefundsPaid ?? 0) || 0) : 0
           setReportData(prev => ({
             ...prev,
-            netSalesReport: d ? { totalSales, totalReturns, netSales: totalSales - totalReturns } : null
+            netSalesReport: d ? { totalSales, totalReturns, netSales: totalSales - totalReturns, refundsPaid } : null
           }))
         } catch (error) {
           if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load net sales report')
@@ -3096,16 +3097,16 @@ const ReportsPage = () => {
             <div className="space-y-6">
               <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Net Sales Report</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Net Sales & Refunds Report</h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Net Sales = Total Sales − Returns for the selected period and filters.
+                    Net Sales = Total Sales − Returns. Refunds Paid shows cash refunded to customers for the selected period and filters.
                   </p>
                 </div>
                 {loading ? (
                   <LoadingCard />
                 ) : reportData.netSalesReport ? (
                   <div className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                       <div className="bg-green-50 rounded-lg p-4 border border-green-100">
                         <p className="text-sm font-medium text-green-700">Total Sales</p>
                         <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(reportData.netSalesReport.totalSales ?? 0)}</p>
@@ -3117,6 +3118,10 @@ const ReportsPage = () => {
                       <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                         <p className="text-sm font-medium text-blue-700">Net Sales</p>
                         <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
+                      </div>
+                      <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                        <p className="text-sm font-medium text-red-700">Refunds Paid</p>
+                        <p className="text-2xl font-bold text-red-900 mt-1">{formatCurrency(reportData.netSalesReport.refundsPaid ?? 0)}</p>
                       </div>
                     </div>
                   </div>
