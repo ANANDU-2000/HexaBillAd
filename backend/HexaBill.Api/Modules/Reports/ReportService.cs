@@ -20,7 +20,7 @@ namespace HexaBill.Api.Modules.Reports
 {
     public interface IReportService
     {
-        Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null);
+        Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, bool skipCache = false);
         Task<PagedResponse<SaleDto>> GetSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int? customerId = null, string? status = null, int page = 1, int pageSize = 10, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, string? search = null);
         Task<EnhancedSalesReportDto> GetEnhancedSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, string granularity = "day", int? productId = null, int? customerId = null, string? status = null, int page = 1, int pageSize = 50);
         Task<List<ProductSalesDto>> GetProductSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int top = 20);
@@ -49,6 +49,8 @@ namespace HexaBill.Api.Modules.Reports
         private readonly ILogger<ReportService> _logger;
         private readonly ITimeZoneService _timeZoneService;
         private static readonly TimeSpan SummaryReportCacheDuration = TimeSpan.FromMinutes(5);
+        /// <summary>Short cache for "today" so dashboard Refresh and auto-refresh show live data.</summary>
+        private static readonly TimeSpan SummaryReportTodayCacheDuration = TimeSpan.FromSeconds(30);
 
         public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger, ITimeZoneService timeZoneService)
         {
@@ -75,17 +77,24 @@ namespace HexaBill.Api.Modules.Reports
             return false;
         }
 
-        public async Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null)
+        public async Task<SummaryReportDto> GetSummaryReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? userIdForStaff = null, string? roleForStaff = null, bool skipCache = false)
         {
+            if (skipCache)
+                return await GetSummaryReportInternalAsync(tenantId, fromDate, toDate, branchId, routeId, userIdForStaff, roleForStaff);
+
             // Build cache key from normalized date range (use tenant timezone for "today")
             var today = _timeZoneService.GetCurrentDate();
             var startForKey = fromDate.HasValue ? new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Utc) : today;
             var endForKey = toDate.HasValue ? toDate.Value.AddDays(1) : today.AddDays(1);
             var cacheKey = $"report:summary:{tenantId}:{startForKey:yyyyMMdd}:{endForKey:yyyyMMdd}:{branchId}:{routeId}:{userIdForStaff}:{roleForStaff ?? ""}";
 
+            // Use short cache when range is a single day (e.g. "Today") so dashboard Refresh and auto-refresh show live data
+            var isSingleDay = fromDate.HasValue && toDate.HasValue && fromDate.Value.Date == toDate.Value.Date;
+            var cacheDuration = isSingleDay ? SummaryReportTodayCacheDuration : SummaryReportCacheDuration;
+
             return await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
-                entry.AbsoluteExpirationRelativeToNow = SummaryReportCacheDuration;
+                entry.AbsoluteExpirationRelativeToNow = cacheDuration;
                 return await GetSummaryReportInternalAsync(tenantId, fromDate, toDate, branchId, routeId, userIdForStaff, roleForStaff);
             });
         }

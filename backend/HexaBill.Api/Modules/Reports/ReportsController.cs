@@ -174,14 +174,15 @@ namespace HexaBill.Api.Modules.Reports
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
             [FromQuery] int? branchId = null,
-            [FromQuery] int? routeId = null)
+            [FromQuery] int? routeId = null,
+            [FromQuery] bool refresh = false)
         {
             try
             {
                 var tenantId = CurrentTenantId;
                 var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
                 var role = User.FindFirst(ClaimTypes.Role)?.Value;
-                var result = await _reportService.GetSummaryReportAsync(tenantId, fromDate, toDate, branchId, routeId, userId, role);
+                var result = await _reportService.GetSummaryReportAsync(tenantId, fromDate, toDate, branchId, routeId, userId, role, skipCache: refresh);
                 
                 // SECURITY: Hide profit from Staff
                 if (IsStaffOnly())

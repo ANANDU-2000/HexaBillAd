@@ -218,12 +218,12 @@ const DashboardTally = () => {
         }
     }
 
-    const fetchStats = async () => {
+    const fetchStats = async (skipCache = false) => {
         try {
             setLoading(true)
             const { from, to } = getDateRange()
 
-            // Pass branchId if Staff user has selected a branch
+            // Pass branchId if Staff user has selected a branch; refresh=true bypasses server cache
             const params = {
                 fromDate: from,
                 toDate: to
@@ -231,6 +231,7 @@ const DashboardTally = () => {
             if (selectedBranchId && !isAdminOrOwner(user)) {
                 params.branchId = selectedBranchId
             }
+            if (skipCache) params.refresh = true
 
             const response = await reportsAPI.getSummaryReport(params)
 
@@ -294,10 +295,10 @@ const DashboardTally = () => {
 
     const handleRefresh = async () => {
         if (isFetchingRef.current) return
-        lastFetchTimeRef.current = 0 // Bypass throttle so explicit Refresh always fetches fresh data after restart
+        lastFetchTimeRef.current = 0 // Bypass throttle so explicit Refresh always fetches fresh data
         isFetchingRef.current = true
         try {
-            await fetchStats()
+            await fetchStats(true) // true = skip server cache so Refresh shows live data
         } finally {
             isFetchingRef.current = false
         }

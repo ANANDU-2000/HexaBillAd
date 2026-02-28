@@ -50,3 +50,7 @@ If you add a column that’s critical and has caused production issues, add a `(
 - **Option B – Startup SQL:** For optional or backward-compatible objects, add `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` in the PostgreSQL block in `Program.cs` so they are created on next app startup.
 
 After applying a fix, call `GET /api/schema-check` again to confirm `missingTables` and `missingColumns` are empty.
+
+## 4. ErrorLogs "errorMissingColumn" / 42703 (ResolvedAt)
+
+If you see `FROM "ErrorLogs" AS e`, `Routine: errorMissingColumn`, or `Severity: ERROR` when loading error logs or the Super Admin alert summary, the production DB is missing the `ResolvedAt` column. Run **Scripts/RUN_ON_RENDER_PSQL.sql** (at least the first two lines: `ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" ...` and the index) in your production PostgreSQL (e.g. Render PSQL), then restart the API. The app will return empty error-log data until the column exists but will not 500.

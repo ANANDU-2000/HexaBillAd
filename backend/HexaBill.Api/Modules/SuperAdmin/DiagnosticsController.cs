@@ -244,6 +244,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
             }
+            catch (Exception ex) when (IsMissingColumnOrTable(ex))
+            {
+                return Ok(new { success = true, unresolvedCount = 0, last24hCount = 0, last1hCount = 0, recent = Array.Empty<object>() });
+            }
         }
 
         /// <summary>Enterprise: last 100 server errors. SuperAdmin/Admin only. includeResolved=true to show resolved/suppressed entries.</summary>
@@ -291,6 +295,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
             }
+            catch (Exception ex) when (IsMissingColumnOrTable(ex))
+            {
+                return Ok(new { success = true, count = 0, items = Array.Empty<object>() });
+            }
         }
 
         /// <summary>Mark an error log as resolved/suppressed so it can be hidden from the default list.</summary>
@@ -298,12 +306,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [Authorize(Roles = "Admin,Owner,SystemAdmin")]
         public async Task<IActionResult> ResolveErrorLog(int id)
         {
-            var entry = await _db.ErrorLogs.FindAsync(id);
-            if (entry == null)
-                return NotFound(new { success = false, message = "Error log not found." });
-            entry.ResolvedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
-            return Ok(new { success = true, message = "Marked as resolved.", resolvedAt = entry.ResolvedAt });
+            try
+            {
+                var entry = await _db.ErrorLogs.FindAsync(id);
+                if (entry == null)
+                    return NotFound(new { success = false, message = "Error log not found." });
+                entry.ResolvedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
+                return Ok(new { success = true, message = "Marked as resolved.", resolvedAt = entry.ResolvedAt });
+            }
+            catch (Exception ex) when (IsMissingColumnOrTable(ex))
+            {
+                return StatusCode(503, new { success = false, message = "ErrorLogs.ResolvedAt column is missing. Run Scripts/RUN_ON_RENDER_PSQL.sql on the database, then restart the API." });
+            }
         }
 
         /// <summary>Client-reported errors (e.g. "Service temporarily unavailable", connection refused). Stored in ErrorLogs so Super Admin can see them.</summary>
@@ -699,6 +714,22 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     return pg.SqlState;
             }
             return null;
+        }
+
+        /// <summary>True if exception indicates missing column/table (e.g. ErrorLogs.ResolvedAt not yet migrated). Ensures error-logs and alert-summary never 500 when DB schema is behind.</summary>
+        private static bool IsMissingColumnOrTable(Exception ex)
+        {
+            for (var e = ex; e != null; e = e.InnerException)
+            {
+                if (e is PostgresException pg && (pg.SqlState == "42P01" || pg.SqlState == "42703"))
+                    return true;
+                var msg = e.Message ?? "";
+                if (msg.Contains("42703", StringComparison.Ordinal) || msg.Contains("42P01", StringComparison.Ordinal)
+                    || (msg.Contains("column", StringComparison.OrdinalIgnoreCase) && msg.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+                    || msg.Contains("errorMissingColumn", StringComparison.OrdinalIgnoreCase) || msg.Contains("ResolvedAt", StringComparison.Ordinal))
+                    return true;
+            }
+            return false;
         }
     }
 
