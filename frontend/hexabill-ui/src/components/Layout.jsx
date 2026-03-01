@@ -113,9 +113,11 @@ const Layout = () => {
     navigate('/superadmin/dashboard')
   }
 
-  // Tenant navigation - Subscription hidden from tenants (only Super Admin needs it)
+  // Tenant navigation - Order follows owner workflow: Dashboard → Branches & Routes → Users → Products → … (see OWNER_WORKFLOW.md)
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
+    ...(isAdminOrOwner(user) ? [{ name: 'Branches & Routes', href: '/branches', icon: LayoutGrid }] : []),
+    ...(isAdminOrOwner(user) ? [{ name: 'Users', href: '/users', icon: Shield }] : []),
     { name: 'Products', href: '/products', icon: Package },
     ...(isAdminOrOwner(user) ? [{ name: 'Purchases', href: '/purchases', icon: Truck }] : []),
     { name: 'POS', href: '/pos', icon: ShoppingCart },
@@ -123,9 +125,6 @@ const Layout = () => {
     { name: 'Sales Ledger', href: '/sales-ledger', icon: FileText },
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
-    // Staff: Branches & Routes hidden (App.jsx also redirects /branches and /routes for Staff)
-    ...(isAdminOrOwner(user) ? [{ name: 'Branches & Routes', href: '/branches', icon: LayoutGrid }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Users', href: '/users', icon: Shield }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: FileText }] : []),
   ]

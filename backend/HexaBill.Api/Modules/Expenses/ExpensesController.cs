@@ -313,6 +313,20 @@ namespace HexaBill.Api.Modules.Expenses
             }
             catch (Exception ex)
             {
+                var msg = ex.Message ?? "";
+                var isDbOrColumn = ex is Microsoft.EntityFrameworkCore.DbUpdateException
+                    || msg.Contains("TenantId", StringComparison.OrdinalIgnoreCase)
+                    || msg.Contains("column", StringComparison.OrdinalIgnoreCase);
+                if (isDbOrColumn)
+                {
+                    _logger.LogWarning(ex, "GetCategories failed (possible missing TenantId column or migration); returning empty list");
+                    return Ok(new ApiResponse<List<ExpenseCategoryDto>>
+                    {
+                        Success = true,
+                        Message = "Categories could not be loaded. Ensure ExpenseCategories has TenantId (run migrations).",
+                        Data = new List<ExpenseCategoryDto>()
+                    });
+                }
                 return StatusCode(500, new ApiResponse<List<ExpenseCategoryDto>>
                 {
                     Success = false,

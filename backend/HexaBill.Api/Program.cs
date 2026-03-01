@@ -1922,27 +1922,34 @@ _ = Task.Run(async () =>
                     initLogger.LogInformation("✅ Settings seeded for both owners");
                 }
                 
-                // SEED EXPENSE CATEGORIES
-                var existingCategories = await context.ExpenseCategories.ToListAsync();
-                if (!existingCategories.Any())
+                // SEED EXPENSE CATEGORIES (per tenant so GET /expenses/categories returns data for each tenant)
+                var defaultCategoryNames = new[] {
+                    ("Rent", "#EF4444"), ("Utilities", "#F59E0B"), ("Staff Salary", "#3B82F6"), ("Marketing", "#8B5CF6"),
+                    ("Fuel", "#14B8A6"), ("Delivery", "#F97316"), ("Meals", "#EC4899"), ("Maintenance", "#6366F1"),
+                    ("Insurance", "#10B981"), ("Other", "#6B7280")
+                };
+                var allTenants = await context.Tenants.Select(t => t.Id).ToListAsync();
+                foreach (var tid in allTenants)
                 {
-                    initLogger.LogInformation("Seeding expense categories...");
-                    var categories = new List<ExpenseCategory>
+                    var hasAny = await context.ExpenseCategories.AnyAsync(c => c.TenantId == tid);
+                    if (!hasAny)
                     {
-                        new ExpenseCategory { Name = "Rent", ColorCode = "#EF4444", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Utilities", ColorCode = "#F59E0B", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Staff Salary", ColorCode = "#3B82F6", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Marketing", ColorCode = "#8B5CF6", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Fuel", ColorCode = "#14B8A6", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Delivery", ColorCode = "#F97316", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Meals", ColorCode = "#EC4899", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Maintenance", ColorCode = "#6366F1", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Insurance", ColorCode = "#10B981", CreatedAt = DateTime.UtcNow },
-                        new ExpenseCategory { Name = "Other", ColorCode = "#6B7280", CreatedAt = DateTime.UtcNow }
-                    };
-                    context.ExpenseCategories.AddRange(categories);
+                        var categories = defaultCategoryNames.Select(n => new ExpenseCategory
+                        {
+                            TenantId = tid,
+                            Name = n.Item1,
+                            ColorCode = n.Item2,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        }).ToList();
+                        context.ExpenseCategories.AddRange(categories);
+                        initLogger.LogInformation("Seeding expense categories for tenant {TenantId}", tid);
+                    }
+                }
+                if (allTenants.Any())
+                {
                     await context.SaveChangesAsync();
-                    initLogger.LogInformation("✅ Expense categories seeded");
+                    initLogger.LogInformation("✅ Expense categories seeded per tenant");
                 }
             }
             catch (Exception ex)

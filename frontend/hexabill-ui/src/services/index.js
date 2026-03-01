@@ -692,6 +692,11 @@ export const reportsAPI = {
     return response.data
   },
 
+  getSetupStatus: async () => {
+    const response = await api.get('/dashboard/setup-status')
+    return response.data
+  },
+
   getSummaryReport: async (params = {}) => {
     const response = await api.get('/reports/summary', { params: normalizeDateParams(params) })
     return response.data

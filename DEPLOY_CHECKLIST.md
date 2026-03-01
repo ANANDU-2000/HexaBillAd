@@ -2,13 +2,13 @@
 
 ## Before pushing
 
-1. **Database (if you still see ErrorLogs 42703)**  
-   In Render → your Postgres → Connect → PSQL, run at least:
+1. **Database**  
+   - If you see ErrorLogs 42703: In Render → Postgres → Connect → PSQL, run the ErrorLogs snippet below or full `backend/HexaBill.Api/Scripts/RUN_ON_RENDER_PSQL.sql`.
+   - If GET `/api/expenses/categories` returns 500: Ensure `ExpenseCategories` has a `TenantId` column. Run the block in `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql` for ExpenseCategories (add column, backfill, index), or apply migration `20260225130000_AddExpenseCategoryTenantId`.
    ```sql
    ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
    CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
    ```
-   Or run the full `backend/HexaBill.Api/Scripts/RUN_ON_RENDER_PSQL.sql` once.
 
 2. **Local checks (already done)**  
    - Backend: `dotnet build` in `backend/HexaBill.Api` ✓  

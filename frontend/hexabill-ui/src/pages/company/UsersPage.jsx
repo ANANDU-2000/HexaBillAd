@@ -628,8 +628,15 @@ const UsersPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan="9" className="px-6 py-8 text-center text-gray-500 text-sm">
-                      {searchTerm ? 'No users found matching your search' : 'No users found. Add your first user.'}
+                    <td colSpan="9" className="px-6 py-8 text-center">
+                      {searchTerm ? (
+                        <p className="text-gray-500 text-sm">No users found matching your search</p>
+                      ) : (
+                        <>
+                          <p className="text-gray-600 font-medium">Invite staff and assign them to branches or routes.</p>
+                          <p className="text-gray-500 text-sm mt-1">Add your first user to get started.</p>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ) : (

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { 
   HelpCircle, 
   BookOpen, 
@@ -7,13 +8,16 @@ import {
   Phone, 
   Search,
   FileText,
-  Video,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  MapPin,
+  Users,
+  Package,
+  UserPlus,
+  FilePlus
 } from 'lucide-react'
 // Layout removed - can be used by both tenant and SuperAdmin
 import { Input } from '../components/Form'
-import { LoadingButton } from '../components/Loading'
 import { useBranding } from '../contexts/TenantBrandingContext'
 
 const HelpPage = () => {
@@ -77,14 +81,14 @@ const HelpPage = () => {
     {
       icon: <Mail className="h-5 w-5" />,
       title: 'Email Support',
-      description: 'support@hexabill.com',
-      action: 'mailto:support@hexabill.com'
+      description: 'hexastack78@gmail.com',
+      action: 'mailto:hexastack78@gmail.com'
     },
     {
       icon: <Phone className="h-5 w-5" />,
-      title: 'Phone Support',
-      description: '+971 XX XXX XXXX',
-      action: 'tel:+971XXXXXXXXX'
+      title: 'Phone Support (India)',
+      description: '+91 75919 99365',
+      action: 'tel:+917591999365'
     },
     {
       icon: <MessageCircle className="h-5 w-5" />,
@@ -130,6 +134,80 @@ const HelpPage = () => {
           </div>
         </div>
 
+        {/* Getting started — mirrors OWNER_WORKFLOW.md */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <BookOpen className="h-5 w-5 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Getting started (recommended order)</h2>
+          </div>
+          <p className="text-gray-600 text-sm mb-4">
+            Set up your company in this order: company & VAT first, then branches and routes, then staff, products, customers, and your first invoice.
+          </p>
+          <ol className="space-y-2">
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">1</span>
+              <Link to="/settings" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Company info & VAT
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">2</span>
+              <Link to="/branches" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Branches
+                <MapPin className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">3</span>
+              <Link to="/branches" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Routes (optional)
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">4</span>
+              <Link to="/users" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Users (staff)
+                <Users className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">5</span>
+              <Link to="/products" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Products
+                <Package className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">6</span>
+              <Link to="/purchases" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Purchases (optional)
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">7</span>
+              <Link to="/customers" className="flex items-center gap-2 text-blue-600 hover:underline">
+                Customers
+                <UserPlus className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">8</span>
+              <Link to="/pos" className="flex items-center gap-2 text-blue-600 hover:underline">
+                First invoice (POS or Sales Ledger)
+                <FilePlus className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </li>
+          </ol>
+        </div>
+
         {/* FAQ Categories */}
         {filteredFAQs.length > 0 && (
           <div className="space-y-6">
@@ -152,24 +230,35 @@ const HelpPage = () => {
           </div>
         )}
 
+        {/* Quick tips — how to get the most out of HexaBill */}
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">How to get the most out of HexaBill</h2>
+          <ul className="text-gray-600 text-sm space-y-1.5 list-disc list-inside">
+            <li>Complete company & VAT in Settings first, then add branches and routes.</li>
+            <li>Use the <strong>Get started</strong> checklist on the Dashboard to track setup progress.</li>
+            <li>Use <strong>Reports</strong> for sales, profit, and aging to make data-driven decisions.</li>
+            <li>Use <strong>Customer Ledger</strong> and <strong>Payments</strong> to track collections and cash flow.</li>
+          </ul>
+        </div>
+
         {/* Contact Support */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Support</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Contact Support</h2>
+          <p className="text-gray-600 mb-5">
             Can't find what you're looking for? Our support team is here to help.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {contactMethods.map((method, idx) => (
               <a
                 key={idx}
                 href={method.action}
-                className="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
+                className="p-5 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50/50 transition shadow-sm"
               >
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="text-blue-600">{method.icon}</div>
                   <h3 className="font-semibold text-gray-900">{method.title}</h3>
                 </div>
-                <p className="text-sm text-gray-600">{method.description}</p>
+                <p className="text-sm text-gray-600 font-medium">{method.description}</p>
               </a>
             ))}
           </div>

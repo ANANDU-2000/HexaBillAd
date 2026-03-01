@@ -237,8 +237,19 @@ const BranchesPage = () => {
           </div>
 
           {branches.length === 0 ? (
-            <div className="bg-white rounded-lg border border-neutral-200 p-8 text-center text-neutral-500">
-              No branches yet. {canManage && 'Add a branch to get started.'}
+            <div className="bg-white rounded-lg border border-neutral-200 p-8 text-center">
+              <p className="text-neutral-600 font-medium">Add your first branch to organize locations and routes.</p>
+              <p className="text-neutral-500 text-sm mt-1">Branches help you manage multiple warehouses or offices and assign routes to them.</p>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setShowBranchModal(true)}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Branch
+                </button>
+              )}
             </div>
           ) : (
             <ul className="space-y-3">
@@ -302,9 +313,28 @@ const BranchesPage = () => {
           </div>
 
           {routes.length === 0 ? (
-            <div className="bg-white rounded-lg border border-neutral-200 p-8 text-center text-neutral-500">
-              No routes found. {canManage && branches.length > 0 && 'Add a route to get started.'}
-              {canManage && branches.length === 0 && 'Create a branch first, then add routes.'}
+            <div className="bg-white rounded-lg border border-neutral-200 p-8 text-center">
+              {branches.length === 0 ? (
+                <>
+                  <p className="text-neutral-600 font-medium">Create a branch first, then add routes.</p>
+                  <p className="text-neutral-500 text-sm mt-1">Routes belong to a branch and are used for delivery or field sales.</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-neutral-600 font-medium">Add a route under a branch for delivery or field sales.</p>
+                  <p className="text-neutral-500 text-sm mt-1">You can assign staff and customers to routes.</p>
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => { setRouteForm(prev => ({ ...prev, branchId: branches[0]?.id || '' })); setShowRouteModal(true) }}
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Route
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <ul className="space-y-3">

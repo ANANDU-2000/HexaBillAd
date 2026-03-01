@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle, ArrowRight, ArrowLeft, Building2, Receipt, Package, Users, FileText } from 'lucide-react'
+import { CheckCircle, ArrowRight, ArrowLeft, Building2, Receipt, Package, Users, FileText, MapPin } from 'lucide-react'
 import { Input, Select } from '../components/Form'
 import { LoadingButton } from '../components/Loading'
-import { productsAPI, customersAPI, salesAPI, settingsAPI } from '../services'
+import { productsAPI, customersAPI, salesAPI, settingsAPI, branchesAPI, routesAPI } from '../services'
 import toast from 'react-hot-toast'
 
 const OnboardingWizard = () => {
@@ -43,14 +43,19 @@ const OnboardingWizard = () => {
     email: ''
   })
 
-  // Step 5: First Invoice (will be created after product and customer)
+  // Optional: Branch and Route (steps 3–4)
+  const [branchName, setBranchName] = useState('Main')
+  const [routeName, setRouteName] = useState('Default route')
+  const [createdBranchId, setCreatedBranchId] = useState(null)
 
   const steps = [
     { number: 1, title: 'Company Info', icon: Building2 },
     { number: 2, title: 'VAT Setup', icon: Receipt },
-    { number: 3, title: 'Add Product', icon: Package },
-    { number: 4, title: 'Add Customer', icon: Users },
-    { number: 5, title: 'Create Invoice', icon: FileText }
+    { number: 3, title: 'Add Branch', icon: Building2 },
+    { number: 4, title: 'Add Route', icon: MapPin },
+    { number: 5, title: 'Add Product', icon: Package },
+    { number: 6, title: 'Add Customer', icon: Users },
+    { number: 7, title: 'Create Invoice', icon: FileText }
   ]
 
   const handleStep1 = async () => {
@@ -82,14 +87,12 @@ const OnboardingWizard = () => {
   const handleStep2 = async () => {
     try {
       setLoading(true)
-      // Update VAT settings
       await settingsAPI.updateSettings({
         VAT_NUMBER: vatInfo.vatNumber || '',
         VAT_RATE: vatInfo.vatRate,
         CURRENCY: vatInfo.currency,
         COUNTRY: vatInfo.country
       })
-      
       setCompletedSteps([...completedSteps, 2])
       setCurrentStep(3)
       toast.success('VAT settings saved')
@@ -101,11 +104,59 @@ const OnboardingWizard = () => {
   }
 
   const handleStep3 = async () => {
+    if (!branchName.trim()) {
+      toast.error('Branch name is required')
+      return
+    }
+    try {
+      setLoading(true)
+      const res = await branchesAPI.createBranch({ name: branchName.trim() })
+      if (res?.success && res?.data?.id) {
+        setCreatedBranchId(res.data.id)
+        setCompletedSteps([...completedSteps, 3])
+        setCurrentStep(4)
+        toast.success('Branch added')
+      } else {
+        toast.error(res?.message || 'Failed to add branch')
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to add branch')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStep4 = async () => {
+    if (!createdBranchId) {
+      setCurrentStep(5)
+      return
+    }
+    if (!routeName.trim()) {
+      toast.error('Route name is required')
+      return
+    }
+    try {
+      setLoading(true)
+      const res = await routesAPI.createRoute({ name: routeName.trim(), branchId: createdBranchId })
+      if (res?.success) {
+        setCompletedSteps([...completedSteps, 4])
+        setCurrentStep(5)
+        toast.success('Route added')
+      } else {
+        toast.error(res?.message || 'Failed to add route')
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Failed to add route')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStep5 = async () => {
     if (!productInfo.name.trim() || !productInfo.price) {
       toast.error('Product name and price are required')
       return
     }
-
     try {
       setLoading(true)
       await productsAPI.createProduct({
@@ -114,11 +165,10 @@ const OnboardingWizard = () => {
         sellPrice: parseFloat(productInfo.price),
         stockQty: parseFloat(productInfo.stock || 0),
         unitType: 'PIECE',
-        costPrice: parseFloat(productInfo.price) * 0.7 // Estimate
+        costPrice: parseFloat(productInfo.price) * 0.7
       })
-      
-      setCompletedSteps([...completedSteps, 3])
-      setCurrentStep(4)
+      setCompletedSteps([...completedSteps, 5])
+      setCurrentStep(6)
       toast.success('Product added successfully')
     } catch (error) {
       toast.error('Failed to add product')
@@ -127,12 +177,11 @@ const OnboardingWizard = () => {
     }
   }
 
-  const handleStep4 = async () => {
+  const handleStep6 = async () => {
     if (!customerInfo.name.trim()) {
       toast.error('Customer name is required')
       return
     }
-
     try {
       setLoading(true)
       await customersAPI.createCustomer({
@@ -140,9 +189,8 @@ const OnboardingWizard = () => {
         phone: customerInfo.phone || '',
         email: customerInfo.email || ''
       })
-      
-      setCompletedSteps([...completedSteps, 4])
-      setCurrentStep(5)
+      setCompletedSteps([...completedSteps, 6])
+      setCurrentStep(7)
       toast.success('Customer added successfully')
     } catch (error) {
       toast.error('Failed to add customer')
@@ -151,41 +199,26 @@ const OnboardingWizard = () => {
     }
   }
 
-  const handleStep5 = async () => {
+  const handleStep7 = async () => {
     try {
       setLoading(true)
-      // Get products and customers
       const productsResponse = await productsAPI.getProducts({ pageSize: 1 })
       const customersResponse = await customersAPI.getCustomers({ pageSize: 1 })
-
       if (!productsResponse.data?.items?.length || !customersResponse.data?.items?.length) {
         toast.error('Please add at least one product and customer first')
         return
       }
-
       const product = productsResponse.data.items[0]
       const customer = customersResponse.data.items[0]
-
-      // Create first invoice
       await salesAPI.createSale({
         customerId: customer.id,
-        items: [{
-          productId: product.id,
-          quantity: 1,
-          unitPrice: product.sellPrice,
-          discount: 0
-        }],
+        items: [{ productId: product.id, quantity: 1, unitPrice: product.sellPrice, discount: 0 }],
         paymentMethod: 'Cash',
         paymentStatus: 'Paid'
       })
-      
-      setCompletedSteps([...completedSteps, 5])
+      setCompletedSteps([...completedSteps, 7])
       toast.success('First invoice created!')
-      
-      // Complete onboarding
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 1500)
+      setTimeout(() => navigate('/dashboard'), 1500)
     } catch (error) {
       toast.error('Failed to create invoice')
     } finally {
@@ -194,7 +227,7 @@ const OnboardingWizard = () => {
   }
 
   const handleSkip = () => {
-    if (currentStep < 5) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1)
     } else {
       navigate('/dashboard')
@@ -208,6 +241,8 @@ const OnboardingWizard = () => {
       case 3: handleStep3(); break
       case 4: handleStep4(); break
       case 5: handleStep5(); break
+      case 6: handleStep6(); break
+      case 7: handleStep7(); break
     }
   }
 
@@ -253,7 +288,7 @@ const OnboardingWizard = () => {
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${(currentStep / 5) * 100}%` }}
+              style={{ width: `${(currentStep / 7) * 100}%` }}
             />
           </div>
         </div>
@@ -266,9 +301,11 @@ const OnboardingWizard = () => {
           <p className="text-gray-600 mb-6">
             {currentStep === 1 && 'Let\'s start by setting up your company information.'}
             {currentStep === 2 && 'Configure VAT settings for your business.'}
-            {currentStep === 3 && 'Add your first product to get started.'}
-            {currentStep === 4 && 'Add your first customer.'}
-            {currentStep === 5 && 'Create your first invoice to complete setup.'}
+            {currentStep === 3 && 'Add a branch (e.g. main office or warehouse). You can add more later.'}
+            {currentStep === 4 && createdBranchId ? 'Add a route under your branch for delivery or field sales. You can add more later.' : 'You skipped adding a branch. Add branches and routes later from the dashboard.'}
+            {currentStep === 5 && 'Add your first product to get started.'}
+            {currentStep === 6 && 'Add your first customer.'}
+            {currentStep === 7 && 'Create your first invoice to complete setup.'}
           </p>
 
           {/* Step 1: Company Info */}
@@ -341,8 +378,42 @@ const OnboardingWizard = () => {
             </div>
           )}
 
-          {/* Step 3: Add Product */}
+          {/* Step 3: Add Branch */}
           {currentStep === 3 && (
+            <div className="space-y-4">
+              <Input
+                label="Branch name *"
+                value={branchName}
+                onChange={(e) => setBranchName(e.target.value)}
+                placeholder="e.g. Main, Head office"
+                required
+              />
+              <p className="text-xs text-gray-500">You can add more branches later from the dashboard.</p>
+            </div>
+          )}
+
+          {/* Step 4: Add Route */}
+          {currentStep === 4 && (
+            <div className="space-y-4">
+              {createdBranchId ? (
+                <>
+                  <Input
+                    label="Route name *"
+                    value={routeName}
+                    onChange={(e) => setRouteName(e.target.value)}
+                    placeholder="e.g. Default route, North zone"
+                    required
+                  />
+                  <p className="text-xs text-gray-500">You can add more routes later from Branches & Routes.</p>
+                </>
+              ) : (
+                <p className="text-gray-600">Add branches and routes later from the dashboard (Branches & Routes).</p>
+              )}
+            </div>
+          )}
+
+          {/* Step 5: Add Product */}
+          {currentStep === 5 && (
             <div className="space-y-4">
               <Input
                 label="Product Name *"
@@ -372,8 +443,8 @@ const OnboardingWizard = () => {
             </div>
           )}
 
-          {/* Step 4: Add Customer */}
-          {currentStep === 4 && (
+          {/* Step 6: Add Customer */}
+          {currentStep === 6 && (
             <div className="space-y-4">
               <Input
                 label="Customer Name *"
@@ -396,8 +467,8 @@ const OnboardingWizard = () => {
             </div>
           )}
 
-          {/* Step 5: Create Invoice */}
-          {currentStep === 5 && (
+          {/* Step 7: Create Invoice */}
+          {currentStep === 7 && (
             <div className="text-center py-8">
               <FileText className="h-16 w-16 text-blue-600 mx-auto mb-4" />
               <p className="text-gray-600 mb-6">
@@ -435,8 +506,8 @@ const OnboardingWizard = () => {
               loading={loading}
               className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold"
             >
-              <span>{currentStep === 5 ? 'Complete Setup' : 'Next'}</span>
-              {currentStep < 5 && <ArrowRight className="h-5 w-5" />}
+              <span>{currentStep === 7 ? 'Complete Setup' : 'Next'}</span>
+              {currentStep < 7 && <ArrowRight className="h-5 w-5" />}
             </LoadingButton>
           </div>
         </div>

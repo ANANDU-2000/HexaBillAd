@@ -685,7 +685,7 @@ const CustomersPage = () => {
                     <div className="flex flex-col items-center justify-center">
                       <Inbox className="h-12 w-12 text-gray-400 mb-3" />
                       <p className="text-gray-500 text-sm font-medium">No customers found</p>
-                      <p className="text-gray-500 text-xs mt-1">Try adjusting your search or filters</p>
+                      <p className="text-gray-500 text-xs mt-1">Try adjusting your search or filters. Add customers to start creating invoices from POS or Sales Ledger.</p>
                       <button
                         onClick={() => {
                         reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '' })

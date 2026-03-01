@@ -17,6 +17,7 @@ import {
   Building2,
   Clock,
   ChevronDown,
+  ChevronUp,
   ChevronLeft,
   ChevronRight,
   Users,
@@ -114,6 +115,7 @@ const ReportsPage = () => {
     damageCategory: '',
     staffId: ''
   })
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   
   // BUG #2.5 FIX: Debounce text filter inputs (400ms delay) to prevent instant API calls
   const debouncedSearch = useDebounce(filters.search, 400)
@@ -1203,14 +1205,18 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      {/* Filters — horizontal full width */}
+      {/* Filters — collapsible; collapsed shows date row only to save space */}
       <div className="bg-white rounded-lg border border-neutral-200 p-4 lg:p-6 w-full">
-        <div className="flex items-center mb-4">
-          <Filter className="h-5 w-5 text-primary-600 mr-2" />
+        <button
+          type="button"
+          onClick={() => setFiltersExpanded(prev => !prev)}
+          className="flex items-center mb-2 w-full text-left"
+          aria-expanded={filtersExpanded}
+        >
+          <Filter className="h-5 w-5 text-primary-600 mr-2 flex-shrink-0" />
           <h3 className="text-base lg:text-lg font-semibold text-neutral-900">Filters</h3>
-        </div>
-
-        {/* Shared date range: applies to all report tabs (PRODUCTION_MASTER_TODO #40). Aging tab uses "As of" separately. */}
+          {filtersExpanded ? <ChevronUp className="h-5 w-5 ml-2 text-neutral-500" /> : <ChevronDown className="h-5 w-5 ml-2 text-neutral-500" />}
+        </button>
         <p className="text-sm text-neutral-600 mb-3">Date range applies to all tabs below.</p>
         <div className="mb-3 sm:mb-4 flex flex-wrap gap-2">
           <button
@@ -1292,6 +1298,19 @@ const ReportsPage = () => {
             value={dateRange.to}
             onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
           />
+          {!filtersExpanded ? (
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={() => setFiltersExpanded(true)}
+                className="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 text-neutral-700 flex items-center gap-1"
+              >
+                <ChevronDown className="h-4 w-4" />
+                Branch, Route, Product, Customer
+              </button>
+            </div>
+          ) : (
+            <>
           <Select
             label="Branch"
             options={[
@@ -1373,6 +1392,8 @@ const ReportsPage = () => {
               Apply Filters
             </button>
           </div>
+          </>
+          )}
         </div>
       </div>
 

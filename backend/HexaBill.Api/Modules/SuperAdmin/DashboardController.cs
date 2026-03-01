@@ -289,9 +289,53 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
 
         return Ok(response);
     }
+
+    /// <summary>
+    /// Lightweight setup status for the "Get started" checklist on dashboard.
+    /// GET: api/dashboard/setup-status
+    /// </summary>
+    [HttpGet("setup-status")]
+    public async Task<ActionResult<ApiResponse<SetupStatusDto>>> GetSetupStatus()
+    {
+        var tenantId = CurrentTenantId;
+        if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+
+        var hasBranch = await _context.Branches.AnyAsync(b => b.TenantId == tenantId);
+        var hasRoute = await _context.Routes.AnyAsync(r => r.TenantId == tenantId);
+        var userCount = await _context.Users.CountAsync(u => u.TenantId == tenantId);
+        var hasStaff = userCount > 1;
+        var productCount = await _context.Products.CountAsync(p => p.TenantId == tenantId);
+        var hasPurchase = await _context.Purchases.AnyAsync(p => p.TenantId == tenantId);
+        var customerCount = await _context.Customers.CountAsync(c => c.TenantId == tenantId);
+        var hasInvoice = await _context.Sales.AnyAsync(s => s.TenantId == tenantId && !s.IsDeleted);
+
+        var dto = new SetupStatusDto
+        {
+            HasBranch = hasBranch,
+            HasRoute = hasRoute,
+            HasStaff = hasStaff,
+            ProductCount = productCount,
+            HasPurchase = hasPurchase,
+            CustomerCount = customerCount,
+            HasInvoice = hasInvoice
+        };
+
+        return Ok(new ApiResponse<SetupStatusDto> { Success = true, Data = dto });
+    }
 }
 
 // DTOs
+public class SetupStatusDto
+{
+    public bool HasBranch { get; set; }
+    public bool HasRoute { get; set; }
+    public bool HasStaff { get; set; }
+    public int ProductCount { get; set; }
+    public bool HasPurchase { get; set; }
+    public int CustomerCount { get; set; }
+    public bool HasInvoice { get; set; }
+}
+
 public class DashboardResponse
 {
     public decimal TotalSales { get; set; }

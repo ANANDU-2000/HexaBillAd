@@ -4,7 +4,7 @@ import {
     Package, ShoppingCart, Users, Truck, FileText,
     Settings, Database, BarChart3, DollarSign, TrendingUp,
     AlertTriangle, ChevronRight, BookOpen, Wallet,
-    Building2, MapPin, RefreshCw, RotateCcw
+    Building2, MapPin, RefreshCw, RotateCcw, CheckCircle, X
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
@@ -143,6 +143,8 @@ const GatewayGroup = ({ group, user, navigate }) => {
     )
 }
 
+const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
+
 const DashboardTally = () => {
     const { user, logout } = useAuth()
     const { companyName } = useBranding()
@@ -154,6 +156,8 @@ const DashboardTally = () => {
     const [customToDate, setCustomToDate] = useState('')
     const [selectedBranchId, setSelectedBranchId] = useState(null) // For Staff branch filtering
     const availableBranches = branches || []
+    const [setupStatus, setSetupStatus] = useState(null)
+    const [getStartedDismissed, setGetStartedDismissed] = useState(() => typeof localStorage !== 'undefined' && localStorage.getItem(GET_STARTED_DISMISSED_KEY) === 'true')
     const [stats, setStats] = useState({
         salesToday: 0,
         returnsToday: 0,
@@ -260,6 +264,12 @@ const DashboardTally = () => {
                 } else {
                     setBranchBreakdown([])
                 }
+
+                if (isAdminOrOwner(user)) {
+                    reportsAPI.getSetupStatus().then((res) => {
+                        if (res?.success && res?.data) setSetupStatus(res.data)
+                    }).catch(() => {})
+                }
                 
                 // Set daily sales trend
                 if (data.dailySalesTrend && Array.isArray(data.dailySalesTrend)) {
@@ -360,15 +370,33 @@ const DashboardTally = () => {
         }
     }, [user, availableBranches])
 
+    useEffect(() => {
+        if (!user || !isAdminOrOwner(user)) return
+        reportsAPI.getSetupStatus()
+            .then((res) => {
+                if (res?.success && res?.data) setSetupStatus(res.data)
+            })
+            .catch(() => {})
+    }, [user])
+
+    const setupComplete = setupStatus && setupStatus.hasBranch && setupStatus.hasRoute && setupStatus.hasStaff &&
+        setupStatus.productCount > 0 && setupStatus.customerCount > 0 && setupStatus.hasInvoice
+    const showGetStarted = isAdminOrOwner(user) && setupStatus && !getStartedDismissed && !setupComplete
+
+    const handleDismissGetStarted = () => {
+        setGetStartedDismissed(true)
+        try { localStorage.setItem(GET_STARTED_DISMISSED_KEY, 'true') } catch (_) {}
+    }
+
     const gatewayMenu = [
         {
             title: 'MASTERS',
             items: [
-                { icon: Package, label: 'Products', path: '/products', shortcut: 'F1' },
                 ...(isAdminOrOwner(user) ? [
                     { icon: Building2, label: 'Branches', path: '/branches', shortcut: '', adminOnly: true },
                     { icon: MapPin, label: 'Routes', path: '/routes', shortcut: '', adminOnly: true }
-                ] : [])
+                ] : []),
+                { icon: Package, label: 'Products', path: '/products', shortcut: 'F1' }
             ]
         },
         {
@@ -412,6 +440,52 @@ const DashboardTally = () => {
             <div className="flex flex-col lg:flex-row h-full gap-4">
                 {/* Central Content */}
                 <div className="flex-1 space-y-4">
+                    {/* Get started checklist (Owner/Admin, incomplete setup, not dismissed) */}
+                    {showGetStarted && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 relative">
+                            <button
+                                type="button"
+                                onClick={handleDismissGetStarted}
+                                className="absolute top-2 right-2 p-1 rounded hover:bg-blue-100 text-neutral-500 hover:text-neutral-700"
+                                aria-label="Dismiss"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            <h3 className="text-sm font-bold text-blue-900 mb-2 pr-8">Get started</h3>
+                            <p className="text-xs text-blue-800 mb-3">Complete these steps to get the most out of HexaBill (see <a href="/help" className="underline" onClick={(e) => { e.preventDefault(); navigate('/help') }}>Help</a> for the full workflow).</p>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                                <button type="button" onClick={() => navigate('/branches')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.hasBranch ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add branch
+                                </button>
+                                <button type="button" onClick={() => navigate('/routes')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.hasRoute ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add route
+                                </button>
+                                <button type="button" onClick={() => navigate('/users')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.hasStaff ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add staff
+                                </button>
+                                <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.productCount > 0 ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add products
+                                </button>
+                                <button type="button" onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.hasPurchase ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add purchase
+                                </button>
+                                <button type="button" onClick={() => navigate('/customers')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.customerCount > 0 ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Add customers
+                                </button>
+                                <button type="button" onClick={() => navigate('/pos')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
+                                    {setupStatus.hasInvoice ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
+                                    Create first invoice
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Date Range Selector */}
                     <div className="bg-white rounded-lg border border-neutral-200 p-4">
                         <div className="flex flex-wrap items-center gap-3">
