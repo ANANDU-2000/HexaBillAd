@@ -106,9 +106,44 @@ const HelpPage = () => {
     )
   })).filter(category => category.questions.length > 0)
 
+  const helpSections = [
+    { id: 'getting-started', label: 'Getting started' },
+    { id: 'faqs', label: 'FAQs' },
+    { id: 'quick-tips', label: 'Quick tips' },
+    { id: 'contact-support', label: 'Contact Support' },
+    { id: 'quick-links', label: 'Quick Links' }
+  ]
+
+  const scrollToSection = (id) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+        {/* Sidebar — sticky on desktop */}
+        <aside className="lg:w-56 flex-shrink-0">
+          <nav className="lg:sticky lg:top-4 bg-white rounded-lg shadow p-4 border border-gray-200">
+            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">On this page</h2>
+            <ul className="space-y-1">
+              {helpSections.map(({ id, label }) => (
+                <li key={id}>
+                  <button
+                    type="button"
+                    onClick={() => scrollToSection(id)}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md transition"
+                  >
+                    {label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
+
+        {/* Main content */}
+        <div className="flex-1 min-w-0 space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center space-x-3 mb-4">
@@ -135,7 +170,7 @@ const HelpPage = () => {
         </div>
 
         {/* Getting started — mirrors OWNER_WORKFLOW.md */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div id="getting-started" className="bg-white rounded-lg shadow p-6 scroll-mt-4">
           <div className="flex items-center space-x-2 mb-4">
             <BookOpen className="h-5 w-5 text-blue-600" />
             <h2 className="text-xl font-semibold text-gray-900">Getting started (recommended order)</h2>
@@ -210,7 +245,7 @@ const HelpPage = () => {
 
         {/* FAQ Categories */}
         {filteredFAQs.length > 0 && (
-          <div className="space-y-6">
+          <div id="faqs" className="space-y-6 scroll-mt-4">
             {filteredFAQs.map((category, idx) => (
               <div key={idx} className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-2 mb-4">
@@ -242,7 +277,7 @@ const HelpPage = () => {
         </div>
 
         {/* Contact Support */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div id="contact-support" className="bg-white rounded-lg shadow p-6 scroll-mt-4">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Contact Support</h2>
           <p className="text-gray-600 mb-5">
             Can't find what you're looking for? Our support team is here to help.
@@ -265,7 +300,7 @@ const HelpPage = () => {
         </div>
 
         {/* Quick Links */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow p-6 text-white">
+        <div id="quick-links" className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow p-6 text-white scroll-mt-4">
           <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <a href="/feedback" className="flex items-center justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition">
@@ -277,6 +312,7 @@ const HelpPage = () => {
               <ArrowRight className="h-5 w-5" />
             </a>
           </div>
+        </div>
         </div>
       </div>
     </div>

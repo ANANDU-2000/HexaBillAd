@@ -31,7 +31,8 @@ import {
   Printer,
   LayoutGrid,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  HelpCircle
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import Logo from './Logo'
@@ -127,6 +128,7 @@ const Layout = () => {
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: FileText }] : []),
+    { name: 'Help & Support', href: '/help', icon: HelpCircle },
   ]
 
   const isActive = (href) => {
