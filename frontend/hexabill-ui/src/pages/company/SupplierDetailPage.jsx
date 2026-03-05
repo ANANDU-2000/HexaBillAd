@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, DollarSign, FileText, CreditCard, Calendar } from 'lucide-react'
+import { ArrowLeft, DollarSign, FileText, CreditCard, Calendar, Download } from 'lucide-react'
 import { suppliersAPI, purchasesAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
-import SupplierLedgerModal from '../../components/SupplierLedgerModal'
 import toast from 'react-hot-toast'
 
 const tabs = [
@@ -21,7 +20,15 @@ const SupplierDetailPage = () => {
   const [transactions, setTransactions] = useState([])
   const [purchases, setPurchases] = useState([])
   const [loading, setLoading] = useState(true)
-  const [ledgerOpen, setLedgerOpen] = useState(false)
+  const [showRecordPayment, setShowRecordPayment] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [paymentForm, setPaymentForm] = useState({
+    amount: '',
+    paymentDate: new Date().toISOString().split('T')[0],
+    mode: 'Cash',
+    reference: '',
+    notes: ''
+  })
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
 
@@ -64,6 +71,60 @@ const SupplierDetailPage = () => {
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '-')
   const payments = (transactions || []).filter(t => (t.type || '').toLowerCase() === 'payment')
 
+  const handleRecordPayment = async (e) => {
+    e.preventDefault()
+    const amount = parseFloat(paymentForm.amount)
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    const outstanding = balance?.netPayable ?? 0
+    if (outstanding > 0 && amount > outstanding) {
+      if (!window.confirm(`Amount (${formatCurrency(amount)}) exceeds outstanding (${formatCurrency(outstanding)}). Record overpayment?`)) return
+    }
+    try {
+      setSaving(true)
+      const res = await suppliersAPI.recordPayment(supplierName, {
+        amount,
+        paymentDate: paymentForm.paymentDate,
+        mode: paymentForm.mode,
+        reference: paymentForm.reference?.trim() || undefined,
+        notes: paymentForm.notes?.trim() || undefined
+      })
+      if (res?.success) {
+        toast.success('Payment recorded')
+        setShowRecordPayment(false)
+        setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], mode: 'Cash', reference: '', notes: '' })
+        loadData()
+      } else toast.error(res?.message || 'Failed to record payment')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to record payment')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExportCsv = () => {
+    const headers = ['Date', 'Type', 'Reference', 'Debit', 'Credit', 'Balance']
+    const rows = transactions.map(t => [
+      formatDate(t.date),
+      t.type,
+      t.reference || '',
+      t.debit?.toFixed(2) || '0.00',
+      t.credit?.toFixed(2) || '0.00',
+      t.balance?.toFixed(2) || '0.00'
+    ])
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `supplier_ledger_${(supplierName || 'export').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Exported to CSV')
+  }
+
   if (!supplierName) {
     return (
       <div className="p-4 sm:p-6 max-w-full">
@@ -76,7 +137,7 @@ const SupplierDetailPage = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-full">
+    <div className="w-full p-4 sm:p-6">
       <div className="mb-6 flex items-center gap-4">
         <Link to="/suppliers" className="flex items-center gap-1 text-primary-600 hover:text-primary-800 font-medium">
           <ArrowLeft className="h-4 w-4" /> Back to Suppliers
@@ -84,11 +145,11 @@ const SupplierDetailPage = () => {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary-900">{supplierName}</h1>
-        <p className="text-primary-600 mt-1">Supplier detail and transaction history</p>
+        <h1 className="text-2xl font-bold text-primary-900">Supplier Ledger: {supplierName}</h1>
+        <p className="text-primary-600 mt-1">Outstanding balance, transactions and payments — same as Customer Ledger</p>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4 border-b border-primary-200">
+      <div className="flex flex-wrap gap-2 mb-4 border-b border-primary-200 pb-2">
         {tabs.map(t => (
           <button
             key={t.id}
@@ -101,13 +162,62 @@ const SupplierDetailPage = () => {
             {t.label}
           </button>
         ))}
-        <button
-          onClick={() => setLedgerOpen(true)}
-          className="ml-auto flex items-center gap-2 px-4 py-2 bg-green-100 hover:bg-green-200 rounded font-medium text-sm text-green-800"
-        >
-          <DollarSign className="h-4 w-4" /> Open Ledger Modal
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {activeTab === 'ledger' && (
+            <button type="button" onClick={handleExportCsv} className="flex items-center gap-1 px-3 py-2 bg-primary-100 hover:bg-primary-200 rounded-lg text-sm font-medium">
+              <Download className="h-4 w-4" /> Export CSV
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setShowRecordPayment(!showRecordPayment)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm"
+          >
+            <DollarSign className="h-4 w-4" /> Record Payment
+          </button>
+        </div>
       </div>
+
+      {showRecordPayment && (
+        <div className="mb-6 bg-lime-50 border-2 border-lime-300 rounded-lg p-4 w-full">
+          <h3 className="font-semibold text-primary-800 mb-3">Record Payment</h3>
+          <form onSubmit={handleRecordPayment} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-primary-700 mb-1">Amount (AED) *</label>
+              <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full border-2 border-lime-300 rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-primary-700 mb-1">Date *</label>
+              <input type="date" required value={paymentForm.paymentDate} onChange={e => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })} className="w-full border-2 border-lime-300 rounded px-3 py-2" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-primary-700 mb-1">Mode</label>
+              <select value={paymentForm.mode} onChange={e => setPaymentForm({ ...paymentForm, mode: e.target.value })} className="w-full border-2 border-lime-300 rounded px-3 py-2">
+                <option value="Cash">Cash</option>
+                <option value="Bank">Bank</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-primary-700 mb-1">Reference</label>
+              <input type="text" value={paymentForm.reference} onChange={e => setPaymentForm({ ...paymentForm, reference: e.target.value })} className="w-full border-2 border-lime-300 rounded px-3 py-2" placeholder="Cheque no, etc." />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-primary-700 mb-1">Notes</label>
+              <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className="w-full border-2 border-lime-300 rounded px-3 py-2" />
+            </div>
+            <div className="sm:col-span-2 flex gap-2 items-end">
+              <button type="submit" disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium">
+                {saving ? 'Saving...' : 'Save Payment'}
+              </button>
+              <button type="button" onClick={() => setShowRecordPayment(false)} className="px-4 py-2 border-2 border-primary-300 rounded-lg hover:bg-primary-50 font-medium">Cancel</button>
+            </div>
+          </form>
+          {balance?.netPayable > 0 && parseFloat(paymentForm.amount) > balance.netPayable && (
+            <p className="text-amber-600 text-sm mt-2">Amount exceeds outstanding ({formatCurrency(balance.netPayable)}). You may be overpaying.</p>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="py-12 text-center text-primary-500">Loading...</div>
@@ -138,12 +248,12 @@ const SupplierDetailPage = () => {
           )}
 
           {activeTab === 'ledger' && (
-            <div className="bg-white rounded-lg border-2 border-lime-300 overflow-hidden">
+            <div className="bg-white rounded-lg border-2 border-lime-300 overflow-hidden w-full">
               <div className="p-4 border-b border-lime-300 flex flex-wrap gap-2 items-center">
                 <Calendar className="h-4 w-4 text-primary-500" />
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border-2 border-lime-300 rounded px-2 py-1 text-sm" />
                 <span className="text-primary-500">to</span>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" />
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border-2 border-lime-300 rounded px-2 py-1 text-sm" />
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -253,13 +363,6 @@ const SupplierDetailPage = () => {
           )}
         </>
       )}
-
-      <SupplierLedgerModal
-        isOpen={ledgerOpen}
-        onClose={() => setLedgerOpen(false)}
-        supplierName={supplierName}
-        onPaymentRecorded={() => { loadData(); setLedgerOpen(false) }}
-      />
     </div>
   )
 }

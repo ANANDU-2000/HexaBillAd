@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Search, Eye, RefreshCw, Phone, Plus } from 'lucide-react'
 import { suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
-import SupplierLedgerModal from '../../components/SupplierLedgerModal'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 
 const SuppliersPage = () => {
+  const navigate = useNavigate()
   const [suppliers, setSuppliers] = useState([])
   const [filteredSuppliers, setFilteredSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [ledgerSupplier, setLedgerSupplier] = useState(null)
   const [overdueOnly, setOverdueOnly] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
@@ -95,31 +94,31 @@ const SuppliersPage = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-full">
+    <div className="w-full p-4 sm:p-6">
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-primary-900">Suppliers</h1>
-          <p className="text-primary-600 mt-1">Manage suppliers, create new ones, and view ledger (outstanding balances & payments).</p>
+          <p className="text-primary-600 mt-1">Manage suppliers, create new ones, search the full list, and open Supplier Ledger for balances and payments.</p>
         </div>
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded font-medium shadow-sm"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium shadow-sm"
         >
           <Plus className="h-4 w-4" /> Add Supplier
         </button>
       </div>
 
-      <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm mb-4 p-4">
+      <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm mb-4 p-4 w-full">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary-400" />
             <input
               type="text"
-              placeholder="Search suppliers..."
+              placeholder="Search suppliers by name or phone..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border-2 border-lime-300 rounded"
+              className="w-full pl-9 pr-3 py-2 border-2 border-lime-300 rounded-lg"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -133,7 +132,7 @@ const SuppliersPage = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm overflow-hidden w-full">
         {loading ? (
           <div className="p-8 text-center text-primary-500">Loading suppliers...</div>
         ) : (
@@ -170,8 +169,8 @@ const SuppliersPage = () => {
                         <td className="p-3 text-center">{s.invoiceCount ?? '-'}</td>
                         <td className="p-3 text-center text-sm">{formatDate(s.lastPaymentDate)}</td>
                         <td className="p-3">
-                          <button onClick={() => setLedgerSupplier(s.supplierName)} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm">
-                            <Eye className="h-4 w-4" /> View Ledger
+                          <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm font-medium">
+                            <Eye className="h-4 w-4" /> Supplier Ledger
                           </button>
                         </td>
                       </tr>
@@ -189,9 +188,7 @@ const SuppliersPage = () => {
                   <div key={i} className="bg-primary-50 rounded-lg border border-primary-200 p-4">
                     <div className="flex justify-between items-start mb-2">
                       <div>
-                        <Link to={`/suppliers/${encodeURIComponent(s.supplierName)}`} className="font-medium text-primary-900 hover:text-primary-700 underline">
-                          {s.supplierName}
-                        </Link>
+                        <span className="font-medium text-primary-900">{s.supplierName}</span>
                         {s.phone && <p className="text-sm text-primary-600 flex items-center gap-1"><Phone className="h-3 w-3" /> {s.phone}</p>}
                       </div>
                       <p className="font-bold text-amber-700">{formatCurrency(s.netPayable || 0)}</p>
@@ -202,8 +199,8 @@ const SuppliersPage = () => {
                       <p>Last Purchase: {formatDate(s.lastPurchaseDate)}</p>
                       <p>Invoices: {s.invoiceCount ?? '-'}</p>
                     </div>
-                    <button onClick={() => setLedgerSupplier(s.supplierName)} className="w-full flex items-center justify-center gap-1 py-2 bg-primary-200 hover:bg-primary-300 rounded text-sm font-medium">
-                      <Eye className="h-4 w-4" /> View Ledger
+                    <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="w-full flex items-center justify-center gap-1 py-2 bg-primary-200 hover:bg-primary-300 rounded text-sm font-medium">
+                      <Eye className="h-4 w-4" /> Supplier Ledger
                     </button>
                   </div>
                 ))
@@ -212,13 +209,6 @@ const SuppliersPage = () => {
           </>
         )}
       </div>
-
-      <SupplierLedgerModal
-        isOpen={!!ledgerSupplier}
-        onClose={() => setLedgerSupplier(null)}
-        supplierName={ledgerSupplier}
-        onPaymentRecorded={loadSuppliers}
-      />
 
       <Modal
         isOpen={showCreateModal}

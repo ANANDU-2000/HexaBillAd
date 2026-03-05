@@ -438,7 +438,7 @@ const PurchasesPage = () => {
       } else {
         response = await purchasesAPI.createPurchase(purchaseData)
         if (response.success) {
-          toast.success('Purchase created successfully!', { id: 'purchase-create', duration: 4000 })
+          toast.success('Purchase created! Stock has been updated. If Products still show 0 stock, go to Products and click Recompute Stock.', { id: 'purchase-create', duration: 6000 })
         } else {
           toast.error(response.message || 'Failed to create purchase', { id: 'purchase-create' })
         }

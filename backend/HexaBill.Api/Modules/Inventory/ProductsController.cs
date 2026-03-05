@@ -641,7 +641,7 @@ namespace HexaBill.Api.Modules.Inventory
 
         /// <summary>Recompute product stock from InventoryTransactions (SUM of ChangeQty). Use to repair stock drift.</summary>
         [HttpPost("recompute-stock")]
-        [Authorize(Roles = "Admin,Owner")]
+        [Authorize(Roles = "Admin,Owner,Staff")]
         public async Task<ActionResult<ApiResponse<object>>> RecomputeStockFromMovements()
         {
             try

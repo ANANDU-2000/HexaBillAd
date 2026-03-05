@@ -117,6 +117,11 @@ export const productsAPI = {
     return response.data
   },
 
+  recomputeStock: async () => {
+    const response = await api.post('/products/recompute-stock')
+    return response.data
+  },
+
   bulkUpdatePrices: async (request) => {
     const response = await api.post('/products/bulk-update-prices', request)
     return response.data

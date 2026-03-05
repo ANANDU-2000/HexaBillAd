@@ -546,6 +546,40 @@ const ProductsPage = () => {
           </div>
         </div>
 
+        {/* Banner: many products with 0 stock after purchases → run Recompute Stock */}
+        {products.length > 0 && (() => {
+          const zeroCount = products.filter(p => (p.stockQty ?? 0) === 0).length
+          const showBanner = zeroCount >= Math.min(3, products.length) && canManageInventory
+          if (!showBanner) return null
+          return (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-amber-800">
+                <AlertTriangle className="inline h-4 w-4 mr-1.5 align-middle text-amber-600" />
+                Stock showing zero for many products after adding purchases? Click <strong>Recompute Stock</strong> to sync from purchase and sales movements.
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await productsAPI.recomputeStock()
+                    if (res?.success) {
+                      const n = res?.data?.productsUpdated ?? res?.data?.ProductsUpdated ?? 0
+                      toast.success(res?.message || `Stock recomputed (${n} products).`)
+                      await loadProducts()
+                    } else toast.error(res?.message || 'Recompute failed')
+                  } catch (e) {
+                    toast.error(e?.response?.data?.message || 'Recompute failed')
+                  }
+                }}
+                className="shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-200 text-amber-900 hover:bg-amber-300"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recompute Stock
+              </button>
+            </div>
+          )
+        })()}
+
         {/* Modern Tabs */}
         <div className="mt-4">
           <TabNavigation

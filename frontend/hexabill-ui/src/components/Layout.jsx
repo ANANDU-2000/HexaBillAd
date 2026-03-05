@@ -451,7 +451,7 @@ const Layout = () => {
         {/* Page content — full width max 1400px; Reports use full width (production plan Phase 2) */}
         <main id="main-content" className="flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-20 lg:pb-6 pt-14 lg:pt-20 bg-[#F8FAFC]">
           <div className="flex-1 overflow-auto">
-            <div className={`w-full min-h-full mx-auto px-4 sm:px-6 lg:px-6 py-4 lg:py-6 ${location.pathname === '/reports' ? 'max-w-full' : 'max-w-[1280px]'}`}>
+            <div className={`w-full min-h-full mx-auto px-4 sm:px-6 lg:px-6 py-4 lg:py-6 ${location.pathname === '/reports' || location.pathname === '/suppliers' || location.pathname.startsWith('/suppliers/') ? 'max-w-full' : 'max-w-[1280px]'}`}>
               <Outlet />
             </div>
           </div>
