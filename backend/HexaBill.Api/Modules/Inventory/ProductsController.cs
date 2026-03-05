@@ -102,6 +102,9 @@ namespace HexaBill.Api.Modules.Inventory
                                 DescriptionAr = p.DescriptionAr
                             }));
                     
+                    Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                    Response.Headers["Pragma"] = "no-cache";
+                    Response.Headers["Expires"] = "0";
                     return Ok(new ApiResponse<PagedResponse<ProductDto>>
                     {
                         Success = true,
@@ -119,6 +122,10 @@ namespace HexaBill.Api.Modules.Inventory
                 
                 var globalThreshold = await GetGlobalLowStockThresholdAsync();
                 var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold);
+                // Phase 1.2: Prevent browser/axios caching so stock updates are visible immediately
+                Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+                Response.Headers["Pragma"] = "no-cache";
+                Response.Headers["Expires"] = "0";
                 return Ok(new ApiResponse<PagedResponse<ProductDto>>
                 {
                     Success = true,

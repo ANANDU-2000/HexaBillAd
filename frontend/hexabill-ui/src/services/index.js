@@ -1175,6 +1175,14 @@ export const suppliersAPI = {
   getAllSuppliersSummary: async () => {
     const response = await api.get('/suppliers/summary')
     return response.data
+  },
+  searchSuppliers: async (query, limit = 20) => {
+    const response = await api.get('/suppliers/search', { params: { q: query, limit } })
+    return response.data
+  },
+  recordPayment: async (supplierName, data) => {
+    const response = await api.post(`/suppliers/${encodeURIComponent(supplierName)}/payments`, data)
+    return response.data
   }
 }
 

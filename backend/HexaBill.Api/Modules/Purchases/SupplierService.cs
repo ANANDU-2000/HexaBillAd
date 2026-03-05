@@ -6,6 +6,7 @@ Date: 2025
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Purchases
 {
@@ -14,6 +15,8 @@ namespace HexaBill.Api.Modules.Purchases
         Task<SupplierBalanceDto> GetSupplierBalanceAsync(int tenantId, string supplierName);
         Task<List<SupplierTransactionDto>> GetSupplierTransactionsAsync(int tenantId, string supplierName, DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId);
+        Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId);
+        Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20);
     }
 
     public class SupplierService : ISupplierService
@@ -38,20 +41,33 @@ namespace HexaBill.Api.Modules.Purchases
                 .Where(pr => pr.Purchase.TenantId == tenantId && pr.Purchase.SupplierName == supplierName)
                 .SumAsync(pr => (decimal?)pr.GrandTotal) ?? 0;
 
-            // Net payable = Purchases - Returns
-            var netPayable = totalPurchases - totalPurchaseReturns;
+            // Calculate total payments (credit)
+            var totalPayments = await _context.SupplierPayments
+                .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
+                .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+
+            // Net payable = Purchases - Returns - Payments
+            var netPayable = totalPurchases - totalPurchaseReturns - totalPayments;
+
+            var lastPaymentDate = await _context.SupplierPayments
+                .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
+                .OrderByDescending(sp => sp.PaymentDate)
+                .Select(sp => (DateTime?)sp.PaymentDate)
+                .FirstOrDefaultAsync();
 
             return new SupplierBalanceDto
             {
                 SupplierName = supplierName,
                 TotalPurchases = totalPurchases,
                 TotalReturns = totalPurchaseReturns,
+                TotalPayments = totalPayments,
                 NetPayable = netPayable,
                 LastPurchaseDate = await _context.Purchases
                     .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
                     .OrderByDescending(p => p.PurchaseDate)
-                    .Select(p => p.PurchaseDate)
-                    .FirstOrDefaultAsync()
+                    .Select(p => (DateTime?)p.PurchaseDate)
+                    .FirstOrDefaultAsync(),
+                LastPaymentDate = lastPaymentDate
             };
         }
 
@@ -112,6 +128,30 @@ namespace HexaBill.Api.Modules.Purchases
                 });
             }
 
+            // Supplier Payments (credits)
+            var paymentsQuery = _context.SupplierPayments
+                .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName);
+
+            if (fromDate.HasValue)
+                paymentsQuery = paymentsQuery.Where(sp => sp.PaymentDate >= fromDate.Value);
+            if (toDate.HasValue)
+                paymentsQuery = paymentsQuery.Where(sp => sp.PaymentDate <= toDate.Value.AddDays(1));
+
+            var payments = await paymentsQuery.OrderBy(sp => sp.PaymentDate).ToListAsync();
+
+            foreach (var payment in payments)
+            {
+                transactions.Add(new SupplierTransactionDto
+                {
+                    Date = payment.PaymentDate,
+                    Type = "Payment",
+                    Reference = payment.Reference ?? $"Payment #{payment.Id}",
+                    Debit = 0,
+                    Credit = payment.Amount,
+                    Balance = 0
+                });
+            }
+
             // Sort by date and calculate running balance
             transactions = transactions.OrderBy(t => t.Date).ToList();
             decimal runningBalance = 0;
@@ -137,16 +177,95 @@ namespace HexaBill.Api.Modules.Purchases
             foreach (var supplierName in supplierNames)
             {
                 var balance = await GetSupplierBalanceAsync(tenantId, supplierName);
+
+                var invoiceCount = await _context.Purchases
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
+                    .CountAsync();
+
+                var supplier = await _context.Suppliers
+                    .Where(s => s.TenantId == tenantId && s.Name == supplierName)
+                    .Select(s => new { s.Phone, s.CreditLimit })
+                    .FirstOrDefaultAsync();
+
                 summaries.Add(new SupplierSummaryDto
                 {
                     SupplierName = supplierName,
                     NetPayable = balance.NetPayable,
                     TotalPurchases = balance.TotalPurchases,
-                    LastPurchaseDate = balance.LastPurchaseDate
+                    TotalPaid = balance.TotalPayments,
+                    LastPurchaseDate = balance.LastPurchaseDate,
+                    LastPaymentDate = balance.LastPaymentDate,
+                    InvoiceCount = invoiceCount,
+                    Overdue = 0, // TODO: Add due date to Purchase for overdue calculation
+                    Phone = supplier?.Phone,
+                    CreditLimit = supplier?.CreditLimit ?? 0
                 });
             }
 
             return summaries.OrderByDescending(s => s.NetPayable).ToList();
+        }
+
+        public async Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Payment amount must be positive.", nameof(amount));
+            // Phase 11.2: Validate PaymentDate not future
+            var today = DateTime.UtcNow.Date;
+            var payDate = paymentDate.ToUtcKind().Date;
+            if (payDate > today)
+                throw new ArgumentException("Payment date cannot be in the future. Please use today's date or earlier.", nameof(paymentDate));
+
+            var payment = new SupplierPayment
+            {
+                TenantId = tenantId,
+                SupplierName = supplierName,
+                Amount = amount,
+                PaymentDate = paymentDate == default ? DateTime.UtcNow : paymentDate.ToUtcKind(),
+                Mode = mode,
+                Reference = reference,
+                Notes = notes,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            _context.SupplierPayments.Add(payment);
+            await _context.SaveChangesAsync();
+
+            return new SupplierPaymentDto
+            {
+                Id = payment.Id,
+                SupplierName = payment.SupplierName,
+                Amount = payment.Amount,
+                PaymentDate = payment.PaymentDate,
+                Mode = payment.Mode.ToString(),
+                Reference = payment.Reference,
+                Notes = payment.Notes,
+                CreatedAt = payment.CreatedAt
+            };
+        }
+
+        public async Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+                return new List<string>();
+
+            var term = query.Trim().ToLower();
+
+            var fromPurchases = await _context.Purchases
+                .Where(p => p.TenantId == tenantId && p.SupplierName.ToLower().Contains(term))
+                .Select(p => p.SupplierName)
+                .Distinct()
+                .Take(limit)
+                .ToListAsync();
+
+            var fromSuppliers = await _context.Suppliers
+                .Where(s => s.TenantId == tenantId && s.IsActive && s.Name.ToLower().Contains(term))
+                .Select(s => s.Name)
+                .Take(limit)
+                .ToListAsync();
+
+            var merged = fromPurchases.Union(fromSuppliers).Distinct(StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
+            return merged;
         }
     }
 
@@ -156,8 +275,22 @@ namespace HexaBill.Api.Modules.Purchases
         public string SupplierName { get; set; } = string.Empty;
         public decimal TotalPurchases { get; set; }
         public decimal TotalReturns { get; set; }
+        public decimal TotalPayments { get; set; }
         public decimal NetPayable { get; set; }
         public DateTime? LastPurchaseDate { get; set; }
+        public DateTime? LastPaymentDate { get; set; }
+    }
+
+    public class SupplierPaymentDto
+    {
+        public int Id { get; set; }
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public string Mode { get; set; } = string.Empty;
+        public string? Reference { get; set; }
+        public string? Notes { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 
     public class SupplierTransactionDto
@@ -173,9 +306,15 @@ namespace HexaBill.Api.Modules.Purchases
     public class SupplierSummaryDto
     {
         public string SupplierName { get; set; } = string.Empty;
+        public string? Phone { get; set; }
         public decimal NetPayable { get; set; }
         public decimal TotalPurchases { get; set; }
+        public decimal TotalPaid { get; set; }
         public DateTime? LastPurchaseDate { get; set; }
+        public DateTime? LastPaymentDate { get; set; }
+        public int InvoiceCount { get; set; }
+        public decimal Overdue { get; set; }
+        public decimal CreditLimit { get; set; }
     }
 }
 

@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
-import { purchasesAPI, productsAPI, settingsAPI } from '../../services'
+import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign } from 'lucide-react'
+import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import SupplierLedgerModal from '../../components/SupplierLedgerModal'
 
 const PurchasesPage = () => {
   const [purchases, setPurchases] = useState([])
@@ -19,6 +20,7 @@ const PurchasesPage = () => {
   const [endDate, setEndDate] = useState('')
   const [supplierSearch, setSupplierSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all') // all, paid, partial, unpaid, overdue
   const [showFilters, setShowFilters] = useState(false)
   const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
 
@@ -31,8 +33,12 @@ const PurchasesPage = () => {
     invoiceNo: '',
     purchaseDate: new Date().toISOString().split('T')[0],
     expenseCategory: 'Inventory', // Default category
+    paymentType: 'Credit', // Cash or Credit (pay later)
     items: []
   })
+  const [supplierSuggestions, setSupplierSuggestions] = useState([])
+  const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false)
+  const [supplierBalance, setSupplierBalance] = useState(null)
   const [products, setProducts] = useState([])
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [showProductSearch, setShowProductSearch] = useState(false)
@@ -46,6 +52,8 @@ const PurchasesPage = () => {
     confirmLabel: 'Confirm',
     onConfirm: () => { }
   })
+  const [payModal, setPayModal] = useState({ isOpen: false, supplierName: '' })
+  const [expandedPurchaseId, setExpandedPurchaseId] = useState(null) // Phase 10: expandable mobile rows
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
@@ -56,13 +64,72 @@ const PurchasesPage = () => {
     loadProducts()
     loadAnalytics()
     // CRITICAL FIX: Reload when filters change to show filtered data automatically
-  }, [currentPage, filterPeriod, startDate, endDate, supplierSearch, categoryFilter])
+  }, [currentPage, filterPeriod, startDate, endDate, supplierSearch, categoryFilter, statusFilter])
 
   useEffect(() => {
     if (showProductSearch && searchInputRef.current) {
       searchInputRef.current.focus()
     }
   }, [showProductSearch])
+
+  // F3 focuses product search (Phase 7.5)
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'F3') {
+        e.preventDefault()
+        if (showForm && searchInputRef.current) {
+          searchInputRef.current.focus()
+          setShowProductSearch(true)
+        }
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showForm])
+
+  // Supplier autocomplete - search when typing
+  useEffect(() => {
+    const q = (formData.supplierName || '').trim()
+    if (!q || q.length < 1) {
+      setSupplierSuggestions([])
+      setShowSupplierSuggestions(false)
+      setSupplierBalance(null)
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await suppliersAPI.searchSuppliers(q, 10)
+        if (res?.success && res?.data?.length) {
+          setSupplierSuggestions(res.data)
+          setShowSupplierSuggestions(true)
+        } else {
+          setSupplierSuggestions([])
+        }
+      } catch {
+        setSupplierSuggestions([])
+      }
+    }, 200)
+    return () => clearTimeout(t)
+  }, [formData.supplierName])
+
+  // Fetch supplier balance when supplier selected (Phase 7.4)
+  useEffect(() => {
+    const name = (formData.supplierName || '').trim()
+    if (!name) {
+      setSupplierBalance(null)
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await suppliersAPI.getSupplierBalance(name)
+        if (res?.success && res?.data) setSupplierBalance(res.data)
+        else setSupplierBalance(null)
+      } catch {
+        setSupplierBalance(null)
+      }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [formData.supplierName])
 
   // Fetch VAT from company settings (no hardcoded 5% — TODO #5)
   useEffect(() => {
@@ -99,6 +166,9 @@ const PurchasesPage = () => {
 
       // Apply category filter
       if (categoryFilter) params.category = categoryFilter
+
+      // Apply status filter (paid, partial, unpaid, overdue)
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter
 
       const response = await purchasesAPI.getPurchases(params)
       if (response.success) {
@@ -366,10 +436,12 @@ const PurchasesPage = () => {
           invoiceNo: '',
           purchaseDate: new Date().toISOString().split('T')[0],
           expenseCategory: 'Inventory',
+          paymentType: 'Credit',
           items: []
         })
         loadPurchases()
-        loadProducts() // Refresh products to show updated stock
+        // Phase 1.3: Small delay to avoid race - API returns after commit but ensure fresh read
+        setTimeout(() => loadProducts(), 150)
       }
     } catch (error) {
       console.error('Purchase submit error:', error)
@@ -386,7 +458,8 @@ const PurchasesPage = () => {
       supplierName: '',
       invoiceNo: '',
       purchaseDate: new Date().toISOString().split('T')[0],
-      expenseCategory: 'Inventory', // Reset to default
+      expenseCategory: 'Inventory',
+      paymentType: 'Credit',
       items: []
     })
     setShowForm(true)
@@ -406,6 +479,7 @@ const PurchasesPage = () => {
       invoiceNo: purchase.invoiceNo || '',
       purchaseDate: purchase.purchaseDate ? new Date(purchase.purchaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       expenseCategory: purchase.expenseCategory || 'Inventory',
+      paymentType: 'Credit',
       items: purchase.items?.map(item => ({
         productId: item.productId,
         productName: item.productName || item.product?.nameEn || '',
@@ -931,6 +1005,7 @@ const PurchasesPage = () => {
                     setEndDate('')
                     setSupplierSearch('')
                     setCategoryFilter('')
+                    setStatusFilter('all')
                   }}
                   className="w-full px-2 py-1.5 text-xs bg-red-100 hover:bg-red-200 border border-red-300 rounded text-red-700 font-medium"
                 >
@@ -956,9 +1031,11 @@ const PurchasesPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4 mb-4 sm:mb-6">
-                <div>
+            <form onSubmit={handleSubmit} className="pb-24 md:pb-0">
+              {/* (1) Supplier Section */}
+              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
+                <h3 className="text-sm font-bold text-primary-800 mb-3">Supplier</h3>
+                <div className="relative">
                   <label className="block text-sm font-medium text-primary-700 mb-1">Supplier Name *</label>
                   <input
                     type="text"
@@ -966,47 +1043,77 @@ const PurchasesPage = () => {
                     className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
                     value={formData.supplierName}
                     onChange={(e) => setFormData({ ...formData, supplierName: e.target.value })}
+                    onBlur={() => setTimeout(() => setShowSupplierSuggestions(false), 150)}
+                    onFocus={() => supplierSuggestions.length > 0 && setShowSupplierSuggestions(true)}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary-700 mb-1">Invoice No *</label>
-                  <input
-                    type="text"
-                    required
-                    className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
-                    value={formData.invoiceNo}
-                    onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary-700 mb-1">Purchase Date *</label>
-                  <input
-                    type="date"
-                    required
-                    className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
-                    value={formData.purchaseDate}
-                    onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-primary-700 mb-1">Expense Category *</label>
-                  <select
-                    required
-                    className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
-                    value={formData.expenseCategory}
-                    onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}
-                  >
-                    <option value="Inventory">Inventory (Stock Items)</option>
-                    <option value="Supplies">Supplies (Office/Packaging)</option>
-                    <option value="Equipment">Equipment (Machinery/Tools)</option>
-                    <option value="Maintenance">Maintenance & Repairs</option>
-                    <option value="Other">Other Expenses</option>
-                  </select>
+                  {showSupplierSuggestions && supplierSuggestions.length > 0 && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border-2 border-lime-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                      {supplierSuggestions.map((name, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          className="block w-full text-left px-3 py-2 hover:bg-lime-50 text-sm"
+                          onClick={() => {
+                            setFormData({ ...formData, supplierName: typeof name === 'string' ? name : (name?.name || name) })
+                            setShowSupplierSuggestions(false)
+                          }}
+                        >
+                          {typeof name === 'string' ? name : (name?.name || name)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Product Search */}
-              <div className="mb-4">
+              {/* (2) Invoice Information */}
+              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
+                <h3 className="text-sm font-bold text-primary-800 mb-3">Invoice Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Invoice No *</label>
+                    <input type="text" required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Purchase Date *</label>
+                    <input type="date" required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.purchaseDate} onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-primary-700 mb-1">Expense Category *</label>
+                    <select required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.expenseCategory} onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}>
+                      <option value="Inventory">Inventory (Stock Items)</option>
+                      <option value="Supplies">Supplies (Office/Packaging)</option>
+                      <option value="Equipment">Equipment (Machinery/Tools)</option>
+                      <option value="Maintenance">Maintenance & Repairs</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* (3) Payment Type */}
+              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
+                <h3 className="text-sm font-bold text-primary-800 mb-3">Payment Type</h3>
+                <select className="w-full max-w-xs px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.paymentType} onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}>
+                  <option value="Cash">Cash (Pay Now)</option>
+                  <option value="Credit">Credit (Pay Later)</option>
+                </select>
+              </div>
+
+              {/* (4) Supplier Balance Info */}
+              {formData.supplierName.trim() && supplierBalance != null && (
+                <div className="mb-4 sm:mb-6 p-3 bg-amber-50 rounded-lg border-2 border-amber-200">
+                  <h3 className="text-sm font-bold text-amber-800 mb-2">Supplier Balance</h3>
+                  <p className="text-sm text-amber-800">Current due: AED {(supplierBalance?.netPayable || 0).toFixed(2)}</p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    After this purchase: AED {((supplierBalance?.netPayable || 0) + (calculateTotal() * (1 + vatPercent / 100))).toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              {/* (5) Product Entry Table */}
+              <div className="mb-4 p-3 bg-lime-50 rounded-lg border-2 border-lime-300">
+                <h3 className="text-sm font-bold text-primary-800 mb-3">Product Entry</h3>
                 <label className="block text-sm font-medium text-primary-700 mb-1">Add Product (F3)</label>
                 <div className="relative">
                   <input
@@ -1256,20 +1363,11 @@ const PurchasesPage = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border-2 border-lime-300 rounded text-sm font-medium hover:bg-lime-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 flex items-center min-h-[44px]"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Purchase
+              {/* (6) Totals - shown in items table foot; (7) Actions - Phase 10.3: sticky on mobile */}
+              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-0 left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:p-0 z-10 md:z-auto">
+                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border-2 border-lime-300 rounded text-sm font-medium hover:bg-lime-50">Cancel</button>
+                <button type="submit" className="px-4 py-2 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 flex items-center min-h-[44px]">
+                  <Save className="h-4 w-4 mr-2" /> Save Purchase
                 </button>
               </div>
             </form>
@@ -1279,7 +1377,20 @@ const PurchasesPage = () => {
         {/* Purchases List - Tally Style - contained, no horizontal page scroll */}
         <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm w-full max-w-full overflow-hidden">
           <div className="p-4 border-b-2 border-lime-400 bg-lime-100">
-            <h3 className="text-sm font-bold text-primary-800">Purchase List</h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-primary-800">Purchase List</h3>
+              <div className="flex flex-wrap gap-1">
+                {['all', 'unpaid', 'partial', 'paid', 'overdue'].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={`px-2 py-1 rounded text-xs font-medium ${statusFilter === s ? 'bg-primary-600 text-white' : 'bg-white border border-lime-400 text-primary-700 hover:bg-lime-100'}`}
+                  >
+                    {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {loading ? (
             <div className="flex items-center justify-center h-64">
@@ -1298,6 +1409,9 @@ const PurchasesPage = () => {
                       <th className="px-3 py-2 border-r border-lime-300 text-right">Subtotal</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-right">VAT ({vatPercent}%)</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-right">Total</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-right">Paid</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-right">Balance</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-center">Status</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-center">Items</th>
                       <th className="px-3 py-2 text-center">Actions</th>
                     </tr>
@@ -1305,7 +1419,7 @@ const PurchasesPage = () => {
                   <tbody className="divide-y divide-lime-200">
                     {purchases.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="px-4 py-8 text-center">
+                        <td colSpan="11" className="px-4 py-8 text-center">
                           <div className="text-primary-500">
                             {filterPeriod === 'today' ? (
                               <>
@@ -1347,9 +1461,30 @@ const PurchasesPage = () => {
                             )}
                           </td>
                           <td className="px-3 py-2 text-right font-bold text-green-700">AED {purchase.totalAmount.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right text-primary-600">AED {(purchase.paidAmount ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-medium text-amber-700">AED {(purchase.balanceAmount ?? purchase.totalAmount ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                              (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
+                              (purchase.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-amber-800' :
+                              (purchase.paymentStatus || '').toLowerCase() === 'overdue' ? 'bg-red-100 text-red-800' :
+                              'bg-neutral-100 text-neutral-700'
+                            }`}>
+                              {purchase.paymentStatus || 'Unpaid'}
+                            </span>
+                          </td>
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
                           <td className="px-3 py-2">
-                            <div className="flex justify-center space-x-2">
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {(['Unpaid', 'Partial'].includes(purchase.paymentStatus || '') && (
+                                <button
+                                  onClick={() => setPayModal({ isOpen: true, supplierName: purchase.supplierName })}
+                                  className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
+                                  title="Pay"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" /> Pay
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleEditPurchase(purchase)}
                                 className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
@@ -1401,32 +1536,76 @@ const PurchasesPage = () => {
                     </div>
                   </div>
                 ) : (
-                  purchases.map((purchase) => (
+                  purchases.map((purchase) => {
+                    const isExpanded = expandedPurchaseId === purchase.id
+                    return (
                     <div key={purchase.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="text-sm font-semibold text-primary-800">{purchase.supplierName}</p>
-                          <p className="text-xs text-primary-500">#{purchase.invoiceNo}</p>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}
+                        className="w-full text-left"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <p className="text-sm font-semibold text-primary-800">{purchase.supplierName}</p>
+                            <p className="text-xs text-primary-500">#{purchase.invoiceNo}</p>
+                          </div>
+                          <p className="text-base font-bold text-primary-800">{formatCurrency(purchase.totalAmount || 0)}</p>
                         </div>
-                        <p className="text-base font-bold text-primary-800">{formatCurrency(purchase.totalAmount || 0)}</p>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-primary-500 mt-2">
-                        <span>{formatDate(purchase.purchaseDate)}</span>
-                        <span>{purchase.items?.length || 0} item(s)</span>
-                      </div>
-                      {purchase.subtotal && purchase.vatTotal && (
-                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100">
-                          <div>
-                            <p className="text-xs text-primary-500">Subtotal</p>
-                            <p className="text-xs font-medium text-primary-700">{formatCurrency(purchase.subtotal)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-primary-500">VAT ({vatPercent}%)</p>
-                            <p className="text-xs font-medium text-orange-600">{formatCurrency(purchase.vatTotal)}</p>
-                          </div>
+                        <div className="flex items-center justify-between text-xs text-primary-500 mt-2">
+                          <span>{formatDate(purchase.purchaseDate)}</span>
+                          <span>{purchase.items?.length || 0} item(s) {isExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+                      {isExpanded && purchase.items?.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                          <p className="text-xs font-medium text-primary-600 mb-2">Items</p>
+                          {purchase.items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between text-xs py-1">
+                              <span className="text-primary-700">{item.productName || item.product?.nameEn || 'Item'}</span>
+                              <span>{item.qty} × AED {(item.unitCost || 0).toFixed(2)} = AED {((item.qty || 0) * (item.unitCost || 0)).toFixed(2)}</span>
+                            </div>
+                          ))}
                         </div>
                       )}
-                      <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100 text-xs">
+                        <div>
+                          <p className="text-primary-500">Paid</p>
+                          <p className="font-medium text-green-600">{formatCurrency(purchase.paidAmount ?? 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary-500">Balance</p>
+                          <p className="font-medium text-amber-600">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary-500">Status</p>
+                          <span className={`inline-block px-1.5 py-0.5 rounded ${(purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' : (purchase.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>
+                            {purchase.paymentStatus || 'Unpaid'}
+                          </span>
+                        </div>
+                        {purchase.subtotal != null && purchase.vatTotal != null && (
+                          <>
+                            <div>
+                              <p className="text-primary-500">Subtotal</p>
+                              <p className="font-medium text-primary-700">{formatCurrency(purchase.subtotal)}</p>
+                            </div>
+                            <div>
+                              <p className="text-primary-500">VAT ({vatPercent}%)</p>
+                              <p className="font-medium text-orange-600">{formatCurrency(purchase.vatTotal)}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                        {['Unpaid', 'Partial'].includes(purchase.paymentStatus || '') && (
+                          <button
+                            onClick={() => setPayModal({ isOpen: true, supplierName: purchase.supplierName })}
+                            className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
+                            title="Pay"
+                          >
+                            <DollarSign className="h-3.5 w-3.5" /> Pay
+                          </button>
+                        )}
                         <button
                           onClick={() => handleEditPurchase(purchase)}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
@@ -1445,7 +1624,8 @@ const PurchasesPage = () => {
                         </button>
                       </div>
                     </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </>
@@ -1482,6 +1662,13 @@ const PurchasesPage = () => {
         confirmLabel={dangerModal.confirmLabel}
         onConfirm={dangerModal.onConfirm}
         onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
+      <SupplierLedgerModal
+        isOpen={payModal.isOpen}
+        onClose={() => setPayModal({ isOpen: false, supplierName: '' })}
+        supplierName={payModal.supplierName}
+        initialShowRecordPayment={true}
+        onPaymentRecorded={() => { loadPurchases(); setPayModal({ isOpen: false, supplierName: '' }) }}
       />
     </div>
   )

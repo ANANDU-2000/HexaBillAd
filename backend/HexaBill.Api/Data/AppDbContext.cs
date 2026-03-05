@@ -35,6 +35,8 @@ namespace HexaBill.Api.Data
         public DbSet<PriceChangeLog> PriceChangeLogs { get; set; }
         public DbSet<Purchase> Purchases { get; set; }
         public DbSet<PurchaseItem> PurchaseItems { get; set; }
+        public DbSet<Supplier> Suppliers { get; set; }
+        public DbSet<SupplierPayment> SupplierPayments { get; set; }
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleItem> SaleItems { get; set; }
         public DbSet<Customer> Customers { get; set; }
@@ -139,6 +141,32 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
                 
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
+            });
+
+            // Supplier configuration - Name unique per tenant
+            modelBuilder.Entity<Supplier>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Phone).HasMaxLength(50);
+                entity.Property(e => e.Email).HasMaxLength(200);
+                entity.Property(e => e.Address).HasMaxLength(500);
+                entity.Property(e => e.CreditLimit).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.PaymentTerms).HasMaxLength(100);
+                entity.HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+            });
+
+            // SupplierPayment configuration
+            modelBuilder.Entity<SupplierPayment>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SupplierName).IsRequired().HasMaxLength(200);
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Reference).HasMaxLength(200);
+                entity.Property(e => e.Notes).HasMaxLength(500);
+                entity.Property(e => e.Mode).HasConversion<string>();
+                entity.HasIndex(e => new { e.TenantId, e.PaymentDate });
+                entity.HasIndex(e => new { e.TenantId, e.SupplierName });
             });
 
             // PurchaseItem configuration

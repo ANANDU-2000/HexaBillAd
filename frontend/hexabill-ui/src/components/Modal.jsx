@@ -13,6 +13,13 @@ const Modal = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const modalRef = useRef(null)
+
+  // Phase 10.4: Auto full-screen on mobile when allowFullscreen
+  useEffect(() => {
+    if (isOpen && allowFullscreen && window.matchMedia('(max-width: 767px)').matches) {
+      setIsFullscreen(true)
+    }
+  }, [isOpen, allowFullscreen])
   const previousActiveElementRef = useRef(null)
 
   // Get all focusable elements within the modal

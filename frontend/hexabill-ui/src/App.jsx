@@ -9,6 +9,8 @@ import Dashboard from './pages/company/DashboardTally'
 import ProductsPage from './pages/company/ProductsPage'
 import PriceList from './pages/company/PriceList'
 import PurchasesPage from './pages/company/PurchasesPage'
+import SuppliersPage from './pages/company/SuppliersPage'
+import SupplierDetailPage from './pages/company/SupplierDetailPage'
 import PosPage from './pages/company/PosPage'
 import CustomerLedgerPage from './pages/company/CustomerLedgerPage'
 import ExpensesPage from './pages/company/ExpensesPage'
@@ -143,6 +145,7 @@ function App() {
     if (p === '/settings') return 'settings'
     if (p === '/backup') return 'backup'
     if (p === '/purchases') return 'purchases'
+    if (p === '/suppliers' || p.startsWith('/suppliers/')) return 'purchases'
     return null
   }
   const resolvedPageId = getPageIdForPath(path)
@@ -187,6 +190,8 @@ function App() {
               <Route path="/products" element={<ProductsPage />} />
               <Route path="/pricelist" element={<PriceList />} />
               <Route path="/purchases" element={<PurchasesPage />} />
+              <Route path="/suppliers" element={<SuppliersPage />} />
+              <Route path="/suppliers/:name" element={<SupplierDetailPage />} />
               <Route path="/pos" element={<PosPage />} />
               <Route path="/ledger" element={<CustomerLedgerPage />} />
               <Route path="/expenses" element={<ExpensesPage />} />
@@ -220,6 +225,8 @@ function App() {
             <Route path="/ledger" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/expenses" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/purchases" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/suppliers" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/suppliers/:name" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/reports" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/branches" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/routes" element={<Navigate to="/superadmin/dashboard" replace />} />

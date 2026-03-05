@@ -12,7 +12,7 @@ namespace HexaBill.Api.Modules.Purchases
 {
     public interface IPurchaseService
     {
-        Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null);
+        Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null, string? status = null);
         Task<PurchaseDto?> GetPurchaseByIdAsync(int id, int tenantId);
         Task<PurchaseDto> CreatePurchaseAsync(CreatePurchaseRequest request, int userId, int tenantId);
         Task<PurchaseDto?> UpdatePurchaseAsync(int id, CreatePurchaseRequest request, int userId, int tenantId);
@@ -29,7 +29,7 @@ namespace HexaBill.Api.Modules.Purchases
             _context = context;
         }
 
-        public async Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null)
+        public async Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null, string? status = null)
         {
             // CRITICAL FIX: Ensure DateTimes are UTC for PostgreSQL
             if (startDate.HasValue)
@@ -78,11 +78,42 @@ namespace HexaBill.Api.Modules.Purchases
             }
 
             var totalCount = await query.CountAsync();
-            var purchases = await query
+            var purchaseEntities = await query
                 .OrderByDescending(p => p.PurchaseDate)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => new PurchaseDto
+                .ToListAsync();
+
+            var supplierNames = purchaseEntities.Select(p => p.SupplierName).Distinct().ToList();
+            var paymentStatusByPurchaseId = new Dictionary<int, (decimal PaidAmount, decimal BalanceAmount, string PaymentStatus)>();
+
+            foreach (var supName in supplierNames)
+            {
+                var totalPayments = await _context.SupplierPayments
+                    .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supName)
+                    .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+
+                var supplierPurchases = await _context.Purchases
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supName)
+                    .OrderBy(p => p.PurchaseDate)
+                    .Select(p => new { p.Id, p.TotalAmount })
+                    .ToListAsync();
+
+                decimal remainingPaymentPool = totalPayments;
+                foreach (var sp in supplierPurchases)
+                {
+                    var paidForThis = Math.Min(sp.TotalAmount, Math.Max(0, remainingPaymentPool));
+                    remainingPaymentPool -= paidForThis;
+                    var balance = sp.TotalAmount - paidForThis;
+                    var payStatus = paidForThis <= 0 ? "Unpaid" : paidForThis >= sp.TotalAmount ? "Paid" : "Partial";
+                    paymentStatusByPurchaseId[sp.Id] = (paidForThis, balance, payStatus);
+                }
+            }
+
+            var purchases = purchaseEntities.Select(p =>
+            {
+                var (paidAmount, balanceAmount, paymentStatus) = paymentStatusByPurchaseId.TryGetValue(p.Id, out var v) ? v : (0m, p.TotalAmount, "Unpaid");
+                return new PurchaseDto
                 {
                     Id = p.Id,
                     SupplierName = p.SupplierName,
@@ -92,6 +123,9 @@ namespace HexaBill.Api.Modules.Purchases
                     Subtotal = p.Subtotal,
                     VatTotal = p.VatTotal,
                     TotalAmount = p.TotalAmount,
+                    PaidAmount = paidAmount,
+                    BalanceAmount = balanceAmount,
+                    PaymentStatus = paymentStatus,
                     Items = p.Items.Select(i => new PurchaseItemDto
                     {
                         Id = i.Id,
@@ -104,8 +138,14 @@ namespace HexaBill.Api.Modules.Purchases
                         VatAmount = i.VatAmount,
                         LineTotal = i.LineTotal
                     }).ToList()
-                })
-                .ToListAsync();
+                };
+            }).ToList();
+
+            if (!string.IsNullOrWhiteSpace(status) && !status.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                var statusLower = status.ToLowerInvariant();
+                purchases = purchases.Where(p => string.Equals(p.PaymentStatus, statusLower, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
 
             return new PagedResponse<PurchaseDto>
             {
@@ -134,6 +174,25 @@ namespace HexaBill.Api.Modules.Purchases
 
             if (purchase == null) return null;
 
+            var totalPayments = await _context.SupplierPayments
+                .Where(sp => sp.TenantId == tenantId && sp.SupplierName == purchase.SupplierName)
+                .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+            var supplierPurchases = await _context.Purchases
+                .Where(p => p.TenantId == tenantId && p.SupplierName == purchase.SupplierName)
+                .OrderBy(p => p.PurchaseDate)
+                .Select(p => new { p.Id, p.TotalAmount })
+                .ToListAsync();
+            decimal pool = totalPayments;
+            decimal paidForThis = 0;
+            foreach (var sp in supplierPurchases)
+            {
+                var paid = Math.Min(sp.TotalAmount, Math.Max(0, pool));
+                pool -= paid;
+                if (sp.Id == purchase.Id) { paidForThis = paid; break; }
+            }
+            var balanceAmount = purchase.TotalAmount - paidForThis;
+            var paymentStatus = paidForThis <= 0 ? "Unpaid" : paidForThis >= purchase.TotalAmount ? "Paid" : "Partial";
+
             return new PurchaseDto
             {
                 Id = purchase.Id,
@@ -144,6 +203,9 @@ namespace HexaBill.Api.Modules.Purchases
                 Subtotal = purchase.Subtotal,
                 VatTotal = purchase.VatTotal,
                 TotalAmount = purchase.TotalAmount,
+                PaidAmount = paidForThis,
+                BalanceAmount = balanceAmount,
+                PaymentStatus = paymentStatus,
                 Items = purchase.Items.Select(i => new PurchaseItemDto
                 {
                     Id = i.Id,
@@ -288,6 +350,8 @@ namespace HexaBill.Api.Modules.Purchases
 
                     // Calculate base quantity and update stock (reuse validated baseQty from above)
                     // PROD-19: Atomic stock update to prevent race conditions
+                    // Phase 1.1: Debug logging to diagnose stock=0 - log before update
+                    Console.WriteLine($"[StockUpdate] productId={product.Id}, tenantId={tenantId}, baseQty={baseQty}, productTenantId={product.TenantId}");
                     var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                         $@"UPDATE ""Products"" 
                            SET ""StockQty"" = ""StockQty"" + {baseQty}, 
@@ -297,8 +361,10 @@ namespace HexaBill.Api.Modules.Purchases
                     
                     if (rowsAffected == 0)
                     {
-                        throw new InvalidOperationException($"Product {product.Id} not found or does not belong to your tenant.");
+                        Console.WriteLine($"[StockUpdate] FAILED: 0 rows affected for productId={product.Id}, tenantId={tenantId}");
+                        throw new InvalidOperationException($"Product {product.Id} not found or does not belong to your tenant. Verify Product.TenantId matches your company.");
                     }
+                    Console.WriteLine($"[StockUpdate] OK: productId={product.Id}, rowsAffected={rowsAffected}");
                     
                     // Reload product to get updated stock value and RowVersion
                     await _context.Entry(product).ReloadAsync();
@@ -795,6 +861,11 @@ namespace HexaBill.Api.Modules.Purchases
         public decimal? Subtotal { get; set; } // Amount before VAT
         public decimal? VatTotal { get; set; } // VAT amount
         public decimal TotalAmount { get; set; } // Grand total
+
+        // Payment tracking (Phase 4)
+        public decimal PaidAmount { get; set; }
+        public decimal BalanceAmount { get; set; }
+        public string? PaymentStatus { get; set; } // Unpaid, Partial, Paid
             
         public List<PurchaseItemDto> Items { get; set; } = new();
     }

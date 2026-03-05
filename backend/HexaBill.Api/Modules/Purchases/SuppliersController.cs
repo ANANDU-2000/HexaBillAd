@@ -100,6 +100,96 @@ namespace HexaBill.Api.Modules.Purchases
                 });
             }
         }
+
+        [HttpGet("search")]
+        public async Task<ActionResult<ApiResponse<List<string>>>> SearchSuppliers([FromQuery] string q, [FromQuery] int limit = 20)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var result = await _supplierService.SearchSupplierNamesAsync(tenantId, q ?? "", limit);
+                return Ok(new ApiResponse<List<string>>
+                {
+                    Success = true,
+                    Message = "Suppliers search completed",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<List<string>>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpPost("{supplierName}/payments")]
+        public async Task<ActionResult<ApiResponse<SupplierPaymentDto>>> RecordPayment(
+            string supplierName,
+            [FromBody] RecordSupplierPaymentRequest request)
+        {
+            try
+            {
+                if (request == null || request.Amount <= 0)
+                {
+                    return BadRequest(new ApiResponse<SupplierPaymentDto>
+                    {
+                        Success = false,
+                        Message = "Amount must be positive."
+                    });
+                }
+
+                var tenantId = CurrentTenantId;
+                var userIdClaim = User.FindFirst("UserId") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("id");
+                var userId = int.TryParse(userIdClaim?.Value ?? "0", out var uid) ? uid : 1;
+
+                var result = await _supplierService.CreateSupplierPaymentAsync(
+                    tenantId,
+                    Uri.UnescapeDataString(supplierName),
+                    request.Amount,
+                    request.PaymentDate,
+                    request.Mode,
+                    request.Reference,
+                    request.Notes,
+                    userId);
+
+                return Ok(new ApiResponse<SupplierPaymentDto>
+                {
+                    Success = true,
+                    Message = "Payment recorded successfully",
+                    Data = result
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<SupplierPaymentDto>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<SupplierPaymentDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+    }
+
+    public class RecordSupplierPaymentRequest
+    {
+        public decimal Amount { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public SupplierPaymentMode Mode { get; set; }
+        public string? Reference { get; set; }
+        public string? Notes { get; set; }
     }
 }
 
