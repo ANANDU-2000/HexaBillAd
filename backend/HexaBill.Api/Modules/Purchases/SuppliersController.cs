@@ -126,6 +126,47 @@ namespace HexaBill.Api.Modules.Purchases
             }
         }
 
+        /// <summary>Create a new supplier (name, phone, email, address, credit limit, payment terms).</summary>
+        [HttpPost]
+        public async Task<ActionResult<ApiResponse<SupplierDto>>> CreateSupplier([FromBody] CreateSupplierRequest request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+                if (request == null)
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Request body is required." });
+                if (string.IsNullOrWhiteSpace(request.Name))
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Supplier name is required." });
+                var result = await _supplierService.CreateSupplierAsync(tenantId, request);
+                return Ok(new ApiResponse<SupplierDto>
+                {
+                    Success = true,
+                    Message = "Supplier created successfully",
+                    Data = result
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<SupplierDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<SupplierDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpPost("{supplierName}/payments")]
         public async Task<ActionResult<ApiResponse<SupplierPaymentDto>>> RecordPayment(
             string supplierName,
@@ -168,7 +209,8 @@ namespace HexaBill.Api.Modules.Purchases
                 return BadRequest(new ApiResponse<SupplierPaymentDto>
                 {
                     Success = false,
-                    Message = ex.Message
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
                 });
             }
             catch (Exception ex)
@@ -176,7 +218,7 @@ namespace HexaBill.Api.Modules.Purchases
                 return StatusCode(500, new ApiResponse<SupplierPaymentDto>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = ex.Message,
                     Errors = new List<string> { ex.Message }
                 });
             }

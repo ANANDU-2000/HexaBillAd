@@ -377,6 +377,13 @@ namespace HexaBill.Api.Modules.Inventory
         {
             try
             {
+                if (request == null)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Request body is required." });
+                if (string.IsNullOrWhiteSpace(request.Reason))
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Reason for stock adjustment is required." });
+                if (request.ChangeQty == 0)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Change quantity cannot be zero." });
+
                 var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
@@ -389,13 +396,13 @@ namespace HexaBill.Api.Modules.Inventory
 
                 // CRITICAL: Get tenantId from JWT token
                 var tenantId = CurrentTenantId;
-                var result = await _productService.AdjustStockAsync(id, request.ChangeQty, request.Reason, userId, tenantId);
+                var result = await _productService.AdjustStockAsync(id, request.ChangeQty, request.Reason!, userId, tenantId);
                 if (!result)
                 {
                     return NotFound(new ApiResponse<object>
                     {
                         Success = false,
-                        Message = "Product not found"
+                        Message = "Product not found or adjustment would result in negative stock."
                     });
                 }
 
@@ -405,12 +412,21 @@ namespace HexaBill.Api.Modules.Inventory
                     Message = "Stock adjusted successfully"
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = ex.Message,
                     Errors = new List<string> { ex.Message }
                 });
             }

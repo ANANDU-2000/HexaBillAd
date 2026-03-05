@@ -18,6 +18,7 @@ namespace HexaBill.Api.Modules.Purchases
         Task<PurchaseDto?> UpdatePurchaseAsync(int id, CreatePurchaseRequest request, int userId, int tenantId);
         Task<bool> DeletePurchaseAsync(int id, int userId, int tenantId);
         Task<PurchaseAnalyticsDto> GetPurchaseAnalyticsAsync(int tenantId, DateTime? startDate = null, DateTime? endDate = null);
+        Task<PurchasePendingSummaryDto> GetPendingSummaryAsync(int tenantId);
     }
 
     public class PurchaseService : IPurchaseService
@@ -349,9 +350,8 @@ namespace HexaBill.Api.Modules.Purchases
                     purchaseItems.Add(purchaseItem);
 
                     // Calculate base quantity and update stock (reuse validated baseQty from above)
-                    // PROD-19: Atomic stock update to prevent race conditions
-                    // Phase 1.1: Debug logging to diagnose stock=0 - log before update
-                    Console.WriteLine($"[StockUpdate] productId={product.Id}, tenantId={tenantId}, baseQty={baseQty}, productTenantId={product.TenantId}");
+                    // PROD-19: Atomic stock update; InventoryTransaction added below for reconciliation.
+                    // If stock still shows 0 in UI, use Products page "Recompute Stock" to sync from InventoryTransactions.
                     var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                         $@"UPDATE ""Products"" 
                            SET ""StockQty"" = ""StockQty"" + {baseQty}, 
@@ -360,11 +360,7 @@ namespace HexaBill.Api.Modules.Purchases
                              AND ""TenantId"" = {tenantId}");
                     
                     if (rowsAffected == 0)
-                    {
-                        Console.WriteLine($"[StockUpdate] FAILED: 0 rows affected for productId={product.Id}, tenantId={tenantId}");
-                        throw new InvalidOperationException($"Product {product.Id} not found or does not belong to your tenant. Verify Product.TenantId matches your company.");
-                    }
-                    Console.WriteLine($"[StockUpdate] OK: productId={product.Id}, rowsAffected={rowsAffected}");
+                        throw new InvalidOperationException($"Product {product.Id} not found or does not belong to your tenant. Verify Product.TenantId is set and matches your company.");
                     
                     // Reload product to get updated stock value and RowVersion
                     await _context.Entry(product).ReloadAsync();
@@ -393,10 +389,6 @@ namespace HexaBill.Api.Modules.Purchases
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Log purchase creation attempt
-                Console.WriteLine($"? Purchase validation passed: Supplier={request.SupplierName}, Invoice={request.InvoiceNo}, Items={request.Items.Count}");
-                Console.WriteLine($"?? Subtotal={subtotal:C}, VAT={vatTotal:C} ({vatPercent}%), Total={totalAmount:C}");
-                
                 var purchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : request.PurchaseDate.ToUtcKind();
                 var purchase = new Purchase
                 {
@@ -677,9 +669,6 @@ namespace HexaBill.Api.Modules.Purchases
                         {
                             await _context.Entry(product).ReloadAsync();
                         }
-
-                        // Log the reversal
-                        Console.WriteLine($"?? Reversing stock for {product.NameEn}: -{baseQty} (Purchase ID: {id})");
                     }
                 }
 
@@ -710,12 +699,10 @@ namespace HexaBill.Api.Modules.Purchases
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                Console.WriteLine($"? Purchase deleted successfully: ID={id}, Invoice={purchase.InvoiceNo}");
                 return true;
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"? Purchase deletion failed: {ex.Message}");
                     await transaction.RollbackAsync();
                     throw;
                 }
@@ -847,6 +834,68 @@ namespace HexaBill.Api.Modules.Purchases
                 SupplierStats = supplierStats
             };
         }
+
+        /// <summary>Total pending to pay (purchase balances) and counts by status: Unpaid, Partial, Paid.</summary>
+        public async Task<PurchasePendingSummaryDto> GetPendingSummaryAsync(int tenantId)
+        {
+            var supplierNames = await _context.Purchases
+                .Where(p => p.TenantId == tenantId)
+                .Select(p => p.SupplierName)
+                .Distinct()
+                .ToListAsync();
+
+            var paymentStatusByPurchaseId = new Dictionary<int, (decimal PaidAmount, decimal BalanceAmount, string PaymentStatus)>();
+
+            foreach (var supName in supplierNames)
+            {
+                var totalPayments = await _context.SupplierPayments
+                    .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supName)
+                    .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+
+                var supplierPurchases = await _context.Purchases
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supName)
+                    .OrderBy(p => p.PurchaseDate)
+                    .Select(p => new { p.Id, p.TotalAmount })
+                    .ToListAsync();
+
+                decimal remainingPaymentPool = totalPayments;
+                foreach (var sp in supplierPurchases)
+                {
+                    var paidForThis = Math.Min(sp.TotalAmount, Math.Max(0, remainingPaymentPool));
+                    remainingPaymentPool -= paidForThis;
+                    var balance = sp.TotalAmount - paidForThis;
+                    var payStatus = paidForThis <= 0 ? "Unpaid" : paidForThis >= sp.TotalAmount ? "Paid" : "Partial";
+                    paymentStatusByPurchaseId[sp.Id] = (paidForThis, balance, payStatus);
+                }
+            }
+
+            decimal totalPendingToPay = 0;
+            int unpaidCount = 0, partialCount = 0, paidCount = 0;
+            foreach (var kv in paymentStatusByPurchaseId)
+            {
+                var (_, balance, status) = kv.Value;
+                if (string.Equals(status, "Unpaid", StringComparison.OrdinalIgnoreCase)) { unpaidCount++; totalPendingToPay += balance; }
+                else if (string.Equals(status, "Partial", StringComparison.OrdinalIgnoreCase)) { partialCount++; totalPendingToPay += balance; }
+                else if (string.Equals(status, "Paid", StringComparison.OrdinalIgnoreCase)) paidCount++;
+                else { unpaidCount++; totalPendingToPay += balance; }
+            }
+
+            return new PurchasePendingSummaryDto
+            {
+                TotalPendingToPay = totalPendingToPay,
+                UnpaidCount = unpaidCount,
+                PartialCount = partialCount,
+                PaidCount = paidCount
+            };
+        }
+    }
+
+    public class PurchasePendingSummaryDto
+    {
+        public decimal TotalPendingToPay { get; set; }
+        public int UnpaidCount { get; set; }
+        public int PartialCount { get; set; }
+        public int PaidCount { get; set; }
     }
 
     public class PurchaseDto

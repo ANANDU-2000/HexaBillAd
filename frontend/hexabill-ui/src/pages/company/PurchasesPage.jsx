@@ -27,6 +27,8 @@ const PurchasesPage = () => {
   // Analytics state
   const [analytics, setAnalytics] = useState(null)
   const [loadingAnalytics, setLoadingAnalytics] = useState(false)
+  // Pending summary: total to pay + Unpaid / Partial / Paid counts
+  const [pendingSummary, setPendingSummary] = useState(null)
 
   const [formData, setFormData] = useState({
     supplierName: '',
@@ -63,6 +65,7 @@ const PurchasesPage = () => {
     loadPurchases()
     loadProducts()
     loadAnalytics()
+    loadPendingSummary()
     // CRITICAL FIX: Reload when filters change to show filtered data automatically
   }, [currentPage, filterPeriod, startDate, endDate, supplierSearch, categoryFilter, statusFilter])
 
@@ -258,6 +261,19 @@ const PurchasesPage = () => {
     }
   }
 
+  const loadPendingSummary = async () => {
+    try {
+      const response = await purchasesAPI.getPurchasePendingSummary()
+      if (response?.success && response?.data) {
+        setPendingSummary(response.data)
+      } else {
+        setPendingSummary(null)
+      }
+    } catch {
+      setPendingSummary(null)
+    }
+  }
+
   const getDateRangeFromPeriod = (period) => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -440,6 +456,7 @@ const PurchasesPage = () => {
           items: []
         })
         loadPurchases()
+        loadPendingSummary()
         // Phase 1.3: Small delay to avoid race - API returns after commit but ensure fresh read
         setTimeout(() => loadProducts(), 150)
       }
@@ -510,6 +527,7 @@ const PurchasesPage = () => {
           if (response.success) {
             toast.success(`Purchase deleted! Stock reversed for ${response.data.itemsCount} items.`, { id: 'purchase-delete', duration: 4000 })
             loadPurchases()
+            loadPendingSummary()
             loadProducts()
           } else {
             toast.error(response.message || 'Failed to delete purchase', { id: 'purchase-delete' })
@@ -545,6 +563,32 @@ const PurchasesPage = () => {
       </div>
 
       <div className="p-2 sm:p-4 overflow-x-hidden max-w-full">
+        {/* Pending to Pay + Status summary card */}
+        {pendingSummary && (
+          <div className="mb-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-lg border-2 border-amber-300 p-3 sm:p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-bold text-amber-900">Total Pending to Pay (Purchases)</h3>
+                <p className="text-2xl sm:text-3xl font-bold text-amber-700 mt-1">
+                  AED {(pendingSummary.totalPendingToPay ?? 0).toFixed(2)}
+                </p>
+                <p className="text-xs text-amber-700 mt-1">Outstanding across all suppliers</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-neutral-100 text-neutral-800">
+                  Unpaid: {pendingSummary.unpaidCount ?? 0}
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                  Partial: {pendingSummary.partialCount ?? 0}
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                  Paid: {pendingSummary.paidCount ?? 0}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Analytics Dashboard - Mobile: compact 2 cards + "More stats" toggle; Desktop: full */}
         {analytics && (
           <>
@@ -1668,7 +1712,7 @@ const PurchasesPage = () => {
         onClose={() => setPayModal({ isOpen: false, supplierName: '' })}
         supplierName={payModal.supplierName}
         initialShowRecordPayment={true}
-        onPaymentRecorded={() => { loadPurchases(); setPayModal({ isOpen: false, supplierName: '' }) }}
+        onPaymentRecorded={() => { loadPurchases(); loadPendingSummary(); setPayModal({ isOpen: false, supplierName: '' }) }}
       />
     </div>
   )

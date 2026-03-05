@@ -482,6 +482,9 @@ namespace HexaBill.Api.Modules.Inventory
 
         public async Task<bool> AdjustStockAsync(int productId, decimal changeQty, string reason, int userId, int tenantId)
         {
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Reason for stock adjustment is required.", nameof(reason));
+
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
@@ -494,6 +497,11 @@ namespace HexaBill.Api.Modules.Inventory
                     .FirstOrDefaultAsync();
                     
                 if (product == null) return false;
+
+                // Prevent negative stock: new stock = current + change must be >= 0
+                var newStock = product.StockQty + changeQty;
+                if (newStock < 0)
+                    throw new InvalidOperationException($"Stock adjustment would result in negative stock. Current: {product.StockQty}, change: {changeQty}. Maximum decrease allowed: {product.StockQty}.");
 
                 // PROD-19: Atomic stock adjustment
                 var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(

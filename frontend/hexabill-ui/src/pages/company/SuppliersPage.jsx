@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Search, Eye, RefreshCw, Phone } from 'lucide-react'
+import { Search, Eye, RefreshCw, Phone, Plus } from 'lucide-react'
 import { suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import SupplierLedgerModal from '../../components/SupplierLedgerModal'
+import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 
 const SuppliersPage = () => {
@@ -13,6 +14,16 @@ const SuppliersPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [ledgerSupplier, setLedgerSupplier] = useState(null)
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    creditLimit: '',
+    paymentTerms: ''
+  })
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     loadSuppliers()
@@ -50,11 +61,53 @@ const SuppliersPage = () => {
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '-'
 
+  const handleCreateSupplier = async (e) => {
+    e.preventDefault()
+    const name = (createForm.name || '').trim()
+    if (!name) {
+      toast.error('Supplier name is required')
+      return
+    }
+    try {
+      setCreating(true)
+      const res = await suppliersAPI.createSupplier({
+        name,
+        phone: createForm.phone?.trim() || undefined,
+        email: createForm.email?.trim() || undefined,
+        address: createForm.address?.trim() || undefined,
+        creditLimit: createForm.creditLimit !== '' ? parseFloat(createForm.creditLimit) : undefined,
+        paymentTerms: createForm.paymentTerms?.trim() || undefined
+      })
+      if (res?.success) {
+        toast.success('Supplier created successfully')
+        setShowCreateModal(false)
+        setCreateForm({ name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' })
+        loadSuppliers()
+      } else {
+        toast.error(res?.message || 'Failed to create supplier')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to create supplier')
+    } finally {
+      setCreating(false)
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary-900">Suppliers</h1>
-        <p className="text-primary-600 mt-1">Manage suppliers and view outstanding balances.</p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-900">Suppliers</h1>
+          <p className="text-primary-600 mt-1">Manage suppliers, create new ones, and view ledger (outstanding balances & payments).</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded font-medium shadow-sm"
+        >
+          <Plus className="h-4 w-4" /> Add Supplier
+        </button>
       </div>
 
       <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm mb-4 p-4">
@@ -166,6 +219,95 @@ const SuppliersPage = () => {
         supplierName={ledgerSupplier}
         onPaymentRecorded={loadSuppliers}
       />
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => !creating && setShowCreateModal(false)}
+        title="Add Supplier"
+        size="md"
+      >
+        <form onSubmit={handleCreateSupplier} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Name <span className="text-red-600">*</span></label>
+            <input
+              type="text"
+              value={createForm.name}
+              onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Supplier name"
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Phone</label>
+            <input
+              type="text"
+              value={createForm.phone}
+              onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
+              placeholder="Phone"
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Email</label>
+            <input
+              type="email"
+              value={createForm.email}
+              onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
+              placeholder="Email"
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Address</label>
+            <textarea
+              value={createForm.address}
+              onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
+              placeholder="Address"
+              rows={2}
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Credit limit</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={createForm.creditLimit}
+              onChange={e => setCreateForm(f => ({ ...f, creditLimit: e.target.value }))}
+              placeholder="0"
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-800 mb-1">Payment terms</label>
+            <input
+              type="text"
+              value={createForm.paymentTerms}
+              onChange={e => setCreateForm(f => ({ ...f, paymentTerms: e.target.value }))}
+              placeholder="e.g. Net 30"
+              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+            />
+          </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => !creating && setShowCreateModal(false)}
+              className="px-4 py-2 border-2 border-primary-300 rounded font-medium text-primary-700 hover:bg-primary-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={creating || !createForm.name?.trim()}
+              className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded font-medium disabled:opacity-50"
+            >
+              {creating ? 'Creating...' : 'Create Supplier'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

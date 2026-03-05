@@ -17,6 +17,7 @@ namespace HexaBill.Api.Modules.Purchases
         Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId);
         Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId);
         Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20);
+        Task<SupplierDto> CreateSupplierAsync(int tenantId, CreateSupplierRequest request);
     }
 
     public class SupplierService : ISupplierService
@@ -166,11 +167,16 @@ namespace HexaBill.Api.Modules.Purchases
 
         public async Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId)
         {
-            var supplierNames = await _context.Purchases
+            var fromPurchases = await _context.Purchases
                 .Where(p => p.TenantId == tenantId)
                 .Select(p => p.SupplierName)
                 .Distinct()
                 .ToListAsync();
+            var fromSuppliersTable = await _context.Suppliers
+                .Where(s => s.TenantId == tenantId && s.IsActive)
+                .Select(s => s.Name)
+                .ToListAsync();
+            var supplierNames = fromPurchases.Union(fromSuppliersTable, StringComparer.OrdinalIgnoreCase).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             var summaries = new List<SupplierSummaryDto>();
 
@@ -267,9 +273,71 @@ namespace HexaBill.Api.Modules.Purchases
             var merged = fromPurchases.Union(fromSuppliers).Distinct(StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
             return merged;
         }
+
+        public async Task<SupplierDto> CreateSupplierAsync(int tenantId, CreateSupplierRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Name))
+                throw new ArgumentException("Supplier name is required.", nameof(request));
+
+            var name = request.Name.Trim();
+            var normalized = name.ToLowerInvariant();
+            var exists = await _context.Suppliers
+                .AnyAsync(s => s.TenantId == tenantId && s.Name.ToLower() == normalized);
+            if (exists)
+                throw new ArgumentException($"A supplier with the name \"{name}\" already exists.", nameof(request));
+
+            var supplier = new Supplier
+            {
+                TenantId = tenantId,
+                Name = name,
+                Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone!.Trim(),
+                Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email!.Trim(),
+                Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address!.Trim(),
+                CreditLimit = request.CreditLimit ?? 0,
+                PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms!.Trim(),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Suppliers.Add(supplier);
+            await _context.SaveChangesAsync();
+
+            return new SupplierDto
+            {
+                Id = supplier.Id,
+                Name = supplier.Name,
+                Phone = supplier.Phone,
+                Email = supplier.Email,
+                Address = supplier.Address,
+                CreditLimit = supplier.CreditLimit,
+                PaymentTerms = supplier.PaymentTerms
+            };
+        }
     }
 
     // DTOs
+    public class CreateSupplierRequest
+    {
+        public string Name { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public decimal? CreditLimit { get; set; }
+        public string? PaymentTerms { get; set; }
+    }
+
+    public class SupplierDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public decimal CreditLimit { get; set; }
+        public string? PaymentTerms { get; set; }
+    }
+
+    // DTOs (existing)
     public class SupplierBalanceDto
     {
         public string SupplierName { get; set; } = string.Empty;

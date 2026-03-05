@@ -255,6 +255,15 @@ namespace HexaBill.Api.Modules.Purchases
                     });
                 }
 
+                if (string.IsNullOrWhiteSpace(request.InvoiceNo))
+                {
+                    return BadRequest(new ApiResponse<PurchaseDto>
+                    {
+                        Success = false,
+                        Message = "Invoice number is required"
+                    });
+                }
+
                 if (request.Items == null || !request.Items.Any())
                 {
                     return BadRequest(new ApiResponse<PurchaseDto>
@@ -337,13 +346,23 @@ namespace HexaBill.Api.Modules.Purchases
                     Data = result
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Purchase update validation: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<PurchaseDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "? Purchase update error: {Message}", ex.Message);
                 return StatusCode(500, new ApiResponse<PurchaseDto>
                 {
                     Success = false,
-                    Message = "Purchase update failed. Please try again.",
+                    Message = ex.Message,
                     Errors = new List<string> { ex.Message }
                 });
             }
@@ -583,6 +602,34 @@ namespace HexaBill.Api.Modules.Purchases
                 {
                     Success = false,
                     Message = "Failed to retrieve analytics",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>Total pending to pay (all purchases) and counts by status: Unpaid, Partial, Paid.</summary>
+        [HttpGet("pending-summary")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponse<PurchasePendingSummaryDto>>> GetPendingSummary()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var result = await _purchaseService.GetPendingSummaryAsync(tenantId);
+                return Ok(new ApiResponse<PurchasePendingSummaryDto>
+                {
+                    Success = true,
+                    Message = "Pending summary retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetPendingSummary error: {Message}", ex.Message);
+                return StatusCode(500, new ApiResponse<PurchasePendingSummaryDto>
+                {
+                    Success = false,
+                    Message = "Failed to retrieve pending summary",
                     Errors = new List<string> { ex.Message }
                 });
             }

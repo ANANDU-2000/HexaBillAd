@@ -1167,6 +1167,44 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierPayments_SupplierId"" ON ""SupplierPayments"" (""SupplierId"");");
                     await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierPayments_PurchaseId"" ON ""SupplierPayments"" (""PurchaseId"");");
                     await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierPayments_PaymentDate"" ON ""SupplierPayments"" (""PaymentDate"");");
+                    // ERP model uses SupplierName (not SupplierId); add columns so existing tables work
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SupplierPayments"" ADD COLUMN IF NOT EXISTS ""SupplierName"" character varying(200) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SupplierPayments"" ADD COLUMN IF NOT EXISTS ""Mode"" character varying(20) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SupplierPayments"" ADD COLUMN IF NOT EXISTS ""Notes"" character varying(500) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""SupplierPayments"" ADD COLUMN IF NOT EXISTS ""CreatedBy"" integer NOT NULL DEFAULT 1;");
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        DO $$ BEGIN
+                            IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='SupplierPayments' AND column_name='SupplierId') THEN
+                                ALTER TABLE ""SupplierPayments"" ALTER COLUMN ""SupplierId"" DROP NOT NULL;
+                            END IF;
+                        END $$;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Suppliers"" ADD COLUMN IF NOT EXISTS ""IsActive"" boolean NOT NULL DEFAULT true;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Suppliers"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" timestamp with time zone NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Suppliers"" ADD COLUMN IF NOT EXISTS ""Email"" character varying(200) NULL;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Suppliers"" ADD COLUMN IF NOT EXISTS ""CreditLimit"" numeric(18,2) NOT NULL DEFAULT 0;");
+                    await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Suppliers"" ADD COLUMN IF NOT EXISTS ""PaymentTerms"" character varying(100) NULL;");
+                    // CustomerVisits: create if missing (fixes relation "CustomerVisits" does not exist)
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""CustomerVisits"" (
+                            ""Id"" serial PRIMARY KEY,
+                            ""RouteId"" integer NOT NULL,
+                            ""CustomerId"" integer NOT NULL,
+                            ""TenantId"" integer NOT NULL,
+                            ""StaffId"" integer NULL,
+                            ""VisitDate"" timestamp with time zone NOT NULL,
+                            ""Status"" character varying(50) NOT NULL DEFAULT 'NotVisited',
+                            ""Notes"" character varying(500) NULL,
+                            ""PaymentCollected"" numeric(18,2) NULL,
+                            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+                            ""UpdatedAt"" timestamp with time zone NULL,
+                            CONSTRAINT ""FK_CustomerVisits_Routes_RouteId"" FOREIGN KEY (""RouteId"") REFERENCES ""Routes"" (""Id"") ON DELETE CASCADE,
+                            CONSTRAINT ""FK_CustomerVisits_Customers_CustomerId"" FOREIGN KEY (""CustomerId"") REFERENCES ""Customers"" (""Id"") ON DELETE CASCADE,
+                            CONSTRAINT ""FK_CustomerVisits_Tenants_TenantId"" FOREIGN KEY (""TenantId"") REFERENCES ""Tenants"" (""Id"") ON DELETE CASCADE,
+                            CONSTRAINT ""FK_CustomerVisits_Users_StaffId"" FOREIGN KEY (""StaffId"") REFERENCES ""Users"" (""Id"") ON DELETE SET NULL
+                        );");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE UNIQUE INDEX IF NOT EXISTS ""IX_CustomerVisits_RouteId_CustomerId_VisitDate"" ON ""CustomerVisits"" (""RouteId"", ""CustomerId"", ""VisitDate"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_CustomerVisits_TenantId"" ON ""CustomerVisits"" (""TenantId"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_CustomerVisits_VisitDate"" ON ""CustomerVisits"" (""VisitDate"");");
                     await context.Database.ExecuteSqlRawAsync(@"
                         DO $$ BEGIN
                             IF NOT EXISTS (

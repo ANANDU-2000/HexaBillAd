@@ -371,6 +371,11 @@ export const purchasesAPI = {
     return response.data
   },
 
+  getPurchasePendingSummary: async () => {
+    const response = await api.get('/purchases/pending-summary')
+    return response.data
+  },
+
   getPurchase: async (id) => {
     const response = await api.get(`/purchases/${id}`)
     return response.data
@@ -1182,6 +1187,10 @@ export const suppliersAPI = {
   },
   recordPayment: async (supplierName, data) => {
     const response = await api.post(`/suppliers/${encodeURIComponent(supplierName)}/payments`, data)
+    return response.data
+  },
+  createSupplier: async (data) => {
+    const response = await api.post('/suppliers', data)
     return response.data
   }
 }

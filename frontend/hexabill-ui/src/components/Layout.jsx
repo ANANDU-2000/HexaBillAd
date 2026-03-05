@@ -32,7 +32,8 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
-  HelpCircle
+  HelpCircle,
+  Archive
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import Logo from './Logo'
@@ -128,7 +129,7 @@ const Layout = () => {
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: FileText }] : []),
+    ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: Archive }] : []),
     { name: 'Help & Support', href: '/help', icon: HelpCircle },
   ]
 
@@ -340,7 +341,7 @@ const Layout = () => {
                     title="Backup & Restore — Download or restore your data"
                     aria-label="Backup and restore data"
                   >
-                    <FileText className="h-5 w-5" />
+                    <Archive className="h-5 w-5" />
                   </button>
                   <button
                     onClick={() => navigate('/settings')}
