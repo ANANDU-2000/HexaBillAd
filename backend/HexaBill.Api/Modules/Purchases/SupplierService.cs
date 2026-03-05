@@ -18,6 +18,8 @@ namespace HexaBill.Api.Modules.Purchases
         Task<SupplierBalanceDto> GetSupplierBalanceAsync(int tenantId, string supplierName);
         Task<List<SupplierTransactionDto>> GetSupplierTransactionsAsync(int tenantId, string supplierName, DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId);
+        /// <summary>Record a standalone payment to a supplier. Optionally link to a purchase and update its AmountPaid.</summary>
+        Task<SupplierPaymentDto> RecordPaymentAsync(int tenantId, string supplierName, decimal amount, string? paymentMethod, string? reference, int? purchaseId = null);
     }
 
     public static class SupplierNormalize
@@ -227,6 +229,63 @@ namespace HexaBill.Api.Modules.Purchases
 
             return summaries.OrderByDescending(s => s.NetPayable).ToList();
         }
+
+        public async Task<SupplierPaymentDto> RecordPaymentAsync(int tenantId, string supplierName, decimal amount, string? paymentMethod, string? reference, int? purchaseId = null)
+        {
+            if (string.IsNullOrWhiteSpace(supplierName))
+                throw new ArgumentException("Supplier name is required.", nameof(supplierName));
+            if (amount <= 0)
+                throw new ArgumentException("Payment amount must be greater than zero.", nameof(amount));
+
+            var supplier = await GetOrCreateByNameAsync(tenantId, supplierName);
+            var refText = string.IsNullOrWhiteSpace(reference) ? null : reference.Trim();
+            if (!string.IsNullOrWhiteSpace(paymentMethod))
+                refText = string.IsNullOrEmpty(refText) ? paymentMethod.Trim() : $"{paymentMethod.Trim()} - {refText}";
+
+            var payment = new SupplierPayment
+            {
+                TenantId = tenantId,
+                SupplierId = supplier.Id,
+                Amount = amount,
+                PaymentDate = DateTime.UtcNow,
+                Reference = refText,
+                PurchaseId = purchaseId,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.SupplierPayments.Add(payment);
+
+            if (purchaseId.HasValue)
+            {
+                var purchase = await _context.Purchases
+                    .FirstOrDefaultAsync(p => p.Id == purchaseId.Value && p.TenantId == tenantId);
+                if (purchase != null)
+                {
+                    purchase.AmountPaid = (purchase.AmountPaid ?? 0) + amount;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            return new SupplierPaymentDto
+            {
+                Id = payment.Id,
+                SupplierName = supplierName,
+                Amount = payment.Amount,
+                PaymentDate = payment.PaymentDate,
+                Reference = payment.Reference,
+                PurchaseId = payment.PurchaseId
+            };
+        }
+    }
+
+    public class SupplierPaymentDto
+    {
+        public int Id { get; set; }
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public DateTime PaymentDate { get; set; }
+        public string? Reference { get; set; }
+        public int? PurchaseId { get; set; }
     }
 
     // DTOs

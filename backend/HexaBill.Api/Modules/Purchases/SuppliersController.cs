@@ -125,6 +125,56 @@ namespace HexaBill.Api.Modules.Purchases
                 });
             }
         }
+
+        [HttpPost("payments")]
+        public async Task<ActionResult<ApiResponse<SupplierPaymentDto>>> RecordPayment([FromBody] RecordSupplierPaymentRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.SupplierName))
+                    return BadRequest(new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Supplier name is required." });
+                if (request.Amount <= 0)
+                    return BadRequest(new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Payment amount must be greater than zero." });
+
+                var tenantId = CurrentTenantId;
+                var result = await _supplierService.RecordPaymentAsync(
+                    tenantId,
+                    request.SupplierName.Trim(),
+                    request.Amount,
+                    request.PaymentMethod?.Trim(),
+                    request.Reference?.Trim(),
+                    request.PurchaseId);
+
+                return Ok(new ApiResponse<SupplierPaymentDto>
+                {
+                    Success = true,
+                    Message = "Payment recorded successfully",
+                    Data = result
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<SupplierPaymentDto> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<SupplierPaymentDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+    }
+
+    public class RecordSupplierPaymentRequest
+    {
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public string? PaymentMethod { get; set; }
+        public string? Reference { get; set; }
+        public int? PurchaseId { get; set; }
     }
 }
 

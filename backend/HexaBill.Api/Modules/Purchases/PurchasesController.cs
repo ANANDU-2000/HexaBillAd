@@ -36,12 +36,13 @@ namespace HexaBill.Api.Modules.Purchases
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string? supplierName = null,
-            [FromQuery] string? category = null)
+            [FromQuery] string? category = null,
+            [FromQuery] string? paymentStatus = null)
         {
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _purchaseService.GetPurchasesAsync(tenantId, page, pageSize, startDate, endDate, supplierName, category);
+                var result = await _purchaseService.GetPurchasesAsync(tenantId, page, pageSize, startDate, endDate, supplierName, category, paymentStatus);
                 return Ok(new ApiResponse<PagedResponse<PurchaseDto>>
                 {
                     Success = true,

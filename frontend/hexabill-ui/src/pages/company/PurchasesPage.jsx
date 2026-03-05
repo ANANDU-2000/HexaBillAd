@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react'
-import { purchasesAPI, productsAPI, settingsAPI } from '../../services'
+import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
@@ -19,6 +19,7 @@ const PurchasesPage = () => {
   const [endDate, setEndDate] = useState('')
   const [supplierSearch, setSupplierSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all') // All | Paid | Partial | Unpaid
   const [showFilters, setShowFilters] = useState(false)
   const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
 
@@ -48,6 +49,8 @@ const PurchasesPage = () => {
     confirmLabel: 'Confirm',
     onConfirm: () => { }
   })
+  const [payModal, setPayModal] = useState({ isOpen: false, purchase: null, amount: '', paymentMethod: 'Cash' })
+  const [ledgerModal, setLedgerModal] = useState({ isOpen: false, supplierName: null, transactions: [], loading: false })
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
@@ -58,7 +61,7 @@ const PurchasesPage = () => {
     loadProducts()
     loadAnalytics()
     // CRITICAL FIX: Reload when filters change to show filtered data automatically
-  }, [currentPage, filterPeriod, startDate, endDate, supplierSearch, categoryFilter])
+  }, [currentPage, filterPeriod, startDate, endDate, supplierSearch, categoryFilter, statusFilter])
 
   useEffect(() => {
     if (showProductSearch && searchInputRef.current) {
@@ -101,6 +104,9 @@ const PurchasesPage = () => {
 
       // Apply category filter
       if (categoryFilter) params.category = categoryFilter
+
+      // Apply payment status filter
+      if (statusFilter && statusFilter !== 'all') params.paymentStatus = statusFilter
 
       const response = await purchasesAPI.getPurchases(params)
       if (response.success) {
@@ -312,6 +318,14 @@ const PurchasesPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!(formData.supplierName || '').trim()) {
+      toast.error('Supplier name is required')
+      return
+    }
+    if (!(formData.invoiceNo || '').trim()) {
+      toast.error('Invoice number is required')
+      return
+    }
     if (formData.items.length === 0) {
       toast.error('Please add at least one item')
       return
@@ -415,7 +429,9 @@ const PurchasesPage = () => {
       supplierName: '',
       invoiceNo: '',
       purchaseDate: new Date().toISOString().split('T')[0],
-      expenseCategory: 'Inventory', // Reset to default
+      expenseCategory: 'Inventory',
+      paymentType: 'Credit',
+      amountPaid: '',
       items: []
     })
     setShowForm(true)
@@ -479,6 +495,64 @@ const PurchasesPage = () => {
         }
       }
     })
+  }
+
+  const handleOpenPayModal = (purchase) => {
+    const outstanding = Number(purchase.balance ?? (purchase.totalAmount - (purchase.amountPaid ?? 0)))
+    setPayModal({
+      isOpen: true,
+      purchase,
+      amount: outstanding > 0 ? String(outstanding) : '',
+      paymentMethod: 'Cash'
+    })
+  }
+
+  const handleClosePayModal = () => {
+    setPayModal({ isOpen: false, purchase: null, amount: '', paymentMethod: 'Cash' })
+  }
+
+  const handleSubmitPay = async () => {
+    const { purchase, amount, paymentMethod } = payModal
+    if (!purchase || !amount || Number(amount) <= 0) {
+      toast.error('Enter a valid payment amount')
+      return
+    }
+    const numAmount = Number(amount)
+    try {
+      const response = await suppliersAPI.recordPayment({
+        supplierName: purchase.supplierName,
+        amount: numAmount,
+        paymentMethod: paymentMethod || 'Cash',
+        purchaseId: purchase.id
+      })
+      if (response && (response.success || response.Success)) {
+        toast.success('Payment recorded')
+        handleClosePayModal()
+        loadPurchases()
+      } else {
+        toast.error(response?.message || 'Failed to record payment')
+      }
+    } catch (error) {
+      const msg = error?.response?.data?.message || error?.message || 'Failed to record payment'
+      toast.error(msg)
+    }
+  }
+
+  const handleOpenLedgerModal = async (purchase) => {
+    const supplierName = purchase?.supplierName
+    if (!supplierName) return
+    setLedgerModal({ isOpen: true, supplierName, transactions: [], loading: true })
+    try {
+      const data = await suppliersAPI.getSupplierTransactions(supplierName)
+      const list = data?.data ?? data ?? []
+      setLedgerModal(prev => ({ ...prev, transactions: Array.isArray(list) ? list : [], loading: false }))
+    } catch (_) {
+      setLedgerModal(prev => ({ ...prev, transactions: [], loading: false }))
+    }
+  }
+
+  const handleCloseLedgerModal = () => {
+    setLedgerModal({ isOpen: false, supplierName: null, transactions: [], loading: false })
   }
 
   // TALLY ERP PURCHASE VOUCHER STYLE
@@ -954,6 +1028,21 @@ const PurchasesPage = () => {
                 </select>
               </div>
 
+              {/* Payment Status Filter */}
+              <div>
+                <label className="block text-xs font-medium text-primary-700 mb-1">Status</label>
+                <select
+                  className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Partial">Partial</option>
+                  <option value="Unpaid">Unpaid</option>
+                </select>
+              </div>
+
               {/* Clear Filters */}
               <div className="flex items-end">
                 <button
@@ -963,6 +1052,7 @@ const PurchasesPage = () => {
                     setEndDate('')
                     setSupplierSearch('')
                     setCategoryFilter('')
+                    setStatusFilter('all')
                   }}
                   className="w-full px-2 py-1.5 text-xs bg-red-100 hover:bg-red-200 border border-red-300 rounded text-red-700 font-medium"
                 >
@@ -1364,6 +1454,9 @@ const PurchasesPage = () => {
                       <th className="px-3 py-2 border-r border-lime-300 text-right">Subtotal</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-right">VAT ({vatPercent}%)</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-right">Total</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-right">Paid</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-right">Balance</th>
+                      <th className="px-3 py-2 border-r border-lime-300 text-center">Status</th>
                       <th className="px-3 py-2 border-r border-lime-300 text-center">Items</th>
                       <th className="px-3 py-2 text-center">Actions</th>
                     </tr>
@@ -1371,7 +1464,7 @@ const PurchasesPage = () => {
                   <tbody className="divide-y divide-lime-200">
                     {purchases.length === 0 ? (
                       <tr>
-                        <td colSpan="8" className="px-4 py-8 text-center">
+                        <td colSpan="11" className="px-4 py-8 text-center">
                           <div className="text-primary-500">
                             {filterPeriod === 'today' ? (
                               <>
@@ -1413,9 +1506,42 @@ const PurchasesPage = () => {
                             )}
                           </td>
                           <td className="px-3 py-2 text-right font-bold text-green-700">AED {purchase.totalAmount.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right">
+                            {purchase.amountPaid != null ? `AED ${Number(purchase.amountPaid).toFixed(2)}` : <span className="text-primary-400 text-xs">-</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right">
+                            {purchase.balance != null ? `AED ${Number(purchase.balance).toFixed(2)}` : <span className="text-primary-400 text-xs">-</span>}
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                              purchase.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' :
+                              purchase.paymentStatus === 'Partial' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {purchase.paymentStatus || 'Unpaid'}
+                            </span>
+                          </td>
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
                           <td className="px-3 py-2">
-                            <div className="flex justify-center space-x-2">
+                            <div className="flex justify-center flex-wrap gap-1">
+                              {(purchase.balance != null ? Number(purchase.balance) > 0 : true) && (
+                                <button
+                                  onClick={() => handleOpenPayModal(purchase)}
+                                  className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                                  title="Pay"
+                                  aria-label="Pay"
+                                >
+                                  Pay
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleOpenLedgerModal(purchase)}
+                                className="bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white border border-slate-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                                title="View Ledger"
+                                aria-label="View Ledger"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                Ledger
+                              </button>
                               <button
                                 onClick={() => handleEditPurchase(purchase)}
                                 className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
@@ -1478,7 +1604,17 @@ const PurchasesPage = () => {
                       </div>
                       <div className="flex items-center justify-between text-xs text-primary-500 mt-2">
                         <span>{formatDate(purchase.purchaseDate)}</span>
-                        <span>{purchase.items?.length || 0} item(s)</span>
+                        <span className={`px-1.5 py-0.5 rounded font-medium ${purchase.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : purchase.paymentStatus === 'Partial' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'}`}>{purchase.paymentStatus || 'Unpaid'}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100 text-xs">
+                        <div>
+                          <p className="text-primary-500">Paid</p>
+                          <p className="font-medium text-primary-700">{purchase.amountPaid != null ? formatCurrency(purchase.amountPaid) : '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-primary-500">Balance</p>
+                          <p className="font-medium text-primary-700">{purchase.balance != null ? formatCurrency(purchase.balance) : '-'}</p>
+                        </div>
                       </div>
                       {purchase.subtotal && purchase.vatTotal && (
                         <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100">
@@ -1492,7 +1628,24 @@ const PurchasesPage = () => {
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100 flex-wrap">
+                        {(purchase.balance != null ? Number(purchase.balance) > 0 : true) && (
+                          <button
+                            onClick={() => handleOpenPayModal(purchase)}
+                            className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                            title="Pay"
+                          >
+                            Pay
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleOpenLedgerModal(purchase)}
+                          className="bg-slate-50 text-slate-600 hover:bg-slate-600 hover:text-white border border-slate-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                          title="View Ledger"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Ledger
+                        </button>
                         <button
                           onClick={() => handleEditPurchase(purchase)}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
@@ -1549,6 +1702,96 @@ const PurchasesPage = () => {
         onConfirm={dangerModal.onConfirm}
         onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
       />
+
+      {/* Pay Modal */}
+      {payModal.isOpen && payModal.purchase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4">
+            <h3 className="text-lg font-bold text-primary-800 mb-3">Record Payment</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-primary-600 font-medium">Supplier</span>
+                <p className="font-medium text-primary-800">{payModal.purchase.supplierName}</p>
+              </div>
+              <div>
+                <span className="text-primary-600 font-medium">Outstanding (this invoice)</span>
+                <p className="font-medium text-primary-800">
+                  AED {Number(payModal.purchase.balance ?? (payModal.purchase.totalAmount - (payModal.purchase.amountPaid ?? 0))).toFixed(2)}
+                </p>
+              </div>
+              <div>
+                <label className="block text-primary-700 font-medium mb-1">Payment amount (AED)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-3 py-2 border-2 border-lime-300 rounded"
+                  value={payModal.amount}
+                  onChange={(e) => setPayModal(prev => ({ ...prev, amount: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-primary-700 font-medium mb-1">Payment method</label>
+                <select
+                  className="w-full px-3 py-2 border-2 border-lime-300 rounded"
+                  value={payModal.paymentMethod}
+                  onChange={(e) => setPayModal(prev => ({ ...prev, paymentMethod: e.target.value }))}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Bank">Bank</option>
+                  <option value="Card">Card</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button type="button" onClick={handleClosePayModal} className="px-3 py-2 border border-gray-300 rounded text-sm">
+                Cancel
+              </button>
+              <button type="button" onClick={handleSubmitPay} className="px-3 py-2 bg-primary-600 text-white rounded text-sm font-medium">
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ledger Modal */}
+      {ledgerModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={handleCloseLedgerModal}>
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="p-4 border-b border-lime-300">
+              <h3 className="text-lg font-bold text-primary-800">Supplier Ledger: {ledgerModal.supplierName}</h3>
+            </div>
+            <div className="p-4 overflow-auto flex-1">
+              {ledgerModal.loading ? (
+                <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" /></div>
+              ) : ledgerModal.transactions.length === 0 ? (
+                <p className="text-primary-500 text-sm">No transactions</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead><tr><th className="text-left py-1">Date</th><th className="text-left py-1">Type</th><th className="text-left py-1">Reference</th><th className="text-right py-1">Debit</th><th className="text-right py-1">Credit</th><th className="text-right py-1">Balance</th></tr></thead>
+                  <tbody>
+                    {ledgerModal.transactions.map((t, i) => (
+                      <tr key={i} className="border-t border-gray-100">
+                        <td className="py-1">{new Date(t.date).toLocaleDateString('en-GB')}</td>
+                        <td className="py-1">{t.type}</td>
+                        <td className="py-1">{t.reference}</td>
+                        <td className="py-1 text-right">{t.debit ? formatCurrency(t.debit) : '-'}</td>
+                        <td className="py-1 text-right">{t.credit ? formatCurrency(t.credit) : '-'}</td>
+                        <td className="py-1 text-right font-medium">{formatCurrency(t.balance)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div className="p-4 border-t border-lime-300">
+              <button type="button" onClick={handleCloseLedgerModal} className="px-3 py-2 bg-primary-600 text-white rounded text-sm font-medium">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

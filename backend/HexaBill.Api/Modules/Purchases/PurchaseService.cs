@@ -12,7 +12,7 @@ namespace HexaBill.Api.Modules.Purchases
 {
     public interface IPurchaseService
     {
-        Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null);
+        Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null, string? paymentStatus = null);
         Task<PurchaseDto?> GetPurchaseByIdAsync(int id, int tenantId);
         Task<PurchaseDto> CreatePurchaseAsync(CreatePurchaseRequest request, int userId, int tenantId);
         Task<PurchaseDto?> UpdatePurchaseAsync(int id, CreatePurchaseRequest request, int userId, int tenantId);
@@ -31,7 +31,7 @@ namespace HexaBill.Api.Modules.Purchases
             _supplierService = supplierService;
         }
 
-        public async Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null)
+        public async Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null, string? paymentStatus = null)
         {
             // CRITICAL FIX: Ensure DateTimes are UTC for PostgreSQL
             if (startDate.HasValue)
@@ -79,6 +79,18 @@ namespace HexaBill.Api.Modules.Purchases
                 query = query.Where(p => p.ExpenseCategory == category);
             }
 
+            // Apply payment status filter (Paid, Partial, Unpaid)
+            if (!string.IsNullOrWhiteSpace(paymentStatus) && !paymentStatus.Equals("all", StringComparison.OrdinalIgnoreCase))
+            {
+                var status = paymentStatus.Trim();
+                if (status.Equals("Paid", StringComparison.OrdinalIgnoreCase))
+                    query = query.Where(p => (p.AmountPaid ?? 0) >= p.TotalAmount);
+                else if (status.Equals("Partial", StringComparison.OrdinalIgnoreCase))
+                    query = query.Where(p => (p.AmountPaid ?? 0) > 0 && (p.AmountPaid ?? 0) < p.TotalAmount);
+                else if (status.Equals("Unpaid", StringComparison.OrdinalIgnoreCase))
+                    query = query.Where(p => (p.AmountPaid ?? 0) <= 0);
+            }
+
             var totalCount = await query.CountAsync();
             var purchases = await query
                 .OrderByDescending(p => p.PurchaseDate)
@@ -94,6 +106,10 @@ namespace HexaBill.Api.Modules.Purchases
                     Subtotal = p.Subtotal,
                     VatTotal = p.VatTotal,
                     TotalAmount = p.TotalAmount,
+                    PaymentType = p.PaymentType,
+                    AmountPaid = p.AmountPaid,
+                    Balance = p.TotalAmount - (p.AmountPaid ?? 0),
+                    PaymentStatus = (p.AmountPaid ?? 0) >= p.TotalAmount ? "Paid" : ((p.AmountPaid ?? 0) > 0 ? "Partial" : "Unpaid"),
                     Items = p.Items.Select(i => new PurchaseItemDto
                     {
                         Id = i.Id,
@@ -217,6 +233,7 @@ namespace HexaBill.Api.Modules.Purchases
             }
             if (request.AmountPaid.HasValue && request.AmountPaid.Value < 0)
                 throw new InvalidOperationException("Amount paid cannot be negative.");
+            // AmountPaid <= TotalAmount is validated below after totalAmount is computed.
             
             // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
             // Wrap in CreateExecutionStrategy().ExecuteAsync() so the transaction is retriable.
@@ -352,7 +369,7 @@ namespace HexaBill.Api.Modules.Purchases
                 var amountPaid = request.AmountPaid ?? 0;
                 if (paymentType.Equals("Cash", StringComparison.OrdinalIgnoreCase))
                     amountPaid = totalAmount;
-                if (paymentType.Equals("Partial", StringComparison.OrdinalIgnoreCase) && amountPaid > totalAmount)
+                if (amountPaid > totalAmount)
                     throw new InvalidOperationException($"Amount paid ({amountPaid:N2}) cannot exceed total amount ({totalAmount:N2}).");
                 var purchase = new Purchase
                 {
@@ -489,6 +506,15 @@ namespace HexaBill.Api.Modules.Purchases
                 purchase.PurchaseDate = request.PurchaseDate == default ? purchase.PurchaseDate : request.PurchaseDate.ToUtcKind();
                 purchase.ExpenseCategory = request.ExpenseCategory;
 
+                // Duplicate invoice check: no other purchase (same tenant) may have same supplier + invoice
+                var duplicateInvoice = await _context.Purchases
+                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.Id != id
+                        && p.SupplierName.ToLower() == purchase.SupplierName.ToLower()
+                        && p.InvoiceNo == purchase.InvoiceNo);
+                if (duplicateInvoice != null)
+                    throw new InvalidOperationException(
+                        $"Another purchase already exists with invoice '{purchase.InvoiceNo}' from supplier '{purchase.SupplierName}'.");
+
                 // VAT CALCULATION LOGIC (same as CreatePurchase)
                 // CRITICAL: Purchase bills show Unit Cost EXCLUDING VAT (like sales invoices)
                 bool includesVat = request.IncludesVat ?? false; // Changed from true to false
@@ -586,11 +612,16 @@ namespace HexaBill.Api.Modules.Purchases
                     _context.InventoryTransactions.Add(inventoryTransaction);
                 }
 
+                var paymentTypeUpdate = string.IsNullOrWhiteSpace(request.PaymentType) ? null : request.PaymentType.Trim();
+                var updateAmountPaid = request.AmountPaid ?? 0;
+                if (updateAmountPaid > totalAmount)
+                    throw new InvalidOperationException($"Amount paid ({updateAmountPaid:N2}) cannot exceed total amount ({totalAmount:N2}).");
+
                 purchase.Subtotal = subtotal;
                 purchase.VatTotal = vatTotal;
                 purchase.TotalAmount = totalAmount;
-                purchase.PaymentType = string.IsNullOrWhiteSpace(request.PaymentType) ? null : request.PaymentType.Trim();
-                purchase.AmountPaid = request.AmountPaid > 0 ? request.AmountPaid : null;
+                purchase.PaymentType = paymentTypeUpdate;
+                purchase.AmountPaid = updateAmountPaid > 0 ? request.AmountPaid : null;
 
                 // Create audit log for update
                 var auditLog = new AuditLog
@@ -843,7 +874,9 @@ namespace HexaBill.Api.Modules.Purchases
 
         public string? PaymentType { get; set; } // Cash, Credit, Partial
         public decimal? AmountPaid { get; set; }
-            
+        public decimal Balance { get; set; } // TotalAmount - AmountPaid
+        public string PaymentStatus { get; set; } = "Unpaid"; // Paid, Partial, Unpaid
+
         public List<PurchaseItemDto> Items { get; set; } = new();
     }
 

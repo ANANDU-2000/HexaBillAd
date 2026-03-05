@@ -1175,6 +1175,10 @@ export const suppliersAPI = {
   getAllSuppliersSummary: async () => {
     const response = await api.get('/suppliers/summary')
     return response.data
+  },
+  recordPayment: async (payload) => {
+    const response = await api.post('/suppliers/payments', payload)
+    return response.data
   }
 }
 
