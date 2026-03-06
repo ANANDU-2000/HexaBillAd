@@ -38,6 +38,7 @@ const ProductsPage = () => {
   const [saving, setSaving] = useState(false)
   const [showCategoryModal, setShowCategoryModal] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
+  const [categoryToDelete, setCategoryToDelete] = useState(null)
   const [categoryFormData, setCategoryFormData] = useState({ name: '', description: '', colorCode: '#3B82F6' })
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
@@ -1200,11 +1201,7 @@ const ProductsPage = () => {
                           Edit
                         </button>
                         <button
-                          onClick={() => {
-                            if (window.confirm(`Delete category "${cat.name}"? Products in this category will be unassigned.`)) {
-                              handleDeleteCategory(cat.id)
-                            }
-                          }}
+                          onClick={() => setCategoryToDelete(cat)}
                           className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
                         >
                           Delete
@@ -1218,6 +1215,19 @@ const ProductsPage = () => {
           </div>
         </div>
       )}
+      <ConfirmDangerModal
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={() => {
+          if (categoryToDelete) {
+            handleDeleteCategory(categoryToDelete.id)
+            setCategoryToDelete(null)
+          }
+        }}
+        title="Delete category"
+        message={categoryToDelete ? `Delete category "${categoryToDelete.name}"? Products in this category will be unassigned.` : ''}
+        confirmLabel="Delete"
+      />
     </div >
   )
 }

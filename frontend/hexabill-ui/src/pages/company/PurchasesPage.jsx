@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign, Download } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -22,6 +22,7 @@ const PurchasesPage = () => {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all') // all, paid, partial, unpaid, overdue
   const [showFilters, setShowFilters] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
   const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
 
   // Analytics state
@@ -271,6 +272,35 @@ const PurchasesPage = () => {
       }
     } catch {
       setPendingSummary(null)
+    }
+  }
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true)
+      const params = {}
+      const dateRange = getDateRangeFromPeriod(filterPeriod)
+      if (dateRange.startDate) params.startDate = dateRange.startDate
+      if (dateRange.endDate) params.endDate = dateRange.endDate
+      if (filterPeriod === 'custom') {
+        if (startDate) params.startDate = startDate
+        if (endDate) params.endDate = endDate
+      }
+      if (supplierSearch) params.supplierName = supplierSearch
+      if (categoryFilter) params.category = categoryFilter
+      if (statusFilter && statusFilter !== 'all') params.status = statusFilter
+      const blob = await purchasesAPI.exportCsv(params)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `purchases_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('CSV downloaded')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to export CSV')
+    } finally {
+      setExportingCsv(false)
     }
   }
 
@@ -1042,6 +1072,19 @@ const PurchasesPage = () => {
                   <option value="Maintenance">Maintenance</option>
                   <option value="Other">Other</option>
                 </select>
+              </div>
+
+              {/* Export CSV */}
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  disabled={exportingCsv}
+                  className="w-full px-2 py-1.5 text-xs bg-green-100 hover:bg-green-200 border border-green-300 rounded text-green-700 font-medium flex items-center justify-center gap-1 disabled:opacity-50"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {exportingCsv ? 'Exporting…' : 'Export CSV'}
+                </button>
               </div>
 
               {/* Clear Filters */}

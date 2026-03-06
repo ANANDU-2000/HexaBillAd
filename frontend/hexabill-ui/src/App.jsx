@@ -2,7 +2,7 @@ import React, { useEffect } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { isSystemAdmin } from './utils/superAdmin'
-import { canAccessPage } from './utils/roles'
+import { canAccessPage, isOwner } from './utils/roles'
 import { getApiBaseUrlNoSuffix } from './services/apiConfig'
 import Login from './pages/Login'
 import Dashboard from './pages/company/DashboardTally'
@@ -15,8 +15,11 @@ import PosPage from './pages/company/PosPage'
 import CustomerLedgerPage from './pages/company/CustomerLedgerPage'
 import ExpensesPage from './pages/company/ExpensesPage'
 import ReportsPage from './pages/company/ReportsPage'
+import WorksheetPage from './pages/company/WorksheetPage'
 import SalesLedgerPage from './pages/company/SalesLedgerPage'
+import BillingHistoryPage from './pages/company/BillingHistoryPage'
 import SettingsPage from './pages/company/SettingsPage'
+import AuditLogPage from './pages/company/AuditLogPage'
 import UsersPage from './pages/company/UsersPage'
 import BackupPage from './pages/company/BackupPage'
 import ProfilePage from './pages/company/ProfilePage'
@@ -133,6 +136,11 @@ function App() {
     return <Navigate to="/dashboard" replace />
   }
 
+  // Owner-only: Worksheet page — only Owner and SystemAdmin can access
+  if (path === '/worksheet' && !isOwner(user)) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   // Staff page-level access: redirect if they don't have permission for this page
   const getPageIdForPath = (p) => {
     if (p === '/pos') return 'pos'
@@ -196,9 +204,11 @@ function App() {
               <Route path="/ledger" element={<CustomerLedgerPage />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/sales-ledger" element={<SalesLedgerPage />} />
+              <Route path="/billing-history" element={<BillingHistoryPage />} />
               <Route path="/returns/create" element={<ReturnCreatePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
+              <Route path="/worksheet" element={<WorksheetPage />} />
               {/* Staff cannot access branches/routes — redirect (defense in depth with early return above) */}
               <Route path="/branches" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <BranchesPage />} />
               <Route path="/branches/:id" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <BranchDetailPage />} />
@@ -208,6 +218,7 @@ function App() {
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/audit" element={<AuditLogPage />} />
               <Route path="/backup" element={<BackupPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/help" element={<HelpPage />} />
@@ -228,6 +239,9 @@ function App() {
             <Route path="/suppliers" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/suppliers/:name" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/reports" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/billing-history" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/audit" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/worksheet" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/branches" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/routes" element={<Navigate to="/superadmin/dashboard" replace />} />
           </>

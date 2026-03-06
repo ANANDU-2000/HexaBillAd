@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Search, Eye, RefreshCw, Phone, Plus } from 'lucide-react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Search, Eye, RefreshCw, Phone, Plus, Pencil, Trash2 } from 'lucide-react'
 import { suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import Modal from '../../components/Modal'
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast'
 
 const SuppliersPage = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [suppliers, setSuppliers] = useState([])
   const [filteredSuppliers, setFilteredSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -23,10 +24,26 @@ const SuppliersPage = () => {
     paymentTerms: ''
   })
   const [creating, setCreating] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingSupplier, setEditingSupplier] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' })
+  const [updating, setUpdating] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadSuppliers()
   }, [])
+
+  const editFromUrl = searchParams.get('edit')
+  useEffect(() => {
+    if (!editFromUrl || loading || suppliers.length === 0) return
+    const s = suppliers.find(sup => (sup.supplierName || '').toLowerCase() === editFromUrl.toLowerCase())
+    if (s) {
+      openEditModal(s)
+      setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('edit'); return p }, { replace: true })
+    }
+  }, [editFromUrl, loading, suppliers])
 
   useEffect(() => {
     let list = suppliers
@@ -59,6 +76,96 @@ const SuppliersPage = () => {
   }
 
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '-'
+
+  const openEditModal = async (s) => {
+    setEditingSupplier(s)
+    setShowEditModal(true)
+    try {
+      const res = await suppliersAPI.getSupplier(s.supplierName)
+      if (res?.success && res?.data) {
+        const d = res.data
+        setEditForm({
+          name: d.name || '',
+          phone: d.phone || '',
+          email: d.email || '',
+          address: d.address || '',
+          creditLimit: d.creditLimit != null ? String(d.creditLimit) : '',
+          paymentTerms: d.paymentTerms || ''
+        })
+      } else {
+        setEditForm({
+          name: s.supplierName || '',
+          phone: s.phone || '',
+          email: '',
+          address: '',
+          creditLimit: s.creditLimit != null ? String(s.creditLimit) : '',
+          paymentTerms: ''
+        })
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error('Could not load supplier details')
+      setEditForm({
+        name: s.supplierName || '',
+        phone: s.phone || '',
+        email: '',
+        address: '',
+        creditLimit: s.creditLimit != null ? String(s.creditLimit) : '',
+        paymentTerms: ''
+      })
+    }
+  }
+
+  const handleUpdateSupplier = async (e) => {
+    e.preventDefault()
+    if (!editingSupplier) return
+    const name = (editForm.name || '').trim()
+    if (!name) {
+      toast.error('Supplier name is required')
+      return
+    }
+    try {
+      setUpdating(true)
+      const res = await suppliersAPI.updateSupplier(editingSupplier.supplierName, {
+        name,
+        phone: editForm.phone?.trim() || undefined,
+        email: editForm.email?.trim() || undefined,
+        address: editForm.address?.trim() || undefined,
+        creditLimit: editForm.creditLimit !== '' ? parseFloat(editForm.creditLimit) : undefined,
+        paymentTerms: editForm.paymentTerms?.trim() || undefined
+      })
+      if (res?.success) {
+        toast.success('Supplier updated successfully')
+        setShowEditModal(false)
+        setEditingSupplier(null)
+        loadSuppliers()
+      } else {
+        toast.error(res?.message || 'Failed to update supplier')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to update supplier')
+    } finally {
+      setUpdating(false)
+    }
+  }
+
+  const handleDeleteSupplier = async () => {
+    if (!deleteConfirm) return
+    const { supplierName } = deleteConfirm
+    try {
+      setDeleting(true)
+      await suppliersAPI.deleteSupplier(supplierName)
+      toast.success('Supplier deactivated. Existing purchases remain.')
+      setDeleteConfirm(null)
+      loadSuppliers()
+    } catch (err) {
+      console.error(err)
+      toast.error(err?.response?.data?.message || err?.message || 'Failed to delete supplier')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const handleCreateSupplier = async (e) => {
     e.preventDefault()
@@ -136,6 +243,28 @@ const SuppliersPage = () => {
         </div>
       </div>
 
+      {/* Aggregate data cards above table (when there are suppliers) */}
+      {!loading && filteredSuppliers.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div className="bg-white rounded-lg border-2 border-primary-200 p-3 shadow-sm">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Total pending (all)</p>
+            <p className="text-lg font-bold text-amber-700">
+              {formatCurrency(filteredSuppliers.reduce((sum, s) => sum + (s.netPayable || 0), 0))}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg border-2 border-primary-200 p-3 shadow-sm">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Suppliers with balance</p>
+            <p className="text-lg font-bold text-primary-800">
+              {filteredSuppliers.filter(s => (s.netPayable || 0) > 0).length}
+            </p>
+          </div>
+          <div className="bg-white rounded-lg border-2 border-primary-200 p-3 shadow-sm">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Total suppliers</p>
+            <p className="text-lg font-bold text-primary-800">{filteredSuppliers.length}</p>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm overflow-hidden w-full">
         <p className="text-xs text-primary-500 px-4 py-2 border-b border-lime-200 bg-lime-50/50">
           {!loading && filteredSuppliers.length > 0 ? `Showing ${filteredSuppliers.length} supplier${filteredSuppliers.length !== 1 ? 's' : ''}. Use search above to filter. Click &quot;Supplier Ledger&quot; to open full ledger.` : 'Supplier list — use search above to filter. Click &quot;Supplier Ledger&quot; to open full ledger.'}
@@ -189,9 +318,21 @@ const SuppliersPage = () => {
                         <td className="p-3 text-center">{s.invoiceCount ?? '-'}</td>
                         <td className="p-3 text-center text-sm">{formatDate(s.lastPaymentDate)}</td>
                         <td className="p-3">
-                          <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm font-medium">
-                            <Eye className="h-4 w-4" /> Supplier Ledger
-                          </button>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm font-medium">
+                              <Eye className="h-4 w-4" /> Supplier Ledger
+                            </button>
+                            {s.id != null && (
+                              <>
+                                <button onClick={() => openEditModal(s)} className="flex items-center gap-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-sm font-medium" title="Edit supplier">
+                                  <Pencil className="h-4 w-4" /> Edit
+                                </button>
+                                <button onClick={() => setDeleteConfirm(s)} className="flex items-center gap-1 px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-sm font-medium text-red-800" title="Deactivate supplier">
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -228,9 +369,17 @@ const SuppliersPage = () => {
                       <p>Last Purchase: {formatDate(s.lastPurchaseDate)}</p>
                       <p>Invoices: {s.invoiceCount ?? '-'}</p>
                     </div>
-                    <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="w-full flex items-center justify-center gap-1 py-2 bg-primary-200 hover:bg-primary-300 rounded text-sm font-medium">
-                      <Eye className="h-4 w-4" /> Supplier Ledger
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex-1 flex items-center justify-center gap-1 py-2 bg-primary-200 hover:bg-primary-300 rounded text-sm font-medium">
+                        <Eye className="h-4 w-4" /> Ledger
+                      </button>
+                      {s.id != null && (
+                        <>
+                          <button onClick={() => openEditModal(s)} className="p-2 bg-amber-100 hover:bg-amber-200 rounded" title="Edit"><Pencil className="h-4 w-4" /></button>
+                          <button onClick={() => setDeleteConfirm(s)} className="p-2 bg-red-100 hover:bg-red-200 rounded text-red-800" title="Deactivate"><Trash2 className="h-4 w-4" /></button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))
               )}
@@ -326,6 +475,131 @@ const SuppliersPage = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Edit Supplier modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => !updating && (setShowEditModal(false), setEditingSupplier(null))}
+        title="Edit Supplier"
+        size="md"
+      >
+        {editingSupplier && (
+          <form onSubmit={handleUpdateSupplier} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Name <span className="text-red-600">*</span></label>
+              <input
+                type="text"
+                value={editForm.name}
+                onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Supplier name"
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Phone</label>
+              <input
+                type="text"
+                value={editForm.phone}
+                onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                placeholder="Phone"
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Email</label>
+              <input
+                type="email"
+                value={editForm.email}
+                onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                placeholder="Email"
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Address</label>
+              <textarea
+                value={editForm.address}
+                onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
+                placeholder="Address"
+                rows={2}
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Credit limit</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editForm.creditLimit}
+                onChange={e => setEditForm(f => ({ ...f, creditLimit: e.target.value }))}
+                placeholder="0"
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-primary-800 mb-1">Payment terms</label>
+              <input
+                type="text"
+                value={editForm.paymentTerms}
+                onChange={e => setEditForm(f => ({ ...f, paymentTerms: e.target.value }))}
+                placeholder="e.g. Net 30"
+                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => !updating && (setShowEditModal(false), setEditingSupplier(null))}
+                className="px-4 py-2 border-2 border-primary-300 rounded font-medium text-primary-700 hover:bg-primary-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating || !editForm.name?.trim()}
+                className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded font-medium disabled:opacity-50"
+              >
+                {updating ? 'Updating...' : 'Update Supplier'}
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
+      {/* Delete confirmation modal */}
+      <Modal
+        isOpen={!!deleteConfirm}
+        onClose={() => !deleting && setDeleteConfirm(null)}
+        title="Delete supplier?"
+        size="sm"
+      >
+        {deleteConfirm && (
+          <div className="space-y-4">
+            <p className="text-primary-700">
+              Delete supplier <strong>{deleteConfirm.supplierName}</strong>? This will deactivate the supplier. Existing purchases will remain.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => !deleting && setDeleteConfirm(null)}
+                className="px-4 py-2 border-2 border-primary-300 rounded font-medium text-primary-700 hover:bg-primary-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSupplier}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium disabled:opacity-50"
+              >
+                {deleting ? 'Deactivating...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   )

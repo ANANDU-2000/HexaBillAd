@@ -5,11 +5,13 @@
  * Date: 2024-12-24
  */
 
+using HexaBill.Api.Data;
 using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.SuperAdmin
 {
@@ -21,12 +23,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly ISettingsService _settingsService;
         private readonly ISuperAdminTenantService _tenantService;
         private readonly ILogger<SettingsController> _logger;
+        private readonly AppDbContext _context;
 
-        public SettingsController(ISettingsService settingsService, ISuperAdminTenantService tenantService, ILogger<SettingsController> logger)
+        public SettingsController(ISettingsService settingsService, ISuperAdminTenantService tenantService, ILogger<SettingsController> logger, AppDbContext context)
         {
             _settingsService = settingsService;
             _tenantService = tenantService;
             _logger = logger;
+            _context = context;
         }
 
         /// <summary>
@@ -220,5 +224,77 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 return StatusCode(500, new ServiceResponse<object> { Success = false, Message = ex.Message ?? "Failed to clear data" });
             }
         }
+
+        /// <summary>
+        /// Get audit logs for the current tenant (who changed what). Admin/Owner/SystemAdmin only.
+        /// GET: api/settings/audit-logs
+        /// </summary>
+        [HttpGet("audit-logs")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<PagedResponse<TenantAuditLogDto>>>> GetAuditLogs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                    return Forbid();
+
+                var query = _context.AuditLogs
+                    .Include(a => a.User)
+                    .AsQueryable();
+                query = query.Where(a => (a.TenantId != null && a.TenantId == tenantId) || (a.TenantId == null && a.OwnerId == tenantId));
+
+                var totalCount = await query.CountAsync();
+                var logs = await query
+                    .OrderByDescending(a => a.CreatedAt)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .Select(a => new TenantAuditLogDto
+                    {
+                        Id = a.Id,
+                        UserName = a.User.Name,
+                        Action = a.Action,
+                        Details = a.Details,
+                        CreatedAt = a.CreatedAt
+                    })
+                    .ToListAsync();
+
+                var result = new PagedResponse<TenantAuditLogDto>
+                {
+                    Items = logs,
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                };
+                return Ok(new ApiResponse<PagedResponse<TenantAuditLogDto>>
+                {
+                    Success = true,
+                    Message = "Audit logs retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit logs: {Message}", ex.Message);
+                return StatusCode(500, new ApiResponse<PagedResponse<TenantAuditLogDto>>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+    }
+
+    public class TenantAuditLogDto
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string Action { get; set; } = string.Empty;
+        public string? Details { get; set; }
+        public DateTime CreatedAt { get; set; }
     }
 }

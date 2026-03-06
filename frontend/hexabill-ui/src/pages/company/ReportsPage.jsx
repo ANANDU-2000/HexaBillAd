@@ -129,6 +129,7 @@ const ReportsPage = () => {
     expenses: [],
     branchComparison: [],
     agingReport: null,
+    apAgingReport: null,
     profitLoss: null,
     outstandingBills: [],
     collectionsList: [], // Customers with balance > 0 and phone for collection calls (#53)
@@ -192,6 +193,7 @@ const ReportsPage = () => {
     { id: 'branch', name: 'Branch Report', shortLabel: 'Branch', icon: Building2 },
     { id: 'route', name: 'Route Report', shortLabel: 'Route', icon: MapPin },
     { id: 'aging', name: 'Customer Aging', shortLabel: 'Aging', icon: Clock },
+    { id: 'ap-aging', name: 'AP Aging', shortLabel: 'AP Aging', icon: Truck, adminOnly: true },
     { id: 'profit-loss', name: 'Profit & Loss', shortLabel: 'P&L', icon: TrendingUp, adminOnly: true },
     { id: 'branch-profit', name: 'Branch Profit', shortLabel: 'Branch P&L', icon: Building2, adminOnly: true },
     { id: 'outstanding', name: 'Outstanding Bills', shortLabel: 'Outstanding', icon: DollarSign },
@@ -618,6 +620,23 @@ const ReportsPage = () => {
         } catch (err) {
           if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Failed to load aging report')
           setReportData(prev => ({ ...prev, agingReport: null }))
+        } finally {
+          setLoading(false)
+        }
+      } else if (activeTab === 'ap-aging') {
+        try {
+          setLoading(true)
+          const apRes = await reportsAPI.getApAgingReport({
+            asOfDate: agingAsOfDate || new Date().toISOString().split('T')[0]
+          })
+          if (apRes?.success && apRes?.data) {
+            setReportData(prev => ({ ...prev, apAgingReport: apRes.data }))
+          } else {
+            setReportData(prev => ({ ...prev, apAgingReport: null }))
+          }
+        } catch (err) {
+          if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Failed to load AP aging report')
+          setReportData(prev => ({ ...prev, apAgingReport: null }))
         } finally {
           setLoading(false)
         }
@@ -2269,6 +2288,109 @@ const ReportsPage = () => {
               ) : (
                 <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
                   {loading ? 'Loading aging report...' : 'No aging data available.'}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AP Aging Tab */}
+          {activeTab === 'ap-aging' && (
+            <div className="space-y-6">
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-4 flex-wrap justify-between">
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <label className="text-sm font-medium text-gray-700">As of Date:</label>
+                    <Input
+                      type="date"
+                      value={agingAsOfDate}
+                      onChange={(e) => {
+                        setAgingAsOfDate(e.target.value)
+                        tabDataCacheRef.current = {}
+                      }}
+                      className="max-w-xs"
+                    />
+                    <button
+                      onClick={() => {
+                        setAgingAsOfDate(new Date().toISOString().split('T')[0])
+                        tabDataCacheRef.current = {}
+                      }}
+                      className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                    >
+                      Reset to Today
+                    </button>
+                    <button
+                      onClick={() => fetchReportData(true)}
+                      className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Refresh
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  What we owe to suppliers by age (based on last purchase date).
+                </p>
+              </div>
+              {reportData.apAgingReport ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <p className="text-xs font-medium text-green-700">0-30 Days</p>
+                      <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.apAgingReport.bucket0_30?.total || 0)}</p>
+                      <p className="text-xs text-green-600">{reportData.apAgingReport.bucket0_30?.count || 0} suppliers</p>
+                    </div>
+                    <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                      <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
+                      <p className="text-lg font-bold text-yellow-900">{formatCurrency(reportData.apAgingReport.bucket31_60?.total || 0)}</p>
+                      <p className="text-xs text-yellow-600">{reportData.apAgingReport.bucket31_60?.count || 0} suppliers</p>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                      <p className="text-xs font-medium text-orange-700">61-90 Days</p>
+                      <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.apAgingReport.bucket61_90?.total || 0)}</p>
+                      <p className="text-xs text-orange-600">{reportData.apAgingReport.bucket61_90?.count || 0} suppliers</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <p className="text-xs font-medium text-red-700">90+ Days</p>
+                      <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.apAgingReport.bucket90Plus?.total || 0)}</p>
+                      <p className="text-xs text-red-600">{reportData.apAgingReport.bucket90Plus?.count || 0} suppliers</p>
+                    </div>
+                    <div className="bg-neutral-100 rounded-lg p-4 border border-neutral-200">
+                      <p className="text-xs font-medium text-neutral-600">Total Outstanding</p>
+                      <p className="text-lg font-bold text-neutral-900">{formatCurrency(reportData.apAgingReport.totalOutstanding || 0)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <h3 className="px-4 py-3 bg-gray-50 font-medium">Supplier Details</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Days</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bucket</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200">
+                          {(reportData.apAgingReport.items || []).map((item, idx) => (
+                            <tr key={item.supplierName + idx}>
+                              <td className="px-4 py-2 text-sm font-medium">{item.supplierName}</td>
+                              <td className="px-4 py-2 text-sm text-right font-medium">{formatCurrency(item.balance || 0)}</td>
+                              <td className={`px-4 py-2 text-sm text-right ${(item.daysOverdue ?? 0) > 90 ? 'text-red-600 font-medium' : ''}`}>{item.daysOverdue ?? 0}</td>
+                              <td className="px-4 py-2 text-sm">{item.agingBucket || '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {(!reportData.apAgingReport.items || reportData.apAgingReport.items.length === 0) && (
+                      <p className="px-4 py-8 text-center text-gray-500">No payables outstanding</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                  {loading ? 'Loading AP aging report...' : 'No AP aging data available.'}
                 </div>
               )}
             </div>

@@ -210,6 +210,70 @@ namespace HexaBill.Api.Modules.Reports
             }
         }
 
+        /// <summary>Owner-only worksheet summary: Total Sales, Purchases, Expenses, Total Received (payments in period), Pending Amount.</summary>
+        [HttpGet("worksheet")]
+        [Authorize(Roles = "Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<WorksheetReportDto>>> GetWorksheetReport(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                var gst = _timeZoneService.GetCurrentDate();
+                var from = (fromDate ?? gst).ToUtcKind();
+                var to = (toDate ?? gst).ToUtcKind();
+                var result = await _reportService.GetWorksheetReportAsync(tenantId, from, to);
+                return Ok(new ApiResponse<WorksheetReportDto>
+                {
+                    Success = true,
+                    Message = "Worksheet report retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<WorksheetReportDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>Owner-only: export worksheet as PDF.</summary>
+        [HttpGet("worksheet/export/pdf")]
+        [Authorize(Roles = "Owner,SystemAdmin")]
+        public async Task<ActionResult> ExportWorksheetPdf(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                var gst = _timeZoneService.GetCurrentDate();
+                var from = (fromDate ?? gst).ToUtcKind();
+                var to = (toDate ?? gst).ToUtcKind();
+                var dto = await _reportService.GetWorksheetReportAsync(tenantId, from, to);
+                var pdfService = HttpContext.RequestServices.GetRequiredService<IPdfService>();
+                var pdfBytes = await pdfService.GenerateWorksheetPdfAsync(dto, from, to, tenantId);
+                var fileName = $"worksheet_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf";
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred while exporting the worksheet",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpGet("sales")]
         public async Task<ActionResult<ApiResponse<PagedResponse<SaleDto>>>> GetSalesReport(
             [FromQuery] DateTime? fromDate = null,
@@ -709,6 +773,33 @@ namespace HexaBill.Api.Modules.Reports
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<AgingReportDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("ap-aging")]
+        public async Task<ActionResult<ApiResponse<ApAgingReportDto>>> GetApAgingReport(
+            [FromQuery] DateTime? asOfDate = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var asOf = (asOfDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
+                var result = await _reportService.GetApAgingReportAsync(tenantId, asOf);
+                return Ok(new ApiResponse<ApAgingReportDto>
+                {
+                    Success = true,
+                    Message = "AP aging report retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<ApAgingReportDto>
                 {
                     Success = false,
                     Message = "An error occurred",

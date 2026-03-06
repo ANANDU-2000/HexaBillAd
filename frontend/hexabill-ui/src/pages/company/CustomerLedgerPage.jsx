@@ -3362,6 +3362,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
   const [applySaleId, setApplySaleId] = useState('')
   const [amountToApply, setAmountToApply] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [showRefundConfirm, setShowRefundConfirm] = useState(false)
 
   useEffect(() => {
     if (!isOpen || !customerId || !entry?.returnId) return
@@ -3415,9 +3416,14 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
       setActionLoading(false)
     }
   }
-  const handleRefund = async () => {
+  const handleRefundClick = () => {
     if (!creditNote || remaining <= 0) return
-    if (!window.confirm(`Issue cash refund of ${remaining.toFixed(2)} AED for this credit?`)) return
+    setShowRefundConfirm(true)
+  }
+
+  const handleRefundConfirm = async () => {
+    if (!creditNote || remaining <= 0) return
+    setShowRefundConfirm(false)
     setActionLoading(true)
     try {
       const res = await returnsAPI.refundCreditNote(creditNote.id ?? creditNote.Id)
@@ -3436,6 +3442,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
 
   if (!isOpen) return null
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} title="Settle Credit" size="md">
       {loading ? (
         <p className="text-sm text-gray-500">Loading...</p>
@@ -3486,7 +3493,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
             <p className="text-sm font-medium text-gray-700 mb-2">Issue refund</p>
             <button
               type="button"
-              onClick={handleRefund}
+              onClick={handleRefundClick}
               disabled={actionLoading || remaining <= 0}
               className="inline-flex items-center px-3 py-2 bg-amber-600 text-white text-sm font-medium rounded hover:bg-amber-700 disabled:opacity-50"
             >
@@ -3496,6 +3503,15 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
         </div>
       ) : null}
     </Modal>
+    <ConfirmDangerModal
+      isOpen={showRefundConfirm}
+      onClose={() => setShowRefundConfirm(false)}
+      onConfirm={handleRefundConfirm}
+      title="Issue cash refund"
+      message={remaining > 0 ? `Issue cash refund of ${remaining.toFixed(2)} AED for this credit?` : ''}
+      confirmLabel="Issue refund"
+    />
+    </>
   )
 }
 

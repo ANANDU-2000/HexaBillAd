@@ -18,6 +18,9 @@ namespace HexaBill.Api.Modules.Purchases
         Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId);
         Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20);
         Task<SupplierDto> CreateSupplierAsync(int tenantId, CreateSupplierRequest request);
+        Task<SupplierDto?> GetSupplierByNameAsync(int tenantId, string supplierName);
+        Task<SupplierDto> UpdateSupplierAsync(int tenantId, string supplierName, UpdateSupplierRequest request);
+        Task DeleteSupplierAsync(int tenantId, string supplierName);
     }
 
     public class SupplierService : ISupplierService
@@ -189,12 +192,13 @@ namespace HexaBill.Api.Modules.Purchases
                     .CountAsync();
 
                 var supplier = await _context.Suppliers
-                    .Where(s => s.TenantId == tenantId && s.Name == supplierName)
-                    .Select(s => new { s.Phone, s.CreditLimit })
+                    .Where(s => s.TenantId == tenantId && s.Name == supplierName && s.IsActive)
+                    .Select(s => new { s.Id, s.Phone, s.CreditLimit })
                     .FirstOrDefaultAsync();
 
                 summaries.Add(new SupplierSummaryDto
                 {
+                    Id = supplier?.Id,
                     SupplierName = supplierName,
                     NetPayable = balance.NetPayable,
                     TotalPurchases = balance.TotalPurchases,
@@ -314,6 +318,94 @@ namespace HexaBill.Api.Modules.Purchases
                 PaymentTerms = supplier.PaymentTerms
             };
         }
+
+        public async Task<SupplierDto?> GetSupplierByNameAsync(int tenantId, string supplierName)
+        {
+            if (string.IsNullOrWhiteSpace(supplierName))
+                return null;
+            var name = supplierName.Trim();
+            var normalized = name.ToLowerInvariant();
+            var supplier = await _context.Suppliers
+                .Where(s => s.TenantId == tenantId && s.NormalizedName == normalized && s.IsActive)
+                .FirstOrDefaultAsync();
+            if (supplier == null)
+                return null;
+            return new SupplierDto
+            {
+                Id = supplier.Id,
+                Name = supplier.Name,
+                Phone = supplier.Phone,
+                Email = supplier.Email,
+                Address = supplier.Address,
+                CreditLimit = supplier.CreditLimit,
+                PaymentTerms = supplier.PaymentTerms
+            };
+        }
+
+        public async Task<SupplierDto> UpdateSupplierAsync(int tenantId, string supplierName, UpdateSupplierRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(supplierName))
+                throw new ArgumentException("Supplier name is required.", nameof(supplierName));
+
+            var currentName = supplierName.Trim();
+            var currentNormalized = currentName.ToLowerInvariant();
+            var supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == currentNormalized && s.IsActive);
+            if (supplier == null)
+                throw new ArgumentException($"Supplier \"{currentName}\" not found.", nameof(supplierName));
+
+            var newName = (request.Name ?? supplier.Name).Trim();
+            if (string.IsNullOrWhiteSpace(newName))
+                newName = supplier.Name;
+            var newNormalized = newName.ToLowerInvariant();
+            if (newNormalized != currentNormalized)
+            {
+                var exists = await _context.Suppliers
+                    .AnyAsync(s => s.TenantId == tenantId && s.NormalizedName == newNormalized);
+                if (exists)
+                    throw new ArgumentException($"A supplier with the name \"{newName}\" already exists.", nameof(request));
+            }
+
+            supplier.Name = newName;
+            supplier.NormalizedName = newNormalized;
+            supplier.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone!.Trim();
+            supplier.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email!.Trim();
+            supplier.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address!.Trim();
+            supplier.CreditLimit = request.CreditLimit ?? supplier.CreditLimit;
+            supplier.PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms!.Trim();
+            if (request.IsActive.HasValue)
+                supplier.IsActive = request.IsActive.Value;
+            supplier.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return new SupplierDto
+            {
+                Id = supplier.Id,
+                Name = supplier.Name,
+                Phone = supplier.Phone,
+                Email = supplier.Email,
+                Address = supplier.Address,
+                CreditLimit = supplier.CreditLimit,
+                PaymentTerms = supplier.PaymentTerms
+            };
+        }
+
+        /// <summary>Soft-delete: set IsActive = false so existing purchases/payments still reference the supplier.</summary>
+        public async Task DeleteSupplierAsync(int tenantId, string supplierName)
+        {
+            if (string.IsNullOrWhiteSpace(supplierName))
+                throw new ArgumentException("Supplier name is required.", nameof(supplierName));
+            var name = supplierName.Trim();
+            var normalized = name.ToLowerInvariant();
+            var supplier = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == normalized);
+            if (supplier == null)
+                throw new ArgumentException($"Supplier \"{name}\" not found.", nameof(supplierName));
+            supplier.IsActive = false;
+            supplier.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
     }
 
     // DTOs
@@ -325,6 +417,17 @@ namespace HexaBill.Api.Modules.Purchases
         public string? Address { get; set; }
         public decimal? CreditLimit { get; set; }
         public string? PaymentTerms { get; set; }
+    }
+
+    public class UpdateSupplierRequest
+    {
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? Email { get; set; }
+        public string? Address { get; set; }
+        public decimal? CreditLimit { get; set; }
+        public string? PaymentTerms { get; set; }
+        public bool? IsActive { get; set; }
     }
 
     public class SupplierDto
@@ -374,6 +477,7 @@ namespace HexaBill.Api.Modules.Purchases
 
     public class SupplierSummaryDto
     {
+        public int? Id { get; set; }
         public string SupplierName { get; set; } = string.Empty;
         public string? Phone { get; set; }
         public decimal NetPayable { get; set; }

@@ -11,5 +11,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<byte[]> GenerateCustomerPendingBillsPdfAsync(List<OutstandingInvoiceDto> outstandingInvoices, CustomerDto customer, DateTime asOfDate, DateTime fromDate, DateTime toDate, int tenantId);
         /// <summary>Monthly P&amp;L export for accountant (#58).</summary>
         Task<byte[]> GenerateProfitLossPdfAsync(ProfitReportDto report, DateTime fromDate, DateTime toDate, int tenantId);
+        /// <summary>Owner-only worksheet PDF: period and totals (sales, purchases, expenses, received, pending).</summary>
+        Task<byte[]> GenerateWorksheetPdfAsync(WorksheetReportDto dto, DateTime fromDate, DateTime toDate, int tenantId);
     }
 }

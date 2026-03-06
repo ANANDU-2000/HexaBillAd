@@ -33,14 +33,16 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
-  Archive
+  Archive,
+  History,
+  ClipboardList
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import Logo from './Logo'
 import AlertNotifications from './AlertNotifications'
 import { SubscriptionGraceBanner } from './SubscriptionGraceBanner'
 import { connectionManager } from '../services/connectionManager'
-import { isAdminOrOwner, isStaff } from '../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { isAdminOrOwner, isOwner, isStaff } from '../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../contexts/TenantBrandingContext'
 
@@ -126,9 +128,12 @@ const Layout = () => {
     { name: 'POS', href: '/pos', icon: ShoppingCart },
     { name: 'Customer Ledger', href: '/ledger', icon: BookOpen },
     { name: 'Sales Ledger', href: '/sales-ledger', icon: FileText },
+    ...(isAdminOrOwner(user) ? [{ name: 'Billing History', href: '/billing-history', icon: History }] : []),
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
+    ...(isOwner(user) ? [{ name: 'Worksheet', href: '/worksheet', icon: FileText }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
+    ...(isAdminOrOwner(user) ? [{ name: 'Activity log', href: '/audit', icon: ClipboardList }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: Archive }] : []),
     { name: 'Help & Support', href: '/help', icon: HelpCircle },
   ]

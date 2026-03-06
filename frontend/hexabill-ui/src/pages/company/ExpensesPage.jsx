@@ -81,6 +81,7 @@ const ExpensesPage = () => {
   const [showRecurringModal, setShowRecurringModal] = useState(false)
   const [recurringExpenses, setRecurringExpenses] = useState([])
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   const {
     register,
@@ -203,6 +204,29 @@ const ExpensesPage = () => {
     )
     setFilteredExpenses(filtered)
   }, [expenses, searchTerm])
+
+  const handleExportCsv = async () => {
+    try {
+      setExportingCsv(true)
+      const params = {
+        fromDate: dateRange.from,
+        toDate: dateRange.to
+      }
+      if (selectedBranchId) params.branchId = selectedBranchId
+      const blob = await expensesAPI.exportCsv(params)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('CSV downloaded')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to export CSV')
+    } finally {
+      setExportingCsv(false)
+    }
+  }
 
   // Auto-select branch if only 1 for staff (branches/routes from shared context)
   useEffect(() => {
@@ -560,6 +584,16 @@ const ExpensesPage = () => {
             >
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
               <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              disabled={exportingCsv}
+              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-green-300 rounded hover:bg-green-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-50"
+            >
+              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+              <span className="hidden sm:inline">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
+              <span className="sm:hidden">{exportingCsv ? '…' : 'CSV'}</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}

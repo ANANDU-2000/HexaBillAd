@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, DollarSign, Download, Calendar, Filter } from 'lucide-react'
 import Modal from './Modal'
+import ConfirmDangerModal from './ConfirmDangerModal'
 import { suppliersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
@@ -20,6 +21,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
     notes: ''
   })
   const [saving, setSaving] = useState(false)
+  const [showOverpaymentConfirm, setShowOverpaymentConfirm] = useState(false)
 
   useEffect(() => {
     if (isOpen && supplierName) {
@@ -53,21 +55,9 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
     }
   }
 
-  const handleRecordPayment = async (e) => {
-    e.preventDefault()
+  const submitRecordPayment = async () => {
     const amount = parseFloat(paymentForm.amount)
-    if (!amount || amount <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    // Phase 11.4: Confirm if amount exceeds outstanding
-    const outstanding = balance?.netPayable ?? 0
-    if (outstanding > 0 && amount > outstanding) {
-      const proceed = window.confirm(
-        `Amount (${formatCurrency(amount)}) exceeds the outstanding balance (${formatCurrency(outstanding)}). Are you sure you want to record this overpayment?`
-      )
-      if (!proceed) return
-    }
+    if (!amount || amount <= 0) return
     try {
       setSaving(true)
       const res = await suppliersAPI.recordPayment(supplierName, {
@@ -80,6 +70,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
       if (res?.success) {
         toast.success('Payment recorded successfully')
         setShowRecordPayment(false)
+        setShowOverpaymentConfirm(false)
         setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], mode: 'Cash', reference: '', notes: '' })
         loadData()
         onPaymentRecorded?.()
@@ -91,6 +82,21 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleRecordPayment = async (e) => {
+    e.preventDefault()
+    const amount = parseFloat(paymentForm.amount)
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    const outstanding = balance?.netPayable ?? 0
+    if (outstanding > 0 && amount > outstanding) {
+      setShowOverpaymentConfirm(true)
+      return
+    }
+    await submitRecordPayment()
   }
 
   const handleExportCsv = () => {
@@ -117,6 +123,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
   if (!isOpen) return null
 
   return (
+    <>
     <Modal isOpen={isOpen} onClose={onClose} title={`Supplier Ledger: ${supplierName}`} size="lg" allowFullscreen>
       <div className="space-y-4">
         {loading ? (
@@ -232,6 +239,15 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
         )}
       </div>
     </Modal>
+    <ConfirmDangerModal
+      isOpen={showOverpaymentConfirm}
+      onClose={() => setShowOverpaymentConfirm(false)}
+      onConfirm={() => submitRecordPayment()}
+      title="Record overpayment?"
+      message={balance ? `Amount (${formatCurrency(parseFloat(paymentForm.amount) || 0)}) exceeds the outstanding balance (${formatCurrency(balance.netPayable)}). Are you sure you want to record this overpayment?` : ''}
+      confirmLabel="Record overpayment"
+    />
+  </>
   )
 }
 

@@ -72,6 +72,51 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
+        [HttpGet("export/csv")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult> ExportExpensesCsv(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string? category = null,
+            [FromQuery] int? branchId = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+                var result = await _expenseService.GetExpensesAsync(tenantId, 1, 10000, category, fromDate, toDate, null, branchId, staffBranchIds);
+                var rows = new List<string> { "Date,Category,Amount,Note,Status,Branch" };
+                foreach (var e in result.Items ?? new List<ExpenseDto>())
+                {
+                    var date = e.Date.ToString("yyyy-MM-dd");
+                    var cat = EscapeCsv(e.CategoryName ?? "");
+                    var note = EscapeCsv(e.Note ?? "");
+                    var branch = EscapeCsv(e.BranchName ?? "");
+                    var st = EscapeCsv(e.Status ?? "");
+                    rows.Add($"{date},{cat},{e.Amount:F2},{note},{st},{branch}");
+                }
+                var csv = string.Join("\n", rows);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+                var fileName = $"expenses_{DateTime.UtcNow:yyyy-MM-dd}.csv";
+                return File(bytes, "text/csv", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Export expenses CSV failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return "";
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n')) return "\"" + value.Replace("\"", "\"\"") + "\"";
+            return value;
+        }
+
         [HttpGet("aggregated")]
         public async Task<ActionResult<ApiResponse<List<ExpenseAggregateDto>>>> GetExpensesAggregated(
             [FromQuery] DateTime? fromDate = null,

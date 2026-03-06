@@ -676,6 +676,18 @@ namespace HexaBill.Api.Models
         public List<TopProductDto> TopProductsToday { get; set; } = new();
     }
 
+    /// <summary>Owner-only worksheet summary: totals for a period plus customer payments received and pending receivables.</summary>
+    public class WorksheetReportDto
+    {
+        public decimal TotalSales { get; set; }
+        public decimal TotalPurchases { get; set; }
+        public decimal TotalExpenses { get; set; }
+        /// <summary>Customer payments received in the selected date range (excludes refunds).</summary>
+        public decimal TotalReceived { get; set; }
+        /// <summary>Outstanding receivables (pending bills amount).</summary>
+        public decimal PendingAmount { get; set; }
+    }
+
     public class AISuggestionsDto
     {
         public List<ProductDto> TopSellers { get; set; } = new();
@@ -1333,6 +1345,33 @@ namespace HexaBill.Api.Models
         public decimal BalanceAmount { get; set; }
         public int DaysOverdue { get; set; }
         public string AgingBucket { get; set; } = string.Empty;
+    }
+
+    // AP (Accounts Payable) Aging Report DTOs
+    public class ApAgingReportDto
+    {
+        public ApAgingBucket Bucket0_30 { get; set; } = new();
+        public ApAgingBucket Bucket31_60 { get; set; } = new();
+        public ApAgingBucket Bucket61_90 { get; set; } = new();
+        public ApAgingBucket Bucket90Plus { get; set; } = new();
+        public decimal TotalOutstanding { get; set; }
+        public List<ApAgingItemDto> Items { get; set; } = new();
+    }
+
+    public class ApAgingBucket
+    {
+        public decimal Total { get; set; }
+        public int Count { get; set; }
+        public List<ApAgingItemDto> Items { get; set; } = new();
+    }
+
+    public class ApAgingItemDto
+    {
+        public string SupplierName { get; set; } = string.Empty;
+        public decimal Balance { get; set; }
+        public int DaysOverdue { get; set; }
+        public string AgingBucket { get; set; } = string.Empty;
+        public DateTime? OldestPurchaseDate { get; set; }
     }
 
     // Stock Report DTOs

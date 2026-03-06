@@ -36,6 +36,10 @@ namespace HexaBill.Api.Modules.Reports
         Task<List<SalesVsExpensesDto>> GetSalesVsExpensesAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "day");
         Task<SalesLedgerReportDto> GetComprehensiveSalesLedgerAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null, int? staffId = null, int? userIdForStaff = null, string? roleForStaff = null);
         Task<List<StaffPerformanceDto>> GetStaffPerformanceAsync(int tenantId, DateTime fromDate, DateTime toDate, int? routeId = null); // FIX: Add route filter parameter
+        /// <summary>Worksheet report for Owner: sales, purchases, expenses, total received (payments in period), pending receivables.</summary>
+        Task<WorksheetReportDto> GetWorksheetReportAsync(int tenantId, DateTime fromDate, DateTime toDate);
+        /// <summary>AP aging: what we owe to suppliers by age bucket (0-30, 31-60, 61-90, 90+ days).</summary>
+        Task<ApAgingReportDto> GetApAgingReportAsync(int tenantId, DateTime asOfDate);
     }
 
     public class ReportService : IReportService
@@ -866,6 +870,117 @@ namespace HexaBill.Api.Modules.Reports
                     InvoicesMonthly = 0
                 };
             }
+        }
+
+        public async Task<WorksheetReportDto> GetWorksheetReportAsync(int tenantId, DateTime fromDate, DateTime toDate)
+        {
+            var summary = await GetSummaryReportAsync(tenantId, fromDate, toDate, null, null, null, null, skipCache: true);
+
+            var fromLocal = new DateTime(fromDate.Year, fromDate.Month, fromDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
+            var toEndLocal = new DateTime(toDate.Year, toDate.Month, toDate.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
+            var startUtc = _timeZoneService.ConvertToUtc(fromLocal);
+            var endUtc = _timeZoneService.ConvertToUtc(toEndLocal).ToUtcKind();
+
+            // TotalReceived = customer payments (not refunds) in period; exclude VOID
+            var totalReceived = await _context.Payments
+                .Where(p => (p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId))
+                    && p.SaleReturnId == null
+                    && p.Status != PaymentStatus.VOID
+                    && p.PaymentDate >= startUtc
+                    && p.PaymentDate < endUtc)
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+            return new WorksheetReportDto
+            {
+                TotalSales = summary.SalesToday,
+                TotalPurchases = summary.PurchasesToday,
+                TotalExpenses = summary.ExpensesToday,
+                TotalReceived = totalReceived,
+                PendingAmount = summary.PendingBillsAmount
+            };
+        }
+
+        public async Task<ApAgingReportDto> GetApAgingReportAsync(int tenantId, DateTime asOfDate)
+        {
+            var supplierNames = await _context.Purchases
+                .Where(p => p.TenantId == tenantId && p.SupplierName != null && p.SupplierName != "")
+                .Select(p => p.SupplierName!)
+                .Distinct()
+                .ToListAsync();
+
+            var items = new List<ApAgingItemDto>();
+            foreach (var supplierName in supplierNames)
+            {
+                var totalPurchases = await _context.Purchases
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
+                    .SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
+                var totalReturns = await _context.PurchaseReturns
+                    .Include(pr => pr.Purchase)
+                    .Where(pr => pr.Purchase.TenantId == tenantId && pr.Purchase.SupplierName == supplierName)
+                    .SumAsync(pr => (decimal?)pr.GrandTotal) ?? 0;
+                var totalPayments = await _context.SupplierPayments
+                    .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
+                    .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+                var balance = totalPurchases - totalReturns - totalPayments;
+                if (balance <= 0.01m) continue;
+
+                var lastPurchaseDate = await _context.Purchases
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
+                    .OrderByDescending(p => p.PurchaseDate)
+                    .Select(p => (DateTime?)p.PurchaseDate)
+                    .FirstOrDefaultAsync();
+                var refDate = lastPurchaseDate ?? asOfDate;
+                var daysOverdue = (asOfDate.Date - refDate.Date).Days;
+                string bucket;
+                if (daysOverdue <= 30) bucket = "0-30";
+                else if (daysOverdue <= 60) bucket = "31-60";
+                else if (daysOverdue <= 90) bucket = "61-90";
+                else bucket = "90+";
+
+                items.Add(new ApAgingItemDto
+                {
+                    SupplierName = supplierName,
+                    Balance = balance,
+                    DaysOverdue = daysOverdue,
+                    AgingBucket = bucket,
+                    OldestPurchaseDate = lastPurchaseDate
+                });
+            }
+
+            var bucket0_30 = new ApAgingBucket
+            {
+                Items = items.Where(i => i.AgingBucket == "0-30").ToList(),
+                Total = items.Where(i => i.AgingBucket == "0-30").Sum(i => i.Balance),
+                Count = items.Count(i => i.AgingBucket == "0-30")
+            };
+            var bucket31_60 = new ApAgingBucket
+            {
+                Items = items.Where(i => i.AgingBucket == "31-60").ToList(),
+                Total = items.Where(i => i.AgingBucket == "31-60").Sum(i => i.Balance),
+                Count = items.Count(i => i.AgingBucket == "31-60")
+            };
+            var bucket61_90 = new ApAgingBucket
+            {
+                Items = items.Where(i => i.AgingBucket == "61-90").ToList(),
+                Total = items.Where(i => i.AgingBucket == "61-90").Sum(i => i.Balance),
+                Count = items.Count(i => i.AgingBucket == "61-90")
+            };
+            var bucket90Plus = new ApAgingBucket
+            {
+                Items = items.Where(i => i.AgingBucket == "90+").ToList(),
+                Total = items.Where(i => i.AgingBucket == "90+").Sum(i => i.Balance),
+                Count = items.Count(i => i.AgingBucket == "90+")
+            };
+
+            return new ApAgingReportDto
+            {
+                Bucket0_30 = bucket0_30,
+                Bucket31_60 = bucket31_60,
+                Bucket61_90 = bucket61_90,
+                Bucket90Plus = bucket90Plus,
+                TotalOutstanding = items.Sum(i => i.Balance),
+                Items = items.OrderByDescending(i => i.DaysOverdue).ToList()
+            };
         }
 
         public async Task<PagedResponse<SaleDto>> GetSalesReportAsync(

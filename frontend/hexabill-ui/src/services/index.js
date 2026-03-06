@@ -400,6 +400,14 @@ export const purchasesAPI = {
     const response = await api.delete(`/purchases/${id}`)
     return response.data
   },
+
+  exportCsv: async (params = {}) => {
+    const p = { ...params }
+    if (p.startDate) p.startDate = toYYYYMMDD(p.startDate)
+    if (p.endDate) p.endDate = toYYYYMMDD(p.endDate)
+    const response = await api.get('/purchases/export/csv', { params: p, responseType: 'blob' })
+    return response.data
+  },
 }
 
 export const customersAPI = {
@@ -649,6 +657,14 @@ export const expensesAPI = {
     return response.data
   },
 
+  exportCsv: async (params = {}) => {
+    const p = { ...params }
+    if (p.fromDate) p.fromDate = toYYYYMMDD(p.fromDate)
+    if (p.toDate) p.toDate = toYYYYMMDD(p.toDate)
+    const response = await api.get('/expenses/export/csv', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
   createCategory: async (categoryData) => {
     const response = await api.post('/expenses/categories', categoryData)
     return response.data
@@ -740,6 +756,10 @@ export const reportsAPI = {
     const response = await api.get('/reports/aging', { params })
     return response.data
   },
+  getApAgingReport: async (params = {}) => {
+    const response = await api.get('/reports/ap-aging', { params })
+    return response.data
+  },
   getStockReport: async (params = {}) => {
     const response = await api.get('/reports/stock', { params })
     return response.data
@@ -770,6 +790,16 @@ export const reportsAPI = {
 
   getPendingBills: async (params = {}) => {
     const response = await api.get('/reports/pending', { params: normalizeDateParams(params) })
+    return response.data
+  },
+
+  getWorksheetReport: async (params = {}) => {
+    const response = await api.get('/reports/worksheet', { params: normalizeDateParams(params) })
+    return response.data
+  },
+
+  exportWorksheetPdf: async (params = {}) => {
+    const response = await api.get('/reports/worksheet/export/pdf', { params: normalizeDateParams(params), responseType: 'blob' })
     return response.data
   },
 
@@ -820,6 +850,10 @@ export const settingsAPI = {
   },
   clearData: async () => {
     const response = await api.post('/settings/clear-data')
+    return response.data
+  },
+  getAuditLogs: async (page = 1, pageSize = 20) => {
+    const response = await api.get('/settings/audit-logs', { params: { page, pageSize } })
     return response.data
   }
 }
@@ -1196,6 +1230,18 @@ export const suppliersAPI = {
   },
   createSupplier: async (data) => {
     const response = await api.post('/suppliers', data)
+    return response.data
+  },
+  getSupplier: async (supplierName) => {
+    const response = await api.get(`/suppliers/by-name/${encodeURIComponent(supplierName)}`)
+    return response.data
+  },
+  updateSupplier: async (supplierName, data) => {
+    const response = await api.put(`/suppliers/${encodeURIComponent(supplierName)}`, data)
+    return response.data
+  },
+  deleteSupplier: async (supplierName) => {
+    const response = await api.delete(`/suppliers/${encodeURIComponent(supplierName)}`)
     return response.data
   }
 }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Plus, Upload, Image as ImageIcon } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
+import ConfirmDangerModal from './ConfirmDangerModal'
 
 const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
   const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(product?.imageUrl || null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [showLossConfirm, setShowLossConfirm] = useState(false)
 
   const handleChange = (e) => {
     const { name, value, type } = e.target
@@ -155,22 +157,18 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
     
     // Business logic validation: warn if sell price < cost price
     if (formData.sellPrice < formData.costPrice) {
-      const confirm = window.confirm(
-        'Sell price is less than cost price. This will result in a loss. Continue?'
-      )
-      if (!confirm) return
+      setShowLossConfirm(true)
+      return
     }
-    
-    // Round prices to 2 decimal places before submitting
+    await doSubmitPart2()
+  }
+
+  const doSubmitPart2 = async () => {
     const roundToDecimals = (value, decimals = 2) => {
       return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
     }
-    
-    // Upload image first if a new image was selected (only for existing products)
     let imageUrl = formData.imageUrl || product?.imageUrl
-    
     if (imageFile && product?.id) {
-      // Upload image for existing product
       try {
         setUploadingImage(true)
         const uploadResponse = await productsAPI.uploadProductImage(product.id, imageFile)
@@ -187,20 +185,16 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
         setUploadingImage(false)
       }
     }
-    
-    // Save product with image URL and rounded prices
-    const productData = { 
+    const productData = {
       ...formData,
       costPrice: roundToDecimals(formData.costPrice),
       sellPrice: roundToDecimals(formData.sellPrice),
-      conversionToBase: roundToDecimals(formData.conversionToBase, 4) // Allow more decimals for conversion
+      conversionToBase: roundToDecimals(formData.conversionToBase, 4)
     }
     if (imageUrl) {
       productData.imageUrl = imageUrl
     }
-    
-    // Call parent's onSave - it will handle image upload for new products after creation
-    onSave(productData, imageFile) // Pass imageFile so parent can upload after product creation
+    onSave(productData, imageFile)
   }
 
   return (
@@ -534,6 +528,17 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
           </div>
         </form>
       </div>
+      <ConfirmDangerModal
+        isOpen={showLossConfirm}
+        onClose={() => setShowLossConfirm(false)}
+        onConfirm={() => {
+          setShowLossConfirm(false)
+          doSubmitPart2()
+        }}
+        title="Sell price below cost"
+        message="Sell price is less than cost price. This will result in a loss. Continue?"
+        confirmLabel="Continue"
+      />
     </div>
   )
 }

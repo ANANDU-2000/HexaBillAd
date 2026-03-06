@@ -61,6 +61,47 @@ namespace HexaBill.Api.Modules.Purchases
             }
         }
 
+        [HttpGet("export/csv")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult> ExportPurchasesCsv(
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? supplierName = null,
+            [FromQuery] string? category = null,
+            [FromQuery] string? status = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                var result = await _purchaseService.GetPurchasesAsync(tenantId, 1, 10000, startDate, endDate, supplierName, category, status);
+                var rows = new List<string> { "PurchaseDate,InvoiceNo,SupplierName,TotalAmount,PaidAmount,BalanceAmount,PaymentStatus" };
+                foreach (var p in result.Items ?? new List<PurchaseDto>())
+                {
+                    var date = p.PurchaseDate.ToString("yyyy-MM-dd");
+                    var inv = EscapeCsv(p.InvoiceNo);
+                    var sup = EscapeCsv(p.SupplierName ?? "");
+                    rows.Add($"{date},{inv},{sup},{p.TotalAmount:F2},{p.PaidAmount:F2},{p.BalanceAmount:F2},{EscapeCsv(p.PaymentStatus ?? "")}");
+                }
+                var csv = string.Join("\n", rows);
+                var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+                var fileName = $"purchases_{DateTime.UtcNow:yyyy-MM-dd}.csv";
+                return File(bytes, "text/csv", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Export purchases CSV failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return "";
+            if (value.Contains(',') || value.Contains('"') || value.Contains('\n')) return "\"" + value.Replace("\"", "\"\"") + "\"";
+            return value;
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<PurchaseDto>>> GetPurchase(int id)
         {

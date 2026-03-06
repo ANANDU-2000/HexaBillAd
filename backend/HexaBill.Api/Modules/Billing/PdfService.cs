@@ -1523,6 +1523,52 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
+        public async Task<byte[]> GenerateWorksheetPdfAsync(WorksheetReportDto dto, DateTime fromDate, DateTime toDate, int tenantId)
+        {
+            try
+            {
+                var settings = await GetCompanySettingsAsync(tenantId);
+                var currency = settings.Currency ?? "AED";
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(15, Unit.Millimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(10));
+                        page.Content().Column(column =>
+                        {
+                            column.Item().AlignCenter().Text(settings.CompanyNameEn.ToUpper()).FontSize(18).Bold();
+                            column.Item().AlignCenter().Text("Worksheet").FontSize(16).Bold();
+                            column.Item().AlignCenter().Text($"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}").FontSize(11);
+                            column.Item().PaddingTop(8).PaddingBottom(5).Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(9).FontColor(Colors.Grey.Medium);
+                            column.Item().PaddingTop(12).Table(table =>
+                            {
+                                table.ColumnsDefinition(columns => { columns.RelativeColumn(2); columns.ConstantColumn(90); });
+                                table.Cell().Border(1).Background(Colors.Grey.Lighten3).Padding(4).Text("Total Sales").Bold();
+                                table.Cell().Border(1).Background(Colors.Grey.Lighten3).Padding(4).AlignRight().Text($"{dto.TotalSales:N2} {currency}");
+                                table.Cell().Border(1).Padding(4).Text("Total Purchases");
+                                table.Cell().Border(1).Padding(4).AlignRight().Text($"{dto.TotalPurchases:N2} {currency}");
+                                table.Cell().Border(1).Padding(4).Text("Total Expenses");
+                                table.Cell().Border(1).Padding(4).AlignRight().Text($"{dto.TotalExpenses:N2} {currency}");
+                                table.Cell().Border(1).Padding(4).Text("Total Received");
+                                table.Cell().Border(1).Padding(4).AlignRight().Text($"{dto.TotalReceived:N2} {currency}");
+                                table.Cell().Border(1).Background(Colors.Blue.Lighten4).Padding(4).Text("Pending Amount").Bold();
+                                table.Cell().Border(1).Background(Colors.Blue.Lighten4).Padding(4).AlignRight().Text($"{dto.PendingAmount:N2} {currency}").Bold();
+                            });
+                        });
+                    });
+                });
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating Worksheet PDF: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         public async Task<byte[]> GenerateCustomerPendingBillsPdfAsync(List<OutstandingInvoiceDto> outstandingInvoices, CustomerDto customer, DateTime asOfDate, DateTime fromDate, DateTime toDate, int tenantId)
         {
             try

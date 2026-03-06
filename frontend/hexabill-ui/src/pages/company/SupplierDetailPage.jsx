@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { ArrowLeft, DollarSign, FileText, CreditCard, Calendar, Download, Banknote } from 'lucide-react'
+import { ArrowLeft, DollarSign, FileText, CreditCard, Calendar, Download, Banknote, Pencil } from 'lucide-react'
 import { suppliersAPI, purchasesAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 const tabs = [
   { id: 'summary', label: 'Summary', icon: FileText },
@@ -33,6 +34,7 @@ const SupplierDetailPage = () => {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [preFillPayment, setPreFillPayment] = useState({ amount: '', reference: '' })
+  const [showOverpaymentConfirm, setShowOverpaymentConfirm] = useState(false)
 
   useEffect(() => {
     if (supplierName) {
@@ -52,7 +54,7 @@ const SupplierDetailPage = () => {
         const transactionsRes = await suppliersAPI.getSupplierTransactions(supplierName, fromDate || undefined, toDate || undefined)
         if (transactionsRes?.success && transactionsRes?.data) setTransactions(transactionsRes.data)
       }
-      if (activeTab === 'purchases' || activeTab === 'ledger' || showRecordPayment) {
+      if (activeTab === 'purchases' || activeTab === 'ledger' || activeTab === 'summary' || showRecordPayment) {
         const res = await purchasesAPI.getPurchases({ supplierName, pageSize: 100 })
         if (res?.success && res?.data?.items) setPurchases(res.data.items)
         else setPurchases([])
@@ -75,17 +77,9 @@ const SupplierDetailPage = () => {
   const formatDate = (d) => (d ? new Date(d).toLocaleDateString('en-GB') : '-')
   const payments = (transactions || []).filter(t => (t.type || '').toLowerCase() === 'payment')
 
-  const handleRecordPayment = async (e) => {
-    e.preventDefault()
+  const submitRecordPayment = async () => {
     const amount = parseFloat(paymentForm.amount)
-    if (!amount || amount <= 0) {
-      toast.error('Please enter a valid amount')
-      return
-    }
-    const outstanding = balance?.netPayable ?? 0
-    if (outstanding > 0 && amount > outstanding) {
-      if (!window.confirm(`Amount (${formatCurrency(amount)}) exceeds outstanding (${formatCurrency(outstanding)}). Record overpayment?`)) return
-    }
+    if (!amount || amount <= 0) return
     try {
       setSaving(true)
       const res = await suppliersAPI.recordPayment(supplierName, {
@@ -98,6 +92,7 @@ const SupplierDetailPage = () => {
       if (res?.success) {
         toast.success('Payment recorded. Bills and reports updated (FIFO).')
         setShowRecordPayment(false)
+        setShowOverpaymentConfirm(false)
         setPreFillPayment({ amount: '', reference: '' })
         setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], mode: 'Cash', reference: '', notes: '' })
         await loadData()
@@ -109,6 +104,21 @@ const SupplierDetailPage = () => {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleRecordPayment = async (e) => {
+    e.preventDefault()
+    const amount = parseFloat(paymentForm.amount)
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    const outstanding = balance?.netPayable ?? 0
+    if (outstanding > 0 && amount > outstanding) {
+      setShowOverpaymentConfirm(true)
+      return
+    }
+    await submitRecordPayment()
   }
 
   const handleExportCsv = () => {
@@ -151,12 +161,31 @@ const SupplierDetailPage = () => {
         </Link>
         <span className="text-primary-400">|</span>
         <Link to="/suppliers" className="text-sm text-primary-600 hover:text-primary-800 underline">View all suppliers</Link>
+        <Link to={`/suppliers?edit=${encodeURIComponent(supplierName)}`} className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-800 font-medium">
+          <Pencil className="h-4 w-4" /> Edit supplier
+        </Link>
       </div>
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-primary-900">Supplier Ledger: {supplierName}</h1>
         <p className="text-primary-600 mt-1">Outstanding balance, transactions and payments — same as Customer Ledger</p>
       </div>
+
+      {/* Summary data cards above tabs */}
+      {(balance != null || purchases.length > 0) && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+          <div className="bg-white rounded-lg border-2 border-primary-200 p-3 shadow-sm">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Outstanding</p>
+            <p className="text-lg font-bold text-amber-700">{formatCurrency(balance?.netPayable ?? 0)}</p>
+          </div>
+          <div className="bg-white rounded-lg border-2 border-primary-200 p-3 shadow-sm">
+            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide">Unpaid bills</p>
+            <p className="text-lg font-bold text-primary-800">
+              {purchases.filter(p => (p.paymentStatus || '').toLowerCase() !== 'paid' || (p.balanceAmount || 0) > 0).length}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-4 border-b border-primary-200 pb-2">
         {tabs.map(t => (
@@ -476,6 +505,15 @@ const SupplierDetailPage = () => {
           )}
         </>
       )}
+
+      <ConfirmDangerModal
+        isOpen={showOverpaymentConfirm}
+        onClose={() => setShowOverpaymentConfirm(false)}
+        onConfirm={() => submitRecordPayment()}
+        title="Record overpayment?"
+        message={balance ? `Amount (${formatCurrency(parseFloat(paymentForm.amount) || 0)}) exceeds outstanding (${formatCurrency(balance.netPayable)}). Record overpayment?` : ''}
+        confirmLabel="Record overpayment"
+      />
     </div>
   )
 }

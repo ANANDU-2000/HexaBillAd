@@ -176,7 +176,120 @@ namespace HexaBill.Api.Modules.Purchases
             }
         }
 
+        /// <summary>Get a single supplier by name (for edit form).</summary>
+        [HttpGet("by-name/{supplierName}")]
+        public async Task<ActionResult<ApiResponse<SupplierDto>>> GetSupplierByName(string supplierName)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var name = Uri.UnescapeDataString(supplierName ?? "");
+                var result = await _supplierService.GetSupplierByNameAsync(tenantId, name);
+                if (result == null)
+                    return NotFound(new ApiResponse<SupplierDto> { Success = false, Message = "Supplier not found." });
+                return Ok(new ApiResponse<SupplierDto>
+                {
+                    Success = true,
+                    Message = "Supplier retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<SupplierDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>Update supplier (Owner/Admin only).</summary>
+        [HttpPut("{supplierName}")]
+        public async Task<ActionResult<ApiResponse<SupplierDto>>> UpdateSupplier(string supplierName, [FromBody] UpdateSupplierRequest request)
+        {
+            if (!IsAdmin)
+                return Forbid();
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+                var name = Uri.UnescapeDataString(supplierName ?? "");
+                if (string.IsNullOrWhiteSpace(name))
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Supplier name is required." });
+                if (request == null)
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Request body is required." });
+                var result = await _supplierService.UpdateSupplierAsync(tenantId, name, request);
+                return Ok(new ApiResponse<SupplierDto>
+                {
+                    Success = true,
+                    Message = "Supplier updated successfully",
+                    Data = result
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<SupplierDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new ApiResponse<SupplierDto>
+                {
+                    Success = false,
+                    Message = msg,
+                    Errors = new List<string> { msg }
+                });
+            }
+        }
+
+        /// <summary>Soft-delete supplier (Owner/Admin only). Existing purchases remain.</summary>
+        [HttpDelete("{supplierName}")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteSupplier(string supplierName)
+        {
+            if (!IsAdmin)
+                return Forbid();
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+                var name = Uri.UnescapeDataString(supplierName ?? "");
+                if (string.IsNullOrWhiteSpace(name))
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Supplier name is required." });
+                await _supplierService.DeleteSupplierAsync(tenantId, name);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+            catch (Exception ex)
+            {
+                var msg = ex.InnerException?.Message ?? ex.Message;
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = msg,
+                    Errors = new List<string> { msg }
+                });
+            }
+        }
+
         [HttpPost("{supplierName}/payments")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
         public async Task<ActionResult<ApiResponse<SupplierPaymentDto>>> RecordPayment(
             string supplierName,
             [FromBody] RecordSupplierPaymentRequest request)

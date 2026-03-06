@@ -32,6 +32,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { LoadingCard } from '../../components/Loading'
 import Modal from '../../components/Modal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { adminAPI } from '../../services'
 import toast from 'react-hot-toast'
 import { isAdminOrOwner, isOwner, getRoleDisplayName } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
@@ -224,6 +225,7 @@ const UsersPage = () => {
   const [activityLogs, setActivityLogs] = useState([])
   const [activityLoading, setActivityLoading] = useState(false)
   const [showSessionsModal, setShowSessionsModal] = useState(false)
+  const [userToDelete, setUserToDelete] = useState(null)
   const [sessions, setSessions] = useState([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
 
@@ -443,7 +445,13 @@ const UsersPage = () => {
   }
 
   const handleDeleteUser = (user) => {
-    if (!window.confirm(`Are you sure you want to delete ${user.name}? This cannot be undone.`)) return
+    setUserToDelete(user)
+  }
+
+  const performDeleteUser = () => {
+    if (!userToDelete) return
+    const user = userToDelete
+    setUserToDelete(null)
     setLoadingAction(true)
     adminAPI.deleteUser(user.id)
       .then((res) => {
@@ -1329,6 +1337,16 @@ const UsersPage = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDangerModal
+        isOpen={!!userToDelete}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={performDeleteUser}
+        title="Delete user"
+        message={userToDelete ? `Are you sure you want to delete ${userToDelete.name}? This cannot be undone.` : ''}
+        confirmLabel="Delete"
+        requireTypedText="DELETE"
+      />
     </div>
   )
 }
