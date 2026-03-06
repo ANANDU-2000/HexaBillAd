@@ -128,6 +128,9 @@ namespace HexaBill.Api.Shared.Middleware
             Console.WriteLine(errorDetails.ToString());
             Console.WriteLine(new string('=', 80) + "\n");
 
+            // Skip persisting to ErrorLogs when the error is missing column / ResolvedAt (avoids second failure if ErrorLogs schema is behind)
+            if (!IsMissingColumnOrErrorLogsException(exception))
+            {
             // Persist to ErrorLogs (SuperAdmin visibility)
             try
             {
@@ -153,6 +156,7 @@ namespace HexaBill.Api.Shared.Middleware
                 }
             }
             catch { /* do not fail response */ }
+            }
 
             // Enterprise structured response
             context.Response.StatusCode = 500;
@@ -188,9 +192,14 @@ namespace HexaBill.Api.Shared.Middleware
                 };
             }
 
-            if (exception is DbUpdateException)
+            if (exception is DbUpdateException dbUpEx)
+            {
+                // Unwrap to detect missing column (42703) for clearer Render logs
+                if (HasInnerPostgresState(dbUpEx, "42703"))
+                    return "EF_MISSING_COLUMN_42703";
                 return "EF_CORE_UPDATE_ERROR";
-            
+            }
+
             if (exception is InvalidOperationException)
                 return "INVALID_OPERATION";
             
@@ -198,6 +207,31 @@ namespace HexaBill.Api.Shared.Middleware
                 return "INVALID_ARGUMENT";
 
             return "GENERAL_ERROR";
+        }
+
+        /// <summary>True if exception chain contains a PostgreSQL error with the given SqlState (e.g. 42703 = undefined column).</summary>
+        private static bool HasInnerPostgresState(Exception exception, string sqlState)
+        {
+            var inner = exception?.InnerException;
+            var depth = 0;
+            while (inner != null && depth < 5)
+            {
+                if (inner is Npgsql.PostgresException pgEx && string.Equals(pgEx.SqlState, sqlState, StringComparison.Ordinal))
+                    return true;
+                inner = inner.InnerException;
+                depth++;
+            }
+            return false;
+        }
+
+        /// <summary>True if exception indicates missing column/table (e.g. ErrorLogs.ResolvedAt). Skip ErrorLog persist to avoid second failure.</summary>
+        private static bool IsMissingColumnOrErrorLogsException(Exception exception)
+        {
+            if (exception is DbUpdateException && HasInnerPostgresState(exception, "42703"))
+                return true;
+            var msg = exception?.Message ?? "";
+            return msg.Contains("errorMissingColumn", StringComparison.OrdinalIgnoreCase)
+                || msg.Contains("ResolvedAt", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsDateTimeKindError(Exception exception)

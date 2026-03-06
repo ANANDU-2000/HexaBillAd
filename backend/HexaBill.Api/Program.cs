@@ -1116,13 +1116,14 @@ _ = Task.Run(async () =>
         var isProdEnv = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var dbUrlBg = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
         var isRenderDbBg = dbUrlBg.Contains("dpg-", StringComparison.OrdinalIgnoreCase) || dbUrlBg.Contains("render.com", StringComparison.OrdinalIgnoreCase);
+        // SAFEGUARD: On Render we never open DB or run MigrateAsync/ALTERs in this task; we return below. Schema is applied only via RUN_ON_RENDER_PSQL.sql.
         using (var scope = app.Services.CreateScope())
         {
             var initLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
             try
             {
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            // PRODUCTION / RENDER: Skip ALL schema work to prevent exit 139. Schema applied via RUN_ON_RENDER_PSQL.sql (MigrationFixer).
+            // PRODUCTION / RENDER: Skip ALL schema work (no MigrateAsync, no ALTERs) to prevent exit 139. Schema applied via RUN_ON_RENDER_PSQL.sql (MigrationFixer).
             if (context.Database.IsNpgsql() && (isProdEnv || isRenderDbBg))
             {
                 initLogger.LogInformation("Production/Render (PostgreSQL): skipping background schema init to avoid 139. Schema via RUN_ON_RENDER_PSQL.sql.");
@@ -1422,6 +1423,7 @@ _ = Task.Run(async () =>
                     }
                     else
                     {
+                    // Never reached on Render: we return above when isRenderDbBg. MigrateAsync runs only in non-Render dev/staging.
                     initLogger.LogInformation("Applying migrations...");
                     try
                     {
