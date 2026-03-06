@@ -4,7 +4,23 @@
 -- Run once, then restart your HexaBill API on Render.
 -- =============================================================================
 
--- ErrorLogs.ResolvedAt (fixes errorMissingColumn for /api/error-logs, alert-summary). Only if table exists.
+-- ErrorLogs: create if missing (so /api/error-logs and SaveChanges don't throw). Add ResolvedAt when table exists.
+CREATE TABLE IF NOT EXISTS "ErrorLogs" (
+  "Id" SERIAL PRIMARY KEY,
+  "TraceId" VARCHAR(64) NOT NULL,
+  "ErrorCode" VARCHAR(64) NOT NULL,
+  "Message" VARCHAR(2000) NOT NULL,
+  "StackTrace" TEXT,
+  "Path" VARCHAR(500),
+  "Method" VARCHAR(16),
+  "TenantId" INTEGER,
+  "UserId" INTEGER,
+  "CreatedAt" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+  "ResolvedAt" timestamp with time zone NULL
+);
+CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_CreatedAt" ON "ErrorLogs" ("CreatedAt");
+CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_TenantId" ON "ErrorLogs" ("TenantId");
+CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ErrorCode" ON "ErrorLogs" ("ErrorCode");
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ErrorLogs') THEN

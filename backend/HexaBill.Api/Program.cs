@@ -353,19 +353,22 @@ builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.BalanceReconciliat
 var app = builder.Build();
 
 // CRITICAL: Add SessionVersion + fix IsActive BEFORE any requests (fixes 42703, 42804)
-// PRODUCTION FIX: Skip ALL sync schema work on PostgreSQL in production to avoid exit 139 (segfault/OOM). Background task applies schema after 3s.
+// PRODUCTION FIX: On Render/Production do NOT open DB at startup (avoids exit 139). Schema via RUN_ON_RENDER_PSQL.sql only.
+var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
+var isRenderDb = dbUrl.Contains("dpg-", StringComparison.OrdinalIgnoreCase) || dbUrl.Contains("render.com", StringComparison.OrdinalIgnoreCase);
+var isPostgres = dbUrl.Contains("postgres", StringComparison.OrdinalIgnoreCase) || dbUrl.Contains("dpg-", StringComparison.OrdinalIgnoreCase);
+if (isPostgres && (isProduction || isRenderDb))
+{
+    var startupLog = app.Services.GetService<ILoggerFactory>()?.CreateLogger("Startup");
+    startupLog?.LogInformation("Production/Render (PostgreSQL): no DB access at startup to avoid 139. Run Scripts/RUN_ON_RENDER_PSQL.sql then restart.");
+}
+else
+{
 using (var scope = app.Services.CreateScope())
 {
     var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
-    var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
-    var isRenderDb = dbUrl.Contains("dpg-", StringComparison.OrdinalIgnoreCase) || dbUrl.Contains("render.com", StringComparison.OrdinalIgnoreCase);
-    if (ctx.Database.IsNpgsql() && (isProduction || isRenderDb))
-    {
-        var startupLog = app.Services.GetService<ILoggerFactory>()?.CreateLogger("Startup");
-        startupLog?.LogInformation("Production/Render (PostgreSQL): skipping sync schema init to avoid 139. Run Scripts/RUN_ON_RENDER_PSQL.sql if needed.");
-    }
-    else if (ctx.Database.IsNpgsql())
+    if (ctx.Database.IsNpgsql())
     {
         try
         {
@@ -646,11 +649,14 @@ using (var scope = app.Services.CreateScope())
         }
         catch { /* table may already exist */ }
         // ErrorLogs.ResolvedAt - fixes 500 on /api/superadmin/alert-summary and /api/error-logs (SQLite)
-        try { ctx.Database.ExecuteSqlRaw("ALTER TABLE ErrorLogs ADD COLUMN ResolvedAt TEXT NULL"); } catch { }
-    }
+        try { ctx.Database.ExecuteSqlRaw("ALTER TABLE ErrorLogs ADD COLUMN ResolvedAt TEXT NULL"); } catch {     }
+}
+}
 }
 
-// AUDIT-5: Migration check on startup - log warning if pending migrations
+// AUDIT-5: Migration check on startup (skip on Render/Production to avoid 139)
+if (!(isPostgres && (isProduction || isRenderDb)))
+{
 using (var scope = app.Services.CreateScope())
 {
     try
@@ -743,6 +749,7 @@ using (var scope = app.Services.CreateScope())
         var startupLogger = app.Services.GetService<ILoggerFactory>()?.CreateLogger("MigrationCheck");
         startupLogger?.LogWarning(ex, "Could not check pending migrations");
     }
+}
 }
 
 // CRITICAL: Global Exception Handler - MUST be FIRST in pipeline to catch all unhandled exceptions
@@ -1038,13 +1045,14 @@ app.MapGet("/api/diagnostics/errors", () =>
     });
 }).AllowAnonymous();
 
-// AUDIT-5 FIX: Check for pending migrations on startup
-// CRITICAL: Wrap in Task.Run with ContinueWith to prevent unhandled exceptions from crashing the process
+// AUDIT-5 FIX: Check for pending migrations on startup (skip on Render/Production to avoid 139)
 _ = Task.Run(async () =>
 {
     try
     {
-        await Task.Delay(2000); // Wait for app to fully start
+        await Task.Delay(2000);
+        if (isPostgres && (isProduction || isRenderDb))
+            return; // No DB access on Render/Production
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
