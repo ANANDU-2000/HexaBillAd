@@ -598,8 +598,84 @@ const UsersPage = () => {
           </div>
         </div>
 
-        {/* Users Table - min-width so mobile can scroll horizontally to see all columns */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* Mobile: card list (no horizontal scroll, full content visible) */}
+        <div className="md:hidden space-y-3">
+          {filteredUsers.length === 0 ? (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
+              {searchTerm ? (
+                <p className="text-gray-500 text-sm">No users found matching your search</p>
+              ) : (
+                <>
+                  <p className="text-gray-600 font-medium">Invite staff and assign them to branches or routes.</p>
+                  <p className="text-gray-500 text-sm mt-1">Add your first user to get started.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            filteredUsers.map((user) => {
+              const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt).getTime() : 0
+              const fiveMinutesAgo = Date.now() - (5 * 60 * 1000)
+              const isOnline = lastActive > 0 && lastActive > fiveMinutesAgo
+              const branchIds = user.assignedBranchIds || []
+              const routeIds = user.assignedRouteIds || []
+              const branchNames = branchIds.map(bid => branches.find(b => b.id === bid)?.name).filter(Boolean)
+              const routeNames = routeIds.map(rid => routes.find(r => r.id === rid)?.name).filter(Boolean)
+              const hasAny = branchNames.length > 0 || routeNames.length > 0
+              return (
+                <div key={user.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center min-w-0 flex-1">
+                      {user.role?.toLowerCase() === 'owner' ? (
+                        <ShieldAlert className="h-5 w-5 text-red-600 mr-2 flex-shrink-0" />
+                      ) : user.role?.toLowerCase() === 'admin' ? (
+                        <Shield className="h-5 w-5 text-yellow-500 mr-2 flex-shrink-0" />
+                      ) : (
+                        <User className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-gray-900 truncate">{user.name}</p>
+                        <p className="text-sm text-gray-600 break-all">{user.email}</p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full flex-shrink-0 ${user.role?.toLowerCase() === 'owner' ? 'bg-red-100 text-red-800' : user.role?.toLowerCase() === 'admin' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {getRoleDisplayName(user)}
+                    </span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                    {user.phone && <span className="flex items-center"><Phone className="h-3 w-3 mr-1" />{user.phone}</span>}
+                    <span className={`flex items-center ${isOnline ? 'text-green-600' : 'text-gray-400'}`}>
+                      <span className={`w-2 h-2 rounded-full mr-1 ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`} />
+                      {isOnline ? 'Online' : 'Offline'}
+                    </span>
+                    {user.lastLoginAt && <span>Last login: {new Date(user.lastLoginAt).toLocaleDateString()}</span>}
+                  </div>
+                  {(user.role?.toLowerCase() === 'staff' || user.role?.toLowerCase() === 'admin') && hasAny && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {branchNames.map((name, i) => <span key={`b-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-800">{name}</span>)}
+                      {routeNames.map((name, i) => <span key={`r-${i}`} className="inline-flex px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-800">{name}</span>)}
+                    </div>
+                  )}
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => { navigator.clipboard.writeText(user.email).then(() => toast.success('Email copied')) }} className="p-2 text-gray-500 hover:bg-gray-100 rounded" title="Copy email"><Copy className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => { setActivityUser(user); setShowActivityModal(true); setActivityLogs([]); setActivityLoading(true); adminAPI.getUserActivity(user.id).then((res) => { if (res?.success && Array.isArray(res.data)) setActivityLogs(res.data); else setActivityLogs([]); }).catch(() => setActivityLogs([])).finally(() => setActivityLoading(false)) }} className="p-2 text-gray-500 hover:bg-indigo-50 rounded" title="Activity"><Activity className="h-4 w-4" /></button>
+                    {(isOwner(currentUser) || user.role?.toLowerCase() !== 'owner') && (
+                      <>
+                        <button type="button" onClick={() => openEditModal(user)} className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Edit"><Edit className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => openPasswordModal(user)} className="p-2 text-green-600 hover:bg-green-50 rounded" title="Reset password"><CheckCircle2 className="h-4 w-4" /></button>
+                      </>
+                    )}
+                    {user.id !== currentUser?.id && user.role?.toLowerCase() !== 'owner' && (
+                      <button type="button" onClick={() => handleDeleteUser(user)} className="p-2 text-red-600 hover:bg-red-50 rounded" title="Delete"><Trash2 className="h-4 w-4" /></button>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {/* Desktop: table (md and up) */}
+        <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full divide-y divide-gray-200">
               <thead className="bg-gradient-to-r from-blue-900 to-blue-800 text-white">
