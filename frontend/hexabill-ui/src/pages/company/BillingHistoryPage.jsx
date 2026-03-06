@@ -43,6 +43,7 @@ const BillingHistoryPage = () => {
   const [selectedSale, setSelectedSale] = useState(null)
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [selectedInvoices, setSelectedInvoices] = useState([])
+  const [saleToDelete, setSaleToDelete] = useState(null)
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
 

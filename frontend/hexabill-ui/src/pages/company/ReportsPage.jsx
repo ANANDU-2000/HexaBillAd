@@ -25,7 +25,8 @@ import {
   Phone,
   RotateCcw,
   ArrowLeft,
-  AlertTriangle
+  AlertTriangle,
+  Truck
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
