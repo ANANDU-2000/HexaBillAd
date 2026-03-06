@@ -31,6 +31,10 @@ namespace HexaBill.Api.Models
         [MaxLength(500)]
         public string? Address { get; set; }
 
+        /// <summary>Optional category (SupplierCategory). Required for EF navigation - was shadow, now explicit.</summary>
+        public int? CategoryId { get; set; }
+        public SupplierCategory? Category { get; set; }
+
         public decimal CreditLimit { get; set; }
 
         [MaxLength(100)]
