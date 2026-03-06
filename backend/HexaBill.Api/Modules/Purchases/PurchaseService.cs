@@ -640,6 +640,24 @@ namespace HexaBill.Api.Modules.Purchases
             if (purchase == null)
                 return false;
 
+            // Prevent orphaned payments: block delete if supplier balance after delete would be negative
+            var supplierName = purchase.SupplierName;
+            var totalPurchases = await _context.Purchases
+                .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
+                .SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
+            var totalReturns = await _context.PurchaseReturns
+                .Include(pr => pr.Purchase)
+                .Where(pr => pr.Purchase.TenantId == tenantId && pr.Purchase.SupplierName == supplierName)
+                .SumAsync(pr => (decimal?)pr.GrandTotal) ?? 0;
+            var totalPayments = await _context.SupplierPayments
+                .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
+                .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
+            var currentNetPayable = totalPurchases - totalReturns - totalPayments;
+            var balanceAfterDelete = currentNetPayable - purchase.TotalAmount;
+            if (balanceAfterDelete < 0)
+                throw new InvalidOperationException(
+                    $"Cannot delete this purchase. The supplier has payments that would exceed remaining purchases, leaving a credit balance of {balanceAfterDelete:N2}. Reverse or adjust payments first, or delete payments before deleting the purchase.");
+
             // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>

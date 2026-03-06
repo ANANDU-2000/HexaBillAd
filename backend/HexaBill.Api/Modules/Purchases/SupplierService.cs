@@ -285,10 +285,38 @@ namespace HexaBill.Api.Modules.Purchases
 
             var name = request.Name.Trim();
             var normalized = name.ToLowerInvariant();
-            var exists = await _context.Suppliers
-                .AnyAsync(s => s.TenantId == tenantId && s.Name.ToLower() == normalized);
-            if (exists)
-                throw new ArgumentException($"A supplier with the name \"{name}\" already exists.", nameof(request));
+            var existing = await _context.Suppliers
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == normalized);
+
+            if (existing != null)
+            {
+                if (existing.IsActive)
+                    throw new ArgumentException($"A supplier with the name \"{name}\" already exists.", nameof(request));
+
+                // Reactivate and update the inactive supplier (re-use same name)
+                existing.IsActive = true;
+                existing.Name = name;
+                existing.NormalizedName = normalized;
+                existing.Phone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone!.Trim();
+                existing.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email!.Trim();
+                existing.Address = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address!.Trim();
+                existing.CreditLimit = request.CreditLimit ?? 0;
+                existing.PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms!.Trim();
+                existing.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                return new SupplierDto
+                {
+                    Id = existing.Id,
+                    Name = existing.Name,
+                    Phone = existing.Phone,
+                    Email = existing.Email,
+                    Address = existing.Address,
+                    CreditLimit = existing.CreditLimit,
+                    PaymentTerms = existing.PaymentTerms,
+                    IsActive = true
+                };
+            }
 
             var supplier = new Supplier
             {
@@ -315,7 +343,8 @@ namespace HexaBill.Api.Modules.Purchases
                 Email = supplier.Email,
                 Address = supplier.Address,
                 CreditLimit = supplier.CreditLimit,
-                PaymentTerms = supplier.PaymentTerms
+                PaymentTerms = supplier.PaymentTerms,
+                IsActive = true
             };
         }
 
@@ -326,8 +355,7 @@ namespace HexaBill.Api.Modules.Purchases
             var name = supplierName.Trim();
             var normalized = name.ToLowerInvariant();
             var supplier = await _context.Suppliers
-                .Where(s => s.TenantId == tenantId && s.NormalizedName == normalized && s.IsActive)
-                .FirstOrDefaultAsync();
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == normalized);
             if (supplier == null)
                 return null;
             return new SupplierDto
@@ -338,7 +366,8 @@ namespace HexaBill.Api.Modules.Purchases
                 Email = supplier.Email,
                 Address = supplier.Address,
                 CreditLimit = supplier.CreditLimit,
-                PaymentTerms = supplier.PaymentTerms
+                PaymentTerms = supplier.PaymentTerms,
+                IsActive = supplier.IsActive
             };
         }
 
@@ -350,7 +379,7 @@ namespace HexaBill.Api.Modules.Purchases
             var currentName = supplierName.Trim();
             var currentNormalized = currentName.ToLowerInvariant();
             var supplier = await _context.Suppliers
-                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == currentNormalized && s.IsActive);
+                .FirstOrDefaultAsync(s => s.TenantId == tenantId && s.NormalizedName == currentNormalized);
             if (supplier == null)
                 throw new ArgumentException($"Supplier \"{currentName}\" not found.", nameof(supplierName));
 
@@ -361,7 +390,7 @@ namespace HexaBill.Api.Modules.Purchases
             if (newNormalized != currentNormalized)
             {
                 var exists = await _context.Suppliers
-                    .AnyAsync(s => s.TenantId == tenantId && s.NormalizedName == newNormalized);
+                    .AnyAsync(s => s.TenantId == tenantId && s.NormalizedName == newNormalized && s.Id != supplier.Id);
                 if (exists)
                     throw new ArgumentException($"A supplier with the name \"{newName}\" already exists.", nameof(request));
             }
@@ -387,7 +416,8 @@ namespace HexaBill.Api.Modules.Purchases
                 Email = supplier.Email,
                 Address = supplier.Address,
                 CreditLimit = supplier.CreditLimit,
-                PaymentTerms = supplier.PaymentTerms
+                PaymentTerms = supplier.PaymentTerms,
+                IsActive = supplier.IsActive
             };
         }
 
@@ -439,6 +469,7 @@ namespace HexaBill.Api.Modules.Purchases
         public string? Address { get; set; }
         public decimal CreditLimit { get; set; }
         public string? PaymentTerms { get; set; }
+        public bool IsActive { get; set; }
     }
 
     // DTOs (existing)

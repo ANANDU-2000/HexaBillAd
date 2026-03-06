@@ -184,303 +184,184 @@ namespace HexaBill.Api.Modules.Payments
                 }
             }
 
-            // NOTE: NpgsqlRetryingExecutionStrategy does NOT support user-initiated transactions.
-            // Do NOT use BeginTransactionAsync when EnableRetryOnFailure is enabled (causes 400).
-            // Run operations directly; EF SaveChanges uses implicit per-call transaction.
-            try
+            // Phase 1 Fix: Single transaction + Sale row lock (FOR UPDATE) to prevent overpayment and half-saves.
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                // Validate invoice belongs to customer if provided - use FOR UPDATE to lock row
-                Sale? invoiceSale = null;
-                if (request.SaleId.HasValue)
-                {
-                    // CRITICAL FIX: First find the invoice by ID, then verify customer if provided
-                    // This handles Cash/Credit customer transitions where customer may have existing invoices
-                    invoiceSale = await _context.Sales
-                        .FirstOrDefaultAsync(s => s.Id == request.SaleId.Value && s.TenantId == tenantId && !s.IsDeleted);
-                    
-                    if (invoiceSale == null)
-                    {
-                        throw new ArgumentException($"Invoice with ID {request.SaleId.Value} not found.");
-                    }
-                    
-                    // Validate customer matches if both are provided
-                    if (request.CustomerId.HasValue && invoiceSale.CustomerId.HasValue && 
-                        invoiceSale.CustomerId.Value != request.CustomerId.Value)
-                    {
-                        throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} belongs to a different customer. Expected customer ID: {invoiceSale.CustomerId.Value}, got: {request.CustomerId.Value}");
-                    }
-                    
-                    // If invoice has a customer but request doesn't, use the invoice's customer
-                    if (invoiceSale.CustomerId.HasValue && !request.CustomerId.HasValue)
-                    {
-                        request.CustomerId = invoiceSale.CustomerId;
-                        Console.WriteLine($"\u2139\ufe0f Auto-assigning CustomerId {invoiceSale.CustomerId} from invoice {invoiceSale.InvoiceNo}");
-                    }
-
-                    // CRITICAL FIX: Calculate ACTUAL paid amount from Payments table (not stale Sale.PaidAmount)
-                    var actualPaidAmount = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
-                        .SumAsync(p => p.Amount);
-                    
-                    var realOutstanding = invoiceSale.GrandTotal - actualPaidAmount;
-                    
-                    Console.WriteLine($"\ud83d\udcca Invoice {invoiceSale.InvoiceNo}: Total={invoiceSale.GrandTotal}, ActualPaid={actualPaidAmount}, Outstanding={realOutstanding}");
-
-                    // CRITICAL FIX: Block payment if invoice is already fully paid
-                    if (realOutstanding <= 0)
-                    {
-                        Console.WriteLine($"\u26a0\ufe0f OVERPAYMENT BLOCKED: Invoice {invoiceSale.InvoiceNo} is already fully paid (Paid: {actualPaidAmount}, Total: {invoiceSale.GrandTotal})");
-                        throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} is already fully paid. Total: {invoiceSale.GrandTotal:F2} AED, Paid: {actualPaidAmount:F2} AED. No more payments allowed.");
-                    }
-
-                    // CRITICAL FIX: Prevent overpayment
-                    if (request.Amount > realOutstanding + 0.01m)
-                    {
-                        Console.WriteLine($"\u26a0\ufe0f OVERPAYMENT BLOCKED: Payment {request.Amount} exceeds outstanding {realOutstanding}");
-                        throw new ArgumentException($"Payment amount ({request.Amount:F2} AED) exceeds outstanding balance ({realOutstanding:F2} AED). Maximum allowed: {realOutstanding:F2} AED");
-                    }
-
-                    // CRITICAL FIX: Check for duplicate payments (same amount within 2 minutes)
-                    var recentDuplicatePayment = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId.Value 
-                            && p.Amount == request.Amount 
-                            && p.TenantId == tenantId
-                            && p.Status != PaymentStatus.VOID
-                            && p.CreatedAt >= DateTime.UtcNow.AddMinutes(-2))
-                        .FirstOrDefaultAsync();
-                    
-                    if (recentDuplicatePayment != null)
-                    {
-                        Console.WriteLine($"\u26a0\ufe0f DUPLICATE PAYMENT BLOCKED: Same amount {request.Amount} to invoice {invoiceSale.InvoiceNo} within 2 minutes");
-                        throw new ArgumentException($"A payment of {request.Amount:F2} AED was already recorded for invoice {invoiceSale.InvoiceNo} just now. Please refresh and verify before trying again.");
-                    }
-
-                    // CRITICAL FIX: Show how many payments already exist for this invoice
-                    var existingPaymentCount = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
-                        .CountAsync();
-                    
-                    if (existingPaymentCount > 0)
-                    {
-                        Console.WriteLine($"\ud83d\udcdd Invoice {invoiceSale.InvoiceNo} already has {existingPaymentCount} payment(s). Adding new payment of {request.Amount}");
-                    }
-
-                    // Use validation service for additional validation
-                    var validationResult = await _validationService.ValidatePaymentAmountAsync(
-                        request.SaleId, 
-                        request.CustomerId, 
-                        request.Amount
-                    );
-
-                    if (!validationResult.IsValid)
-                    {
-                        throw new ArgumentException(string.Join(" ", validationResult.Errors));
-                    }
-                }
-
-                // Determine payment status based on mode
-                PaymentStatus paymentStatus;
-                if (request.Mode == "CHEQUE")
-                    paymentStatus = PaymentStatus.PENDING;
-                else if (request.Mode == "CASH" || request.Mode == "ONLINE")
-                    paymentStatus = PaymentStatus.CLEARED;
-                else if (request.Mode == "CREDIT")
-                    paymentStatus = PaymentStatus.PENDING;
-                else
-                    paymentStatus = PaymentStatus.PENDING;
-
-                // Create payment record using EF Core (PostgreSQL compatible - NO raw SQL)
-                var paymentMode = Enum.Parse<PaymentMode>(request.Mode);
-                // CRITICAL: Convert PaymentDate to UTC for PostgreSQL
-                var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
-                
-                // Create payment using EF Core (works with PostgreSQL)
-                var payment = new Payment
-                {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
-                    SaleId = request.SaleId,
-                    CustomerId = request.CustomerId, // Can be null for cash customers
-                    Amount = request.Amount,
-                    Mode = paymentMode,
-                    Reference = request.Reference,
-                    Status = paymentStatus,
-                    PaymentDate = paymentDate,
-                    CreatedBy = userId,
-                    CreatedAt = paymentDate,
-                    UpdatedAt = paymentDate
-                    // RowVersion will be auto-generated by PostgreSQL trigger
-                };
-                
-                _context.Payments.Add(payment);
-                await _context.SaveChangesAsync(); // Save to get payment ID generated
-                
-                int paymentId = payment.Id;
-                Console.WriteLine($"✅ Payment inserted via EF Core. Payment ID: {paymentId}, Amount: {request.Amount}, Mode: {request.Mode}, Status: {paymentStatus}");
-
-                // CRITICAL FIX: Always update invoice when payment is created
-                // For CHEQUE: Mark as Partial with pending note, for CASH/ONLINE: Update immediately
-                Sale? updatedSale = null;
-                if (request.SaleId.HasValue && invoiceSale != null)
-                {
-                    // CLEARED only (PRODUCTION_MASTER_TODO #7): PaidAmount = cleared payments so invoice status matches customer balance
-                    var freshPaidAmount = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
-                        .SumAsync(p => p.Amount);
-                    
-                    Console.WriteLine($"📊 Fresh PaidAmount (cleared only) from Payments: {freshPaidAmount} (was {invoiceSale.PaidAmount})");
-                    
-                    // Update sale with FRESH paid amount
-                    invoiceSale.PaidAmount = freshPaidAmount;
-                    invoiceSale.LastPaymentDate = payment.PaymentDate;
-
-                    // Update status based on FRESH paid amount
-                    if (invoiceSale.PaidAmount >= invoiceSale.GrandTotal)
-                    {
-                        invoiceSale.PaymentStatus = SalePaymentStatus.Paid;
-                        Console.WriteLine($"✅ Invoice {invoiceSale.InvoiceNo} marked as PAID (Paid: {invoiceSale.PaidAmount}, Total: {invoiceSale.GrandTotal})");
-                    }
-                    else if (invoiceSale.PaidAmount > 0)
-                    {
-                        invoiceSale.PaymentStatus = SalePaymentStatus.Partial;
-                        Console.WriteLine($"📋 Invoice {invoiceSale.InvoiceNo} marked as PARTIAL (Paid: {invoiceSale.PaidAmount}, Total: {invoiceSale.GrandTotal})");
-                    }
-                    else
-                    {
-                        invoiceSale.PaymentStatus = SalePaymentStatus.Pending;
-                    }
-
-                    updatedSale = invoiceSale;
-                }
-
-                // Update customer balance (only if payment is cleared AND customer exists)
-                Customer? updatedCustomer = null;
-                if (paymentStatus == PaymentStatus.CLEARED && request.CustomerId.HasValue)
-                {
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        customer.Balance = Math.Round(customer.Balance - request.Amount, 2, MidpointRounding.AwayFromZero); // Reduce balance (customer owes less)
-                        customer.LastActivity = DateTime.UtcNow;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                        updatedCustomer = customer;
-                    }
-                }
-
-                // Create audit log
-                var auditLog = new AuditLog
-                {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
-                    UserId = userId,
-                    Action = "Payment Created",
-                    Details = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        PaymentId = payment.Id,
-                        InvoiceId = request.SaleId,
-                        CustomerId = request.CustomerId,
-                        Amount = request.Amount,
-                        Mode = request.Mode,
-                        Status = paymentStatus.ToString(),
-                        Reference = request.Reference
-                    }),
-                    CreatedAt = DateTime.UtcNow
-                };
-
-                _context.AuditLogs.Add(auditLog);
-
-                // CRITICAL FIX: Recalculate customer balance INSIDE transaction BEFORE commit
-                // This ensures balance is correct AND if recalculation fails, the whole transaction fails
-                if (request.CustomerId.HasValue)
-                {
-                    var customerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        await customerService.RecalculateCustomerBalanceAsync(request.CustomerId.Value, customer.TenantId ?? 0);
-                        Console.WriteLine($"✅ Customer balance recalculated INSIDE transaction. New balance: {customer.Balance}");
-                        updatedCustomer = customer;
-                    }
-                }
-
-                // Save changes with optimistic concurrency check
+                using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    // Save all changes (payment, invoice, customer balance, audit)
-                    await _context.SaveChangesAsync();
-                    
-                    // Create idempotency record if key provided
-                    if (!string.IsNullOrEmpty(idempotencyKey))
+                    Sale? invoiceSale = null;
+                    if (request.SaleId.HasValue)
                     {
-                        var responseSnapshot = System.Text.Json.JsonSerializer.Serialize(new
+                        // Fix 1: Lock Sale row so two concurrent payments cannot both pass outstanding check (FOR UPDATE).
+                        if (_context.Database.IsNpgsql())
                         {
-                            PaymentId = paymentId,
+                            invoiceSale = await _context.Sales
+                                .FromSqlRaw(@"SELECT * FROM ""Sales"" WHERE ""Id"" = {0} AND ""TenantId"" = {1} AND NOT ""IsDeleted"" FOR UPDATE", request.SaleId.Value, tenantId)
+                                .FirstOrDefaultAsync();
+                        }
+                        else
+                        {
+                            invoiceSale = await _context.Sales
+                                .FirstOrDefaultAsync(s => s.Id == request.SaleId.Value && s.TenantId == tenantId && !s.IsDeleted);
+                        }
+
+                        if (invoiceSale == null)
+                            throw new ArgumentException($"Invoice with ID {request.SaleId.Value} not found.");
+
+                        if (request.CustomerId.HasValue && invoiceSale.CustomerId.HasValue && invoiceSale.CustomerId.Value != request.CustomerId.Value)
+                            throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} belongs to a different customer. Expected customer ID: {invoiceSale.CustomerId.Value}, got: {request.CustomerId.Value}");
+
+                        if (invoiceSale.CustomerId.HasValue && !request.CustomerId.HasValue)
+                            request.CustomerId = invoiceSale.CustomerId;
+
+                        var actualPaidAmount = await _context.Payments
+                            .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
+                            .SumAsync(p => p.Amount);
+                        var realOutstanding = invoiceSale.GrandTotal - actualPaidAmount;
+
+                        if (realOutstanding <= 0)
+                            throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} is already fully paid. Total: {invoiceSale.GrandTotal:F2} AED, Paid: {actualPaidAmount:F2} AED. No more payments allowed.");
+
+                        if (request.Amount > realOutstanding + 0.01m)
+                            throw new ArgumentException($"Payment amount ({request.Amount:F2} AED) exceeds outstanding balance ({realOutstanding:F2} AED). Maximum allowed: {realOutstanding:F2} AED");
+
+                        var recentDuplicatePayment = await _context.Payments
+                            .Where(p => p.SaleId == request.SaleId.Value && p.Amount == request.Amount && p.TenantId == tenantId
+                                && p.Status != PaymentStatus.VOID && p.CreatedAt >= DateTime.UtcNow.AddMinutes(-2))
+                            .FirstOrDefaultAsync();
+                        if (recentDuplicatePayment != null)
+                            throw new ArgumentException($"A payment of {request.Amount:F2} AED was already recorded for invoice {invoiceSale.InvoiceNo} just now. Please refresh and verify before trying again.");
+
+                        var validationResult = await _validationService.ValidatePaymentAmountAsync(request.SaleId, request.CustomerId, request.Amount);
+                        if (!validationResult.IsValid)
+                            throw new ArgumentException(string.Join(" ", validationResult.Errors));
+                    }
+
+                    PaymentStatus paymentStatus = request.Mode == "CHEQUE" || request.Mode == "CREDIT"
+                        ? PaymentStatus.PENDING
+                        : (request.Mode == "CASH" || request.Mode == "ONLINE" ? PaymentStatus.CLEARED : PaymentStatus.PENDING);
+                    var paymentMode = Enum.Parse<PaymentMode>(request.Mode);
+                    var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
+
+                    var payment = new Payment
+                    {
+                        OwnerId = tenantId,
+                        TenantId = tenantId,
+                        SaleId = request.SaleId,
+                        CustomerId = request.CustomerId,
+                        Amount = request.Amount,
+                        Mode = paymentMode,
+                        Reference = request.Reference,
+                        Status = paymentStatus,
+                        PaymentDate = paymentDate,
+                        CreatedBy = userId,
+                        CreatedAt = paymentDate,
+                        UpdatedAt = paymentDate
+                    };
+                    _context.Payments.Add(payment);
+
+                    if (request.SaleId.HasValue && invoiceSale != null)
+                    {
+                        var clearedSum = await _context.Payments
+                            .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
+                            .SumAsync(p => p.Amount);
+                        var newPaidAmount = clearedSum + (paymentStatus == PaymentStatus.CLEARED ? request.Amount : 0);
+                        invoiceSale.PaidAmount = newPaidAmount;
+                        invoiceSale.LastPaymentDate = payment.PaymentDate;
+                        invoiceSale.PaymentStatus = newPaidAmount >= invoiceSale.GrandTotal ? SalePaymentStatus.Paid
+                            : (newPaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending);
+                    }
+
+                    Customer? updatedCustomer = null;
+                    if (paymentStatus == PaymentStatus.CLEARED && request.CustomerId.HasValue)
+                    {
+                        var customer = await _context.Customers
+                            .FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value && c.TenantId == tenantId);
+                        if (customer != null)
+                        {
+                            customer.Balance = Math.Round(customer.Balance - request.Amount, 2, MidpointRounding.AwayFromZero);
+                            customer.LastActivity = DateTime.UtcNow;
+                            customer.UpdatedAt = DateTime.UtcNow;
+                            updatedCustomer = customer;
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    var auditLog = new AuditLog
+                    {
+                        OwnerId = tenantId,
+                        TenantId = tenantId,
+                        UserId = userId,
+                        Action = "Payment Created",
+                        Details = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            PaymentId = payment.Id,
                             InvoiceId = request.SaleId,
                             CustomerId = request.CustomerId,
-                            Amount = request.Amount
-                        });
-                        
-                        var paymentIdempotency = new PaymentIdempotency
+                            Amount = request.Amount,
+                            Mode = request.Mode,
+                            Status = paymentStatus.ToString(),
+                            Reference = request.Reference
+                        }),
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.AuditLogs.Add(auditLog);
+
+                    if (!string.IsNullOrEmpty(idempotencyKey))
+                    {
+                        _context.PaymentIdempotencies.Add(new PaymentIdempotency
                         {
                             IdempotencyKey = idempotencyKey,
-                            PaymentId = paymentId,
+                            PaymentId = payment.Id,
                             UserId = userId,
                             CreatedAt = DateTime.UtcNow,
-                            ResponseSnapshot = responseSnapshot
-                        };
-                        
-                        _context.PaymentIdempotencies.Add(paymentIdempotency);
-                        await _context.SaveChangesAsync();
+                            ResponseSnapshot = System.Text.Json.JsonSerializer.Serialize(new { PaymentId = payment.Id, InvoiceId = request.SaleId, CustomerId = request.CustomerId, Amount = request.Amount })
+                        });
                     }
-                    
-                    Console.WriteLine($"✅ Payment created successfully. Payment ID: {paymentId}, Amount: {request.Amount}");
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    var paymentId = payment.Id;
+                    return new CreatePaymentResponse
+                    {
+                        Payment = await GetPaymentByIdAsync(paymentId, tenantId) ?? throw new InvalidOperationException("Failed to retrieve payment"),
+                        Invoice = invoiceSale != null ? new InvoiceSummaryDto
+                        {
+                            Id = invoiceSale.Id,
+                            InvoiceNo = invoiceSale.InvoiceNo,
+                            TotalAmount = invoiceSale.GrandTotal,
+                            PaidAmount = invoiceSale.PaidAmount,
+                            OutstandingAmount = invoiceSale.GrandTotal - invoiceSale.PaidAmount,
+                            Status = invoiceSale.PaymentStatus.ToString()
+                        } : null,
+                        Customer = updatedCustomer != null ? new CustomerSummaryDto
+                        {
+                            Id = updatedCustomer.Id,
+                            Name = updatedCustomer.Name,
+                            Balance = updatedCustomer.Balance
+                        } : null
+                    };
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
-                    Console.WriteLine($"❌ Concurrency conflict in payment creation: {ex.Message}");
+                    await transaction.RollbackAsync();
                     throw new InvalidOperationException("Invoice was modified by another user. Please refresh and try again.", ex);
                 }
-                catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
+                catch (DbUpdateException ex)
                 {
+                    await transaction.RollbackAsync();
                     var errorMessage = ex.InnerException?.Message ?? ex.Message;
-                    Console.WriteLine($"❌ Database update error in payment creation: {errorMessage}");
                     throw new InvalidOperationException($"Database error: {errorMessage}", ex);
                 }
-
-                // Reload entities for response
-                if (updatedSale != null)
-                    await _context.Entry(updatedSale).ReloadAsync();
-                if (updatedCustomer != null)
-                    await _context.Entry(updatedCustomer).ReloadAsync();
-
-                return new CreatePaymentResponse
+                catch
                 {
-                    Payment = await GetPaymentByIdAsync(paymentId, tenantId) ?? throw new InvalidOperationException("Failed to retrieve payment"),
-                    Invoice = updatedSale != null ? new InvoiceSummaryDto
-                    {
-                        Id = updatedSale.Id,
-                        InvoiceNo = updatedSale.InvoiceNo,
-                        TotalAmount = updatedSale.GrandTotal,
-                        PaidAmount = updatedSale.PaidAmount,
-                        OutstandingAmount = updatedSale.GrandTotal - updatedSale.PaidAmount,
-                        Status = updatedSale.PaymentStatus.ToString()
-                    } : null,
-                    Customer = updatedCustomer != null ? new CustomerSummaryDto
-                    {
-                        Id = updatedCustomer.Id,
-                        Name = updatedCustomer.Name,
-                        Balance = updatedCustomer.Balance
-                    } : null
-                };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"❌ PaymentService.CreatePaymentAsync Error: {ex.Message}");
-                _logger.LogError(ex, "Error creating payment");
-                throw;
-            }
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
         }
 
         public async Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId)

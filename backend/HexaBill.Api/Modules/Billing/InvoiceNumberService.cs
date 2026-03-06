@@ -15,6 +15,8 @@ namespace HexaBill.Api.Modules.Billing
     {
         // MULTI-TENANT: Invoice number generation is now tenant-scoped
         Task<string> GenerateNextInvoiceNumberAsync(int tenantId);
+        /// <summary>Call only when caller holds pg_advisory_xact_lock(1000000 + tenantId) in the current transaction. No lock is taken here.</summary>
+        Task<string> GenerateNextInvoiceNumberInTransactionAsync(int tenantId);
         Task<bool> ValidateInvoiceNumberAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
         Task<string> FormatInvoiceNumberAsync(int number);
         Task<bool> IsInvoiceNumberDuplicateAsync(string invoiceNumber, int tenantId, int? excludeSaleId = null);
@@ -47,7 +49,39 @@ namespace HexaBill.Api.Modules.Billing
                 _semaphore.Release();
             }
         }
-        
+
+        /// <summary>Generate next invoice number. Caller MUST hold pg_advisory_xact_lock(1000000 + tenantId) in the current transaction. No lock is taken or released here.</summary>
+        public async Task<string> GenerateNextInvoiceNumberInTransactionAsync(int tenantId)
+        {
+            const int DEFAULT_STARTING_NUMBER = 1;
+            const string ZAYOGA_EMAIL = "info@zayoga.ae";
+            var tenant = await _context.Tenants.AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => new { t.Email, t.Name })
+                .FirstOrDefaultAsync();
+            var isZayoga = tenant != null && (
+                string.Equals(tenant.Email?.Trim(), ZAYOGA_EMAIL, StringComparison.OrdinalIgnoreCase) ||
+                (tenant.Name != null && tenant.Name.Trim().Contains("Zayoga", StringComparison.OrdinalIgnoreCase)) ||
+                (tenant.Name != null && tenant.Name.Trim().Contains("Zayorga", StringComparison.OrdinalIgnoreCase)));
+            var maxInvoiceNumeric = await _context.Sales
+                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.IsFinalized && !string.IsNullOrEmpty(s.InvoiceNo))
+                .Select(s => s.InvoiceNo)
+                .ToListAsync();
+            int nextNumber = DEFAULT_STARTING_NUMBER;
+            if (maxInvoiceNumeric.Any())
+            {
+                int maxNumber = DEFAULT_STARTING_NUMBER - 1;
+                foreach (var invoice in maxInvoiceNumeric)
+                {
+                    var numericPart = new string(invoice.Trim().Where(char.IsDigit).ToArray());
+                    if (!string.IsNullOrEmpty(numericPart) && int.TryParse(numericPart, out int invoiceNum))
+                        maxNumber = Math.Max(maxNumber, invoiceNum);
+                }
+                nextNumber = isZayoga ? (maxNumber + 1) : Math.Max(maxNumber + 1, DEFAULT_STARTING_NUMBER);
+            }
+            return await FormatInvoiceNumberAsync(nextNumber);
+        }
+
         private bool IsPostgres()
         {
             var conn = _context.Database.GetConnectionString() ?? "";

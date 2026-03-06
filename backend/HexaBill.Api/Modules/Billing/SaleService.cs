@@ -449,9 +449,10 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 else
                 {
-                    // CRITICAL: Auto-generate invoice number with tenantId INSIDE transaction
-                    // This ensures the advisory lock is held until transaction commits
-                    invoiceNo = await _invoiceNumberService.GenerateNextInvoiceNumberAsync(tenantId);
+                    // CRITICAL: Use transaction-scoped advisory lock so the number is unique until commit (Fix 3)
+                    if (_context.Database.IsNpgsql())
+                        await _context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", 1000000 + tenantId);
+                    invoiceNo = await _invoiceNumberService.GenerateNextInvoiceNumberInTransactionAsync(tenantId);
                     _logger.LogDebug("Auto-generated invoice number: {InvoiceNo} for TenantId: {TenantId}", invoiceNo, tenantId);
                 }
 

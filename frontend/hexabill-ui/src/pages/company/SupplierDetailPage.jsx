@@ -35,6 +35,7 @@ const SupplierDetailPage = () => {
   const [toDate, setToDate] = useState('')
   const [preFillPayment, setPreFillPayment] = useState({ amount: '', reference: '' })
   const [showOverpaymentConfirm, setShowOverpaymentConfirm] = useState(false)
+  const [supplierInfo, setSupplierInfo] = useState(null)
 
   useEffect(() => {
     if (supplierName) {
@@ -46,6 +47,13 @@ const SupplierDetailPage = () => {
     if (!supplierName) return
     try {
       setLoading(true)
+      try {
+        const supplierRes = await suppliersAPI.getSupplier(supplierName)
+        if (supplierRes?.success && supplierRes?.data) setSupplierInfo(supplierRes.data)
+        else setSupplierInfo(null)
+      } catch (_) {
+        setSupplierInfo(null)
+      }
       if (activeTab === 'summary' || activeTab === 'ledger' || activeTab === 'purchases') {
         const balanceRes = await suppliersAPI.getSupplierBalance(supplierName)
         if (balanceRes?.success && balanceRes?.data) setBalance(balanceRes.data)
@@ -167,7 +175,12 @@ const SupplierDetailPage = () => {
       </div>
 
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-primary-900">Supplier Ledger: {supplierName}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-2xl font-bold text-primary-900">Supplier Ledger: {supplierName}</h1>
+          {supplierInfo && supplierInfo.isActive === false && (
+            <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 border border-amber-300">Deactivated</span>
+          )}
+        </div>
         <p className="text-primary-600 mt-1">Outstanding balance, transactions and payments — same as Customer Ledger</p>
       </div>
 

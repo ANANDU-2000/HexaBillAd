@@ -465,6 +465,16 @@ namespace HexaBill.Api.Modules.Purchases
                     }
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Purchase delete blocked: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "? Purchase deletion error: {Message}", ex.Message);

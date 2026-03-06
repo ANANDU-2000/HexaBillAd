@@ -27,6 +27,7 @@ const SuppliersPage = () => {
   const [showEditModal, setShowEditModal] = useState(false)
   const [editingSupplier, setEditingSupplier] = useState(null)
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' })
+  const [editFormIsDeactivated, setEditFormIsDeactivated] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -80,10 +81,12 @@ const SuppliersPage = () => {
   const openEditModal = async (s) => {
     setEditingSupplier(s)
     setShowEditModal(true)
+    setEditFormIsDeactivated(false)
     try {
       const res = await suppliersAPI.getSupplier(s.supplierName)
       if (res?.success && res?.data) {
         const d = res.data
+        setEditFormIsDeactivated(d.isActive === false)
         setEditForm({
           name: d.name || '',
           phone: d.phone || '',
@@ -104,7 +107,11 @@ const SuppliersPage = () => {
       }
     } catch (err) {
       console.error(err)
-      toast.error('Could not load supplier details')
+      if (err?.response?.status === 404) {
+        toast.error('Supplier is deactivated. You can view ledger but cannot edit.')
+      } else {
+        toast.error('Could not load supplier details')
+      }
       setEditForm({
         name: s.supplierName || '',
         phone: s.phone || '',
@@ -480,8 +487,15 @@ const SuppliersPage = () => {
       {/* Edit Supplier modal */}
       <Modal
         isOpen={showEditModal}
-        onClose={() => !updating && (setShowEditModal(false), setEditingSupplier(null))}
-        title="Edit Supplier"
+        onClose={() => !updating && (setShowEditModal(false), setEditingSupplier(null), setEditFormIsDeactivated(false))}
+        title={
+          <span className="flex items-center gap-2">
+            Edit Supplier
+            {editFormIsDeactivated && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 border border-amber-300">Deactivated</span>
+            )}
+          </span>
+        }
         size="md"
       >
         {editingSupplier && (
