@@ -1389,6 +1389,14 @@ _ = Task.Run(async () =>
                 else if (pending.Any())
                 {
                     initLogger.LogInformation("Found {Count} pending migration(s): {Migrations}", pending.Count, string.Join(", ", pending));
+                    // PRODUCTION FIX: Skip EF MigrateAsync() on PostgreSQL in production to avoid exit 139 (migrations touch ErrorLogs and can crash). Use RUN_ON_RENDER_PSQL.sql for schema.
+                    var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+                    if (context.Database.IsNpgsql() && isProduction)
+                    {
+                        initLogger.LogWarning("Skipping EF migrations in production (PostgreSQL). Run Scripts/RUN_ON_RENDER_PSQL.sql manually if needed.");
+                    }
+                    else
+                    {
                     initLogger.LogInformation("Applying migrations...");
                     try
                     {
@@ -1431,6 +1439,7 @@ _ = Task.Run(async () =>
                             // Real error - log but don't crash
                             initLogger.LogWarning(migEx, "Migration warning (non-fatal): {Message}", errorMsg);
                         }
+                    }
                     }
                 }
                 else if (databaseNeedsCreation)
