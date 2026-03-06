@@ -58,7 +58,8 @@ namespace HexaBill.Api.Shared.Middleware
             string requestMethod, string correlationId, long elapsedMs)
         {
             var errorDetails = new StringBuilder();
-            errorDetails.AppendLine($"❌ CRITICAL ERROR DETECTED");
+            // First line: ensure Render log view shows the real message (often truncated)
+            errorDetails.AppendLine($"❌ CRITICAL ERROR | {exception.GetType().Name} | Message: {exception.Message}");
             errorDetails.AppendLine($"Correlation ID: {correlationId}");
             errorDetails.AppendLine($"Endpoint: {requestMethod} {requestPath}");
             errorDetails.AppendLine($"Time Elapsed: {elapsedMs}ms");
@@ -208,16 +209,18 @@ namespace HexaBill.Api.Shared.Middleware
             return "GENERAL_ERROR";
         }
 
-        /// <summary>True if exception chain contains a PostgreSQL error with the given SqlState (e.g. 42703 = undefined column).</summary>
+        /// <summary>True if exception or its chain contains a PostgreSQL error with the given SqlState (e.g. 42703 = undefined column).</summary>
         private static bool HasInnerPostgresState(Exception exception, string sqlState)
         {
-            var inner = exception?.InnerException;
+            var current = exception;
             var depth = 0;
-            while (inner != null && depth < 5)
+            while (current != null && depth < 6)
             {
-                if (inner is Npgsql.PostgresException pgEx && string.Equals(pgEx.SqlState, sqlState, StringComparison.Ordinal))
+                if (current is Npgsql.PostgresException pgEx && string.Equals(pgEx.SqlState, sqlState, StringComparison.Ordinal))
                     return true;
-                inner = inner.InnerException;
+                if (current is NpgsqlException npgEx && !string.IsNullOrEmpty(npgEx.SqlState) && string.Equals(npgEx.SqlState, sqlState, StringComparison.Ordinal))
+                    return true;
+                current = current.InnerException;
                 depth++;
             }
             return false;
