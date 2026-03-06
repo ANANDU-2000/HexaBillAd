@@ -176,7 +176,7 @@ namespace HexaBill.Api.Modules.Purchases
                 .Distinct()
                 .ToListAsync();
             var fromSuppliersTable = await _context.Suppliers
-                .Where(s => s.TenantId == tenantId && s.IsActive)
+                .Where(s => s.TenantId == tenantId)
                 .Select(s => s.Name)
                 .ToListAsync();
             var supplierNames = fromPurchases.Union(fromSuppliersTable, StringComparer.OrdinalIgnoreCase).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
@@ -191,8 +191,9 @@ namespace HexaBill.Api.Modules.Purchases
                     .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
                     .CountAsync();
 
+                var nameNorm = (supplierName ?? "").Trim().ToLowerInvariant();
                 var supplier = await _context.Suppliers
-                    .Where(s => s.TenantId == tenantId && s.Name == supplierName && s.IsActive)
+                    .Where(s => s.TenantId == tenantId && s.NormalizedName == nameNorm)
                     .Select(s => new { s.Id, s.Phone, s.CreditLimit })
                     .FirstOrDefaultAsync();
 

@@ -28,6 +28,7 @@ const SuppliersPage = () => {
   const [editingSupplier, setEditingSupplier] = useState(null)
   const [editForm, setEditForm] = useState({ name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' })
   const [editFormIsDeactivated, setEditFormIsDeactivated] = useState(false)
+  const [editFormLoadFailed, setEditFormLoadFailed] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -82,6 +83,7 @@ const SuppliersPage = () => {
     setEditingSupplier(s)
     setShowEditModal(true)
     setEditFormIsDeactivated(false)
+    setEditFormLoadFailed(false)
     try {
       const res = await suppliersAPI.getSupplier(s.supplierName)
       if (res?.success && res?.data) {
@@ -96,6 +98,7 @@ const SuppliersPage = () => {
           paymentTerms: d.paymentTerms || ''
         })
       } else {
+        setEditFormLoadFailed(true)
         setEditForm({
           name: s.supplierName || '',
           phone: s.phone || '',
@@ -107,8 +110,9 @@ const SuppliersPage = () => {
       }
     } catch (err) {
       console.error(err)
+      setEditFormLoadFailed(true)
       if (err?.response?.status === 404) {
-        toast.error('Supplier is deactivated. You can view ledger but cannot edit.')
+        toast.error('Supplier is deactivated or not in directory. You can view ledger but cannot edit.')
       } else {
         toast.error('Could not load supplier details')
       }
@@ -487,12 +491,15 @@ const SuppliersPage = () => {
       {/* Edit Supplier modal */}
       <Modal
         isOpen={showEditModal}
-        onClose={() => !updating && (setShowEditModal(false), setEditingSupplier(null), setEditFormIsDeactivated(false))}
+        onClose={() => !updating && (setShowEditModal(false), setEditingSupplier(null), setEditFormIsDeactivated(false), setEditFormLoadFailed(false))}
         title={
           <span className="flex items-center gap-2">
             Edit Supplier
             {editFormIsDeactivated && (
               <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 border border-amber-300">Deactivated</span>
+            )}
+            {editFormLoadFailed && (
+              <span className="px-2 py-0.5 text-xs font-medium rounded bg-red-100 text-red-800 border border-red-300">View only</span>
             )}
           </span>
         }
@@ -500,6 +507,11 @@ const SuppliersPage = () => {
       >
         {editingSupplier && (
           <form onSubmit={handleUpdateSupplier} className="space-y-4">
+            {editFormLoadFailed && (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                Supplier could not be loaded. You can view details below but cannot save changes. Use Supplier Ledger to view transactions.
+              </p>
+            )}
             <div>
               <label className="block text-sm font-medium text-primary-800 mb-1">Name <span className="text-red-600">*</span></label>
               <input
@@ -573,7 +585,7 @@ const SuppliersPage = () => {
               </button>
               <button
                 type="submit"
-                disabled={updating || !editForm.name?.trim()}
+                disabled={updating || editFormLoadFailed || !editForm.name?.trim()}
                 className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded font-medium disabled:opacity-50"
               >
                 {updating ? 'Updating...' : 'Update Supplier'}
