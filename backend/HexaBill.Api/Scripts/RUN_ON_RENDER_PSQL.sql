@@ -4,9 +4,14 @@
 -- Run once, then restart your HexaBill API on Render.
 -- =============================================================================
 
--- ErrorLogs.ResolvedAt (fixes errorMissingColumn for /api/error-logs, alert-summary)
-ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
-CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
+-- ErrorLogs.ResolvedAt (fixes errorMissingColumn for /api/error-logs, alert-summary). Only if table exists.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'ErrorLogs') THEN
+    ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
+    CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
+  END IF;
+END $$;
 
 -- 6b. Add TenantId to Expenses
 ALTER TABLE "Expenses" ADD COLUMN IF NOT EXISTS "TenantId" integer NULL;
