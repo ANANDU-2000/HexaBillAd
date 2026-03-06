@@ -353,10 +353,17 @@ builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.BalanceReconciliat
 var app = builder.Build();
 
 // CRITICAL: Add SessionVersion + fix IsActive BEFORE any requests (fixes 42703, 42804)
+// PRODUCTION FIX: Skip ALL sync schema work on PostgreSQL in production to avoid exit 139 (segfault/OOM). Background task applies schema after 3s.
 using (var scope = app.Services.CreateScope())
 {
     var ctx = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    if (ctx.Database.IsNpgsql())
+    var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
+    if (ctx.Database.IsNpgsql() && isProduction)
+    {
+        var startupLog = app.Services.GetService<ILoggerFactory>()?.CreateLogger("Startup");
+        startupLog?.LogInformation("Production (PostgreSQL): skipping sync schema init to avoid 139; background task will apply schema.");
+    }
+    else if (ctx.Database.IsNpgsql())
     {
         try
         {
