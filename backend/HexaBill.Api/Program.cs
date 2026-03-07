@@ -1135,6 +1135,38 @@ _ = Task.Run(async () =>
             // Note: Main migration code at startup (lines 272-360) handles this, but this is a safety check
             if (context.Database.IsNpgsql())
             {
+                // VendorDiscounts: ensure table exists first (production often has no DB shell; must be created at startup)
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""VendorDiscounts"" (
+                            ""Id"" serial PRIMARY KEY,
+                            ""TenantId"" integer NOT NULL,
+                            ""SupplierId"" integer NOT NULL,
+                            ""PurchaseId"" integer NULL,
+                            ""Amount"" numeric(18,2) NOT NULL,
+                            ""DiscountDate"" timestamp with time zone NOT NULL,
+                            ""DiscountType"" character varying(50) NOT NULL,
+                            ""Reason"" character varying(500) NOT NULL DEFAULT '',
+                            ""IsActive"" boolean NOT NULL DEFAULT true,
+                            ""CreatedBy"" integer NOT NULL,
+                            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+                            ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+                            CONSTRAINT ""FK_VendorDiscounts_Suppliers_SupplierId"" FOREIGN KEY (""SupplierId"") REFERENCES ""Suppliers"" (""Id"") ON DELETE RESTRICT,
+                            CONSTRAINT ""FK_VendorDiscounts_Purchases_PurchaseId"" FOREIGN KEY (""PurchaseId"") REFERENCES ""Purchases"" (""Id"") ON DELETE SET NULL,
+                            CONSTRAINT ""FK_VendorDiscounts_Users_CreatedBy"" FOREIGN KEY (""CreatedBy"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                        );");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_TenantId"" ON ""VendorDiscounts"" (""TenantId"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_SupplierId"" ON ""VendorDiscounts"" (""SupplierId"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_PurchaseId"" ON ""VendorDiscounts"" (""PurchaseId"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_CreatedBy"" ON ""VendorDiscounts"" (""CreatedBy"");");
+                    initLogger.LogInformation("PostgreSQL: VendorDiscounts table ensured");
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogWarning(ex, "PostgreSQL: VendorDiscounts ensure failed (may already exist): {Message}", ex.Message);
+                }
+
                 try
                 {
                     // Use PostgreSQL native IF NOT EXISTS syntax
