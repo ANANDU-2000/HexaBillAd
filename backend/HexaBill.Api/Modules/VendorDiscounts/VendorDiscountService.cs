@@ -4,6 +4,7 @@ Author: HexaBill
 Date: 2025
 */
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 
@@ -22,6 +23,19 @@ namespace HexaBill.Api.Modules.VendorDiscounts
         {
             await EnsureSupplierExistsAsync(supplierId, tenantId);
 
+            try
+            {
+                return await GetSupplierDiscountsWithTotalCoreAsync(supplierId, tenantId);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" && ex.MessageText?.Contains("VendorDiscounts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await EnsureVendorDiscountsTableAsync();
+                return await GetSupplierDiscountsWithTotalCoreAsync(supplierId, tenantId);
+            }
+        }
+
+        private async Task<VendorDiscountListWithTotalDto> GetSupplierDiscountsWithTotalCoreAsync(int supplierId, int tenantId)
+        {
             var list = await _context.VendorDiscounts
                 .AsNoTracking()
                 .Include(v => v.Purchase)
@@ -55,6 +69,19 @@ namespace HexaBill.Api.Modules.VendorDiscounts
 
         public async Task<VendorDiscountDto?> GetByIdAsync(int id, int supplierId, int tenantId)
         {
+            try
+            {
+                return await GetByIdCoreAsync(id, supplierId, tenantId);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" && ex.MessageText?.Contains("VendorDiscounts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await EnsureVendorDiscountsTableAsync();
+                return await GetByIdCoreAsync(id, supplierId, tenantId);
+            }
+        }
+
+        private async Task<VendorDiscountDto?> GetByIdCoreAsync(int id, int supplierId, int tenantId)
+        {
             var v = await _context.VendorDiscounts
                 .AsNoTracking()
                 .Include(x => x.Purchase)
@@ -80,6 +107,19 @@ namespace HexaBill.Api.Modules.VendorDiscounts
 
         public async Task<VendorDiscountDto> CreateVendorDiscountAsync(int supplierId, CreateOrUpdateVendorDiscountRequest dto, int currentUserId, int tenantId)
         {
+            try
+            {
+                return await CreateVendorDiscountCoreAsync(supplierId, dto, currentUserId, tenantId);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" && ex.MessageText?.Contains("VendorDiscounts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await EnsureVendorDiscountsTableAsync();
+                return await CreateVendorDiscountCoreAsync(supplierId, dto, currentUserId, tenantId);
+            }
+        }
+
+        private async Task<VendorDiscountDto> CreateVendorDiscountCoreAsync(int supplierId, CreateOrUpdateVendorDiscountRequest dto, int currentUserId, int tenantId)
+        {
             await ValidateSupplierAndPurchaseAsync(supplierId, dto.PurchaseId, tenantId);
             ValidateRequest(dto);
 
@@ -103,10 +143,23 @@ namespace HexaBill.Api.Modules.VendorDiscounts
 
             await AuditAsync(tenantId, currentUserId, "VendorDiscount Created", $"Id: {entity.Id}, SupplierId: {supplierId}, Amount: {entity.Amount}, Type: {entity.DiscountType}");
 
-            return (await GetByIdAsync(entity.Id, supplierId, tenantId))!;
+            return (await GetByIdCoreAsync(entity.Id, supplierId, tenantId))!;
         }
 
         public async Task<VendorDiscountDto?> UpdateVendorDiscountAsync(int id, int supplierId, CreateOrUpdateVendorDiscountRequest dto, int tenantId)
+        {
+            try
+            {
+                return await UpdateVendorDiscountCoreAsync(id, supplierId, dto, tenantId);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" && ex.MessageText?.Contains("VendorDiscounts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await EnsureVendorDiscountsTableAsync();
+                return await UpdateVendorDiscountCoreAsync(id, supplierId, dto, tenantId);
+            }
+        }
+
+        private async Task<VendorDiscountDto?> UpdateVendorDiscountCoreAsync(int id, int supplierId, CreateOrUpdateVendorDiscountRequest dto, int tenantId)
         {
             await ValidateSupplierAndPurchaseAsync(supplierId, dto.PurchaseId, tenantId);
             ValidateRequest(dto);
@@ -124,13 +177,26 @@ namespace HexaBill.Api.Modules.VendorDiscounts
 
             await _context.SaveChangesAsync();
 
-            var userId = entity.CreatedBy; // or pass currentUserId if we want to log who updated
+            var userId = entity.CreatedBy;
             await AuditAsync(tenantId, userId, "VendorDiscount Updated", $"Id: {id}, SupplierId: {supplierId}, Amount: {entity.Amount}");
 
-            return await GetByIdAsync(id, supplierId, tenantId);
+            return await GetByIdCoreAsync(id, supplierId, tenantId);
         }
 
         public async Task<bool> DeleteVendorDiscountAsync(int id, int supplierId, int tenantId)
+        {
+            try
+            {
+                return await DeleteVendorDiscountCoreAsync(id, supplierId, tenantId);
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01" && ex.MessageText?.Contains("VendorDiscounts", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                await EnsureVendorDiscountsTableAsync();
+                return await DeleteVendorDiscountCoreAsync(id, supplierId, tenantId);
+            }
+        }
+
+        private async Task<bool> DeleteVendorDiscountCoreAsync(int id, int supplierId, int tenantId)
         {
             await EnsureSupplierExistsAsync(supplierId, tenantId);
 
@@ -181,6 +247,35 @@ namespace HexaBill.Api.Modules.VendorDiscounts
                 throw new ArgumentException("Discount date cannot be in the future.", nameof(dto.DiscountDate));
             if (string.IsNullOrWhiteSpace(dto.DiscountType))
                 throw new ArgumentException("Discount type is required.", nameof(dto.DiscountType));
+        }
+
+        /// <summary>Create VendorDiscounts table if missing (PostgreSQL). Fixes 42P01 when startup create didn't run or failed.</summary>
+        private async Task EnsureVendorDiscountsTableAsync()
+        {
+            if (!_context.Database.IsNpgsql()) return;
+
+            await _context.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""VendorDiscounts"" (
+                    ""Id"" serial PRIMARY KEY,
+                    ""TenantId"" integer NOT NULL,
+                    ""SupplierId"" integer NOT NULL,
+                    ""PurchaseId"" integer NULL,
+                    ""Amount"" numeric(18,2) NOT NULL,
+                    ""DiscountDate"" timestamp with time zone NOT NULL,
+                    ""DiscountType"" character varying(50) NOT NULL,
+                    ""Reason"" character varying(500) NOT NULL DEFAULT '',
+                    ""IsActive"" boolean NOT NULL DEFAULT true,
+                    ""CreatedBy"" integer NOT NULL,
+                    ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+                    ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+                    CONSTRAINT ""FK_VendorDiscounts_Suppliers_SupplierId"" FOREIGN KEY (""SupplierId"") REFERENCES ""Suppliers"" (""Id"") ON DELETE RESTRICT,
+                    CONSTRAINT ""FK_VendorDiscounts_Purchases_PurchaseId"" FOREIGN KEY (""PurchaseId"") REFERENCES ""Purchases"" (""Id"") ON DELETE SET NULL,
+                    CONSTRAINT ""FK_VendorDiscounts_Users_CreatedBy"" FOREIGN KEY (""CreatedBy"") REFERENCES ""Users"" (""Id"") ON DELETE CASCADE
+                );");
+            await _context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_TenantId"" ON ""VendorDiscounts"" (""TenantId"");");
+            await _context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_SupplierId"" ON ""VendorDiscounts"" (""SupplierId"");");
+            await _context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_PurchaseId"" ON ""VendorDiscounts"" (""PurchaseId"");");
+            await _context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_VendorDiscounts_CreatedBy"" ON ""VendorDiscounts"" (""CreatedBy"");");
         }
 
         private async Task AuditAsync(int tenantId, int userId, string action, string details)
