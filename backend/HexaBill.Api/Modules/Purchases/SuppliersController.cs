@@ -345,6 +345,48 @@ namespace HexaBill.Api.Modules.Purchases
                 });
             }
         }
+
+        [HttpPut("{supplierName}/payments/{paymentId:int}")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<SupplierPaymentDto>>> UpdatePayment(string supplierName, int paymentId, [FromBody] RecordSupplierPaymentRequest request)
+        {
+            try
+            {
+                if (request == null || request.Amount <= 0)
+                    return BadRequest(new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Amount must be positive." });
+                var tenantId = CurrentTenantId;
+                var result = await _supplierService.UpdateSupplierPaymentAsync(tenantId, paymentId, request.Amount, request.PaymentDate, request.Mode, request.Reference, request.Notes);
+                if (result == null)
+                    return NotFound(new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Payment not found." });
+                return Ok(new ApiResponse<SupplierPaymentDto> { Success = true, Message = "Payment updated.", Data = result });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<SupplierPaymentDto> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<SupplierPaymentDto> { Success = false, Message = ex.Message });
+            }
+        }
+
+        [HttpDelete("{supplierName}/payments/{paymentId:int}")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<object>>> DeletePayment(string supplierName, int paymentId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var deleted = await _supplierService.DeleteSupplierPaymentAsync(tenantId, paymentId);
+                if (!deleted)
+                    return NotFound(new ApiResponse<object> { Success = false, Message = "Payment not found." });
+                return Ok(new ApiResponse<object> { Success = true, Message = "Payment deleted." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
     }
 
     public class RecordSupplierPaymentRequest

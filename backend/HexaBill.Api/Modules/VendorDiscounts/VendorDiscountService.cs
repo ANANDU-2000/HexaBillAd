@@ -91,7 +91,7 @@ namespace HexaBill.Api.Modules.VendorDiscounts
                 Amount = dto.Amount,
                 DiscountDate = dto.DiscountDate.Kind == DateTimeKind.Utc ? dto.DiscountDate : DateTime.SpecifyKind(dto.DiscountDate, DateTimeKind.Utc),
                 DiscountType = dto.DiscountType.Trim(),
-                Reason = dto.Reason.Trim(),
+                Reason = (dto.Reason ?? "").Trim(),
                 IsActive = true,
                 CreatedBy = currentUserId,
                 CreatedAt = DateTime.UtcNow,
@@ -119,7 +119,7 @@ namespace HexaBill.Api.Modules.VendorDiscounts
             entity.Amount = dto.Amount;
             entity.DiscountDate = dto.DiscountDate.Kind == DateTimeKind.Utc ? dto.DiscountDate : DateTime.SpecifyKind(dto.DiscountDate, DateTimeKind.Utc);
             entity.DiscountType = dto.DiscountType.Trim();
-            entity.Reason = dto.Reason.Trim();
+            entity.Reason = (dto.Reason ?? "").Trim();
             entity.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
@@ -179,8 +179,6 @@ namespace HexaBill.Api.Modules.VendorDiscounts
                 throw new ArgumentException("Amount must be positive.", nameof(dto.Amount));
             if (dto.DiscountDate.Date > DateTime.UtcNow.Date)
                 throw new ArgumentException("Discount date cannot be in the future.", nameof(dto.DiscountDate));
-            if (string.IsNullOrWhiteSpace(dto.Reason) || dto.Reason.Trim().Length < 3)
-                throw new ArgumentException("Reason is required and must be at least 3 characters.", nameof(dto.Reason));
             if (string.IsNullOrWhiteSpace(dto.DiscountType))
                 throw new ArgumentException("Discount type is required.", nameof(dto.DiscountType));
         }

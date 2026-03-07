@@ -46,6 +46,13 @@ const SupplierDetailPage = () => {
   const [toDate, setToDate] = useState('')
   const [preFillPayment, setPreFillPayment] = useState({ amount: '', reference: '' })
   const [showOverpaymentConfirm, setShowOverpaymentConfirm] = useState(false)
+  const [showEditPaymentModal, setShowEditPaymentModal] = useState(false)
+  const [editingPayment, setEditingPayment] = useState(null)
+  const [editPaymentForm, setEditPaymentForm] = useState({ amount: '', paymentDate: '', mode: 'Cash', reference: '', notes: '' })
+  const [savingEditPayment, setSavingEditPayment] = useState(false)
+  const [showDeletePaymentConfirm, setShowDeletePaymentConfirm] = useState(false)
+  const [deletePaymentId, setDeletePaymentId] = useState(null)
+  const [deletingPayment, setDeletingPayment] = useState(false)
   const [supplierInfo, setSupplierInfo] = useState(null)
   // Vendor Discounts (Owner/Admin only; not in ledger or reports)
   const [vendorDiscounts, setVendorDiscounts] = useState([])
@@ -202,6 +209,68 @@ const SupplierDetailPage = () => {
     toast.success('Exported to CSV')
   }
 
+  const openEditPayment = (t) => {
+    if (!t?.paymentId) return
+    const d = t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    setEditingPayment(t)
+    setEditPaymentForm({
+      amount: String(t.credit ?? 0),
+      paymentDate: d,
+      mode: t.mode || 'Cash',
+      reference: t.reference || '',
+      notes: t.notes || ''
+    })
+    setShowEditPaymentModal(true)
+  }
+
+  const saveEditPayment = async (e) => {
+    e.preventDefault()
+    if (!editingPayment?.paymentId || !supplierName) return
+    const amount = parseFloat(editPaymentForm.amount)
+    if (!amount || amount <= 0) {
+      toast.error('Please enter a valid amount')
+      return
+    }
+    setSavingEditPayment(true)
+    try {
+      const res = await suppliersAPI.updatePayment(supplierName, editingPayment.paymentId, {
+        amount,
+        paymentDate: editPaymentForm.paymentDate,
+        mode: editPaymentForm.mode,
+        reference: editPaymentForm.reference?.trim() || undefined,
+        notes: editPaymentForm.notes?.trim() || undefined
+      })
+      if (res?.success) {
+        toast.success('Payment updated')
+        setShowEditPaymentModal(false)
+        setEditingPayment(null)
+        loadData()
+      } else toast.error(res?.message || 'Update failed')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to update payment')
+    } finally {
+      setSavingEditPayment(false)
+    }
+  }
+
+  const confirmDeletePayment = async () => {
+    if (!deletePaymentId || !supplierName) return
+    setDeletingPayment(true)
+    try {
+      const res = await suppliersAPI.deletePayment(supplierName, deletePaymentId)
+      if (res?.success) {
+        toast.success('Payment deleted')
+        setShowDeletePaymentConfirm(false)
+        setDeletePaymentId(null)
+        loadData()
+      } else toast.error(res?.message || 'Delete failed')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to delete payment')
+    } finally {
+      setDeletingPayment(false)
+    }
+  }
+
   const openAddVendorDiscount = () => {
     setEditingVendorDiscount(null)
     setVendorDiscountForm({
@@ -234,15 +303,11 @@ const SupplierDetailPage = () => {
       toast.error('Amount must be at least 0.01')
       return
     }
-    if (!vendorDiscountForm.reason?.trim() || vendorDiscountForm.reason.trim().length < 3) {
-      toast.error('Reason is required (min 3 characters)')
-      return
-    }
     const payload = {
       amount,
       discountDate: vendorDiscountForm.discountDate,
       discountType: vendorDiscountForm.discountType,
-      reason: vendorDiscountForm.reason.trim()
+      reason: vendorDiscountForm.reason?.trim() || ''
     }
     if (vendorDiscountForm.purchaseId) payload.purchaseId = parseInt(vendorDiscountForm.purchaseId, 10)
     setSavingVendorDiscount(true)
@@ -637,20 +702,33 @@ const SupplierDetailPage = () => {
                     <tr>
                       <th className="text-left p-2">Date</th>
                       <th className="text-left p-2">Reference</th>
+                      <th className="text-left p-2">Mode</th>
                       <th className="text-right p-2">Amount</th>
                       <th className="text-left p-2">Balance After</th>
+                      <th className="text-center p-2">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payments.length === 0 ? (
-                      <tr><td colSpan={4} className="p-4 text-center text-primary-500">No payments</td></tr>
+                      <tr><td colSpan={6} className="p-4 text-center text-primary-500">No payments</td></tr>
                     ) : (
                       payments.map((t, i) => (
-                        <tr key={i} className="border-t border-primary-100 hover:bg-primary-50">
+                        <tr key={t.paymentId ?? i} className="border-t border-primary-100 hover:bg-primary-50">
                           <td className="p-2">{formatDate(t.date)}</td>
                           <td className="p-2">{t.reference || '-'}</td>
+                          <td className="p-2">{t.mode || '-'}</td>
                           <td className="p-2 text-right font-medium text-green-700">{formatCurrency(t.credit || 0)}</td>
                           <td className="p-2 text-right">{formatCurrency(t.balance)}</td>
+                          <td className="p-2 text-center">
+                            {t.paymentId != null ? (
+                              <span className="inline-flex items-center gap-1">
+                                <button type="button" onClick={() => openEditPayment(t)} className="text-indigo-600 hover:text-indigo-800 p-1" title="Edit"><Pencil className="h-4 w-4 inline" /></button>
+                                <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className="text-red-600 hover:text-red-800 p-1" title="Delete"><Trash2 className="h-4 w-4 inline" /></button>
+                              </span>
+                            ) : (
+                              <span className="text-primary-400 text-xs">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))
                     )}
@@ -741,6 +819,86 @@ const SupplierDetailPage = () => {
       />
 
       <Modal
+        isOpen={showEditPaymentModal}
+        onClose={() => { if (!savingEditPayment) { setShowEditPaymentModal(false); setEditingPayment(null) } }}
+        title="Edit Payment"
+        size="md"
+      >
+        <form onSubmit={saveEditPayment} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Amount (AED) *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              value={editPaymentForm.amount}
+              onChange={e => setEditPaymentForm(f => ({ ...f, amount: e.target.value }))}
+              className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Payment Date *</label>
+            <input
+              type="date"
+              required
+              max={new Date().toISOString().split('T')[0]}
+              value={editPaymentForm.paymentDate}
+              onChange={e => setEditPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
+              className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Mode</label>
+            <select
+              value={editPaymentForm.mode}
+              onChange={e => setEditPaymentForm(f => ({ ...f, mode: e.target.value }))}
+              className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Bank">Bank</option>
+              <option value="Cheque">Cheque</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Reference</label>
+            <input
+              type="text"
+              value={editPaymentForm.reference}
+              onChange={e => setEditPaymentForm(f => ({ ...f, reference: e.target.value }))}
+              placeholder="Optional"
+              className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Notes</label>
+            <textarea
+              value={editPaymentForm.notes}
+              onChange={e => setEditPaymentForm(f => ({ ...f, notes: e.target.value }))}
+              placeholder="Optional"
+              rows={2}
+              className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button type="button" onClick={() => { setShowEditPaymentModal(false); setEditingPayment(null) }} className="px-4 py-2 border-2 border-primary-300 rounded-lg hover:bg-primary-50 font-medium">Cancel</button>
+            <button type="submit" disabled={savingEditPayment} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium">
+              {savingEditPayment ? 'Saving...' : 'Update Payment'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDangerModal
+        isOpen={showDeletePaymentConfirm}
+        onClose={() => { if (!deletingPayment) { setShowDeletePaymentConfirm(false); setDeletePaymentId(null) } }}
+        onConfirm={confirmDeletePayment}
+        title="Delete payment?"
+        message="This payment will be removed. Ledger and outstanding balance will be recalculated. This cannot be undone."
+        confirmLabel={deletingPayment ? 'Deleting...' : 'Delete'}
+      />
+
+      <Modal
         isOpen={showVendorDiscountModal}
         onClose={() => { setShowVendorDiscountModal(false); setEditingVendorDiscount(null) }}
         title={editingVendorDiscount ? 'Edit Vendor Discount' : 'Add Vendor Discount'}
@@ -796,10 +954,8 @@ const SupplierDetailPage = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-primary-700 mb-1">Reason / Notes *</label>
+            <label className="block text-sm font-medium text-primary-700 mb-1">Reason / Notes (optional)</label>
             <textarea
-              required
-              minLength={3}
               rows={3}
               placeholder="e.g., 5% bulk order discount, 10 boxes free"
               value={vendorDiscountForm.reason}

@@ -16,6 +16,8 @@ namespace HexaBill.Api.Modules.Purchases
         Task<List<SupplierTransactionDto>> GetSupplierTransactionsAsync(int tenantId, string supplierName, DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId);
         Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId);
+        Task<SupplierPaymentDto?> UpdateSupplierPaymentAsync(int tenantId, int paymentId, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes);
+        Task<bool> DeleteSupplierPaymentAsync(int tenantId, int paymentId);
         Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20);
         Task<SupplierDto> CreateSupplierAsync(int tenantId, CreateSupplierRequest request);
         Task<SupplierDto?> GetSupplierByNameAsync(int tenantId, string supplierName);
@@ -149,12 +151,15 @@ namespace HexaBill.Api.Modules.Purchases
             {
                 transactions.Add(new SupplierTransactionDto
                 {
+                    PaymentId = payment.Id,
                     Date = payment.PaymentDate,
                     Type = "Payment",
                     Reference = payment.Reference ?? $"Payment #{payment.Id}",
                     Debit = 0,
                     Credit = payment.Amount,
-                    Balance = 0
+                    Balance = 0,
+                    Mode = payment.Mode.ToString(),
+                    Notes = payment.Notes
                 });
             }
 
@@ -256,6 +261,50 @@ namespace HexaBill.Api.Modules.Purchases
                 Notes = payment.Notes,
                 CreatedAt = payment.CreatedAt
             };
+        }
+
+        /// <summary>Update a supplier payment. Does not affect stock or product inventory; only ledger balance is recalculated on next read.</summary>
+        public async Task<SupplierPaymentDto?> UpdateSupplierPaymentAsync(int tenantId, int paymentId, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes)
+        {
+            if (amount <= 0)
+                throw new ArgumentException("Payment amount must be positive.", nameof(amount));
+            var payDate = paymentDate.ToUtcKind().Date;
+            if (payDate > DateTime.UtcNow.Date)
+                throw new ArgumentException("Payment date cannot be in the future.", nameof(paymentDate));
+
+            var payment = await _context.SupplierPayments
+                .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
+            if (payment == null) return null;
+
+            payment.Amount = amount;
+            payment.PaymentDate = payDate;
+            payment.Mode = mode;
+            payment.Reference = reference;
+            payment.Notes = notes;
+            await _context.SaveChangesAsync();
+
+            return new SupplierPaymentDto
+            {
+                Id = payment.Id,
+                SupplierName = payment.SupplierName,
+                Amount = payment.Amount,
+                PaymentDate = payment.PaymentDate,
+                Mode = payment.Mode.ToString(),
+                Reference = payment.Reference,
+                Notes = payment.Notes,
+                CreatedAt = payment.CreatedAt
+            };
+        }
+
+        /// <summary>Delete a supplier payment. Does not affect stock; balance is recalculated from remaining purchases and payments on next read.</summary>
+        public async Task<bool> DeleteSupplierPaymentAsync(int tenantId, int paymentId)
+        {
+            var payment = await _context.SupplierPayments
+                .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
+            if (payment == null) return false;
+            _context.SupplierPayments.Remove(payment);
+            await _context.SaveChangesAsync();
+            return true;
         }
 
         public async Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20)
@@ -524,12 +573,15 @@ namespace HexaBill.Api.Modules.Purchases
 
     public class SupplierTransactionDto
     {
+        public int? PaymentId { get; set; }
         public DateTime Date { get; set; }
         public string Type { get; set; } = string.Empty;
         public string Reference { get; set; } = string.Empty;
         public decimal Debit { get; set; }
         public decimal Credit { get; set; }
         public decimal Balance { get; set; }
+        public string? Mode { get; set; }
+        public string? Notes { get; set; }
     }
 
     public class SupplierSummaryDto

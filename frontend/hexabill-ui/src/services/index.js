@@ -1228,6 +1228,14 @@ export const suppliersAPI = {
     const response = await api.post(`/suppliers/${encodeURIComponent(supplierName)}/payments`, data)
     return response.data
   },
+  updatePayment: async (supplierName, paymentId, data) => {
+    const response = await api.put(`/suppliers/${encodeURIComponent(supplierName)}/payments/${paymentId}`, data)
+    return response.data
+  },
+  deletePayment: async (supplierName, paymentId) => {
+    const response = await api.delete(`/suppliers/${encodeURIComponent(supplierName)}/payments/${paymentId}`)
+    return response.data
+  },
   createSupplier: async (data) => {
     const response = await api.post('/suppliers', data)
     return response.data
