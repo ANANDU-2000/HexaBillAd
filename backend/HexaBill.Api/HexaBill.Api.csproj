@@ -15,6 +15,8 @@ Date: 2026
     <Compile Remove="MigrationsSqliteBackup\**\*.cs" />
     <!-- Exclude MigrationFixer - it has its own Program.cs with top-level statements -->
     <Compile Remove="MigrationFixer\**\*.cs" />
+    <!-- Exclude RunSql: standalone tool with top-level statements; run via dotnet run -p Scripts/RunSql -->
+    <Compile Remove="Scripts\RunSql\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
