@@ -4,6 +4,7 @@ Author: AI Assistant
 Date: 2024
 */
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
@@ -652,7 +653,15 @@ namespace HexaBill.Api.Modules.Purchases
             var totalPayments = await _context.SupplierPayments
                 .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
                 .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
-            var currentNetPayable = totalPurchases - totalReturns - totalPayments;
+            decimal totalLedgerCredits = 0;
+            try
+            {
+                totalLedgerCredits = await _context.SupplierLedgerCredits
+                    .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName)
+                    .SumAsync(slc => (decimal?)slc.Amount) ?? 0;
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01") { /* table may not exist yet */ }
+            var currentNetPayable = totalPurchases - totalReturns - totalPayments - totalLedgerCredits;
             var balanceAfterDelete = currentNetPayable - purchase.TotalAmount;
             if (balanceAfterDelete < 0)
                 throw new InvalidOperationException(

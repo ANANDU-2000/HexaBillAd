@@ -131,6 +131,21 @@ BEGIN
   END IF;
 END $$;
 
+-- SupplierLedgerCredits – vendor discounts/credits (reduces supplier outstanding). Required for /api/suppliers/summary.
+CREATE TABLE IF NOT EXISTS "SupplierLedgerCredits" (
+  "Id" serial PRIMARY KEY,
+  "TenantId" integer NOT NULL,
+  "SupplierName" character varying(200) NOT NULL,
+  "Amount" numeric(18,2) NOT NULL,
+  "CreditDate" timestamp with time zone NOT NULL,
+  "CreditType" character varying(50) NOT NULL,
+  "Notes" character varying(500) NULL,
+  "CreatedBy" integer NOT NULL,
+  "CreatedAt" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+);
+CREATE INDEX IF NOT EXISTS "IX_SupplierLedgerCredits_TenantId_SupplierName" ON "SupplierLedgerCredits" ("TenantId", "SupplierName");
+CREATE INDEX IF NOT EXISTS "IX_SupplierLedgerCredits_CreditDate" ON "SupplierLedgerCredits" ("CreditDate");
+
 -- Suppliers: IsActive, UpdatedAt, Email, CreditLimit, PaymentTerms (for Create Supplier)
 ALTER TABLE "Suppliers" ADD COLUMN IF NOT EXISTS "IsActive" boolean NOT NULL DEFAULT true;
 ALTER TABLE "Suppliers" ADD COLUMN IF NOT EXISTS "UpdatedAt" timestamp with time zone NULL;

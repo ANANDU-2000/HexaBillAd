@@ -921,9 +921,17 @@ namespace HexaBill.Api.Modules.Reports
                 var totalPayments = await _context.SupplierPayments
                     .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
                     .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
-                var totalLedgerCredits = await _context.SupplierLedgerCredits
-                    .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName)
-                    .SumAsync(slc => (decimal?)slc.Amount) ?? 0;
+                decimal totalLedgerCredits;
+                try
+                {
+                    totalLedgerCredits = await _context.SupplierLedgerCredits
+                        .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName)
+                        .SumAsync(slc => (decimal?)slc.Amount) ?? 0;
+                }
+                catch (PostgresException ex) when (ex.SqlState == "42P01")
+                {
+                    totalLedgerCredits = 0;
+                }
                 var balance = totalPurchases - totalReturns - totalPayments - totalLedgerCredits;
                 if (balance <= 0.01m) continue;
 

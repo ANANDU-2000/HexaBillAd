@@ -4,6 +4,7 @@ Author: AI Assistant
 Date: 2025
 */
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
@@ -35,6 +36,40 @@ namespace HexaBill.Api.Modules.Purchases
             _context = context;
         }
 
+        /// <summary>Sum of ledger credits for a supplier. Returns 0 if table does not exist (e.g. 42P01 on Render).</summary>
+        private async Task<decimal> GetTotalLedgerCreditsAsync(int tenantId, string supplierName)
+        {
+            try
+            {
+                return await _context.SupplierLedgerCredits
+                    .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName)
+                    .SumAsync(slc => (decimal?)slc.Amount) ?? 0;
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>List of ledger credits for transactions. Returns empty list if table does not exist (42P01).</summary>
+        private async Task<List<SupplierLedgerCredit>> GetLedgerCreditsListAsync(int tenantId, string supplierName, DateTime? fromDate, DateTime? toDate)
+        {
+            try
+            {
+                var creditsQuery = _context.SupplierLedgerCredits
+                    .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName);
+                if (fromDate.HasValue)
+                    creditsQuery = creditsQuery.Where(slc => slc.CreditDate >= fromDate.Value);
+                if (toDate.HasValue)
+                    creditsQuery = creditsQuery.Where(slc => slc.CreditDate <= toDate.Value.AddDays(1));
+                return await creditsQuery.OrderBy(slc => slc.CreditDate).ToListAsync();
+            }
+            catch (PostgresException ex) when (ex.SqlState == "42P01")
+            {
+                return new List<SupplierLedgerCredit>();
+            }
+        }
+
         public async Task<SupplierBalanceDto> GetSupplierBalanceAsync(int tenantId, string supplierName)
         {
             // Balance = Purchases - Returns - Payments - LedgerCredits (vendor discounts as credits).
@@ -51,9 +86,7 @@ namespace HexaBill.Api.Modules.Purchases
                 .Where(sp => sp.TenantId == tenantId && sp.SupplierName == supplierName)
                 .SumAsync(sp => (decimal?)sp.Amount) ?? 0;
 
-            var totalLedgerCredits = await _context.SupplierLedgerCredits
-                .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName)
-                .SumAsync(slc => (decimal?)slc.Amount) ?? 0;
+            var totalLedgerCredits = await GetTotalLedgerCreditsAsync(tenantId, supplierName);
 
             var netPayable = totalPurchases - totalPurchaseReturns - totalPayments - totalLedgerCredits;
 
@@ -165,14 +198,8 @@ namespace HexaBill.Api.Modules.Purchases
                 });
             }
 
-            // Ledger Credits (vendor discounts)
-            var creditsQuery = _context.SupplierLedgerCredits
-                .Where(slc => slc.TenantId == tenantId && slc.SupplierName == supplierName);
-            if (fromDate.HasValue)
-                creditsQuery = creditsQuery.Where(slc => slc.CreditDate >= fromDate.Value);
-            if (toDate.HasValue)
-                creditsQuery = creditsQuery.Where(slc => slc.CreditDate <= toDate.Value.AddDays(1));
-            var ledgerCredits = await creditsQuery.OrderBy(slc => slc.CreditDate).ToListAsync();
+            // Ledger Credits (vendor discounts) – resilient if table does not exist (42P01)
+            var ledgerCredits = await GetLedgerCreditsListAsync(tenantId, supplierName, fromDate, toDate);
             foreach (var credit in ledgerCredits)
             {
                 transactions.Add(new SupplierTransactionDto

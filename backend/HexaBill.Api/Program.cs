@@ -380,6 +380,36 @@ if (isPostgres && (isProduction || isRenderDb))
 {
     var startupLog = app.Services.GetService<ILoggerFactory>()?.CreateLogger("Startup");
     startupLog?.LogInformation("Production/Render (PostgreSQL): no DB access at startup to avoid 139. Run Scripts/RUN_ON_RENDER_PSQL.sql then restart.");
+    // Minimal DB access: ensure SupplierLedgerCredits exists so /api/suppliers/summary returns 200 (no heavy Migrate/ALTERs)
+    try
+    {
+        using (var scopeSlc = app.Services.CreateScope())
+        {
+            var ctxSlc = scopeSlc.ServiceProvider.GetRequiredService<AppDbContext>();
+            if (ctxSlc.Database.IsNpgsql())
+            {
+                ctxSlc.Database.ExecuteSqlRaw(@"
+                    CREATE TABLE IF NOT EXISTS ""SupplierLedgerCredits"" (
+                        ""Id"" serial PRIMARY KEY,
+                        ""TenantId"" integer NOT NULL,
+                        ""SupplierName"" character varying(200) NOT NULL,
+                        ""Amount"" numeric(18,2) NOT NULL,
+                        ""CreditDate"" timestamp with time zone NOT NULL,
+                        ""CreditType"" character varying(50) NOT NULL,
+                        ""Notes"" character varying(500) NULL,
+                        ""CreatedBy"" integer NOT NULL,
+                        ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+                    );");
+                ctxSlc.Database.ExecuteSqlRaw(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierLedgerCredits_TenantId_SupplierName"" ON ""SupplierLedgerCredits"" (""TenantId"", ""SupplierName"");");
+                ctxSlc.Database.ExecuteSqlRaw(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierLedgerCredits_CreditDate"" ON ""SupplierLedgerCredits"" (""CreditDate"");");
+                startupLog?.LogInformation("SupplierLedgerCredits table ensured at startup (Render/Production).");
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        startupLog?.LogWarning(ex, "SupplierLedgerCredits ensure at startup failed: {Message}", ex.Message);
+    }
 }
 else
 {
@@ -1183,10 +1213,42 @@ _ = Task.Run(async () =>
             try
             {
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            // PRODUCTION / RENDER: Skip ALL schema work (no MigrateAsync, no ALTERs) to prevent exit 139. Schema applied via RUN_ON_RENDER_PSQL.sql (MigrationFixer).
+            // PRODUCTION / RENDER: Skip heavy schema work (no MigrateAsync, no ALTERs) to prevent exit 139. Run only minimal required for SupplierLedgerCredits so /api/suppliers/summary works.
             if (context.Database.IsNpgsql() && (isProdEnv || isRenderDbBg))
             {
-                initLogger.LogInformation("Production/Render (PostgreSQL): skipping background schema init to avoid 139. Schema via RUN_ON_RENDER_PSQL.sql.");
+                try
+                {
+                    await context.Database.ExecuteSqlRawAsync(@"
+                        CREATE TABLE IF NOT EXISTS ""SupplierLedgerCredits"" (
+                            ""Id"" serial PRIMARY KEY,
+                            ""TenantId"" integer NOT NULL,
+                            ""SupplierName"" character varying(200) NOT NULL,
+                            ""Amount"" numeric(18,2) NOT NULL,
+                            ""CreditDate"" timestamp with time zone NOT NULL,
+                            ""CreditType"" character varying(50) NOT NULL,
+                            ""Notes"" character varying(500) NULL,
+                            ""CreatedBy"" integer NOT NULL,
+                            ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+                        );");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierLedgerCredits_TenantId_SupplierName"" ON ""SupplierLedgerCredits"" (""TenantId"", ""SupplierName"");");
+                    await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_SupplierLedgerCredits_CreditDate"" ON ""SupplierLedgerCredits"" (""CreditDate"");");
+                    var migrated = await context.Database.ExecuteSqlRawAsync(@"
+                        INSERT INTO ""SupplierLedgerCredits"" (""TenantId"", ""SupplierName"", ""Amount"", ""CreditDate"", ""CreditType"", ""Notes"", ""CreatedBy"", ""CreatedAt"")
+                        SELECT vd.""TenantId"", s.""Name"", vd.""Amount"", vd.""DiscountDate"", vd.""DiscountType"", NULLIF(TRIM(vd.""Reason""), ''), vd.""CreatedBy"", COALESCE(vd.""CreatedAt"", (now() AT TIME ZONE 'utc'))
+                        FROM ""VendorDiscounts"" vd
+                        INNER JOIN ""Suppliers"" s ON s.""Id"" = vd.""SupplierId""
+                        WHERE NOT EXISTS (
+                            SELECT 1 FROM ""SupplierLedgerCredits"" slc
+                            WHERE slc.""TenantId"" = vd.""TenantId"" AND slc.""SupplierName"" = s.""Name"" AND slc.""CreditDate"" = vd.""DiscountDate"" AND slc.""Amount"" = vd.""Amount"" AND slc.""CreditType"" = vd.""DiscountType""
+                        )");
+                    if (migrated > 0) initLogger.LogInformation("PostgreSQL (Render): Migrated {Count} VendorDiscounts to SupplierLedgerCredits", migrated);
+                    initLogger.LogInformation("Production/Render: SupplierLedgerCredits table ensured.");
+                }
+                catch (Exception ex)
+                {
+                    initLogger.LogWarning(ex, "Production/Render: SupplierLedgerCredits ensure failed: {Message}", ex.Message);
+                }
+                initLogger.LogInformation("Production/Render (PostgreSQL): skipping remaining background schema init. Schema via RUN_ON_RENDER_PSQL.sql.");
                 return;
             }
             // CRITICAL: Ensure all required columns exist (fixes login when migrations haven't run)
