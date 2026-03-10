@@ -1,6 +1,6 @@
--- Fix remaining datetime columns stored as TEXT (causes NpgsqlDataReader GetInfo/date_trunc errors).
--- Run once on Render Postgres via RunSql (DATABASE_URL_EXTERNAL from .env).
--- Idempotent: safe to run if column is already timestamp (use USING with cast).
+-- Fix remaining datetime columns stored as TEXT (causes NpgsqlDataReader GetInfo errors).
+-- Run ONCE on Render Postgres via RunSql (DATABASE_URL_EXTERNAL from .env).
+-- Do not re-run after columns are already timestamp (trim on timestamp will error).
 
 -- PaymentReceipts (model: DateTime)
 ALTER TABLE "PaymentReceipts" ALTER COLUMN "GeneratedAt" TYPE timestamp with time zone USING "GeneratedAt"::timestamp with time zone;
