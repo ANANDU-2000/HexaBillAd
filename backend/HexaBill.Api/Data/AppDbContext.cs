@@ -555,6 +555,15 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.PeriodType).HasMaxLength(10);
                 entity.Property(e => e.PeriodLabel).HasMaxLength(20);
                 entity.Property(e => e.Status).HasMaxLength(15);
+                if (Database.IsNpgsql())
+                {
+                    entity.Property(e => e.PeriodStart).HasColumnType("timestamp with time zone");
+                    entity.Property(e => e.PeriodEnd).HasColumnType("timestamp with time zone");
+                    entity.Property(e => e.DueDate).HasColumnType("timestamp with time zone");
+                    entity.Property(e => e.CalculatedAt).HasColumnType("timestamp with time zone");
+                    entity.Property(e => e.SubmittedAt).HasColumnType("timestamp with time zone");
+                    entity.Property(e => e.LockedAt).HasColumnType("timestamp with time zone");
+                }
                 entity.Property(e => e.Box1a).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.Box1b).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.Box2).HasColumnType("decimal(18,4)");
