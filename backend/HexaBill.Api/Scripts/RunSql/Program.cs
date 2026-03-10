@@ -4,12 +4,18 @@ using Npgsql;
 var cwd = Directory.GetCurrentDirectory();
 var apiDir = Path.Combine(cwd, "backend", "HexaBill.Api");
 var envPath = Path.Combine(apiDir, ".env");
-var sqlPath = Path.Combine(apiDir, "Scripts", "Ensure_SupplierLedgerCredits.sql");
+var defaultSql = "Ensure_SupplierLedgerCredits.sql";
+var sqlFile = args.Length > 0 ? args[0] : defaultSql;
+var sqlPath = Path.Combine(apiDir, "Scripts", sqlFile);
+if (!Path.IsPathRooted(sqlPath) && !File.Exists(sqlPath))
+    sqlPath = Path.Combine(apiDir, "Scripts", defaultSql);
 if (!File.Exists(envPath) && File.Exists(Path.Combine(cwd, ".env")))
 {
     apiDir = cwd;
     envPath = Path.Combine(cwd, ".env");
-    sqlPath = Path.Combine(cwd, "backend", "HexaBill.Api", "Scripts", "Ensure_SupplierLedgerCredits.sql");
+    sqlPath = File.Exists(Path.Combine(cwd, "backend", "HexaBill.Api", "Scripts", sqlFile))
+        ? Path.Combine(cwd, "backend", "HexaBill.Api", "Scripts", sqlFile)
+        : Path.Combine(cwd, "backend", "HexaBill.Api", "Scripts", defaultSql);
 }
 
 if (!File.Exists(envPath))
@@ -110,7 +116,7 @@ try
             await cmd.ExecuteNonQueryAsync();
         }
     }
-    Console.WriteLine("Done. SupplierLedgerCredits table ensured.");
+    Console.WriteLine("Done.");
     return 0;
 }
 catch (Exception ex)

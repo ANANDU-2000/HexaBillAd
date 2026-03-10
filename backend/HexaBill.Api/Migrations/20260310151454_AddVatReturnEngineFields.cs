@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -154,25 +154,43 @@ namespace HexaBill.Api.Migrations
                         principalColumn: "Id");
                 });
 
-            migrationBuilder.CreateTable(
-                name: "SupplierLedgerCredits",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    TenantId = table.Column<int>(type: "INTEGER", nullable: false),
-                    SupplierName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    CreditDate = table.Column<DateTime>(type: "TEXT", nullable: false),
-                    CreditType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
-                    Notes = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
-                    CreatedBy = table.Column<int>(type: "INTEGER", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_SupplierLedgerCredits", x => x.Id);
-                });
+            if (migrationBuilder.ActiveProvider?.Contains("Npgsql") != true)
+            {
+                migrationBuilder.CreateTable(
+                    name: "SupplierLedgerCredits",
+                    columns: table => new
+                    {
+                        Id = table.Column<int>(type: "INTEGER", nullable: false)
+                            .Annotation("Sqlite:Autoincrement", true),
+                        TenantId = table.Column<int>(type: "INTEGER", nullable: false),
+                        SupplierName = table.Column<string>(type: "TEXT", maxLength: 200, nullable: false),
+                        Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                        CreditDate = table.Column<DateTime>(type: "TEXT", nullable: false),
+                        CreditType = table.Column<string>(type: "TEXT", maxLength: 50, nullable: false),
+                        Notes = table.Column<string>(type: "TEXT", maxLength: 500, nullable: true),
+                        CreatedBy = table.Column<int>(type: "INTEGER", nullable: false),
+                        CreatedAt = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    },
+                    constraints: table =>
+                    {
+                        table.PrimaryKey("PK_SupplierLedgerCredits", x => x.Id);
+                    });
+            }
+            else
+            {
+                migrationBuilder.Sql(@"
+CREATE TABLE IF NOT EXISTS ""SupplierLedgerCredits"" (
+    ""Id"" SERIAL PRIMARY KEY,
+    ""TenantId"" INTEGER NOT NULL,
+    ""SupplierName"" VARCHAR(200) NOT NULL,
+    ""Amount"" decimal(18,2) NOT NULL,
+    ""CreditDate"" TIMESTAMP WITH TIME ZONE NOT NULL,
+    ""CreditType"" VARCHAR(50) NOT NULL,
+    ""Notes"" VARCHAR(500) NULL,
+    ""CreatedBy"" INTEGER NOT NULL,
+    ""CreatedAt"" TIMESTAMP WITH TIME ZONE NOT NULL
+);");
+            }
 
             migrationBuilder.CreateTable(
                 name: "VatReturnPeriods",
@@ -265,15 +283,22 @@ namespace HexaBill.Api.Migrations
                 table: "RecurringInvoices",
                 column: "RouteId");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_SupplierLedgerCredits_CreditDate",
-                table: "SupplierLedgerCredits",
-                column: "CreditDate");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_SupplierLedgerCredits_TenantId_SupplierName",
-                table: "SupplierLedgerCredits",
-                columns: new[] { "TenantId", "SupplierName" });
+            if (migrationBuilder.ActiveProvider?.Contains("Npgsql") == true)
+            {
+                migrationBuilder.Sql("CREATE INDEX IF NOT EXISTS \"IX_SupplierLedgerCredits_CreditDate\" ON \"SupplierLedgerCredits\" (\"CreditDate\");");
+                migrationBuilder.Sql("CREATE INDEX IF NOT EXISTS \"IX_SupplierLedgerCredits_TenantId_SupplierName\" ON \"SupplierLedgerCredits\" (\"TenantId\", \"SupplierName\");");
+            }
+            else
+            {
+                migrationBuilder.CreateIndex(
+                    name: "IX_SupplierLedgerCredits_CreditDate",
+                    table: "SupplierLedgerCredits",
+                    column: "CreditDate");
+                migrationBuilder.CreateIndex(
+                    name: "IX_SupplierLedgerCredits_TenantId_SupplierName",
+                    table: "SupplierLedgerCredits",
+                    columns: new[] { "TenantId", "SupplierName" });
+            }
 
             migrationBuilder.CreateIndex(
                 name: "IX_VatReturnPeriods_TenantId",
