@@ -52,6 +52,11 @@ namespace HexaBill.Api.Models
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
 
+        // FTA VAT: input tax and reverse charge
+        public bool IsTaxClaimable { get; set; } = true;
+        public bool IsReverseCharge { get; set; }
+        public decimal? ReverseChargeVat { get; set; }
+
         // Navigation properties
         public virtual Supplier? Supplier { get; set; }
         public virtual ICollection<PurchaseItem> Items { get; set; } = new List<PurchaseItem>();

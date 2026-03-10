@@ -11,7 +11,9 @@ using HexaBill.Api.Shared.Extensions;
 using System.Text.Json;
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Shared.Exceptions;
 using HexaBill.Api.Shared.Services;
 using HexaBill.Api.Shared.Validation;
 using Npgsql;
@@ -52,6 +54,7 @@ namespace HexaBill.Api.Modules.Billing
         private readonly IRouteScopeService _routeScopeService;
         private readonly ISalesSchemaService _salesSchema;
         private readonly ISaleValidationService _saleValidation;
+        private readonly IVatReturnValidationService _vatValidation;
         private readonly ILogger<SaleService> _logger;
 
         public SaleService(
@@ -66,10 +69,12 @@ namespace HexaBill.Api.Modules.Billing
             IRouteScopeService routeScopeService,
             ISalesSchemaService salesSchema,
             ISaleValidationService saleValidation,
+            IVatReturnValidationService vatValidation,
             ILogger<SaleService> logger)
         {
             _context = context;
             _saleValidation = saleValidation;
+            _vatValidation = vatValidation;
             _logger = logger;
             _pdfService = pdfService;
             _backupService = backupService;
@@ -154,6 +159,7 @@ namespace HexaBill.Api.Modules.Billing
                     Subtotal = s.Subtotal,
                     VatTotal = s.VatTotal,
                     Discount = s.Discount,
+                    RoundOff = s.RoundOff,
                     GrandTotal = s.GrandTotal,
                     PaymentStatus = s.PaymentStatus.ToString(),
                     Notes = s.Notes,
@@ -175,7 +181,8 @@ namespace HexaBill.Api.Modules.Billing
                     IsLocked = s.IsLocked,
                     LastModifiedAt = s.LastModifiedAt,
                     LastModifiedBy = s.LastModifiedByUser != null ? s.LastModifiedByUser.Name : null,
-                    EditReason = s.EditReason, // Reason for editing invoice
+                    EditReason = s.EditReason,
+                    IsZeroInvoice = s.IsZeroInvoice,
                     RowVersion = s.RowVersion != null && s.RowVersion.Length > 0 
                         ? Convert.ToBase64String(s.RowVersion) 
                         : null
@@ -261,6 +268,7 @@ namespace HexaBill.Api.Modules.Billing
                     s.Subtotal,
                     s.VatTotal,
                     s.Discount,
+                    s.RoundOff,
                     s.GrandTotal,
                     s.PaymentStatus,
                     s.Notes,
@@ -271,6 +279,7 @@ namespace HexaBill.Api.Modules.Billing
                     s.LastModifiedAt,
                     s.LastModifiedBy,
                     s.EditReason,
+                    s.IsZeroInvoice,
                     s.RowVersion
                 })
                 .FirstOrDefaultAsync();
@@ -301,6 +310,7 @@ namespace HexaBill.Api.Modules.Billing
                 Subtotal = header.Subtotal,
                 VatTotal = header.VatTotal,
                 Discount = header.Discount,
+                RoundOff = header.RoundOff,
                 GrandTotal = header.GrandTotal,
                 PaymentStatus = header.PaymentStatus.ToString(),
                 Notes = header.Notes,
@@ -323,6 +333,7 @@ namespace HexaBill.Api.Modules.Billing
                 LastModifiedAt = header.LastModifiedAt,
                 LastModifiedBy = lastModifiedByUser?.Name,
                 EditReason = header.EditReason,
+                IsZeroInvoice = header.IsZeroInvoice,
                 RowVersion = header.RowVersion != null && header.RowVersion.Length > 0 ? Convert.ToBase64String(header.RowVersion) : null
             };
         }
@@ -342,6 +353,7 @@ namespace HexaBill.Api.Modules.Billing
                 Subtotal = sale.Subtotal,
                 VatTotal = sale.VatTotal,
                 Discount = sale.Discount,
+                RoundOff = sale.RoundOff,
                 GrandTotal = sale.GrandTotal,
                 PaymentStatus = sale.PaymentStatus.ToString(),
                 Notes = sale.Notes,
@@ -364,6 +376,7 @@ namespace HexaBill.Api.Modules.Billing
                 LastModifiedAt = sale.LastModifiedAt,
                 LastModifiedBy = sale.LastModifiedByUser?.Name,
                 EditReason = sale.EditReason,
+                IsZeroInvoice = sale.IsZeroInvoice,
                 RowVersion = sale.RowVersion != null && sale.RowVersion.Length > 0 ? Convert.ToBase64String(sale.RowVersion) : null
             };
         }
@@ -504,6 +517,10 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 _logger.LogDebug("Using invoice number: {InvoiceNo}", invoiceNo);
 
+                var invoiceDate = request.InvoiceDate ?? _timeZoneService.ConvertToUtc(_timeZoneService.GetCurrentTime());
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, invoiceDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.");
+
                 // CRITICAL MULTI-TENANT FIX: Validate customer belongs to this owner and load customer
                 Customer? customer = null;
                 if (request.CustomerId.HasValue)
@@ -567,6 +584,7 @@ namespace HexaBill.Api.Modules.Billing
 
                 // Calculate totals — VAT% from company settings (tenant-scoped), not hardcoded. PRODUCTION_MASTER_TODO #37
                 var vatPercent = await GetVatPercentAsync(tenantId);
+                var isZeroInvoice = request.IsZeroInvoice;
                 decimal subtotal = 0;
                 decimal vatTotal = 0;
 
@@ -663,24 +681,26 @@ namespace HexaBill.Api.Modules.Billing
                     // Calculate base quantity
                     var baseQty = item.Qty * product.ConversionToBase;
 
-                    // Calculate line totals: Total = qty × price, VAT = Total × vatPercent%, Amount = Total + VAT
-                    var rowTotal = item.UnitPrice * item.Qty;
-                    var vatAmount = Math.Round(rowTotal * (vatPercent / 100), 2);
+                    // Calculate line totals: Total = qty × price, VAT = Total × vatPercent%, Amount = Total + VAT. Zero invoice: force 0.
+                    var rowTotal = isZeroInvoice ? 0 : (item.UnitPrice * item.Qty);
+                    var vatAmount = isZeroInvoice ? 0 : Math.Round(rowTotal * (vatPercent / 100), 2, MidpointRounding.AwayFromZero);
                     var lineAmount = rowTotal + vatAmount;
 
                     subtotal += rowTotal;
                     vatTotal += vatAmount;
 
-                    // Create sale item
+                    // Create sale item (FTA: VatRate, VatScenario)
                     var saleItem = new SaleItem
                     {
                         ProductId = item.ProductId,
-                        UnitType = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper(), // Ensure UnitType is never null or empty
+                        UnitType = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper(),
                         Qty = item.Qty,
-                        UnitPrice = item.UnitPrice,
-                        Discount = 0, // No per-item discount
+                        UnitPrice = isZeroInvoice ? 0 : item.UnitPrice,
+                        Discount = 0,
                         VatAmount = vatAmount,
-                        LineTotal = lineAmount
+                        LineTotal = lineAmount,
+                        VatRate = isZeroInvoice ? 0 : (vatPercent / 100m),
+                        VatScenario = isZeroInvoice ? Shared.Services.VatScenarios.OutOfScope : Shared.Services.VatScenarios.Standard
                     };
 
                     saleItems.Add(saleItem);
@@ -720,8 +740,12 @@ namespace HexaBill.Api.Modules.Billing
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Apply global discount (subtract from subtotal + VAT)
-                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount), 2);
+                // Round-off: ±1.00 AED max; applied after VAT (VAT unchanged)
+                var roundOff = request.RoundOff;
+                if (Math.Abs(roundOff) > 1.0m)
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                // Apply global discount and round-off: FinalTotal = SubTotal + VatTotal - Discount + RoundOff
+                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOff), 2);
 
                 // CREDIT LIMIT VALIDATION: Check if sale would exceed customer credit limit
                 bool creditLimitExceeded = false;
@@ -771,23 +795,26 @@ namespace HexaBill.Api.Modules.Billing
                 
                 var sale = new Sale
                 {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
+                    OwnerId = tenantId,
+                    TenantId = tenantId,
                     InvoiceNo = invoiceNo,
-                    ExternalReference = request.ExternalReference, // Set external reference for idempotency
-                    InvoiceDate = request.InvoiceDate ?? _timeZoneService.ConvertToUtc(_timeZoneService.GetCurrentTime()), // Use GST time, store as UTC
+                    ExternalReference = request.ExternalReference,
+                    InvoiceDate = request.InvoiceDate ?? _timeZoneService.ConvertToUtc(_timeZoneService.GetCurrentTime()),
                     CustomerId = request.CustomerId,
                     BranchId = request.BranchId,
                     RouteId = request.RouteId,
                     Subtotal = subtotal,
                     VatTotal = vatTotal,
                     Discount = request.Discount,
+                    RoundOff = roundOff,
                     GrandTotal = grandTotal,
-                    TotalAmount = grandTotal, // Set TotalAmount = GrandTotal
-                    PaidAmount = initialPaidAmount, // Cash customer = paid immediately
-                    PaymentStatus = initialPaymentStatus, // Cash customer = Paid status
-                    IsFinalized = true, // Invoice is finalized immediately - stock decremented in transaction
+                    TotalAmount = grandTotal,
+                    PaidAmount = initialPaidAmount,
+                    PaymentStatus = initialPaymentStatus,
+                    IsFinalized = true,
                     Notes = request.Notes,
+                    IsZeroInvoice = isZeroInvoice,
+                    VatScenario = isZeroInvoice ? Shared.Services.VatScenarios.OutOfScope : (vatTotal > 0 ? Shared.Services.VatScenarios.Standard : Shared.Services.VatScenarios.ZeroRated),
                     CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -1134,8 +1161,11 @@ namespace HexaBill.Api.Modules.Billing
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Apply global discount (subtract from subtotal + VAT)
-                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount), 2);
+                // Round-off: ±1.00 AED max
+                var roundOffOverride = request.RoundOff;
+                if (Math.Abs(roundOffOverride) > 1.0m)
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffOverride), 2);
 
                 // CASH CUSTOMER LOGIC: If no customer ID (cash customer), auto-mark as paid with cash payment
                 bool isCashCustomerOverride = !request.CustomerId.HasValue;
@@ -1159,6 +1189,7 @@ namespace HexaBill.Api.Modules.Billing
                     Subtotal = subtotal,
                     VatTotal = vatTotal,
                     Discount = request.Discount,
+                    RoundOff = roundOffOverride,
                     GrandTotal = grandTotal,
                     TotalAmount = grandTotal, // Set TotalAmount = GrandTotal
                     PaidAmount = initialPaidAmountOverride, // Cash customer = paid immediately
@@ -1357,6 +1388,9 @@ namespace HexaBill.Api.Modules.Billing
 
                 if (existingSale.IsDeleted)
                     throw new InvalidOperationException("Cannot edit deleted sale");
+
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, existingSale.InvoiceDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.");
 
                 // PROD-4: Verify user exists and belongs to tenant
                 var user = await _context.Users
@@ -1582,6 +1616,7 @@ namespace HexaBill.Api.Modules.Billing
 
                 // Calculate new totals — VAT% from company settings (tenant-scoped)
                 var vatPercent = await GetVatPercentAsync(tenantId);
+                var isZeroInvoice = request.IsZeroInvoice;
                 decimal subtotal = 0;
                 decimal vatTotal = 0;
 
@@ -1640,8 +1675,8 @@ namespace HexaBill.Api.Modules.Billing
                         );
                     }
 
-                    var rowTotal = item.UnitPrice * item.Qty;
-                    var vatAmount = Math.Round(rowTotal * (vatPercent / 100), 2);
+                    var rowTotal = isZeroInvoice ? 0 : (item.UnitPrice * item.Qty);
+                    var vatAmount = isZeroInvoice ? 0 : Math.Round(rowTotal * (vatPercent / 100), 2, MidpointRounding.AwayFromZero);
                     var lineAmount = rowTotal + vatAmount;
 
                     subtotal += rowTotal;
@@ -1653,10 +1688,12 @@ namespace HexaBill.Api.Modules.Billing
                         ProductId = item.ProductId,
                         UnitType = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper(),
                         Qty = item.Qty,
-                        UnitPrice = item.UnitPrice,
+                        UnitPrice = isZeroInvoice ? 0 : item.UnitPrice,
                         Discount = 0,
                         VatAmount = vatAmount,
-                        LineTotal = lineAmount
+                        LineTotal = lineAmount,
+                        VatRate = isZeroInvoice ? 0 : (vatPercent / 100m),
+                        VatScenario = isZeroInvoice ? Shared.Services.VatScenarios.OutOfScope : Shared.Services.VatScenarios.Standard
                     };
                     newSaleItems.Add(saleItem);
 
@@ -1693,7 +1730,10 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
 
-                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount), 2);
+                var roundOffUpdate = request.RoundOff;
+                if (Math.Abs(roundOffUpdate) > 1.0m)
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffUpdate), 2);
 
                 // Delete old sale items
                 if (saleForUpdate.Items != null && saleForUpdate.Items.Any())
@@ -1706,8 +1746,11 @@ namespace HexaBill.Api.Modules.Billing
                 saleForUpdate.Subtotal = subtotal;
                 saleForUpdate.VatTotal = vatTotal;
                 saleForUpdate.Discount = request.Discount;
+                saleForUpdate.RoundOff = roundOffUpdate;
                 saleForUpdate.GrandTotal = grandTotal;
-                saleForUpdate.TotalAmount = grandTotal; // Update TotalAmount
+                saleForUpdate.TotalAmount = grandTotal;
+                saleForUpdate.IsZeroInvoice = isZeroInvoice;
+                saleForUpdate.VatScenario = isZeroInvoice ? Shared.Services.VatScenarios.OutOfScope : (vatTotal > 0 ? Shared.Services.VatScenarios.Standard : Shared.Services.VatScenarios.ZeroRated);
                 
                 // Admin and Staff: Update invoice date if provided
                 if (request.InvoiceDate.HasValue)
@@ -2115,6 +2158,9 @@ namespace HexaBill.Api.Modules.Billing
                 if (sale.IsDeleted)
                     return true; // Already deleted
 
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, sale.InvoiceDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot delete transactions in a locked period.");
+
                 // REVERSE TRANSACTIONS: Restore stock when invoice is canceled/deleted
                 // Only restore if invoice was finalized (stock was decremented)
                 if (sale.IsFinalized)
@@ -2314,9 +2360,11 @@ namespace HexaBill.Api.Modules.Billing
                     CustomerName = sale.Customer?.Name ?? "Cash Customer",
                     Subtotal = sale.Subtotal,
                     VatTotal = sale.VatTotal,
+                    RoundOff = sale.RoundOff,
                     GrandTotal = sale.GrandTotal,
                     PaymentStatus = sale.PaymentStatus.ToString(),
                     PaidAmount = sale.PaidAmount,
+                    IsZeroInvoice = sale.IsZeroInvoice,
                     Items = sale.Items?.Select(i => new SaleItemDto
                     {
                         Id = i.Id,
@@ -2583,13 +2631,15 @@ namespace HexaBill.Api.Modules.Billing
                 Subtotal = s.Subtotal,
                 VatTotal = s.VatTotal,
                 Discount = s.Discount,
+                RoundOff = s.RoundOff,
                 GrandTotal = s.GrandTotal,
                 PaymentStatus = s.PaymentStatus.ToString(),
                 Notes = s.Notes,
                 CreatedAt = s.CreatedAt,
                 DeletedBy = s.DeletedByUser?.Name,
                 DeletedAt = s.DeletedAt,
-                EditReason = s.EditReason, // Reason for editing invoice
+                EditReason = s.EditReason,
+                IsZeroInvoice = s.IsZeroInvoice,
                 Items = s.Items.Select(i => new SaleItemDto
                 {
                     Id = i.Id,

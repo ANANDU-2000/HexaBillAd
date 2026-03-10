@@ -27,15 +27,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly IComprehensiveBackupService _comprehensiveBackupService;
         private readonly AppDbContext _context;
         private readonly IFileUploadService _fileUploadService;
+        private readonly ILogoUploadService _logoUploadService;
+        private readonly ISettingsService _settingsService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AdminController> _logger;
 
-        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, IConfiguration configuration, ILogger<AdminController> logger)
+        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, ILogoUploadService logoUploadService, ISettingsService settingsService, IConfiguration configuration, ILogger<AdminController> logger)
         {
             _backupService = backupService;
             _comprehensiveBackupService = comprehensiveBackupService;
             _context = context;
             _fileUploadService = fileUploadService;
+            _logoUploadService = logoUploadService;
+            _settingsService = settingsService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -231,14 +235,32 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
+        [HttpGet("logo")]
+        public async Task<ActionResult<ApiResponse<LogoMetadata>>> GetLogo()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var meta = await _settingsService.GetLogoMetadataAsync(tenantId);
+                if (meta == null)
+                    return Ok(new ApiResponse<LogoMetadata> { Success = true, Data = null, Message = "No logo set" });
+                return Ok(new ApiResponse<LogoMetadata> { Success = true, Data = meta });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetLogo failed");
+                return StatusCode(500, new ApiResponse<LogoMetadata> { Success = false, Message = "An error occurred", Errors = new List<string> { ex.Message } });
+            }
+        }
+
         [HttpPost("logo/upload")]
-        public async Task<ActionResult<ApiResponse<string>>> UploadLogo([FromForm] IFormFile file)
+        public async Task<ActionResult<ApiResponse<object>>> UploadLogo([FromForm] IFormFile file)
         {
             try
             {
                 if (file == null || file.Length == 0)
                 {
-                    return BadRequest(new ApiResponse<string>
+                    return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
                         Message = "No file uploaded"
@@ -246,49 +268,28 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
 
                 var tenantId = CurrentTenantId;
-                // UploadLogoAsync returns relativePath in format "{tenantId}/logo_xxx.ext"
-                var relativePath = await _fileUploadService.UploadLogoAsync(file, tenantId);
-                
-                // Construct full URL path - relativePath already includes tenant subfolder
-                var logoUrl = $"/uploads/{relativePath}";
-                
-                // Update COMPANY_LOGO for current tenant (each tenant has own logo)
-                var logoSetting = await _context.Settings
-                    .FirstOrDefaultAsync(s => s.Key == "COMPANY_LOGO" && s.OwnerId == tenantId);
-                if (logoSetting == null)
-                    logoSetting = await _context.Settings
-                        .FirstOrDefaultAsync(s => s.Key == "COMPANY_LOGO" && s.TenantId == tenantId);
+                var userId = int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid) ? (int?)uid : null;
+                var result = await _logoUploadService.UploadAsync(file, tenantId, userId);
 
-                if (logoSetting != null)
-                {
-                    logoSetting.Value = logoUrl;
-                    logoSetting.UpdatedAt = DateTime.UtcNow;
-                }
-                else
-                {
-                    _context.Settings.Add(new Setting
-                    {
-                        Key = "COMPANY_LOGO",
-                        OwnerId = tenantId,
-                        TenantId = tenantId,
-                        Value = logoUrl,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new ApiResponse<string>
+                return Ok(new ApiResponse<object>
                 {
                     Success = true,
                     Message = "Logo uploaded successfully",
-                    Data = logoUrl
+                    Data = new { logoUrl = result.LogoUrl, width = result.Width, height = result.Height, fileSizeKb = result.FileSizeKb }
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = ex.Message
                 });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<string>
+                _logger.LogError(ex, "UploadLogo failed");
+                return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
                     Message = "An error occurred",
@@ -303,28 +304,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
             try
             {
                 var tenantId = CurrentTenantId;
-                var logoSetting = await _context.Settings
-                    .FirstOrDefaultAsync(s => s.Key == "COMPANY_LOGO" && (s.OwnerId == tenantId || s.TenantId == tenantId));
-
-                if (logoSetting != null && !string.IsNullOrEmpty(logoSetting.Value))
-                {
-                    // Delete the file
-                    await _fileUploadService.DeleteFileAsync(logoSetting.Value);
-                    
-                    // Clear the setting
-                    logoSetting.Value = "";
-                    logoSetting.UpdatedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync();
-                }
-
+                await _settingsService.ClearLogoAsync(tenantId);
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Message = "Logo deleted successfully"
+                    Message = "Logo removed. File is kept in storage for existing invoices."
                 });
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "DeleteLogo failed");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,

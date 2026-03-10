@@ -3,6 +3,7 @@ using System;
 using HexaBill.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace HexaBill.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310151454_AddVatReturnEngineFields")]
+    partial class AddVatReturnEngineFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.0");
@@ -820,9 +823,6 @@ namespace HexaBill.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("RoundOff")
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("TenantId")
                         .HasColumnType("INTEGER");
 
@@ -1068,45 +1068,6 @@ namespace HexaBill.Api.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("PaymentIdempotencies");
-                });
-
-            modelBuilder.Entity("HexaBill.Api.Models.PaymentReceipt", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("GeneratedByUserId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("PaymentId")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("PdfStoragePath")
-                        .HasMaxLength(500)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ReceiptNumber")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("TenantId")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GeneratedByUserId");
-
-                    b.HasIndex("PaymentId");
-
-                    b.HasIndex("TenantId", "ReceiptNumber")
-                        .IsUnique();
-
-                    b.ToTable("PaymentReceipts");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.PriceChangeLog", b =>
@@ -1902,9 +1863,6 @@ namespace HexaBill.Api.Migrations
 
                     b.Property<string>("PaymentStatus")
                         .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<decimal>("RoundOff")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("RouteId")
@@ -3211,25 +3169,6 @@ namespace HexaBill.Api.Migrations
                     b.Navigation("Payment");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("HexaBill.Api.Models.PaymentReceipt", b =>
-                {
-                    b.HasOne("HexaBill.Api.Models.User", "GeneratedByUser")
-                        .WithMany()
-                        .HasForeignKey("GeneratedByUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("HexaBill.Api.Models.Payment", "Payment")
-                        .WithMany()
-                        .HasForeignKey("PaymentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GeneratedByUser");
-
-                    b.Navigation("Payment");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.PriceChangeLog", b =>

@@ -286,6 +286,7 @@ builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPaymentReceiptService, PaymentReceiptService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IBranchService, HexaBill.Api.Modules.Branches.BranchService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IRouteService, HexaBill.Api.Modules.Branches.RouteService>();
@@ -293,6 +294,7 @@ builder.Services.AddScoped<HexaBill.Api.Shared.Services.IRouteScopeService, Hexa
 builder.Services.AddScoped<HexaBill.Api.Shared.Services.ISalesSchemaService, HexaBill.Api.Shared.Services.SalesSchemaService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IVatReturnReportService, VatReturnReportService>();
+builder.Services.AddScoped<IVatReturnValidationService, VatReturnValidationService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IRecurringInvoiceService, RecurringInvoiceService>();
 builder.Services.AddScoped<IPdfService, PdfService>();
@@ -314,6 +316,8 @@ else
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
     logger.LogWarning("⚠️ R2 storage not configured - using local disk storage (files will be lost on server restart/deploy). Set R2_ENDPOINT, R2_ACCESS_KEY, and R2_SECRET_KEY to enable R2 storage.");
 }
+// Tenant-isolated logo storage (IStorageService): used by logo upload API and PDF; always use local for now
+builder.Services.AddScoped<HexaBill.Api.Shared.Services.IStorageService, HexaBill.Api.Shared.Services.LocalStorageService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IProfitService, ProfitService>();
 builder.Services.AddScoped<IStockAdjustmentService, StockAdjustmentService>();
@@ -326,6 +330,7 @@ builder.Services.AddScoped<IInvoiceNumberService, InvoiceNumberService>();
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>(); // Owner-specific company settings
+builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.ILogoUploadService, HexaBill.Api.Modules.SuperAdmin.LogoUploadService>();
 builder.Services.AddSingleton<ITimeZoneService, TimeZoneService>(); // Gulf Standard Time (GST, UTC+4)
 builder.Services.AddScoped<IStartupDiagnosticsService, StartupDiagnosticsService>(); // CRITICAL: Startup diagnostics
 builder.Services.AddScoped<ISuperAdminTenantService, SuperAdminTenantService>(); // Super Admin tenant management
@@ -933,7 +938,7 @@ else
     });
 }
 
-// Serve static files from wwwroot/uploads (for logo and other uploads)
+// Serve static files from wwwroot/uploads (legacy uploads; tenant logos use /api/storage/ with tenant check)
 var uploadsPath = Path.Combine(builder.Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
 if (!Directory.Exists(uploadsPath))
 {

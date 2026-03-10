@@ -7,12 +7,14 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Reports
 {
     public interface IVatReturnReportService
     {
         Task<VatReturnDto> GetVatReturnAsync(int tenantId, int quarter, int year);
+        Task<VatReturn201Dto> GetVatReturn201Async(int tenantId, DateTime fromDate, DateTime toDate);
     }
 
     public class VatReturnReportService : IVatReturnReportService
@@ -27,73 +29,241 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<VatReturnDto> GetVatReturnAsync(int tenantId, int quarter, int year)
         {
             var (fromDate, toDate) = QuarterToDateRange(quarter, year);
-            var from = fromDate.ToUtcKind();
-            var to = toDate.AddDays(1).ToUtcKind();
-
-            // Sales: taxable (with VAT) and zero-rated (VatTotal=0)
-            var salesQuery = _context.Sales
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted
-                    && s.InvoiceDate >= from && s.InvoiceDate < to);
-
-            // Box 1: Value of standard-rated supplies (excl. VAT)
-            var taxableSubtotal = await salesQuery.Where(s => s.VatTotal > 0)
-                .SumAsync(s => (decimal?)s.Subtotal) ?? 0;
-            var taxableVat = await salesQuery.Where(s => s.VatTotal > 0)
-                .SumAsync(s => (decimal?)s.VatTotal) ?? 0;
-
-            var zeroRated = await salesQuery.Where(s => s.VatTotal == 0)
-                .SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
-
-            // Sale returns: reduce taxable and VAT
-            var returnsQuery = _context.SaleReturns
-                .Where(sr => sr.TenantId == tenantId
-                    && sr.ReturnDate >= from && sr.ReturnDate < to);
-            var returnsVat = await returnsQuery.SumAsync(sr => (decimal?)sr.VatTotal) ?? 0;
-            var returnsSubtotal = await returnsQuery.SumAsync(sr => (decimal?)sr.Subtotal) ?? 0;
-
-            // Box 1: Net taxable supplies value (excl. VAT)
-            var box1 = taxableSubtotal - returnsSubtotal;
-            if (box1 < 0) box1 = 0;
-
-            // Box 4: Output VAT (tax on taxable supplies)
-            var outputVat = taxableVat - returnsVat;
-            if (outputVat < 0) outputVat = 0;
-
-            // Purchases: input VAT (recoverable)
-            var purchaseVat = await _context.Purchases
-                .Where(p => p.TenantId == tenantId && p.PurchaseDate >= from && p.PurchaseDate < to)
-                .SumAsync(p => (decimal?)p.VatTotal) ?? 0;
-
-            var purchaseReturnVat = await _context.PurchaseReturns
-                .Where(pr => pr.TenantId == tenantId && pr.ReturnDate >= from && pr.ReturnDate < to)
-                .SumAsync(pr => (decimal?)pr.VatTotal) ?? 0;
-
-            var inputVat = purchaseVat - purchaseReturnVat;
-            if (inputVat < 0) inputVat = 0;
-
-            // Box 9: Net VAT due
-            var netVatDue = outputVat - inputVat;
-            if (netVatDue < 0) netVatDue = 0;
-
+            var dto = await GetVatReturn201Async(tenantId, fromDate, toDate);
             return new VatReturnDto
             {
                 Quarter = quarter,
                 Year = year,
                 FromDate = fromDate,
                 ToDate = toDate,
-                Box1_TaxableSupplies = box1,
-                Box2_ZeroRatedSupplies = zeroRated,
-                Box3_ExemptSupplies = 0,
-                Box4_TaxOnTaxableSupplies = outputVat,
-                Box5_ReverseCharge = 0,
-                Box6_TotalDue = outputVat,
+                Box1_TaxableSupplies = dto.Box1a,
+                Box2_ZeroRatedSupplies = dto.Box2,
+                Box3_ExemptSupplies = dto.Box3,
+                Box4_TaxOnTaxableSupplies = dto.Box1b,
+                Box5_ReverseCharge = dto.Box4,
+                Box6_TotalDue = dto.Box1b,
                 Box7_TaxNotCreditable = 0,
-                Box8_RecoverableTax = inputVat,
-                Box9_NetVatDue = netVatDue
+                Box8_RecoverableTax = dto.Box12,
+                Box9_NetVatDue = dto.Box13a
             };
         }
 
-        private static (DateTime from, DateTime to) QuarterToDateRange(int quarter, int year)
+        public async Task<VatReturn201Dto> GetVatReturn201Async(int tenantId, DateTime fromDate, DateTime toDate)
+        {
+            var from = fromDate.ToUtcKind();
+            var to = toDate.Date.AddDays(1).ToUtcKind();
+            var outputLines = new List<VatReturnOutputLineDto>();
+            var inputLines = new List<VatReturnInputLineDto>();
+            var creditNoteLines = new List<VatReturnCreditNoteLineDto>();
+            var reverseChargeLines = new List<VatReturnReverseChargeLineDto>();
+
+            // Resolve tenant: prefer TenantId, fallback OwnerId for backward compatibility
+            var salesInPeriod = await _context.Sales
+                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId) && !s.IsDeleted
+                    && s.InvoiceDate >= from && s.InvoiceDate < to)
+                .OrderBy(s => s.InvoiceDate)
+                .ToListAsync();
+
+            decimal box1a = 0, box1b = 0, box2 = 0, box3 = 0;
+            foreach (var s in salesInPeriod)
+            {
+                if (s.IsZeroInvoice) continue;
+                var isStandard = IsStandardRated(s);
+                var net = s.Subtotal;
+                var vat = s.VatTotal;
+                if (isStandard)
+                {
+                    box1a += VatCalculator.Round(net);
+                    box1b += VatCalculator.Round(vat);
+                    outputLines.Add(new VatReturnOutputLineDto
+                    {
+                        Type = "Sale",
+                        Reference = s.InvoiceNo ?? s.Id.ToString(),
+                        Date = s.InvoiceDate,
+                        NetAmount = net,
+                        VatAmount = vat,
+                        VatScenario = s.VatScenario ?? "Standard"
+                    });
+                }
+                else if (string.Equals(s.VatScenario, VatScenarios.ZeroRated, StringComparison.OrdinalIgnoreCase))
+                {
+                    box2 += VatCalculator.Round(net);
+                    outputLines.Add(new VatReturnOutputLineDto { Type = "Sale", Reference = s.InvoiceNo ?? s.Id.ToString(), Date = s.InvoiceDate, NetAmount = net, VatAmount = 0, VatScenario = "ZeroRated" });
+                }
+                else if (string.Equals(s.VatScenario, VatScenarios.Exempt, StringComparison.OrdinalIgnoreCase))
+                {
+                    box3 += VatCalculator.Round(net);
+                }
+            }
+
+            // Sale returns (output credit notes): reduce Box 1a/1b
+            var returnsInPeriod = await _context.SaleReturns
+                .Where(sr => (sr.TenantId != null ? sr.TenantId == tenantId : sr.OwnerId == tenantId)
+                    && sr.ReturnDate >= from && sr.ReturnDate < to)
+                .ToListAsync();
+            decimal returnsNet = 0, returnsVat = 0;
+            foreach (var sr in returnsInPeriod)
+            {
+                returnsNet += VatCalculator.Round(sr.Subtotal);
+                returnsVat += VatCalculator.Round(sr.VatTotal);
+                creditNoteLines.Add(new VatReturnCreditNoteLineDto
+                {
+                    Reference = sr.ReturnNo ?? sr.Id.ToString(),
+                    Date = sr.ReturnDate,
+                    NetAmount = sr.Subtotal,
+                    VatAmount = sr.VatTotal,
+                    Side = "Output"
+                });
+            }
+            box1a = Math.Max(0, box1a - returnsNet);
+            box1b = Math.Max(0, box1b - returnsVat);
+
+            // Box 4: Reverse charge base (purchases)
+            var purchasesInPeriod = await _context.Purchases
+                .Where(p => (p.TenantId != null ? p.TenantId == tenantId : p.OwnerId == tenantId)
+                    && p.PurchaseDate >= from && p.PurchaseDate < to)
+                .ToListAsync();
+
+            decimal box4 = 0, box9b = 0, box10 = 0;
+            foreach (var p in purchasesInPeriod)
+            {
+                if (p.IsReverseCharge)
+                {
+                    var rcNet = p.Subtotal ?? 0;
+                    var rcVat = p.ReverseChargeVat ?? p.VatTotal ?? 0;
+                    box4 += VatCalculator.Round(rcNet);
+                    box10 += VatCalculator.Round(p.IsTaxClaimable ? rcVat : 0);
+                    reverseChargeLines.Add(new VatReturnReverseChargeLineDto
+                    {
+                        Reference = p.InvoiceNo ?? p.Id.ToString(),
+                        Date = p.PurchaseDate,
+                        NetAmount = rcNet,
+                        ReverseChargeVat = rcVat
+                    });
+                }
+                else if (p.IsTaxClaimable && (p.VatTotal ?? 0) > 0)
+                {
+                    box9b += VatCalculator.Round(p.VatTotal ?? 0);
+                    inputLines.Add(new VatReturnInputLineDto
+                    {
+                        Type = "Purchase",
+                        Reference = p.InvoiceNo ?? p.Id.ToString(),
+                        Date = p.PurchaseDate,
+                        NetAmount = p.Subtotal ?? 0,
+                        VatAmount = p.VatTotal ?? 0,
+                        ClaimableVat = p.VatTotal ?? 0,
+                        TaxType = "Standard"
+                    });
+                }
+            }
+
+            // Expenses: Box 9b (claimable, non-petroleum) and PetroleumExcluded
+            var expensesInPeriod = await _context.Expenses
+                .Where(e => (e.TenantId != null ? e.TenantId == tenantId : e.OwnerId == tenantId)
+                    && e.Date >= from && e.Date < to)
+                .ToListAsync();
+
+            decimal petroleumExcluded = 0;
+            foreach (var e in expensesInPeriod)
+            {
+                if (string.Equals(e.TaxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase))
+                {
+                    petroleumExcluded += VatCalculator.Round(e.Amount);
+                    continue;
+                }
+                var claimable = e.ClaimableVat ?? 0;
+                if (e.IsTaxClaimable && claimable > 0)
+                {
+                    box9b += VatCalculator.Round(claimable);
+                    inputLines.Add(new VatReturnInputLineDto
+                    {
+                        Type = "Expense",
+                        Reference = e.Id.ToString(),
+                        Date = e.Date,
+                        NetAmount = e.Amount,
+                        VatAmount = e.VatAmount ?? 0,
+                        ClaimableVat = claimable,
+                        TaxType = e.TaxType ?? "Standard"
+                    });
+                }
+            }
+
+            // Box 11: Input credit notes (purchase returns VAT) - if we support input credit note VAT later
+            decimal box11 = 0;
+            var purchaseReturnsInPeriod = await _context.PurchaseReturns
+                .Where(pr => (pr.TenantId != null ? pr.TenantId == tenantId : pr.OwnerId == tenantId)
+                    && pr.ReturnDate >= from && pr.ReturnDate < to)
+                .ToListAsync();
+            foreach (var pr in purchaseReturnsInPeriod)
+                box11 += VatCalculator.Round(pr.VatTotal);
+
+            // Box 12 = Box9b + Box10 - Box11
+            var box12 = box9b + box10 - box11;
+            if (box12 < 0) box12 = 0;
+
+            var box13a = Math.Max(0, box1b - box12);
+            var box13b = Math.Max(0, box12 - box1b);
+
+            var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate, toDate);
+            int txCount = salesInPeriod.Count + returnsInPeriod.Count + purchasesInPeriod.Count + expensesInPeriod.Count;
+
+            return new VatReturn201Dto
+            {
+                PeriodLabel = periodLabel,
+                PeriodStart = fromDate,
+                PeriodEnd = toDate,
+                DueDate = dueDate,
+                Status = "Draft",
+                Box1a = VatCalculator.Round(box1a),
+                Box1b = VatCalculator.Round(box1b),
+                Box2 = VatCalculator.Round(box2),
+                Box3 = VatCalculator.Round(box3),
+                Box4 = VatCalculator.Round(box4),
+                Box9b = VatCalculator.Round(box9b),
+                Box10 = VatCalculator.Round(box10),
+                Box11 = VatCalculator.Round(box11),
+                Box12 = VatCalculator.Round(box12),
+                Box13a = VatCalculator.Round(box13a),
+                Box13b = VatCalculator.Round(box13b),
+                PetroleumExcluded = VatCalculator.Round(petroleumExcluded),
+                TransactionCount = txCount,
+                OutputLines = outputLines,
+                InputLines = inputLines,
+                CreditNoteLines = creditNoteLines,
+                ReverseChargeLines = reverseChargeLines
+            };
+        }
+
+        private static bool IsStandardRated(Sale s)
+        {
+            if (!string.IsNullOrWhiteSpace(s.VatScenario))
+                return string.Equals(s.VatScenario, VatScenarios.Standard, StringComparison.OrdinalIgnoreCase);
+            return s.VatTotal > 0;
+        }
+
+        private static (string label, DateTime due) GetPeriodLabelAndDue(DateTime from, DateTime to)
+        {
+            var months = (to.Year - from.Year) * 12 + (to.Month - from.Month);
+            if (months <= 1)
+            {
+                var label = from.ToString("MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                var due = new DateTime(from.Year, from.Month, 1).AddMonths(2).AddDays(27); // e.g. Jan -> 28 Feb
+                return (label, due);
+            }
+            if (months <= 3)
+            {
+                var q = (from.Month - 1) / 3 + 1;
+                var label = $"Q{q}-{from.Year}";
+                var endMonth = from.Month + 2;
+                var year = from.Year;
+                if (endMonth > 12) { endMonth -= 12; year++; }
+                var due = new DateTime(year, endMonth, 28);
+                return (label, due);
+            }
+            return (from.ToString("yyyy", System.Globalization.CultureInfo.InvariantCulture), to.AddMonths(1));
+        }
+
+        public static (DateTime from, DateTime to) QuarterToDateRange(int quarter, int year)
         {
             return quarter switch
             {

@@ -11,12 +11,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.SuperAdmin
 {
+    public class LogoMetadata
+    {
+        public string LogoUrl { get; set; } = "";
+        public DateTime? UploadedAt { get; set; }
+        public double FileSizeKb { get; set; }
+        public string OriginalName { get; set; } = "";
+    }
+
     public interface ISettingsService
     {
         Task<Dictionary<string, string>> GetOwnerSettingsAsync(int tenantId);
         Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value);
         Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings);
         Task<CompanySettings> GetCompanySettingsAsync(int tenantId);
+        Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId);
+        Task ClearLogoAsync(int tenantId);
     }
 
     public class SettingsService : ISettingsService
@@ -259,8 +269,45 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Currency = settingsDict.GetValueOrDefault("CURRENCY", "AED"),
                 VatPercent = decimal.TryParse(settingsDict.GetValueOrDefault("VAT_PERCENT", "5"), out var vat) ? vat : 5.0m,
                 InvoicePrefix = settingsDict.GetValueOrDefault("INVOICE_PREFIX", "FM"),
-                LogoPath = settingsDict.GetValueOrDefault("LOGO_PATH", "/uploads/logo.png")
+                LogoPath = settingsDict.GetValueOrDefault("LOGO_PUBLIC_URL", settingsDict.GetValueOrDefault("COMPANY_LOGO", settingsDict.GetValueOrDefault("LOGO_PATH", "/uploads/logo.png"))),
+                LogoStorageKey = settingsDict.TryGetValue("LOGO_STORAGE_KEY", out var keyVal) ? keyVal : null
             };
+        }
+
+        /// <summary>Get logo metadata for GET /api/settings/logo or GET /api/Admin/logo.</summary>
+        public async Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId)
+        {
+            var dict = await GetOwnerSettingsAsync(tenantId);
+            var url = dict.GetValueOrDefault("LOGO_PUBLIC_URL", dict.GetValueOrDefault("COMPANY_LOGO", ""));
+            if (string.IsNullOrWhiteSpace(url)) return null;
+            var bytesStr = dict.GetValueOrDefault("LOGO_FILE_SIZE_BYTES", "");
+            var fileSizeKb = double.TryParse(bytesStr, out var b) ? Math.Round(b / 1024.0, 2) : 0;
+            var uploadedAt = dict.GetValueOrDefault("LOGO_UPLOADED_AT", "");
+            DateTime? dt = DateTime.TryParse(uploadedAt, out var parsed) ? parsed : null;
+            return new LogoMetadata
+            {
+                LogoUrl = url,
+                UploadedAt = dt,
+                FileSizeKb = fileSizeKb,
+                OriginalName = dict.GetValueOrDefault("LOGO_ORIGINAL_NAME", "")
+            };
+        }
+
+        /// <summary>Clear logo settings. Does NOT delete files from storage.</summary>
+        public async Task ClearLogoAsync(int tenantId)
+        {
+            var keys = new[] { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "COMPANY_LOGO", "LOGO_PATH" };
+            foreach (var key in keys)
+            {
+                var setting = await _context.Settings
+                    .FirstOrDefaultAsync(s => s.Key == key && (s.OwnerId == tenantId || s.TenantId == tenantId));
+                if (setting != null)
+                {
+                    setting.Value = "";
+                    setting.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+            await _context.SaveChangesAsync();
         }
 
         /// <summary>

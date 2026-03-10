@@ -447,6 +447,7 @@ namespace HexaBill.Api.Modules.Billing
                     CustomerId = request.CustomerId,
                     Items = request.Items ?? new List<SaleItemRequest>(),
                     Discount = request.Discount,
+                    RoundOff = request.RoundOff,
                     Notes = request.Notes,
                     Payments = request.Payments,
                     InvoiceDate = request.InvoiceDate,
@@ -864,6 +865,7 @@ namespace HexaBill.Api.Modules.Billing
                     UserId = userId,
                     Name = request.Name ?? "Held Invoice",
                     InvoiceData = JsonSerializer.Serialize(request.InvoiceData),
+                    RoundOff = request.RoundOff,
                     CreatedAt = DateTime.UtcNow
                 };
 
@@ -879,6 +881,7 @@ namespace HexaBill.Api.Modules.Billing
                         Id = heldInvoice.Id,
                         Name = heldInvoice.Name,
                         InvoiceData = request.InvoiceData,
+                        RoundOff = heldInvoice.RoundOff,
                         CreatedAt = heldInvoice.CreatedAt
                     }
                 });
@@ -920,6 +923,7 @@ namespace HexaBill.Api.Modules.Billing
                     Id = h.Id,
                     Name = h.Name,
                     InvoiceData = JsonSerializer.Deserialize<object>(h.InvoiceData) ?? new { },
+                    RoundOff = h.RoundOff,
                     CreatedAt = h.CreatedAt
                 }).ToList();
 

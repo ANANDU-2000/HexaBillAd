@@ -332,8 +332,8 @@ export const salesAPI = {
   },
 
   // Held Invoice APIs
-  holdInvoice: async (name, invoiceData) => {
-    const response = await api.post('/sales/held', { name, invoiceData })
+  holdInvoice: async (name, invoiceData, roundOff = 0) => {
+    const response = await api.post('/sales/held', { name, invoiceData, roundOff })
     return response.data
   },
 
@@ -638,6 +638,26 @@ export const paymentsAPI = {
     const response = await api.delete(`/payments/${id}`)
     return response.data
   },
+
+  generateReceipt: async (paymentId) => {
+    const response = await api.post(`/payments/${paymentId}/receipt`)
+    return response.data
+  },
+
+  generateReceiptBatch: async (paymentIds) => {
+    const response = await api.post('/payments/receipt/batch', { paymentIds })
+    return response.data
+  },
+
+  getReceiptByPayment: async (paymentId) => {
+    const response = await api.get(`/payments/receipt/by-payment/${paymentId}`)
+    return response.data
+  },
+
+  getCustomerReceipts: async (customerId) => {
+    const response = await api.get(`/payments/customers/${customerId}/receipts`)
+    return response.data
+  },
 }
 
 export const expensesAPI = {
@@ -686,6 +706,16 @@ export const expensesAPI = {
 
   createCategory: async (categoryData) => {
     const response = await api.post('/expenses/categories', categoryData)
+    return response.data
+  },
+
+  updateCategory: async (id, categoryData) => {
+    const response = await api.put(`/expenses/categories/${id}`, categoryData)
+    return response.data
+  },
+
+  bulkVatUpdate: async (payload) => {
+    const response = await api.post('/expenses/bulk-vat-update', payload)
     return response.data
   },
 
@@ -817,8 +847,69 @@ export const reportsAPI = {
     return response.data
   },
 
-  getVatReturn: async (quarter = 1, year = 2026) => {
-    const response = await api.get('/reports/vat-return', { params: { quarter, year } })
+  getVatReturn: async (params = {}) => {
+    const p = {}
+    if (params.from && params.to) {
+      p.from = toYYYYMMDD(params.from)
+      p.to = toYYYYMMDD(params.to)
+    } else if (params.quarter != null && params.year != null) {
+      p.quarter = params.quarter
+      p.year = params.year
+    }
+    const response = await api.get('/reports/vat-return', { params: p })
+    return response.data
+  },
+
+  getVatReturnPeriods: async () => {
+    const response = await api.get('/reports/vat-return/periods')
+    return response.data
+  },
+
+  calculateVatReturn: async (from, to) => {
+    const response = await api.post('/reports/vat-return/calculate', { from: toYYYYMMDD(from), to: toYYYYMMDD(to) })
+    return response.data
+  },
+
+  lockVatReturnPeriod: async (periodId) => {
+    const response = await api.post(`/reports/vat-return/periods/${periodId}/lock`)
+    return response.data
+  },
+
+  submitVatReturnPeriod: async (periodId) => {
+    const response = await api.post(`/reports/vat-return/periods/${periodId}/submit`)
+    return response.data
+  },
+
+  getVatReturnValidation: async (params) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    if (params.from && params.to) {
+      p.from = toYYYYMMDD(params.from)
+      p.to = toYYYYMMDD(params.to)
+    }
+    const response = await api.get('/reports/vat-return/validation', { params: p })
+    return response.data
+  },
+
+  exportVatReturnExcel: async (params = {}) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    else if (params.from && params.to) {
+      p.from = toYYYYMMDD(params.from)
+      p.to = toYYYYMMDD(params.to)
+    }
+    const response = await api.get('/reports/vat-return/export/excel', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
+  exportVatReturnCsv: async (params = {}) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    else if (params.from && params.to) {
+      p.from = toYYYYMMDD(params.from)
+      p.to = toYYYYMMDD(params.to)
+    }
+    const response = await api.get('/reports/vat-return/export/csv', { params: p, responseType: 'blob' })
     return response.data
   },
 
@@ -906,6 +997,11 @@ export const adminAPI = {
 
   updateSettings: async (settings) => {
     const response = await api.put('/settings', settings)
+    return response.data
+  },
+
+  getLogo: async () => {
+    const response = await api.get('/admin/logo')
     return response.data
   },
 

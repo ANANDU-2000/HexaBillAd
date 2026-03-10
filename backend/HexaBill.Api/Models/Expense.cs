@@ -50,6 +50,18 @@ namespace HexaBill.Api.Models
         /// <summary>Rejection reason if status is Rejected</summary>
         [MaxLength(500)]
         public string? RejectionReason { get; set; }
+
+        // VAT fields (FTA Form 201 / Gulf VAT)
+        public decimal? VatRate { get; set; }
+        public decimal? VatAmount { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public bool IsTaxClaimable { get; set; }
+        [MaxLength(32)]
+        public string? TaxType { get; set; } // Standard, Petroleum, Exempt, OutOfScope
+        public bool IsEntertainment { get; set; }
+        public decimal PartialCreditPct { get; set; } = 100m;
+        /// <summary>Claimable VAT after apportionment and 50% entertainment cap.</summary>
+        public decimal? ClaimableVat { get; set; }
         
         // Navigation properties
         public virtual ExpenseCategory Category { get; set; } = null!;

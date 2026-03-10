@@ -20,10 +20,12 @@ namespace HexaBill.Api.Modules.Payments
     public class PaymentsController : TenantScopedController // MULTI-TENANT: Owner-scoped payments
     {
         private readonly IPaymentService _paymentService;
+        private readonly IPaymentReceiptService _receiptService;
 
-        public PaymentsController(IPaymentService paymentService)
+        public PaymentsController(IPaymentService paymentService, IPaymentReceiptService receiptService)
         {
             _paymentService = paymentService;
+            _receiptService = receiptService;
         }
 
         [HttpGet("duplicate-check")]
@@ -589,6 +591,97 @@ namespace HexaBill.Api.Modules.Payments
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        [HttpPost("{paymentId}/receipt")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<object>>> GeneratePaymentReceipt(int paymentId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("UserId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId)) return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid user" });
+                var detail = await _receiptService.GenerateReceiptAsync(tenantId, paymentId, userId);
+                var existing = await _receiptService.GetReceiptByPaymentIdAsync(paymentId, tenantId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new { detail, receiptNumber = detail.ReceiptNumber, receiptId = existing?.Id }
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Receipt could not be loaded. Please try again or contact support." });
+            }
+        }
+
+        [HttpPost("receipt/batch")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<object>>> GeneratePaymentReceiptBatch([FromBody] PaymentReceiptBatchRequest request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("UserId");
+                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId)) return Unauthorized(new ApiResponse<object> { Success = false, Message = "Invalid user" });
+                if (request?.PaymentIds == null || !request.PaymentIds.Any()) return BadRequest(new ApiResponse<object> { Success = false, Message = "At least one payment must be selected to generate a receipt." });
+                var (detail, receipts) = await _receiptService.GenerateBatchReceiptAsync(tenantId, request.PaymentIds, userId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new { detail, receipts }
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Receipt could not be loaded. Please try again or contact support." });
+            }
+        }
+
+        [HttpGet("receipt/by-payment/{paymentId}")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<PaymentReceiptDto>>> GetReceiptByPayment(int paymentId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var rec = await _receiptService.GetReceiptByPaymentIdAsync(paymentId, tenantId);
+                if (rec == null) return NotFound(new ApiResponse<PaymentReceiptDto> { Success = false, Message = "Receipt not found" });
+                return Ok(new ApiResponse<PaymentReceiptDto> { Success = true, Data = rec });
+            }
+            catch { return StatusCode(500, new ApiResponse<PaymentReceiptDto> { Success = false, Message = "Error" }); }
+        }
+
+        [HttpGet("customers/{customerId}/receipts")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<List<PaymentReceiptDto>>>> GetCustomerReceipts(int customerId)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var list = await _receiptService.GetReceiptsByCustomerAsync(customerId, tenantId);
+                return Ok(new ApiResponse<List<PaymentReceiptDto>> { Success = true, Data = list });
+            }
+            catch { return StatusCode(500, new ApiResponse<List<PaymentReceiptDto>> { Success = false, Message = "Error" }); }
         }
     }
 

@@ -346,7 +346,12 @@ namespace HexaBill.Api.Modules.Expenses
                     {
                         Id = c.Id,
                         Name = c.Name,
-                        ColorCode = c.ColorCode
+                        ColorCode = c.ColorCode,
+                        DefaultVatRate = c.DefaultVatRate,
+                        DefaultTaxType = c.DefaultTaxType ?? "Standard",
+                        DefaultIsTaxClaimable = c.DefaultIsTaxClaimable,
+                        DefaultIsEntertainment = c.DefaultIsEntertainment,
+                        VatDefaultLocked = c.VatDefaultLocked
                     })
                     .ToListAsync();
 
@@ -426,7 +431,12 @@ namespace HexaBill.Api.Modules.Expenses
                     Name = request.Name.Trim(),
                     ColorCode = colorCode,
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    DefaultVatRate = request.DefaultVatRate,
+                    DefaultTaxType = request.DefaultTaxType ?? "Standard",
+                    DefaultIsTaxClaimable = request.DefaultIsTaxClaimable,
+                    DefaultIsEntertainment = request.DefaultIsEntertainment,
+                    VatDefaultLocked = request.VatDefaultLocked
                 };
 
                 _context.ExpenseCategories.Add(category);
@@ -436,7 +446,12 @@ namespace HexaBill.Api.Modules.Expenses
                 {
                     Id = category.Id,
                     Name = category.Name,
-                    ColorCode = category.ColorCode
+                    ColorCode = category.ColorCode,
+                    DefaultVatRate = category.DefaultVatRate,
+                    DefaultTaxType = category.DefaultTaxType ?? "Standard",
+                    DefaultIsTaxClaimable = category.DefaultIsTaxClaimable,
+                    DefaultIsEntertainment = category.DefaultIsEntertainment,
+                    VatDefaultLocked = category.VatDefaultLocked
                 };
 
                 return Ok(new ApiResponse<ExpenseCategoryDto>
@@ -455,6 +470,72 @@ namespace HexaBill.Api.Modules.Expenses
                     Message = "An error occurred while creating the category",
                     Errors = new List<string> { ex.Message }
                 });
+            }
+        }
+
+        [HttpPut("categories/{id}")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<ActionResult<ApiResponse<ExpenseCategoryDto>>> UpdateCategory(int id, [FromBody] UpdateExpenseCategoryRequest request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var category = await _context.ExpenseCategories.FirstOrDefaultAsync(c => c.Id == id && c.TenantId == tenantId);
+                if (category == null)
+                    return NotFound(new ApiResponse<ExpenseCategoryDto> { Success = false, Message = "Category not found" });
+                if (request.Name != null && !string.IsNullOrWhiteSpace(request.Name))
+                    category.Name = request.Name.Trim();
+                if (request.ColorCode != null && request.ColorCode.StartsWith("#"))
+                    category.ColorCode = request.ColorCode;
+                if (request.DefaultVatRate.HasValue)
+                    category.DefaultVatRate = request.DefaultVatRate.Value;
+                if (request.DefaultTaxType != null)
+                    category.DefaultTaxType = request.DefaultTaxType;
+                if (request.DefaultIsTaxClaimable.HasValue)
+                    category.DefaultIsTaxClaimable = request.DefaultIsTaxClaimable.Value;
+                if (request.DefaultIsEntertainment.HasValue)
+                    category.DefaultIsEntertainment = request.DefaultIsEntertainment.Value;
+                if (request.VatDefaultLocked.HasValue)
+                    category.VatDefaultLocked = request.VatDefaultLocked.Value;
+                await _context.SaveChangesAsync();
+                var dto = new ExpenseCategoryDto
+                {
+                    Id = category.Id,
+                    Name = category.Name,
+                    ColorCode = category.ColorCode,
+                    DefaultVatRate = category.DefaultVatRate,
+                    DefaultTaxType = category.DefaultTaxType ?? "Standard",
+                    DefaultIsTaxClaimable = category.DefaultIsTaxClaimable,
+                    DefaultIsEntertainment = category.DefaultIsEntertainment,
+                    VatDefaultLocked = category.VatDefaultLocked
+                };
+                return Ok(new ApiResponse<ExpenseCategoryDto> { Success = true, Data = dto });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating expense category");
+                return StatusCode(500, new ApiResponse<ExpenseCategoryDto> { Success = false, Message = ex.Message });
+            }
+        }
+
+        [HttpPost("bulk-vat-update")]
+        [Authorize(Roles = "Admin,Owner")]
+        public async Task<ActionResult<ApiResponse<BulkVatUpdateResult>>> BulkVatUpdate([FromBody] BulkVatUpdateRequest request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (request == null)
+                    return BadRequest(new ApiResponse<BulkVatUpdateResult> { Success = false, Message = "Request body required" });
+                if (request.ExpenseIds == null && !request.AllNoVat && !request.CategoryId.HasValue)
+                    return BadRequest(new ApiResponse<BulkVatUpdateResult> { Success = false, Message = "Specify expenseIds, allNoVat, or categoryId" });
+                var result = await _expenseService.BulkVatUpdateAsync(tenantId, request);
+                return Ok(new ApiResponse<BulkVatUpdateResult> { Success = true, Data = result });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "BulkVatUpdate failed");
+                return StatusCode(500, new ApiResponse<BulkVatUpdateResult> { Success = false, Message = ex.Message });
             }
         }
 
@@ -794,6 +875,22 @@ namespace HexaBill.Api.Modules.Expenses
     {
         public string Name { get; set; } = string.Empty;
         public string ColorCode { get; set; } = "#3B82F6";
+        public decimal DefaultVatRate { get; set; }
+        public string? DefaultTaxType { get; set; }
+        public bool DefaultIsTaxClaimable { get; set; }
+        public bool DefaultIsEntertainment { get; set; }
+        public bool VatDefaultLocked { get; set; }
+    }
+
+    public class UpdateExpenseCategoryRequest
+    {
+        public string? Name { get; set; }
+        public string? ColorCode { get; set; }
+        public decimal? DefaultVatRate { get; set; }
+        public string? DefaultTaxType { get; set; }
+        public bool? DefaultIsTaxClaimable { get; set; }
+        public bool? DefaultIsEntertainment { get; set; }
+        public bool? VatDefaultLocked { get; set; }
     }
 }
 

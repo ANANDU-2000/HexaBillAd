@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Reports;
+using HexaBill.Api.Shared.Exceptions;
 using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Purchases
@@ -25,10 +27,12 @@ namespace HexaBill.Api.Modules.Purchases
     public class PurchaseService : IPurchaseService
     {
         private readonly AppDbContext _context;
+        private readonly IVatReturnValidationService _vatValidation;
 
-        public PurchaseService(AppDbContext context)
+        public PurchaseService(AppDbContext context, IVatReturnValidationService vatValidation)
         {
             _context = context;
+            _vatValidation = vatValidation;
         }
 
         public async Task<PagedResponse<PurchaseDto>> GetPurchasesAsync(int tenantId, int page = 1, int pageSize = 10, DateTime? startDate = null, DateTime? endDate = null, string? supplierName = null, string? category = null, string? status = null)
@@ -391,6 +395,8 @@ namespace HexaBill.Api.Modules.Purchases
                 }
 
                 var purchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : request.PurchaseDate.ToUtcKind();
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchaseDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot add or edit transactions in a locked period.");
                 var purchase = new Purchase
                 {
                     OwnerId = tenantId,
@@ -460,6 +466,9 @@ namespace HexaBill.Api.Modules.Purchases
 
             if (purchase == null)
                 return null;
+
+            if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchase.PurchaseDate))
+                throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot add or edit transactions in a locked period.");
 
             // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -640,6 +649,9 @@ namespace HexaBill.Api.Modules.Purchases
 
             if (purchase == null)
                 return false;
+
+            if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchase.PurchaseDate))
+                throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot delete transactions in a locked period.");
 
             // Prevent orphaned payments: block delete if supplier balance after delete would be negative
             var supplierName = purchase.SupplierName;

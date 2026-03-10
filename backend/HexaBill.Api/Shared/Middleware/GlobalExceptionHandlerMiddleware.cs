@@ -11,8 +11,9 @@ using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using System.Text.Json;
 using System;
-using HexaBill.Api.Shared.Services;
+using HexaBill.Api.Shared.Exceptions;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Shared.Middleware
 {
@@ -46,6 +47,16 @@ namespace HexaBill.Api.Shared.Middleware
 
         private async Task HandleExceptionAsync(HttpContext context, Exception exception)
         {
+            // VAT period locked: return 422 Unprocessable Entity (do not log as 500)
+            if (exception is VatPeriodLockedException vatLocked)
+            {
+                context.Response.StatusCode = 422;
+                context.Response.ContentType = "application/json";
+                var body = new { success = false, message = vatLocked.Message };
+                await context.Response.WriteAsJsonAsync(body, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                return;
+            }
+
             // PROD-18: Reuse correlation ID from RequestLoggingMiddleware if available
             var correlationId = context.GetCorrelationIdOrNull() ?? Guid.NewGuid().ToString("N")[..12];
             context.SetCorrelationId(correlationId); // Ensure it's set for response

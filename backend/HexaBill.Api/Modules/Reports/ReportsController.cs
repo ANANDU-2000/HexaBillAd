@@ -23,14 +23,16 @@ namespace HexaBill.Api.Modules.Reports
     {
         private readonly IReportService _reportService;
         private readonly IVatReturnReportService _vatReturnReportService;
+        private readonly IVatReturnValidationService _vatValidation;
         private readonly AppDbContext _context;
         private readonly ITimeZoneService _timeZoneService;
         private readonly IBranchService _branchService;
 
-        public ReportsController(IReportService reportService, IVatReturnReportService vatReturnReportService, AppDbContext context, ITimeZoneService timeZoneService, IBranchService branchService)
+        public ReportsController(IReportService reportService, IVatReturnReportService vatReturnReportService, IVatReturnValidationService vatValidation, AppDbContext context, ITimeZoneService timeZoneService, IBranchService branchService)
         {
             _reportService = reportService;
             _vatReturnReportService = vatReturnReportService;
+            _vatValidation = vatValidation;
             _context = context;
             _timeZoneService = timeZoneService;
             _branchService = branchService;
@@ -43,19 +45,49 @@ namespace HexaBill.Api.Modules.Reports
         }
 
         [HttpGet("vat-return")]
-        [Authorize(Roles = "Admin,Owner")]
-        public async Task<ActionResult<ApiResponse<VatReturnDto>>> GetVatReturn(
-            [FromQuery] int quarter = 1,
-            [FromQuery] int year = 2026)
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<object>>> GetVatReturn(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery] int? quarter,
+            [FromQuery] int? year)
         {
             try
             {
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
-                if (quarter < 1 || quarter > 4 || year < 2020 || year > 2030)
-                    return BadRequest(new ApiResponse<VatReturnDto> { Success = false, Message = "Invalid quarter (1-4) or year" });
-                var result = await _vatReturnReportService.GetVatReturnAsync(tenantId, quarter, year);
-                return Ok(new ApiResponse<VatReturnDto>
+                DateTime fromDate;
+                DateTime toDate;
+                if (from.HasValue && to.HasValue)
+                {
+                    fromDate = from.Value.ToUtcKind();
+                    toDate = to.Value.ToUtcKind();
+                    if (fromDate > toDate)
+                        return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be before to date." });
+                }
+                else if (quarter.HasValue && year.HasValue && quarter >= 1 && quarter <= 4)
+                {
+                    var (f, t) = VatReturnReportService.QuarterToDateRange(quarter.Value, year.Value);
+                    fromDate = f;
+                    toDate = t;
+                }
+                else
+                {
+                    var gst = _timeZoneService.GetCurrentDate();
+                    fromDate = gst.AddMonths(-3);
+                    toDate = gst;
+                }
+                var result = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
+                var period = await _context.VatReturnPeriods
+                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PeriodStart == fromDate && p.PeriodEnd == toDate);
+                if (period != null)
+                {
+                    result.PeriodId = period.Id;
+                    result.Status = period.Status ?? result.Status;
+                }
+                var issues = await _vatValidation.ValidatePeriodAsync(tenantId, fromDate, toDate, result);
+                result.ValidationIssues = issues;
+                return Ok(new ApiResponse<VatReturn201Dto>
                 {
                     Success = true,
                     Message = "VAT return retrieved successfully",
@@ -64,13 +96,287 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<VatReturnDto>
+                return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
                     Message = "An error occurred",
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        [HttpGet("vat-return/periods")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<List<VatReturnPeriodDto>>>> GetVatReturnPeriods()
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var list = await _context.VatReturnPeriods
+                .Where(p => p.TenantId == tenantId)
+                .OrderByDescending(p => p.PeriodEnd)
+                .Take(50)
+                .Select(p => new VatReturnPeriodDto
+                {
+                    Id = p.Id,
+                    PeriodLabel = p.PeriodLabel,
+                    PeriodStart = p.PeriodStart,
+                    PeriodEnd = p.PeriodEnd,
+                    DueDate = p.DueDate,
+                    Status = p.Status,
+                    Box13a = p.Box13a,
+                    Box13b = p.Box13b,
+                    CalculatedAt = p.CalculatedAt,
+                    LockedAt = p.LockedAt
+                })
+                .ToListAsync();
+            return Ok(new ApiResponse<List<VatReturnPeriodDto>>
+            {
+                Success = true,
+                Data = list
+            });
+        }
+
+        [HttpPost("vat-return/calculate")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<VatReturn201Dto>>> CalculateVatReturn([FromBody] VatReturnCalculateRequest request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (request?.From == null || request.To == null)
+                return BadRequest(new ApiResponse<VatReturn201Dto> { Success = false, Message = "From and To dates are required." });
+            var from = request.From.Value.ToUtcKind();
+            var to = request.To.Value.ToUtcKind();
+            if (from > to)
+                return BadRequest(new ApiResponse<VatReturn201Dto> { Success = false, Message = "From must be before To." });
+            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, from, to);
+            var (periodLabel, dueDate) = GetPeriodLabelAndDue(from, to);
+            var period = await _context.VatReturnPeriods
+                .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PeriodStart == from.Date && p.PeriodEnd == to.Date);
+            if (period == null)
+            {
+                period = new VatReturnPeriod
+                {
+                    TenantId = tenantId,
+                    PeriodStart = from.Date,
+                    PeriodEnd = to.Date,
+                    PeriodLabel = periodLabel,
+                    DueDate = dueDate,
+                    Status = "Calculated",
+                    Box1a = dto.Box1a,
+                    Box1b = dto.Box1b,
+                    Box2 = dto.Box2,
+                    Box3 = dto.Box3,
+                    Box4 = dto.Box4,
+                    Box9b = dto.Box9b,
+                    Box10 = dto.Box10,
+                    Box11 = dto.Box11,
+                    Box12 = dto.Box12,
+                    Box13a = dto.Box13a,
+                    Box13b = dto.Box13b,
+                    PetroleumExcluded = dto.PetroleumExcluded,
+                    CalculatedAt = DateTime.UtcNow
+                };
+                _context.VatReturnPeriods.Add(period);
+            }
+            else
+            {
+                period.Box1a = dto.Box1a;
+                period.Box1b = dto.Box1b;
+                period.Box2 = dto.Box2;
+                period.Box3 = dto.Box3;
+                period.Box4 = dto.Box4;
+                period.Box9b = dto.Box9b;
+                period.Box10 = dto.Box10;
+                period.Box11 = dto.Box11;
+                period.Box12 = dto.Box12;
+                period.Box13a = dto.Box13a;
+                period.Box13b = dto.Box13b;
+                period.PetroleumExcluded = dto.PetroleumExcluded;
+                period.CalculatedAt = DateTime.UtcNow;
+                period.Status = period.Status == "Locked" ? "Locked" : "Calculated";
+            }
+            await _context.SaveChangesAsync();
+            dto.PeriodId = period.Id;
+            dto.Status = period.Status;
+            dto.CalculatedAt = period.CalculatedAt;
+            dto.ValidationIssues = await _vatValidation.ValidatePeriodAsync(tenantId, from, to, dto);
+            return Ok(new ApiResponse<VatReturn201Dto> { Success = true, Data = dto });
+        }
+
+        [HttpPost("vat-return/periods/{id:int}/lock")]
+        [Authorize(Roles = "Owner,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> LockVatReturnPeriod(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+            if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
+            if (string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Period is already locked." });
+            var from = period.PeriodStart; var to = period.PeriodEnd;
+            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, from, to);
+            var issues = await _vatValidation.ValidatePeriodAsync(tenantId, from, to, dto);
+            var blocking = issues.Where(i => string.Equals(i.Severity, "Blocking", StringComparison.OrdinalIgnoreCase)).ToList();
+            if (blocking.Any())
+                return StatusCode(422, new ApiResponse<object> { Success = false, Message = "Cannot lock: resolve blocking validation issues first.", Errors = blocking.Select(i => i.Message).ToList() });
+            var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+            period.Status = "Locked";
+            period.LockedAt = DateTime.UtcNow;
+            period.LockedByUserId = userId;
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse<object> { Success = true, Message = "Period locked." });
+        }
+
+        [HttpPost("vat-return/periods/{id:int}/submit")]
+        [Authorize(Roles = "Owner,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> SubmitVatReturnPeriod(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+            if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
+            var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+            period.SubmittedAt = DateTime.UtcNow;
+            period.SubmittedByUserId = userId;
+            if (!string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
+                period.Status = "Submitted";
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse<object> { Success = true, Message = "Submitted." });
+        }
+
+        [HttpGet("vat-return/validation")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<List<ValidationIssueDto>>>> GetVatReturnValidation(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery] int? periodId)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            DateTime fromDate, toDate;
+            if (periodId.HasValue)
+            {
+                var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
+                if (p == null) return NotFound(new ApiResponse<List<ValidationIssueDto>> { Success = false });
+                fromDate = p.PeriodStart; toDate = p.PeriodEnd;
+            }
+            else if (from.HasValue && to.HasValue)
+            {
+                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
+            }
+            else
+                return BadRequest(new ApiResponse<List<ValidationIssueDto>> { Success = false, Message = "Provide from/to or periodId." });
+            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
+            var issues = await _vatValidation.ValidatePeriodAsync(tenantId, fromDate, toDate, dto);
+            return Ok(new ApiResponse<List<ValidationIssueDto>> { Success = true, Data = issues });
+        }
+
+        private static (string label, DateTime due) GetPeriodLabelAndDue(DateTime from, DateTime to)
+        {
+            var months = (to.Year - from.Year) * 12 + (to.Month - from.Month);
+            if (months <= 1)
+            {
+                var label = from.ToString("MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture);
+                var due = new DateTime(from.Year, from.Month, 1).AddMonths(2).AddDays(27);
+                return (label, due);
+            }
+            if (months <= 3)
+            {
+                var q = (from.Month - 1) / 3 + 1;
+                var label = $"Q{q}-{from.Year}";
+                var endMonth = from.Month + 2;
+                var y = from.Year;
+                if (endMonth > 12) { endMonth -= 12; y++; }
+                return (label, new DateTime(y, endMonth, 28));
+            }
+            return (from.Year.ToString(), to.AddMonths(1));
+        }
+
+        [HttpGet("vat-return/export/excel")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<IActionResult> ExportVatReturnExcelFta201(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery] int? periodId)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            DateTime fromDate, toDate;
+            string label;
+            if (periodId.HasValue)
+            {
+                var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
+                if (p == null) return NotFound();
+                fromDate = p.PeriodStart; toDate = p.PeriodEnd; label = p.PeriodLabel;
+            }
+            else if (from.HasValue && to.HasValue)
+            {
+                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
+                label = $"{fromDate:yyyy-MM-dd}_{toDate:yyyy-MM-dd}";
+            }
+            else
+                return BadRequest("Provide from/to or periodId.");
+            var data = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+            using var package = new ExcelPackage();
+            var sheet = package.Workbook.Worksheets.Add("FTA 201 Summary");
+            sheet.Cells[1, 1].Value = "FTA Form 201 VAT Return";
+            sheet.Cells[2, 1].Value = "Period"; sheet.Cells[2, 2].Value = $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}";
+            int row = 3;
+            sheet.Cells[row, 1].Value = "1a Value of taxable supplies"; sheet.Cells[row, 2].Value = data.Box1a; row++;
+            sheet.Cells[row, 1].Value = "1b VAT on taxable supplies"; sheet.Cells[row, 2].Value = data.Box1b; row++;
+            sheet.Cells[row, 1].Value = "2 Zero-rated"; sheet.Cells[row, 2].Value = data.Box2; row++;
+            sheet.Cells[row, 1].Value = "3 Exempt"; sheet.Cells[row, 2].Value = data.Box3; row++;
+            sheet.Cells[row, 1].Value = "4 Reverse charge"; sheet.Cells[row, 2].Value = data.Box4; row++;
+            sheet.Cells[row, 1].Value = "9b Recoverable input VAT"; sheet.Cells[row, 2].Value = data.Box9b; row++;
+            sheet.Cells[row, 1].Value = "10 Reverse charge VAT"; sheet.Cells[row, 2].Value = data.Box10; row++;
+            sheet.Cells[row, 1].Value = "11 Input adjustments"; sheet.Cells[row, 2].Value = data.Box11; row++;
+            sheet.Cells[row, 1].Value = "12 Total recoverable"; sheet.Cells[row, 2].Value = data.Box12; row++;
+            sheet.Cells[row, 1].Value = "13a Payable"; sheet.Cells[row, 2].Value = data.Box13a; row++;
+            sheet.Cells[row, 1].Value = "13b Refundable"; sheet.Cells[row, 2].Value = data.Box13b; row++;
+            sheet.Cells[row, 1].Value = "Petroleum excluded"; sheet.Cells[row, 2].Value = data.PetroleumExcluded;
+            sheet.Cells["A1:B20"].AutoFitColumns();
+            var bytes = package.GetAsByteArray();
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"VAT-Return-{label}.xlsx");
+        }
+
+        [HttpGet("vat-return/export/csv")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<IActionResult> ExportVatReturnCsv(
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            [FromQuery] int? periodId)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            DateTime fromDate, toDate;
+            string label;
+            if (periodId.HasValue)
+            {
+                var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
+                if (p == null) return NotFound();
+                fromDate = p.PeriodStart; toDate = p.PeriodEnd; label = p.PeriodLabel;
+            }
+            else if (from.HasValue && to.HasValue)
+            {
+                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
+                label = $"{fromDate:yyyy-MM-dd}_{toDate:yyyy-MM-dd}";
+            }
+            else
+                return BadRequest("Provide from/to or periodId.");
+            var data = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
+            var lines = new List<string> { "Type,Reference,Date,NetAmount,VatAmount,ClaimableVat,VatScenario" };
+            foreach (var line in data.OutputLines)
+                lines.Add($"Output,{line.Reference},{line.Date:yyyy-MM-dd},{line.NetAmount},{line.VatAmount},,{line.VatScenario}");
+            foreach (var line in data.InputLines)
+                lines.Add($"Input,{line.Reference},{line.Date:yyyy-MM-dd},{line.NetAmount},{line.VatAmount},{line.ClaimableVat},{line.TaxType}");
+            foreach (var line in data.CreditNoteLines)
+                lines.Add($"CreditNote,{line.Reference},{line.Date:yyyy-MM-dd},{line.NetAmount},{line.VatAmount},{line.Side},");
+            foreach (var line in data.ReverseChargeLines)
+                lines.Add($"ReverseCharge,{line.Reference},{line.Date:yyyy-MM-dd},{line.NetAmount},{line.ReverseChargeVat},,");
+            var csv = string.Join("\r\n", lines);
+            var bytes = System.Text.Encoding.UTF8.GetBytes(csv);
+            return File(bytes, "text/csv", $"VAT-Return-{label}.csv");
         }
 
         [HttpGet("vat-return/export")]

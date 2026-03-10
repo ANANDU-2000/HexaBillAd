@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -27,6 +27,7 @@ import Modal from '../../components/Modal'
 import { LoadingCard } from '../../components/Loading'
 import { TabNavigation } from '../../components/ui'
 import { adminAPI, settingsAPI } from '../../services'
+import api from '../../services/api'
 import { clearAllCache, clearCache } from '../../services/api'
 import { getApiBaseUrlNoSuffix } from '../../services/apiConfig'
 import toast from 'react-hot-toast'
@@ -53,6 +54,8 @@ const SettingsPage = () => {
   const [loadingClearData, setLoadingClearData] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [showTemplatePreview, setShowTemplatePreview] = useState(false)
+  const [logoBlobUrl, setLogoBlobUrl] = useState(null)
+  const [showInvoicePreview, setShowInvoicePreview] = useState(false)
   const [settings, setSettings] = useState({
     companyNameEn: 'HexaBill',
     companyNameAr: 'هيكسابيل',
@@ -159,6 +162,38 @@ const SettingsPage = () => {
     updateIconOnMount()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Load logo as blob when URL is /api/storage/... (requires auth)
+  const logoBlobUrlRef = useRef(null)
+  useEffect(() => {
+    const url = settings.logoUrl
+    if (!url || !url.includes('/api/storage/')) {
+      if (logoBlobUrlRef.current) {
+        URL.revokeObjectURL(logoBlobUrlRef.current)
+        logoBlobUrlRef.current = null
+        setLogoBlobUrl(null)
+      }
+      return
+    }
+    const path = url.replace(/^\/api\/?/, '')
+    api.get(path, { responseType: 'blob' })
+      .then((res) => {
+        const blob = res.data
+        if (blob && blob.size > 0) {
+          if (logoBlobUrlRef.current) URL.revokeObjectURL(logoBlobUrlRef.current)
+          const objectUrl = URL.createObjectURL(blob)
+          logoBlobUrlRef.current = objectUrl
+          setLogoBlobUrl(objectUrl)
+        }
+      })
+      .catch(() => setLogoBlobUrl(null))
+    return () => {
+      if (logoBlobUrlRef.current) {
+        URL.revokeObjectURL(logoBlobUrlRef.current)
+        logoBlobUrlRef.current = null
+      }
+    }
+  }, [settings.logoUrl])
 
   const fetchBackups = async () => {
     try {
@@ -419,15 +454,16 @@ const SettingsPage = () => {
     const file = event.target.files[0]
     if (!file) return
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file')
+    // Allowed: PNG, JPG, WEBP only (no SVG/GIF for security)
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload PNG, JPG or WEBP only.')
       return
     }
 
     // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB')
+      toast.error('File too large. Maximum size is 5MB.')
       return
     }
 
@@ -441,42 +477,21 @@ const SettingsPage = () => {
 
       const response = await adminAPI.uploadLogo(file)
       if (response?.success) {
-        const logoUrl = response.data || `/uploads/${file.name}`
+        const logoUrl = response.data?.logoUrl ?? response.data?.data?.logoUrl ?? response.data ?? ''
         clearAllCache()
-        // Explicit cache clearing for settings endpoints
         clearCache('/api/settings')
         clearCache('/api/settings/company')
         setSettings(prev => ({ ...prev, logoUrl }))
         setValue('logoUrl', logoUrl)
         await updateAppIcon(logoUrl)
-        // Update settings immediately
         setSettings(prev => ({ ...prev, logoUrl }))
         setValue('logoUrl', logoUrl, { shouldDirty: true })
         setHasUnsavedChanges(true)
-        
-        // Refresh branding with multiple attempts to ensure cache is cleared
         await refreshBranding()
-        setTimeout(async () => {
-          await refreshBranding()
-          window.dispatchEvent(new Event('logo-updated'))
-        }, 500)
-        setTimeout(async () => {
-          await refreshBranding()
-        }, 1500)
-        
-        toast.success('Logo uploaded successfully. Saving settings...', { id: 'logo-upload' })
+        setTimeout(() => { window.dispatchEvent(new Event('logo-updated')) }, 300)
+        toast.success('Logo uploaded successfully.', { id: 'logo-upload' })
         setShowLogoModal(false)
-        
-        // Auto-save logo URL to settings
-        try {
-          const saveResponse = await adminAPI.updateSettings({ COMPANY_LOGO: logoUrl })
-          if (saveResponse.success) {
-            await fetchSettings() // Reload to get fresh data
-            toast.success('Logo saved and updated in header.', { id: 'logo-save' })
-          }
-        } catch (err) {
-          console.error('Failed to save logo URL:', err)
-        }
+        await fetchSettings()
       } else {
         toast.error(response?.message || 'Failed to upload logo')
       }
@@ -495,6 +510,7 @@ const SettingsPage = () => {
       const response = await adminAPI.deleteLogo()
       if (response?.success) {
         setLogoPreview(null)
+        setLogoBlobUrl(null)
         setSettings(prev => ({ ...prev, logoUrl: '' }))
         setValue('logoUrl', '')
         await updateAppIcon('/vite.svg')
@@ -764,7 +780,7 @@ const SettingsPage = () => {
                   {logoPreview || settings.logoUrl ? (
                     <div className="relative">
                       <img
-                        src={logoPreview || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
+                        src={logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
                         alt="Company Logo"
                         className="h-24 w-24 object-contain border border-gray-200 rounded-lg"
                         onError={(e) => {
@@ -798,9 +814,21 @@ const SettingsPage = () => {
                       <Upload className="h-4 w-4 mr-2" />
                       {logoPreview || settings.logoUrl ? 'Change Logo' : 'Upload Logo'}
                     </button>
+                    {(logoPreview || settings.logoUrl) && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setShowInvoicePreview(true)}
+                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ml-2"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          Preview on Invoice
+                        </button>
+                      </>
+                    )}
 
                     <p className="text-sm text-gray-500">
-                      Recommended size: 200x200px. Supported formats: PNG, JPG, GIF, SVG. Max size: 5MB.
+                      PNG, JPG, WEBP — Max 5MB. Your logo appears on all invoices and documents.
                     </p>
                   </div>
                 </div>
@@ -1324,12 +1352,12 @@ const SettingsPage = () => {
                 <div className="mt-4">
                   <label htmlFor="logo-upload" className="cursor-pointer">
                     <span className="mt-2 block text-sm font-medium text-gray-900">Click to upload logo</span>
-                    <span className="mt-1 block text-sm text-gray-500">PNG, JPG, GIF, SVG up to 5MB</span>
+                    <span className="mt-1 block text-sm text-gray-500">PNG, JPG, WEBP up to 5MB</span>
                   </label>
                   <input
                     id="logo-upload"
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
                     onChange={handleLogoUpload}
                     className="sr-only"
                   />
@@ -1346,6 +1374,46 @@ const SettingsPage = () => {
             >
               {uploadingLogo ? 'Uploading…' : 'Cancel'}
             </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Invoice preview modal - how logo and company look on invoice */}
+      <Modal
+        isOpen={showInvoicePreview}
+        onClose={() => setShowInvoicePreview(false)}
+        title="Preview on Invoice"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">This is how your company header will appear on printed invoices.</p>
+          <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+            <div className="grid grid-cols-[140px_1fr_140px] gap-4 items-center">
+              <div className="flex justify-center">
+                {(logoPreview || logoBlobUrl || settings.logoUrl) && (
+                  <img
+                    src={logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
+                    alt="Company Logo"
+                    className="max-w-[140px] max-h-[80px] object-contain"
+                    onError={(e) => { e.target.style.display = 'none' }}
+                  />
+                )}
+              </div>
+              <div className="text-center">
+                <h3 className="font-bold text-base uppercase">{settings.companyNameEn || 'Company Name'}</h3>
+                {settings.companyNameAr && <p className="text-sm text-gray-700" dir="rtl">{settings.companyNameAr}</p>}
+                <p className="text-xs text-gray-500 mt-0.5">Mob: {settings.companyPhone || '—'} {settings.companyAddress && `, ${settings.companyAddress}`}</p>
+              </div>
+              <div className="text-right text-sm">
+                <p>TRN: No : {settings.companyTrn || '—'}</p>
+                <p className="mt-1">DATE: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</p>
+              </div>
+            </div>
+            <div className="border-t-2 border-b-2 border-gray-300 mt-3 py-2 text-center font-bold text-sm">TAX INVOICE</div>
+          </div>
+          <p className="text-xs text-gray-500">This is a preview only. Actual invoice uses real transaction data.</p>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setShowInvoicePreview(false)} className="px-4 py-2 bg-gray-800 text-white rounded-md text-sm font-medium hover:bg-gray-700">Close</button>
           </div>
         </div>
       </Modal>

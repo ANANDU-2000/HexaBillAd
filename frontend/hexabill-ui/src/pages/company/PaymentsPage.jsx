@@ -19,7 +19,8 @@ import {
   User,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  Printer
 } from 'lucide-react'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
@@ -51,6 +52,9 @@ const PaymentsPage = () => {
   const [loadingInvoices, setLoadingInvoices] = useState(false)
   const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
   const [bulkPayments, setBulkPayments] = useState([{ customerId: '', amount: '', method: 'Cash', paymentDate: new Date().toISOString().split('T')[0] }])
+  const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
+  const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
+  const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -403,6 +407,32 @@ const PaymentsPage = () => {
     setShowReceiptModal(true)
   }
 
+  const openReceiptPreview = (ids) => {
+    setReceiptPreviewPaymentIds(Array.isArray(ids) ? ids : [ids])
+    setShowReceiptPreviewModal(true)
+  }
+
+  const handleGenerateReceiptFromBar = () => {
+    if (selectedPaymentIds.length === 0) return
+    openReceiptPreview(selectedPaymentIds)
+  }
+
+  const togglePaymentSelection = (id) => {
+    setSelectedPaymentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleSelectAllPayments = () => {
+    if (selectedPaymentIds.length === filteredPayments.length) {
+      setSelectedPaymentIds([])
+    } else {
+      setSelectedPaymentIds(filteredPayments.map(p => p.id))
+    }
+  }
+
+  const selectedTotal = filteredPayments
+    .filter(p => selectedPaymentIds.includes(p.id))
+    .reduce((sum, p) => sum + (p.amount || 0), 0)
+
   const handleDownloadReceipt = async (payment) => {
     try {
       // IMPROVEMENT: One-click receipt download from payments list
@@ -603,6 +633,14 @@ const PaymentsPage = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left">
+                  <input
+                    type="checkbox"
+                    checked={filteredPayments.length > 0 && selectedPaymentIds.length === filteredPayments.length}
+                    onChange={toggleSelectAllPayments}
+                    className="rounded border-gray-300"
+                  />
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Invoice
                 </th>
@@ -632,7 +670,7 @@ const PaymentsPage = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredPayments.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="px-6 py-12 text-center">
+                  <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <CreditCard className="h-12 w-12 text-gray-400 mb-4" />
                       <p className="text-gray-500 text-lg font-medium">No payments found</p>
@@ -645,6 +683,14 @@ const PaymentsPage = () => {
               ) : (
                 filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <input
+                        type="checkbox"
+                        checked={selectedPaymentIds.includes(payment.id)}
+                        onChange={() => togglePaymentSelection(payment.id)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{payment.invoiceNo || '-'}</div>
                     </td>
@@ -682,6 +728,13 @@ const PaymentsPage = () => {
                           title="Edit Payment"
                         >
                           <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => openReceiptPreview([payment.id])}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="Generate Payment Receipt"
+                        >
+                          <Printer className="h-4 w-4" />
                         </button>
                         <button
                           onClick={() => handleViewReceipt(payment)}
@@ -732,6 +785,44 @@ const PaymentsPage = () => {
         </div>
       </div>
 
+      {/* Selection action bar - Generate Receipt */}
+      {selectedPaymentIds.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">
+            {selectedPaymentIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleGenerateReceiptFromBar}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+            >
+              <Printer className="h-4 w-4" />
+              Generate Receipt
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedPaymentIds([])}
+              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Receipt Preview Modal (from ledger) */}
+      <ReceiptPreviewModal
+        paymentIds={receiptPreviewPaymentIds}
+        isOpen={showReceiptPreviewModal}
+        onClose={() => {
+          setShowReceiptPreviewModal(false)
+          setReceiptPreviewPaymentIds([])
+          setSelectedPaymentIds([])
+        }}
+        onSuccess={fetchData}
+      />
+
       {/* Payments Cards - Mobile */}
       <div className="md:hidden space-y-3">
         {filteredPayments.length === 0 ? (
@@ -779,6 +870,13 @@ const PaymentsPage = () => {
                     title="Edit"
                   >
                     <Edit className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => openReceiptPreview([payment.id])}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                    title="Payment Receipt"
+                  >
+                    <Printer className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleViewReceipt(payment)}

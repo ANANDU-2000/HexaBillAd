@@ -4,6 +4,7 @@ Author: AI Assistant
 Date: 2024
 */
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace HexaBill.Api.Models
 {
@@ -281,12 +282,16 @@ namespace HexaBill.Api.Models
         public string? Notes { get; set; }
         [Range(0, 99999999.99, ErrorMessage = "Discount must be non-negative")]
         public decimal Discount { get; set; } = 0;
+        /// <summary>Round-off adjustment (e.g. -0.20). Range ±1.00 AED. Applied after VAT.</summary>
+        public decimal RoundOff { get; set; } = 0m;
         [MaxLength(100)]
         public string? InvoiceNo { get; set; } // Optional: Manual invoice number (if not provided, auto-generate)
         [MaxLength(200)]
         public string? ExternalReference { get; set; } // For idempotency - unique external reference (e.g., POS terminal ID, mobile app transaction ID)
         public DateTime? InvoiceDate { get; set; } // Optional: Custom invoice date (defaults to today if not provided) - Admin and Staff can set
         public DateTime? DueDate { get; set; } // Optional: Payment due date for credit customers
+        /// <summary>True = zero value invoice / free sample; all line amounts and VAT forced to 0.</summary>
+        public bool IsZeroInvoice { get; set; }
     }
 
     public class UpdateSaleRequest
@@ -300,11 +305,14 @@ namespace HexaBill.Api.Models
         public string? Notes { get; set; }
         [Range(0, 99999999.99, ErrorMessage = "Discount must be non-negative")]
         public decimal Discount { get; set; } = 0;
+        /// <summary>Round-off adjustment (e.g. -0.20). Range ±1.00 AED.</summary>
+        public decimal RoundOff { get; set; } = 0m;
         [MaxLength(500)]
         public string? EditReason { get; set; } // Required for Staff users
         public string? RowVersion { get; set; } // Base64 encoded RowVersion for concurrency control
         public DateTime? InvoiceDate { get; set; } // Optional: Custom invoice date - Admin and Staff can modify
         public DateTime? DueDate { get; set; } // Optional: Payment due date for credit customers
+        public bool IsZeroInvoice { get; set; }
     }
 
     public class UnlockInvoiceRequest
@@ -358,6 +366,7 @@ namespace HexaBill.Api.Models
         public decimal Subtotal { get; set; }
         public decimal VatTotal { get; set; }
         public decimal Discount { get; set; }
+        public decimal RoundOff { get; set; }
         public decimal GrandTotal { get; set; }
         public decimal PaidAmount { get; set; } // CRITICAL: Include for balance calculation and accurate reporting
         public string PaymentStatus { get; set; } = string.Empty;
@@ -376,6 +385,7 @@ namespace HexaBill.Api.Models
         public bool CreditLimitExceeded { get; set; } = false; // True if sale exceeds customer credit limit
         public string? CreditLimitWarning { get; set; } // Warning message if credit limit exceeded
         public string? EditReason { get; set; }
+        public bool IsZeroInvoice { get; set; }
     }
 
     public class SaleItemDto
@@ -396,6 +406,8 @@ namespace HexaBill.Api.Models
         public string? Name { get; set; }
         public string? Notes { get; set; }
         public object? InvoiceData { get; set; }
+        /// <summary>Round-off amount (e.g. -0.20). Range ±1.00 AED.</summary>
+        public decimal RoundOff { get; set; } = 0m;
     }
 
     public class HeldInvoiceDto
@@ -405,7 +417,51 @@ namespace HexaBill.Api.Models
         public string? Name { get; set; }
         public string? Notes { get; set; }
         public object? InvoiceData { get; set; }
+        public decimal RoundOff { get; set; }
         public DateTime? CreatedAt { get; set; }
+    }
+
+    public class PaymentReceiptDto
+    {
+        public int Id { get; set; }
+        public string ReceiptNumber { get; set; } = string.Empty;
+        public int PaymentId { get; set; }
+        public DateTime GeneratedAt { get; set; }
+    }
+
+    public class PaymentReceiptDetailDto
+    {
+        public string ReceiptNumber { get; set; } = string.Empty;
+        public DateTime ReceiptDate { get; set; }
+        public string CompanyName { get; set; } = string.Empty;
+        public string? CompanyNameAr { get; set; }
+        public string? CompanyTrn { get; set; }
+        public string? CompanyAddress { get; set; }
+        public string? CompanyPhone { get; set; }
+        public string ReceivedFrom { get; set; } = string.Empty;
+        public string? CustomerTrn { get; set; }
+        public decimal AmountReceived { get; set; }
+        public string AmountInWords { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
+        public string? Reference { get; set; }
+        public List<PaymentReceiptInvoiceLineDto> Invoices { get; set; } = new();
+        public decimal? PreviousBalance { get; set; }
+        public decimal AmountPaid { get; set; }
+        public decimal? RemainingBalance { get; set; }
+    }
+
+    public class PaymentReceiptInvoiceLineDto
+    {
+        public string InvoiceNo { get; set; } = string.Empty;
+        public DateTime InvoiceDate { get; set; }
+        public decimal InvoiceTotal { get; set; }
+        public decimal AmountApplied { get; set; }
+    }
+
+    public class PaymentReceiptBatchRequest
+    {
+        [JsonPropertyName("paymentIds")]
+        public List<int> PaymentIds { get; set; } = new();
     }
 
     // Purchase DTOs
@@ -551,6 +607,12 @@ namespace HexaBill.Api.Models
         public DateTime? ApprovedAt { get; set; }
         public string? RejectionReason { get; set; }
         public string? CreatedByName { get; set; }
+        public decimal? VatAmount { get; set; }
+        public decimal? TotalAmount { get; set; }
+        public string? TaxType { get; set; }
+        public bool IsTaxClaimable { get; set; }
+        public bool IsEntertainment { get; set; }
+        public decimal PartialCreditPct { get; set; }
     }
 
     public class ExpenseCategoryDto
@@ -558,6 +620,11 @@ namespace HexaBill.Api.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
         public string ColorCode { get; set; } = string.Empty;
+        public decimal DefaultVatRate { get; set; }
+        public string DefaultTaxType { get; set; } = "Standard";
+        public bool DefaultIsTaxClaimable { get; set; }
+        public bool DefaultIsEntertainment { get; set; }
+        public bool VatDefaultLocked { get; set; }
     }
 
     public class CreateExpenseRequest
@@ -573,12 +640,38 @@ namespace HexaBill.Api.Models
         public string? Note { get; set; }
         public string? AttachmentUrl { get; set; }
         public int? RecurringExpenseId { get; set; }
+        public bool WithVat { get; set; }
+        [MaxLength(32)]
+        public string? TaxType { get; set; }
+        public bool IsTaxClaimable { get; set; } = true;
+        public bool IsEntertainment { get; set; }
+        [Range(0, 100)]
+        public decimal PartialCreditPct { get; set; } = 100;
     }
 
     public class ApproveExpenseRequest
     {
         public bool Approved { get; set; }
         public string? RejectionReason { get; set; }
+    }
+
+    public class BulkVatUpdateRequest
+    {
+        public List<int>? ExpenseIds { get; set; }
+        public int? CategoryId { get; set; }
+        public bool AllNoVat { get; set; }
+        public string Interpretation { get; set; } = "add-on-top"; // add-on-top | extract-from-amount
+        public decimal VatRate { get; set; } = 0.05m;
+        public bool IsTaxClaimable { get; set; } = true;
+        public string TaxType { get; set; } = "Standard";
+        public bool IsEntertainment { get; set; }
+    }
+
+    public class BulkVatUpdateResult
+    {
+        public int Updated { get; set; }
+        public int Skipped { get; set; }
+        public List<string> Errors { get; set; } = new();
     }
 
     public class RecurringExpenseDto
@@ -1499,6 +1592,102 @@ namespace HexaBill.Api.Models
         public decimal Box8_RecoverableTax { get; set; }
         /// <summary>Box 9: Net VAT due to authority (Box 6 - Box 8).</summary>
         public decimal Box9_NetVatDue { get; set; }
+    }
+
+    /// <summary>FTA Form 201 VAT return with boxes 1a–13b and detail lines.</summary>
+    public class VatReturn201Dto
+    {
+        public string PeriodLabel { get; set; } = string.Empty;
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public DateTime DueDate { get; set; }
+        public string Status { get; set; } = "Draft";
+        public DateTime? CalculatedAt { get; set; }
+        public int? PeriodId { get; set; }
+        public decimal Box1a { get; set; }
+        public decimal Box1b { get; set; }
+        public decimal Box2 { get; set; }
+        public decimal Box3 { get; set; }
+        public decimal Box4 { get; set; }
+        public decimal Box9b { get; set; }
+        public decimal Box10 { get; set; }
+        public decimal Box11 { get; set; }
+        public decimal Box12 { get; set; }
+        public decimal Box13a { get; set; }
+        public decimal Box13b { get; set; }
+        public decimal PetroleumExcluded { get; set; }
+        public int TransactionCount { get; set; }
+        public List<VatReturnOutputLineDto> OutputLines { get; set; } = new();
+        public List<VatReturnInputLineDto> InputLines { get; set; } = new();
+        public List<VatReturnCreditNoteLineDto> CreditNoteLines { get; set; } = new();
+        public List<VatReturnReverseChargeLineDto> ReverseChargeLines { get; set; } = new();
+        public List<ValidationIssueDto> ValidationIssues { get; set; } = new();
+    }
+
+    public class VatReturnOutputLineDto
+    {
+        public string Type { get; set; } = "Sale"; // Sale | CreditNote
+        public string Reference { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal NetAmount { get; set; }
+        public decimal VatAmount { get; set; }
+        public string? VatScenario { get; set; }
+    }
+
+    public class VatReturnInputLineDto
+    {
+        public string Type { get; set; } = "Purchase"; // Purchase | Expense
+        public string Reference { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal NetAmount { get; set; }
+        public decimal VatAmount { get; set; }
+        public decimal ClaimableVat { get; set; }
+        public string? TaxType { get; set; }
+    }
+
+    public class VatReturnCreditNoteLineDto
+    {
+        public string Reference { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal NetAmount { get; set; }
+        public decimal VatAmount { get; set; }
+        public string Side { get; set; } = "Output"; // Output | Input
+    }
+
+    public class VatReturnReverseChargeLineDto
+    {
+        public string Reference { get; set; } = string.Empty;
+        public DateTime Date { get; set; }
+        public decimal NetAmount { get; set; }
+        public decimal ReverseChargeVat { get; set; }
+    }
+
+    public class ValidationIssueDto
+    {
+        public string RuleId { get; set; } = string.Empty; // V001–V012
+        public string Severity { get; set; } = "Warning"; // Blocking | Warning
+        public string Message { get; set; } = string.Empty;
+        public string? EntityRef { get; set; }
+    }
+
+    public class VatReturnPeriodDto
+    {
+        public int Id { get; set; }
+        public string PeriodLabel { get; set; } = string.Empty;
+        public DateTime PeriodStart { get; set; }
+        public DateTime PeriodEnd { get; set; }
+        public DateTime DueDate { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public decimal Box13a { get; set; }
+        public decimal Box13b { get; set; }
+        public DateTime? CalculatedAt { get; set; }
+        public DateTime? LockedAt { get; set; }
+    }
+
+    public class VatReturnCalculateRequest
+    {
+        public DateTime? From { get; set; }
+        public DateTime? To { get; set; }
     }
 }
 

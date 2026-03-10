@@ -31,6 +31,8 @@ namespace HexaBill.Api.Models
         public decimal Subtotal { get; set; }
         public decimal VatTotal { get; set; }
         public decimal Discount { get; set; }
+        /// <summary>Round-off adjustment (e.g. -0.20 to make total round). Applied after VAT. Range ±1.00 AED.</summary>
+        public decimal RoundOff { get; set; } = 0;
         public decimal GrandTotal { get; set; }
         public decimal TotalAmount { get; set; } // Alias for GrandTotal, kept for consistency
         public decimal PaidAmount { get; set; } = 0; // Total amount paid so far
@@ -58,6 +60,11 @@ namespace HexaBill.Api.Models
         // Concurrency control - prevent duplicate saves when multiple users edit simultaneously
         public byte[] RowVersion { get; set; } = Array.Empty<byte>(); // For optimistic concurrency
 
+        // FTA VAT: zero invoice and scenario
+        public bool IsZeroInvoice { get; set; }
+        [MaxLength(20)]
+        public string? VatScenario { get; set; } // Standard, ZeroRated, Exempt, OutOfScope, ReverseCharge, DesignatedZone
+
         // Navigation properties
         public virtual Customer? Customer { get; set; }
         public virtual Branch? Branch { get; set; }
@@ -81,6 +88,9 @@ namespace HexaBill.Api.Models
         public decimal Discount { get; set; }
         public decimal VatAmount { get; set; }
         public decimal LineTotal { get; set; }
+        public decimal VatRate { get; set; }
+        [MaxLength(20)]
+        public string? VatScenario { get; set; }
 
         // Navigation properties
         public virtual Sale Sale { get; set; } = null!;

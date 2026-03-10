@@ -42,6 +42,147 @@ import {
   Tooltip
 } from 'recharts'
 
+function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
+  const [interpretation, setInterpretation] = useState('add-on-top')
+  const vatRate = 0.05
+  const preview = noVatExpenses.slice(0, 10).map(e => {
+    const amount = Number(e.amount) || 0
+    let oldAmount = amount
+    let newNet = amount
+    let newVat = 0
+    let newTotal = amount
+    if (interpretation === 'add-on-top') {
+      newVat = Math.round(amount * vatRate * 100) / 100
+      newTotal = amount + newVat
+    } else {
+      newNet = Math.round(amount / (1 + vatRate) * 100) / 100
+      newVat = amount - newNet
+      newTotal = amount
+    }
+    return { id: e.id, categoryName: e.categoryName, oldAmount, newNet, newVat, newTotal }
+  })
+  const handleApply = () => {
+    onApply({
+      allNoVat: true,
+      interpretation,
+      vatRate: 0.05,
+      isTaxClaimable: true,
+      taxType: 'Standard',
+      isEntertainment: false
+    })
+  }
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-medium text-gray-700 mb-2">Interpretation</p>
+        <label className="flex items-center gap-2 mb-1">
+          <input type="radio" name="bulkVatInterp" value="add-on-top" checked={interpretation === 'add-on-top'} onChange={() => setInterpretation('add-on-top')} />
+          <span className="text-sm">Add VAT on top (amount was net)</span>
+        </label>
+        <label className="flex items-center gap-2">
+          <input type="radio" name="bulkVatInterp" value="extract-from-amount" checked={interpretation === 'extract-from-amount'} onChange={() => setInterpretation('extract-from-amount')} />
+          <span className="text-sm">Extract VAT from amount (amount included VAT)</span>
+        </label>
+      </div>
+      <div>
+        <p className="text-sm font-medium text-gray-700 mb-2">Preview (first {preview.length} of {noVatExpenses.length})</p>
+        <div className="overflow-x-auto border border-gray-200 rounded text-xs">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-2 py-1 text-left">Category</th>
+                <th className="px-2 py-1 text-right">Old amount</th>
+                <th className="px-2 py-1 text-right">New net</th>
+                <th className="px-2 py-1 text-right">VAT</th>
+                <th className="px-2 py-1 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map(row => (
+                <tr key={row.id} className="border-t border-gray-100">
+                  <td className="px-2 py-1">{row.categoryName || '-'}</td>
+                  <td className="px-2 py-1 text-right">{formatCurrency(row.oldAmount)}</td>
+                  <td className="px-2 py-1 text-right">{formatCurrency(row.newNet)}</td>
+                  <td className="px-2 py-1 text-right">{formatCurrency(row.newVat)}</td>
+                  <td className="px-2 py-1 text-right">{formatCurrency(row.newTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div className="flex gap-2 pt-2">
+        <LoadingButton type="button" loading={submitting} onClick={handleApply} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+          Apply VAT to {noVatExpenses.length} expense(s)
+        </LoadingButton>
+        <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+      </div>
+    </div>
+  )
+}
+
+function CategoryVatEditInline ({ category, onSave, onCancel }) {
+  const [defaultVatRate, setDefaultVatRate] = useState(category.defaultVatRate ?? 0)
+  const [defaultTaxType, setDefaultTaxType] = useState(category.defaultTaxType || 'Standard')
+  const [defaultIsTaxClaimable, setDefaultIsTaxClaimable] = useState(!!category.defaultIsTaxClaimable)
+  const [defaultIsEntertainment, setDefaultIsEntertainment] = useState(!!category.defaultIsEntertainment)
+  const [vatDefaultLocked, setVatDefaultLocked] = useState(!!category.vatDefaultLocked)
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSave({
+      defaultVatRate: Number(defaultVatRate),
+      defaultTaxType,
+      defaultIsTaxClaimable,
+      defaultIsEntertainment,
+      vatDefaultLocked
+    })
+  }
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Default VAT rate</label>
+        <select
+          value={defaultVatRate}
+          onChange={(e) => setDefaultVatRate(Number(e.target.value))}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+        >
+          <option value={0}>0%</option>
+          <option value={0.05}>5%</option>
+        </select>
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Tax type</label>
+        <select
+          value={defaultTaxType}
+          onChange={(e) => setDefaultTaxType(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+        >
+          <option value="Standard">Standard</option>
+          <option value="Petroleum">Petroleum</option>
+          <option value="Exempt">Exempt</option>
+          <option value="OutOfScope">OutOfScope</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="catItc" checked={defaultIsTaxClaimable} onChange={(e) => setDefaultIsTaxClaimable(e.target.checked)} className="rounded border-gray-300" />
+        <label htmlFor="catItc" className="text-sm text-gray-700">ITC claimable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="catEnt" checked={defaultIsEntertainment} onChange={(e) => setDefaultIsEntertainment(e.target.checked)} className="rounded border-gray-300" />
+        <label htmlFor="catEnt" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="catLock" checked={vatDefaultLocked} onChange={(e) => setVatDefaultLocked(e.target.checked)} className="rounded border-gray-300" />
+        <label htmlFor="catLock" className="text-sm text-gray-700">Lock VAT for this category</label>
+      </div>
+      <div className="flex gap-2 pt-2">
+        <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+      </div>
+    </form>
+  )
+}
+
 const ExpensesPage = () => {
   const { user } = useAuth()
   const { branches, routes } = useBranchesRoutes()
@@ -82,6 +223,11 @@ const ExpensesPage = () => {
   const [recurringExpenses, setRecurringExpenses] = useState([])
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [showCategorySettingsModal, setShowCategorySettingsModal] = useState(false)
+  const [editingCategoryVat, setEditingCategoryVat] = useState(null)
+  const [filterNoVatOnly, setFilterNoVatOnly] = useState(false)
+  const [showBulkVatModal, setShowBulkVatModal] = useState(false)
+  const [bulkVatSubmitting, setBulkVatSubmitting] = useState(false)
 
   const {
     register,
@@ -98,12 +244,7 @@ const ExpensesPage = () => {
     try {
       const response = await expensesAPI.getExpenseCategories()
       if (response?.success && response?.data && Array.isArray(response.data)) {
-        const categoryOptions = response.data.map(cat => ({
-          value: cat.id,
-          label: cat.name,
-          color: cat.colorCode
-        }))
-        setCategories(categoryOptions)
+        setCategories(response.data)
       } else {
         setCategories([])
       }
@@ -113,6 +254,29 @@ const ExpensesPage = () => {
       setCategories([])
     }
   }, [])
+
+  const categoryOptions = categories.map(cat => ({
+    value: cat.id,
+    label: cat.name,
+    color: cat.colorCode
+  }))
+  const watchedCategoryId = watch('category')
+  const selectedCategory = watchedCategoryId
+    ? categories.find(c => c.id === parseInt(watchedCategoryId, 10))
+    : null
+  const vatLockedByCategory = selectedCategory?.vatDefaultLocked === true
+
+  const noVatExpenses = filteredExpenses.filter(e => e.vatAmount == null)
+  const noVatCount = noVatExpenses.length
+  const displayExpenses = filterNoVatOnly ? noVatExpenses : filteredExpenses
+
+  useEffect(() => {
+    if (!selectedCategory || showEditModal) return
+    setValue('withVat', selectedCategory.defaultVatRate > 0)
+    setValue('taxType', selectedCategory.defaultTaxType || 'Standard')
+    setValue('isTaxClaimable', !!selectedCategory.defaultIsTaxClaimable)
+    setValue('isEntertainment', !!selectedCategory.defaultIsEntertainment)
+  }, [watchedCategoryId, selectedCategory?.id, showEditModal, setValue])
 
 
   const fetchExpenses = useCallback(async () => {
@@ -283,7 +447,12 @@ const ExpensesPage = () => {
           categoryId: parseInt(data.category),
           amount: parseFloat(data.amount),
           date: expenseDate,
-          note: data.note || ''
+          note: data.note || '',
+          withVat: !!data.withVat,
+          taxType: data.taxType || 'Standard',
+          isTaxClaimable: !!data.isTaxClaimable,
+          isEntertainment: !!data.isEntertainment,
+          partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
         })
 
         if (response?.success) {
@@ -300,8 +469,13 @@ const ExpensesPage = () => {
           amount: parseFloat(data.amount),
           date: expenseDate,
           note: data.note || '',
-          attachmentUrl: null, // Will be uploaded after creation
-          recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null
+          attachmentUrl: null,
+          recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null,
+          withVat: !!data.withVat,
+          taxType: data.taxType || 'Standard',
+          isTaxClaimable: !!data.isTaxClaimable,
+          isEntertainment: !!data.isEntertainment,
+          partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
         })
         
         // Upload attachment after expense creation
@@ -319,7 +493,12 @@ const ExpensesPage = () => {
                 date: expenseDate,
                 note: data.note || '',
                 attachmentUrl: uploadResponse.data,
-                recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null
+                recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null,
+                withVat: !!data.withVat,
+                taxType: data.taxType || 'Standard',
+                isTaxClaimable: !!data.isTaxClaimable,
+                isEntertainment: !!data.isEntertainment,
+                partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
               })
             }
           } catch (error) {
@@ -364,6 +543,11 @@ const ExpensesPage = () => {
       : new Date().toISOString().split('T')[0]
     setValue('date', expenseDate)
     setValue('note', expense.note || '')
+    setValue('withVat', !!(expense.vatAmount != null && expense.vatAmount > 0))
+    setValue('taxType', expense.taxType || 'Standard')
+    setValue('isTaxClaimable', expense.isTaxClaimable !== false)
+    setValue('isEntertainment', !!expense.isEntertainment)
+    setValue('partialCreditPct', expense.partialCreditPct != null ? expense.partialCreditPct : 100)
     setAttachmentPreview(expense.attachmentUrl ? `/uploads/${expense.attachmentUrl}` : null)
     setShowEditModal(true)
   }
@@ -608,6 +792,15 @@ const ExpensesPage = () => {
               <span className="sm:hidden">Add</span>
             </button>
             {isAdminOrOwner(user) && (
+              <>
+              <button
+                type="button"
+                onClick={() => setShowCategorySettingsModal(true)}
+                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <Tag className="h-4 w-4" />
+                <span className="hidden sm:inline">Category VAT</span>
+              </button>
               <button
                 onClick={() => setShowRecurringModal(true)}
                 className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 flex items-center justify-center text-xs sm:text-sm flex-1 sm:flex-none min-h-[44px]"
@@ -617,6 +810,7 @@ const ExpensesPage = () => {
                 <span className="hidden sm:inline">Recurring</span>
                 <span className="sm:hidden">Repeat</span>
               </button>
+              </>
             )}
           </div>
         </div>
@@ -676,6 +870,12 @@ const ExpensesPage = () => {
             >
               This Year
             </button>
+            <button
+              onClick={() => setFilterNoVatOnly(prev => !prev)}
+              className={`px-2 py-1 text-xs rounded ${filterNoVatOnly ? 'bg-amber-200 text-amber-900' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
+            >
+              No VAT data only {filterNoVatOnly ? '(on)' : ''}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -709,6 +909,21 @@ const ExpensesPage = () => {
             </div>
           </div>
         </div>
+
+        {noVatCount > 0 && isAdminOrOwner(user) && (
+          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-amber-800">
+              {noVatCount} expense(s) have no VAT data.
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowBulkVatModal(true)}
+              className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700"
+            >
+              Review & Update
+            </button>
+          </div>
+        )}
 
         {/* Summary Cards - Mobile Responsive */}
         {expenseSummary && (
@@ -911,7 +1126,7 @@ const ExpensesPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
-                  {filteredExpenses.length === 0 ? (
+                  {displayExpenses.length === 0 ? (
                     <tr>
                       <td colSpan="9" className="px-6 py-8 text-center text-gray-500">
                         {user && !isAdminOrOwner(user)
@@ -920,7 +1135,7 @@ const ExpensesPage = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredExpenses.map((expense) => (
+                    displayExpenses.map((expense) => (
                       <tr key={expense.id} className="hover:bg-neutral-50">
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -1010,14 +1225,14 @@ const ExpensesPage = () => {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3 p-4">
-              {filteredExpenses.length === 0 ? (
+              {displayExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {user && !isAdminOrOwner(user)
                     ? 'No expenses in your assigned branch(es) for this period.'
                     : 'No expenses found'}
                 </div>
               ) : (
-                filteredExpenses.map((expense) => (
+                displayExpenses.map((expense) => (
                   <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
@@ -1167,7 +1382,7 @@ const ExpensesPage = () => {
                 )}
               </div>
               <Select
-                options={categories}
+                options={categoryOptions}
                 required
                 error={errors.category?.message}
                 {...register('category', { required: 'Category is required' })}
@@ -1175,7 +1390,7 @@ const ExpensesPage = () => {
             </div>
 
             <Input
-              label="Amount"
+              label="Amount (excl. VAT)"
               type="number"
               step="0.01"
               placeholder="0.00"
@@ -1186,6 +1401,43 @@ const ExpensesPage = () => {
                 min: { value: 0.01, message: 'Amount must be greater than 0' }
               })}
             />
+
+            {vatLockedByCategory ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
+                {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
+                {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="withVat" {...register('withVat')} className="rounded border-gray-300" />
+                  <label htmlFor="withVat" className="text-sm text-gray-700">Include VAT (5%)</label>
+                </div>
+                {watch('withVat') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
+                    <Select
+                      label="Tax type"
+                      options={[
+                        { value: 'Standard', label: 'Standard' },
+                        { value: 'Petroleum', label: 'Petroleum (no ITC)' },
+                        { value: 'Exempt', label: 'Exempt' }
+                      ]}
+                      {...register('taxType')}
+                    />
+                    <div className="flex items-center gap-2 pt-6">
+                      <input type="checkbox" id="isTaxClaimable" {...register('isTaxClaimable')} className="rounded border-gray-300" />
+                      <label htmlFor="isTaxClaimable" className="text-sm text-gray-700">Tax claimable (ITC)</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="isEntertainment" {...register('isEntertainment')} className="rounded border-gray-300" />
+                      <label htmlFor="isEntertainment" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+                    </div>
+                    <Input label="Partial credit %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} />
+                  </div>
+                )}
+              </>
+            )}
 
             <Input
               label="Date"
@@ -1333,7 +1585,7 @@ const ExpensesPage = () => {
                 )}
               </div>
               <Select
-                options={categories}
+                options={categoryOptions}
                 required
                 error={errors.category?.message}
                 {...register('category', { required: 'Category is required' })}
@@ -1342,7 +1594,7 @@ const ExpensesPage = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Amount"
+                label="Amount (excl. VAT)"
                 type="number"
                 step="0.01"
                 placeholder="0.00"
@@ -1362,6 +1614,50 @@ const ExpensesPage = () => {
                 {...register('date', { required: 'Date is required' })}
               />
             </div>
+
+            {selectedExpense && selectedExpense.vatAmount == null && !vatLockedByCategory && (
+              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-sm text-amber-800">No VAT data.</span>
+                <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700">Add 5% VAT</button>
+                <button type="button" onClick={() => { setValue('withVat', false); }} className="text-sm px-2 py-1 border border-amber-300 rounded hover:bg-amber-100">Keep as No VAT</button>
+              </div>
+            )}
+            {vatLockedByCategory ? (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
+                {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
+                {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <input type="checkbox" id="editWithVat" {...register('withVat')} className="rounded border-gray-300" />
+                  <label htmlFor="editWithVat" className="text-sm text-gray-700">Include VAT (5%)</label>
+                </div>
+                {watch('withVat') && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
+                    <Select
+                      label="Tax type"
+                      options={[
+                        { value: 'Standard', label: 'Standard' },
+                        { value: 'Petroleum', label: 'Petroleum (no ITC)' },
+                        { value: 'Exempt', label: 'Exempt' }
+                      ]}
+                      {...register('taxType')}
+                    />
+                    <div className="flex items-center gap-2 pt-6">
+                      <input type="checkbox" id="editIsTaxClaimable" {...register('isTaxClaimable')} className="rounded border-gray-300" />
+                      <label htmlFor="editIsTaxClaimable" className="text-sm text-gray-700">Tax claimable (ITC)</label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input type="checkbox" id="editIsEntertainment" {...register('isEntertainment')} className="rounded border-gray-300" />
+                      <label htmlFor="editIsEntertainment" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+                    </div>
+                    <Input label="Partial credit %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} />
+                  </div>
+                )}
+              </>
+            )}
 
             {/* BRANCH/ROUTE ASSIGNMENT FIX: Add Branch and Route dropdowns in edit modal */}
             <Select
@@ -1552,7 +1848,96 @@ const ExpensesPage = () => {
         </Modal>
       )}
 
-      {/* Edit Expense Modal same as add modal but with title change */}
+      {/* Bulk VAT Update Modal */}
+      <Modal
+        isOpen={showBulkVatModal}
+        onClose={() => setShowBulkVatModal(false)}
+        title="Bulk VAT update"
+      >
+        {noVatCount === 0 ? (
+          <p className="text-gray-600">No expenses with missing VAT data.</p>
+        ) : (
+          <BulkVatForm
+            noVatExpenses={noVatExpenses}
+            onApply={async (payload) => {
+              setBulkVatSubmitting(true)
+              try {
+                const res = await expensesAPI.bulkVatUpdate(payload)
+                if (res?.success && res?.data) {
+                  toast.success(`Updated ${res.data.updated} expense(s). Recalculate VAT Return if needed.`)
+                  await fetchExpenses()
+                  setShowBulkVatModal(false)
+                } else toast.error(res?.message || 'Update failed')
+              } catch (e) {
+                toast.error(e?.response?.data?.message || 'Update failed')
+              } finally {
+                setBulkVatSubmitting(false)
+              }
+            }}
+            onCancel={() => setShowBulkVatModal(false)}
+            submitting={bulkVatSubmitting}
+          />
+        )}
+      </Modal>
+
+      {/* Category VAT settings modal */}
+      <Modal
+        isOpen={showCategorySettingsModal}
+        onClose={() => { setShowCategorySettingsModal(false); setEditingCategoryVat(null) }}
+        title="Expense category VAT defaults"
+      >
+        <div className="space-y-2 max-h-96 overflow-y-auto">
+          {categories.map(cat => (
+            <div key={cat.id} className="flex items-center justify-between py-2 border-b border-gray-100">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-gray-900">{cat.name}</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                  {cat.defaultVatRate ? `${(cat.defaultVatRate * 100).toFixed(0)}% VAT` : '0% VAT'}
+                </span>
+                {cat.defaultIsTaxClaimable && <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">Claimable</span>}
+                {cat.defaultIsEntertainment && <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">Entertainment</span>}
+                {cat.vatDefaultLocked && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">Locked</span>}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCategoryVat({ ...cat })}
+                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
+          ))}
+          {categories.length === 0 && <p className="text-gray-500 text-sm">No categories yet.</p>}
+        </div>
+      </Modal>
+
+      {/* Edit category VAT defaults modal */}
+      <Modal
+        isOpen={!!editingCategoryVat}
+        onClose={() => setEditingCategoryVat(null)}
+        title={editingCategoryVat ? `VAT defaults: ${editingCategoryVat.name}` : ''}
+      >
+        {editingCategoryVat && (
+          <CategoryVatEditInline
+            category={editingCategoryVat}
+            onSave={async (data) => {
+              try {
+                const res = await expensesAPI.updateCategory(editingCategoryVat.id, data)
+                if (res?.success) {
+                  toast.success('Category updated')
+                  await fetchCategories()
+                  setEditingCategoryVat(null)
+                  setShowCategorySettingsModal(false)
+                } else toast.error(res?.message || 'Update failed')
+              } catch (e) {
+                toast.error(e?.response?.data?.message || 'Update failed')
+              }
+            }}
+            onCancel={() => setEditingCategoryVat(null)}
+          />
+        )}
+      </Modal>
+
       <ConfirmDangerModal
         isOpen={dangerModal.isOpen}
         title={dangerModal.title}

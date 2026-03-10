@@ -77,9 +77,14 @@ namespace HexaBill.Api.Models
         public string InvoicePrefix { get; set; } = "HB";
         
         /// <summary>
-        /// Company logo URL or file path (optional)
-        /// Example: "/uploads/logo.png"
+        /// Company logo URL or file path (optional) — for browser display
+        /// Example: "/api/storage/tenants/5/logos/guid.png"
         /// </summary>
         public string? LogoPath { get; set; }
+
+        /// <summary>
+        /// Storage key for server-side logo read (e.g. PDF). tenants/{tenantId}/logos/{guid}.png
+        /// </summary>
+        public string? LogoStorageKey { get; set; }
     }
 }

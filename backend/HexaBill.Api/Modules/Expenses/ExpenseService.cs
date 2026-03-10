@@ -7,7 +7,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Reports;
+using HexaBill.Api.Shared.Exceptions;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Expenses
 {
@@ -20,16 +23,19 @@ namespace HexaBill.Api.Modules.Expenses
         Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null, IReadOnlyList<int>? staffAllowedRouteIds = null);
         Task<bool> DeleteExpenseAsync(int id, int userId, int tenantId);
         Task<List<string>> GetExpenseCategoriesAsync(int tenantId);
+        Task<BulkVatUpdateResult> BulkVatUpdateAsync(int tenantId, BulkVatUpdateRequest request);
     }
 
     public class ExpenseService : IExpenseService
     {
         private readonly AppDbContext _context;
+        private readonly IVatReturnValidationService _vatValidation;
         private readonly ILogger<ExpenseService> _logger;
 
-        public ExpenseService(AppDbContext context, ILogger<ExpenseService> logger)
+        public ExpenseService(AppDbContext context, IVatReturnValidationService vatValidation, ILogger<ExpenseService> logger)
         {
             _context = context;
+            _vatValidation = vatValidation;
             _logger = logger;
         }
 
@@ -99,7 +105,13 @@ namespace HexaBill.Api.Modules.Expenses
                     ApprovedBy = e.ApprovedBy,
                     ApprovedAt = e.ApprovedAt,
                     RejectionReason = e.RejectionReason,
-                    CreatedByName = e.CreatedByUser != null ? e.CreatedByUser.Name : ""
+                    CreatedByName = e.CreatedByUser != null ? e.CreatedByUser.Name : "",
+                    VatAmount = e.VatAmount,
+                    TotalAmount = e.TotalAmount,
+                    TaxType = e.TaxType,
+                    IsTaxClaimable = e.IsTaxClaimable,
+                    IsEntertainment = e.IsEntertainment,
+                    PartialCreditPct = e.PartialCreditPct
                 })
                 .ToListAsync();
 
@@ -291,7 +303,13 @@ namespace HexaBill.Api.Modules.Expenses
                 ApprovedBy = expense.ApprovedBy,
                 ApprovedAt = expense.ApprovedAt,
                 RejectionReason = expense.RejectionReason,
-                CreatedByName = expense.CreatedByUser?.Name ?? ""
+                CreatedByName = expense.CreatedByUser?.Name ?? "",
+                VatAmount = expense.VatAmount,
+                TotalAmount = expense.TotalAmount,
+                TaxType = expense.TaxType,
+                IsTaxClaimable = expense.IsTaxClaimable,
+                IsEntertainment = expense.IsEntertainment,
+                PartialCreditPct = expense.PartialCreditPct
             };
         }
 
@@ -323,25 +341,57 @@ namespace HexaBill.Api.Modules.Expenses
                         throw new InvalidOperationException($"Category with ID {request.CategoryId} not found");
                     }
 
+                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, request.Date))
+                        throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot add or edit transactions in a locked period.");
+
                     // Determine status: Staff expenses are Pending, Owner/Admin are Approved
                     var isStaff = staffAllowedBranchIds != null;
                     var expenseStatus = isStaff ? ExpenseStatus.Pending : ExpenseStatus.Approved;
 
+                    // Category VAT defaults: when VatDefaultLocked, use category defaults; otherwise use request
+                    bool withVat; string taxType; bool isClaimable; bool isEnt; decimal partialPct;
+                    if (category.VatDefaultLocked)
+                    {
+                        withVat = category.DefaultVatRate > 0;
+                        taxType = category.DefaultTaxType ?? "Standard";
+                        isClaimable = category.DefaultIsTaxClaimable;
+                        isEnt = category.DefaultIsEntertainment;
+                        partialPct = 100m;
+                    }
+                    else
+                    {
+                        withVat = request.WithVat;
+                        taxType = request.TaxType ?? "Standard";
+                        isClaimable = request.IsTaxClaimable;
+                        isEnt = request.IsEntertainment;
+                        partialPct = request.PartialCreditPct;
+                    }
+                    var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
+                        ? VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                        : null;
                     var expense = new Expense
                     {
-                        OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                        TenantId = tenantId, // CRITICAL: Set new TenantId
+                        OwnerId = tenantId,
+                        TenantId = tenantId,
                         BranchId = request.BranchId,
                         RouteId = request.RouteId,
                         CategoryId = request.CategoryId,
                         Amount = request.Amount,
-                        Date = request.Date.ToUtcKind(), // Ensure UTC for PostgreSQL
+                        Date = request.Date.ToUtcKind(),
                         Note = request.Note,
                         AttachmentUrl = request.AttachmentUrl,
                         Status = expenseStatus,
                         RecurringExpenseId = request.RecurringExpenseId,
                         CreatedBy = userId,
-                        CreatedAt = DateTime.UtcNow
+                        CreatedAt = DateTime.UtcNow,
+                        VatRate = vatResult?.VatRate,
+                        VatAmount = vatResult?.VatAmount,
+                        TotalAmount = vatResult != null ? vatResult.TotalAmount : (decimal?)null,
+                        IsTaxClaimable = isClaimable,
+                        TaxType = taxType,
+                        IsEntertainment = isEnt,
+                        PartialCreditPct = partialPct,
+                        ClaimableVat = vatResult?.ClaimableVat
                     };
 
                     // Auto-approve if owner/admin
@@ -391,7 +441,13 @@ namespace HexaBill.Api.Modules.Expenses
                         ApprovedBy = expense.ApprovedBy,
                         ApprovedAt = expense.ApprovedAt,
                         RejectionReason = expense.RejectionReason,
-                        CreatedByName = expense.CreatedByUser?.Name ?? ""
+                        CreatedByName = expense.CreatedByUser?.Name ?? "",
+                        VatAmount = expense.VatAmount,
+                        TotalAmount = expense.TotalAmount,
+                        TaxType = expense.TaxType,
+                        IsTaxClaimable = expense.IsTaxClaimable,
+                        IsEntertainment = expense.IsEntertainment,
+                        PartialCreditPct = expense.PartialCreditPct
                     };
                 }
                 catch (Exception ex)
@@ -442,14 +498,45 @@ namespace HexaBill.Api.Modules.Expenses
                         throw new InvalidOperationException($"Category with ID {request.CategoryId} not found");
                     }
 
+                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, request.Date))
+                        throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot add or edit transactions in a locked period.");
+
                     expense.BranchId = request.BranchId;
                     expense.RouteId = request.RouteId;
                     expense.CategoryId = request.CategoryId;
                     expense.Amount = request.Amount;
-                    expense.Date = request.Date.ToUtcKind(); // Ensure UTC for PostgreSQL
+                    expense.Date = request.Date.ToUtcKind();
                     expense.Note = request.Note;
                     expense.AttachmentUrl = request.AttachmentUrl;
                     expense.RecurringExpenseId = request.RecurringExpenseId;
+                    bool withVat; string taxType; bool isClaimable; bool isEnt; decimal partialPct;
+                    if (category.VatDefaultLocked)
+                    {
+                        withVat = category.DefaultVatRate > 0;
+                        taxType = category.DefaultTaxType ?? "Standard";
+                        isClaimable = category.DefaultIsTaxClaimable;
+                        isEnt = category.DefaultIsEntertainment;
+                        partialPct = 100m;
+                    }
+                    else
+                    {
+                        withVat = request.WithVat;
+                        taxType = request.TaxType ?? "Standard";
+                        isClaimable = request.IsTaxClaimable;
+                        isEnt = request.IsEntertainment;
+                        partialPct = request.PartialCreditPct;
+                    }
+                    var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
+                        ? VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                        : null;
+                    expense.VatRate = vatResult?.VatRate;
+                    expense.VatAmount = vatResult?.VatAmount;
+                    expense.TotalAmount = vatResult != null ? vatResult.TotalAmount : (decimal?)null;
+                    expense.IsTaxClaimable = isClaimable;
+                    expense.TaxType = taxType;
+                    expense.IsEntertainment = isEnt;
+                    expense.PartialCreditPct = partialPct;
+                    expense.ClaimableVat = vatResult?.ClaimableVat;
 
                     await _context.SaveChangesAsync();
 
@@ -491,7 +578,13 @@ namespace HexaBill.Api.Modules.Expenses
                         ApprovedBy = expense.ApprovedBy,
                         ApprovedAt = expense.ApprovedAt,
                         RejectionReason = expense.RejectionReason,
-                        CreatedByName = expense.CreatedByUser?.Name ?? ""
+                        CreatedByName = expense.CreatedByUser?.Name ?? "",
+                        VatAmount = expense.VatAmount,
+                        TotalAmount = expense.TotalAmount,
+                        TaxType = expense.TaxType,
+                        IsTaxClaimable = expense.IsTaxClaimable,
+                        IsEntertainment = expense.IsEntertainment,
+                        PartialCreditPct = expense.PartialCreditPct
                     };
                 }
                 catch (Exception ex)
@@ -519,6 +612,9 @@ namespace HexaBill.Api.Modules.Expenses
                         await transaction.RollbackAsync();
                         return false;
                     }
+
+                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, expense.Date))
+                        throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot delete transactions in a locked period.");
 
                     var categoryName = expense.Category.Name;
                     var amount = expense.Amount;
@@ -558,6 +654,93 @@ namespace HexaBill.Api.Modules.Expenses
                 .OrderBy(c => c.Name)
                 .Select(c => c.Name)
                 .ToListAsync();
+        }
+
+        public async Task<BulkVatUpdateResult> BulkVatUpdateAsync(int tenantId, BulkVatUpdateRequest request)
+        {
+            var result = new BulkVatUpdateResult();
+            IQueryable<Expense> query = _context.Expenses
+                .Where(e => e.TenantId == tenantId && e.VatRate == null);
+
+            if (request.ExpenseIds != null && request.ExpenseIds.Count > 0)
+                query = query.Where(e => request.ExpenseIds.Contains(e.Id));
+            else if (request.CategoryId.HasValue)
+                query = query.Where(e => e.CategoryId == request.CategoryId.Value);
+            else if (!request.AllNoVat)
+                return result;
+
+            var expenses = await query.ToListAsync();
+            var interpretation = request.Interpretation?.Trim().ToLowerInvariant() ?? "add-on-top";
+            var vatRate = request.VatRate;
+            var taxType = request.TaxType ?? "Standard";
+            var isClaimable = request.IsTaxClaimable;
+            var isEnt = request.IsEntertainment;
+
+            foreach (var expense in expenses)
+            {
+                try
+                {
+                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, expense.Date))
+                    {
+                        result.Skipped++;
+                        result.Errors.Add($"Expense ID {expense.Id}: period locked");
+                        continue;
+                    }
+                    decimal netAmount;
+                    decimal vatAmount;
+                    decimal totalAmount;
+                    bool extract = string.Equals(interpretation, "extract-from-amount", StringComparison.OrdinalIgnoreCase);
+                    if (extract)
+                    {
+                        totalAmount = expense.Amount;
+                        netAmount = Math.Round(expense.Amount / (1 + vatRate), 2, MidpointRounding.AwayFromZero);
+                        vatAmount = totalAmount - netAmount;
+                        expense.Amount = netAmount;
+                        expense.VatRate = vatRate;
+                        expense.VatAmount = vatAmount;
+                        expense.TotalAmount = totalAmount;
+                        expense.IsTaxClaimable = isClaimable;
+                        expense.TaxType = taxType;
+                        expense.IsEntertainment = isEnt;
+                        expense.ClaimableVat = isClaimable ? (isEnt ? Math.Round(vatAmount * 0.5m, 2) : vatAmount) : 0;
+                    }
+                    else
+                    {
+                        netAmount = expense.Amount;
+                        var vatResult = !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
+                            ? VatCalculator.ForExpense(netAmount, taxType, isClaimable, isEnt, 100m)
+                            : null;
+                        if (vatResult != null)
+                        {
+                            expense.VatRate = vatResult.VatRate;
+                            expense.VatAmount = vatResult.VatAmount;
+                            expense.TotalAmount = vatResult.TotalAmount;
+                            expense.IsTaxClaimable = isClaimable;
+                            expense.TaxType = taxType;
+                            expense.IsEntertainment = isEnt;
+                            expense.ClaimableVat = vatResult.ClaimableVat;
+                        }
+                        else
+                        {
+                            expense.VatRate = 0;
+                            expense.VatAmount = 0;
+                            expense.TotalAmount = expense.Amount;
+                            expense.IsTaxClaimable = false;
+                            expense.TaxType = taxType;
+                            expense.IsEntertainment = isEnt;
+                            expense.ClaimableVat = 0;
+                        }
+                    }
+                    result.Updated++;
+                }
+                catch (Exception ex)
+                {
+                    result.Skipped++;
+                    result.Errors.Add($"Expense ID {expense.Id}: {ex.Message}");
+                }
+            }
+            await _context.SaveChangesAsync();
+            return result;
         }
     }
 }

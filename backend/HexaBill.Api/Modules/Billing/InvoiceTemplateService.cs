@@ -425,6 +425,8 @@ namespace HexaBill.Api.Modules.Billing
             public string InvoicePrefix { get; set; } = "INV";
             public string VatEffectiveDate { get; set; } = "";
             public string VatLegalText { get; set; } = "";
+            /// <summary>Logo image bytes (PNG) for PDF header. Null when no logo.</summary>
+            public byte[]? LogoImageBytes { get; set; }
         }
     }
 }

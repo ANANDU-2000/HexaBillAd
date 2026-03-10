@@ -26,7 +26,9 @@ import {
   RotateCcw,
   ArrowLeft,
   AlertTriangle,
-  Truck
+  Truck,
+  Lock,
+  Send
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -962,7 +964,10 @@ const ReportsPage = () => {
       } else if (activeTab === 'vat-return') {
         try {
           setLoading(true)
-          const vatResponse = await reportsAPI.getVatReturn(vatReturnQuarter, vatReturnYear)
+          const from = dateRange?.from || null
+          const to = dateRange?.to || null
+          const params = (from && to) ? { from, to } : { quarter: vatReturnQuarter, year: vatReturnYear }
+          const vatResponse = await reportsAPI.getVatReturn(params)
           if (vatResponse?.success && vatResponse?.data) {
             setReportData(prev => ({ ...prev, vatReturn: vatResponse.data }))
           } else {
@@ -1007,7 +1012,7 @@ const ReportsPage = () => {
       setLoading(false)
       isFetchingRef.current = false
     }
-  }, [dateRange, activeTab, appliedFilters, vatReturnQuarter, vatReturnYear])
+  }, [dateRange, activeTab, appliedFilters, vatReturnQuarter, vatReturnYear, dateRange?.from, dateRange?.to])
 
   // Store latest fetchReportData in ref to avoid dependency issues
   useEffect(() => {
@@ -3642,13 +3647,22 @@ const ReportsPage = () => {
             </div>
           )}
 
-          {/* VAT Return Tab (FTA VAT 201 - UAE) */}
+          {/* VAT Return Tab (FTA Form 201 - UAE) */}
           {activeTab === 'vat-return' && (
             <div className="space-y-6">
               <div className="bg-white rounded-lg border border-neutral-200 p-6">
                 <div className="flex flex-wrap items-center gap-4 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">FTA VAT 201 Return</h3>
-                  <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-lg font-semibold text-gray-900">FTA Form 201 VAT Return</h3>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Period: {reportData.vatReturn?.periodLabel || (dateRange?.from && dateRange?.to ? `${dateRange.from} to ${dateRange.to}` : `Q${vatReturnQuarter} ${vatReturnYear}`)}</span>
+                    {(reportData.vatReturn?.status || '').toLowerCase() === 'locked' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Locked</span>
+                    )}
+                    {(reportData.vatReturn?.status || '').toLowerCase() === 'submitted' && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Submitted</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 flex-wrap ml-auto">
                     <select
                       value={vatReturnQuarter}
                       onChange={(e) => { setVatReturnQuarter(parseInt(e.target.value, 10)); tabDataCacheRef.current = {}; fetchReportDataRef.current?.(true) }}
@@ -3669,22 +3683,113 @@ const ReportsPage = () => {
                     </select>
                     <button
                       onClick={async () => {
+                        const from = dateRange?.from || null
+                        const to = dateRange?.to || null
+                        if (!from || !to) { toast.error('Set date range (From/To) then recalculate'); return }
                         try {
-                          const blob = await reportsAPI.exportVatReturn(vatReturnQuarter, vatReturnYear)
+                          const res = await reportsAPI.calculateVatReturn(from, to)
+                          if (res?.success && res?.data) setReportData(prev => ({ ...prev, vatReturn: res.data }))
+                          toast.success('Recalculated')
+                        } catch (err) {
+                          toast.error(err?.response?.data?.message || 'Calculate failed')
+                        }
+                      }}
+                      className="px-4 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
+                    >
+                      Recalculate
+                    </button>
+                    {isAdminOrOwner(user) && reportData.vatReturn?.periodId != null && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const periodId = reportData.vatReturn.periodId
+                            const blocking = (reportData.vatReturn.validationIssues || []).filter(i => i.severity === 'Blocking')
+                            if (blocking.length > 0) { toast.error('Resolve blocking validation issues before locking'); return }
+                            if ((reportData.vatReturn.status || '').toLowerCase() === 'locked') { toast.error('Period is already locked'); return }
+                            if (!window.confirm('Lock this VAT period? No further edits to transactions in this period will be allowed.')) return
+                            try {
+                              const res = await reportsAPI.lockVatReturnPeriod(periodId)
+                              if (res?.success) {
+                                toast.success('Period locked')
+                                setReportData(prev => ({ ...prev, vatReturn: { ...(prev.vatReturn || {}), status: 'Locked' } }))
+                              } else toast.error(res?.message || 'Lock failed')
+                            } catch (err) {
+                              toast.error(err?.response?.data?.message || 'Lock failed')
+                            }
+                          }}
+                          disabled={(reportData.vatReturn?.validationIssues || []).filter(i => i.severity === 'Blocking').length > 0 || (reportData.vatReturn?.status || '').toLowerCase() === 'locked'}
+                          className="px-4 py-2 border border-amber-500 text-amber-700 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                          title={(reportData.vatReturn?.status || '').toLowerCase() === 'locked' ? 'Already locked' : 'Lock period (no edits allowed after lock)'}
+                        >
+                          <Lock className="w-4 h-4" /> Lock period
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const periodId = reportData.vatReturn.periodId
+                            try {
+                              const res = await reportsAPI.submitVatReturnPeriod(periodId)
+                              if (res?.success) {
+                                toast.success('VAT return submitted (placeholder)')
+                                setReportData(prev => ({ ...prev, vatReturn: { ...(prev.vatReturn || {}), status: 'Submitted' } }))
+                              } else toast.error(res?.message || 'Submit failed')
+                            } catch (err) {
+                              toast.error(err?.response?.data?.message || 'Submit failed')
+                            }
+                          }}
+                          className="px-4 py-2 border border-green-600 text-green-700 rounded-md text-sm hover:bg-green-50 flex items-center gap-1"
+                          title="Submit to authority (placeholder)"
+                        >
+                          <Send className="w-4 h-4" /> Submit
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={async () => {
+                        const from = dateRange?.from || null
+                        const to = dateRange?.to || null
+                        try {
+                          const blob = await reportsAPI.exportVatReturnExcel(from && to ? { from, to } : { quarter: vatReturnQuarter, year: vatReturnYear })
                           const url = window.URL.createObjectURL(blob)
                           const a = document.createElement('a')
                           a.href = url
-                          a.download = `VAT-Return-Q${vatReturnQuarter}-${vatReturnYear}.xlsx`
+                          a.download = `VAT-Return-${reportData.vatReturn?.periodLabel || 'export'}.xlsx`
                           a.click()
                           window.URL.revokeObjectURL(url)
                           toast.success('Excel exported')
                         } catch (err) {
-                          toast.error(err?.response?.data || 'Export failed')
+                          toast.error(err?.response?.data?.message || 'Export failed')
                         }
                       }}
                       className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700"
                     >
                       Export Excel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const from = dateRange?.from || null
+                        const to = dateRange?.to || null
+                        try {
+                          const blob = await reportsAPI.exportVatReturnCsv(from && to ? { from, to } : { quarter: vatReturnQuarter, year: vatReturnYear })
+                          const url = window.URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `VAT-Return-${reportData.vatReturn?.periodLabel || 'export'}.csv`
+                          a.click()
+                          window.URL.revokeObjectURL(url)
+                          toast.success('CSV exported')
+                        } catch (err) {
+                          toast.error(err?.response?.data?.message || 'Export failed')
+                        }
+                      }}
+                      className="px-4 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
+                    >
+                      Export CSV
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-4 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
+                    >
+                      Print / PDF
                     </button>
                   </div>
                 </div>
@@ -3692,30 +3797,94 @@ const ReportsPage = () => {
                   <div className="py-12 text-center text-gray-500">Loading...</div>
                 ) : reportData.vatReturn ? (
                   <div>
-                    {reportData.vatReturn.box1_TaxableSupplies === 0 && reportData.vatReturn.box4_TaxOnTaxableSupplies === 0 && reportData.vatReturn.box9_NetVatDue === 0 && (
-                      <p className="mb-4 text-amber-700 bg-amber-50 px-4 py-2 rounded-md text-sm">No VAT data for this period. Ensure you have sales in Q{vatReturnQuarter} {vatReturnYear}, or select a different quarter/year.</p>
-                    )}
-                    <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-neutral-200">
-                      <thead>
-                        <tr><th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Box</th><th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Amount (AED)</th></tr>
-                      </thead>
-                      <tbody>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 1: Taxable supplies</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box1_TaxableSupplies)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 2: Zero-rated supplies</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box2_ZeroRatedSupplies)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 3: Exempt supplies</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box3_ExemptSupplies)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 4: Tax on taxable supplies</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box4_TaxOnTaxableSupplies)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 5: Reverse charge</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box5_ReverseCharge)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 6: Total due</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box6_TotalDue)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 7: Tax not creditable</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box7_TaxNotCreditable)}</td></tr>
-                        <tr className="border-t"><td className="px-4 py-2 text-sm">Box 8: Recoverable tax</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(reportData.vatReturn.box8_RecoverableTax)}</td></tr>
-                        <tr className="border-t bg-primary-50"><td className="px-4 py-2 text-sm font-semibold">Box 9: Net VAT due</td><td className="px-4 py-2 text-right text-sm font-bold">{formatCurrency(reportData.vatReturn.box9_NetVatDue)}</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
+                    {(() => {
+                      const v = reportData.vatReturn
+                      const hasFta201 = typeof v.box1a === 'number'
+                      if (!hasFta201 && v.box1_TaxableSupplies === 0 && v.box4_TaxOnTaxableSupplies === 0 && v.box9_NetVatDue === 0) {
+                        return <p className="mb-4 text-amber-700 bg-amber-50 px-4 py-2 rounded-md text-sm">No VAT data for this period. Use the date range or quarter/year above.</p>
+                      }
+                      if (!hasFta201) {
+                        return (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-neutral-200">
+                              <thead><tr><th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Box</th><th className="px-4 py-2 text-right text-sm font-medium text-gray-700">Amount (AED)</th></tr></thead>
+                              <tbody>
+                                <tr className="border-t"><td className="px-4 py-2 text-sm">Box 1: Taxable supplies</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(v.box1_TaxableSupplies)}</td></tr>
+                                <tr className="border-t"><td className="px-4 py-2 text-sm">Box 2: Zero-rated</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(v.box2_ZeroRatedSupplies)}</td></tr>
+                                <tr className="border-t"><td className="px-4 py-2 text-sm">Box 3: Exempt</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(v.box3_ExemptSupplies)}</td></tr>
+                                <tr className="border-t"><td className="px-4 py-2 text-sm">Box 4: Tax on taxable</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(v.box4_TaxOnTaxableSupplies)}</td></tr>
+                                <tr className="border-t"><td className="px-4 py-2 text-sm">Box 8: Recoverable</td><td className="px-4 py-2 text-right text-sm font-medium">{formatCurrency(v.box8_RecoverableTax)}</td></tr>
+                                <tr className="border-t bg-primary-50"><td className="px-4 py-2 text-sm font-semibold">Box 9: Net VAT due</td><td className="px-4 py-2 text-right text-sm font-bold">{formatCurrency(v.box9_NetVatDue)}</td></tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                      }
+                      const issues = v.validationIssues || []
+                      const blocking = issues.filter(i => i.severity === 'Blocking')
+                      return (
+                        <>
+                          {blocking.length > 0 && (
+                            <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4">
+                              <p className="text-sm font-medium text-red-800">Validation (blocking): resolve before locking period.</p>
+                              <ul className="mt-2 list-disc list-inside text-sm text-red-700">
+                                {blocking.map((i, idx) => <li key={idx}>{i.message}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {issues.length > 0 && blocking.length === 0 && (
+                            <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                              <span className="font-medium">Warnings:</span> {issues.map(i => i.message).join('; ')}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">1a Taxable (net)</p><p className="font-semibold">{formatCurrency(v.box1a)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">1b VAT on taxable</p><p className="font-semibold">{formatCurrency(v.box1b)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">2 Zero-rated</p><p className="font-semibold">{formatCurrency(v.box2)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">3 Exempt</p><p className="font-semibold">{formatCurrency(v.box3)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">4 Reverse charge</p><p className="font-semibold">{formatCurrency(v.box4)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">9b Recoverable input</p><p className="font-semibold">{formatCurrency(v.box9b)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">10 Reverse ch. VAT</p><p className="font-semibold">{formatCurrency(v.box10)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">11 Input adj.</p><p className="font-semibold">{formatCurrency(v.box11)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">12 Total recoverable</p><p className="font-semibold">{formatCurrency(v.box12)}</p></div>
+                            <div className="border rounded-lg p-3 bg-primary-50"><p className="text-xs text-gray-500">13a Payable</p><p className="font-bold">{formatCurrency(v.box13a)}</p></div>
+                            <div className="border rounded-lg p-3 bg-green-50"><p className="text-xs text-gray-500">13b Refundable</p><p className="font-bold">{formatCurrency(v.box13b)}</p></div>
+                            <div className="border rounded-lg p-3"><p className="text-xs text-gray-500">Petroleum excluded</p><p className="font-semibold">{formatCurrency(v.petroleumExcluded)}</p></div>
+                          </div>
+                          {(v.outputLines?.length > 0 || v.inputLines?.length > 0 || v.creditNoteLines?.length > 0 || v.reverseChargeLines?.length > 0) && (
+                            <div className="space-y-4 mt-6">
+                              {v.outputLines?.length > 0 && (
+                                <details className="border rounded-lg">
+                                  <summary className="px-4 py-2 cursor-pointer font-medium">Output VAT ({v.outputLines.length} lines)</summary>
+                                  <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr><th className="px-4 py-1 text-left">Ref</th><th className="px-4 py-1 text-left">Date</th><th className="px-4 py-1 text-right">Net</th><th className="px-4 py-1 text-right">VAT</th></tr></thead><tbody>{v.outputLines.slice(0, 50).map((line, i) => (<tr key={i} className="border-t"><td className="px-4 py-1">{line.reference}</td><td className="px-4 py-1">{line.date?.slice?.(0, 10)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.netAmount)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.vatAmount)}</td></tr>))}</tbody></table></div>
+                                </details>
+                              )}
+                              {v.inputLines?.length > 0 && (
+                                <details className="border rounded-lg">
+                                  <summary className="px-4 py-2 cursor-pointer font-medium">Input VAT ({v.inputLines.length} lines)</summary>
+                                  <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr><th className="px-4 py-1 text-left">Ref</th><th className="px-4 py-1 text-left">Date</th><th className="px-4 py-1 text-right">Net</th><th className="px-4 py-1 text-right">VAT</th><th className="px-4 py-1 text-right">Claimable</th></tr></thead><tbody>{v.inputLines.slice(0, 50).map((line, i) => (<tr key={i} className="border-t"><td className="px-4 py-1">{line.reference}</td><td className="px-4 py-1">{line.date?.slice?.(0, 10)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.netAmount)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.vatAmount)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.claimableVat)}</td></tr>))}</tbody></table></div>
+                                </details>
+                              )}
+                              {v.creditNoteLines?.length > 0 && (
+                                <details className="border rounded-lg">
+                                  <summary className="px-4 py-2 cursor-pointer font-medium">Credit notes ({v.creditNoteLines.length})</summary>
+                                  <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr><th className="px-4 py-1 text-left">Ref</th><th className="px-4 py-1 text-right">Net</th><th className="px-4 py-1 text-right">VAT</th></tr></thead><tbody>{v.creditNoteLines.map((line, i) => (<tr key={i} className="border-t"><td className="px-4 py-1">{line.reference}</td><td className="px-4 py-1 text-right">{formatCurrency(line.netAmount)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.vatAmount)}</td></tr>))}</tbody></table></div>
+                                </details>
+                              )}
+                              {v.reverseChargeLines?.length > 0 && (
+                                <details className="border rounded-lg">
+                                  <summary className="px-4 py-2 cursor-pointer font-medium">Reverse charge ({v.reverseChargeLines.length})</summary>
+                                  <div className="overflow-x-auto"><table className="min-w-full text-sm"><thead><tr><th className="px-4 py-1 text-left">Ref</th><th className="px-4 py-1 text-right">Net</th><th className="px-4 py-1 text-right">VAT</th></tr></thead><tbody>{v.reverseChargeLines.map((line, i) => (<tr key={i} className="border-t"><td className="px-4 py-1">{line.reference}</td><td className="px-4 py-1 text-right">{formatCurrency(line.netAmount)}</td><td className="px-4 py-1 text-right">{formatCurrency(line.reverseChargeVat)}</td></tr>))}</tbody></table></div>
+                                </details>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </div>
                 ) : (
-                  <p className="py-12 text-center text-gray-500">No VAT data for this period.</p>
+                  <p className="py-12 text-center text-gray-500">No VAT data. Set date range (From/To) or quarter/year and load the report.</p>
                 )}
               </div>
             </div>

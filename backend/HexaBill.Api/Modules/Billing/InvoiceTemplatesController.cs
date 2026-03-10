@@ -332,7 +332,9 @@ namespace HexaBill.Api.Modules.Billing
                     CustomerName = "Sample Customer",
                     Subtotal = 1736.00m,
                     VatTotal = 86.80m,
+                    RoundOff = 0m,
                     GrandTotal = 1822.80m,
+                    IsZeroInvoice = false,
                     Items = new List<SaleItemDto>
                     {
                         new SaleItemDto

@@ -24,7 +24,10 @@ namespace HexaBill.Api.Models
         // JSON data for cart items and invoice details
         [Required]
         public string InvoiceData { get; set; } = string.Empty; // JSON string containing cart, customer, notes, etc.
-        
+
+        /// <summary>Round-off amount (e.g. -0.20). Stored for held invoice restore. Range ±1.00 AED.</summary>
+        public decimal RoundOff { get; set; } = 0;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
         // Navigation properties

@@ -77,6 +77,8 @@ namespace HexaBill.Api.Data
         public DbSet<UserSession> UserSessions { get; set; }
         public DbSet<RecurringInvoice> RecurringInvoices { get; set; }
         public DbSet<RecurringInvoiceItem> RecurringInvoiceItems { get; set; }
+        public DbSet<VatReturnPeriod> VatReturnPeriods { get; set; }
+        public DbSet<PaymentReceipt> PaymentReceipts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -155,6 +157,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.PaymentType).HasMaxLength(20).IsRequired(false);
                 entity.Property(e => e.AmountPaid).HasColumnType("decimal(18,2)").IsRequired(false);
+                entity.Property(e => e.ReverseChargeVat).HasColumnType("decimal(18,4)").IsRequired(false);
                 
                 entity.HasOne(e => e.Supplier).WithMany().HasForeignKey(e => e.SupplierId).OnDelete(DeleteBehavior.SetNull);
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
@@ -261,6 +264,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.IsLocked).HasDefaultValue(false);
                 entity.Property(e => e.Version).HasDefaultValue(1);
                 entity.Property(e => e.EditReason).HasMaxLength(500);
+                entity.Property(e => e.VatScenario).HasMaxLength(20);
                 // Optimistic concurrency control - prevent duplicate saves
                 entity.Property(e => e.RowVersion)
                     .IsRowVersion()
@@ -332,6 +336,8 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.VatAmount).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.LineTotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.VatRate).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.VatScenario).HasMaxLength(20);
                 entity.HasOne(e => e.Sale).WithMany(s => s.Items).HasForeignKey(e => e.SaleId);
                 entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
             });
@@ -410,6 +416,15 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.Payment).WithMany().HasForeignKey(e => e.PaymentId);
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
             });
+
+            modelBuilder.Entity<PaymentReceipt>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.ReceiptNumber).HasMaxLength(30);
+                entity.HasIndex(e => new { e.TenantId, e.ReceiptNumber }).IsUnique();
+                entity.HasOne(e => e.Payment).WithMany().HasForeignKey(e => e.PaymentId);
+                entity.HasOne(e => e.GeneratedByUser).WithMany().HasForeignKey(e => e.GeneratedByUserId);
+            });
             
             // Sale - Add paid amount tracking
             modelBuilder.Entity<Sale>(entity =>
@@ -459,6 +474,12 @@ namespace HexaBill.Api.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.VatRate).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.VatAmount).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.TotalAmount).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.PartialCreditPct).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.ClaimableVat).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.TaxType).HasMaxLength(32);
                 entity.Property(e => e.Note).HasMaxLength(500);
                 entity.Property(e => e.AttachmentUrl).HasMaxLength(500);
                 entity.Property(e => e.RejectionReason).HasMaxLength(500);
@@ -524,6 +545,29 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => e.TenantId);
                 entity.HasIndex(e => e.ResolvedAt);
+            });
+
+            // VatReturnPeriod - FTA Form 201 period snapshot and lock
+            modelBuilder.Entity<VatReturnPeriod>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.PeriodType).HasMaxLength(10);
+                entity.Property(e => e.PeriodLabel).HasMaxLength(20);
+                entity.Property(e => e.Status).HasMaxLength(15);
+                entity.Property(e => e.Box1a).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box1b).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box2).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box3).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box4).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box9b).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box10).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box11).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box12).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box13a).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.Box13b).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.PetroleumExcluded).HasColumnType("decimal(18,4)");
+                entity.HasIndex(e => new { e.TenantId, e.PeriodStart, e.PeriodEnd }).IsUnique();
+                entity.HasIndex(e => e.TenantId);
             });
 
             // BUG #2.7 FIX: FailedLoginAttempt configuration - persistent login lockout tracking

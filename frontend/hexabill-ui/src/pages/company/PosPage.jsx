@@ -57,6 +57,8 @@ const PosPage = () => {
   const [notes, setNotes] = useState('')
   const [discount, setDiscount] = useState(0)
   const [discountInput, setDiscountInput] = useState('')
+  const [roundOff, setRoundOff] = useState(0)
+  const [roundOffInput, setRoundOffInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [showInvoiceOptionsModal, setShowInvoiceOptionsModal] = useState(false)
@@ -77,6 +79,7 @@ const PosPage = () => {
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedRouteId, setSelectedRouteId] = useState('')
   const [nextInvoiceNumberPreview, setNextInvoiceNumberPreview] = useState('')
+  const [isZeroInvoice, setIsZeroInvoice] = useState(false) // Free sample / zero value invoice (FTA)
   // VAT from company settings; fallback only when settings unavailable (PRODUCTION_MASTER_TODO #4)
   const FALLBACK_VAT_PERCENT = 5
   const [vatPercent, setVatPercent] = useState(FALLBACK_VAT_PERCENT)
@@ -263,13 +266,17 @@ const PosPage = () => {
           }
         }
 
-        // Set discount and notes
+        // Set discount, notes, zero invoice
+        setIsZeroInvoice(!!sale.isZeroInvoice)
         if (sale.discount) {
           setDiscount(sale.discount)
           setDiscountInput(sale.discount.toString())
         } else {
           setDiscountInput('')
         }
+        const ro = sale.roundOff != null ? Number(sale.roundOff) : 0
+        setRoundOff(ro)
+        setRoundOffInput(ro === 0 ? '' : ro.toString())
         if (sale.notes) setNotes(sale.notes)
 
         // Load cart items from sale
@@ -596,6 +603,7 @@ const PosPage = () => {
   }
 
   const calculateTotals = () => {
+    if (isZeroInvoice) return { subtotal: 0, vatTotal: 0, grandTotal: 0 }
     const subtotal = cart.reduce((sum, item) => {
       const qty = typeof item.qty === 'number' ? item.qty : 0
       const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
@@ -606,9 +614,30 @@ const PosPage = () => {
 
     const vatTotal = cart.reduce((sum, item) => sum + (item.vatAmount || 0), 0)
     const discountValue = typeof discount === 'number' ? discount : 0
-    const grandTotal = subtotal + vatTotal - discountValue
+    const roundOffValue = typeof roundOff === 'number' ? roundOff : 0
+    const grandTotal = subtotal + vatTotal - discountValue + roundOffValue
 
     return { subtotal, vatTotal, grandTotal }
+  }
+
+  const handleAutoRoundOff = () => {
+    if (isZeroInvoice) return
+    const subtotal = cart.reduce((sum, item) => {
+      const qty = typeof item.qty === 'number' ? item.qty : 0
+      const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+      const itemDiscount = typeof item.discount === 'number' ? item.discount : 0
+      return sum + (qty * unitPrice) - itemDiscount
+    }, 0)
+    const vatTotal = cart.reduce((sum, item) => sum + (item.vatAmount || 0), 0)
+    const discountValue = typeof discount === 'number' ? discount : 0
+    const calcTotal = subtotal + vatTotal - discountValue
+    const rounded = Math.round(calcTotal)
+    const diff = rounded - calcTotal
+    if (Math.abs(diff) <= 1) {
+      const v = parseFloat(diff.toFixed(2))
+      setRoundOff(v)
+      setRoundOffInput(v === 0 ? '0' : v.toString())
+    }
   }
 
   const handleDownloadPdf = async (saleId, invoiceNo) => {
@@ -1036,10 +1065,12 @@ const PosPage = () => {
             productId: item.productId,
             unitType: item.unitType || 'CRTN',
             qty: Number(item.qty) || 0,
-            unitPrice: Number(item.unitPrice) || 0,
-            discount: Number(item.discount) || 0 // Per-item discount
-          })).filter(item => item.productId && item.qty > 0 && item.unitPrice > 0),
-          discount: discount || 0,
+            unitPrice: isZeroInvoice ? 0 : (Number(item.unitPrice) || 0),
+            discount: Number(item.discount) || 0
+          })).filter(item => item.productId && item.qty > 0 && (isZeroInvoice || item.unitPrice > 0)),
+          discount: isZeroInvoice ? 0 : (discount || 0),
+          roundOff: isZeroInvoice ? 0 : (roundOff ?? 0),
+          isZeroInvoice: !!isZeroInvoice,
           payments: (paymentMethod !== 'Pending') ? [{
             method: paymentMethod,
             amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
@@ -1086,18 +1117,19 @@ const PosPage = () => {
         customerId: selectedCustomer?.id || null,
         items: validCart.map(item => ({
           productId: item.productId,
-          unitType: item.unitType || 'CRTN', // Default unit type
+          unitType: item.unitType || 'CRTN',
           qty: Number(item.qty) || 0,
-          unitPrice: Number(item.unitPrice) || 0,
-          discount: Number(item.discount) || 0 // Per-item discount
-        })).filter(item => item.productId && item.qty > 0 && item.unitPrice > 0), // Filter out invalid items
-        discount: discount || 0,
-        // Only include payment if method is not "Pending" - this prevents "Pending" method which causes Enum parse error
+          unitPrice: isZeroInvoice ? 0 : (Number(item.unitPrice) || 0),
+          discount: Number(item.discount) || 0
+        })).filter(item => item.productId && item.qty > 0 && (isZeroInvoice || item.unitPrice > 0)),
+        discount: isZeroInvoice ? 0 : (discount || 0),
+        roundOff: isZeroInvoice ? 0 : (roundOff ?? 0),
+        isZeroInvoice: !!isZeroInvoice,
         payments: (paymentMethod !== 'Pending') ? [{
           method: paymentMethod,
           amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
             ? parseFloat(paymentAmount)
-            : (totals.grandTotal || 0) // Use grandTotal if amount not specified, ensure not NaN
+            : (totals.grandTotal || 0)
         }] : [],
         notes: notes || null,
         editReason: isEditMode ? editReason : undefined,
@@ -1145,6 +1177,7 @@ const PosPage = () => {
           customerId: saleData.customerId,
           items: saleData.items,
           discount: saleData.discount,
+          roundOff: saleData.roundOff ?? 0,
           payments: saleData.payments || [],
           notes: saleData.notes || null,
           ...(saleData.editReason && { editReason: saleData.editReason }),
@@ -1362,6 +1395,9 @@ const PosPage = () => {
     setNotes('')
     setDiscount(0)
     setDiscountInput('')
+    setRoundOff(0)
+    setRoundOffInput('')
+    setIsZeroInvoice(false)
     setProductSearchTerms({}) // Clear all search terms
     setIsEditMode(false)
     setEditingSaleId(null)
@@ -1425,15 +1461,18 @@ const PosPage = () => {
         notes,
         discount,
         discountInput,
+        roundOff: roundOff ?? 0,
+        roundOffInput: roundOffInput ?? '',
         selectedBranchId,
         selectedRouteId
       }
-      const response = await salesAPI.holdInvoice(name, invoiceData)
+      const response = await salesAPI.holdInvoice(name, invoiceData, roundOff ?? 0)
       if (response.success) {
         setHeldInvoices(prev => [{
           id: response.data.id,
           name: response.data.name,
           ...response.data.invoiceData,
+          roundOff: response.data.roundOff != null ? response.data.roundOff : (roundOff ?? 0),
           createdAt: response.data.createdAt
         }, ...prev])
         handleNewInvoice()
@@ -1453,6 +1492,9 @@ const PosPage = () => {
     setNotes(held.notes || '')
     setDiscount(held.discount ?? 0)
     setDiscountInput(String(held.discountInput ?? ''))
+    const ro = held.roundOff != null ? Number(held.roundOff) : 0
+    setRoundOff(ro)
+    setRoundOffInput(held.roundOffInput != null ? String(held.roundOffInput) : (ro === 0 ? '' : ro.toString()))
     setSelectedBranchId(held.selectedBranchId || '')
     setSelectedRouteId(held.selectedRouteId || '')
     setIsEditMode(false)
@@ -2404,19 +2446,68 @@ const PosPage = () => {
                     <span className="font-bold text-xs sm:text-sm whitespace-nowrap">-AED {discount.toFixed(2)}</span>
                   </div>
                 )}
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-xs font-medium text-gray-700">Round Off / تقريب</span>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={handleAutoRoundOff} disabled={isFormDisabled || isZeroInvoice} className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50">Auto</button>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="-1"
+                      max="1"
+                      value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setRoundOffInput(v)
+                        const n = v === '' ? 0 : parseFloat(v)
+                        setRoundOff(isNaN(n) ? 0 : n)
+                      }}
+                      onBlur={() => {
+                        const n = roundOffInput === '' ? 0 : parseFloat(roundOffInput)
+                        if (!isNaN(n)) {
+                          setRoundOff(n)
+                          setRoundOffInput(n === 0 ? '' : n.toFixed(2))
+                        }
+                      }}
+                      disabled={isFormDisabled || isZeroInvoice}
+                      className="w-20 text-right border border-gray-300 rounded px-2 py-1 text-sm disabled:opacity-50"
+                    />
+                  </div>
+                </div>
                 <div className="flex justify-between items-center text-xs sm:text-sm font-bold border-t border-gray-400 pt-1.5">
-                  <span className="text-gray-800">Total</span>
+                  <span className="text-gray-800">Total / المجموع</span>
                   <span className="text-green-700 text-sm sm:text-base whitespace-nowrap">AED {totals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
 
+              {/* Zero invoice / Free sample (FTA) */}
+              {!isEditMode && (
+                <div className="mt-2 pt-1.5 border-t border-gray-300 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="pos-zero-invoice"
+                    checked={isZeroInvoice}
+                    onChange={(e) => {
+                      const v = !!e.target.checked
+                      setIsZeroInvoice(v)
+                      if (v) {
+                        setDiscount(0)
+                        setDiscountInput('0')
+                      }
+                    }}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <label htmlFor="pos-zero-invoice" className="text-xs font-medium text-gray-700">Free sample / Zero invoice</label>
+                  {isZeroInvoice && <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">0 VAT</span>}
+                </div>
+              )}
               {/* Optional Discount Field - Compact */}
               <div className="mt-2 pt-1.5 border-t border-gray-300">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Discount</label>
                 <input
                   type="text"
                   inputMode="decimal"
-                  disabled={isFormDisabled}
+                  disabled={isFormDisabled || isZeroInvoice}
                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="0.00"
                   value={discountInput}
@@ -2600,8 +2691,28 @@ const PosPage = () => {
                   }}
                 />
               </div>
+              <div className="pt-2">
+                <label className="block text-xs font-medium text-[#475569] mb-1">Round Off / تقريب (AED)</label>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={handleAutoRoundOff} disabled={isZeroInvoice} className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-[#E5E7EB]">Auto</button>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="-1"
+                    max="1"
+                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    placeholder="0.00"
+                    value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      setRoundOffInput(v)
+                      setRoundOff(v === '' ? 0 : (parseFloat(v) || 0))
+                    }}
+                  />
+                </div>
+              </div>
               <div className="flex justify-between pt-2 font-semibold">
-                <span className="text-[#0F172A]">Grand Total</span>
+                <span className="text-[#0F172A]">Grand Total / المجموع</span>
                 <span className="text-[#10B981]">AED {totals.grandTotal.toFixed(2)}</span>
               </div>
               <div>
@@ -2938,6 +3049,7 @@ const PosPage = () => {
                         customerId: saleData.customerId,
                         items: saleData.items,
                         discount: saleData.discount,
+                        roundOff: saleData.roundOff ?? 0,
                         payments: saleData.payments || [],
                         notes: saleData.notes || null,
                         ...(saleData.editReason && { editReason: saleData.editReason }),

@@ -11,6 +11,7 @@ using HexaBill.Api.Models;
 using System.IO;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Shared.Security;
+using HexaBill.Api.Shared.Services;
 using Microsoft.Extensions.Logging;
 
 namespace HexaBill.Api.Modules.Billing
@@ -21,16 +22,18 @@ namespace HexaBill.Api.Modules.Billing
         private readonly IInvoiceTemplateService _templateService;
         private readonly IFontService _fontService;
         private readonly ISettingsService _settingsService;
+        private readonly IStorageService _storageService;
         private readonly ILogger<PdfService> _logger;
         private readonly string _arabicFont;
         private readonly string _englishFont;
 
-        public PdfService(AppDbContext context, IInvoiceTemplateService templateService, IFontService fontService, ISettingsService settingsService, ILogger<PdfService> logger)
+        public PdfService(AppDbContext context, IInvoiceTemplateService templateService, IFontService fontService, ISettingsService settingsService, IStorageService storageService, ILogger<PdfService> logger)
         {
             _context = context;
             _templateService = templateService;
             _fontService = fontService;
             _settingsService = settingsService;
+            _storageService = storageService;
             _logger = logger;
             
             QuestPDF.Settings.License = LicenseType.Community;
@@ -320,6 +323,18 @@ namespace HexaBill.Api.Modules.Billing
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(10);
                                     
+                                    // Row 2.5: Round Off (only when non-zero)
+                                    if (sale.RoundOff != 0)
+                                    {
+                                        table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
+                                            row.AutoItem().Text("Round Off").FontSize(10);
+                                            row.RelativeItem();
+                                            row.AutoItem().Text("تقريب").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        });
+                                        var roundOffText = sale.RoundOff > 0 ? "+" + sale.RoundOff.ToString("0.00") : sale.RoundOff.ToString("0.00");
+                                        table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(roundOffText).FontSize(10);
+                                    }
+                                    
                                     // Row 3: Total Amount
                                     var amountInWords = ConvertToWords(sale.GrandTotal);
                                     // Shorten amount in words if too long
@@ -558,37 +573,51 @@ namespace HexaBill.Api.Modules.Billing
 
         private void RenderInvoiceContent(ColumnDescriptor column, SaleDto sale, InvoiceTemplateService.CompanySettings settings, string? customerTrn = null)
         {
-            // PROD-10: Customer TRN should be pre-fetched before calling this synchronous method
-            // This avoids blocking .Result calls in synchronous context
             var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
-
             column.Spacing(0);
 
             column.Item().Border(2).Padding(8).Column(innerColumn =>
             {
                 innerColumn.Spacing(0);
 
-                innerColumn.Item().Text(settings.CompanyNameEn.ToUpper())
-                    .FontSize(18)
-                    .Bold()
-                    .AlignCenter();
-
-                innerColumn.Item().PaddingTop(2).Text(settings.CompanyNameAr)
-                    .FontSize(10)
-                    .AlignCenter();
-
-                var contactInfo = $"Mob : {settings.CompanyPhone}, {settings.CompanyAddress}";
-                innerColumn.Item().PaddingTop(2).Text(contactInfo)
-                    .FontSize(9)
-                    .AlignCenter();
-                
-                innerColumn.Item().PaddingTop(2).Row(trnDateRow =>
+                // Starplus-style header: 3 columns when logo present, else centred text
+                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                if (hasLogo)
                 {
-                    trnDateRow.RelativeItem().Text($"TRN : No : {settings.CompanyTrn}")
-                        .FontSize(9);
-                    trnDateRow.RelativeItem().AlignRight().Text("")
-                        .FontSize(9);
-                });
+                    innerColumn.Item().Row(headerRow =>
+                    {
+                        headerRow.ConstantItem(140).AlignCenter().AlignMiddle().Column(col =>
+                        {
+                            col.Item().MaxWidth(160).MaxHeight(80).Image(settings.LogoImageBytes!).FitArea();
+                        });
+                        headerRow.RelativeItem().AlignCenter().AlignMiddle().Column(col =>
+                        {
+                            col.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(16).Bold().AlignCenter();
+                            col.Item().PaddingTop(1).Text(settings.CompanyNameAr).FontSize(10).AlignCenter();
+                            var contactInfo = $"Mob : {settings.CompanyPhone}, {settings.CompanyAddress}";
+                            col.Item().PaddingTop(1).Text(contactInfo).FontSize(9).AlignCenter();
+                        });
+                        headerRow.ConstantItem(140).AlignRight().AlignMiddle().Column(col =>
+                        {
+                            col.Item().Text($"TRN : No : {settings.CompanyTrn}").FontSize(9);
+                            col.Item().PaddingTop(2).AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
+                        });
+                    });
+                }
+                else
+                {
+                    innerColumn.Item().Text(settings.CompanyNameEn.ToUpper())
+                        .FontSize(18).Bold().AlignCenter();
+                    innerColumn.Item().PaddingTop(2).Text(settings.CompanyNameAr)
+                        .FontSize(10).AlignCenter();
+                    var contactInfo = $"Mob : {settings.CompanyPhone}, {settings.CompanyAddress}";
+                    innerColumn.Item().PaddingTop(2).Text(contactInfo).FontSize(9).AlignCenter();
+                    innerColumn.Item().PaddingTop(2).Row(trnDateRow =>
+                    {
+                        trnDateRow.RelativeItem().Text($"TRN : No : {settings.CompanyTrn}").FontSize(9);
+                        trnDateRow.RelativeItem().AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
+                    });
+                }
 
                 innerColumn.Item().PaddingTop(6).BorderTop(2).BorderBottom(2).PaddingVertical(4).Text("TAX INVOICE")
                     .FontSize(14)
@@ -756,6 +785,17 @@ namespace HexaBill.Api.Modules.Billing
                         col.Item().Text("");
                     });
 
+                    if (sale.RoundOff != 0)
+                    {
+                        table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
+                            col.Item().Text("Round Off / تقريب").FontSize(9).Bold();
+                        });
+                        table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => { col.Item().Text(""); });
+                        table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
+                            col.Item().AlignRight().Text((sale.RoundOff > 0 ? "+" : "") + sale.RoundOff.ToString("N2")).FontSize(10).Bold();
+                        });
+                    }
+
                     table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
                         col.Item().Text("Total Amount").FontSize(9).Bold();
                         col.Item().PaddingTop(1).Text(new string('.', 45) + " درهم فقط").FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
@@ -820,7 +860,7 @@ namespace HexaBill.Api.Modules.Billing
                 _logger.LogWarning("Company VatNumber is empty for tenant {TenantId}", tenantId);
             }
 
-            return new InvoiceTemplateService.CompanySettings
+            var dto = new InvoiceTemplateService.CompanySettings
             {
                 CompanyNameEn = companySettings.LegalNameEn ?? "Company Name",
                 CompanyNameAr = companySettings.LegalNameAr ?? "",
@@ -833,6 +873,19 @@ namespace HexaBill.Api.Modules.Billing
                 VatEffectiveDate = companySettings.VatEffectiveDate ?? "",
                 VatLegalText = companySettings.VatLegalText ?? ""
             };
+            if (!string.IsNullOrWhiteSpace(companySettings.LogoStorageKey))
+            {
+                try
+                {
+                    var logoBytes = await _storageService.ReadBytesAsync(companySettings.LogoStorageKey);
+                    dto.LogoImageBytes = logoBytes;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Logo load failed for tenant {TenantId}. Invoice will render with text-only header.", tenantId);
+                }
+            }
+            return dto;
         }
         
         /// <summary>
@@ -1127,12 +1180,17 @@ namespace HexaBill.Api.Modules.Billing
                             
                             headerCol.Item().Height(3);
                             
+                            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                             headerCol.Item().Row(row =>
                             {
-                                row.RelativeItem().Text($"{settings.CompanyNameEn}")
+                                if (hasLogo)
+                                {
+                                    row.ConstantItem(80).AlignLeft().AlignMiddle().Width(80).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                                }
+                                row.RelativeItem().AlignLeft().AlignMiddle().Text($"{settings.CompanyNameEn}")
                                     .FontSize(10)
                                     .Bold();
-                                row.RelativeItem().AlignRight().Text($"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}")
+                                row.RelativeItem().AlignRight().AlignMiddle().Text($"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}")
                                     .FontSize(9);
                             });
                             
