@@ -15,6 +15,7 @@ import PosPage from './pages/company/PosPage'
 import CustomerLedgerPage from './pages/company/CustomerLedgerPage'
 import ExpensesPage from './pages/company/ExpensesPage'
 import ReportsPage from './pages/company/ReportsPage'
+import VatReturnPage from './pages/company/VatReturnPage'
 import WorksheetPage from './pages/company/WorksheetPage'
 import SalesLedgerPage from './pages/company/SalesLedgerPage'
 import BillingHistoryPage from './pages/company/BillingHistoryPage'
@@ -209,6 +210,7 @@ function App() {
               <Route path="/returns/create" element={<ReturnCreatePage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
+              <Route path="/vat-return" element={<VatReturnPage />} />
               <Route path="/worksheet" element={<WorksheetPage />} />
               {/* Staff cannot access branches/routes — redirect (defense in depth with early return above) */}
               <Route path="/branches" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <BranchesPage />} />
