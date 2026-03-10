@@ -807,6 +807,8 @@ namespace HexaBill.Api.Data
                 entity.HasKey(e => e.Id);
                 if (Database.IsNpgsql())
                     entity.Property(e => e.Id).UseIdentityByDefaultColumn();
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.AssignedAt).HasColumnType("timestamp with time zone"); // DB may have been TEXT - see Fix_BranchStaff_AssignedAt_PostgreSQL.sql
                 entity.HasOne(e => e.Branch).WithMany(b => b.BranchStaff).HasForeignKey(e => e.BranchId);
                 entity.HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId);
                 entity.HasIndex(e => new { e.BranchId, e.UserId }).IsUnique();
