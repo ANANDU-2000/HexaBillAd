@@ -169,7 +169,7 @@ namespace HexaBill.Api.Modules.Billing
                             {
                                 innerColumn.Spacing(0);
 
-                                // Header row: logo top-left (if uploaded), then company name block. Fixed box + FitArea = no cropping, clear display.
+                                // Invoice header: logo from company Settings (tenant-scoped). Top-left corner, fixed placeholder 120x56pt; FitArea = no crop, aspect ratio kept.
                                 var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 innerColumn.Item().Row(headerRow =>
                                 {
@@ -861,7 +861,7 @@ if (hasLogo)
 
         private async Task<InvoiceTemplateService.CompanySettings> GetCompanySettingsAsync(int tenantId)
         {
-            // MULTI-TENANT: Get owner-specific settings from database
+            // DATA ISOLATION: Load company settings (and logo) for this tenant only. Invoice PDF uses sale.OwnerId so each tenant sees only their logo.
             var companySettings = await _settingsService.GetCompanySettingsAsync(tenantId);
 
             // Validate required settings are present
@@ -887,6 +887,7 @@ if (hasLogo)
                 VatEffectiveDate = companySettings.VatEffectiveDate ?? "",
                 VatLegalText = companySettings.VatLegalText ?? ""
             };
+            // Logo: read from storage using key stored in Settings (uploaded in Settings page). Per-tenant isolation via tenantId.
             if (!string.IsNullOrWhiteSpace(companySettings.LogoStorageKey))
             {
                 try
@@ -897,7 +898,7 @@ if (hasLogo)
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Logo load failed for tenant {TenantId}. Invoice will render with text-only header.", tenantId);
+                    _logger.LogWarning(ex, "Invoice PDF: logo load failed for tenant {TenantId}, key={Key}. Invoice will render with text-only header. On Render, set R2 storage (R2_ENDPOINT, R2_ACCESS_KEY, R2_SECRET_KEY) so logo persists across deploys.", tenantId, companySettings.LogoStorageKey);
                 }
             }
             else if (!string.IsNullOrWhiteSpace(companySettings.LogoPath) && companySettings.LogoPath.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))

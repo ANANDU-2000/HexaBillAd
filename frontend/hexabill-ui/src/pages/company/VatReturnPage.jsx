@@ -254,7 +254,7 @@ const VatReturnPage = () => {
   ] : []
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="w-full px-4 sm:px-6 py-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <button
@@ -273,7 +273,7 @@ const VatReturnPage = () => {
       </div>
 
       {/* Period selector */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-3">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-gray-500" />
@@ -556,65 +556,62 @@ const VatReturnPage = () => {
             </div>
           )}
 
-          {/* Section 2 – Summary dashboard (key numbers first) */}
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div className="rounded-lg border-2 border-blue-200 p-3 sm:p-4 bg-blue-50/50">
-                <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total Sales (Net)</p>
-                <p className="text-lg sm:text-xl font-bold text-blue-900 mt-1">{formatCurrency(salesNet)}</p>
-                <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1.5 text-xs text-blue-600 hover:underline">See Transactions tab</button>
-              </div>
-              <div className="rounded-lg border-2 border-blue-200 p-3 sm:p-4 bg-blue-50/50">
-                <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total VAT Collected</p>
-                <p className="text-lg sm:text-xl font-bold text-blue-900 mt-1">{formatCurrency(salesVat)}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Output VAT</p>
-              </div>
-              <div className="rounded-lg border-2 border-green-200 p-3 sm:p-4 bg-green-50/50">
-                <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Total Input VAT</p>
-                <p className="text-lg sm:text-xl font-bold text-green-900 mt-1">{formatCurrency(inputVatTotal)}</p>
-                <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1.5 text-xs text-green-600 hover:underline">See Transactions tab</button>
-              </div>
-              <div className={`rounded-lg border-2 p-3 sm:p-4 ${vatPayable > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-                <p className={`text-xs font-medium uppercase tracking-wide ${vatPayable > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                  {vatPayable > 0 ? 'VAT Payable' : 'VAT Refundable'}
-                </p>
-                <p className={`text-lg sm:text-xl font-bold mt-1 ${vatPayable > 0 ? 'text-red-900' : 'text-green-900'}`}>
-                  {formatCurrency(vatPayable > 0 ? vatPayable : Math.abs(vatPayable))}
-                </p>
-              </div>
-              <div className="rounded-lg border-2 border-slate-200 p-3 sm:p-4 bg-slate-50/50">
-                <p className="text-xs font-medium text-slate-700 uppercase tracking-wide">Transactions</p>
-                <p className="text-lg sm:text-xl font-bold text-slate-900 mt-1">{v.transactionCount ?? allVatTransactions.length}</p>
-                <p className="text-xs text-gray-500 mt-0.5">In this period</p>
-              </div>
-              <div className="rounded-lg border-2 border-amber-200 p-3 sm:p-4 bg-amber-50/50">
-                <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">VAT filing deadline</p>
-                <p className="text-base sm:text-lg font-bold text-amber-900 mt-1">
-                  {v.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                </p>
-                {daysUntilDue != null && daysUntilDue <= 0 && (
-                  <p className="text-xs font-medium text-red-600 mt-1">Overdue</p>
-                )}
-                {daysUntilDue != null && daysUntilDue > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5">{daysUntilDue} days left</p>
-                )}
-                {issues.length > 0 && (
-                  <button type="button" onClick={() => setActiveTab('validation')} className="mt-1.5 text-xs text-blue-600 hover:underline">
-                    Validation: {blocking.length > 0 ? `${blocking.length} blocking` : `${issues.length} warning(s)`}
-                  </button>
-                )}
-                {issues.length === 0 && v && (
-                  <p className="text-xs text-green-600 mt-0.5">Validation passed</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3 – Tabs (Overview, Transactions, Sales, …) */}
           <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             {activeTab === 'overview' && (
-              <div className="p-4 sm:p-6 space-y-6">
+              <div className="p-3 sm:p-4 space-y-4">
+                {/* Summary cards – compact, Overview tab only */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="rounded-lg border-2 border-blue-200 p-2 sm:p-3 bg-blue-50/50">
+                    <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total Sales (Net)</p>
+                    <p className="text-base sm:text-lg font-bold text-blue-900 mt-0.5">{formatCurrency(salesNet)}</p>
+                    <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1 text-xs text-blue-600 hover:underline">See Transactions</button>
+                  </div>
+                  <div className="rounded-lg border-2 border-blue-200 p-2 sm:p-3 bg-blue-50/50">
+                    <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total VAT Collected</p>
+                    <p className="text-base sm:text-lg font-bold text-blue-900 mt-0.5">{formatCurrency(salesVat)}</p>
+                    <p className="text-xs text-gray-500">Output VAT</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-green-200 p-2 sm:p-3 bg-green-50/50">
+                    <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Total Input VAT</p>
+                    <p className="text-base sm:text-lg font-bold text-green-900 mt-0.5">{formatCurrency(inputVatTotal)}</p>
+                    <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1 text-xs text-green-600 hover:underline">See Transactions</button>
+                  </div>
+                  <div className={`rounded-lg border-2 p-2 sm:p-3 ${vatPayable > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+                    <p className={`text-xs font-medium uppercase tracking-wide ${vatPayable > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                      {vatPayable > 0 ? 'VAT Payable' : 'VAT Refundable'}
+                    </p>
+                    <p className={`text-base sm:text-lg font-bold mt-0.5 ${vatPayable > 0 ? 'text-red-900' : 'text-green-900'}`}>
+                      {formatCurrency(vatPayable > 0 ? vatPayable : Math.abs(vatPayable))}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border-2 border-slate-200 p-2 sm:p-3 bg-slate-50/50">
+                    <p className="text-xs font-medium text-slate-700 uppercase tracking-wide">Transactions</p>
+                    <p className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">{v.transactionCount ?? allVatTransactions.length}</p>
+                    <p className="text-xs text-gray-500">In this period</p>
+                  </div>
+                  <div className="rounded-lg border-2 border-amber-200 p-2 sm:p-3 bg-amber-50/50">
+                    <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">VAT filing deadline</p>
+                    <p className="text-sm sm:text-base font-bold text-amber-900 mt-0.5">
+                      {v.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                    {daysUntilDue != null && daysUntilDue <= 0 && (
+                      <p className="text-xs font-medium text-red-600 mt-0.5">Overdue</p>
+                    )}
+                    {daysUntilDue != null && daysUntilDue > 0 && (
+                      <p className="text-xs text-gray-500">{daysUntilDue} days left</p>
+                    )}
+                    {issues.length > 0 && (
+                      <button type="button" onClick={() => setActiveTab('validation')} className="mt-1 text-xs text-blue-600 hover:underline">
+                        Validation: {blocking.length > 0 ? `${blocking.length} blocking` : `${issues.length} warning(s)`}
+                      </button>
+                    )}
+                    {issues.length === 0 && v && (
+                      <p className="text-xs text-green-600 mt-0.5">Validation passed</p>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 mb-1">FTA Form 201 – Values to Submit</h2>
                   <p className="text-xs text-gray-500 mb-4">Copy these values into the UAE FTA VAT return portal.</p>
@@ -689,9 +686,9 @@ const VatReturnPage = () => {
                     <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. Try another date range or check that invoices, purchases, and expenses exist for the selected period.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <div className="max-h-[500px] overflow-y-auto overflow-x-auto border border-gray-200 rounded-lg">
                     <table className="min-w-full text-sm">
-                      <thead className="bg-gray-50">
+                      <thead className="sticky top-0 bg-gray-50 z-10">
                         <tr>
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
                           <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>

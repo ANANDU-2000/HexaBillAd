@@ -254,7 +254,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
-        /// Get company settings as CompanySettings object for invoice generation
+        /// Get company settings as CompanySettings object for invoice generation. Data isolation: settings (including logo key) are for the given tenantId only.
         /// </summary>
         public async Task<CompanySettings> GetCompanySettingsAsync(int tenantId)
         {

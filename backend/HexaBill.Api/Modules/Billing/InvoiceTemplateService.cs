@@ -270,7 +270,7 @@ namespace HexaBill.Api.Modules.Billing
                 .Replace("{{company_trn}}", settings.CompanyTrn ?? "")
                 .Replace("{{currency}}", settings.Currency ?? "AED");
 
-            // Logo: inject img tag or empty string so print/HTML can show uploaded logo (placeholders {{company_logo_img}} and {{company_logo_data_uri}})
+            // Logo: from company Settings (tenant-scoped). Top-left placeholder 120x56, object-fit contain so no crop.
             var logoImgTag = "";
             var logoDataUri = "";
             if (settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0)

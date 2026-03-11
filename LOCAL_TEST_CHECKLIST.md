@@ -39,6 +39,8 @@ These were observed when starting the backend with the **SQLite** database (apps
 
 - On Render, run **Scripts/RUN_ON_RENDER_PSQL.sql** once (Connect → PSQL). It now includes a **Sales** data fix: `UPDATE Sales SET Subtotal = COALESCE(Subtotal, 0), VatTotal = COALESCE(VatTotal, 0)` and adds **IsZeroInvoice** / **VatScenario** if missing, so VAT return and iteration over Sales don’t throw in production.
 
+- **Invoice logo on Render:** Logo is stored in storage (local disk or R2). If R2 is not set, logo files are lost on every deploy, so invoice PDF shows no logo until you re-upload. Set **R2_ENDPOINT**, **R2_ACCESS_KEY**, **R2_SECRET_KEY** in Render Environment so logo persists.
+
 ### Build / tests (current state)
 
 - **Backend build:** Succeeds (0 errors; nullable warnings only).
