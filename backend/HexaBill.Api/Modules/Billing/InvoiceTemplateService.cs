@@ -297,7 +297,6 @@ namespace HexaBill.Api.Modules.Billing
                         processedHtml,
                         "<body([^>]*)>",
                         m => m.Value + Environment.NewLine + injectedLogo,
-                        1,
                         RegexOptions.IgnoreCase);
                 }
                 else

@@ -176,7 +176,7 @@ namespace HexaBill.Api.Modules.Billing
                                     if (hasLogo)
                                         headerRow.ConstantItem(130).AlignLeft().AlignMiddle()
                                             .Width(120).Height(56).Image(settings.LogoImageBytes!).FitArea();
-                                    headerRow.RelativeItem().Column(nameCol =>
+                                    headerRow.RelativeItem().AlignCenter().Column(nameCol =>
                                     {
                                         nameCol.Item().Text(settings.CompanyNameEn.ToUpper())
                                             .FontSize(18)
@@ -188,7 +188,7 @@ namespace HexaBill.Api.Modules.Billing
                                             .FontFamily(_arabicFont)
                                             .DirectionFromRightToLeft()
                                             .AlignCenter();
-                                    }).AlignCenter();
+                                    });
                                 });
 
                                 // Address line without duplicate Abu Dhabi
