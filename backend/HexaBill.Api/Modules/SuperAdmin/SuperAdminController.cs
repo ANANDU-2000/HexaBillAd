@@ -12,6 +12,7 @@ using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using HexaBill.Api.Shared.Extensions; // MULTI-TENANT
+using HexaBill.Api.Shared.Services;
 using System.IO;
 using HexaBill.Api.Shared.Security;
 using Npgsql;
@@ -29,10 +30,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly IFileUploadService _fileUploadService;
         private readonly ILogoUploadService _logoUploadService;
         private readonly ISettingsService _settingsService;
+        private readonly IStorageService _storageService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AdminController> _logger;
 
-        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, ILogoUploadService logoUploadService, ISettingsService settingsService, IConfiguration configuration, ILogger<AdminController> logger)
+        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, ILogoUploadService logoUploadService, ISettingsService settingsService, IStorageService storageService, IConfiguration configuration, ILogger<AdminController> logger)
         {
             _backupService = backupService;
             _comprehensiveBackupService = comprehensiveBackupService;
@@ -40,6 +42,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             _fileUploadService = fileUploadService;
             _logoUploadService = logoUploadService;
             _settingsService = settingsService;
+            _storageService = storageService;
             _configuration = configuration;
             _logger = logger;
         }
@@ -320,6 +323,48 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     Message = "An error occurred",
                     Errors = new List<string> { ex.Message }
                 });
+            }
+        }
+
+        /// <summary>Check if logo will appear on invoice PDF (for debugging).</summary>
+        [HttpGet("logo/pdf-status")]
+        public async Task<ActionResult<ApiResponse<object>>> GetLogoPdfStatus()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var company = await _settingsService.GetCompanySettingsAsync(tenantId);
+                var key = company?.LogoStorageKey;
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { hasLogoForPdf = false, reason = "No logo storage key (upload a logo in Settings).", logoStorageKey = (string?)null }
+                    });
+                }
+                try
+                {
+                    var bytes = await _storageService.ReadBytesAsync(key);
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { hasLogoForPdf = true, logoStorageKey = key, bytesLength = bytes?.Length ?? 0 }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    return Ok(new ApiResponse<object>
+                    {
+                        Success = true,
+                        Data = new { hasLogoForPdf = false, reason = $"Storage read failed: {ex.Message}", logoStorageKey = key }
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetLogoPdfStatus failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
             }
         }
 

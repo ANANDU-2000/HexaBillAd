@@ -57,6 +57,8 @@ const SettingsPage = () => {
   const [logoBlobUrl, setLogoBlobUrl] = useState(null)
   const [showInvoicePreview, setShowInvoicePreview] = useState(false)
   const [logoLoadFailed, setLogoLoadFailed] = useState(false)
+  const [logoPdfStatus, setLogoPdfStatus] = useState(null)
+  const [logoPdfStatusLoading, setLogoPdfStatusLoading] = useState(false)
   const [settings, setSettings] = useState({
     companyNameEn: 'HexaBill',
     companyNameAr: 'هيكسابيل',
@@ -201,6 +203,27 @@ const SettingsPage = () => {
   useEffect(() => {
     setLogoLoadFailed(false)
   }, [settings.logoUrl, logoPreview])
+
+  // Fetch logo PDF status when logo is present (for "Logo will appear on invoice PDF" message)
+  useEffect(() => {
+    if (!logoPreview && !settings.logoUrl) {
+      setLogoPdfStatus(null)
+      return
+    }
+    let cancelled = false
+    setLogoPdfStatusLoading(true)
+    adminAPI.getLogoPdfStatus()
+      .then((res) => {
+        if (!cancelled) setLogoPdfStatus(res?.data ?? res)
+      })
+      .catch(() => {
+        if (!cancelled) setLogoPdfStatus(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLogoPdfStatusLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [logoPreview, settings.logoUrl])
 
   const fetchBackups = async () => {
     try {
@@ -841,6 +864,17 @@ const SettingsPage = () => {
                     <p className="text-sm text-gray-500">
                       PNG, JPG, WEBP — Max 5MB. Your logo appears on all invoices and documents.
                     </p>
+                    {(logoPreview || settings.logoUrl) && (
+                      <p className="text-sm text-gray-600 mt-1">
+                        {logoPdfStatusLoading
+                          ? 'Checking…'
+                          : logoPdfStatus?.hasLogoForPdf
+                            ? '✓ Logo will appear on invoice PDF.'
+                            : logoPdfStatus?.reason
+                              ? `Invoice PDF: ${logoPdfStatus.reason}`
+                              : 'Invoice PDF: logo status unknown.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

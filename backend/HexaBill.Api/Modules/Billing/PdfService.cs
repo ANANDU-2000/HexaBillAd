@@ -93,7 +93,8 @@ namespace HexaBill.Api.Modules.Billing
                         CompanyAddress = settings.CompanyAddress,
                         CompanyPhone = settings.CompanyPhone,
                         CompanyTrn = settings.CompanyTrn,
-                        Currency = settings.Currency
+                        Currency = settings.Currency,
+                        LogoImageBytes = settings.LogoImageBytes
                     };
                     
                     // Try to render from database template first (tenant-scoped)
@@ -117,7 +118,8 @@ namespace HexaBill.Api.Modules.Billing
                                 CompanyAddress = settings.CompanyAddress,
                                 CompanyPhone = settings.CompanyPhone,
                                 CompanyTrn = settings.CompanyTrn,
-                                Currency = settings.Currency
+                                Currency = settings.Currency,
+                                LogoImageBytes = settings.LogoImageBytes
                             };
                             templateHtml = await _templateService.RenderTemplateHtmlAsync(templateFileContent, sale, templateSettings);
                             _logger.LogDebug("Using invoice template from file");
@@ -167,18 +169,27 @@ namespace HexaBill.Api.Modules.Billing
                             {
                                 innerColumn.Spacing(0);
 
-                                // Header - Increased size and bold
-                                innerColumn.Item().Text(settings.CompanyNameEn.ToUpper())
-                                    .FontSize(18)
-                                    .Bold()
-                                    .AlignCenter();
-
-                                innerColumn.Item().PaddingTop(1).Text(settings.CompanyNameAr)
-                                    .FontSize(16)
-                                    .Bold()
-                                    .FontFamily(_arabicFont)
-                                    .DirectionFromRightToLeft()
-                                    .AlignCenter();
+                                // Header row: logo top-left (if uploaded), then company name block. Fixed box + FitArea = no cropping, clear display.
+                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                innerColumn.Item().Row(headerRow =>
+                                {
+                                    if (hasLogo)
+                                        headerRow.ConstantItem(130).AlignLeft().AlignMiddle()
+                                            .Width(120).Height(56).Image(settings.LogoImageBytes!).FitArea();
+                                    headerRow.RelativeItem().Column(nameCol =>
+                                    {
+                                        nameCol.Item().Text(settings.CompanyNameEn.ToUpper())
+                                            .FontSize(18)
+                                            .Bold()
+                                            .AlignCenter();
+                                        nameCol.Item().PaddingTop(1).Text(settings.CompanyNameAr)
+                                            .FontSize(16)
+                                            .Bold()
+                                            .FontFamily(_arabicFont)
+                                            .DirectionFromRightToLeft()
+                                            .AlignCenter();
+                                    }).AlignCenter();
+                                });
 
                                 // Address line without duplicate Abu Dhabi
                                 innerColumn.Item().PaddingTop(4).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
@@ -585,14 +596,14 @@ namespace HexaBill.Api.Modules.Billing
 
                 // Starplus-style header: 3 columns when logo present, else centred text
                 var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
-                if (hasLogo)
-                {
-                    innerColumn.Item().Row(headerRow =>
+if (hasLogo)
                     {
-                        headerRow.ConstantItem(140).AlignCenter().AlignMiddle().Column(col =>
+                        innerColumn.Item().Row(headerRow =>
                         {
-                            col.Item().MaxWidth(160).MaxHeight(80).Image(settings.LogoImageBytes!).FitArea();
-                        });
+                            headerRow.ConstantItem(140).AlignCenter().AlignMiddle().Column(col =>
+                            {
+                                col.Item().Width(160).Height(80).Image(settings.LogoImageBytes!).FitArea();
+                            });
                         headerRow.RelativeItem().AlignCenter().AlignMiddle().Column(col =>
                         {
                             col.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(16).Bold().AlignCenter();

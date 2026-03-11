@@ -1031,6 +1031,11 @@ export const adminAPI = {
     return response.data
   },
 
+  getLogoPdfStatus: async () => {
+    const response = await api.get('/admin/logo/pdf-status')
+    return response.data
+  },
+
   createBackup: async () => {
     const response = await api.post('/admin/backup')
     return response.data

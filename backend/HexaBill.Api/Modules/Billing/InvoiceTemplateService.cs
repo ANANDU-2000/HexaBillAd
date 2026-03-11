@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace HexaBill.Api.Modules.Billing
 {
@@ -260,6 +261,7 @@ namespace HexaBill.Api.Modules.Billing
             var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
 
             // Replace company placeholders
+            var hasLogoPlaceholder = htmlTemplate.Contains("{{company_logo_img}}") || htmlTemplate.Contains("{{company_logo_data_uri}}");
             var processedHtml = htmlTemplate
                 .Replace("{{company_name_en}}", settings.CompanyNameEn ?? "")
                 .Replace("{{company_name_ar}}", settings.CompanyNameAr ?? "")
@@ -267,6 +269,42 @@ namespace HexaBill.Api.Modules.Billing
                 .Replace("{{company_phone}}", settings.CompanyPhone ?? "")
                 .Replace("{{company_trn}}", settings.CompanyTrn ?? "")
                 .Replace("{{currency}}", settings.Currency ?? "AED");
+
+            // Logo: inject img tag or empty string so print/HTML can show uploaded logo (placeholders {{company_logo_img}} and {{company_logo_data_uri}})
+            var logoImgTag = "";
+            var logoDataUri = "";
+            if (settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0)
+            {
+                try
+                {
+                    var b64 = Convert.ToBase64String(settings.LogoImageBytes);
+                    logoDataUri = "data:image/png;base64," + b64;
+                    logoImgTag = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;display:block;\" />";
+                }
+                catch { /* ignore */ }
+            }
+            processedHtml = processedHtml.Replace("{{company_logo_img}}", logoImgTag).Replace("{{company_logo_data_uri}}", logoDataUri);
+
+            // If the active template does not have an explicit logo placeholder but we do have a logo,
+            // inject a top-left logo into the <body> so invoices always show the company logo.
+            if (!hasLogoPlaceholder && !string.IsNullOrEmpty(logoDataUri))
+            {
+                var injectedLogo = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"position:absolute;top:8px;left:8px;max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;z-index:10;\" />";
+
+                if (Regex.IsMatch(processedHtml, "<body[^>]*>", RegexOptions.IgnoreCase))
+                {
+                    processedHtml = Regex.Replace(
+                        processedHtml,
+                        "<body([^>]*)>",
+                        m => m.Value + Environment.NewLine + injectedLogo,
+                        1,
+                        RegexOptions.IgnoreCase);
+                }
+                else
+                {
+                    processedHtml = injectedLogo + processedHtml;
+                }
+            }
 
             // Replace invoice placeholders
             var amountInWords = ConvertToWords(sale.GrandTotal);

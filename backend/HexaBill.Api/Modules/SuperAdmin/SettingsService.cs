@@ -212,19 +212,23 @@ namespace HexaBill.Api.Modules.SuperAdmin
             if (settings == null || settings.Count == 0)
                 return true;
 
+            // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only)
+            var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "COMPANY_LOGO", "LOGO_PATH", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT" };
             foreach (var kvp in settings)
             {
                 var key = kvp.Key?.Trim();
                 if (string.IsNullOrEmpty(key) || key.Length > 100)
                     continue;
+                var value = kvp.Value ?? string.Empty;
+                if (logoKeys.Contains(key) && string.IsNullOrWhiteSpace(value))
+                    continue; // preserve existing logo when bulk update sends empty
 
                 var setting = await _context.Settings
                     .FirstOrDefaultAsync(s => s.Key == key && s.OwnerId == tenantId);
                 if (setting == null)
                     setting = await _context.Settings
                         .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == tenantId);
-
-                var value = kvp.Value ?? string.Empty;
 
                 if (setting != null)
                 {
@@ -274,16 +278,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
             };
         }
 
-        /// <summary>Resolve logo storage key for PDF: prefer LOGO_STORAGE_KEY; fallback to key derived from COMPANY_LOGO when it looks like a storage path (so invoice header shows uploaded logo).</summary>
+        /// <summary>Resolve logo storage key for PDF: prefer LOGO_STORAGE_KEY; fallback to key derived from COMPANY_LOGO / LOGO_PUBLIC_URL / LOGO_PATH when it looks like a storage path (so invoice header shows uploaded logo).</summary>
         private static string? GetLogoStorageKeyForInvoice(Dictionary<string, string> settingsDict)
         {
             if (settingsDict.TryGetValue("LOGO_STORAGE_KEY", out var keyVal) && !string.IsNullOrWhiteSpace(keyVal))
                 return keyVal;
-            var companyLogo = settingsDict.GetValueOrDefault("COMPANY_LOGO", settingsDict.GetValueOrDefault("LOGO_PUBLIC_URL", ""));
-            if (string.IsNullOrWhiteSpace(companyLogo) || !companyLogo.Contains("tenants/", StringComparison.OrdinalIgnoreCase) || !companyLogo.Contains("logos/", StringComparison.OrdinalIgnoreCase))
-                return null;
-            var idx = companyLogo.IndexOf("tenants/", StringComparison.OrdinalIgnoreCase);
-            return companyLogo.Substring(idx).Split('?')[0].Trim();
+            var companyLogo = settingsDict.GetValueOrDefault("COMPANY_LOGO", settingsDict.GetValueOrDefault("LOGO_PUBLIC_URL", settingsDict.GetValueOrDefault("LOGO_PATH", "")));
+            if (!string.IsNullOrWhiteSpace(companyLogo) && companyLogo.Contains("tenants/", StringComparison.OrdinalIgnoreCase) && companyLogo.Contains("logos/", StringComparison.OrdinalIgnoreCase))
+            {
+                var idx = companyLogo.IndexOf("tenants/", StringComparison.OrdinalIgnoreCase);
+                return companyLogo.Substring(idx).Split('?')[0].Trim();
+            }
+            return null;
         }
 
         /// <summary>Get logo metadata for GET /api/settings/logo or GET /api/Admin/logo.</summary>
