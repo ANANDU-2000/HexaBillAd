@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   FileText,
@@ -58,8 +58,11 @@ const VatReturnPage = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null) // null | 'access' | { message: string }
   const [vatReturn, setVatReturn] = useState(null)
-  const [activeTab, setActiveTab] = useState('summary')
+  const [activeTab, setActiveTab] = useState('transactions')
   const [validationExpanded, setValidationExpanded] = useState(false)
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all') // 'all' | 'sales' | 'purchases' | 'expenses' | 'input'
+  const [taxTypeFilter, setTaxTypeFilter] = useState('all') // 'all' | 'Standard 5%' | 'Zero' | 'Exempt'
+  const transactionsTableRef = useRef(null)
 
   const fetchVatReturn = useCallback(async (fromOverride, toOverride) => {
     const f = fromOverride ?? fromDate
@@ -165,7 +168,64 @@ const VatReturnPage = () => {
   const expenseLines = (v?.inputLines || []).filter(l => (l.type || '').toLowerCase() === 'expense')
   const daysUntilDue = v?.dueDate ? Math.ceil((new Date(v.dueDate) - new Date()) / 86400000) : null
 
+  // Unified VAT transactions (sales + purchases + expenses) for transaction-first UX
+  const allVatTransactions = useMemo(() => {
+    if (!v) return []
+    const out = (v.outputLines || []).map(l => ({
+      type: 'Sale',
+      date: l.date,
+      reference: l.reference,
+      customerOrVendor: l.customerName ?? l.CustomerName ?? '—',
+      netAmount: Number(l.netAmount) || 0,
+      vatAmount: Number(l.vatAmount) || 0,
+      total: (Number(l.netAmount) || 0) + (Number(l.vatAmount) || 0),
+      taxType: l.vatScenario || '—'
+    }))
+    const inp = (v.inputLines || []).map(l => {
+      const type = (l.type || '').toLowerCase() === 'expense' ? 'Expense' : 'Purchase'
+      const customerOrVendor = l.supplierName ?? l.SupplierName ?? l.categoryName ?? l.CategoryName ?? '—'
+      const net = Number(l.netAmount) || 0
+      const vat = Number(l.vatAmount) || 0
+      return {
+        type,
+        date: l.date,
+        reference: l.reference,
+        customerOrVendor,
+        netAmount: net,
+        vatAmount: vat,
+        total: net + vat,
+        taxType: l.taxType ?? '—'
+      }
+    })
+    const combined = [...out, ...inp]
+    combined.sort((a, b) => {
+      const dA = a.date ? new Date(a.date).getTime() : 0
+      const dB = b.date ? new Date(b.date).getTime() : 0
+      return dA - dB
+    })
+    return combined
+  }, [v])
+
+  const filteredVatTransactions = useMemo(() => {
+    let list = allVatTransactions
+    if (transactionTypeFilter === 'sales') list = list.filter(row => row.type === 'Sale')
+    else if (transactionTypeFilter === 'purchases') list = list.filter(row => row.type === 'Purchase')
+    else if (transactionTypeFilter === 'expenses') list = list.filter(row => row.type === 'Expense')
+    else if (transactionTypeFilter === 'input') list = list.filter(row => row.type === 'Purchase' || row.type === 'Expense')
+    if (taxTypeFilter !== 'all') {
+      const match = taxTypeFilter === 'Standard 5%' ? 'Standard' : taxTypeFilter
+      list = list.filter(row => (row.taxType || '').toLowerCase().includes((match || '').toLowerCase()))
+    }
+    return list
+  }, [allVatTransactions, transactionTypeFilter, taxTypeFilter])
+
+  const scrollToTransactionsTable = () => {
+    setActiveTab('transactions')
+    setTimeout(() => transactionsTableRef.current?.scrollIntoView?.({ behavior: 'smooth' }), 100)
+  }
+
   const tabs = [
+    { id: 'transactions', label: 'Transactions', icon: FileText, badge: allVatTransactions.length },
     { id: 'summary', label: 'Summary', icon: LayoutDashboard },
     { id: 'sales', label: 'Sales', icon: TrendingUp, badge: v?.outputLines?.length ?? 0 },
     { id: 'purchases', label: 'Purchases', icon: ShoppingCart, badge: purchaseLines.length },
@@ -254,6 +314,11 @@ const VatReturnPage = () => {
             ))}
           </select>
         </div>
+        {loadError && (
+          <p className="mt-3 text-sm text-red-600">
+            VAT data could not be loaded. Check your connection and period.
+          </p>
+        )}
       </div>
 
       {loading ? (
@@ -298,7 +363,7 @@ const VatReturnPage = () => {
           {/* Actions bar */}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-gray-600">
-              Period: {periodLabel}
+              Showing: {fromDate} – {toDate} ({periodLabel})
               {(v.status || '').toLowerCase() === 'locked' && (
                 <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Locked</span>
               )}
@@ -465,10 +530,11 @@ const VatReturnPage = () => {
             </div>
           )}
 
-          {/* No transactions info */}
+          {/* No transactions info – actionable message and period clarity */}
           {v && (!v.outputLines?.length) && (!v.inputLines?.length) && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-              No transactions found for this period. FTA boxes below show zeros.
+            <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+              <p className="font-medium">No transactions in this period.</p>
+              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. Try another date range (e.g. Last quarter) or check that invoices, purchases, and expenses exist for the selected period. FTA boxes below show zeros.</p>
             </div>
           )}
 
@@ -477,6 +543,80 @@ const VatReturnPage = () => {
 
           {/* Tab content */}
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            {activeTab === 'transactions' && (
+              <div ref={transactionsTableRef} className="p-4">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">VAT Transactions</h2>
+                <p className="text-xs text-gray-500 mb-4">Sales, purchases, and expenses in the selected period. Use filters to narrow by type or tax.</p>
+                <div className="flex flex-wrap items-center gap-4 mb-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Type:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {['all', 'sales', 'purchases', 'expenses', 'input'].map(t => (
+                        <button key={t} type="button" onClick={() => setTransactionTypeFilter(t)} className={`px-3 py-1.5 text-sm rounded-md border ${transactionTypeFilter === t ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 hover:bg-gray-50'}`}>
+                          {t === 'all' ? 'All' : t === 'input' ? 'Input (P+E)' : t.charAt(0).toUpperCase() + t.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">Tax type:</span>
+                    <select value={taxTypeFilter} onChange={(e) => setTaxTypeFilter(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm">
+                      <option value="all">All</option>
+                      <option value="Standard 5%">Standard 5%</option>
+                      <option value="Zero">Zero</option>
+                      <option value="Exempt">Exempt</option>
+                    </select>
+                  </div>
+                </div>
+                {filteredVatTransactions.length === 0 ? (
+                  <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+                    <p className="font-medium">No transactions in this period.</p>
+                    <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. Try another date range or check that invoices, purchases, and expenses exist for the selected period.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Customer / Vendor</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
+                          <th className="px-4 py-2 text-right font-medium text-gray-700">Total (AED)</th>
+                          <th className="px-4 py-2 text-left font-medium text-gray-700">Tax type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredVatTransactions.map((row, i) => (
+                          <tr key={i}>
+                            <td className="px-4 py-2">{row.date ? (typeof row.date === 'string' ? row.date.slice(0, 10) : new Date(row.date).toISOString().slice(0, 10)) : '—'}</td>
+                            <td className="px-4 py-2">{row.type}</td>
+                            <td className="px-4 py-2">{row.reference ?? '—'}</td>
+                            <td className="px-4 py-2">{row.customerOrVendor}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(row.netAmount)}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(row.vatAmount)}</td>
+                            <td className="px-4 py-2 text-right">{formatCurrency(row.total)}</td>
+                            <td className="px-4 py-2">{row.taxType}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 font-medium">
+                        <tr>
+                          <td colSpan="4" className="px-4 py-2">Total</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.netAmount, 0))}</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.vatAmount, 0))}</td>
+                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.total, 0))}</td>
+                          <td className="px-4 py-2" />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'summary' && (
               <>
           {/* Top summary cards – key totals for period (all AED) */}
@@ -486,11 +626,13 @@ const VatReturnPage = () => {
               <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Output VAT</p>
               <p className="text-xl font-bold text-blue-900 mt-1">{formatCurrency(v.box1b)}</p>
               <p className="text-xs text-gray-500 mt-0.5">Box 1b – Standard rated sales VAT</p>
+              <button type="button" onClick={() => { setTransactionTypeFilter('sales'); scrollToTransactionsTable() }} className="mt-2 text-xs text-blue-600 hover:underline">View transactions</button>
             </div>
             <div className="bg-white rounded-lg border-2 border-green-200 p-4">
               <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Input VAT</p>
               <p className="text-xl font-bold text-green-900 mt-1">{formatCurrency(v.box12)}</p>
               <p className="text-xs text-gray-500 mt-0.5">Box 12 – Total recoverable</p>
+              <button type="button" onClick={() => { setTransactionTypeFilter('input'); scrollToTransactionsTable() }} className="mt-2 text-xs text-green-600 hover:underline">View transactions</button>
             </div>
             <div className={`rounded-lg border-2 p-4 ${(v.box13a || 0) > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
               <p className={`text-xs font-medium uppercase tracking-wide ${(v.box13a || 0) > 0 ? 'text-red-700' : 'text-green-700'}`}>
@@ -522,10 +664,10 @@ const VatReturnPage = () => {
             )}
           </div>
 
-          {/* FTA 201 Summary – table-style layout so totals per section are clear */}
+          {/* FTA Form 201 Summary – secondary, box summary */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">FTA Form 201 Summary</h2>
-            <p className="text-xs text-gray-500 mb-4">Box values for this period — use tabs above for line-level detail.</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">FTA Form 201 (box summary)</h2>
+            <p className="text-xs text-gray-500 mb-4">Box values for this period — use Transactions tab for line-level detail.</p>
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
                 <thead>
@@ -799,12 +941,20 @@ const VatReturnPage = () => {
                   </div>
                 ) : (
                   <ul className="space-y-2">
-                    {issues.map((i, idx) => (
-                      <li key={idx} className={`flex items-start gap-2 p-3 rounded-lg border ${i.severity === 'Blocking' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                        <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-200">{i.ruleId}</span>
-                        <span className="text-sm flex-1">{i.message}</span>
-                      </li>
-                    ))}
+                    {issues.map((i, idx) => {
+                      const v002Count = issues.filter(x => x.ruleId === 'V002').length
+                      const isV002Repeat = i.ruleId === 'V002' && issues.findIndex(x => x.ruleId === 'V002') !== idx
+                      if (isV002Repeat) return null
+                      const displayMessage = i.ruleId === 'V002'
+                        ? `${v002Count} invoice${v002Count !== 1 ? 's' : ''} need VAT scenario set (use Fix missing VatScenario).`
+                        : i.message
+                      return (
+                        <li key={idx} className={`flex items-start gap-2 p-3 rounded-lg border ${i.severity === 'Blocking' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+                          <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-200">{i.ruleId}</span>
+                          <span className="text-sm flex-1">{displayMessage}</span>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
