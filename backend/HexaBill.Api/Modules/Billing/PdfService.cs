@@ -13,6 +13,7 @@ using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Shared.Security;
 using HexaBill.Api.Shared.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Hosting;
 
 namespace HexaBill.Api.Modules.Billing
 {
@@ -24,10 +25,11 @@ namespace HexaBill.Api.Modules.Billing
         private readonly ISettingsService _settingsService;
         private readonly IStorageService _storageService;
         private readonly ILogger<PdfService> _logger;
+        private readonly IWebHostEnvironment _env;
         private readonly string _arabicFont;
         private readonly string _englishFont;
 
-        public PdfService(AppDbContext context, IInvoiceTemplateService templateService, IFontService fontService, ISettingsService settingsService, IStorageService storageService, ILogger<PdfService> logger)
+        public PdfService(AppDbContext context, IInvoiceTemplateService templateService, IFontService fontService, ISettingsService settingsService, IStorageService storageService, ILogger<PdfService> logger, IWebHostEnvironment env)
         {
             _context = context;
             _templateService = templateService;
@@ -35,6 +37,7 @@ namespace HexaBill.Api.Modules.Billing
             _settingsService = settingsService;
             _storageService = storageService;
             _logger = logger;
+            _env = env;
             
             QuestPDF.Settings.License = LicenseType.Community;
             
@@ -886,9 +889,35 @@ namespace HexaBill.Api.Modules.Billing
                     _logger.LogWarning(ex, "Logo load failed for tenant {TenantId}. Invoice will render with text-only header.", tenantId);
                 }
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(companySettings.LogoPath) && companySettings.LogoPath.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var uploadsPath = Path.Combine(webRoot, "uploads");
+                    var relativePath = companySettings.LogoPath.TrimStart('/').Replace("uploads/", "", StringComparison.OrdinalIgnoreCase);
+                    var fullPath = Path.Combine(uploadsPath, relativePath);
+                    if (File.Exists(fullPath))
+                    {
+                        var logoBytes = await File.ReadAllBytesAsync(fullPath);
+                        dto.LogoImageBytes = logoBytes;
+                        _logger.LogDebug("Invoice PDF: logo loaded from legacy path for tenant {TenantId}, {Bytes} bytes.", tenantId, logoBytes.Length);
+                    }
+                    else
+                        _logger.LogWarning("Invoice PDF: legacy logo file not found for tenant {TenantId} at {Path}. Invoice will render with text-only header.", tenantId, fullPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Invoice PDF: legacy logo load failed for tenant {TenantId}. Invoice will render with text-only header.", tenantId);
+                }
+            }
+            else if (string.IsNullOrWhiteSpace(companySettings.LogoStorageKey) && string.IsNullOrWhiteSpace(companySettings.LogoPath))
             {
                 _logger.LogDebug("Invoice PDF: no logo set for tenant {TenantId}.", tenantId);
+            }
+            else
+            {
+                _logger.LogWarning("Invoice PDF: logo not available for tenant {TenantId} (LogoStorageKey empty, LogoPath not a legacy /uploads/ path). Invoice will render with text-only header.", tenantId);
             }
             return dto;
         }

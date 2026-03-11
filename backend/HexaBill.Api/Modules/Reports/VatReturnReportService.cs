@@ -98,6 +98,7 @@ namespace HexaBill.Api.Modules.Reports
                 .ToListAsync();
 
             decimal box1a = 0, box1b = 0, box2 = 0, box3 = 0;
+            int standardRatedCount = 0;
             foreach (var s in salesInPeriod)
             {
                 if (s.IsZeroInvoice) continue;
@@ -105,10 +106,12 @@ namespace HexaBill.Api.Modules.Reports
                 if (string.IsNullOrWhiteSpace(s.VatScenario))
                     s.VatScenario = "Standard";
                 var isStandard = IsStandardRated(s);
+                // Defensive: guard against any null from DB/EF (e.g. legacy nullable columns)
                 var net = s.Subtotal;
                 var vat = s.VatTotal;
                 if (isStandard)
                 {
+                    standardRatedCount++;
                     box1a += VatCalculator.Round(net);
                     box1b += VatCalculator.Round(vat);
                     outputLines.Add(new VatReturnOutputLineDto
@@ -134,6 +137,9 @@ namespace HexaBill.Api.Modules.Reports
                     outputLines.Add(new VatReturnOutputLineDto { Type = "Sale", Reference = s.InvoiceNo ?? s.Id.ToString(), Date = s.InvoiceDate, NetAmount = net, VatAmount = 0, VatScenario = "Exempt", CustomerName = s.Customer?.Name ?? "", SaleId = s.Id });
                 }
             }
+
+            if (standardRatedCount == 0 && salesInPeriod.Count > 0)
+                _logger.LogInformation("VAT Return: 0 standard-rated sales in period (from {Count} sales). Check VatScenario on sales.", salesInPeriod.Count);
 
             // Sale returns (output credit notes): reduce Box 1a/1b
             var returnsInPeriod = await _context.SaleReturns
@@ -284,8 +290,13 @@ namespace HexaBill.Api.Modules.Reports
 
         private static bool IsStandardRated(Sale s)
         {
-            if (!string.IsNullOrWhiteSpace(s.VatScenario))
-                return string.Equals(s.VatScenario, VatScenarios.Standard, StringComparison.OrdinalIgnoreCase);
+            if (string.Equals(s.VatScenario, VatScenarios.ZeroRated, StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (string.Equals(s.VatScenario, VatScenarios.Exempt, StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (string.Equals(s.VatScenario, VatScenarios.Standard, StringComparison.OrdinalIgnoreCase))
+                return true;
+            // Null/empty or typo (e.g. "standrad"): treat as standard if sale has VAT so box1b is not understated
             return s.VatTotal > 0;
         }
 
