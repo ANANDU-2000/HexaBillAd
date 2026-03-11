@@ -12,6 +12,7 @@ import {
   TrendingUp,
   ShoppingCart,
   Receipt,
+  BarChart2,
   FileX,
   ShieldCheck,
   History,
@@ -243,6 +244,7 @@ const VatReturnPage = () => {
     { id: 'sales', label: 'Sales', icon: TrendingUp, badge: v?.outputLines?.length ?? 0 },
     { id: 'purchases', label: 'Purchases', icon: ShoppingCart, badge: purchaseLines.length },
     { id: 'expenses', label: 'Expenses', icon: Receipt, badge: expenseLines.length },
+    { id: 'summary', label: 'Summary', icon: BarChart2 },
     { id: 'creditnotes', label: 'Credit Notes', icon: FileX, badge: (v?.creditNoteLines?.length ?? 0) + (v?.reverseChargeLines?.length ?? 0) },
     { id: 'validation', label: 'Validation', icon: ShieldCheck, badge: issues.length || '✓' },
     { id: 'history', label: 'History', icon: History }
@@ -888,6 +890,60 @@ const VatReturnPage = () => {
             <div className="p-6 text-center text-gray-500 text-sm">No expenses in this period.</div>
           )}
           </>
+            )}
+
+            {activeTab === 'summary' && (
+              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">VAT Summary</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-700">Count</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
+                        <th className="px-4 py-2 text-right font-medium text-gray-700">Total (AED)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      <tr>
+                        <td className="px-4 py-2 font-medium">Sales</td>
+                        <td className="px-4 py-2 text-right">{v?.outputLines?.length ?? 0}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(salesNet)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(salesVat)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(salesGross)}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 font-medium">Purchases</td>
+                        <td className="px-4 py-2 text-right">{purchaseLines.length}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesNet)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesVat)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesNet + purchasesVat)}</td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2 font-medium">Expenses</td>
+                        <td className="px-4 py-2 text-right">{expenseLines.length}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(expensesNet)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(expensesVat)}</td>
+                        <td className="px-4 py-2 text-right">{formatCurrency(expensesNet + expensesVat)}</td>
+                      </tr>
+                    </tbody>
+                    <tfoot className="bg-gray-50 font-medium">
+                      <tr>
+                        <td className="px-4 py-2" colSpan="2">Input VAT total</td>
+                        <td className="px-4 py-2 text-right" colSpan="2">{formatCurrency(inputVatTotal)}</td>
+                        <td className="px-4 py-2 text-right" />
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-2" colSpan="2">VAT payable</td>
+                        <td className="px-4 py-2 text-right" colSpan="2">{formatCurrency(vatPayable)}</td>
+                        <td className="px-4 py-2 text-right" />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
             )}
 
             {activeTab === 'creditnotes' && (

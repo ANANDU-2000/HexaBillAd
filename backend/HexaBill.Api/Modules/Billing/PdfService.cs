@@ -169,8 +169,11 @@ namespace HexaBill.Api.Modules.Billing
                             {
                                 innerColumn.Spacing(0);
 
-                                // Invoice header: logo from company Settings (tenant-scoped). Top-left corner, fixed placeholder 120x56pt; FitArea = no crop, aspect ratio kept.
+                                // Invoice header: one clear block — logo (left) | company name + address (center) | date (right)
                                 var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
+
+                                // Row 1: Logo | Company block (name EN, AR, address) | Date
                                 innerColumn.Item().Row(headerRow =>
                                 {
                                     if (hasLogo)
@@ -188,22 +191,20 @@ namespace HexaBill.Api.Modules.Billing
                                             .FontFamily(_arabicFont)
                                             .DirectionFromRightToLeft()
                                             .AlignCenter();
+                                        nameCol.Item().PaddingTop(2).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
+                                            .FontSize(12)
+                                            .Bold()
+                                            .AlignCenter();
                                     });
+                                    headerRow.ConstantItem(80).AlignRight().AlignMiddle()
+                                        .Text($"DATE: {invoiceDateStr}").FontSize(10).Bold();
                                 });
 
-                                // Address line without duplicate Abu Dhabi
-                                innerColumn.Item().PaddingTop(4).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
-                                    .FontSize(12)
-                                    .Bold()
-                                    .AlignCenter();
-                                
-                                // TRN and Date row - increased size and bold
-                                innerColumn.Item().PaddingTop(2).Row(trnRow => {
+                                // Row 2: TRN full width, then separator
+                                innerColumn.Item().PaddingTop(2).Row(trnRow =>
+                                {
                                     trnRow.AutoItem().Text("TRN : No : ").FontSize(10).Bold();
                                     trnRow.AutoItem().Text(settings.CompanyTrn).FontSize(10).Bold();
-                                    trnRow.RelativeItem();
-                                    trnRow.AutoItem().Text("DATE : ").FontSize(10).Bold();
-                                    trnRow.AutoItem().Text(FormatInvoiceDate(sale.InvoiceDate, settings)).FontSize(10).Bold();
                                 });
 
                                 // TAX INVOICE title - compact with borders
