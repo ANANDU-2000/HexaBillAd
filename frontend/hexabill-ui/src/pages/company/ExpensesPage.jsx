@@ -1135,11 +1135,42 @@ const ExpensesPage = () => {
         )}
 
         {/* Bulk selection bar - visible whenever any expense is selected */}
-        {selectedExpenseIds.length > 0 && (
+        {selectedExpenseIds.length > 0 && (() => {
+          const selectedExpenses = displayExpenses.filter(e => selectedExpenseIds.includes(e.id))
+          const selectedNoVatCount = selectedExpenses.filter(e => e.vatAmount == null).length
+          const allSelectedAreNoVat = selectedNoVatCount === selectedExpenseIds.length && selectedNoVatCount > 0
+          return (
           <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-primary-800">{selectedExpenseIds.length} selected</span>
             {isAdminOrOwner(user) && (
               <>
+                {allSelectedAreNoVat && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        const res = await expensesAPI.bulkVatUpdate({
+                          expenseIds: selectedExpenseIds,
+                          interpretation: 'add-on-top',
+                          vatRate: 0.05,
+                          isTaxClaimable: true,
+                          taxType: 'Standard',
+                          isEntertainment: false
+                        })
+                        if (res?.success && res?.data) {
+                          toast.success(`Applied 5% VAT to ${res.data.updated} expense(s)`)
+                          setSelectedExpenseIds([])
+                          await fetchExpenses()
+                        } else toast.error(res?.message || 'Update failed')
+                      } catch (err) {
+                        toast.error(err?.response?.data?.message || 'Update failed')
+                      }
+                    }}
+                    className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700"
+                  >
+                    Apply 5% VAT to selected ({selectedNoVatCount})
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={async () => {
@@ -1186,7 +1217,8 @@ const ExpensesPage = () => {
               Clear selection
             </button>
           </div>
-        )}
+          )
+        })()}
 
         {/* Expenses Table - Tally Ledger Style */}
         {!showAggregated && (

@@ -95,8 +95,9 @@ export const BrandingProvider = ({ children }) => {
         }))
 
         document.title = name
-        if (fullLogoUrl) {
-          // Use full URL for favicon but with cache-busting
+        // Skip favicon for storage URLs: browser would request without auth and get 401
+        const isStorageUrl = fullLogoUrl && (fullLogoUrl.includes('/api/storage/') || fullLogoUrl.includes('storage/tenants/'))
+        if (fullLogoUrl && !isStorageUrl) {
           const faviconUrl = `${fullLogoUrl}${fullLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
           updateFavicon(faviconUrl)
         }

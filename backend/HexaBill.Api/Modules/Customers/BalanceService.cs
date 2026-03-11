@@ -60,46 +60,74 @@ namespace HexaBill.Api.Modules.Customers
 
                 var tenantId = customer.TenantId;
 
-                // OPTIMIZATION: Run 4 aggregates in parallel (1 round-trip latency vs 4 sequential)
-                var totalSalesTask = _context.Sales
-                    .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
-                    .SumAsync(s => (decimal?)s.GrandTotal);
-                var totalPaymentsTask = _context.Payments
-                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
-                    .SumAsync(p => (decimal?)p.Amount);
-                var totalSalesReturnsTask = _context.SaleReturns
-                    .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
-                    .SumAsync(sr => (decimal?)sr.GrandTotal);
-                var refundsPaidTask = _context.Payments
-                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
-                    .SumAsync(p => (decimal?)p.Amount);
+                decimal totalSales;
+                decimal totalPayments;
+                decimal totalSalesReturns;
+                decimal refundsPaid;
 
-                await Task.WhenAll(totalSalesTask, totalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);
+                try
+                {
+                    var totalSalesTask = _context.Sales
+                        .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
+                        .SumAsync(s => (decimal?)s.GrandTotal);
+                    var totalPaymentsTask = _context.Payments
+                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
+                        .SumAsync(p => (decimal?)p.Amount);
+                    var totalSalesReturnsTask = _context.SaleReturns
+                        .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                        .SumAsync(sr => (decimal?)sr.GrandTotal);
+                    var refundsPaidTask = _context.Payments
+                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                        .SumAsync(p => (decimal?)p.Amount);
 
-                var totalSales = await totalSalesTask ?? 0m;
-                var totalPayments = await totalPaymentsTask ?? 0m;
-                var totalSalesReturns = await totalSalesReturnsTask ?? 0m;
-                var refundsPaid = await refundsPaidTask ?? 0m;
+                    await Task.WhenAll(totalSalesTask, totalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);
 
-                // PendingBalance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
+                    totalSales = await totalSalesTask ?? 0m;
+                    totalPayments = await totalPaymentsTask ?? 0m;
+                    totalSalesReturns = await totalSalesReturnsTask ?? 0m;
+                    refundsPaid = await refundsPaidTask ?? 0m;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Balance recalc step failed for customer {CustomerId}: aggregates (Sales/Payments/Returns/Refunds). Message: {Message}",
+                        customerId, ex.Message);
+                    throw;
+                }
+
                 var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
 
-                // Update customer record
                 customer.TotalSales = totalSales;
                 customer.TotalPayments = totalPayments;
                 customer.PendingBalance = pendingBalance;
-                customer.Balance = pendingBalance; // Keep legacy field in sync
+                customer.Balance = pendingBalance;
                 customer.UpdatedAt = DateTime.UtcNow;
 
-                // Update LastPaymentDate
-                var lastPayment = await _context.Payments
-                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
-                    .OrderByDescending(p => p.PaymentDate)
-                    .FirstOrDefaultAsync();
-                customer.LastPaymentDate = lastPayment?.PaymentDate;
+                try
+                {
+                    var lastPayment = await _context.Payments
+                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
+                        .OrderByDescending(p => p.PaymentDate)
+                        .FirstOrDefaultAsync();
+                    customer.LastPaymentDate = lastPayment?.PaymentDate;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Balance recalc step failed for customer {CustomerId}: LastPaymentDate query. Message: {Message}",
+                        customerId, ex.Message);
+                    throw;
+                }
 
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Balance recalc step failed for customer {CustomerId}: SaveChanges. Message: {Message}",
+                        customerId, ex.Message);
+                    throw;
+                }
 
                 _logger.LogInformation(
                     "Customer {CustomerId} balance recalculated: TotalSales={TotalSales}, TotalPayments(Cleared)={TotalPayments}, Returns={Returns}, RefundsPaid={Refunds}, PendingBalance={Pending}",

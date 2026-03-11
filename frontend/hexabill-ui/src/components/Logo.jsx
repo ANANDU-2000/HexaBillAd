@@ -24,6 +24,7 @@ const Logo = ({ className = '', showText = true, size = 'default' }) => {
       setLogoBlobUrl(null)
       return
     }
+    // Path relative to api baseURL (e.g. storage/tenants/3/logos/xxx.png) so api.get() sends auth header
     const path = logoUrlClean.includes('/api/') ? logoUrlClean.split('/api/')[1] : logoUrlClean.replace(/^\//, '')
     if (!path) {
       setLogoBlobUrl(null)

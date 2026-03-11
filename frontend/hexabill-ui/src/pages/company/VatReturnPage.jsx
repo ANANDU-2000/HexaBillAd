@@ -132,6 +132,13 @@ const VatReturnPage = () => {
     fetchVatReturn(fromDate, toDate)
   }
 
+  const handleFromToChange = () => {
+    if (fromDate && toDate) {
+      setSearchParams({ from: fromDate, to: toDate })
+      fetchVatReturn(fromDate, toDate)
+    }
+  }
+
   const v = vatReturn
   const hasFta201 = v && typeof v.box1a === 'number'
   const issues = v?.validationIssues || []
@@ -210,6 +217,7 @@ const VatReturnPage = () => {
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
+              onBlur={handleFromToChange}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm"
             />
             <button
