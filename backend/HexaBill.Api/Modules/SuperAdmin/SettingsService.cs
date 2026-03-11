@@ -106,15 +106,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                     }
                     
-                    // Use raw SQL with correct column name
+                    // Use raw SQL with correct column name. Include OwnerId so we prefer OwnerId=tenantId when duplicate keys exist (logo persistence).
                     using var command = connection.CreateCommand();
                     if (!string.IsNullOrEmpty(valueColumnName))
                     {
                         var quotedColumn = valueColumnName == "Value" ? @"""Value""" : "value";
                         command.CommandText = $@"
-                            SELECT ""Key"", {quotedColumn}
+                            SELECT ""Key"", {quotedColumn}, ""OwnerId""
                             FROM ""Settings""
-                            WHERE ""OwnerId"" = @tenantId OR ""TenantId"" = @tenantId";
+                            WHERE ""OwnerId"" = @tenantId OR ""TenantId"" = @tenantId
+                            ORDER BY (""OwnerId"" = @tenantId) DESC";
                         var param = command.CreateParameter();
                         param.ParameterName = "@tenantId";
                         param.Value = tenantId;
@@ -126,11 +127,15 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         {
                             var key = reader.GetString(0);
                             var value = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
-                            settings[key] = value;
+                            var ownerId = reader.GetInt32(2);
+                            // Prefer row where OwnerId = tenantId so logo/owner settings persist after refresh (avoid overwriting with legacy TenantId-only row)
+                            if (!settings.ContainsKey(key) || ownerId == tenantId)
+                                settings[key] = value;
                         }
 
                         if (settings.Any())
                         {
+                            EnsureCompanyLogoFromLogoUrl(settings);
                             return settings;
                         }
                     }
@@ -156,7 +161,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     .GroupBy(s => s.Key)
                     .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.OwnerId == tenantId).First().Value ?? string.Empty);
 
-                return settings.Any() ? settings : GetDefaultSettings();
+                if (settings.Any())
+                {
+                    EnsureCompanyLogoFromLogoUrl(settings);
+                    return settings;
+                }
+                return GetDefaultSettings();
             }
             catch (Exception ex)
             {
@@ -212,9 +222,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
             if (settings == null || settings.Count == 0)
                 return true;
 
-            // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only)
+            // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only) so logo persists after refresh
             var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "COMPANY_LOGO", "LOGO_PATH", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT" };
+                { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "COMPANY_LOGO", "LOGO_PATH", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "LOGO_PREVIOUS_KEYS" };
             foreach (var kvp in settings)
             {
                 var key = kvp.Key?.Trim();
@@ -326,6 +336,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
             }
             await _context.SaveChangesAsync();
+        }
+
+        /// <summary>Ensure COMPANY_LOGO is set from LOGO_PUBLIC_URL or LOGO_PATH so frontend/branding always get a logo URL after refresh.</summary>
+        private static void EnsureCompanyLogoFromLogoUrl(Dictionary<string, string> settings)
+        {
+            if (settings.TryGetValue("COMPANY_LOGO", out var companyLogo) && !string.IsNullOrWhiteSpace(companyLogo))
+                return;
+            var logoUrl = (settings.TryGetValue("LOGO_PUBLIC_URL", out var u) ? u : null) ?? (settings.TryGetValue("LOGO_PATH", out var p) ? p : null) ?? "";
+            if (!string.IsNullOrWhiteSpace(logoUrl))
+                settings["COMPANY_LOGO"] = logoUrl.StartsWith("/") || logoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) ? logoUrl : "/uploads/" + logoUrl;
         }
 
         /// <summary>

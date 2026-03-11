@@ -62,9 +62,16 @@ const getCacheTTL = (url) => {
   return CACHE_TTL.default
 }
 
-// Clear cache entry
+// Clear cache entry (by exact key or by URL fragment so GET /settings is cleared when url is '/api/settings' or '/settings')
 const clearCache = (url) => {
+  if (!url) return
   responseCache.delete(url)
+  const fragment = url.replace(/^\/api\/?/, '').replace(/^\//, '') || '' // 'settings' from '/api/settings' or '/settings'
+  if (fragment) {
+    for (const key of responseCache.keys()) {
+      if (key.includes(fragment)) responseCache.delete(key)
+    }
+  }
 }
 
 // Clear all cache

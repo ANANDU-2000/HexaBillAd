@@ -149,8 +149,9 @@ const SettingsPage = () => {
       try {
         const response = await adminAPI.getSettings()
         if (response.success) {
-          // Canonical key: COMPANY_LOGO; fallbacks for legacy data
+          // Canonical key: COMPANY_LOGO; LOGO_PUBLIC_URL fallback so logo persists after refresh
           const logoUrl = response.data.COMPANY_LOGO ||
+            response.data.LOGO_PUBLIC_URL ||
             response.data.LOGO_URL ||
             response.data.company_logo ||
             response.data.logoUrl ||
@@ -369,8 +370,9 @@ const SettingsPage = () => {
       setLoading(true)
       const response = await adminAPI.getSettings()
       if (response.success && response.data) {
-        // Map backend keys to frontend keys. Canonical logo key: COMPANY_LOGO (backend sets it on upload).
+        // Map backend keys to frontend keys. Canonical logo key: COMPANY_LOGO (backend sets it on upload). LOGO_PUBLIC_URL fallback so logo persists after refresh.
         const logoUrl = response.data.COMPANY_LOGO ||
+          response.data.LOGO_PUBLIC_URL ||
           response.data.COMPANY_LOGO_URL ||
           response.data.company_logo ||
           response.data.logoUrl ||

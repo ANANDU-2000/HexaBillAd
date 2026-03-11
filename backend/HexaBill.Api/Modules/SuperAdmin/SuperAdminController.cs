@@ -55,16 +55,24 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Dictionary<string, string> settings;
                 try
                 {
-                    // Include both TenantId and OwnerId so settings persist after refresh/logout-login (legacy rows may use OwnerId only)
+                    // Include both TenantId and OwnerId so settings persist after refresh/logout-login. Prefer OwnerId=tenantId when duplicate keys exist (logo persistence).
                     var list = await _context.Settings
                         .Where(s => s.TenantId == CurrentTenantId || s.OwnerId == CurrentTenantId)
                         .ToListAsync();
-                    settings = list.ToDictionary(s => s.Key, s => s.Value ?? "");
-                    // Ensure COMPANY_LOGO is always set so logo persists after refresh/login (key may be COMPANY_LOGO, company_logo, or Company_Logo)
-                    var logoEntry = list.FirstOrDefault(s => (string.Equals(s.Key, "company_logo", StringComparison.OrdinalIgnoreCase) || string.Equals(s.Key, "COMPANY_LOGO", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(s.Value));
-                    if (logoEntry != null)
+                    settings = list
+                        .GroupBy(s => s.Key)
+                        .ToDictionary(g => g.Key, g => g.OrderByDescending(s => s.OwnerId == CurrentTenantId).First().Value ?? "");
+                    // Ensure COMPANY_LOGO is set from LOGO_PUBLIC_URL or COMPANY_LOGO so logo persists after refresh/login
+                    var logoUrl = settings.GetValueOrDefault("LOGO_PUBLIC_URL") ?? settings.GetValueOrDefault("COMPANY_LOGO") ?? "";
+                    if (string.IsNullOrWhiteSpace(logoUrl))
                     {
-                        var logoUrl = (logoEntry.Value ?? "").StartsWith("/") ? logoEntry.Value : $"/uploads/{logoEntry.Value}";
+                        var logoEntry = list.OrderByDescending(s => s.OwnerId == CurrentTenantId).FirstOrDefault(s => (string.Equals(s.Key, "company_logo", StringComparison.OrdinalIgnoreCase) || string.Equals(s.Key, "COMPANY_LOGO", StringComparison.OrdinalIgnoreCase)) && !string.IsNullOrWhiteSpace(s.Value));
+                        if (logoEntry != null) logoUrl = logoEntry.Value ?? "";
+                    }
+                    if (!string.IsNullOrWhiteSpace(logoUrl))
+                    {
+                        if (!logoUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) && !logoUrl.StartsWith("/"))
+                            logoUrl = "/uploads/" + logoUrl;
                         settings["COMPANY_LOGO"] = logoUrl;
                     }
                 }

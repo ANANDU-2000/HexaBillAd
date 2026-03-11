@@ -163,8 +163,7 @@ public class LogoUploadService : ILogoUploadService
         {
             setting.Value = value;
             setting.UpdatedAt = DateTime.UtcNow;
-            setting.OwnerId = tenantId;
-            setting.TenantId = tenantId;
+            // Do not change OwnerId (part of PK); read path prefers OwnerId=tenantId when duplicates exist
         }
         else
         {
