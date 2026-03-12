@@ -34,7 +34,7 @@ namespace HexaBill.Api.BackgroundJobs
                         continue;
                     try
                     {
-                        _ = await db.Subscriptions.FirstOrDefaultAsync(stoppingToken);
+                        _ = await db.Subscriptions.OrderBy(s => s.Id).FirstOrDefaultAsync(stoppingToken);
                     }
                     catch (PostgresException pe) when (pe.SqlState == "42P01")
                     {

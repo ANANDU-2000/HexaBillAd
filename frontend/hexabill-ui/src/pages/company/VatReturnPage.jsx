@@ -291,6 +291,7 @@ const VatReturnPage = () => {
   const outputLines = v?.outputLines ?? v?.OutputLines ?? []
   const inputLines = v?.inputLines ?? v?.InputLines ?? []
   const creditNoteLines = v?.creditNoteLines ?? v?.CreditNoteLines ?? []
+  const totalInputNet = (inputLines || []).reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   const hasFta201 = v && (typeof box1a === 'number' || typeof v.box1a === 'number')
   const issues = (v?.validationIssues ?? v?.ValidationIssues ?? []).filter(Boolean)
   const blocking = issues.filter(i => (i.severity || '').toString() === 'Blocking')
@@ -311,7 +312,21 @@ const VatReturnPage = () => {
       setBackfilling(false)
     }
   }
-  const periodLabel = v?.periodLabel || (fromDate && toDate ? `${fromDate} to ${toDate}` : `Q${quarter} ${year}`)
+  // Derive period label from dates when it's a full quarter - prevents wrong API label (e.g. Q4-2025 for Jan-Mar 2026)
+  const derivedPeriodLabel = (() => {
+    if (!fromDate || !toDate || !/^\d{4}-\d{2}-\d{2}$/.test(fromDate) || !/^\d{4}-\d{2}-\d{2}$/.test(toDate)) return null
+    const y = parseInt(fromDate.slice(0, 4), 10)
+    const mFrom = parseInt(fromDate.slice(5, 7), 10)
+    const dFrom = parseInt(fromDate.slice(8, 10), 10)
+    const mTo = parseInt(toDate.slice(5, 7), 10)
+    const dTo = parseInt(toDate.slice(8, 10), 10)
+    const lastDay = new Date(y, mTo, 0).getDate()
+    if (dFrom === 1 && mTo - mFrom === 2 && dTo === lastDay && [1, 4, 7, 10].includes(mFrom))
+      return `Q${Math.ceil(mFrom / 3)}-${y}`
+    if (mFrom === 1 && dFrom === 1 && mTo === 12 && dTo === 31) return `${y}`
+    return null
+  })()
+  const periodLabel = derivedPeriodLabel || v?.periodLabel || (fromDate && toDate ? `${fromDate} to ${toDate}` : `Q${quarter} ${year}`)
   const daysUntilDue = v?.dueDate ? Math.ceil((new Date(v.dueDate) - new Date()) / 86400000) : null
 
   // Which preset (if any) matches current from/to — for button highlight
@@ -704,8 +719,8 @@ const VatReturnPage = () => {
                       </tr>
                       <tr>
                         <td className="px-3 py-2 font-medium">2</td>
-                        <td className="px-3 py-2 text-gray-700">Total Purchase and Expense</td>
-                        <td className="px-3 py-2 text-right font-medium">{formatCurrency(box9b)}</td>
+                        <td className="px-3 py-2 text-gray-700">Total Purchase and Expense (net)</td>
+                        <td className="px-3 py-2 text-right font-medium">{formatCurrency(totalInputNet)}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatCurrency(box12)}</td>
                       </tr>
                       <tr className={box13a > 0 ? 'bg-red-50' : 'bg-green-50'}>

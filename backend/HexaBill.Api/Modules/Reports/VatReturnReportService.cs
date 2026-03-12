@@ -90,31 +90,26 @@ namespace HexaBill.Api.Modules.Reports
 
         private async Task<VatReturn201Dto> GetVatReturn201InternalAsync(int tenantId, DateTime fromDate, DateTime toDate, DateTime? fromCalendarInclusive, DateTime? toCalendarInclusive)
         {
-            // Prefer calendar-date range when provided so VAT data matches dashboard (same calendar period).
-            DateTime from;
-            DateTime to;
-            if (fromCalendarInclusive.HasValue && toCalendarInclusive.HasValue)
-            {
-                from = fromCalendarInclusive.Value.Date;
-                to = toCalendarInclusive.Value.Date.AddDays(1); // exclusive end
-            }
-            else
-            {
-                from = fromDate.ToUtcKind();
-                to = toDate.ToUtcKind();
-            }
+            // Use timezone-converted fromDate/toDate for DB filter so VAT data matches Sales Ledger (same UTC range).
+            var from = fromDate.ToUtcKind();
+            var to = toDate.ToUtcKind();
             var outputLines = new List<VatReturnOutputLineDto>();
             var inputLines = new List<VatReturnInputLineDto>();
             var creditNoteLines = new List<VatReturnCreditNoteLineDto>();
             var reverseChargeLines = new List<VatReturnReverseChargeLineDto>();
 
-            // Resolve tenant: prefer TenantId, fallback OwnerId for backward compatibility. Align with dashboard: also match TenantId when tenantId > 0.
+            // Tenant filter: align with Sales Ledger - match TenantId when set, else OwnerId (legacy)
             var salesInPeriod = await _context.Sales
                 .Include(s => s.Customer)
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId) && !s.IsDeleted
-                    && s.InvoiceDate >= from && s.InvoiceDate < to)
+                .Where(s => ((s.TenantId.HasValue && s.TenantId == tenantId) || (!s.TenantId.HasValue && s.OwnerId == tenantId))
+                    && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to)
                 .OrderBy(s => s.InvoiceDate)
                 .ToListAsync();
+            if (salesInPeriod.Count == 0)
+            {
+                var anyForTenant = await _context.Sales.CountAsync(s => (s.TenantId == tenantId || s.OwnerId == tenantId) && !s.IsDeleted);
+                _logger.LogWarning("VAT return: 0 sales in period {From}–{To} for tenant {TenantId}. Total sales for tenant in DB: {Total}. Check InvoiceDate (calendar) and tenant scope.", from.ToString("yyyy-MM-dd"), to.AddDays(-1).ToString("yyyy-MM-dd"), tenantId, anyForTenant);
+            }
 
             decimal box1a = 0, box1b = 0, box2 = 0, box3 = 0;
             int standardRatedCount = 0;
