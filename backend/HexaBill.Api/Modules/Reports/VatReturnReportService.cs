@@ -262,10 +262,10 @@ namespace HexaBill.Api.Modules.Reports
 
             // to is exclusive end; last day of period for display is to - 1 day
             var periodEndInclusive = to.AddDays(-1).Date;
-            var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate, periodEndInclusive);
+            var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate.Date, periodEndInclusive);
             int txCount = salesInPeriod.Count + returnsInPeriod.Count + purchasesInPeriod.Count + expensesInPeriod.Count;
-            if (txCount == 0)
-                _logger.LogInformation("VAT return: no transactions for tenant {TenantId}, period {From} to {To}. Sales={Sales}, Purchases={Purchases}, Expenses={Expenses}.", tenantId, fromDate.ToString("yyyy-MM-dd"), periodEndInclusive.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count);
+            _logger.LogInformation("VAT return: tenant {TenantId}, period {From} to {To}: Sales={Sales}, Purchases={Purchases}, Expenses={Expenses}, TotalLines={Total}.",
+                tenantId, fromDate.ToString("yyyy-MM-dd"), periodEndInclusive.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count, txCount);
 
             return new VatReturn201Dto
             {
@@ -306,8 +306,11 @@ namespace HexaBill.Api.Modules.Reports
             return s.VatTotal > 0;
         }
 
-        private static (string label, DateTime due) GetPeriodLabelAndDue(DateTime from, DateTime to)
+        /// <summary>Compute period label and due date from calendar (inclusive) dates. Use this so label is correct regardless of UTC conversion.</summary>
+        public static (string label, DateTime due) GetPeriodLabelAndDue(DateTime fromInclusive, DateTime toInclusive)
         {
+            var from = fromInclusive.Date;
+            var to = toInclusive.Date;
             var months = (to.Year - from.Year) * 12 + (to.Month - from.Month);
             if (months <= 1)
             {

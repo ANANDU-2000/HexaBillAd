@@ -96,6 +96,27 @@ namespace HexaBill.Api.Modules.Reports
                 var result = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
                 var periodStartDate = fromDate.Date.ToUtcKind();
                 var periodEndInclusive = toDate.AddDays(-1).Date.ToUtcKind();
+                DateTime calendarFrom;
+                DateTime calendarTo;
+                if (from.HasValue && to.HasValue)
+                {
+                    calendarFrom = from.Value.Date;
+                    calendarTo = to.Value.Date;
+                }
+                else if (quarter.HasValue && year.HasValue && quarter >= 1 && quarter <= 4)
+                {
+                    var (f, t) = VatReturnReportService.QuarterToDateRange(quarter.Value, year.Value);
+                    calendarFrom = f;
+                    calendarTo = t;
+                }
+                else
+                {
+                    calendarFrom = periodStartDate;
+                    calendarTo = periodEndInclusive;
+                }
+                var (periodLabel, dueDate) = VatReturnReportService.GetPeriodLabelAndDue(calendarFrom, calendarTo);
+                result.PeriodLabel = periodLabel;
+                result.DueDate = dueDate;
                 var period = await _context.VatReturnPeriods
                     .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PeriodStart == periodStartDate && p.PeriodEnd == periodEndInclusive);
                 if (period != null)
