@@ -51,6 +51,32 @@ function isSupportedVatPeriod(fromStr, toStr) {
   return [1, 4, 7, 10].includes(startMonth)
 }
 
+/**
+ * If the range is not valid but can be unambiguously mapped to a quarter or full year,
+ * return the corrected boundaries (e.g. 30-09–30-12 → Q4 01-10–31-12; 02-01–30-11 → full year).
+ * Returns null if we should not snap.
+ */
+function snapToSupportedVatPeriod(fromStr, toStr) {
+  if (!fromStr || !toStr || !/^\d{4}-\d{2}-\d{2}$/.test(fromStr) || !/^\d{4}-\d{2}-\d{2}$/.test(toStr)) return null
+  const from = new Date(fromStr)
+  const to = new Date(toStr)
+  if (isNaN(from.getTime()) || isNaN(to.getTime()) || from > to) return null
+  if (from.getFullYear() !== to.getFullYear()) return null
+  const y = from.getFullYear()
+  const daysDiff = Math.round((to - from) / 86400000)
+  if (daysDiff >= 300) return { from: `${y}-01-01`, to: `${y}-12-31` }
+  if (daysDiff > 93) return null
+  const toMonth = to.getMonth() + 1
+  const quarter = Math.ceil(toMonth / 3)
+  const startMonth = (quarter - 1) * 3
+  const snappedFrom = new Date(y, startMonth, 1)
+  const snappedTo = new Date(y, startMonth + 3, 0)
+  return {
+    from: snappedFrom.toISOString().split('T')[0],
+    to: snappedTo.toISOString().split('T')[0]
+  }
+}
+
 const VatReturnPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -98,20 +124,34 @@ const VatReturnPage = () => {
       setLoading(false)
       return
     }
+    let fromFinal = f
+    let toFinal = t
     if (!isSupportedVatPeriod(f, t)) {
-      setLoadError({
-        message: 'VAT period must be a full quarter (Q1–Q4) or a full calendar year (01-Jan to 31-Dec).',
-        status: 400,
-        url: null
-      })
-      setVatReturn(null)
-      setLoading(false)
-      return
+      const snap = snapToSupportedVatPeriod(f, t)
+      if (snap) {
+        fromFinal = snap.from
+        toFinal = snap.to
+        setFromDate(snap.from)
+        setToDate(snap.to)
+        setQuarter(Math.ceil((new Date(snap.from).getMonth() + 1) / 3))
+        setYear(new Date(snap.from).getFullYear())
+        setSearchParams({ from: snap.from, to: snap.to })
+        toast.success(`Adjusted to full quarter: ${snap.from} to ${snap.to}`)
+      } else {
+        setLoadError({
+          message: 'VAT period must be a full quarter (Q1–Q4) or a full calendar year (01-Jan to 31-Dec).',
+          status: 400,
+          url: null
+        })
+        setVatReturn(null)
+        setLoading(false)
+        return
+      }
     }
     setLoadError(null)
     setLoading(true)
     try {
-      const params = { from: f, to: t }
+      const params = { from: fromFinal, to: toFinal }
       const res = await reportsAPI.getVatReturn(params)
       if (res?.success && res?.data) {
         setVatReturn(res.data)
@@ -142,20 +182,30 @@ const VatReturnPage = () => {
     }
   }, [fromDate, toDate])
 
-  // On first load: if URL has an invalid VAT period, normalize to current quarter so we don't 400
+  // On first load: if URL has invalid VAT period, try snap-to-quarter else fall back to current quarter
   useEffect(() => {
     const from = searchParams.get('from')
     const to = searchParams.get('to')
     if (from && to && !isSupportedVatPeriod(from, to)) {
-      const q = Math.ceil((now.getMonth() + 1) / 3)
-      const y = now.getFullYear()
-      const { from: f, to: t } = quarterToRange(q, y)
-      setFromDate(f)
-      setToDate(t)
-      setQuarter(q)
-      setYear(y)
-      setSearchParams({ from: f, to: t })
-      fetchVatReturn(f, t)
+      const snap = snapToSupportedVatPeriod(from, to)
+      if (snap) {
+        setFromDate(snap.from)
+        setToDate(snap.to)
+        setQuarter(Math.ceil((new Date(snap.from).getMonth() + 1) / 3))
+        setYear(new Date(snap.from).getFullYear())
+        setSearchParams({ from: snap.from, to: snap.to })
+        fetchVatReturn(snap.from, snap.to)
+      } else {
+        const q = Math.ceil((now.getMonth() + 1) / 3)
+        const y = now.getFullYear()
+        const { from: f, to: t } = quarterToRange(q, y)
+        setFromDate(f)
+        setToDate(t)
+        setQuarter(q)
+        setYear(y)
+        setSearchParams({ from: f, to: t })
+        fetchVatReturn(f, t)
+      }
       return
     }
     if (fromDate && toDate) fetchVatReturn(fromDate, toDate)
