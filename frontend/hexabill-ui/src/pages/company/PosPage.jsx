@@ -1530,7 +1530,7 @@ const PosPage = () => {
   const totals = calculateTotals()
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col max-w-full overflow-x-hidden pb-24 lg:pb-0">
       {/* TAX INVOICE Header - compact on mobile (16px), navy primary */}
       <div className="bg-primary-900 text-white px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
@@ -2420,8 +2420,8 @@ const PosPage = () => {
             </div>
           </div>
 
-          {/* Add Row Button - Desktop Only */}
-          <div className="hidden md:block px-2 py-2">
+          {/* Add Row Button - Desktop Only; pb-safe ensures clickable above fixed bottom nav on tablet */}
+          <div className="hidden md:block px-2 py-2 pb-20 lg:pb-2">
             <button
               onClick={addEmptyRow}
               disabled={isFormDisabled}

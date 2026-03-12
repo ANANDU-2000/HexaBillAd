@@ -773,14 +773,21 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Handle 400 Bad Request - validation errors (show errors array or message)
+    // Handle 400 Bad Request - validation errors (show errors array, object, or message)
     if (error.response?.status === 400) {
       connectionManager.markConnected()
       const body = error.response?.data
       const errors = body?.errors
-      const message = Array.isArray(errors) && errors.length > 0
-        ? errors.join('. ')
-        : (body?.message || 'Invalid request. Please check your input.')
+      let message
+      if (Array.isArray(errors) && errors.length > 0) {
+        message = errors.join('. ')
+      } else if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+        // ASP.NET model validation: { "CategoryId": ["The CategoryId field is required."], ... }
+        const flat = Object.values(errors).flat().filter(Boolean)
+        message = flat.length > 0 ? flat.join('. ') : (body?.message || body?.title || 'Invalid request. Please check your input.')
+      } else {
+        message = body?.message || body?.title || 'Invalid request. Please check your input.'
+      }
       showThrottledError(message, false)
       error._handledByInterceptor = true
       return Promise.reject(error)

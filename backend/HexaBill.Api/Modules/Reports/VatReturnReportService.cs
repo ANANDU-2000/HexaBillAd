@@ -98,10 +98,10 @@ namespace HexaBill.Api.Modules.Reports
             var creditNoteLines = new List<VatReturnCreditNoteLineDto>();
             var reverseChargeLines = new List<VatReturnReverseChargeLineDto>();
 
-            // Tenant filter: align with Sales Ledger - match TenantId when set, else OwnerId (legacy)
+            // Tenant filter: match Sales Ledger raw SQL exactly - (TenantId = tenantId OR (TenantId IS NULL AND OwnerId = tenantId))
             var salesInPeriod = await _context.Sales
                 .Include(s => s.Customer)
-                .Where(s => ((s.TenantId.HasValue && s.TenantId == tenantId) || (!s.TenantId.HasValue && s.OwnerId == tenantId))
+                .Where(s => (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId))
                     && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to)
                 .OrderBy(s => s.InvoiceDate)
                 .ToListAsync();
@@ -120,8 +120,14 @@ namespace HexaBill.Api.Modules.Reports
                 if (string.IsNullOrWhiteSpace(s.VatScenario))
                     s.VatScenario = "Standard";
                 var isStandard = IsStandardRated(s);
-                var net = s.Subtotal;
-                var vat = s.VatTotal;
+                // FIX: When Subtotal/VatTotal are 0 but GrandTotal > 0 (legacy or bad data), derive so VAT Return shows correct totals
+                decimal net = s.Subtotal;
+                decimal vat = s.VatTotal;
+                if (net == 0 && vat == 0 && s.GrandTotal > 0)
+                {
+                    net = Math.Round(s.GrandTotal / 1.05m, 2);
+                    vat = Math.Round(s.GrandTotal - net, 2);
+                }
                 if (isStandard)
                 {
                     standardRatedCount++;
@@ -202,22 +208,27 @@ namespace HexaBill.Api.Modules.Reports
                         ReverseChargeVat = rcVat
                     });
                 }
-                else if (p.IsTaxClaimable && (p.VatTotal ?? 0) > 0)
+                else if (p.IsTaxClaimable)
                 {
-                    box9b += VatCalculator.Round(p.VatTotal ?? 0);
-                    inputLines.Add(new VatReturnInputLineDto
+                    // FIX: When VatTotal is null (legacy), derive from TotalAmount - Subtotal so VAT Return shows correct totals
+                    var pVat = p.VatTotal ?? (p.Subtotal.HasValue && p.TotalAmount > 0 ? Math.Max(0, p.TotalAmount - p.Subtotal.Value) : 0);
+                    if (pVat > 0)
                     {
-                        Type = "Purchase",
-                        Reference = p.InvoiceNo ?? p.Id.ToString(),
-                        Date = p.PurchaseDate,
-                        NetAmount = p.Subtotal ?? 0,
-                        VatAmount = p.VatTotal ?? 0,
-                        ClaimableVat = p.VatTotal ?? 0,
-                        TaxType = "Standard",
-                        SupplierName = p.SupplierName ?? p.Supplier?.Name ?? "",
-                        SourceId = p.Id,
-                        IsTaxClaimable = p.IsTaxClaimable
-                    });
+                        box9b += VatCalculator.Round(pVat);
+                        inputLines.Add(new VatReturnInputLineDto
+                        {
+                            Type = "Purchase",
+                            Reference = p.InvoiceNo ?? p.Id.ToString(),
+                            Date = p.PurchaseDate,
+                            NetAmount = p.Subtotal ?? 0,
+                            VatAmount = pVat,
+                            ClaimableVat = pVat,
+                            TaxType = "Standard",
+                            SupplierName = p.SupplierName ?? p.Supplier?.Name ?? "",
+                            SourceId = p.Id,
+                            IsTaxClaimable = p.IsTaxClaimable
+                        });
+                    }
                 }
             }
 

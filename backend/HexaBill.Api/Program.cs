@@ -752,6 +752,42 @@ using (var scope = app.Services.CreateScope())
         catch { /* table may already exist */ }
         // ErrorLogs.ResolvedAt - fixes 500 on /api/superadmin/alert-summary and /api/error-logs (SQLite)
         try { ctx.Database.ExecuteSqlRaw("ALTER TABLE ErrorLogs ADD COLUMN ResolvedAt TEXT NULL"); } catch {     }
+        // VatReturnPeriods - fixes 500 on /api/reports/vat-return when migrations did not run
+        try
+        {
+            ctx.Database.ExecuteSqlRaw(@"
+                CREATE TABLE IF NOT EXISTS VatReturnPeriods (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    TenantId INTEGER NOT NULL,
+                    PeriodType TEXT NOT NULL DEFAULT 'Quarterly',
+                    PeriodLabel TEXT NOT NULL,
+                    PeriodStart TEXT NOT NULL,
+                    PeriodEnd TEXT NOT NULL,
+                    DueDate TEXT NOT NULL,
+                    Status TEXT NOT NULL DEFAULT 'Draft',
+                    Box1a REAL NOT NULL DEFAULT 0,
+                    Box1b REAL NOT NULL DEFAULT 0,
+                    Box2 REAL NOT NULL DEFAULT 0,
+                    Box3 REAL NOT NULL DEFAULT 0,
+                    Box4 REAL NOT NULL DEFAULT 0,
+                    Box9b REAL NOT NULL DEFAULT 0,
+                    Box10 REAL NOT NULL DEFAULT 0,
+                    Box11 REAL NOT NULL DEFAULT 0,
+                    Box12 REAL NOT NULL DEFAULT 0,
+                    Box13a REAL NOT NULL DEFAULT 0,
+                    Box13b REAL NOT NULL DEFAULT 0,
+                    PetroleumExcluded REAL NOT NULL DEFAULT 0,
+                    CalculatedAt TEXT NULL,
+                    SubmittedAt TEXT NULL,
+                    SubmittedByUserId INTEGER NULL,
+                    LockedAt TEXT NULL,
+                    LockedByUserId INTEGER NULL,
+                    Notes TEXT NULL
+                )");
+            ctx.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_VatReturnPeriods_TenantId ON VatReturnPeriods (TenantId)");
+            ctx.Database.ExecuteSqlRaw("CREATE INDEX IF NOT EXISTS IX_VatReturnPeriods_TenantId_PeriodStart_PeriodEnd ON VatReturnPeriods (TenantId, PeriodStart, PeriodEnd)");
+        }
+        catch { /* table may already exist */ }
 }
 }
 }

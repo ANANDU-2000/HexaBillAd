@@ -247,6 +247,13 @@ const VatReturnPage = () => {
     }
   }, [searchParams.get('from'), searchParams.get('to')])
 
+  // Refresh when sales, purchases, or expenses are updated from other pages
+  useEffect(() => {
+    const handler = () => { if (fromDate && toDate) fetchVatReturn(fromDate, toDate) }
+    window.addEventListener('dataUpdated', handler)
+    return () => window.removeEventListener('dataUpdated', handler)
+  }, [fromDate, toDate, fetchVatReturn])
+
   const handlePeriodPreset = (preset) => {
     if (preset.startsWith('Q')) {
       const q = parseInt(preset.slice(1), 10)
@@ -281,13 +288,13 @@ const VatReturnPage = () => {
 
   const [activeTab, setActiveTab] = useState('overview') // overview | transactions | sales | purchases | expenses | creditNotes | validation
   const v = vatReturn
-  // Normalize API response: support both camelCase and PascalCase so values always show
-  const box1a = v != null ? (v.box1a ?? v.Box1a ?? 0) : 0
-  const box1b = v != null ? (v.box1b ?? v.Box1b ?? 0) : 0
-  const box9b = v != null ? (v.box9b ?? v.Box9b ?? 0) : 0
-  const box12 = v != null ? (v.box12 ?? v.Box12 ?? 0) : 0
-  const box13a = v != null ? (v.box13a ?? v.Box13a ?? 0) : 0
-  const box13b = v != null ? (v.box13b ?? v.Box13b ?? 0) : 0
+  // Normalize API response: support both camelCase and PascalCase; coerce to number so totals always display correctly
+  const box1a = v != null ? Number(v.box1a ?? v.Box1a ?? 0) : 0
+  const box1b = v != null ? Number(v.box1b ?? v.Box1b ?? 0) : 0
+  const box9b = v != null ? Number(v.box9b ?? v.Box9b ?? 0) : 0
+  const box12 = v != null ? Number(v.box12 ?? v.Box12 ?? 0) : 0
+  const box13a = v != null ? Number(v.box13a ?? v.Box13a ?? 0) : 0
+  const box13b = v != null ? Number(v.box13b ?? v.Box13b ?? 0) : 0
   const outputLines = v?.outputLines ?? v?.OutputLines ?? []
   const inputLines = v?.inputLines ?? v?.InputLines ?? []
   const creditNoteLines = v?.creditNoteLines ?? v?.CreditNoteLines ?? []
@@ -409,6 +416,17 @@ const VatReturnPage = () => {
             >
               Apply
             </button>
+            {fromDate && toDate && (
+              <button
+                type="button"
+                onClick={() => fetchVatReturn(fromDate, toDate)}
+                disabled={loading}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+                title="Refresh VAT data"
+              >
+                {loading ? 'Loading…' : 'Refresh'}
+              </button>
+            )}
           </div>
           <select
             value={year}

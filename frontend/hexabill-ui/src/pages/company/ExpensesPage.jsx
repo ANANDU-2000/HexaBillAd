@@ -259,11 +259,14 @@ const ExpensesPage = () => {
     }
   }, [])
 
-  const categoryOptions = categories.map(cat => ({
-    value: cat.id,
-    label: cat.name,
-    color: cat.colorCode
-  }))
+  const categoryOptions = [
+    { value: '', label: categories.length === 0 ? 'No categories – add one first' : 'Select category...' },
+    ...categories.map(cat => ({
+      value: String(cat.id),
+      label: cat.name,
+      color: cat.colorCode
+    }))
+  ]
   const watchedCategoryId = watch('category')
   const selectedCategory = watchedCategoryId
     ? categories.find(c => c.id === parseInt(watchedCategoryId, 10))
@@ -451,13 +454,24 @@ const ExpensesPage = () => {
 
   const onSubmit = async (data) => {
     try {
+      const catId = parseInt(data.category, 10)
+      if (isNaN(catId) || catId <= 0) {
+        toast.error('Please select a category')
+        return
+      }
+      const amt = parseFloat(data.amount)
+      if (isNaN(amt) || amt <= 0) {
+        toast.error('Please enter a valid amount greater than 0')
+        return
+      }
       const expenseDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString()
 
       if (selectedExpense) {
         const response = await expensesAPI.updateExpense(selectedExpense.id, {
           branchId: data.branchId ? parseInt(data.branchId, 10) : null,
-          categoryId: parseInt(data.category),
-          amount: parseFloat(data.amount),
+          routeId: data.routeId ? parseInt(data.routeId, 10) : null,
+          categoryId: catId,
+          amount: amt,
           date: expenseDate,
           note: data.note || '',
           withVat: !!data.withVat,
@@ -470,6 +484,7 @@ const ExpensesPage = () => {
 
         if (response?.success) {
           toast.success('Expense updated successfully!', { id: 'expense-update', duration: 4000 })
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
           toast.error(response?.message || 'Failed to update expense', { id: 'expense-update' })
           return
@@ -478,8 +493,8 @@ const ExpensesPage = () => {
         const response = await expensesAPI.createExpense({
           branchId: data.branchId ? parseInt(data.branchId, 10) : null,
           routeId: data.routeId ? parseInt(data.routeId, 10) : null,
-          categoryId: parseInt(data.category),
-          amount: parseFloat(data.amount),
+          categoryId: catId,
+          amount: amt,
           date: expenseDate,
           note: data.note || '',
           attachmentUrl: null,
@@ -502,8 +517,8 @@ const ExpensesPage = () => {
               await expensesAPI.updateExpense(response.data.id, {
                 branchId: data.branchId ? parseInt(data.branchId, 10) : null,
                 routeId: data.routeId ? parseInt(data.routeId, 10) : null,
-                categoryId: parseInt(data.category),
-                amount: parseFloat(data.amount),
+                categoryId: catId,
+                amount: amt,
                 date: expenseDate,
                 note: data.note || '',
                 attachmentUrl: uploadResponse.data,
@@ -526,6 +541,7 @@ const ExpensesPage = () => {
 
         if (response?.success) {
           toast.success('Expense added successfully!', { id: 'expense-add', duration: 4000 })
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
           toast.error(response?.message || 'Failed to create expense', { id: 'expense-add' })
           return
@@ -542,13 +558,14 @@ const ExpensesPage = () => {
       fetchExpenses()
     } catch (error) {
       console.error('Error saving expense:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to save expense')
+      const errMsg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || 'Failed to save expense. Check category, amount, and date.'
+      if (!error?._handledByInterceptor) toast.error(errMsg)
     }
   }
 
   const handleEdit = (expense) => {
     setSelectedExpense(expense)
-    setValue('category', expense.categoryId || '')
+    setValue('category', expense.categoryId != null ? String(expense.categoryId) : '')
     setValue('amount', expense.amount || 0)
     setValue('branchId', expense.branchId ? String(expense.branchId) : '')
     setValue('routeId', expense.routeId ? String(expense.routeId) : '')
@@ -629,6 +646,7 @@ const ExpensesPage = () => {
           if (response?.success) {
             toast.success('Expense rejected successfully!')
             fetchExpenses()
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
           } else {
             toast.error(response?.message || 'Failed to reject expense')
           }
@@ -687,6 +705,7 @@ const ExpensesPage = () => {
           if (response?.success) {
             toast.success('Expense deleted successfully!', { id: 'expense-delete', duration: 4000 })
             fetchExpenses()
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
           } else {
             toast.error(response?.message || 'Failed to delete expense', { id: 'expense-delete' })
           }
@@ -1001,7 +1020,7 @@ const ExpensesPage = () => {
                   <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-900 truncate">
                     {formatCurrency(expenseSummary.totalClaimableVat ?? 0)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">After entertainment cap & petroleum exclusion</p>
+                  <p className="text-xs text-gray-500 mt-0.5">After entertainment cap & petroleum exclusion. Mark expenses as Tax claimable (ITC) to include in Box 9b.</p>
                 </div>
               </div>
             </div>
@@ -1212,6 +1231,7 @@ const ExpensesPage = () => {
                         toast.success(`Updated ${res.data.updated} expense(s) as VAT claimable`)
                         setSelectedExpenseIds([])
                         fetchExpenses()
+                        window.dispatchEvent(new CustomEvent('dataUpdated'))
                       } else toast.error(res?.message || 'Update failed')
                     } catch (err) {
                       toast.error(err?.response?.data?.message || 'Update failed')
@@ -1230,6 +1250,7 @@ const ExpensesPage = () => {
                         toast.success(`Updated ${res.data.updated} expense(s) as not claimable`)
                         setSelectedExpenseIds([])
                         fetchExpenses()
+                        window.dispatchEvent(new CustomEvent('dataUpdated'))
                       } else toast.error(res?.message || 'Update failed')
                     } catch (err) {
                       toast.error(err?.response?.data?.message || 'Update failed')
@@ -1556,7 +1577,7 @@ const ExpensesPage = () => {
         )}
       </div>
 
-      {/* Add Expense Modal - Tally Style */}
+      {/* Add Expense Modal - 4-col horizontal layout, minimal vertical scroll */}
       <Modal
         isOpen={showAddModal}
         onClose={() => {
@@ -1564,10 +1585,10 @@ const ExpensesPage = () => {
           reset()
         }}
         title="Add New Expense"
-        size="md"
+        size="xl"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="max-h-[80vh] overflow-y-auto overscroll-contain">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-gray-700">
@@ -1613,64 +1634,43 @@ const ExpensesPage = () => {
               const vat = inclusive ? roundMoney(amt - net) : roundMoney(amt * 0.05)
               const total = inclusive ? amt : roundMoney(amt + vat)
               return (
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm space-y-0.5">
-                  <p><span className="text-gray-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
-                  <p><span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
-                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</p>
+                <div className="rounded bg-gray-50 border border-gray-200 px-2 py-1 text-xs col-span-2 lg:col-span-4 flex flex-wrap gap-x-3 gap-y-0.5">
+                  <span><span className="text-gray-600">Net:</span> <span className="font-medium">{formatCurrency(net)}</span></span>
+                  <span><span className="text-gray-600">VAT:</span> <span className="font-medium">{formatCurrency(vat)}</span></span>
+                  <span><span className="text-gray-600">Total:</span> <span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</span>
                 </div>
               )
             })()}
 
             {vatLockedByCategory ? (
-              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-                VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
-                {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
-                {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 col-span-2 lg:col-span-4">
+                VAT from category ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
+                {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ''}{selectedCategory?.defaultIsEntertainment ? ', 50% cap' : ''})
               </p>
             ) : (
               <>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 col-span-2 lg:col-span-4">
                   <input type="checkbox" id="withVat" {...register('withVat')} className="rounded border-gray-300" />
                   <label htmlFor="withVat" className="text-sm text-gray-700">Include VAT (5%)</label>
+                  {watch('withVat') && (
+                    <span className="flex items-center gap-1.5 ml-2">
+                      <input type="checkbox" id="vatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
+                      <label htmlFor="vatInclusive" className="text-xs text-blue-700">VAT-inclusive</label>
+                    </span>
+                  )}
                 </div>
                 {watch('withVat') && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                    <p className="text-xs text-blue-800">
-                      Select whether the amount you enter is <strong>inclusive</strong> (total with VAT) or <strong>exclusive</strong> (net, VAT added on top).
-                    </p>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <input type="checkbox" id="vatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
-                      <label htmlFor="vatInclusive" className="text-sm text-blue-800 font-medium">Amount includes VAT (VAT-inclusive)</label>
-                      <span
-                        className="text-blue-600 cursor-help border border-blue-400 rounded-full w-4 h-4 inline-flex items-center justify-center text-xs font-bold"
-                        title="Inclusive: enter the total on the receipt (e.g. 105 AED); VAT is extracted. Exclusive: enter net only (e.g. 100 AED); 5% VAT is added."
-                      >
-                        ?
-                      </span>
-                      <span className="text-xs text-blue-600 ml-0">{watch('vatInclusive') ? 'VAT will be extracted from the amount' : 'VAT will be added to the amount'}</span>
-                    </div>
-                  </div>
-                )}
-                {watch('withVat') && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
-                    <Select
-                      label="Tax type"
-                      options={[
-                        { value: 'Standard', label: 'Standard' },
-                        { value: 'Petroleum', label: 'Petroleum (no ITC)' },
-                        { value: 'Exempt', label: 'Exempt' }
-                      ]}
-                      {...register('taxType')}
-                    />
-                    <div className="flex items-center gap-2 pt-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 col-span-2 lg:col-span-4">
+                    <Select label="Tax type" options={[{ value: 'Standard', label: 'Standard' }, { value: 'Petroleum', label: 'Petroleum' }, { value: 'Exempt', label: 'Exempt' }]} {...register('taxType')} />
+                    <div className="flex items-center gap-1.5 self-center">
                       <input type="checkbox" id="isTaxClaimable" {...register('isTaxClaimable')} className="rounded border-gray-300" />
-                      <label htmlFor="isTaxClaimable" className="text-sm text-gray-700">Tax claimable (ITC)</label>
+                      <label htmlFor="isTaxClaimable" className="text-xs text-gray-700">ITC claimable</label>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 self-center">
                       <input type="checkbox" id="isEntertainment" {...register('isEntertainment')} className="rounded border-gray-300" />
-                      <label htmlFor="isEntertainment" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+                      <label htmlFor="isEntertainment" className="text-xs text-gray-700">Entertainment (50%)</label>
                     </div>
-                    <Input label="Partial credit %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} />
+                    <Input label="Partial %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} className="py-1.5" />
                   </div>
                 )}
               </>
@@ -1719,53 +1719,35 @@ const ExpensesPage = () => {
 
             <TextArea
               label="Note"
-              placeholder="Expense description..."
-              rows={3}
+              placeholder="Description..."
+              rows={1}
               error={errors.note?.message}
               {...register('note')}
+              className="min-h-[60px]"
             />
 
-            {/* ATTACHMENT FIX: Add receipt/attachment upload */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Receipt/Attachment (Optional)
-              </label>
-              <div className="mt-1 flex items-center gap-3">
-                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                  <Upload className="h-4 w-4 mr-2" />
-                  {attachmentFile ? attachmentFile.name : 'Choose File'}
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept="image/*,.pdf"
-                    onChange={handleAttachmentChange}
-                  />
+            {/* Receipt/Attachment - inline */}
+            <div className="col-span-2 lg:col-span-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                  <Upload className="h-3.5 w-3.5 mr-1.5" />
+                  {attachmentFile ? attachmentFile.name : 'Receipt (opt)'}
+                  <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleAttachmentChange} />
                 </label>
                 {attachmentPreview && (
-                  <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1">
                     {attachmentFile?.type?.startsWith('image/') ? (
-                      <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded border" />
-                    ) : (
-                      <FileText className="h-8 w-8 text-blue-600" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAttachmentFile(null)
-                        setAttachmentPreview(null)
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                      <img src={attachmentPreview} alt="" className="h-8 w-8 object-cover rounded" />
+                    ) : <FileText className="h-5 w-5 text-blue-600" />}
+                    <button type="button" onClick={() => { setAttachmentFile(null); setAttachmentPreview(null) }} className="text-red-600 p-0.5"><X className="h-4 w-4" /></button>
+                  </span>
                 )}
+                <span className="text-xs text-gray-500">JPG, PNG, PDF (10MB)</span>
               </div>
-              <p className="mt-1 text-xs text-gray-500">Supported: JPG, PNG, GIF, PDF (Max 10MB)</p>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
             <button
               type="button"
               onClick={() => {
@@ -2135,6 +2117,7 @@ const ExpensesPage = () => {
                   toast.success(`Updated ${res.data.updated} expense(s). Recalculate VAT Return if needed.`)
                   await fetchExpenses()
                   setShowBulkVatModal(false)
+                  window.dispatchEvent(new CustomEvent('dataUpdated'))
                 } else toast.error(res?.message || 'Update failed')
               } catch (e) {
                 toast.error(e?.response?.data?.message || 'Update failed')

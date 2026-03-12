@@ -2323,7 +2323,7 @@ namespace HexaBill.Api.Modules.Reports
             if (!wasOpen) await conn.OpenAsync();
             try
             {
-                string sql = @"SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CustomerId"", ""GrandTotal"", COALESCE(""Subtotal"", 0), COALESCE(""VatTotal"", 0) FROM ""Sales"" WHERE ""TenantId"" = @p0 AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p1 AND ""InvoiceDate"" < @p2";
+                string sql = @"SELECT ""Id"", ""InvoiceNo"", ""InvoiceDate"", ""CustomerId"", ""GrandTotal"", COALESCE(""Subtotal"", 0), COALESCE(""VatTotal"", 0) FROM ""Sales"" WHERE (""TenantId"" = @p0 OR (""TenantId"" IS NULL AND ""OwnerId"" = @p0)) AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p1 AND ""InvoiceDate"" < @p2";
                 if (staffId.HasValue) sql += " AND \"CreatedBy\" = @p3";
                 sql += " ORDER BY \"InvoiceDate\", \"Id\"";
                 using var cmd = conn.CreateCommand();
@@ -2359,7 +2359,7 @@ namespace HexaBill.Api.Modules.Reports
             else
             {
                 var salesQuery = _context.Sales
-                    .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
+                    .Where(s => (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
                 if (staffId.HasValue) salesQuery = salesQuery.Where(s => s.CreatedBy == staffId.Value);
                 var projected = await salesQuery
                     .OrderBy(s => s.InvoiceDate)

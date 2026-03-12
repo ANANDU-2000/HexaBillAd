@@ -71,21 +71,17 @@ namespace HexaBill.Api.Modules.Reports
                             Message = periodError
                         });
                     }
-                    // Align with dashboard: treat from/to as date-only in tenant timezone, then convert to UTC
-                    var fromLocal = new DateTime(from.Value.Year, from.Value.Month, from.Value.Day, 0, 0, 0, DateTimeKind.Unspecified);
-                    var toEndLocal = new DateTime(to.Value.Year, to.Value.Month, to.Value.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
-                    fromDate = _timeZoneService.ConvertToUtc(fromLocal).ToUtcKind();
-                    toDate = _timeZoneService.ConvertToUtc(toEndLocal).ToUtcKind();
+                    // Align with Sales Ledger: same date-only + ToUtcKind so VAT Return and Ledger use identical range
+                    fromDate = new DateTime(from.Value.Year, from.Value.Month, from.Value.Day, 0, 0, 0, DateTimeKind.Unspecified).ToUtcKind();
+                    toDate = new DateTime(to.Value.Year, to.Value.Month, to.Value.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1).ToUtcKind();
                     if (fromDate > toDate)
                         return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be before to date." });
                 }
                 else if (quarter.HasValue && year.HasValue && quarter >= 1 && quarter <= 4)
                 {
                     var (f, t) = VatReturnReportService.QuarterToDateRange(quarter.Value, year.Value);
-                    var fromLocal = new DateTime(f.Year, f.Month, f.Day, 0, 0, 0, DateTimeKind.Unspecified);
-                    var toEndLocal = new DateTime(t.Year, t.Month, t.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
-                    fromDate = _timeZoneService.ConvertToUtc(fromLocal).ToUtcKind();
-                    toDate = _timeZoneService.ConvertToUtc(toEndLocal).ToUtcKind();
+                    fromDate = new DateTime(f.Year, f.Month, f.Day, 0, 0, 0, DateTimeKind.Unspecified).ToUtcKind();
+                    toDate = new DateTime(t.Year, t.Month, t.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1).ToUtcKind();
                 }
                 else
                 {

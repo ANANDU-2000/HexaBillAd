@@ -224,12 +224,23 @@ namespace HexaBill.Api.Modules.Expenses
                     Data = result
                 });
             }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Expense validation failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<ExpenseDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Create expense failed: {Message}", ex.Message);
                 return StatusCode(500, new ApiResponse<ExpenseDto>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = "An error occurred. Please check category, amount, and date.",
                     Errors = new List<string> { ex.Message }
                 });
             }
@@ -276,6 +287,16 @@ namespace HexaBill.Api.Modules.Expenses
                     Success = true,
                     Message = "Expense updated successfully",
                     Data = result
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Expense update validation failed: {Message}", ex.Message);
+                return BadRequest(new ApiResponse<ExpenseDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
                 });
             }
             catch (Exception ex)

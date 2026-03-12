@@ -208,6 +208,7 @@ const PurchasesPage = () => {
           totalAmount: Number(response.data.totalAmount) || 0,
           totalCount: Number(response.data.totalCount) || 0,
           totalItems: Number(response.data.totalItems) || 0,
+          totalVat: Number(response.data.totalVat) || 0,
           todayTotal: Number(response.data.todayTotal) || 0,
           todayCount: Number(response.data.todayCount) || 0,
           yesterdayTotal: Number(response.data.yesterdayTotal) || 0,
@@ -242,6 +243,7 @@ const PurchasesPage = () => {
         totalAmount: 0,
         totalCount: 0,
         totalItems: 0,
+        totalVat: 0,
         todayTotal: 0,
         todayCount: 0,
         yesterdayTotal: 0,
@@ -486,7 +488,9 @@ const PurchasesPage = () => {
           items: []
         })
         loadPurchases()
+        loadAnalytics()
         loadPendingSummary()
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         // After create: recompute stock from movements so product qty updates everywhere
         if (!editingPurchase) {
           productsAPI.recomputeStock().then(() => loadProducts()).catch(() => loadProducts())
@@ -561,8 +565,10 @@ const PurchasesPage = () => {
           if (response.success) {
             toast.success(`Purchase deleted! Stock reversed for ${response.data.itemsCount} items.`, { id: 'purchase-delete', duration: 4000 })
             loadPurchases()
+            loadAnalytics()
             loadPendingSummary()
             loadProducts()
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
           } else {
             toast.error(response.message || 'Failed to delete purchase', { id: 'purchase-delete' })
           }

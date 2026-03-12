@@ -52,10 +52,10 @@ namespace HexaBill.Api.Modules.Purchases
                     .ThenInclude(i => i.Product)
                 .AsQueryable();
 
-            // CRITICAL: Multi-tenant data isolation - Skip filter for super admin (TenantId = 0)
+            // CRITICAL: Multi-tenant data isolation - align with GetPurchaseAnalyticsAsync (TenantId or legacy OwnerId)
             if (tenantId > 0)
             {
-                query = query.Where(p => p.TenantId == tenantId);
+                query = query.Where(p => (p.TenantId.HasValue && p.TenantId == tenantId) || (!p.TenantId.HasValue && p.OwnerId == tenantId));
             }
             // Super admin (TenantId = 0) sees ALL owners
 
@@ -775,8 +775,9 @@ namespace HexaBill.Api.Modules.Purchases
                 endDate = endDate.Value.ToUtcKind();
             }
 
+            // Tenant filter: match TenantId when set, else OwnerId (legacy) - align with Sales/VAT
             var query = _context.Purchases
-                .Where(p => p.TenantId == tenantId) // CRITICAL: Multi-tenant filter
+                .Where(p => (p.TenantId.HasValue && p.TenantId == tenantId) || (!p.TenantId.HasValue && p.OwnerId == tenantId))
                 .Include(p => p.Items)
                 .AsQueryable();
 
@@ -794,9 +795,15 @@ namespace HexaBill.Api.Modules.Purchases
 
             var purchases = await query.ToListAsync();
 
-            // Calculate totals
+            // Calculate totals - FIX: when VatTotal is null (legacy), derive from TotalAmount - Subtotal
             var totalAmount = purchases.Sum(p => p.TotalAmount);
-            var totalVat = purchases.Sum(p => p.VatTotal ?? 0);
+            var totalVat = purchases.Sum(p =>
+            {
+                if (p.VatTotal.HasValue && p.VatTotal.Value != 0) return p.VatTotal.Value;
+                if (p.Subtotal.HasValue && p.TotalAmount > 0)
+                    return Math.Max(0, p.TotalAmount - p.Subtotal.Value);
+                return 0;
+            });
             var totalCount = purchases.Count;
             var totalItems = purchases.Sum(p => p.Items.Count);
 
