@@ -176,7 +176,8 @@ const VatReturnPage = () => {
       const res = await reportsAPI.getVatReturn(params)
       // CRITICAL: Unwrap inner DTO (API returns { success, data: dto } or nested { data: { data: dto } })
       const dto = res?.data?.data ?? res?.data ?? null
-      if (res?.success && dto != null) {
+      const success = res?.success !== false && dto != null
+      if (success) {
         setVatReturn(dto)
         setLoadError(null)
         // When VAT return has 0 sales but we have a period, fetch Sales Ledger for same period so Overview shows real totals
@@ -553,13 +554,27 @@ const VatReturnPage = () => {
                 if (!fromDate || !toDate) { toast.error('Set From/To dates then recalculate'); return }
                 try {
                   const res = await reportsAPI.calculateVatReturn(fromDate, toDate)
-                  const dto = res?.data?.data ?? res?.data
-                  if (res?.success && dto) {
+                  const dto = res?.data?.data ?? res?.data ?? null
+                  const ok = res?.success === true || (res?.success !== false && dto != null)
+                  if (ok && dto) {
                     setVatReturn(dto)
-                    setLedgerFallback(null)
                     setSearchParams({ from: fromDate, to: toDate })
                     toast.success('Recalculated')
-                  }
+                    // When API returns 0 sales, fetch Sales Ledger for same period so Overview shows real totals
+                    const hasNoSales = !(dto.outputLines?.length || dto.OutputLines?.length) && (Number(dto.box1a ?? dto.Box1a ?? 0) === 0)
+                    if (hasNoSales && fromDate && toDate) {
+                      try {
+                        const ledgerRes = await reportsAPI.getComprehensiveSalesLedger({ fromDate, toDate })
+                        const summary = ledgerRes?.data?.summary ?? ledgerRes?.data?.Summary ?? ledgerRes?.summary ?? null
+                        if (summary && (Number(summary.totalSales ?? summary.TotalSales ?? 0) > 0 || Number(summary.totalSalesVat ?? summary.TotalSalesVat ?? 0) > 0)) {
+                          const totalSales = Number(summary.totalSales ?? summary.TotalSales ?? 0)
+                          const totalSalesVat = Number(summary.totalSalesVat ?? summary.TotalSalesVat ?? 0)
+                          const net = totalSales - totalSalesVat
+                          setLedgerFallback({ totalSalesNet: net >= 0 ? net : totalSales, totalSalesVat: totalSalesVat })
+                        } else setLedgerFallback(null)
+                      } catch (_) { setLedgerFallback(null) }
+                    } else setLedgerFallback(null)
+                  } else if (!dto) toast.error(res?.message || 'Recalculate returned no data')
                 } catch (err) {
                   const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || err?.message || 'Calculate failed'
                   toast.error(msg)
@@ -799,6 +814,10 @@ const VatReturnPage = () => {
                     </tbody>
                   </table>
                 </div>
+                <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
+                  <p className="font-medium text-gray-800">Overview totals are correct.</p>
+                  <p className="mt-1">Net VAT to Pay = Sales VAT (Box 1b) − Input VAT (Box 12: purchases + claimable expenses). If Expense VAT shows 0, only expenses marked <strong>Tax claimable (ITC)</strong> on the Expenses page with VAT in this period are included. After adding or editing expenses, click <strong>Refresh</strong> or <strong>Recalculate</strong> to update.</p>
+                </div>
                 {(v.petroleumExcluded ?? 0) > 0 && (
                   <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
                 )}
@@ -945,6 +964,11 @@ const VatReturnPage = () => {
           {activeTab === 'expenses' && (
             <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
               <h2 className="text-sm font-semibold text-gray-900">Expenses (Input VAT)</h2>
+              {expenseLines.length === 0 && (
+                <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  No claimable expenses in this period. On the <strong>Expenses</strong> page, mark expenses as <strong>Tax claimable (ITC)</strong> and ensure they have VAT. Then click <strong>Refresh</strong> or <strong>Recalculate</strong> here to update.
+                </p>
+              )}
               <div className="overflow-x-auto mt-2">
                 <table className="min-w-full text-xs border border-gray-200 rounded-lg">
                   <thead>

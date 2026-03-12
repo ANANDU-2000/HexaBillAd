@@ -283,17 +283,27 @@ namespace HexaBill.Api.Modules.Reports
                     petroleumExcluded += VatCalculator.Round(e.Amount);
                     continue;
                 }
+                // Use ClaimableVat when set; when marked claimable but 0/null, use VatAmount; else derive from TotalAmount - Amount (VAT = total - net)
                 var claimable = e.ClaimableVat ?? 0;
+                if (e.IsTaxClaimable && claimable == 0 && (e.VatAmount ?? 0) > 0)
+                    claimable = e.VatAmount ?? 0;
+                if (e.IsTaxClaimable && claimable == 0 && (e.TotalAmount ?? 0) > 0 && e.Amount > 0 && (e.TotalAmount ?? 0) > e.Amount)
+                    claimable = VatCalculator.Round((e.TotalAmount ?? 0) - e.Amount);
                 if (e.IsTaxClaimable && claimable > 0)
                 {
                     box9b += VatCalculator.Round(claimable);
+                    // Net: when VatInclusive, net = Amount - VAT; otherwise Amount is net
+                    var netAmount = (e.VatInclusive == true && (e.VatAmount ?? 0) > 0)
+                        ? Math.Max(0, e.Amount - (e.VatAmount ?? 0))
+                        : e.Amount;
+                    var vatAmount = e.VatAmount ?? claimable;
                     inputLines.Add(new VatReturnInputLineDto
                     {
                         Type = "Expense",
                         Reference = e.Id.ToString(),
                         Date = e.Date,
-                        NetAmount = e.Amount,
-                        VatAmount = e.VatAmount ?? 0,
+                        NetAmount = netAmount,
+                        VatAmount = vatAmount,
                         ClaimableVat = claimable,
                         TaxType = e.TaxType ?? "Standard",
                         CategoryName = e.Category?.Name ?? "",
