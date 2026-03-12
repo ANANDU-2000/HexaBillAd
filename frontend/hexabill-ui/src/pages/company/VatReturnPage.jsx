@@ -327,7 +327,11 @@ const VatReturnPage = () => {
                 if (!fromDate || !toDate) { toast.error('Set From/To dates then recalculate'); return }
                 try {
                   const res = await reportsAPI.calculateVatReturn(fromDate, toDate)
-                  if (res?.success && res?.data) { setVatReturn(res.data); toast.success('Recalculated') }
+                  if (res?.success && res?.data) {
+                    setVatReturn(res.data)
+                    setSearchParams({ from: fromDate, to: toDate })
+                    toast.success('Recalculated')
+                  }
                 } catch (err) { toast.error(err?.response?.data?.message || 'Calculate failed') }
               }}
               className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"

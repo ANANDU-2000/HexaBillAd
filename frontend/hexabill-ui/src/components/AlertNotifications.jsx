@@ -71,12 +71,13 @@ const AlertNotifications = () => {
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
-  // Fetch unread count
+  // Fetch unread count (handle both { success, data: number } and raw number)
   const fetchUnreadCount = async () => {
     try {
       const response = await alertsAPI.getUnreadCount()
-      if (response?.success) {
-        setUnreadCount(response.data || 0)
+      if (response?.success !== false && response != null) {
+        const count = typeof response?.data === 'number' ? response.data : (response?.data?.data ?? response?.data ?? response ?? 0)
+        setUnreadCount(Math.max(0, Number(count) || 0))
       }
     } catch (error) {
       if (!error?.isConnectionBlocked) console.error('Failed to fetch unread count:', error)
@@ -126,6 +127,7 @@ const AlertNotifications = () => {
         setAlerts(alerts.map(a => ({ ...a, isRead: true })))
         setUnreadCount(0)
         toast.success(`Marked ${response.data || 0} alerts as read`)
+        await fetchUnreadCount()
       }
     } catch (error) {
       console.error('Failed to mark all as read:', error)
@@ -154,6 +156,7 @@ const AlertNotifications = () => {
       await alertsAPI.markAsRead(alertId)
       setAlerts(alerts.map(a => a.id === alertId ? { ...a, isRead: true } : a))
       setUnreadCount(prev => Math.max(0, prev - 1))
+      await fetchUnreadCount()
     } catch (error) {
       console.error('Failed to mark as read:', error)
     }

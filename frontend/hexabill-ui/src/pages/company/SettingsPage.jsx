@@ -216,10 +216,10 @@ const SettingsPage = () => {
     setLogoPdfStatusLoading(true)
     adminAPI.getLogoPdfStatus()
       .then((res) => {
-        if (!cancelled) setLogoPdfStatus(res?.data ?? res)
+        if (!cancelled) setLogoPdfStatus(res?.data?.data ?? res?.data ?? res)
       })
       .catch(() => {
-        if (!cancelled) setLogoPdfStatus(null)
+        if (!cancelled) setLogoPdfStatus({ hasLogoForPdf: false, reason: 'Unable to check (network or server error)' })
       })
       .finally(() => {
         if (!cancelled) setLogoPdfStatusLoading(false)

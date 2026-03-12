@@ -261,6 +261,8 @@ namespace HexaBill.Api.Modules.Reports
 
             var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate, toDate);
             int txCount = salesInPeriod.Count + returnsInPeriod.Count + purchasesInPeriod.Count + expensesInPeriod.Count;
+            if (txCount == 0)
+                _logger.LogInformation("VAT return: no transactions for tenant {TenantId}, period {From} to {To}. Sales={Sales}, Purchases={Purchases}, Expenses={Expenses}.", tenantId, fromDate.ToString("yyyy-MM-dd"), toDate.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count);
 
             return new VatReturn201Dto
             {

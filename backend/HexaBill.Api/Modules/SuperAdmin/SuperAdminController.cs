@@ -350,6 +350,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var key = company?.LogoStorageKey;
                 if (string.IsNullOrWhiteSpace(key))
                 {
+                    _logger.LogInformation("Logo PDF status: no LogoStorageKey for tenant {TenantId}. Upload a logo in Settings.", tenantId);
                     return Ok(new ApiResponse<object>
                     {
                         Success = true,
@@ -367,6 +368,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogWarning(ex, "Logo PDF status: storage read failed for tenant {TenantId}, key={Key}. Invoice PDF will not show logo until storage is fixed.", tenantId, key);
                     return Ok(new ApiResponse<object>
                     {
                         Success = true,
