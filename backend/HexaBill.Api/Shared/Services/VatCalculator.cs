@@ -143,6 +143,47 @@ namespace HexaBill.Api.Shared.Services
             };
         }
 
+        /// <summary>Expense VAT-inclusive: client enters gross amount; extract net = gross/1.05, vat = gross - net, total = gross.</summary>
+        public static VatCalculationResult ForExpenseInclusive(
+            decimal grossAmount,
+            string? taxType,
+            bool isTaxClaimable,
+            bool isEntertainment,
+            decimal partialCreditPct = 100m)
+        {
+            var normalized = (taxType ?? string.Empty).Trim();
+            if (string.Equals(normalized, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(normalized, TaxTypes.Exempt, StringComparison.OrdinalIgnoreCase))
+            {
+                return new VatCalculationResult
+                {
+                    NetAmount = Round(grossAmount),
+                    VatRate = 0,
+                    VatAmount = 0,
+                    TotalAmount = Round(grossAmount),
+                    ClaimableVat = 0,
+                    ReverseChargeVat = 0,
+                    Scenario = normalized
+                };
+            }
+            var net = Round(grossAmount / (1m + StandardRate));
+            var vat = Round(grossAmount - net);
+            var claimable = isTaxClaimable ? vat : 0m;
+            claimable = Round(claimable * (partialCreditPct / 100m));
+            if (isEntertainment)
+                claimable = Round(claimable * 0.5m);
+            return new VatCalculationResult
+            {
+                NetAmount = net,
+                VatRate = StandardRate,
+                VatAmount = vat,
+                TotalAmount = Round(grossAmount),
+                ClaimableVat = claimable,
+                ReverseChargeVat = 0,
+                Scenario = TaxTypes.Standard
+            };
+        }
+
         /// <summary>Reverse charge purchase: base in Box 4, claimable VAT in Box 10.</summary>
         public static VatCalculationResult ForReverseChargePurchase(decimal netAmount, bool isTaxClaimable)
         {

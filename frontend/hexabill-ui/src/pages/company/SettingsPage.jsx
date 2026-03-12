@@ -55,6 +55,7 @@ const SettingsPage = () => {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [showTemplatePreview, setShowTemplatePreview] = useState(false)
   const [logoBlobUrl, setLogoBlobUrl] = useState(null)
+  const [logoDataUri, setLogoDataUri] = useState(null)
   const [showInvoicePreview, setShowInvoicePreview] = useState(false)
   const [logoLoadFailed, setLogoLoadFailed] = useState(false)
   const [logoPdfStatus, setLogoPdfStatus] = useState(null)
@@ -407,6 +408,14 @@ const SettingsPage = () => {
           setValue(key, mappedSettings[key], { shouldDirty: false })
         })
         setHasUnsavedChanges(false)
+        // Load logo data URI for stable display (survives container restarts)
+        try {
+          const res = await adminAPI.getLogoDataUri()
+          const uri = res?.data ?? res
+          setLogoDataUri(typeof uri === 'string' && uri.startsWith('data:') ? uri : null)
+        } catch {
+          setLogoDataUri(null)
+        }
       }
     } catch (error) {
       console.error('Failed to load settings:', error)
@@ -542,6 +551,7 @@ const SettingsPage = () => {
       if (response?.success) {
         setLogoPreview(null)
         setLogoBlobUrl(null)
+        setLogoDataUri(null)
         setSettings(prev => ({ ...prev, logoUrl: '' }))
         setValue('logoUrl', '')
         await updateAppIcon('/vite.svg')
@@ -621,7 +631,6 @@ const SettingsPage = () => {
         }
       }
 
-      console.log('✅ App icon updated successfully')
     } catch (error) {
       console.error('Error updating app icon:', error)
     }
@@ -808,10 +817,10 @@ const SettingsPage = () => {
               <div className="flex items-center space-x-6">
                 {/* Logo Preview */}
                 <div className="flex-shrink-0">
-                  {logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/')) ? (
+                  {logoDataUri || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/')) ? (
                     <div className="relative">
                       <img
-                        src={logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
+                        src={logoDataUri || logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
                         alt="Company Logo"
                         className="h-24 w-24 object-contain border border-gray-200 rounded-lg"
                         onError={(e) => {
@@ -843,9 +852,9 @@ const SettingsPage = () => {
                       className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      {logoPreview || settings.logoUrl ? 'Change Logo' : 'Upload Logo'}
+                      {logoDataUri || logoPreview || settings.logoUrl ? 'Change Logo' : 'Upload Logo'}
                     </button>
-                    {(logoPreview || settings.logoUrl) && (
+                    {(logoDataUri || logoPreview || settings.logoUrl) && (
                       <>
                         <button
                           type="button"
@@ -866,8 +875,8 @@ const SettingsPage = () => {
                     <p className="text-sm text-gray-500">
                       PNG, JPG, WEBP — Max 5MB. Your logo appears on all invoices and documents.
                     </p>
-                    {(logoPreview || settings.logoUrl) && (
-                      <p className="text-sm text-gray-600 mt-1">
+                    {(logoDataUri || logoPreview || settings.logoUrl) && (
+                        <p className="text-sm text-gray-600 mt-1">
                         {logoPdfStatusLoading
                           ? 'Checking…'
                           : logoPdfStatus?.hasLogoForPdf
@@ -1437,9 +1446,9 @@ const SettingsPage = () => {
           <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
             <div className="grid grid-cols-[140px_1fr_140px] gap-4 items-center">
               <div className="flex justify-center">
-                {(logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/'))) && (
+                {(logoDataUri || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/'))) && (
                   <img
-                    src={logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
+                    src={logoDataUri || logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`)}
                     alt="Company Logo"
                     className="max-w-[140px] max-h-[80px] object-contain"
                     onError={(e) => { e.target.style.display = 'none' }}

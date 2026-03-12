@@ -271,26 +271,52 @@ const SuperAdminDashboard = () => {
               {tenantActivity.map((t, idx) => (
                 <li
                   key={t.tenantId}
-                  className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
                     t.isHighVolume
                       ? 'bg-red-50 border-red-200 hover:bg-red-100'
                       : 'bg-neutral-50 border-neutral-100 hover:bg-neutral-100'
                   }`}
-                  onClick={() => navigate(`/superadmin/tenants/${t.tenantId}`)}
                 >
-                  <span className="flex items-center gap-2">
+                  <span
+                    className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                    onClick={() => navigate(`/superadmin/tenants/${t.tenantId}`)}
+                  >
                     <span className="text-neutral-500 font-mono text-sm w-6">#{idx + 1}</span>
-                    <span className="font-medium text-neutral-900">{t.tenantName}</span>
+                    <span className="font-medium text-neutral-900 truncate">{t.tenantName}</span>
                     {t.isHighVolume && (
-                      <span className="text-xs font-medium text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-medium text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
                         High volume
                       </span>
                     )}
                   </span>
-                  <span className="text-sm text-neutral-600">
+                  <span className="text-sm text-neutral-600 flex-shrink-0 mx-2">
                     {t.requestCount} req · last {new Date(t.lastActiveAt).toLocaleTimeString()}
                   </span>
-                  <ChevronRight className="h-4 w-4 text-neutral-400" />
+                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!window.confirm(`Impersonate ${t.tenantName || 'this tenant'}? You will see their dashboard and data.`)) return
+                        try {
+                          await superAdminAPI.impersonateEnter(t.tenantId)
+                          navigate('/dashboard')
+                        } catch (err) {
+                          if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Impersonation failed')
+                        }
+                      }}
+                      className="px-2 py-1 text-xs font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                    >
+                      Impersonate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/superadmin/tenants/${t.tenantId}`)}
+                      className="p-1 rounded hover:bg-neutral-200 text-neutral-500 hover:text-neutral-700"
+                      title="Manage"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

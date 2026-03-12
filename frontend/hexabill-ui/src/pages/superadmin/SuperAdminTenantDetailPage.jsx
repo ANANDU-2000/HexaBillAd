@@ -2184,11 +2184,23 @@ const TenantFeaturesTab = ({ tenantId }) => {
     }
   }
 
-  const handleToggleFeature = (featureKey) => {
-    setTenantFeatures(prev => ({
-      ...prev,
-      [featureKey]: !prev[featureKey]
-    }))
+  const handleToggleFeature = async (featureKey, featureName) => {
+    const current = tenantFeatures[featureKey]
+    const newValue = !current
+    const action = newValue ? 'Enable' : 'Disable'
+    if (!window.confirm(`${action} "${featureName || featureKey}" for this tenant?`)) return
+    try {
+      setFeaturesSaving(true)
+      const next = { ...tenantFeatures, [featureKey]: newValue }
+      await superAdminAPI.updateTenantFeatures(tenantId, next)
+      setTenantFeatures(next)
+      toast.success(`${featureName || featureKey} ${newValue ? 'enabled' : 'disabled'}`)
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to update feature'
+      toast.error(msg)
+    } finally {
+      setFeaturesSaving(false)
+    }
   }
 
   const handleSaveFeatures = async () => {
@@ -2274,7 +2286,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
                   <p className="text-xs text-gray-500 leading-relaxed">{feat.description}</p>
                 </div>
                 <button
-                  onClick={() => handleToggleFeature(feat.key)}
+                  onClick={() => handleToggleFeature(feat.key, feat.label)}
                   disabled={featuresSaving}
                   className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-gray-200 focus:ring-gray-500'
                     } ${featuresSaving ? 'opacity-50 cursor-not-allowed' : ''}`}

@@ -481,9 +481,9 @@ api.interceptors.request.use(
     // CRITICAL: Remove aggressive throttling - only track, don't block
     // Only log very rapid duplicates for debugging, but allow all requests to proceed
     if (timeSinceLastRequest < REQUEST_THROTTLE_MS && !config._isRetry) {
-      // Log duplicate but don't block - allows normal page loads
+      // Track duplicate for monitoring only - allow all requests to proceed
       if (pendingRequests.has(requestKey)) {
-        console.log(`⏸️ Rapid duplicate request detected (${timeSinceLastRequest}ms): ${config.method} ${config.url} - allowing to proceed`)
+        // (no console log in production)
       }
     }
 
@@ -704,7 +704,6 @@ api.interceptors.response.use(
       retryConfig.method = (retryConfig.method != null && retryConfig.method !== '') ? String(retryConfig.method).toUpperCase() : 'GET'
       retryConfig.url = retryConfig.url != null ? String(retryConfig.url) : ''
       const delay = Math.pow(2, retryCount) * 1000
-      console.log(`🔄 Retrying request (attempt ${retryCount + 1}/${maxRetries}) after ${delay}ms: ${retryConfig.method} ${retryConfig.url}`)
 
       return new Promise((resolve) => {
         setTimeout(() => {

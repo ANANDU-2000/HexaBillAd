@@ -106,7 +106,6 @@ namespace HexaBill.Api.Modules.Reports
                 if (string.IsNullOrWhiteSpace(s.VatScenario))
                     s.VatScenario = "Standard";
                 var isStandard = IsStandardRated(s);
-                // Defensive: guard against any null from DB/EF (e.g. legacy nullable columns)
                 var net = s.Subtotal;
                 var vat = s.VatTotal;
                 if (isStandard)
@@ -149,14 +148,16 @@ namespace HexaBill.Api.Modules.Reports
             decimal returnsNet = 0, returnsVat = 0;
             foreach (var sr in returnsInPeriod)
             {
-                returnsNet += VatCalculator.Round(sr.Subtotal);
-                returnsVat += VatCalculator.Round(sr.VatTotal);
+                var srNet = sr.Subtotal;
+                var srVat = sr.VatTotal;
+                returnsNet += VatCalculator.Round(srNet);
+                returnsVat += VatCalculator.Round(srVat);
                 creditNoteLines.Add(new VatReturnCreditNoteLineDto
                 {
                     Reference = sr.ReturnNo ?? sr.Id.ToString(),
                     Date = sr.ReturnDate,
-                    NetAmount = sr.Subtotal,
-                    VatAmount = sr.VatTotal,
+                    NetAmount = srNet,
+                    VatAmount = srVat,
                     Side = "Output"
                 });
             }

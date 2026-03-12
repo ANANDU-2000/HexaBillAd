@@ -101,6 +101,37 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         /// <summary>
+        /// Get logo as data URI for stable display (survives container restarts; no blob revoke).
+        /// GET: api/settings/logo-data-uri
+        /// </summary>
+        [HttpGet("logo-data-uri")]
+        public async Task<IActionResult> GetLogoDataUri()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                    return Forbid();
+                var dataUri = await _settingsService.GetSettingValueAsync(tenantId, "LOGO_BASE64_DATA_URI");
+                return Ok(new ServiceResponse<string?>
+                {
+                    Success = true,
+                    Data = string.IsNullOrWhiteSpace(dataUri) ? null : dataUri,
+                    Message = string.IsNullOrWhiteSpace(dataUri) ? "No logo data URI stored" : "Logo data URI retrieved"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting logo data URI: {Message}", ex.Message);
+                return StatusCode(500, new ServiceResponse<object>
+                {
+                    Success = false,
+                    Message = "Failed to retrieve logo data URI"
+                });
+            }
+        }
+
+        /// <summary>
         /// Update company settings (bulk update)
         /// PUT: api/settings
         /// </summary>

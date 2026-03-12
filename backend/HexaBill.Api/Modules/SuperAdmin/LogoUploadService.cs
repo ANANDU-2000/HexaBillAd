@@ -123,6 +123,13 @@ public class LogoUploadService : ILogoUploadService
         await SetOrAddAsync(tenantId, "COMPANY_LOGO", publicUrl, ct);
         await SetOrAddAsync(tenantId, "LOGO_PATH", publicUrl, ct);
 
+        // Persist logo as base64 in DB so it survives container restarts (e.g. Render); limit 500KB to avoid bloat
+        if (colourBytes.Length <= 500_000)
+        {
+            var dataUri = $"data:image/png;base64,{Convert.ToBase64String(colourBytes)}";
+            await SetOrAddAsync(tenantId, "LOGO_BASE64_DATA_URI", dataUri, ct);
+        }
+
         await _context.SaveChangesAsync(ct);
 
         return new LogoUploadResult

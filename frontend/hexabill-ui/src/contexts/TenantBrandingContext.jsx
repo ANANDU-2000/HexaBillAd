@@ -63,6 +63,15 @@ export const BrandingProvider = ({ children }) => {
     }
     setBranding(prev => ({ ...prev, loading: true }))
     try {
+      // Prefer logo data URI (survives container restarts; no blob revoke)
+      let logoDisplay = null
+      try {
+        const logoRes = await adminAPI.getLogoDataUri()
+        const dataUri = logoRes?.data ?? logoRes
+        if (typeof dataUri === 'string' && dataUri.startsWith('data:'))
+          logoDisplay = dataUri
+      } catch (_) { /* fallback to URL */ }
+
       const response = await adminAPI.getSettings()
       const data = response?.data ?? response
       if (data) {
@@ -71,38 +80,26 @@ export const BrandingProvider = ({ children }) => {
         const primary = data.primaryColor || data.primary_color || '#2563EB'
         const accent = data.accentColor || data.accent_color || '#10B981'
 
-        // Ensure logo URL is full URL (prefix with backend base if relative)
-        // Backend returns relative paths like "/uploads/logo_xxx.png" or full URLs
-        const apiBase = getApiBaseUrlNoSuffix()
-        let fullLogoUrl = logoUrl
-        if (logoUrl && !logoUrl.startsWith('http')) {
-          // If relative path (starts with /uploads), prefix with backend base URL
-          fullLogoUrl = logoUrl.startsWith('/') 
-            ? `${apiBase}${logoUrl}` 
-            : `${apiBase}/uploads/${logoUrl}`
+        if (!logoDisplay && logoUrl) {
+          const apiBase = getApiBaseUrlNoSuffix()
+          let fullLogoUrl = logoUrl.startsWith('http') ? logoUrl : (logoUrl.startsWith('/') ? `${apiBase}${logoUrl}` : `${apiBase}/uploads/${logoUrl}`)
+          logoDisplay = `${fullLogoUrl}${fullLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
         }
-
-        // Add cache-busting parameter to logo URL to force refresh
-        const logoUrlWithCache = fullLogoUrl ? `${fullLogoUrl}${fullLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}` : null
 
         setBranding(prev => ({
           ...prev,
           companyName: name,
-          companyLogo: logoUrlWithCache,
+          companyLogo: logoDisplay,
           primaryColor: primary,
           accentColor: accent,
           loading: false,
         }))
 
         document.title = name
-        // Skip favicon for storage URLs: browser would request without auth and get 401
-        const isStorageUrl = fullLogoUrl && (fullLogoUrl.includes('/api/storage/') || fullLogoUrl.includes('storage/tenants/'))
-        if (fullLogoUrl && !isStorageUrl) {
-          const faviconUrl = `${fullLogoUrl}${fullLogoUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
-          updateFavicon(faviconUrl)
-        }
+        if (logoDisplay && !logoDisplay.includes('/api/storage/') && !logoDisplay.includes('storage/tenants/'))
+          updateFavicon(logoDisplay)
       } else {
-        setBranding(prev => ({ ...prev, loading: false }))
+        setBranding(prev => ({ ...prev, companyLogo: logoDisplay, loading: false }))
       }
     } catch (error) {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))

@@ -170,3 +170,30 @@
     gap: 48px;
   }
 }
+
+/* VAT Return (and similar report) print: hide chrome, show only report table and summary */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .vat-return-print-area,
+  .vat-return-print-area * {
+    visibility: visible;
+  }
+  .vat-return-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-width: 100%;
+    box-shadow: none;
+    border: 1px solid #e5e7eb;
+  }
+  .no-print,
+  nav,
+  aside,
+  [role="navigation"],
+  button {
+    display: none !important;
+  }
+}

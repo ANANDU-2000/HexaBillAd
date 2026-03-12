@@ -54,8 +54,11 @@ const SuperAdminSqlConsolePage = () => {
           <Database className="h-6 w-6 text-indigo-600" />
           <h1 className="text-2xl font-bold text-neutral-900">SQL Console</h1>
         </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-4 text-sm text-amber-800">
+          <strong>Read-Only Mode:</strong> Only SELECT queries allowed. DROP, DELETE, UPDATE, INSERT and other write operations are blocked.
+        </div>
         <p className="text-sm text-neutral-600 mb-4">
-          Read-only: SELECT only. Timeout 30s, max 1000 rows. PostgreSQL only.
+          Timeout 30s, max 1000 rows. PostgreSQL only.
         </p>
 
         <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden mb-6">

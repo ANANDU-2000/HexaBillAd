@@ -649,6 +649,8 @@ namespace HexaBill.Api.Models
         public bool IsEntertainment { get; set; }
         [Range(0, 100)]
         public decimal PartialCreditPct { get; set; } = 100;
+        /// <summary>True = amount is VAT-inclusive (gross); false = amount is net, VAT added on top.</summary>
+        public bool? VatInclusive { get; set; }
     }
 
     public class ApproveExpenseRequest

@@ -1,21 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
-  FileText,
   RefreshCw,
   Lock,
   Send,
   Download,
   ArrowLeft,
   Calendar,
-  LayoutDashboard,
-  TrendingUp,
-  ShoppingCart,
-  Receipt,
-  BarChart2,
-  FileX,
   ShieldCheck,
-  History,
   AlertTriangle,
   CheckCircle
 } from 'lucide-react'
@@ -25,8 +17,6 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { reportsAPI } from '../../services'
 import { LoadingCard } from '../../components/Loading'
-import TabNavigation from '../../components/ui/TabNavigation'
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 
 function quarterToRange(quarter, year) {
   const startMonth = (quarter - 1) * 3
@@ -60,10 +50,7 @@ const VatReturnPage = () => {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null) // null | 'access' | { message: string }
   const [vatReturn, setVatReturn] = useState(null)
-  const [activeTab, setActiveTab] = useState('overview')
   const [validationExpanded, setValidationExpanded] = useState(false)
-  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all') // 'all' | 'sales' | 'purchases' | 'expenses' | 'input'
-  const [taxTypeFilter, setTaxTypeFilter] = useState('all') // 'all' | 'Standard 5%' | 'Zero' | 'Exempt'
 
   const fetchVatReturn = useCallback(async (fromOverride, toOverride) => {
     const f = fromOverride ?? fromDate
@@ -165,95 +152,7 @@ const VatReturnPage = () => {
     }
   }
   const periodLabel = v?.periodLabel || (fromDate && toDate ? `${fromDate} to ${toDate}` : `Q${quarter} ${year}`)
-  const purchaseLines = (v?.inputLines || []).filter(l => (l.type || '').toLowerCase() === 'purchase')
-  const expenseLines = (v?.inputLines || []).filter(l => (l.type || '').toLowerCase() === 'expense')
   const daysUntilDue = v?.dueDate ? Math.ceil((new Date(v.dueDate) - new Date()) / 86400000) : null
-
-  // Unified VAT transactions (sales + purchases + expenses) for transaction-first UX
-  const allVatTransactions = useMemo(() => {
-    if (!v) return []
-    const out = (v.outputLines || []).map(l => ({
-      type: 'Sale',
-      date: l.date,
-      reference: l.reference,
-      customerOrVendor: l.customerName ?? l.CustomerName ?? '—',
-      netAmount: Number(l.netAmount) || 0,
-      vatAmount: Number(l.vatAmount) || 0,
-      total: (Number(l.netAmount) || 0) + (Number(l.vatAmount) || 0),
-      taxType: l.vatScenario || '—'
-    }))
-    const inp = (v.inputLines || []).map(l => {
-      const type = (l.type || '').toLowerCase() === 'expense' ? 'Expense' : 'Purchase'
-      const customerOrVendor = l.supplierName ?? l.SupplierName ?? l.categoryName ?? l.CategoryName ?? '—'
-      const net = Number(l.netAmount) || 0
-      const vat = Number(l.vatAmount) || 0
-      return {
-        type,
-        date: l.date,
-        reference: l.reference,
-        customerOrVendor,
-        netAmount: net,
-        vatAmount: vat,
-        total: net + vat,
-        taxType: l.taxType ?? '—'
-      }
-    })
-    const combined = [...out, ...inp]
-    combined.sort((a, b) => {
-      const dA = a.date ? new Date(a.date).getTime() : 0
-      const dB = b.date ? new Date(b.date).getTime() : 0
-      return dA - dB
-    })
-    return combined
-  }, [v])
-
-  const filteredVatTransactions = useMemo(() => {
-    let list = allVatTransactions
-    if (transactionTypeFilter === 'sales') list = list.filter(row => row.type === 'Sale')
-    else if (transactionTypeFilter === 'purchases') list = list.filter(row => row.type === 'Purchase')
-    else if (transactionTypeFilter === 'expenses') list = list.filter(row => row.type === 'Expense')
-    else if (transactionTypeFilter === 'input') list = list.filter(row => row.type === 'Purchase' || row.type === 'Expense')
-    if (taxTypeFilter !== 'all') {
-      const match = taxTypeFilter === 'Standard 5%' ? 'Standard' : taxTypeFilter
-      list = list.filter(row => (row.taxType || '').toLowerCase().includes((match || '').toLowerCase()))
-    }
-    return list
-  }, [allVatTransactions, transactionTypeFilter, taxTypeFilter])
-
-  // Derived totals from same data as transactions table (cards match table)
-  const { salesNet, salesVat, salesGross, purchasesNet, purchasesVat, expensesNet, expensesVat, inputVatTotal, vatPayable } = useMemo(() => {
-    const out = v?.outputLines || []
-    const inp = v?.inputLines || []
-    const salesNet = out.reduce((s, l) => s + (Number(l.netAmount) || 0), 0)
-    const salesVat = out.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0)
-    const salesGross = salesNet + salesVat
-    const purch = inp.filter(l => (l.type || '').toLowerCase() === 'purchase')
-    const exp = inp.filter(l => (l.type || '').toLowerCase() === 'expense')
-    const purchasesNet = purch.reduce((s, l) => s + (Number(l.netAmount) || 0), 0)
-    const purchasesVat = purch.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0)
-    const expensesNet = exp.reduce((s, l) => s + (Number(l.netAmount) || 0), 0)
-    const expensesVat = exp.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0)
-    const inputVatTotal = purchasesVat + expensesVat
-    const vatPayable = salesVat - inputVatTotal
-    return { salesNet, salesVat, salesGross, purchasesNet, purchasesVat, expensesNet, expensesVat, inputVatTotal, vatPayable }
-  }, [v])
-
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions', icon: FileText, badge: allVatTransactions.length },
-    { id: 'sales', label: 'Sales', icon: TrendingUp, badge: v?.outputLines?.length ?? 0 },
-    { id: 'purchases', label: 'Purchases', icon: ShoppingCart, badge: purchaseLines.length },
-    { id: 'expenses', label: 'Expenses', icon: Receipt, badge: expenseLines.length },
-    { id: 'summary', label: 'Summary', icon: BarChart2 },
-    { id: 'creditnotes', label: 'Credit Notes', icon: FileX, badge: (v?.creditNoteLines?.length ?? 0) + (v?.reverseChargeLines?.length ?? 0) },
-    { id: 'validation', label: 'Validation', icon: ShieldCheck, badge: issues.length || '✓' },
-    { id: 'history', label: 'History', icon: History }
-  ]
-
-  const chartData = v ? [
-    { name: 'VAT Collected', value: salesVat, fill: '#3B82F6' },
-    { name: 'Input VAT', value: inputVatTotal, fill: '#10B981' }
-  ] : []
 
   return (
     <div className="w-full px-4 sm:px-6 py-6 space-y-4">
@@ -380,8 +279,8 @@ const VatReturnPage = () => {
         </div>
       ) : (
         <>
-          {/* Actions bar */}
-          <div className="flex flex-wrap items-center gap-3">
+          {/* Actions bar – hidden when printing */}
+          <div className="no-print flex flex-wrap items-center gap-3">
             <span className="text-sm text-gray-600">
               Showing: {fromDate} – {toDate} ({periodLabel})
               {(v.status || '').toLowerCase() === 'locked' && (
@@ -558,515 +457,68 @@ const VatReturnPage = () => {
             </div>
           )}
 
-          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            {activeTab === 'overview' && (
-              <div className="p-3 sm:p-4 space-y-4">
-                {/* Summary cards – compact, Overview tab only */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                  <div className="rounded-lg border-2 border-blue-200 p-2 sm:p-3 bg-blue-50/50">
-                    <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total Sales (Net)</p>
-                    <p className="text-base sm:text-lg font-bold text-blue-900 mt-0.5">{formatCurrency(salesNet)}</p>
-                    <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1 text-xs text-blue-600 hover:underline">See Transactions</button>
-                  </div>
-                  <div className="rounded-lg border-2 border-blue-200 p-2 sm:p-3 bg-blue-50/50">
-                    <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Total VAT Collected</p>
-                    <p className="text-base sm:text-lg font-bold text-blue-900 mt-0.5">{formatCurrency(salesVat)}</p>
-                    <p className="text-xs text-gray-500">Output VAT</p>
-                  </div>
-                  <div className="rounded-lg border-2 border-green-200 p-2 sm:p-3 bg-green-50/50">
-                    <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Total Input VAT</p>
-                    <p className="text-base sm:text-lg font-bold text-green-900 mt-0.5">{formatCurrency(inputVatTotal)}</p>
-                    <button type="button" onClick={() => setActiveTab('transactions')} className="mt-1 text-xs text-green-600 hover:underline">See Transactions</button>
-                  </div>
-                  <div className={`rounded-lg border-2 p-2 sm:p-3 ${vatPayable > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-                    <p className={`text-xs font-medium uppercase tracking-wide ${vatPayable > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                      {vatPayable > 0 ? 'VAT Payable' : 'VAT Refundable'}
-                    </p>
-                    <p className={`text-base sm:text-lg font-bold mt-0.5 ${vatPayable > 0 ? 'text-red-900' : 'text-green-900'}`}>
-                      {formatCurrency(vatPayable > 0 ? vatPayable : Math.abs(vatPayable))}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border-2 border-slate-200 p-2 sm:p-3 bg-slate-50/50">
-                    <p className="text-xs font-medium text-slate-700 uppercase tracking-wide">Transactions</p>
-                    <p className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">{v.transactionCount ?? allVatTransactions.length}</p>
-                    <p className="text-xs text-gray-500">In this period</p>
-                  </div>
-                  <div className="rounded-lg border-2 border-amber-200 p-2 sm:p-3 bg-amber-50/50">
-                    <p className="text-xs font-medium text-amber-700 uppercase tracking-wide">VAT filing deadline</p>
-                    <p className="text-sm sm:text-base font-bold text-amber-900 mt-0.5">
-                      {v.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    </p>
-                    {daysUntilDue != null && daysUntilDue <= 0 && (
-                      <p className="text-xs font-medium text-red-600 mt-0.5">Overdue</p>
-                    )}
-                    {daysUntilDue != null && daysUntilDue > 0 && (
-                      <p className="text-xs text-gray-500">{daysUntilDue} days left</p>
-                    )}
-                    {issues.length > 0 && (
-                      <button type="button" onClick={() => setActiveTab('validation')} className="mt-1 text-xs text-blue-600 hover:underline">
-                        Validation: {blocking.length > 0 ? `${blocking.length} blocking` : `${issues.length} warning(s)`}
-                      </button>
-                    )}
-                    {issues.length === 0 && v && (
-                      <p className="text-xs text-green-600 mt-0.5">Validation passed</p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 mb-1">FTA Form 201 – Values to Submit</h2>
-                  <p className="text-xs text-gray-500 mb-4">Copy these values into the UAE FTA VAT return portal.</p>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">Box</th>
-                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">Description</th>
-                          <th className="px-3 py-2 text-right font-medium text-gray-700 border-b border-gray-200">Value (AED)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        <tr className="bg-blue-50/50"><td className="px-3 py-2 font-medium">1a</td><td className="px-3 py-2 text-gray-700">Taxable sales amount</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(salesNet)}</td></tr>
-                        <tr className="bg-blue-50/50"><td className="px-3 py-2 font-medium">1b</td><td className="px-3 py-2 text-gray-700">VAT on taxable sales</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(salesVat)}</td></tr>
-                        <tr className="bg-blue-50/50"><td className="px-3 py-2 font-medium">2</td><td className="px-3 py-2 text-gray-700">Zero-rated sales</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box2)}</td></tr>
-                        <tr className="bg-blue-50/50"><td className="px-3 py-2 font-medium">3</td><td className="px-3 py-2 text-gray-700">Exempt supplies</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box3)}</td></tr>
-                        <tr className="bg-blue-50/50"><td className="px-3 py-2 font-medium">4</td><td className="px-3 py-2 text-gray-700">Reverse charge</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box4)}</td></tr>
-                        <tr className="bg-green-50/50"><td className="px-3 py-2 font-medium">9b</td><td className="px-3 py-2 text-gray-700">Recoverable input VAT</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(inputVatTotal)}</td></tr>
-                        <tr className="bg-green-50/50"><td className="px-3 py-2 font-medium">12</td><td className="px-3 py-2 text-gray-700">Total recoverable VAT</td><td className="px-3 py-2 text-right font-bold">{formatCurrency(inputVatTotal)}</td></tr>
-                        <tr className="bg-slate-100/50"><td className="px-3 py-2 font-medium">13</td><td className="px-3 py-2 text-gray-700">{vatPayable >= 0 ? 'VAT payable' : 'VAT refundable'}</td><td className="px-3 py-2 text-right font-bold">{formatCurrency(vatPayable >= 0 ? vatPayable : Math.abs(vatPayable))}</td></tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                {chartData.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">VAT Collected vs Input VAT</h3>
-                    <div className="h-48 sm:h-56">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 8, bottom: 24 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                          <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                          <YAxis tick={{ fontSize: 12 }} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
-                          <Tooltip formatter={(val) => formatCurrency(val)} />
-                          <Bar dataKey="value" name="AED" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {activeTab === 'transactions' && (
-              <div className="p-4">
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">VAT Transactions</h2>
-                <p className="text-xs text-gray-500 mb-4">Sales, purchases, and expenses in the selected period. Use filters to narrow by type or tax.</p>
-                <div className="flex flex-wrap items-center gap-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Type:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {['all', 'sales', 'purchases', 'expenses', 'input'].map(t => (
-                        <button key={t} type="button" onClick={() => setTransactionTypeFilter(t)} className={`px-3 py-1.5 text-sm rounded-md border ${transactionTypeFilter === t ? 'bg-gray-800 text-white border-gray-800' : 'border-gray-300 hover:bg-gray-50'}`}>
-                          {t === 'all' ? 'All' : t === 'input' ? 'Input (P+E)' : t.charAt(0).toUpperCase() + t.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">Tax type:</span>
-                    <select value={taxTypeFilter} onChange={(e) => setTaxTypeFilter(e.target.value)} className="border border-gray-300 rounded-md px-3 py-1.5 text-sm">
-                      <option value="all">All</option>
-                      <option value="Standard 5%">Standard 5%</option>
-                      <option value="Zero">Zero</option>
-                      <option value="Exempt">Exempt</option>
-                    </select>
-                  </div>
-                </div>
-                {filteredVatTransactions.length === 0 ? (
-                  <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-                    <p className="font-medium">No transactions in this period.</p>
-                    <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. Try another date range or check that invoices, purchases, and expenses exist for the selected period.</p>
-                  </div>
-                ) : (
-                  <div className="max-h-[500px] overflow-y-auto overflow-x-auto border border-gray-200 rounded-lg">
-                    <table className="min-w-full text-sm">
-                      <thead className="sticky top-0 bg-gray-50 z-10">
-                        <tr>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Customer / Vendor</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
-                          <th className="px-4 py-2 text-right font-medium text-gray-700">Total (AED)</th>
-                          <th className="px-4 py-2 text-left font-medium text-gray-700">Tax type</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredVatTransactions.map((row, i) => (
-                          <tr key={i}>
-                            <td className="px-4 py-2">{row.date ? (typeof row.date === 'string' ? row.date.slice(0, 10) : new Date(row.date).toISOString().slice(0, 10)) : '—'}</td>
-                            <td className="px-4 py-2">{row.type}</td>
-                            <td className="px-4 py-2">{row.reference ?? '—'}</td>
-                            <td className="px-4 py-2">{row.customerOrVendor}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(row.netAmount)}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(row.vatAmount)}</td>
-                            <td className="px-4 py-2 text-right">{formatCurrency(row.total)}</td>
-                            <td className="px-4 py-2">{row.taxType}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-gray-50 font-medium">
-                        <tr>
-                          <td colSpan="4" className="px-4 py-2">Total</td>
-                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.netAmount, 0))}</td>
-                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.vatAmount, 0))}</td>
-                          <td className="px-4 py-2 text-right">{formatCurrency(filteredVatTransactions.reduce((s, r) => s + r.total, 0))}</td>
-                          <td className="px-4 py-2" />
-                        </tr>
-                        <tr className="border-t border-gray-200">
-                          <td colSpan="4" className="px-4 py-1.5 text-gray-600 text-xs">Subtotal: Sales</td>
-                          <td className="px-4 py-1.5 text-right text-gray-600 text-xs" colSpan="2">Sales VAT: {formatCurrency(salesVat)}</td>
-                          <td className="px-4 py-1.5" colSpan="2" />
-                        </tr>
-                        <tr>
-                          <td colSpan="4" className="px-4 py-1.5 text-gray-600 text-xs">Subtotal: Purchases</td>
-                          <td className="px-4 py-1.5 text-right text-gray-600 text-xs" colSpan="2">Purchases VAT: {formatCurrency(purchasesVat)}</td>
-                          <td className="px-4 py-1.5" colSpan="2" />
-                        </tr>
-                        <tr>
-                          <td colSpan="4" className="px-4 py-1.5 text-gray-600 text-xs">Subtotal: Expenses</td>
-                          <td className="px-4 py-1.5 text-right text-gray-600 text-xs" colSpan="2">Expenses VAT: {formatCurrency(expensesVat)}</td>
-                          <td className="px-4 py-1.5" colSpan="2" />
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-            {activeTab === 'sales' && (
-          <>
-          {/* Output VAT Table */}
-          {(v.outputLines?.length > 0) ? (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">Output VAT (Sales)</h3>
+          {/* Simple 3-row VAT summary (HydroBooks-style) – printable */}
+          <div className="vat-return-print-area bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="p-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">VAT Return Summary</h2>
+              <p className="text-xs text-gray-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Customer</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Scenario</th>
+                <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">S#</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">Description</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700 border-b border-gray-200">Amount (AED)</th>
+                      <th className="px-3 py-2 text-right font-medium text-gray-700 border-b border-gray-200">VAT (AED)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {v.outputLines.map((line, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2">{line.reference}</td>
-                        <td className="px-4 py-2">{line.date ? (typeof line.date === 'string' ? line.date.slice(0, 10) : new Date(line.date).toISOString().slice(0, 10)) : '-'}</td>
-                        <td className="px-4 py-2">{line.customerName ?? line.CustomerName ?? '—'}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.netAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.vatAmount)}</td>
-                        <td className="px-4 py-2">{line.vatScenario || '-'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
                     <tr>
-                      <td colSpan="3" className="px-4 py-2">Total</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.outputLines.reduce((s, l) => s + (Number(l.netAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.outputLines.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2" />
+                      <td className="px-3 py-2 font-medium">1</td>
+                      <td className="px-3 py-2 text-gray-700">Total Sales</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box1a ?? 0)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box1b ?? 0)}</td>
                     </tr>
-                  </tfoot>
+                    <tr>
+                      <td className="px-3 py-2 font-medium">2</td>
+                      <td className="px-3 py-2 text-gray-700">Total Purchase and Expense</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box9b ?? 0)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(v.box12 ?? 0)}</td>
+                    </tr>
+                    <tr className={(v.box13a ?? 0) > 0 ? 'bg-red-50' : 'bg-green-50'}>
+                      <td className="px-3 py-2 font-medium">3</td>
+                      <td className="px-3 py-2 font-medium">Net VAT to Pay / Refundable</td>
+                      <td className="px-3 py-2 text-right font-medium" colSpan="2">
+                        <span className={(v.box13a ?? 0) > 0 ? 'text-red-700 font-bold' : 'text-green-700 font-bold'}>
+                          {(v.box13a ?? 0) > 0 ? formatCurrency(v.box13a) : formatCurrency(v.box13b ?? 0)}
+                          {(v.box13a ?? 0) > 0 ? ' (Payable)' : ' (Refundable)'}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
                 </table>
               </div>
+              {(v.petroleumExcluded ?? 0) > 0 && (
+                <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
+              )}
             </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500 text-sm">No sales in this period.</div>
-          )}
-          </>
-            )}
-
-            {activeTab === 'purchases' && (
-          <>
-          {purchaseLines.length > 0 ? (
-            <div className="overflow-hidden">
-              <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">Input VAT (Purchases)</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Supplier</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">VAT Paid</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Claimable</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">ITC</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {purchaseLines.map((line, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2">{line.reference}</td>
-                        <td className="px-4 py-2">{line.date ? (typeof line.date === 'string' ? line.date.slice(0, 10) : new Date(line.date).toISOString().slice(0, 10)) : '-'}</td>
-                        <td className="px-4 py-2">{line.supplierName ?? line.SupplierName ?? '—'}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.netAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.vatAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.claimableVat)}</td>
-                        <td className="px-4 py-2">{line.isTaxClaimable ? '✓' : '✗'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
-                    <tr>
-                      <td colSpan="3" className="px-4 py-2">Total</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(purchaseLines.reduce((s, l) => s + (Number(l.netAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(purchaseLines.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(purchaseLines.reduce((s, l) => s + (Number(l.claimableVat) || 0), 0))}</td>
-                      <td className="px-4 py-2" />
-                    </tr>
-                  </tfoot>
-                </table>
+            {/* Footer bar: Amount Due to FTA / Refund from FTA + filing deadline */}
+            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${(v.box13a ?? 0) > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+              <div>
+                <p className="text-sm font-medium text-gray-700">{(v.box13a ?? 0) > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${(v.box13a ?? 0) > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                  {(v.box13a ?? 0) > 0 ? formatCurrency(v.box13a) : formatCurrency(v.box13b ?? 0)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-medium text-gray-700">Filing deadline</p>
+                <p className="text-lg font-semibold text-amber-900 mt-0.5">
+                  {v.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                </p>
+                {daysUntilDue != null && daysUntilDue <= 0 && <p className="text-xs font-medium text-red-600">Overdue</p>}
+                {daysUntilDue != null && daysUntilDue > 0 && <p className="text-xs text-gray-500">{daysUntilDue} days left</p>}
               </div>
             </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500 text-sm">No purchases in this period.</div>
-          )}
-          </>
-            )}
-
-            {activeTab === 'expenses' && (
-          <>
-          {expenseLines.length > 0 ? (
-            <div className="overflow-hidden">
-              <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">Input VAT (Expenses)</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Category</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">VAT Paid</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Claimable</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Tax Type</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">ITC</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {expenseLines.map((line, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2">{line.reference}</td>
-                        <td className="px-4 py-2">{line.date ? (typeof line.date === 'string' ? line.date.slice(0, 10) : new Date(line.date).toISOString().slice(0, 10)) : '-'}</td>
-                        <td className="px-4 py-2">{line.categoryName ?? line.CategoryName ?? '—'}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.netAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.vatAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.claimableVat)}</td>
-                        <td className="px-4 py-2">{line.taxType ?? '—'}</td>
-                        <td className="px-4 py-2">{line.isTaxClaimable ? '✓' : '✗'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
-                    <tr>
-                      <td colSpan="3" className="px-4 py-2">Total</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(expenseLines.reduce((s, l) => s + (Number(l.netAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(expenseLines.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(expenseLines.reduce((s, l) => s + (Number(l.claimableVat) || 0), 0))}</td>
-                      <td colSpan="2" className="px-4 py-2" />
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500 text-sm">No expenses in this period.</div>
-          )}
-          </>
-            )}
-
-            {activeTab === 'summary' && (
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">VAT Summary</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-medium text-gray-700">Type</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-700">Count</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
-                        <th className="px-4 py-2 text-right font-medium text-gray-700">Total (AED)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      <tr>
-                        <td className="px-4 py-2 font-medium">Sales</td>
-                        <td className="px-4 py-2 text-right">{v?.outputLines?.length ?? 0}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(salesNet)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(salesVat)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(salesGross)}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 font-medium">Purchases</td>
-                        <td className="px-4 py-2 text-right">{purchaseLines.length}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesNet)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesVat)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(purchasesNet + purchasesVat)}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2 font-medium">Expenses</td>
-                        <td className="px-4 py-2 text-right">{expenseLines.length}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(expensesNet)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(expensesVat)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(expensesNet + expensesVat)}</td>
-                      </tr>
-                    </tbody>
-                    <tfoot className="bg-gray-50 font-medium">
-                      <tr>
-                        <td className="px-4 py-2" colSpan="2">Input VAT total</td>
-                        <td className="px-4 py-2 text-right" colSpan="2">{formatCurrency(inputVatTotal)}</td>
-                        <td className="px-4 py-2 text-right" />
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-2" colSpan="2">VAT payable</td>
-                        <td className="px-4 py-2 text-right" colSpan="2">{formatCurrency(vatPayable)}</td>
-                        <td className="px-4 py-2 text-right" />
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'creditnotes' && (
-          <>
-          {(v.creditNoteLines?.length > 0 || v.reverseChargeLines?.length > 0) ? (
-            <div className="p-4 space-y-6">
-          {(v.creditNoteLines?.length > 0) && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">Credit notes</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Date</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {v.creditNoteLines.map((line, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2">{line.reference}</td>
-                        <td className="px-4 py-2">{line.date ? (typeof line.date === 'string' ? line.date.slice(0, 10) : new Date(line.date).toISOString().slice(0, 10)) : '-'}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.netAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.vatAmount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
-                    <tr>
-                      <td colSpan="2" className="px-4 py-2">Total</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.creditNoteLines.reduce((s, l) => s + (Number(l.netAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.creditNoteLines.reduce((s, l) => s + (Number(l.vatAmount) || 0), 0))}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Reverse Charge Table */}
-          {(v.reverseChargeLines?.length > 0) && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <h3 className="px-4 py-3 border-b border-gray-200 font-medium text-gray-900">Reverse charge</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Ref</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">Net (AED)</th>
-                      <th className="px-4 py-2 text-right font-medium text-gray-700">VAT (AED)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {v.reverseChargeLines.map((line, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2">{line.reference}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.netAmount)}</td>
-                        <td className="px-4 py-2 text-right">{formatCurrency(line.reverseChargeVat)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="bg-gray-50 font-medium">
-                    <tr>
-                      <td className="px-4 py-2">Total</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.reverseChargeLines.reduce((s, l) => s + (Number(l.netAmount) || 0), 0))}</td>
-                      <td className="px-4 py-2 text-right">{formatCurrency(v.reverseChargeLines.reduce((s, l) => s + (Number(l.reverseChargeVat) || 0), 0))}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {(v.petroleumExcluded != null && Number(v.petroleumExcluded) !== 0) && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <h3 className="font-medium text-amber-900">Petroleum / Excise excluded</h3>
-              <p className="text-sm text-amber-800 mt-1">Total excluded from Box 9 (Excise): {formatCurrency(v.petroleumExcluded)}</p>
-              <p className="text-xs text-amber-700 mt-1">These expenses are subject to Excise Tax and are not included in VAT Return Box 9.</p>
-            </div>
-          )}
-            </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500 text-sm">No credit notes or reverse charge in this period.</div>
-          )}
-          </>
-            )}
-
-            {activeTab === 'validation' && (
-              <div className="p-4">
-                {issues.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                    <p className="font-medium text-green-800">All validation checks passed</p>
-                    <p className="text-sm text-green-700 mt-1">Period is ready to lock.</p>
-                  </div>
-                ) : (
-                  <ul className="space-y-2">
-                    {issues.map((i, idx) => {
-                      const v002Count = issues.filter(x => x.ruleId === 'V002').length
-                      const isV002Repeat = i.ruleId === 'V002' && issues.findIndex(x => x.ruleId === 'V002') !== idx
-                      if (isV002Repeat) return null
-                      const displayMessage = i.ruleId === 'V002'
-                        ? `${v002Count} invoice${v002Count !== 1 ? 's' : ''} need VAT scenario set (use Fix missing VatScenario).`
-                        : i.message
-                      return (
-                        <li key={idx} className={`flex items-start gap-2 p-3 rounded-lg border ${i.severity === 'Blocking' ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
-                          <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-gray-200">{i.ruleId}</span>
-                          <span className="text-sm flex-1">{displayMessage}</span>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'history' && (
-              <div className="p-6 text-center text-gray-500 text-sm">
-                Period history: use Recalculate and Lock to manage periods. History list can be added here.
-              </div>
-            )}
           </div>
         </>
       )}
@@ -1074,4 +526,5 @@ const VatReturnPage = () => {
   )
 }
 
+// Tabs (transactions, sales, purchases, expenses, summary, creditnotes, validation, history) removed – simple 3-row summary only.
 export default VatReturnPage

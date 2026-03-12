@@ -237,7 +237,9 @@ const ExpensesPage = () => {
     setValue,
     watch,
     formState: { errors }
-  } = useForm()
+  } = useForm({
+    defaultValues: { vatInclusive: true }
+  })
 
   const watchedBranchId = watch('branchId')
 
@@ -454,6 +456,7 @@ const ExpensesPage = () => {
           date: expenseDate,
           note: data.note || '',
           withVat: !!data.withVat,
+          vatInclusive: !!data.vatInclusive,
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
@@ -477,6 +480,7 @@ const ExpensesPage = () => {
           attachmentUrl: null,
           recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null,
           withVat: !!data.withVat,
+          vatInclusive: !!data.vatInclusive,
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
@@ -500,6 +504,7 @@ const ExpensesPage = () => {
                 attachmentUrl: uploadResponse.data,
                 recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null,
                 withVat: !!data.withVat,
+                vatInclusive: !!data.vatInclusive,
                 taxType: data.taxType || 'Standard',
                 isTaxClaimable: !!data.isTaxClaimable,
                 isEntertainment: !!data.isEntertainment,
@@ -553,6 +558,7 @@ const ExpensesPage = () => {
     setValue('isTaxClaimable', expense.isTaxClaimable !== false)
     setValue('isEntertainment', !!expense.isEntertainment)
     setValue('partialCreditPct', expense.partialCreditPct != null ? expense.partialCreditPct : 100)
+    setValue('vatInclusive', false) // existing expenses: backward compat, treat as exclusive
     setAttachmentPreview(expense.attachmentUrl ? `/uploads/${expense.attachmentUrl}` : null)
     setShowEditModal(true)
   }
@@ -1558,7 +1564,7 @@ const ExpensesPage = () => {
             </div>
 
             <Input
-              label="Amount (excl. VAT)"
+              label={watch('withVat') && watch('vatInclusive') ? 'Amount (incl. VAT)' : 'Amount (excl. VAT)'}
               type="number"
               step="0.01"
               placeholder="0.00"
@@ -1569,14 +1575,17 @@ const ExpensesPage = () => {
                 min: { value: 0.01, message: 'Amount must be greater than 0' }
               })}
             />
-            {watch('withVat') && (() => {
-              const net = Number(watch('amount')) || 0
-              const vat = Math.round(net * 0.05 * 100) / 100
-              const total = net + vat
+            {watch('withVat') && Number(watch('amount')) > 0 && (() => {
+              const amt = Number(watch('amount')) || 0
+              const inclusive = !!watch('vatInclusive')
+              const net = inclusive ? Math.round(amt / 1.05 * 100) / 100 : amt
+              const vat = inclusive ? Math.round((amt - net) * 100) / 100 : Math.round(amt * 0.05 * 100) / 100
+              const total = inclusive ? amt : Math.round((amt + vat) * 100) / 100
               return (
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm">
-                  <span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span>
-                  <span className="text-gray-600 ml-3">Total (incl. VAT): </span><span className="font-semibold">{formatCurrency(total)}</span>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm space-y-0.5">
+                  <p><span className="text-gray-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
+                  <p><span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
+                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</p>
                 </div>
               )
             })()}
@@ -1593,6 +1602,13 @@ const ExpensesPage = () => {
                   <input type="checkbox" id="withVat" {...register('withVat')} className="rounded border-gray-300" />
                   <label htmlFor="withVat" className="text-sm text-gray-700">Include VAT (5%)</label>
                 </div>
+                {watch('withVat') && (
+                  <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <input type="checkbox" id="vatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
+                    <label htmlFor="vatInclusive" className="text-sm text-blue-800 font-medium">Amount includes VAT (VAT-inclusive)</label>
+                    <span className="text-xs text-blue-600 ml-2">{watch('vatInclusive') ? 'VAT will be extracted from the amount' : 'VAT will be added to the amount'}</span>
+                  </div>
+                )}
                 {watch('withVat') && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
                     <Select
@@ -1793,14 +1809,17 @@ const ExpensesPage = () => {
                 {...register('date', { required: 'Date is required' })}
               />
             </div>
-            {watch('withVat') && (() => {
-              const net = Number(watch('amount')) || 0
-              const vat = Math.round(net * 0.05 * 100) / 100
-              const total = net + vat
+            {watch('withVat') && Number(watch('amount')) > 0 && (() => {
+              const amt = Number(watch('amount')) || 0
+              const inclusive = !!watch('vatInclusive')
+              const net = inclusive ? Math.round(amt / 1.05 * 100) / 100 : amt
+              const vat = inclusive ? Math.round((amt - net) * 100) / 100 : Math.round(amt * 0.05 * 100) / 100
+              const total = inclusive ? amt : Math.round((amt + vat) * 100) / 100
               return (
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm">
-                  <span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span>
-                  <span className="text-gray-600 ml-3">Total (incl. VAT): </span><span className="font-semibold">{formatCurrency(total)}</span>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm space-y-0.5">
+                  <p><span className="text-gray-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
+                  <p><span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
+                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</p>
                 </div>
               )
             })()}
@@ -1824,6 +1843,12 @@ const ExpensesPage = () => {
                   <input type="checkbox" id="editWithVat" {...register('withVat')} className="rounded border-gray-300" />
                   <label htmlFor="editWithVat" className="text-sm text-gray-700">Include VAT (5%)</label>
                 </div>
+                {watch('withVat') && (
+                  <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <input type="checkbox" id="editVatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
+                    <label htmlFor="editVatInclusive" className="text-sm text-blue-800 font-medium">Amount includes VAT (VAT-inclusive)</label>
+                  </div>
+                )}
                 {watch('withVat') && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
                     <Select

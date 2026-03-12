@@ -22,6 +22,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
     public interface ISettingsService
     {
         Task<Dictionary<string, string>> GetOwnerSettingsAsync(int tenantId);
+        Task<string?> GetSettingValueAsync(int tenantId, string key);
         Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value);
         Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings);
         Task<CompanySettings> GetCompanySettingsAsync(int tenantId);
@@ -178,6 +179,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return GetDefaultSettings();
             }
+        }
+
+        /// <summary>Get a single setting value by key for the tenant. Returns null if not found.</summary>
+        public async Task<string?> GetSettingValueAsync(int tenantId, string key)
+        {
+            if (string.IsNullOrWhiteSpace(key)) return null;
+            var dict = await GetOwnerSettingsAsync(tenantId);
+            return dict.TryGetValue(key, out var v) && !string.IsNullOrWhiteSpace(v) ? v : null;
         }
 
         /// <summary>

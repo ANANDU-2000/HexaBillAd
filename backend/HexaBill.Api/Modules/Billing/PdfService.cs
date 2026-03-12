@@ -932,6 +932,29 @@ if (hasLogo)
             {
                 _logger.LogInformation("Invoice PDF: logo not available for tenant {TenantId}. LogoStorageKey empty, LogoPath='{LogoPath}' (not a legacy /uploads/ path). Header will be text-only.", tenantId, companySettings.LogoPath ?? "");
             }
+
+            // Fallback: logo from base64 in DB (survives container restarts)
+            if (dto.LogoImageBytes == null || dto.LogoImageBytes.Length == 0)
+            {
+                var base64Setting = await _settingsService.GetSettingValueAsync(tenantId, "LOGO_BASE64_DATA_URI");
+                if (!string.IsNullOrWhiteSpace(base64Setting) && base64Setting.Contains(",", StringComparison.Ordinal))
+                {
+                    var parts = base64Setting.Split(",", 2, StringSplitOptions.None);
+                    if (parts.Length == 2)
+                    {
+                        try
+                        {
+                            dto.LogoImageBytes = Convert.FromBase64String(parts[1].Trim());
+                            _logger.LogInformation("Invoice PDF: logo loaded from base64 DB fallback for tenant {TenantId}, {Bytes} bytes.", tenantId, dto.LogoImageBytes.Length);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Invoice PDF: base64 logo decode failed for tenant {TenantId}.", tenantId);
+                        }
+                    }
+                }
+            }
+
             return dto;
         }
         
@@ -943,6 +966,31 @@ if (hasLogo)
             // Default format: dd-MM-yyyy (UAE standard)
             // Can be extended to use settings.DateFormat if added to CompanySettings
             return date.ToString("dd-MM-yyyy");
+        }
+
+        /// <summary>Shared report header: logo left | company name + address + TRN centre | date right; then line; then optional subtitle.</summary>
+        private static void RenderCompanyHeader(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings, string? subtitle, string dateText)
+        {
+            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+            col.Item().Row(row =>
+            {
+                if (hasLogo)
+                    row.ConstantItem(80).AlignLeft().AlignMiddle().Width(80).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                row.RelativeItem().AlignCenter().AlignMiddle().Column(centerCol =>
+                {
+                    centerCol.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").FontSize(10).Bold();
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                        centerCol.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(8);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyTrn))
+                        centerCol.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}").FontSize(8);
+                });
+                row.ConstantItem(100).AlignRight().AlignMiddle().Text(dateText).FontSize(9);
+            });
+            col.Item().Height(3);
+            col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
+            col.Item().Height(2);
+            if (!string.IsNullOrWhiteSpace(subtitle))
+                col.Item().Text(subtitle).FontSize(14).Bold().AlignCenter();
         }
 
         private async Task<string> GetCustomerTrnAsync(int? customerId)
@@ -1220,27 +1268,7 @@ if (hasLogo)
                         // Header
                         page.Header().Column(headerCol =>
                         {
-                            headerCol.Item().Text("SALES LEDGER REPORT")
-                                .FontSize(16)
-                                .Bold()
-                                .AlignCenter();
-                            
-                            headerCol.Item().Height(3);
-                            
-                            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
-                            headerCol.Item().Row(row =>
-                            {
-                                if (hasLogo)
-                                {
-                                    row.ConstantItem(80).AlignLeft().AlignMiddle().Width(80).Height(40).Image(settings.LogoImageBytes!).FitArea();
-                                }
-                                row.RelativeItem().AlignLeft().AlignMiddle().Text($"{settings.CompanyNameEn}")
-                                    .FontSize(10)
-                                    .Bold();
-                                row.RelativeItem().AlignRight().AlignMiddle().Text($"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}")
-                                    .FontSize(9);
-                            });
-                            
+                            RenderCompanyHeader(headerCol, settings, "SALES LEDGER REPORT", $"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}");
                             headerCol.Item().Height(5);
                         });
 
@@ -1449,35 +1477,8 @@ if (hasLogo)
 
                         page.Content().Column(column =>
                         {
-                            // Header
-                            column.Item().AlignCenter().Text(settings.CompanyNameEn.ToUpper())
-                                .FontSize(18)
-                                .Bold();
-                            
-                            column.Item().AlignCenter().Text(settings.CompanyNameAr)
-                                .FontSize(16)
-                                .Bold()
-                                .FontFamily(_arabicFont)
-                                .DirectionFromRightToLeft();
-                            
-                            column.Item().AlignCenter().Text($"{settings.CompanyAddress} | {settings.CompanyPhone}")
-                                .FontSize(10);
-                            
-                            column.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}")
-                                .FontSize(10)
-                                .Bold();
-                            
-                            column.Item().PaddingTop(15).PaddingBottom(10).AlignCenter().Text("PENDING BILLS REPORT")
-                                .FontSize(16)
-                                .Bold();
-                            
-                            column.Item().PaddingBottom(5).Text($"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}")
-                                .FontSize(10);
-                            
-                            column.Item().PaddingBottom(5).Text($"Generated: {DateTime.Now:dd-MM-yyyy HH:mm}")
-                                .FontSize(9)
-                                .FontColor(Colors.Grey.Medium);
-                            
+                            column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "PENDING BILLS REPORT", $"{fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}"));
+                            column.Item().PaddingBottom(5).Text($"Generated: {DateTime.Now:dd-MM-yyyy HH:mm}").FontSize(9).FontColor(Colors.Grey.Medium);
                             // Table
                             column.Item().Table(table =>
                             {
@@ -1594,9 +1595,7 @@ if (hasLogo)
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(10));
                         page.Content().Column(column =>
                         {
-                            column.Item().AlignCenter().Text(settings.CompanyNameEn.ToUpper()).FontSize(18).Bold();
-                            column.Item().AlignCenter().Text("Profit & Loss Statement").FontSize(16).Bold();
-                            column.Item().AlignCenter().Text($"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}").FontSize(11);
+                            column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "Profit & Loss Statement", $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}"));
                             column.Item().PaddingTop(8).PaddingBottom(5).Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(9).FontColor(Colors.Grey.Medium);
                             column.Item().PaddingTop(12).Table(table =>
                             {
@@ -1644,9 +1643,7 @@ if (hasLogo)
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(10));
                         page.Content().Column(column =>
                         {
-                            column.Item().AlignCenter().Text(settings.CompanyNameEn.ToUpper()).FontSize(18).Bold();
-                            column.Item().AlignCenter().Text("Worksheet").FontSize(16).Bold();
-                            column.Item().AlignCenter().Text($"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}").FontSize(11);
+                            column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "Worksheet", $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}"));
                             column.Item().PaddingTop(8).PaddingBottom(5).Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(9).FontColor(Colors.Grey.Medium);
                             column.Item().PaddingTop(12).Table(table =>
                             {
@@ -1692,32 +1689,8 @@ if (hasLogo)
 
                         page.Content().Column(column =>
                         {
-                            // Header
-                            column.Item().AlignCenter().Text(settings.CompanyNameEn.ToUpper())
-                                .FontSize(18)
-                                .Bold();
-                            
-                            column.Item().AlignCenter().Text(settings.CompanyNameAr)
-                                .FontSize(16)
-                                .Bold()
-                                .FontFamily(_arabicFont)
-                                .DirectionFromRightToLeft();
-                            
-                            column.Item().AlignCenter().Text($"{settings.CompanyAddress} | {settings.CompanyPhone}")
-                                .FontSize(10);
-                            
-                            column.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}")
-                                .FontSize(10)
-                                .Bold();
-                            
-                            column.Item().PaddingTop(15).PaddingBottom(10).AlignCenter().Text("CUSTOMER PENDING BILLS STATEMENT")
-                                .FontSize(16)
-                                .Bold();
-                            
-                            column.Item().PaddingBottom(5).AlignCenter().Text($"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}")
-                                .FontSize(10)
-                                .FontColor(Colors.Grey.Darken1);
-                            
+                            column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "CUSTOMER PENDING BILLS STATEMENT", $"{fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}"));
+                            column.Item().PaddingBottom(5).AlignCenter().Text($"As of: {asOfDate:dd-MM-yyyy}").FontSize(10).FontColor(Colors.Grey.Darken1);
                             // Customer Info
                             column.Item().PaddingVertical(10).BorderTop(1).BorderBottom(1).BorderColor(Colors.Grey.Medium).Row(row =>
                             {

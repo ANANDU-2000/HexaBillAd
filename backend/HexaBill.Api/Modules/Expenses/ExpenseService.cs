@@ -371,8 +371,11 @@ namespace HexaBill.Api.Modules.Expenses
                         isEnt = request.IsEntertainment;
                         partialPct = request.PartialCreditPct;
                     }
+                    var isInclusive = request.VatInclusive == true;
                     var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
-                        ? VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                        ? (isInclusive
+                            ? VatCalculator.ForExpenseInclusive(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                            : VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct))
                         : null;
                     var expense = new Expense
                     {
@@ -381,7 +384,7 @@ namespace HexaBill.Api.Modules.Expenses
                         BranchId = request.BranchId,
                         RouteId = request.RouteId,
                         CategoryId = request.CategoryId,
-                        Amount = request.Amount,
+                        Amount = vatResult != null && isInclusive ? vatResult.NetAmount : request.Amount,
                         Date = request.Date.ToUtcKind(),
                         Note = request.Note,
                         AttachmentUrl = request.AttachmentUrl,
@@ -533,9 +536,13 @@ namespace HexaBill.Api.Modules.Expenses
                         isEnt = request.IsEntertainment;
                         partialPct = request.PartialCreditPct;
                     }
+                    var isInclusive = request.VatInclusive == true;
                     var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
-                        ? VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                        ? (isInclusive
+                            ? VatCalculator.ForExpenseInclusive(request.Amount, taxType, isClaimable, isEnt, partialPct)
+                            : VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct))
                         : null;
+                    expense.Amount = vatResult != null && isInclusive ? vatResult.NetAmount : request.Amount;
                     expense.VatRate = vatResult?.VatRate;
                     expense.VatAmount = vatResult?.VatAmount;
                     expense.TotalAmount = vatResult != null ? vatResult.TotalAmount : (decimal?)null;

@@ -1036,6 +1036,11 @@ export const adminAPI = {
     return response.data
   },
 
+  getLogoDataUri: async () => {
+    const response = await api.get('/settings/logo-data-uri')
+    return response.data
+  },
+
   createBackup: async () => {
     const response = await api.post('/admin/backup')
     return response.data
