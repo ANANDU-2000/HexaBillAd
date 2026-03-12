@@ -85,9 +85,10 @@ namespace HexaBill.Api.Modules.Reports
                     toDate = gst;
                 }
                 var result = await _vatReturnReportService.GetVatReturn201Async(tenantId, fromDate, toDate);
+                var periodStartDate = fromDate.Date.ToUtcKind();
                 var periodEndInclusive = toDate.AddDays(-1).Date.ToUtcKind();
                 var period = await _context.VatReturnPeriods
-                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PeriodStart == fromDate && p.PeriodEnd == periodEndInclusive);
+                    .FirstOrDefaultAsync(p => p.TenantId == tenantId && p.PeriodStart == periodStartDate && p.PeriodEnd == periodEndInclusive);
                 if (period != null)
                 {
                     result.PeriodId = period.Id;

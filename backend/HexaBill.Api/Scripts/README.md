@@ -70,6 +70,20 @@ psql -h <host> -U hexabill_user hexabill -f Scripts/FIX_PRODUCTION_MIGRATIONS.sq
 
 ---
 
+## PostgreSQL one-off fixes (Render)
+
+Run on Render Postgres if you see the corresponding errors:
+
+- **`Fix_VatReturnPeriods_DateTimeColumns_PostgreSQL.sql`** – Converts VatReturnPeriods date columns from TEXT to `timestamp with time zone` (fixes date_trunc / DateTime Kind errors).
+- **`Fix_VatReturnPeriods_Id_Identity_PostgreSQL.sql`** – Makes `VatReturnPeriods.Id` a generated identity column (fixes 23502 null value in column 'Id' on Recalculate).
+
+```bash
+psql "$DATABASE_URL_EXTERNAL" -f Scripts/Fix_VatReturnPeriods_DateTimeColumns_PostgreSQL.sql
+psql "$DATABASE_URL_EXTERNAL" -f Scripts/Fix_VatReturnPeriods_Id_Identity_PostgreSQL.sql
+```
+
+---
+
 ## Principles
 
 ✅ **PostgreSQL in production** – schema changes via **EF Core migrations only** (`dotnet ef database update`).  

@@ -573,6 +573,8 @@ namespace HexaBill.Api.Data
             modelBuilder.Entity<VatReturnPeriod>(entity =>
             {
                 entity.HasKey(e => e.Id);
+                if (Database.IsNpgsql())
+                    entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.PeriodType).HasMaxLength(10);
                 entity.Property(e => e.PeriodLabel).HasMaxLength(20);
                 entity.Property(e => e.Status).HasMaxLength(15);
