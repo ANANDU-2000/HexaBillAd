@@ -323,9 +323,41 @@ const VatReturnPage = () => {
   const box13a = v != null ? Number(v.box13a ?? v.Box13a ?? 0) : 0
   const box13b = v != null ? Number(v.box13b ?? v.Box13b ?? 0) : 0
   // Defensive: API may return camelCase or PascalCase; ensure arrays so Overview/tabs always show data
-  const outputLines = Array.isArray(v?.outputLines) ? v.outputLines : (Array.isArray(v?.OutputLines) ? v.OutputLines : [])
-  const inputLines = Array.isArray(v?.inputLines) ? v.inputLines : (Array.isArray(v?.InputLines) ? v.InputLines : [])
-  const creditNoteLines = Array.isArray(v?.creditNoteLines) ? v.creditNoteLines : (Array.isArray(v?.CreditNoteLines) ? v.CreditNoteLines : [])
+  const rawOutputLines = Array.isArray(v?.outputLines) ? v.outputLines : (Array.isArray(v?.OutputLines) ? v.OutputLines : [])
+  const rawInputLines = Array.isArray(v?.inputLines) ? v.inputLines : (Array.isArray(v?.InputLines) ? v.InputLines : [])
+  const rawCreditNoteLines = Array.isArray(v?.creditNoteLines) ? v.creditNoteLines : (Array.isArray(v?.CreditNoteLines) ? v.CreditNoteLines : [])
+
+  // Fallback: some older deployments only populate box totals (Box1/Box12) but not detail arrays.
+  // In that case, synthesize one summary line per side so tabs never look "all zero" when Overview has values.
+  const outputLines = rawOutputLines.length > 0 || (box1a === 0 && box1b === 0 && box2 === 0 && box3 === 0)
+    ? rawOutputLines
+    : [{
+        type: 'Sale',
+        reference: 'Summary',
+        date: v?.periodEnd || (fromDate ? new Date(fromDate) : new Date()),
+        netAmount: box1a + box2 + box3,
+        vatAmount: box1b,
+        vatScenario: 'Summary',
+        customerName: ''
+      }]
+
+  const inputLines = rawInputLines.length > 0 || box12 === 0
+    ? rawInputLines
+    : [{
+        type: 'Expense',
+        reference: 'Summary',
+        date: v?.periodEnd || (fromDate ? new Date(fromDate) : new Date()),
+        netAmount: 0,
+        vatAmount: box12,
+        claimableVat: box12,
+        taxType: 'Summary',
+        supplierName: '',
+        categoryName: '',
+        isEntertainment: false,
+        isTaxClaimable: true
+      }]
+
+  const creditNoteLines = rawCreditNoteLines
   const totalInputNet = inputLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   // Totals per tab (same filters as tables; coerce to number to avoid wrong/zero from strings)
   const salesLinesForTotal = outputLines.filter(line => ((line.vatScenario ?? line.VatScenario) || '').toLowerCase() !== 'exempt')

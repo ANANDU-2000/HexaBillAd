@@ -338,6 +338,56 @@ namespace HexaBill.Api.Modules.Reports
                 tenantId, fromDate.ToString("yyyy-MM-dd"), periodEndInclusive.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count, txCount);
 
             // Assurance: pre-round box totals for DTO so validation (V009–V011) can cross-check
+            // Defensive fallback: if box totals are non-zero but detail arrays are empty (e.g. older data or
+            // partial deployments), emit synthetic summary lines so the frontend tabs never show all-zero tables
+            // when Box1/Box12 have values. This keeps VAT Return UI consistent with Overview even if some
+            // transactions could not be broken down line-by-line.
+            if (outputLines.Count == 0 && (box1a != 0 || box1b != 0 || box2 != 0 || box3 != 0))
+            {
+                outputLines.Add(new VatReturnOutputLineDto
+                {
+                    Type = "Sale",
+                    Reference = "Summary",
+                    Date = periodEndInclusive,
+                    NetAmount = box1a + box2 + box3,
+                    VatAmount = box1b,
+                    VatScenario = "Summary",
+                    CustomerName = string.Empty,
+                    SaleId = null
+                });
+            }
+
+            if (inputLines.Count == 0 && box12 != 0)
+            {
+                inputLines.Add(new VatReturnInputLineDto
+                {
+                    Type = "Expense",
+                    Reference = "Summary",
+                    Date = periodEndInclusive,
+                    NetAmount = 0,
+                    VatAmount = box12,
+                    ClaimableVat = box12,
+                    TaxType = "Summary",
+                    SupplierName = string.Empty,
+                    CategoryName = string.Empty,
+                    SourceId = null,
+                    IsEntertainment = false,
+                    IsTaxClaimable = true
+                });
+            }
+
+            if (creditNoteLines.Count == 0 && (returnsNet != 0 || returnsVat != 0))
+            {
+                creditNoteLines.Add(new VatReturnCreditNoteLineDto
+                {
+                    Reference = "Summary",
+                    Date = periodEndInclusive,
+                    NetAmount = returnsNet,
+                    VatAmount = returnsVat,
+                    Side = "Output"
+                });
+            }
+
             var dto = new VatReturn201Dto
             {
                 PeriodLabel = periodLabel,
