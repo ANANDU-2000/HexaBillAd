@@ -329,31 +329,45 @@ const ExpensesPage = () => {
         setFilteredExpenses(expenseList)
         setTotalPages(response.data.totalPages || 1)
 
-        const total = expenseList.reduce((sum, expense) => {
-          const paid = expense.totalAmount != null ? Number(expense.totalAmount) : (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) || (Number(expense.amount) || 0)
-          return sum + paid
-        }, 0)
-        const totalVat = expenseList.reduce((sum, expense) => sum + (Number(expense.vatAmount) || 0), 0)
-        const totalClaimableVat = expenseList.reduce((sum, expense) => sum + (Number(expense.claimableVat ?? expense.ClaimableVat) || 0), 0)
+        // Category-wise totals for chart – still based on current page for performance
         const categoryTotals = expenseList.reduce((acc, expense) => {
           const cat = expense.categoryName || 'Other'
           const paid = expense.totalAmount != null ? Number(expense.totalAmount) : (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) || (Number(expense.amount) || 0)
           acc[cat] = (acc[cat] || 0) + paid
           return acc
         }, {})
-
-        setExpenseSummary({
-          total,
-          totalVat,
-          totalClaimableVat,
-          categoryTotals,
-          averagePerDay: total / 30,
-          topCategory: Object.keys(categoryTotals).length > 0
-            ? Object.keys(categoryTotals).reduce((a, b) =>
-              categoryTotals[a] > categoryTotals[b] ? a : b
-            )
-            : 'N/A'
-        })
+        // Fetch accurate totals (amount, VAT, claimable VAT) for full period from backend so cards match VAT Return Box 9b
+        try {
+          const summaryRes = await expensesAPI.getExpensesSummary({
+            fromDate: dateRange.from,
+            toDate: dateRange.to,
+            branchId: selectedBranchId || undefined
+          })
+          if (summaryRes?.success && summaryRes?.data) {
+            const s = summaryRes.data
+            const total = Number(s.totalAmount ?? s.TotalAmount ?? 0)
+            const totalVat = Number(s.totalVat ?? s.TotalVat ?? 0)
+            const totalClaimableVat = Number(s.totalClaimableVat ?? s.TotalClaimableVat ?? 0)
+            const daysDiff = Math.max(1, (new Date(dateRange.to) - new Date(dateRange.from)) / (1000 * 60 * 60 * 24) + 1)
+            setExpenseSummary({
+              total,
+              totalVat,
+              totalClaimableVat,
+              categoryTotals,
+              averagePerDay: total / daysDiff,
+              topCategory: Object.keys(categoryTotals).length > 0
+                ? Object.keys(categoryTotals).reduce((a, b) =>
+                  categoryTotals[a] > categoryTotals[b] ? a : b
+                )
+                : 'N/A'
+            })
+          } else {
+            setExpenseSummary(null)
+          }
+        } catch (e) {
+          console.error('Failed to load expense summary:', e)
+          setExpenseSummary(null)
+        }
       } else {
         setExpenses([])
         setFilteredExpenses([])

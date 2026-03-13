@@ -18,6 +18,7 @@ namespace HexaBill.Api.Modules.Expenses
     {
         Task<PagedResponse<ExpenseDto>> GetExpensesAsync(int tenantId, int page = 1, int pageSize = 10, string? category = null, DateTime? fromDate = null, DateTime? toDate = null, string? groupBy = null, int? branchId = null, IReadOnlyList<int>? staffAllowedBranchIds = null);
         Task<List<ExpenseAggregateDto>> GetExpensesAggregatedAsync(int tenantId, DateTime fromDate, DateTime toDate, string groupBy = "monthly", IReadOnlyList<int>? staffAllowedBranchIds = null); // weekly, monthly, yearly
+        Task<ExpenseSummaryDto> GetExpensesSummaryAsync(int tenantId, DateTime fromDate, DateTime toDate, int? branchId = null, IReadOnlyList<int>? staffAllowedBranchIds = null);
         Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null);
         Task<ExpenseDto> CreateExpenseAsync(CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null, IReadOnlyList<int>? staffAllowedRouteIds = null);
         Task<ExpenseDto?> UpdateExpenseAsync(int id, CreateExpenseRequest request, int userId, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null, IReadOnlyList<int>? staffAllowedRouteIds = null);
@@ -47,11 +48,18 @@ namespace HexaBill.Api.Modules.Expenses
             
             var query = _context.Expenses
                 .AsNoTracking() // Performance: No change tracking needed
-                .Where(e => e.TenantId == tenantId) // CRITICAL: Multi-tenant filter
                 .Include(e => e.Category)
                 .Include(e => e.Branch)
                 .Include(e => e.CreatedByUser)
                 .AsQueryable();
+
+            // CRITICAL: Multi-tenant filter – align with VatReturnReportService and PurchaseService
+            if (tenantId > 0)
+            {
+                query = query.Where(e =>
+                    (e.TenantId.HasValue && e.TenantId == tenantId) ||
+                    (!e.TenantId.HasValue && e.OwnerId == tenantId));
+            }
 
             // Staff: only see expenses for their assigned branches (and expenses with no branch if any). If Staff has no branches assigned, they see nothing.
             if (staffAllowedBranchIds != null)
@@ -142,8 +150,16 @@ namespace HexaBill.Api.Modules.Expenses
                 
                 var query = _context.Expenses
                     .Include(e => e.Category)
-                    .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date <= to) // CRITICAL: Multi-tenant filter
+                    .Where(e => e.Date >= from && e.Date <= to)
                     .AsQueryable();
+
+                // CRITICAL: Multi-tenant filter – align with VatReturnReportService and summary report
+                if (tenantId > 0)
+                {
+                    query = query.Where(e =>
+                        (e.TenantId.HasValue && e.TenantId == tenantId) ||
+                        (!e.TenantId.HasValue && e.OwnerId == tenantId));
+                }
 
                 if (staffAllowedBranchIds != null)
                 {
@@ -270,6 +286,61 @@ namespace HexaBill.Api.Modules.Expenses
                 _logger.LogError("Stack trace: {StackTrace}", ex.StackTrace);
                 throw;
             }
+        }
+
+        public async Task<ExpenseSummaryDto> GetExpensesSummaryAsync(int tenantId, DateTime fromDate, DateTime toDate, int? branchId = null, IReadOnlyList<int>? staffAllowedBranchIds = null)
+        {
+            // Ensure dates are properly set (start of day to end of day)
+            var from = new DateTime(fromDate.Year, fromDate.Month, fromDate.Day, 0, 0, 0, DateTimeKind.Utc);
+            var to = toDate.AddDays(1).AddTicks(-1).ToUtcKind();
+
+            var query = _context.Expenses.AsQueryable();
+
+            if (tenantId > 0)
+            {
+                query = query.Where(e =>
+                    (e.TenantId.HasValue && e.TenantId == tenantId) ||
+                    (!e.TenantId.HasValue && e.OwnerId == tenantId));
+            }
+
+            if (staffAllowedBranchIds != null)
+            {
+                if (staffAllowedBranchIds.Count == 0)
+                    query = query.Where(e => false);
+                else
+                    query = query.Where(e => e.BranchId == null || staffAllowedBranchIds.Contains(e.BranchId.Value));
+            }
+
+            if (branchId.HasValue)
+            {
+                query = query.Where(e => e.BranchId == branchId.Value);
+            }
+
+            query = query.Where(e => e.Date >= from && e.Date <= to && e.Status == ExpenseStatus.Approved);
+
+            var expenseCount = await query.CountAsync();
+            if (expenseCount == 0)
+            {
+                return new ExpenseSummaryDto
+                {
+                    TotalAmount = 0,
+                    TotalVat = 0,
+                    TotalClaimableVat = 0,
+                    ExpenseCount = 0
+                };
+            }
+
+            var totalAmount = await query.SumAsync(e => (decimal?)(e.TotalAmount ?? e.Amount) ?? 0);
+            var totalVat = await query.SumAsync(e => (decimal?)(e.VatAmount ?? 0) ?? 0);
+            var totalClaimableVat = await query.SumAsync(e => (decimal?)(e.ClaimableVat ?? 0) ?? 0);
+
+            return new ExpenseSummaryDto
+            {
+                TotalAmount = totalAmount,
+                TotalVat = totalVat,
+                TotalClaimableVat = totalClaimableVat,
+                ExpenseCount = expenseCount
+            };
         }
 
         public async Task<ExpenseDto?> GetExpenseByIdAsync(int id, int tenantId, IReadOnlyList<int>? staffAllowedBranchIds = null)

@@ -255,11 +255,14 @@ namespace HexaBill.Api.Modules.Reports
                 try
                 {
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
+                    // ALIGN: Same tenant/owner scoping as PurchaseService so dashboard matches Purchases pages & supplier balances
                     var purchasesQuery = _context.Purchases
                         .Where(p => p.PurchaseDate >= startDate && p.PurchaseDate < endDate);
                     if (tenantId > 0)
                     {
-                        purchasesQuery = purchasesQuery.Where(p => p.TenantId == tenantId);
+                        purchasesQuery = purchasesQuery.Where(p =>
+                            (p.TenantId.HasValue && p.TenantId == tenantId) ||
+                            (!p.TenantId.HasValue && p.OwnerId == tenantId));
                     }
                     var purchasesCount = await purchasesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} purchase records in date range (SuperAdmin: {IsSuperAdmin})", purchasesCount, tenantId == 0);
@@ -275,11 +278,14 @@ namespace HexaBill.Api.Modules.Reports
                 try
                 {
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
+                    // ALIGN: Same tenant/owner scoping as ExpenseService and count only Approved expenses
                     var expensesQuery = _context.Expenses
-                        .Where(e => e.Date >= startDate && e.Date < endDate);
+                        .Where(e => e.Date >= startDate && e.Date < endDate && e.Status == ExpenseStatus.Approved);
                     if (tenantId > 0)
                     {
-                        expensesQuery = expensesQuery.Where(e => e.TenantId == tenantId);
+                        expensesQuery = expensesQuery.Where(e =>
+                            (e.TenantId.HasValue && e.TenantId == tenantId) ||
+                            (!e.TenantId.HasValue && e.OwnerId == tenantId));
                     }
                     var expensesCount = await expensesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} expense records in date range (SuperAdmin: {IsSuperAdmin})", expensesCount, tenantId == 0);

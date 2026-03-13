@@ -975,7 +975,7 @@ const SalesLedgerPage = () => {
                                 : 'bg-gray-100 text-gray-800 border-gray-300'
 
                       // For Sale rows show remaining balance for this invoice (0 when Paid); for Payment/Return show running balance
-                      const balanceDisplay = entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)
+                      const customerBalance = entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)
 
                       rows.push(
                         <tr key={idx} className={rowBgColor}>

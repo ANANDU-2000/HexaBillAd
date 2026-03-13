@@ -846,6 +846,15 @@ namespace HexaBill.Api.Models
         public int Count { get; set; }
     }
 
+    /// <summary>High-level expense summary for a period (used by dashboard/Expenses page and to reconcile with VAT Box 9b).</summary>
+    public class ExpenseSummaryDto
+    {
+        public decimal TotalAmount { get; set; }
+        public decimal TotalVat { get; set; }
+        public decimal TotalClaimableVat { get; set; }
+        public int ExpenseCount { get; set; }
+    }
+
     public class ExpenseByCategoryDto
     {
         public int CategoryId { get; set; }

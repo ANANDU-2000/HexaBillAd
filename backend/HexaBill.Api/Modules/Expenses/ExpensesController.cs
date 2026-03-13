@@ -152,6 +152,44 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
+        /// <summary>High-level expense summary for a period (total, VAT, claimable VAT) aligned with VAT Box 9b.</summary>
+        [HttpGet("summary")]
+        public async Task<ActionResult<ApiResponse<ExpenseSummaryDto>>> GetExpensesSummary(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? branchId = null)
+        {
+            try
+            {
+                var from = (fromDate ?? DateTime.UtcNow.AddMonths(-1)).ToUtcKind();
+                var to = (toDate ?? DateTime.UtcNow).ToUtcKind();
+                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                {
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+                }
+
+                var result = await _expenseService.GetExpensesSummaryAsync(tenantId, from, to, branchId, staffBranchIds);
+                return Ok(new ApiResponse<ExpenseSummaryDto>
+                {
+                    Success = true,
+                    Message = "Expense summary retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse<ExpenseSummaryDto>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<ExpenseDto>>> GetExpense(int id)
         {

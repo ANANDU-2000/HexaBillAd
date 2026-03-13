@@ -666,6 +666,11 @@ export const expensesAPI = {
     return response.data
   },
 
+  getExpensesSummary: async (params = {}) => {
+    const response = await api.get('/expenses/summary', { params })
+    return response.data
+  },
+
   getExpense: async (id) => {
     const response = await api.get(`/expenses/${id}`)
     return response.data

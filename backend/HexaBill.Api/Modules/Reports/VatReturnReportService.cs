@@ -272,6 +272,7 @@ namespace HexaBill.Api.Modules.Reports
             var expensesInPeriod = await _context.Expenses
                 .Include(e => e.Category)
                 .Where(e => (e.TenantId != null ? e.TenantId == tenantId : e.OwnerId == tenantId)
+                    && e.Status == ExpenseStatus.Approved
                     && e.Date >= from && e.Date < to)
                 .ToListAsync();
 
