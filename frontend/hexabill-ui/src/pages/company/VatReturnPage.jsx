@@ -318,6 +318,8 @@ const VatReturnPage = () => {
   // Normalize API response: support both camelCase and PascalCase; coerce to number so totals always display correctly
   const box1a = v != null ? Number(v.box1a ?? v.Box1a ?? 0) : 0
   const box1b = v != null ? Number(v.box1b ?? v.Box1b ?? 0) : 0
+  const box2 = v != null ? Number(v.box2 ?? v.Box2 ?? 0) : 0
+  const box3 = v != null ? Number(v.box3 ?? v.Box3 ?? 0) : 0
   const box9b = v != null ? Number(v.box9b ?? v.Box9b ?? 0) : 0
   const box12 = v != null ? Number(v.box12 ?? v.Box12 ?? 0) : 0
   const box13a = v != null ? Number(v.box13a ?? v.Box13a ?? 0) : 0
