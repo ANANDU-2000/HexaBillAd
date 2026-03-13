@@ -522,6 +522,7 @@ const SettingsPage = () => {
         clearAllCache()
         clearCache('/api/settings')
         clearCache('/api/settings/company')
+        clearCache('/settings/logo-data-uri')
         setSettings(prev => ({ ...prev, logoUrl }))
         setValue('logoUrl', logoUrl)
         await updateAppIcon(logoUrl)
@@ -542,6 +543,8 @@ const SettingsPage = () => {
         } catch {
           // keep existing logoDataUri or logoPreview
         }
+        // Push logo to header again after settings refetch so app logo updates even if cache was stale
+        if (logoUrl) window.dispatchEvent(new CustomEvent('logo-updated', { detail: { logoUrl } }))
       } else {
         toast.error(response?.message || 'Failed to upload logo')
       }

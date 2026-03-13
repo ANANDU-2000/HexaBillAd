@@ -740,14 +740,34 @@ const VatReturnPage = () => {
           {v && !outputLines.length && !inputLines.length && (
             <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
               <p className="font-medium">No transactions in this period.</p>
-              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. Try <strong>This Year</strong> (button above) or the quarter when you had sales. FTA boxes below show zeros until the period includes your invoice/purchase/expense dates.</p>
-              <button
-                type="button"
-                onClick={() => handlePeriodPreset('thisYear')}
-                className="mt-2 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
-              >
-                Load This Year ({year || new Date().getFullYear()})
-              </button>
+              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. If you have sales/expenses in another year, pick <strong>This Year</strong> for that year and click <strong>Refresh</strong>. FTA boxes show zeros until the period includes your invoice/purchase/expense dates.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => handlePeriodPreset('thisYear')}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                >
+                  Load This Year ({year || new Date().getFullYear()})
+                </button>
+                {(year || new Date().getFullYear()) >= 2025 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prevYear = (year || new Date().getFullYear()) - 1
+                      const from = `${prevYear}-01-01`
+                      const to = `${prevYear}-12-31`
+                      setFromDate(from)
+                      setToDate(to)
+                      setYear(prevYear)
+                      setSearchParams({ from, to })
+                      fetchVatReturn(from, to)
+                    }}
+                    className="px-3 py-1.5 border border-blue-600 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50"
+                  >
+                    Try previous year ({(year || new Date().getFullYear()) - 1})
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

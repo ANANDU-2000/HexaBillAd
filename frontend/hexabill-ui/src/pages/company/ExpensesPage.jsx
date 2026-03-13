@@ -452,6 +452,13 @@ const ExpensesPage = () => {
     filterExpenses()
   }, [filterExpenses])
 
+  // Backend requires decimal 0-100; never send NaN or empty string (causes JSON conversion error)
+  const toPartialCreditPct = (v) => {
+    if (v == null || v === '') return 100
+    const n = parseFloat(v)
+    return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 100
+  }
+
   const onSubmit = async (data) => {
     try {
       const catId = parseInt(data.category, 10)
@@ -465,6 +472,7 @@ const ExpensesPage = () => {
         return
       }
       const expenseDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString()
+      const partialCreditPct = toPartialCreditPct(data.partialCreditPct)
 
       if (selectedExpense) {
         const response = await expensesAPI.updateExpense(selectedExpense.id, {
@@ -479,7 +487,7 @@ const ExpensesPage = () => {
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
-          partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
+          partialCreditPct
         })
 
         if (response?.success) {
@@ -504,7 +512,7 @@ const ExpensesPage = () => {
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
-          partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
+          partialCreditPct
         })
         
         // Upload attachment after expense creation
@@ -528,7 +536,7 @@ const ExpensesPage = () => {
                 taxType: data.taxType || 'Standard',
                 isTaxClaimable: !!data.isTaxClaimable,
                 isEntertainment: !!data.isEntertainment,
-                partialCreditPct: data.partialCreditPct != null ? parseFloat(data.partialCreditPct) : 100
+                partialCreditPct
               })
             }
           } catch (error) {
