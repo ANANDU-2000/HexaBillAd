@@ -180,6 +180,11 @@ const VatReturnPage = () => {
       if (success) {
         setVatReturn(dto)
         setLoadError(null)
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+          const ins = Array.isArray(dto?.inputLines) ? dto.inputLines : (Array.isArray(dto?.InputLines) ? dto.InputLines : [])
+          const outs = Array.isArray(dto?.outputLines) ? dto.outputLines : (Array.isArray(dto?.OutputLines) ? dto.OutputLines : [])
+          console.debug('[VAT Return] Loaded', { period: `${fromFinal}–${toFinal}`, inputLines: ins.length, outputLines: outs.length, box1a: dto?.box1a ?? dto?.Box1a, box12: dto?.box12 ?? dto?.Box12 })
+        }
         // When VAT return has 0 sales but we have a period, fetch Sales Ledger for same period so Overview shows real totals
         const hasNoSales = !(dto.outputLines?.length || dto.OutputLines?.length) && (Number(dto.box1a ?? dto.Box1a ?? 0) === 0)
         if (hasNoSales && fromFinal && toFinal) {
@@ -317,22 +322,23 @@ const VatReturnPage = () => {
   const box12 = v != null ? Number(v.box12 ?? v.Box12 ?? 0) : 0
   const box13a = v != null ? Number(v.box13a ?? v.Box13a ?? 0) : 0
   const box13b = v != null ? Number(v.box13b ?? v.Box13b ?? 0) : 0
-  const outputLines = v?.outputLines ?? v?.OutputLines ?? []
-  const inputLines = v?.inputLines ?? v?.InputLines ?? []
-  const creditNoteLines = v?.creditNoteLines ?? v?.CreditNoteLines ?? []
-  const totalInputNet = (inputLines || []).reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
+  // Defensive: API may return camelCase or PascalCase; ensure arrays so Overview/tabs always show data
+  const outputLines = Array.isArray(v?.outputLines) ? v.outputLines : (Array.isArray(v?.OutputLines) ? v.OutputLines : [])
+  const inputLines = Array.isArray(v?.inputLines) ? v.inputLines : (Array.isArray(v?.InputLines) ? v.InputLines : [])
+  const creditNoteLines = Array.isArray(v?.creditNoteLines) ? v.creditNoteLines : (Array.isArray(v?.CreditNoteLines) ? v.CreditNoteLines : [])
+  const totalInputNet = inputLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   // Totals per tab (same filters as tables; coerce to number to avoid wrong/zero from strings)
-  const salesLinesForTotal = (outputLines || []).filter(line => ((line.vatScenario ?? line.VatScenario) || '').toLowerCase() !== 'exempt')
+  const salesLinesForTotal = outputLines.filter(line => ((line.vatScenario ?? line.VatScenario) || '').toLowerCase() !== 'exempt')
   const totalSalesNet = salesLinesForTotal.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   const totalSalesVat = salesLinesForTotal.reduce((s, l) => s + (Number(l.vatAmount ?? l.VatAmount) || 0), 0)
-  const purchaseLines = (inputLines || []).filter(l => ((l.type ?? l.Type) ?? '').toString().toLowerCase() === 'purchase')
+  const purchaseLines = inputLines.filter(l => ((l.type ?? l.Type) ?? '').toString().toLowerCase() === 'purchase')
   const totalPurchasesNet = purchaseLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   const totalPurchasesVat = purchaseLines.reduce((s, l) => s + (Number(l.claimableVat ?? l.ClaimableVat) || 0), 0)
-  const expenseLines = (inputLines || []).filter(l => ((l.type ?? l.Type) ?? '').toString().toLowerCase() === 'expense')
+  const expenseLines = inputLines.filter(l => ((l.type ?? l.Type) ?? '').toString().toLowerCase() === 'expense')
   const totalExpensesNet = expenseLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   const totalExpensesVat = expenseLines.reduce((s, l) => s + (Number(l.claimableVat ?? l.ClaimableVat) || 0), 0)
-  const totalCreditNotesNet = (creditNoteLines || []).reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
-  const totalCreditNotesVat = (creditNoteLines || []).reduce((s, l) => s + (Number(l.vatAmount ?? l.VatAmount) || 0), 0)
+  const totalCreditNotesNet = creditNoteLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
+  const totalCreditNotesVat = creditNoteLines.reduce((s, l) => s + (Number(l.vatAmount ?? l.VatAmount) || 0), 0)
   // REAL CALCULATION FLOW: Use (1) line totals when API boxes are 0 but we have lines, (2) Sales Ledger fallback when VAT return has 0 sales but ledger has data.
   const displayBox1a = (box1a === 0 && salesLinesForTotal.length > 0)
     ? totalSalesNet
@@ -852,7 +858,7 @@ const VatReturnPage = () => {
                       <tr>
                         <td className="px-3 py-2 font-medium">2</td>
                         <td className="px-3 py-2 text-gray-700">Total Purchase and Expense (net)</td>
-                        <td className="px-3 py-2 text-right font-medium">{formatCurrency(totalInputNet)}</td>
+                        <td className="px-3 py-2 text-right font-medium">{formatCurrency(totalInputNet || totalPurchasesNet + totalExpensesNet)}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox12)}</td>
                       </tr>
                       <tr className={displayBox13a > 0 ? 'bg-red-50' : 'bg-green-50'}>

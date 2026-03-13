@@ -122,6 +122,9 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 var issues = await _vatValidation.ValidatePeriodAsync(tenantId, fromDate, toDate, result);
                 result.ValidationIssues = issues;
+                _logger.LogInformation("VAT return: TenantId={TenantId} Period={From}-{To} OutputLines={Out} InputLines={In} Box1a={Box1a} Box12={Box12}",
+                    tenantId, fromDate.ToString("yyyy-MM-dd"), toDate.AddDays(-1).ToString("yyyy-MM-dd"),
+                    result.OutputLines?.Count ?? 0, result.InputLines?.Count ?? 0, result.Box1a, result.Box12);
                 return Ok(new ApiResponse<VatReturn201Dto>
                 {
                     Success = true,

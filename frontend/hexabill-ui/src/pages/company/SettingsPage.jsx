@@ -517,7 +517,8 @@ const SettingsPage = () => {
 
       const response = await adminAPI.uploadLogo(file)
       if (response?.success) {
-        const logoUrl = response.data?.logoUrl ?? response.data?.data?.logoUrl ?? response.data ?? ''
+        const rawLogo = response.data?.logoUrl ?? response.data?.data?.logoUrl ?? response.data
+        const logoUrl = typeof rawLogo === 'string' ? rawLogo : (rawLogo && typeof rawLogo.logoUrl === 'string' ? rawLogo.logoUrl : '')
         clearAllCache()
         clearCache('/api/settings')
         clearCache('/api/settings/company')
@@ -872,6 +873,24 @@ const SettingsPage = () => {
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Preview on Invoice
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const url = settings.logoUrl
+                            if (url) {
+                              clearCache('/api/settings')
+                              clearCache('/api/settings/company')
+                              window.dispatchEvent(new CustomEvent('logo-updated', { detail: { logoUrl: url } }))
+                              refreshBranding()
+                              toast.success('App logo refresh requested.')
+                            }
+                          }}
+                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ml-2"
+                          title="If the logo in the header/sidebar did not update, click to refresh it"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-2" />
+                          Refresh app logo
                         </button>
                       </>
                     )}
