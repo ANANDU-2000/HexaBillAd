@@ -762,7 +762,7 @@ namespace HexaBill.Api.Modules.Billing
                     if (request.Payments != null && request.Payments.Any())
                     {
                         var clearedPayments = request.Payments
-                            .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE")
+                            .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE" || p.Method.ToUpper() == "DEBIT")
                             .Sum(p => p.Amount);
                         unpaidAmountFromThisSale = Math.Max(0, grandTotal - clearedPayments);
                     }
@@ -863,10 +863,11 @@ namespace HexaBill.Api.Modules.Billing
                     
                     foreach (var paymentRequest in request.Payments)
                     {
+                        if (paymentRequest.Amount <= 0) continue; // Payment amount must be greater than zero
                         var paymentMode = Enum.Parse<PaymentMode>(paymentRequest.Method.ToUpper());
                         var paymentStatus = paymentMode == PaymentMode.CHEQUE 
                             ? PaymentStatus.PENDING 
-                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE 
+                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE || paymentMode == PaymentMode.DEBIT 
                                 ? PaymentStatus.CLEARED 
                                 : PaymentStatus.PENDING);
 
@@ -903,8 +904,8 @@ namespace HexaBill.Api.Modules.Billing
                         }
                     }
 
-                    // Update payment status based on total paid
-                    if (totalPaid >= grandTotal)
+                    // Update payment status based on total paid (zero invoice = nothing to pay, so Paid)
+                    if (grandTotal == 0 || totalPaid >= grandTotal)
                     {
                         sale.PaymentStatus = SalePaymentStatus.Paid;
                     }
@@ -921,7 +922,7 @@ namespace HexaBill.Api.Modules.Billing
                     if (request.CustomerId.HasValue)
                     {
                         var clearedAmount = request.Payments
-                            .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE")
+                            .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE" || p.Method.ToUpper() == "DEBIT")
                             .Sum(p => p.Amount);
                         
                         if (clearedAmount > 0)
@@ -940,10 +941,18 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 else
                 {
-                    // No payment provided - mark as pending
-                    sale.PaymentStatus = SalePaymentStatus.Pending;
-                    sale.PaidAmount = 0;
-                    
+                    // No payment provided: zero-invoice = nothing to pay (Paid); otherwise Pending
+                    if (grandTotal == 0)
+                    {
+                        sale.PaymentStatus = SalePaymentStatus.Paid;
+                        sale.PaidAmount = 0;
+                    }
+                    else
+                    {
+                        sale.PaymentStatus = SalePaymentStatus.Pending;
+                        sale.PaidAmount = 0;
+                    }
+
                     // New sale increases customer balance (customer owes more)
                     if (request.CustomerId.HasValue)
                     {
@@ -988,7 +997,7 @@ namespace HexaBill.Api.Modules.Billing
                         if (request.Payments != null && request.Payments.Any())
                         {
                             var clearedAmount = request.Payments
-                                .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE")
+                                .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE" || p.Method.ToUpper() == "DEBIT")
                                 .Sum(p => p.Amount);
                             
                             if (clearedAmount > 0)
@@ -1247,7 +1256,7 @@ namespace HexaBill.Api.Modules.Billing
                         var paymentMode = Enum.Parse<PaymentMode>(p.Method.ToUpper());
                         var paymentStatus = paymentMode == PaymentMode.CHEQUE 
                             ? PaymentStatus.PENDING 
-                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE 
+                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE || paymentMode == PaymentMode.DEBIT 
                                 ? PaymentStatus.CLEARED 
                                 : PaymentStatus.PENDING);
                         
@@ -1930,18 +1939,18 @@ namespace HexaBill.Api.Modules.Billing
                         }
                         catch (ArgumentException)
                         {
-                            throw new InvalidOperationException($"Invalid payment method: {p.Method}. Valid methods are: Cash, Cheque, Online, Credit");
+                            throw new InvalidOperationException($"Invalid payment method: {p.Method}. Valid methods are: Cash, Cheque, Online, Credit, Debit");
                         }
                         
                         var paymentStatus = paymentMode == PaymentMode.CHEQUE 
                             ? PaymentStatus.PENDING 
-                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE 
+                            : (paymentMode == PaymentMode.CASH || paymentMode == PaymentMode.ONLINE || paymentMode == PaymentMode.DEBIT 
                                 ? PaymentStatus.CLEARED 
                                 : PaymentStatus.PENDING);
                         
                         if (p.Amount <= 0)
                         {
-                            throw new InvalidOperationException($"Payment amount must be greater than 0. Received: {p.Amount}");
+                            throw new InvalidOperationException("Payment amount must be greater than zero. Please enter a valid amount.");
                         }
                         
                         var paymentDate = DateTime.UtcNow;

@@ -3,8 +3,19 @@ import { X, Printer, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { salesAPI } from '../services'
 
+const DEFAULT_PRINT_FORMAT_KEY = 'hexabill_default_print_format'
+const VALID_FORMATS = ['A4', 'A5', '80mm', '58mm']
+
+const getDefaultPrintFormat = () => {
+  try {
+    const saved = localStorage.getItem(DEFAULT_PRINT_FORMAT_KEY)
+    if (saved && VALID_FORMATS.includes(saved)) return saved
+  } catch (_) {}
+  return 'A4'
+}
+
 const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
-  const [format, setFormat] = useState('A4')
+  const [format, setFormat] = useState(getDefaultPrintFormat)
   const [copies, setCopies] = useState(1)
   const [printer, setPrinter] = useState('default')
   const [orientation, setOrientation] = useState('portrait')
@@ -42,12 +53,14 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           setPrinting(false)
           if (onPrint) onPrint()
           onClose()
+          try { localStorage.setItem(DEFAULT_PRINT_FORMAT_KEY, format) } catch (_) {}
           setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
         }
         setTimeout(() => {
           if (printHandledRef.current) return
           printHandledRef.current = true
           setPrinting(false)
+          try { localStorage.setItem(DEFAULT_PRINT_FORMAT_KEY, format) } catch (_) {}
           toast.success('PDF opened in new tab. Use Ctrl+P to print if needed.')
           if (onPrint) onPrint()
           onClose()

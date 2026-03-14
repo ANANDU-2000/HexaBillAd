@@ -44,7 +44,8 @@ namespace HexaBill.Api.Models
         CASH,
         CHEQUE,
         ONLINE,
-        CREDIT
+        CREDIT,
+        DEBIT
     }
 
     public enum PaymentStatus

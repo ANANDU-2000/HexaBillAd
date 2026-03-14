@@ -670,6 +670,46 @@ const PosPage = () => {
     }
   }
 
+  /** Quick print with default A4: one-click, opens PDF in new tab and triggers browser/OS print dialog */
+  const handleQuickPrintA4 = async () => {
+    if (!lastCreatedInvoice?.id) {
+      toast.error('No invoice to print. Save the invoice first.')
+      return
+    }
+    try {
+      toast.loading('Preparing print...', { id: 'quick-print-toast' })
+      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format: 'A4' })
+      const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
+      const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer')
+      if (printWindow) {
+        printWindow.onload = () => {
+          try {
+            printWindow.print()
+            toast.dismiss('quick-print-toast')
+            toast.success('Print dialog opened')
+          } catch (e) {
+            toast.dismiss('quick-print-toast')
+            toast.error('Could not open print dialog')
+          }
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
+        }
+        setTimeout(() => {
+          toast.dismiss('quick-print-toast')
+          toast.success('PDF opened. Use Ctrl+P to print if needed.')
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
+        }, 2500)
+      } else {
+        URL.revokeObjectURL(blobUrl)
+        toast.dismiss('quick-print-toast')
+        toast.error('Pop-up blocked. Allow pop-ups or use "Print" to choose format.')
+      }
+    } catch (error) {
+      console.error('Quick print error:', error)
+      toast.dismiss('quick-print-toast')
+      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare PDF')
+    }
+  }
+
   const handlePrintReceipt = async () => {
     console.log('Print Receipt Called')
     console.log('  - lastCreatedInvoice:', lastCreatedInvoice)
@@ -1069,7 +1109,13 @@ const PosPage = () => {
             return
           }
         }
-        
+        if (paymentMethod !== 'Pending' && totals.grandTotal > 0) {
+          const effectiveAmount = (paymentAmount && !isNaN(parseFloat(paymentAmount))) ? parseFloat(paymentAmount) : totals.grandTotal
+          if (effectiveAmount <= 0) {
+            toast.error('Payment amount must be greater than zero. Enter the amount received or leave blank to use the invoice total.')
+            return
+          }
+        }
         const saleData = {
           customerId: selectedCustomer?.id || null,
           items: validCart.map(item => ({
@@ -1082,12 +1128,14 @@ const PosPage = () => {
           discount: isZeroInvoice ? 0 : (discount || 0),
           roundOff: isZeroInvoice ? 0 : (roundOff ?? 0),
           isZeroInvoice: !!isZeroInvoice,
-          payments: (paymentMethod !== 'Pending') ? [{
-            method: paymentMethod,
-            amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
-              ? parseFloat(paymentAmount)
-              : (totals.grandTotal || 0)
-          }] : [],
+          payments: (paymentMethod !== 'Pending' && totals.grandTotal > 0)
+            ? [{
+                method: paymentMethod,
+                amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)) && parseFloat(paymentAmount) > 0)
+                  ? parseFloat(paymentAmount)
+                  : totals.grandTotal
+              }]
+            : [],
           notes: notes || null,
           editReason: editReason || undefined,
           invoiceDate: invoiceDate ? `${invoiceDate}T12:00:00.000Z` : undefined
@@ -1118,6 +1166,15 @@ const PosPage = () => {
           return
         }
       }
+      // Payment amount must be greater than zero when recording a payment (non–zero invoice)
+      if (paymentMethod !== 'Pending' && totals.grandTotal > 0) {
+        const effectiveAmount = (paymentAmount && !isNaN(parseFloat(paymentAmount))) ? parseFloat(paymentAmount) : totals.grandTotal
+        if (effectiveAmount <= 0) {
+          toast.error('Payment amount must be greater than zero. Enter the amount received or leave blank to use the invoice total.')
+          setLoading(false)
+          return
+        }
+      }
 
       // Use the route's branch so backend never gets branch/route mismatch (backend validates route.BranchId === request.BranchId)
       const routeIdNum = selectedRouteId ? parseInt(selectedRouteId, 10) : null
@@ -1136,12 +1193,15 @@ const PosPage = () => {
         discount: isZeroInvoice ? 0 : (discount || 0),
         roundOff: isZeroInvoice ? 0 : (roundOff ?? 0),
         isZeroInvoice: !!isZeroInvoice,
-        payments: (paymentMethod !== 'Pending') ? [{
-          method: paymentMethod,
-          amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
-            ? parseFloat(paymentAmount)
-            : (totals.grandTotal || 0)
-        }] : [],
+        // Only send payments with amount > 0 (zero invoice = no payment record; backend also skips amount <= 0)
+        payments: (paymentMethod !== 'Pending' && totals.grandTotal > 0)
+          ? [{
+              method: paymentMethod,
+              amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)) && parseFloat(paymentAmount) > 0)
+                ? parseFloat(paymentAmount)
+                : totals.grandTotal
+            }]
+          : [],
         notes: notes || null,
         editReason: isEditMode ? editReason : undefined,
         invoiceDate: invoiceDate ? `${invoiceDate}T12:00:00.000Z` : undefined,
@@ -1697,13 +1757,23 @@ const PosPage = () => {
       {/* Customer & invoice info - compact on mobile (16px), single row */}
       <div className="bg-white border-b border-[#E5E7EB] px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm overflow-x-auto">
-          <div className="bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm border border-blue-200">
+          <div className="bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm border border-blue-200 flex items-center gap-1 flex-wrap">
             <span className="font-medium text-blue-700">Invoice No:</span>
-            <span className={`ml-1 sm:ml-2 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
+            <span className={`ml-1 sm:ml-0 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
               }`}>
               {isEditMode && editingSale ? editingSale.invoiceNo : (lastCreatedInvoice?.invoiceNo || nextInvoiceNumberPreview || '(Auto-generated)')}
             </span>
             {isEditMode && <span className="ml-2 text-xs text-blue-600">(Read-only)</span>}
+            <button
+              type="button"
+              onClick={lastCreatedInvoice?.id ? handleQuickPrintA4 : undefined}
+              disabled={!lastCreatedInvoice?.id}
+              title={lastCreatedInvoice?.id ? 'Quick print (A4)' : 'Save invoice first to print'}
+              className="p-1 rounded hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed text-blue-600"
+              aria-label={lastCreatedInvoice?.id ? 'Quick print invoice' : 'Save invoice first to print'}
+            >
+              <Printer className="h-4 w-4" />
+            </button>
           </div>
           <div className="bg-[#F8FAFC] rounded-xl px-3 py-2 border border-[#E5E7EB] relative">
             <span className="font-medium text-primary-700 block mb-0.5">Customer:</span>
@@ -2565,6 +2635,7 @@ const PosPage = () => {
                   >
                     <option value="Pending">Credit Invoice</option>
                     <option value="Cash">Cash</option>
+                    <option value="Debit">Debit (Card)</option>
                     <option value="Cheque">Cheque</option>
                     <option value="Online">Online</option>
                   </select>
@@ -2735,6 +2806,7 @@ const PosPage = () => {
                 >
                   <option value="Pending">Credit (Pay later)</option>
                   <option value="Cash">Cash</option>
+                  <option value="Debit">Debit (Card)</option>
                   <option value="Cheque">Cheque</option>
                   <option value="Online">Online</option>
                 </select>
@@ -2930,12 +3002,14 @@ const PosPage = () => {
                         })),
                         discount: isZeroInvoice ? 0 : (discount || 0),
                         isZeroInvoice: !!isZeroInvoice,
-                        payments: (paymentMethod !== 'Pending') ? [{
-                          method: paymentMethod,
-                          amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)))
-                            ? parseFloat(paymentAmount)
-                            : (calculateTotals().grandTotal || 0)
-                        }] : [],
+                        payments: (paymentMethod !== 'Pending' && (calculateTotals().grandTotal || 0) > 0)
+                          ? [{
+                              method: paymentMethod,
+                              amount: (paymentAmount && !isNaN(parseFloat(paymentAmount)) && parseFloat(paymentAmount) > 0)
+                                ? parseFloat(paymentAmount)
+                                : (calculateTotals().grandTotal || 0)
+                            }]
+                          : [],
                         notes: notes || null,
                         editReason: editReason, // Actually use the editReason from state/modal
                         ...(editingSale?.rowVersion && { rowVersion: editingSale.rowVersion }),
@@ -3163,20 +3237,47 @@ const PosPage = () => {
 
             {/* Content */}
             <div className="p-6 space-y-4">
+              {/* Payment status: Paid / Partial / Pending (invoice payment status, not "saving") */}
+              {lastCreatedInvoice.data?.paymentStatus && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-sm text-gray-600">Status:</span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      (lastCreatedInvoice.data.paymentStatus || '').toLowerCase() === 'paid'
+                        ? 'bg-green-100 text-green-800'
+                        : (lastCreatedInvoice.data.paymentStatus || '').toLowerCase() === 'partial'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {lastCreatedInvoice.data.paymentStatus}
+                  </span>
+                </div>
+              )}
               <p className="text-gray-700 mb-4">What would you like to do with this invoice?</p>
 
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button
                   type="button"
+                  onClick={handleQuickPrintA4}
+                  className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  title="Print with default printer (A4)"
+                >
+                  <Printer className="h-5 w-5 mr-2" />
+                  Quick print (A4)
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setShowInvoiceOptionsModal(false)
                     setShowPrintFormatModal(true)
                   }}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors shadow-md border border-blue-600"
+                  title="Choose format: A4, A5, 80mm, 58mm"
                 >
                   <Printer className="h-5 w-5 mr-2" />
-                  Print
+                  Print (choose format)
                 </button>
 
                 <button

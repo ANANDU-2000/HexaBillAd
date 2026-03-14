@@ -18,7 +18,8 @@ import {
   FolderDown,
   Shield,
   History,
-  RotateCcw
+  RotateCcw,
+  Printer
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { Input, Select, TextArea } from '../../components/Form'
@@ -57,6 +58,15 @@ const SettingsPage = () => {
   const [logoBlobUrl, setLogoBlobUrl] = useState(null)
   const [logoDataUri, setLogoDataUri] = useState(null)
   const [showInvoicePreview, setShowInvoicePreview] = useState(false)
+  const DEFAULT_PRINT_FORMAT_KEY = 'hexabill_default_print_format'
+  const [defaultPrintFormat, setDefaultPrintFormat] = useState(() => {
+    try {
+      const s = localStorage.getItem(DEFAULT_PRINT_FORMAT_KEY)
+      return ['A4', 'A5', '80mm', '58mm'].includes(s) ? s : 'A4'
+    } catch {
+      return 'A4'
+    }
+  })
   const [logoLoadFailed, setLogoLoadFailed] = useState(false)
   const [logoPdfStatus, setLogoPdfStatus] = useState(null)
   const [logoPdfStatusLoading, setLogoPdfStatusLoading] = useState(false)
@@ -1012,6 +1022,35 @@ const SettingsPage = () => {
                 />
                 <p className="text-xs text-neutral-500">
                   When set, products with reorder level 0 are treated as low stock when quantity is at or below this value. Leave empty to use only each product&apos;s reorder level.
+                </p>
+              </div>
+            </div>
+
+            {/* Default invoice print format (local preference) */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center mb-6">
+                <Printer className="h-6 w-6 text-primary-600 mr-3" />
+                <h2 className="text-lg font-semibold text-neutral-900">Invoice print</h2>
+              </div>
+              <div className="max-w-md">
+                <label className="block text-sm font-medium text-neutral-700 mb-2">Default print format</label>
+                <select
+                  value={defaultPrintFormat}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setDefaultPrintFormat(v)
+                    try { localStorage.setItem(DEFAULT_PRINT_FORMAT_KEY, v) } catch (_) {}
+                    toast.success('Default print format saved for this device.')
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="A4">A4 Invoice</option>
+                  <option value="A5">A5 Invoice</option>
+                  <option value="80mm">80mm Receipt</option>
+                  <option value="58mm">58mm Receipt</option>
+                </select>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Used when you open &quot;Print (choose format)&quot; after saving an invoice. Stored on this device only.
                 </p>
               </div>
             </div>
