@@ -23,6 +23,7 @@ const PurchasesPage = () => {
   const [statusFilter, setStatusFilter] = useState('all') // all, paid, partial, unpaid, overdue
   const [showFilters, setShowFilters] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [bulkFixingItc, setBulkFixingItc] = useState(false)
   const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
 
   // Analytics state
@@ -1516,7 +1517,16 @@ const PurchasesPage = () => {
           <div className="p-4 border-b-2 border-lime-400 bg-lime-100">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-primary-800">Purchase List</h3>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkSetTaxClaimable}
+                  disabled={bulkFixingItc || loading}
+                  className="px-2 py-1 rounded text-xs font-medium bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-800 disabled:opacity-50"
+                  title="Mark all purchases with VAT as Tax claimable (ITC) for VAT Return"
+                >
+                  {bulkFixingItc ? 'Updating…' : 'Mark all with VAT as claimable'}
+                </button>
                 {['all', 'unpaid', 'partial', 'paid', 'overdue'].map((s) => (
                   <button
                     key={s}

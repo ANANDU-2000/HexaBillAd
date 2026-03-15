@@ -22,6 +22,8 @@ namespace HexaBill.Api.Modules.Purchases
         Task<bool> DeletePurchaseAsync(int id, int userId, int tenantId);
         Task<PurchaseAnalyticsDto> GetPurchaseAnalyticsAsync(int tenantId, DateTime? startDate = null, DateTime? endDate = null);
         Task<PurchasePendingSummaryDto> GetPendingSummaryAsync(int tenantId);
+        /// <summary>Set IsTaxClaimable = true for all purchases that have VAT. Fixes legacy data so VAT Return shows input VAT.</summary>
+        Task<int> BulkSetTaxClaimableForPurchasesWithVatAsync(int tenantId);
     }
 
     public class PurchaseService : IPurchaseService
@@ -768,6 +770,35 @@ namespace HexaBill.Api.Modules.Purchases
                     throw;
                 }
             });
+        }
+
+        public async Task<int> BulkSetTaxClaimableForPurchasesWithVatAsync(int tenantId)
+        {
+            var purchases = await _context.Purchases
+                .Include(p => p.Items)
+                .Where(p => (p.TenantId.HasValue && p.TenantId == tenantId) || (!p.TenantId.HasValue && p.OwnerId == tenantId))
+                .Where(p => !p.IsTaxClaimable)
+                .ToListAsync();
+            var updated = 0;
+            foreach (var p in purchases)
+            {
+                var hasVat = (p.VatTotal ?? 0) > 0 || (p.Subtotal.HasValue && p.TotalAmount > 0 && p.TotalAmount > p.Subtotal.Value);
+                if (!hasVat && p.Items != null && p.Items.Count > 0)
+                {
+                    var itemsVat = p.Items.Where(i => (i.VatAmount ?? 0) > 0).Sum(i => i.Qty * (i.VatAmount ?? 0));
+                    if (itemsVat > 0) hasVat = true;
+                    else if (p.TotalAmount > 0)
+                        hasVat = (p.TotalAmount - (p.TotalAmount / 1.05m)) > 0.01m;
+                }
+                if (hasVat)
+                {
+                    p.IsTaxClaimable = true;
+                    updated++;
+                }
+            }
+            if (updated > 0)
+                await _context.SaveChangesAsync();
+            return updated;
         }
 
         public async Task<PurchaseAnalyticsDto> GetPurchaseAnalyticsAsync(int tenantId, DateTime? startDate = null, DateTime? endDate = null)

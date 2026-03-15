@@ -226,6 +226,7 @@ namespace HexaBill.Api.Modules.Reports
             var toDateOnly = DateOnly.FromDateTime(to.AddDays(-1));
             var purchasesInPeriod = await _context.Purchases
                 .Include(p => p.Supplier)
+                .Include(p => p.Items)
                 .Where(p => (p.TenantId != null ? p.TenantId == tenantId : p.OwnerId == tenantId)
                     && DateOnly.FromDateTime(p.PurchaseDate) >= fromDateOnly
                     && DateOnly.FromDateTime(p.PurchaseDate) <= toDateOnly)
@@ -253,8 +254,18 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 else if (p.IsTaxClaimable)
                 {
-                    // FIX: When VatTotal is null (legacy), derive from TotalAmount - Subtotal so VAT Return shows correct totals
+                    // FIX: Derive VAT when null - legacy purchases may have missing VatTotal/Subtotal
                     var pVat = p.VatTotal ?? (p.Subtotal.HasValue && p.TotalAmount > 0 ? Math.Max(0, p.TotalAmount - p.Subtotal.Value) : 0);
+                    if (pVat == 0 && p.Items != null && p.Items.Count > 0)
+                    {
+                        // Fallback: sum VAT from items (Qty * VatAmount) when VatTotal is null
+                        var itemsVat = p.Items.Where(i => (i.VatAmount ?? 0) > 0).Sum(i => i.Qty * (i.VatAmount ?? 0));
+                        if (itemsVat > 0)
+                            pVat = itemsVat;
+                        else if (p.TotalAmount > 0)
+                            // Last resort: assume 5% VAT-inclusive (TotalAmount = net * 1.05)
+                            pVat = VatCalculator.Round(p.TotalAmount - (p.TotalAmount / 1.05m));
+                    }
                     if (pVat > 0)
                     {
                         box9b += VatCalculator.Round(pVat);
@@ -263,7 +274,7 @@ namespace HexaBill.Api.Modules.Reports
                             Type = "Purchase",
                             Reference = p.InvoiceNo ?? p.Id.ToString(),
                             Date = p.PurchaseDate,
-                            NetAmount = p.Subtotal ?? 0,
+                            NetAmount = p.Subtotal ?? (p.TotalAmount > 0 ? Math.Max(0, p.TotalAmount - pVat) : 0),
                             VatAmount = pVat,
                             ClaimableVat = pVat,
                             TaxType = "Standard",
@@ -306,6 +317,8 @@ namespace HexaBill.Api.Modules.Reports
                     claimable = e.VatAmount ?? 0;
                 if (e.IsTaxClaimable && claimable == 0 && (e.TotalAmount ?? 0) > 0 && e.Amount > 0 && (e.TotalAmount ?? 0) > e.Amount)
                     claimable = VatCalculator.Round((e.TotalAmount ?? 0) - e.Amount);
+                if (e.IsTaxClaimable && claimable == 0 && e.Amount > 0 && (e.VatRate ?? 0) > 0)
+                    claimable = VatCalculator.Round(e.Amount * (e.VatRate ?? 0) / 100m);
                 if (e.IsTaxClaimable && claimable > 0)
                 {
                     box9b += VatCalculator.Round(claimable);

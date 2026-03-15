@@ -272,6 +272,34 @@ namespace HexaBill.Api.Modules.Purchases
             }
         }
 
+        /// <summary>Set IsTaxClaimable = true for all purchases that have VAT. Use to fix legacy data so VAT Return shows input VAT.</summary>
+        [HttpPost("bulk-set-tax-claimable")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<object>>> BulkSetTaxClaimable()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var count = await _purchaseService.BulkSetTaxClaimableForPurchasesWithVatAsync(tenantId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = count > 0 ? $"Updated {count} purchase(s) to Tax claimable" : "No purchases needed updating",
+                    Data = new { UpdatedCount = count }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "BulkSetTaxClaimable failed");
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<ActionResult<ApiResponse<PurchaseDto>>> UpdatePurchase(int id, [FromBody] CreatePurchaseRequest request)
         {

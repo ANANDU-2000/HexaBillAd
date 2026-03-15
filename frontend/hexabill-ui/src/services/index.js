@@ -427,6 +427,12 @@ export const purchasesAPI = {
     const response = await api.get('/purchases/export/csv', { params: p, responseType: 'blob' })
     return response.data
   },
+
+  /** Set IsTaxClaimable = true for all purchases with VAT. Fixes legacy data for VAT Return. */
+  bulkSetTaxClaimable: async () => {
+    const response = await api.post('/purchases/bulk-set-tax-claimable')
+    return response.data
+  },
 }
 
 export const customersAPI = {
