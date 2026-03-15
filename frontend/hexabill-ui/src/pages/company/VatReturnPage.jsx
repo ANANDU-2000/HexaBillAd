@@ -9,13 +9,21 @@ import {
   Calendar,
   ShieldCheck,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Activity,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { reportsAPI } from '../../services'
+
+function trackVatEvent(eventType, data = {}) {
+  reportsAPI.trackVatEvent({ eventType, page: 'VatReturn', ...data }).catch(() => {})
+}
 import { LoadingCard } from '../../components/Loading'
 
 /** Format date as YYYY-MM-DD using local date (avoid toISOString() which shifts day in some timezones). */
@@ -141,6 +149,7 @@ const VatReturnPage = () => {
   const [vatReturn, setVatReturn] = useState(null)
   const [ledgerFallback, setLedgerFallback] = useState(null) // { totalSalesNet, totalSalesVat } when VAT return has 0 sales but ledger has data
   const [validationExpanded, setValidationExpanded] = useState(false)
+  const [trackingExpanded, setTrackingExpanded] = useState(false)
 
   const isValidDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
 
@@ -400,6 +409,12 @@ const VatReturnPage = () => {
   const creditNoteLines = rawCreditNoteLines
   const purchaseCountInPeriod = v != null ? (v.purchaseCountInPeriod ?? v.PurchaseCountInPeriod ?? 0) : 0
   const expenseCountInPeriod = v != null ? (v.expenseCountInPeriod ?? v.ExpenseCountInPeriod ?? 0) : 0
+  useEffect(() => {
+    if (v && box12 === 0 && (purchaseCountInPeriod > 0 || expenseCountInPeriod > 0)) {
+      trackVatEvent('ZeroWarning', { periodFrom: fromDate, periodTo: toDate, hasZeros: true, box12: 0, purchaseCount: purchaseCountInPeriod, expenseCount: expenseCountInPeriod })
+      setTrackingExpanded(true)
+    }
+  }, [v?.periodStart, box12, purchaseCountInPeriod, expenseCountInPeriod, fromDate, toDate])
   const purchasesExcludedReasons = v?.purchasesExcludedReasons ?? v?.PurchasesExcludedReasons ?? null
   const expensesExcludedReasons = v?.expensesExcludedReasons ?? v?.ExpensesExcludedReasons ?? null
   const totalInputNet = inputLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
@@ -639,8 +654,20 @@ const VatReturnPage = () => {
             </span>
             <button
               type="button"
+              onClick={() => {
+                setTrackingExpanded(prev => !prev)
+                trackVatEvent('TrackingPanel', { action: trackingExpanded ? 'collapse' : 'expand', periodFrom: fromDate, periodTo: toDate })
+              }}
+              className={`inline-flex items-center gap-1 px-3 py-2 border rounded-md text-sm ${trackingExpanded ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-gray-300 hover:bg-gray-50'}`}
+            >
+              <Activity className="h-4 w-4" /> VAT Tracking
+              {trackingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
               onClick={async () => {
                 if (!fromDate || !toDate) { toast.error('Set From/To dates then recalculate'); return }
+                trackVatEvent('Recalculate', { periodFrom: fromDate, periodTo: toDate })
                 try {
                   const res = await reportsAPI.calculateVatReturn(fromDate, toDate)
                   const dto = res?.data?.data ?? res?.data ?? null
@@ -728,6 +755,7 @@ const VatReturnPage = () => {
             <button
               type="button"
               onClick={async () => {
+                trackVatEvent('ExportCsv', { periodFrom: fromDate, periodTo: toDate })
                 try {
                   const blob = await reportsAPI.exportVatReturnCsv(fromDate && toDate ? { from: fromDate, to: toDate } : { quarter, year })
                   const url = window.URL.createObjectURL(blob)
@@ -960,6 +988,80 @@ const VatReturnPage = () => {
                   >
                     Suggest period: This Year ({year || new Date().getFullYear()})
                   </button>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* VAT Tracking Panel – tab status, values, workflow */}
+          {trackingExpanded && (
+            <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2 mb-3">
+                <Activity className="h-4 w-4 text-primary-600" /> VAT Tracking & Workflow
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <div className={`p-2 rounded border ${displayBox1a > 0 || displayBox1b > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className="text-xs font-medium text-slate-600">Overview / Sales</p>
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(displayBox1a)} / {formatCurrency(displayBox1b)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${displayBox1b > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {displayBox1b > 0 ? 'OK' : 'Zero'}
+                  </span>
+                </div>
+                <div className={`p-2 rounded border ${totalPurchasesVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className="text-xs font-medium text-slate-600">Purchases</p>
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(totalPurchasesVat)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalPurchasesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {totalPurchasesVat > 0 ? 'OK' : purchaseCountInPeriod > 0 ? 'Action' : 'Zero'}
+                  </span>
+                </div>
+                <div className={`p-2 rounded border ${totalExpensesVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className="text-xs font-medium text-slate-600">Expenses</p>
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(totalExpensesVat)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalExpensesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {totalExpensesVat > 0 ? 'OK' : expenseCountInPeriod > 0 ? 'Action' : 'Zero'}
+                  </span>
+                </div>
+                <div className={`p-2 rounded border ${displayBox12 > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className="text-xs font-medium text-slate-600">Box 12 (Input VAT)</p>
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(displayBox12)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${displayBox12 > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {displayBox12 > 0 ? 'OK' : 'Zero'}
+                  </span>
+                </div>
+              </div>
+              <div className="text-xs text-slate-600 mb-3">Workflow — fix zero values:</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => { navigate('/purchases'); trackVatEvent('WorkflowClick', { step: 'purchases', target: '/purchases' }) }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm hover:bg-slate-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Purchases
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { navigate('/expenses'); trackVatEvent('WorkflowClick', { step: 'expenses', target: '/expenses' }) }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-300 rounded text-sm hover:bg-slate-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" /> Expenses
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!fromDate || !toDate) { toast.error('Set From/To dates first'); return }
+                    trackVatEvent('WorkflowClick', { step: 'refresh', target: 'fetchVatReturn' })
+                    await fetchVatReturn(fromDate, toDate)
+                    toast.success('Refreshed')
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-100 border border-primary-300 rounded text-sm text-primary-800 hover:bg-primary-200"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Refresh
+                </button>
+                <span className="text-xs text-slate-500 self-center ml-1">Mark ITC on Purchases/Expenses, then Refresh.</span>
+              </div>
+              {(purchasesExcludedReasons || expensesExcludedReasons) && (
+                <p className="mt-2 text-xs text-amber-700">
+                  {[purchasesExcludedReasons?.TaxClaimableNo && `${purchasesExcludedReasons.TaxClaimableNo} purchase(s) not tax claimable`, purchasesExcludedReasons?.VatZero && `${purchasesExcludedReasons.VatZero} with zero VAT`, expensesExcludedReasons?.TaxClaimableNo && `${expensesExcludedReasons.TaxClaimableNo} expense(s) not tax claimable`].filter(Boolean).join('; ')}
                 </p>
               )}
             </div>

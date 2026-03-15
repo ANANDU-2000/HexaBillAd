@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign, Download } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign, Download, ExternalLink } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -1518,6 +1518,14 @@ const PurchasesPage = () => {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-primary-800">Purchase List</h3>
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/vat-return')}
+                  className="px-2 py-1 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 flex items-center gap-1"
+                  title="VAT Return – track and fix zero values"
+                >
+                  <ExternalLink className="h-3 w-3" /> VAT Return
+                </button>
                 <button
                   type="button"
                   onClick={handleBulkSetTaxClaimable}

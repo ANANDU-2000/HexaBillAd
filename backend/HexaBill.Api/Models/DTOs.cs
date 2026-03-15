@@ -1742,5 +1742,20 @@ namespace HexaBill.Api.Models
         /// </summary>
         public bool Diagnostics { get; set; }
     }
+
+    /// <summary>VAT workflow tracking: tab views, button clicks, zero-value states (stored in AuditLog).</summary>
+    public class VatTrackingRequest
+    {
+        public string EventType { get; set; } = string.Empty; // TabView, Recalculate, Export, BulkSetClaimable, ZeroWarning, PeriodChange, etc.
+        public string? Page { get; set; }   // VatReturn, Purchases, Expenses
+        public string? Tab { get; set; }    // overview, sales, purchases, expenses, validation
+        public string? PeriodFrom { get; set; }
+        public string? PeriodTo { get; set; }
+        public bool? HasZeros { get; set; }
+        public decimal? Box12 { get; set; }
+        public int? PurchaseCount { get; set; }
+        public int? ExpenseCount { get; set; }
+        public object? Extra { get; set; }
+    }
 }
 

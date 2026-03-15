@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
   Plus,
@@ -21,7 +22,8 @@ import {
   Clock,
   Repeat,
   Download,
-  Eye
+  Eye,
+  ExternalLink
 } from 'lucide-react'
 import { formatCurrency, roundMoney } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -847,6 +849,15 @@ const ExpensesPage = () => {
             )}
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => navigate('/vat-return')}
+              className="px-2 sm:px-3 py-1 text-xs font-medium bg-slate-100 border border-slate-300 rounded hover:bg-slate-200 flex items-center justify-center gap-1 flex-1 sm:flex-none"
+              title="VAT Return – track and fix zero values"
+            >
+              <ExternalLink className="h-3 w-3" />
+              <span className="hidden sm:inline">VAT Return</span>
+            </button>
             <button
               type="button"
               onClick={fetchExpenses}

@@ -944,6 +944,13 @@ export const reportsAPI = {
     return response.data
   },
 
+  /** Track VAT workflow events (tabs, buttons, zero states) - fire-and-forget. */
+  trackVatEvent: async (payload) => {
+    try {
+      await api.post('/reports/vat-tracking', payload)
+    } catch (_) { /* non-blocking */ }
+  },
+
   exportWorksheetPdf: async (params = {}) => {
     const response = await api.get('/reports/worksheet/export/pdf', { params: normalizeDateParams(params), responseType: 'blob' })
     return response.data

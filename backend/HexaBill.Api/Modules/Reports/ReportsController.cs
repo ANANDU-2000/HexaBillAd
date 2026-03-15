@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Modules.Payments;
 using HexaBill.Api.Modules.Billing;
@@ -27,9 +29,10 @@ namespace HexaBill.Api.Modules.Reports
         private readonly AppDbContext _context;
         private readonly ITimeZoneService _timeZoneService;
         private readonly IBranchService _branchService;
+        private readonly IAuditService _auditService;
         private readonly ILogger<ReportsController> _logger;
 
-        public ReportsController(IReportService reportService, IVatReturnReportService vatReturnReportService, IVatReturnValidationService vatValidation, AppDbContext context, ITimeZoneService timeZoneService, IBranchService branchService, ILogger<ReportsController> logger)
+        public ReportsController(IReportService reportService, IVatReturnReportService vatReturnReportService, IVatReturnValidationService vatValidation, AppDbContext context, ITimeZoneService timeZoneService, IBranchService branchService, IAuditService auditService, ILogger<ReportsController> logger)
         {
             _reportService = reportService;
             _vatReturnReportService = vatReturnReportService;
@@ -37,6 +40,7 @@ namespace HexaBill.Api.Modules.Reports
             _context = context;
             _timeZoneService = timeZoneService;
             _branchService = branchService;
+            _auditService = auditService;
             _logger = logger;
         }
 
@@ -164,6 +168,45 @@ namespace HexaBill.Api.Modules.Reports
             {
                 _logger.LogError(ex, "Suggest period failed");
                 return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
+        /// <summary>Track VAT workflow events (tab views, button clicks, zero-value states) for analytics and support.</summary>
+        [HttpPost("vat-tracking")]
+        [Authorize(Roles = "Admin,Owner,Manager,Staff")]
+        public async Task<ActionResult<ApiResponse<object>>> TrackVatEvent([FromBody] VatTrackingRequest? request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.EventType))
+                {
+                    return Ok(new ApiResponse<object> { Success = true, Message = "Event logged" });
+                }
+                var details = JsonSerializer.Serialize(new
+                {
+                    request.Page,
+                    request.Tab,
+                    request.PeriodFrom,
+                    request.PeriodTo,
+                    request.HasZeros,
+                    request.Box12,
+                    request.PurchaseCount,
+                    request.ExpenseCount,
+                    request.Extra
+                }, new JsonSerializerOptions { WriteIndented = false, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await _auditService.LogAsync(
+                    $"VatTracking.{request.EventType}",
+                    "VatTracking",
+                    null,
+                    null,
+                    null,
+                    details);
+                return Ok(new ApiResponse<object> { Success = true, Message = "Event logged" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "VAT tracking failed (non-blocking)");
+                return Ok(new ApiResponse<object> { Success = true, Message = "Event logged" });
             }
         }
 
