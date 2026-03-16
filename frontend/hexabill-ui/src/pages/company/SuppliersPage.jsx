@@ -14,6 +14,7 @@ const SuppliersPage = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [overdueOnly, setOverdueOnly] = useState(false)
+  const [showDeactivated, setShowDeactivated] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -56,8 +57,11 @@ const SuppliersPage = () => {
     if (overdueOnly) {
       list = list.filter(s => (s.overdue || 0) > 0)
     }
+    if (!showDeactivated) {
+      list = list.filter(s => s.isActive !== false)
+    }
     setFilteredSuppliers(list)
-  }, [suppliers, searchTerm, overdueOnly])
+  }, [suppliers, searchTerm, overdueOnly, showDeactivated])
 
   const loadSuppliers = async () => {
     try {
@@ -241,6 +245,15 @@ const SuppliersPage = () => {
             <label className="flex items-center gap-2 cursor-pointer shrink-0">
               <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} className="rounded" />
               <span className="text-sm text-primary-700">Overdue only</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer shrink-0">
+              <input
+                type="checkbox"
+                checked={showDeactivated}
+                onChange={e => setShowDeactivated(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm text-primary-700">Include deactivated</span>
             </label>
             <button onClick={loadSuppliers} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-primary-100 hover:bg-primary-200 rounded-lg font-medium shrink-0">
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
