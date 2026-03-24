@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Download,
   Filter,
   FileText,
-  MessageCircle
+  MessageCircle,
+  Pencil,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -17,8 +21,65 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
+const SHOW_KPI_KEY = 'hexabill_sales_ledger_show_kpi'
+const SORT_ORDER_KEY = 'hexabill_sales_ledger_sort_order'
+
+/** Group by customer; order blocks by latest/earliest activity; sort lines within block. Keeps subtotal rows valid. */
+function sortLedgerForDisplay(entries, order) {
+  if (!entries || entries.length === 0) return []
+  const byCustomer = new Map()
+  for (const e of entries) {
+    const name = e.customerName || 'Cash Customer'
+    if (!byCustomer.has(name)) byCustomer.set(name, [])
+    byCustomer.get(name).push(e)
+  }
+
+  const typeRank = (t) => (t === 'Sale' ? 0 : t === 'Return' ? 1 : 2)
+
+  const compareLines = (a, b, mult) => {
+    const da = new Date(a.date).getTime()
+    const db = new Date(b.date).getTime()
+    if (da !== db) return mult * (da - db)
+    const ta = typeRank(a.type)
+    const tb = typeRank(b.type)
+    if (ta !== tb) return mult * (ta - tb)
+    const c = String(a.invoiceNo || '').localeCompare(String(b.invoiceNo || ''), undefined, { numeric: true })
+    if (c !== 0) return mult * c
+    const ida = (a.saleId || 0) || (a.paymentId || 0) || (a.returnId || 0)
+    const idb = (b.saleId || 0) || (b.paymentId || 0) || (b.returnId || 0)
+    return mult * (ida - idb)
+  }
+
+  const mult = order === 'newest' ? -1 : 1
+  for (const arr of byCustomer.values()) {
+    arr.sort((a, b) => compareLines(a, b, mult))
+  }
+
+  const customerNames = [...byCustomer.keys()]
+  customerNames.sort((a, b) => {
+    const datesA = byCustomer.get(a).map(e => new Date(e.date).getTime())
+    const datesB = byCustomer.get(b).map(e => new Date(e.date).getTime())
+    const maxA = Math.max(...datesA)
+    const maxB = Math.max(...datesB)
+    const minA = Math.min(...datesA)
+    const minB = Math.min(...datesB)
+    if (order === 'newest') {
+      if (maxB !== maxA) return maxB - maxA
+      return a.localeCompare(b)
+    }
+    if (minA !== minB) return minA - minB
+    return a.localeCompare(b)
+  })
+
+  const flat = []
+  for (const name of customerNames) {
+    flat.push(...byCustomer.get(name))
+  }
+  return flat
+}
 
 const SalesLedgerPage = () => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
@@ -55,8 +116,21 @@ const SalesLedgerPage = () => {
   const [showFilters, setShowFilters] = useState(() => {
     try {
       const v = localStorage.getItem(SHOW_FILTERS_KEY)
+      return v === null ? false : v === 'true'
+    } catch { return false }
+  })
+  const [showKpiStrip, setShowKpiStrip] = useState(() => {
+    try {
+      const v = localStorage.getItem(SHOW_KPI_KEY)
       return v === null ? true : v === 'true'
     } catch { return true }
+  })
+  const [sortOrder, setSortOrder] = useState(() => {
+    try {
+      const v = localStorage.getItem(SORT_ORDER_KEY)
+      if (v === 'oldest' || v === 'newest') return v
+      return 'newest'
+    } catch { return 'newest' }
   })
   const [sharingSaleId, setSharingSaleId] = useState(null)
   const fetchSalesLedgerRef = useRef(null)
@@ -294,9 +368,20 @@ const SalesLedgerPage = () => {
   
   const hasActiveFilters = Object.values(filters).some(v => v !== '')
 
+  // Display order (grouped by customer); KPI totals still use filteredLedger
+  const displayLedgerSorted = React.useMemo(
+    () => sortLedgerForDisplay(filteredLedger, sortOrder),
+    [filteredLedger, sortOrder]
+  )
+
+  const setSortOrderPersist = (next) => {
+    setSortOrder(next)
+    try { localStorage.setItem(SORT_ORDER_KEY, next) } catch (_) { }
+  }
+
   // Pagination state
-  const [displayLimit, setDisplayLimit] = useState(100) // Show first 100 entries by default
-  const INITIAL_DISPLAY_LIMIT = 100
+  const [displayLimit, setDisplayLimit] = useState(150) // Show first N entries by default
+  const INITIAL_DISPLAY_LIMIT = 150
   const LOAD_MORE_INCREMENT = 100
 
   // Group entries by customer for subtotals
@@ -357,20 +442,20 @@ const SalesLedgerPage = () => {
   // Check if customer filter is active (showing single customer)
   const isCustomerFiltered = filters.name && customerGroups.length === 1
 
-  // Paginated entries with customer grouping
+  // Paginated entries with customer grouping (uses display sort order)
   const displayedLedger = React.useMemo(() => {
-    return filteredLedger.slice(0, displayLimit)
-  }, [filteredLedger, displayLimit])
+    return displayLedgerSorted.slice(0, displayLimit)
+  }, [displayLedgerSorted, displayLimit])
 
-  const hasMore = filteredLedger.length > displayLimit
+  const hasMore = displayLedgerSorted.length > displayLimit
   const handleLoadMore = () => {
     setDisplayLimit(prev => prev + LOAD_MORE_INCREMENT)
   }
 
-  // Reset pagination when filters change
+  // Reset pagination when filters or sort change
   React.useEffect(() => {
     setDisplayLimit(INITIAL_DISPLAY_LIMIT)
-  }, [dateRange.from, dateRange.to, filters.branchId, filters.routeId, filters.staffId, filters.type, filters.status, filters.name, filters.invoiceNo])
+  }, [dateRange.from, dateRange.to, filters.branchId, filters.routeId, filters.staffId, filters.type, filters.status, filters.name, filters.invoiceNo, sortOrder])
 
   // Summary from filtered data only (PRODUCTION_MASTER_TODO #8): totals must match the displayed list.
   // Do not use reportData.salesLedgerSummary for UI totals — it is server summary for initial query only.
@@ -518,6 +603,16 @@ const SalesLedgerPage = () => {
     }
   }
 
+  const toggleKpiStrip = () => {
+    const next = !showKpiStrip
+    setShowKpiStrip(next)
+    try { localStorage.setItem(SHOW_KPI_KEY, String(next)) } catch (_) { }
+  }
+
+  const stickyActionTh = 'sticky right-0 z-30 bg-gray-100 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-gray-300'
+  const stickyActionCell = (bgClass) =>
+    `sticky right-0 z-20 border-l border-gray-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)] px-1 lg:px-2 py-1.5 lg:py-2 whitespace-nowrap text-center ${bgClass}`
+
   const handleExportExcel = () => {
     if (filteredLedger.length === 0) {
       toast.error('No data to export')
@@ -525,7 +620,7 @@ const SalesLedgerPage = () => {
     }
     try {
       const headers = ['Date', 'Type', 'Invoice No', 'Customer', 'Payment Mode', 'Bill Amount', 'VAT', 'Paid Amount', 'Pending', 'Status', 'Balance']
-      const rows = filteredLedger.map(entry => {
+      const rows = displayLedgerSorted.map(entry => {
         const dateStr = new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
         const billAmt = entry.type === 'Sale' ? (entry.grandTotal || 0) : entry.type === 'Payment' ? (entry.realGotPayment || 0) : 0
         const vatAmt = entry.type === 'Payment' ? 0 : (entry.vatTotal || 0)
@@ -564,16 +659,16 @@ const SalesLedgerPage = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden w-full">
+    <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-neutral-50">
       {/* Header — full width, filters horizontal, export right */}
-      <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-4 lg:px-6 xl:px-8 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 w-full">
+      <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 lg:px-6 py-2 md:py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 md:gap-3 w-full">
           <div>
             <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-neutral-900">Sales Ledger</h1>
             <p className="text-xs text-neutral-600 hidden md:block">Comprehensive sales and payment tracking</p>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
+            <div className="flex gap-1.5 sm:gap-2">
               <input
                 type="date"
                 value={dateRange.from}
@@ -586,6 +681,31 @@ const SalesLedgerPage = () => {
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
                 className="flex-1 md:flex-initial px-2 py-1.5 border border-gray-300 rounded text-xs"
               />
+            </div>
+            <button
+              type="button"
+              onClick={toggleKpiStrip}
+              className="px-2 md:px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1"
+              title={showKpiStrip ? 'Hide summary cards' : 'Show summary cards'}
+            >
+              {showKpiStrip ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">Summary</span>
+            </button>
+            <div className="flex rounded-md border border-gray-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
+              <button
+                type="button"
+                onClick={() => setSortOrderPersist('newest')}
+                className={`px-2 md:px-2.5 py-1.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              >
+                Newest
+              </button>
+              <button
+                type="button"
+                onClick={() => setSortOrderPersist('oldest')}
+                className={`px-2 md:px-2.5 py-1.5 border-l border-gray-300 ${sortOrder === 'oldest' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+              >
+                Oldest
+              </button>
             </div>
             <button
               onClick={() => {
@@ -616,9 +736,15 @@ const SalesLedgerPage = () => {
         </div>
       </div>
 
+      {sortOrder === 'newest' && (
+        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-gray-600 bg-amber-50/90 border-b border-amber-100">
+          Newest-first within each customer (latest activity at top). Balance column is per transaction, not a running total down the list.
+        </div>
+      )}
+
       {/* Filters - Collapsible */}
       {showFilters && (
-        <div className="flex-shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-4 py-3 overflow-y-auto max-h-64">
+        <div className="flex-shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-3 py-2 overflow-y-auto max-h-52 md:max-h-56">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
               <Filter className="h-4 w-4 text-blue-600 mr-2" />
@@ -771,7 +897,24 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      {/* Summary Cards - Fixed */}
+      {/* Summary Cards - collapsible for more table space */}
+      {!showKpiStrip && (
+        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-gray-200 text-xs text-gray-700">
+          <span className="font-medium text-gray-500 mr-2">Totals:</span>
+          Sales {formatCurrency(filteredSummary.totalSales)}
+          <span className="mx-1.5 text-gray-300">|</span>
+          Net {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
+          <span className="mx-1.5 text-gray-300">|</span>
+          Recv. {formatCurrency(filteredSummary.totalPayments)}
+          <span className="mx-1.5 text-gray-300">|</span>
+          Unpaid {formatCurrency(filteredSummary.totalRealPending)}
+          <span className="mx-1.5 text-gray-300">|</span>
+          VAT {formatCurrency(filteredSummary.totalVat ?? 0)}
+          <span className="mx-1.5 text-gray-300">|</span>
+          {filteredLedger.length} rows
+        </div>
+      )}
+      {showKpiStrip && (
       <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-1.5 md:gap-2 lg:gap-3 px-2 md:px-4 py-2 md:py-3 bg-white border-b border-gray-200">
         <div className="bg-blue-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-blue-500">
           <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Sales</div>
@@ -831,17 +974,19 @@ const SalesLedgerPage = () => {
           </div>
         </div>
       </div>
+      )}
 
-      {/* Table - Scrollable */}
+      {/* Table - Scrollable (fills remaining viewport height) */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex-1 min-h-0 flex items-center justify-center">
           <LoadingCard message="Loading sales ledger..." />
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden bg-white w-full">
-          {/* Desktop Table — full width, horizontal scroll */}
-          <div className="hidden md:block h-full overflow-x-auto overflow-y-auto w-full">
-            <table className="w-full min-w-[1200px] divide-y divide-gray-200 text-xs lg:text-sm">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white w-full rounded-lg border border-gray-200">
+          {/* Desktop Table — sticky header; Actions column sticky right */}
+          <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
+            <div className="flex-1 min-h-0 overflow-auto w-full">
+            <table className="w-full min-w-[1100px] divide-y divide-gray-200 text-xs lg:text-sm">
               <thead className="bg-gray-100 sticky top-0 z-20 border-b-2 border-gray-300">
                 <tr>
                   <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
@@ -877,7 +1022,7 @@ const SalesLedgerPage = () => {
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
                     Balance
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap">
+                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap min-w-[5.5rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
@@ -928,7 +1073,7 @@ const SalesLedgerPage = () => {
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-gray-300">
                                 {formatBalance(prevCustomerGroup.subtotal.totalSales - prevCustomerGroup.subtotal.totalPayments)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2" />
+                              <td className={stickyActionCell('bg-indigo-50')} />
                             </tr>
                           )
                         }
@@ -1050,17 +1195,35 @@ const SalesLedgerPage = () => {
                         >
                           {formatBalance(customerBalance)}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-gray-200">
+                        <td className={
+                          stickyActionCell(
+                            entry.type === 'Payment'
+                              ? 'bg-green-50 hover:bg-green-100'
+                              : entry.type === 'Return'
+                                ? 'bg-amber-50 hover:bg-amber-100'
+                                : 'bg-white hover:bg-gray-50'
+                          )
+                        }>
                           {entry.type === 'Sale' && entry.saleId ? (
-                            <button
-                              type="button"
-                              onClick={() => handleShareInvoiceWhatsApp(entry)}
-                              disabled={sharingSaleId === entry.saleId}
-                              className="inline-flex items-center justify-center p-1.5 rounded-md text-green-600 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                              title="Share via WhatsApp"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
+                            <div className="inline-flex items-center justify-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/pos?editId=${entry.saleId}`)}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-primary-600 hover:bg-primary-50 hover:text-primary-800"
+                                title="Edit invoice in POS"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleShareInvoiceWhatsApp(entry)}
+                                disabled={sharingSaleId === entry.saleId}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-green-600 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Share via WhatsApp"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                              </button>
+                            </div>
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
@@ -1097,7 +1260,7 @@ const SalesLedgerPage = () => {
                             <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-gray-300">
                               {formatBalance(lastCustomerGroup.subtotal.balance)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2" />
+                            <td className={stickyActionCell('bg-indigo-50')} />
                           </tr>
                         )
                       }
@@ -1113,86 +1276,52 @@ const SalesLedgerPage = () => {
                         onClick={handleLoadMore}
                         className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
                       >
-                        Load More ({filteredLedger.length - displayLimit} remaining)
+                        Load More ({displayLedgerSorted.length - displayLimit} remaining)
                       </button>
                       <p className="text-xs text-gray-500 mt-2">
-                        Showing {displayLimit} of {filteredLedger.length} entries
+                        Showing {displayLimit} of {displayLedgerSorted.length} entries
                       </p>
                     </td>
                   </tr>
                 )}
               </tbody>
-              <tfoot className="bg-gray-200 sticky bottom-0 border-t-4 border-gray-400">
-                {/* First Total Row - Main Totals */}
+              <tfoot className="bg-gray-200 sticky bottom-0 border-t-2 border-gray-400">
                 <tr className="bg-blue-50">
                   <td
                     colSpan="5"
-                    className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300"
+                    className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300"
                   >
-                    TOTALS:
+                    TOTALS (filtered)
                   </td>
-                  {/* Bill Amount Total */}
-                  <td className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold text-blue-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-blue-700 border-r border-gray-300">
                     {formatCurrency(filteredSummary.totalSales)}
                   </td>
-                  {/* VAT Total */}
-                  <td className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-gray-300">
                     {formatCurrency(filteredSummary.totalVat ?? 0)}
                   </td>
-                  {/* Paid Amount Total */}
-                  <td className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold text-green-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-green-700 border-r border-gray-300">
                     {formatCurrency(filteredSummary.totalPayments)}
                   </td>
-                  {/* Pending Total */}
-                  <td className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
                     {formatCurrency(filteredSummary.totalRealPending)}
                   </td>
-                  {/* Status */}
-                  <td className="px-2 lg:px-3 py-3 text-center text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300">
                     -
                   </td>
-                  {/* Customer Balance */}
-                  <td className="px-2 lg:px-3 py-3 text-right text-xs lg:text-sm font-bold border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-gray-300">
                     <span className={filteredSummary.pendingBalance > 0 ? 'text-red-700' : filteredSummary.pendingBalance < 0 ? 'text-green-700' : 'text-gray-900'}>
                       {formatBalance(filteredSummary.pendingBalance)}
                     </span>
                   </td>
-                  <td className="px-2 lg:px-3 py-3" />
-                </tr>
-                {/* Second Total Row - Summary */}
-                <tr className="bg-yellow-50">
-                  <td
-                    colSpan="5"
-                    className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-gray-700 border-r border-gray-300"
-                  >
-                    SUMMARY:
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-blue-700 border-r border-gray-300">
-                    Sales: {formatCurrency(filteredSummary.totalSales)}
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-teal-700 border-r border-gray-300">
-                    VAT: {formatCurrency(filteredSummary.totalVat ?? 0)}
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-green-700 border-r border-gray-300">
-                    Paid: {formatCurrency(filteredSummary.totalPayments)}
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-red-700 border-r border-gray-300">
-                    Pending: {formatCurrency(filteredSummary.totalRealPending)}
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-semibold text-gray-700 border-r border-gray-300">
-                    -
-                  </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-semibold text-orange-700 border-r border-gray-300">
-                    Net: {formatBalance(filteredSummary.pendingBalance)}
-                  </td>
-                  <td className="px-2 lg:px-3 py-2" />
+                  <td className={stickyActionCell('bg-blue-50')} />
                 </tr>
               </tfoot>
             </table>
+            </div>
           </div>
 
           {/* Mobile Card View - Shown only on mobile */}
-          <div className="md:hidden h-full overflow-auto px-2 py-2 space-y-2">
+          <div className="md:hidden flex-1 min-h-0 overflow-auto px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <FileText className="w-12 h-12 mb-2 text-gray-300" />
@@ -1269,15 +1398,19 @@ const SalesLedgerPage = () => {
                     <div
                       className={`rounded-lg border p-2.5 ${entry.type === 'Payment'
                         ? 'bg-green-50 border-green-200'
-                        : 'bg-white border-gray-200'
+                        : entry.type === 'Return'
+                          ? 'bg-amber-50 border-amber-200'
+                          : 'bg-white border-gray-200'
                         }`}
                     >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-1.5 mb-1">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${entry.type === 'Payment'
                             ? 'bg-green-600 text-white'
-                            : 'bg-blue-600 text-white'
+                            : entry.type === 'Return'
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-blue-600 text-white'
                             }`}>
                             {entry.type}
                           </span>
@@ -1291,6 +1424,27 @@ const SalesLedgerPage = () => {
                         <div className="text-xs text-gray-600">{entry.customerName}</div>
                         <div className="text-xs text-gray-500">{dateStr}</div>
                       </div>
+                      {entry.type === 'Sale' && entry.saleId ? (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/pos?editId=${entry.saleId}`)}
+                            className="p-2 rounded-md text-primary-600 hover:bg-primary-50"
+                            title="Edit invoice"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleShareInvoiceWhatsApp(entry)}
+                            disabled={sharingSaleId === entry.saleId}
+                            className="p-2 rounded-md text-green-600 hover:bg-green-50 disabled:opacity-50"
+                            title="WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="grid grid-cols-2 gap-1.5 text-xs">
@@ -1383,10 +1537,10 @@ const SalesLedgerPage = () => {
                     onClick={handleLoadMore}
                     className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
                   >
-                    Load More ({filteredLedger.length - displayLimit} remaining)
+                    Load More ({displayLedgerSorted.length - displayLimit} remaining)
                   </button>
                   <p className="text-xs text-gray-500 mt-2">
-                    Showing {displayLimit} of {filteredLedger.length} entries
+                    Showing {displayLimit} of {displayLedgerSorted.length} entries
                   </p>
                 </div>
               )}
