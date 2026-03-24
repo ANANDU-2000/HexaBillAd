@@ -24,6 +24,33 @@ const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
 const SHOW_KPI_KEY = 'hexabill_sales_ledger_show_kpi'
 const SORT_ORDER_KEY = 'hexabill_sales_ledger_sort_order'
 
+/** Canonical row type for filter/sort (API may send Type/type or different casing). */
+function normalizeLedgerRowType(raw) {
+  const s = String(raw ?? '').trim().toLowerCase()
+  if (s === 'sale') return 'Sale'
+  if (s === 'payment') return 'Payment'
+  if (s === 'return') return 'Return'
+  return ''
+}
+
+function timeMs(d) {
+  const n = new Date(d).getTime()
+  return Number.isFinite(n) ? n : 0
+}
+
+/** Prefer the id that matches row type so Payment rows sort by payment id, not related sale id. */
+function primarySortId(e) {
+  const t = normalizeLedgerRowType(e.type)
+  if (t === 'Sale') return Number(e.saleId) || 0
+  if (t === 'Payment') return Number(e.paymentId) || 0
+  if (t === 'Return') return Number(e.returnId) || 0
+  return Math.max(
+    Number(e.saleId) || 0,
+    Number(e.paymentId) || 0,
+    Number(e.returnId) || 0
+  )
+}
+
 /** Max sale/payment/return id on a row (one type is usually set per row). */
 function rowActivityId(e) {
   return Math.max(
@@ -34,11 +61,11 @@ function rowActivityId(e) {
 }
 
 function maxActivityIdInGroup(rows) {
-  return rows.reduce((m, e) => Math.max(m, rowActivityId(e)), 0)
+  return rows.reduce((m, e) => Math.max(m, primarySortId(e)), 0)
 }
 
 function minActivityIdInGroup(rows) {
-  const ids = rows.map(rowActivityId).filter((id) => id > 0)
+  const ids = rows.map(primarySortId).filter((id) => id > 0)
   return ids.length ? Math.min(...ids) : 0
 }
 
@@ -52,19 +79,24 @@ function sortLedgerForDisplay(entries, order) {
     byCustomer.get(name).push(e)
   }
 
-  const typeRank = (t) => (t === 'Sale' ? 0 : t === 'Return' ? 1 : 2)
+  const typeRank = (t) => {
+    const n = normalizeLedgerRowType(t)
+    if (n === 'Sale') return 0
+    if (n === 'Return') return 1
+    return 2
+  }
 
   const compareLines = (a, b, mult) => {
-    const da = new Date(a.date).getTime()
-    const db = new Date(b.date).getTime()
+    const da = timeMs(a.date)
+    const db = timeMs(b.date)
     if (da !== db) return mult * (da - db)
     const ta = typeRank(a.type)
     const tb = typeRank(b.type)
     if (ta !== tb) return mult * (ta - tb)
     const c = String(a.invoiceNo || '').localeCompare(String(b.invoiceNo || ''), undefined, { numeric: true })
     if (c !== 0) return mult * c
-    const ida = (a.saleId || 0) || (a.paymentId || 0) || (a.returnId || 0)
-    const idb = (b.saleId || 0) || (b.paymentId || 0) || (b.returnId || 0)
+    const ida = primarySortId(a)
+    const idb = primarySortId(b)
     return mult * (ida - idb)
   }
 
@@ -77,12 +109,12 @@ function sortLedgerForDisplay(entries, order) {
   customerNames.sort((a, b) => {
     const rowsA = byCustomer.get(a)
     const rowsB = byCustomer.get(b)
-    const datesA = rowsA.map(e => new Date(e.date).getTime())
-    const datesB = rowsB.map(e => new Date(e.date).getTime())
-    const maxA = Math.max(...datesA)
-    const maxB = Math.max(...datesB)
-    const minA = Math.min(...datesA)
-    const minB = Math.min(...datesB)
+    const datesA = rowsA.map(e => timeMs(e.date)).filter((t) => t > 0)
+    const datesB = rowsB.map(e => timeMs(e.date)).filter((t) => t > 0)
+    const maxA = datesA.length ? Math.max(...datesA) : 0
+    const maxB = datesB.length ? Math.max(...datesB) : 0
+    const minA = datesA.length ? Math.min(...datesA) : 0
+    const minB = datesB.length ? Math.min(...datesB) : 0
     if (order === 'newest') {
       if (maxB !== maxA) return maxB - maxA
       const idA = maxActivityIdInGroup(rowsA)
@@ -110,11 +142,11 @@ function sortFlatSalesLedger(entries, order) {
   const copy = [...entries]
   const mult = order === 'newest' ? -1 : 1
   copy.sort((a, b) => {
-    const da = new Date(a.date).getTime()
-    const db = new Date(b.date).getTime()
+    const da = timeMs(a.date)
+    const db = timeMs(b.date)
     if (da !== db) return mult * (da - db)
-    const ida = rowActivityId(a)
-    const idb = rowActivityId(b)
+    const ida = Number(a.saleId) || 0
+    const idb = Number(b.saleId) || 0
     if (ida !== idb) return mult * (ida - idb)
     const inv = String(a.invoiceNo || '').localeCompare(String(b.invoiceNo || ''), undefined, { numeric: true })
     if (inv !== 0) return mult * inv
@@ -237,7 +269,7 @@ const SalesLedgerPage = () => {
 
         const ledgerWithBalance = entries.map(entry => ({
           date: new Date(entry.date),
-          type: entry.type,
+          type: normalizeLedgerRowType(entry.type ?? entry.Type),
           invoiceNo: entry.invoiceNo || '-',
           customerId: entry.customerId,
           customerName: entry.customerName || 'Cash Customer',
@@ -316,9 +348,12 @@ const SalesLedgerPage = () => {
     }
 
     if (filters.type) {
-      filteredLedger = filteredLedger.filter(entry =>
-        entry.type === filters.type
-      )
+      const want = normalizeLedgerRowType(filters.type)
+      if (want) {
+        filteredLedger = filteredLedger.filter(
+          (entry) => normalizeLedgerRowType(entry.type) === want
+        )
+      }
     }
 
     if (filters.status) {
@@ -508,9 +543,9 @@ const SalesLedgerPage = () => {
 
   // Summary from filtered data only (PRODUCTION_MASTER_TODO #8): totals must match the displayed list.
   // Do not use reportData.salesLedgerSummary for UI totals — it is server summary for initial query only.
-  const salesEntries = filteredLedger.filter(e => e.type === 'Sale')
-  const returnEntries = filteredLedger.filter(e => e.type === 'Return')
-  const paymentEntries = filteredLedger.filter(e => e.type === 'Payment')
+  const salesEntries = filteredLedger.filter((e) => normalizeLedgerRowType(e.type) === 'Sale')
+  const returnEntries = filteredLedger.filter((e) => normalizeLedgerRowType(e.type) === 'Return')
+  const paymentEntries = filteredLedger.filter((e) => normalizeLedgerRowType(e.type) === 'Payment')
 
   // CRITICAL CORRECTIONS - REAL DATA CALCULATIONS (from filteredLedger):
   // 1. Total Sales = Sum of GrandTotal from all sales (invoice amounts) - REAL BILL AMOUNTS
