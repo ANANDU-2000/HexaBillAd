@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../hooks/useAuth'
 import { salesAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
+import { getInvoicePaymentBadge } from '../../utils/salePaymentSettlement'
 import toast from 'react-hot-toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input } from '../../components/Form'
@@ -414,7 +415,9 @@ const BillingHistoryPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sales.map((sale) => (
+                  {sales.map((sale) => {
+                    const payBadge = getInvoicePaymentBadge(sale)
+                    return (
                     <tr key={sale.id} className="group hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
@@ -453,8 +456,8 @@ const BillingHistoryPage = () => {
                         {formatCurrency(sale.grandTotal || 0)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(sale.paymentStatus)}`}>
-                          {getPaymentStatusText(sale.paymentStatus)}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payBadge.colorClass}`}>
+                          {payBadge.label}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -497,14 +500,17 @@ const BillingHistoryPage = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Cards */}
             <div className="md:hidden divide-y divide-gray-200">
-              {sales.map((sale) => (
+              {sales.map((sale) => {
+                const payBadge = getInvoicePaymentBadge(sale)
+                return (
                 <div key={sale.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
@@ -516,8 +522,8 @@ const BillingHistoryPage = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getPaymentStatusColor(sale.paymentStatus)}`}>
-                        {getPaymentStatusText(sale.paymentStatus)}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payBadge.colorClass}`}>
+                        {payBadge.label}
                       </span>
                       {sale.primaryPaymentMode && (
                         <div className="text-xs text-gray-500 mt-1">Method: {sale.primaryPaymentMode}</div>
@@ -566,7 +572,8 @@ const BillingHistoryPage = () => {
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
 
             {/* Pagination */}

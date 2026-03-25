@@ -2465,11 +2465,10 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0m);
                 var balance = sale.GrandTotal - paidAmount;
-                const decimal settledEps = 0.05m; // minor VAT/rounding drift between line items and payment total
 
                 // Invoice row: settlement from cleared payments only (Sale row — not individual payment receipts)
                 string status = "Unpaid";
-                if (balance <= settledEps)
+                if (balance <= SalePaymentHelpers.SettlementToleranceAed)
                 {
                     status = "Paid";
                 }

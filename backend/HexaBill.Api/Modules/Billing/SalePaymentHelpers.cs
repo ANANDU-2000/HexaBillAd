@@ -4,9 +4,13 @@ namespace HexaBill.Api.Modules.Billing;
 
 /// <summary>
 /// Single place for payment-line cleared vs pending rules and sale payment state from cleared totals only.
+/// All sale invoice settlement (API, reports, ledgers) should use <see cref="SettlementToleranceAed"/> for "fully paid" vs rounding drift.
 /// </summary>
 internal static class SalePaymentHelpers
 {
+    /// <summary>Max AED shortfall between GrandTotal and cleared sum to still treat invoice as fully paid (VAT/rounding).</summary>
+    internal const decimal SettlementToleranceAed = 0.05m;
+
     public static PaymentStatus GetPaymentLineStatus(PaymentMode mode)
     {
         return mode == PaymentMode.CHEQUE
@@ -33,9 +37,8 @@ internal static class SalePaymentHelpers
             return (0, SalePaymentStatus.Paid, lastClearedPaymentDate);
 
         // Match ledger / VAT rounding: treat as fully settled when within small drift (avoids Partial/Pending on full cash)
-        const decimal settledEps = 0.05m;
         var shortfall = grandTotal - clearedSumTotal;
-        if (shortfall <= settledEps)
+        if (shortfall <= SettlementToleranceAed)
             return (grandTotal, SalePaymentStatus.Paid, lastClearedPaymentDate);
 
         var paidAmount = Math.Min(clearedSumTotal, grandTotal);

@@ -34,10 +34,8 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import PrintOptionsModal from '../../components/PrintOptionsModal'
 
 import { getApiBaseUrl } from '../../services/apiConfig'
+import { SETTLEMENT_TOLERANCE_AED, isInvoiceFullySettled, getInvoicePaymentBadge } from '../../utils/salePaymentSettlement'
 const API_BASE_URL = getApiBaseUrl()
-
-/** Match backend SalePaymentHelpers settled tolerance (AED). */
-const PAYMENT_SETTLED_EPS = 0.05
 
 /** Map API PaymentMode (e.g. CASH) to POS payment dropdown values (Cash, Debit, …). */
 function normalizeApiPaymentMethodToUi(method) {
@@ -328,8 +326,11 @@ const PosPage = () => {
         const paidLoad = Number(sale.paidAmount) || 0
         const outstandingLoad = Math.max(0, gtLoad - paidLoad)
         const stLoad = (sale.paymentStatus || '').toLowerCase()
-        const settledLoad =
-          stLoad === 'paid' || gtLoad <= 0 || outstandingLoad <= PAYMENT_SETTLED_EPS
+        const settledLoad = isInvoiceFullySettled({
+          grandTotal: gtLoad,
+          paidAmount: paidLoad,
+          paymentStatus: sale.paymentStatus
+        })
 
         if (sale.payments && sale.payments.length > 0) {
           const clearedFirst = sale.payments.find(
@@ -337,7 +338,7 @@ const PosPage = () => {
           )
           const payment = clearedFirst || sale.payments[0]
           setPaymentMethod(normalizeApiPaymentMethodToUi(payment.method))
-          if (!settledLoad && outstandingLoad > PAYMENT_SETTLED_EPS) {
+          if (!settledLoad && outstandingLoad > SETTLEMENT_TOLERANCE_AED) {
             setPaymentAmount(String(outstandingLoad))
           } else {
             setPaymentAmount('')
@@ -3204,7 +3205,11 @@ const PosPage = () => {
                   <li>• Status: <span className="font-bold">{editingSale?.paymentStatus?.toUpperCase() || 'Unknown'}</span></li>
                   <li>• Total: <span className="font-bold">{formatCurrency(editingSale?.grandTotal || 0)}</span></li>
                   <li>• Paid: <span className="font-bold">{formatCurrency(editingSale?.paidAmount || 0)}</span></li>
-                  {editingSale?.paidAmount < editingSale?.grandTotal && (
+                  {!isInvoiceFullySettled({
+                    grandTotal: editingSale?.grandTotal,
+                    paidAmount: editingSale?.paidAmount,
+                    paymentStatus: editingSale?.paymentStatus
+                  }) && (
                     <li>• Outstanding: <span className="font-bold text-red-600">{formatCurrency((editingSale?.grandTotal || 0) - (editingSale?.paidAmount || 0))}</span></li>
                   )}
                 </ul>
@@ -3344,23 +3349,20 @@ const PosPage = () => {
 
             {/* Content */}
             <div className="p-6 space-y-4">
-              {/* Payment status: Paid / Partial / Pending (invoice payment status, not "saving") */}
-              {lastCreatedInvoice.data?.paymentStatus && (
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm text-gray-600">Status:</span>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      (lastCreatedInvoice.data.paymentStatus || '').toLowerCase() === 'paid'
-                        ? 'bg-green-100 text-green-800'
-                        : (lastCreatedInvoice.data.paymentStatus || '').toLowerCase() === 'partial'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {lastCreatedInvoice.data.paymentStatus}
-                  </span>
-                </div>
-              )}
+              {/* Payment status: same rules as Billing History (amount-aware if API string lags) */}
+              {lastCreatedInvoice.data && (() => {
+                const statusBadge = getInvoicePaymentBadge(lastCreatedInvoice.data)
+                return (
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-gray-600">Status:</span>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.colorClass}`}
+                    >
+                      {statusBadge.label}
+                    </span>
+                  </div>
+                )
+              })()}
               <p className="text-gray-700 mb-4">What would you like to do with this invoice?</p>
 
               {/* Action Buttons - 4 direct format buttons for one-click print */}

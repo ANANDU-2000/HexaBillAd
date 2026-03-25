@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Shared.Extensions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -1326,7 +1327,7 @@ namespace HexaBill.Api.Modules.Customers
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0m);
                 var balance = sale.GrandTotal - paidAmount;
-                string status = balance <= 0.01m ? "Paid" : paidAmount > 0 ? "Partial" : "Unpaid";
+                string status = balance <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : paidAmount > 0 ? "Partial" : "Unpaid";
                 var firstPayment = payments.FirstOrDefault(p => p.SaleId == sale.Id);
                 var paymentMode = (string?)(firstPayment?.Mode.ToString().ToUpper() ?? "NOT PAID");
 
