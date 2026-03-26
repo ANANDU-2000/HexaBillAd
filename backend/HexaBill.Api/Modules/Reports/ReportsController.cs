@@ -402,9 +402,10 @@ namespace HexaBill.Api.Modules.Reports
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
             if (string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new ApiResponse<object> { Success = false, Message = "Period is already locked." });
-            var from = period.PeriodStart; var to = period.PeriodEnd;
-            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, from, to);
-            var issues = await _vatValidation.ValidatePeriodAsync(tenantId, from, to, dto);
+            var from = period.PeriodStart;
+            var toExclusive = period.PeriodEnd.Date.AddDays(1).ToUtcKind();
+            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, from, toExclusive);
+            var issues = await _vatValidation.ValidatePeriodAsync(tenantId, from, toExclusive, dto);
             var blocking = issues.Where(i => string.Equals(i.Severity, "Blocking", StringComparison.OrdinalIgnoreCase)).ToList();
             if (blocking.Any())
                 return StatusCode(422, new ApiResponse<object> { Success = false, Message = "Cannot lock: resolve blocking validation issues first.", Errors = blocking.Select(i => i.Message).ToList() });
@@ -424,11 +425,12 @@ namespace HexaBill.Api.Modules.Reports
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
+            if (!string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Period must be locked before submitting. Lock it first to validate and freeze the figures." });
             var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
             period.SubmittedAt = DateTime.UtcNow;
             period.SubmittedByUserId = userId;
-            if (!string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
-                period.Status = "Submitted";
+            period.Status = "Submitted";
             await _context.SaveChangesAsync();
             return Ok(new ApiResponse<object> { Success = true, Message = "Submitted." });
         }
@@ -447,11 +449,13 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
                 if (p == null) return NotFound(new ApiResponse<List<ValidationIssueDto>> { Success = false });
-                fromDate = p.PeriodStart; toDate = p.PeriodEnd;
+                fromDate = p.PeriodStart;
+                toDate = p.PeriodEnd.Date.AddDays(1).ToUtcKind();
             }
             else if (from.HasValue && to.HasValue)
             {
-                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
+                fromDate = from.Value.ToUtcKind();
+                toDate = to.Value.Date.AddDays(1).ToUtcKind();
             }
             else
                 return BadRequest(new ApiResponse<List<ValidationIssueDto>> { Success = false, Message = "Provide from/to or periodId." });
@@ -520,12 +524,15 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
                 if (p == null) return NotFound();
-                fromDate = p.PeriodStart; toDate = p.PeriodEnd; label = p.PeriodLabel;
+                fromDate = p.PeriodStart;
+                toDate = p.PeriodEnd.Date.AddDays(1).ToUtcKind();
+                label = p.PeriodLabel;
             }
             else if (from.HasValue && to.HasValue)
             {
-                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
-                label = $"{fromDate:yyyy-MM-dd}_{toDate:yyyy-MM-dd}";
+                fromDate = from.Value.ToUtcKind();
+                toDate = to.Value.Date.AddDays(1).ToUtcKind();
+                label = $"{fromDate:yyyy-MM-dd}_{toDate.AddDays(-1):yyyy-MM-dd}";
             }
             else
                 return BadRequest("Provide from/to or periodId.");
@@ -568,12 +575,15 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var p = await _context.VatReturnPeriods.FirstOrDefaultAsync(x => x.Id == periodId && x.TenantId == tenantId);
                 if (p == null) return NotFound();
-                fromDate = p.PeriodStart; toDate = p.PeriodEnd; label = p.PeriodLabel;
+                fromDate = p.PeriodStart;
+                toDate = p.PeriodEnd.Date.AddDays(1).ToUtcKind();
+                label = p.PeriodLabel;
             }
             else if (from.HasValue && to.HasValue)
             {
-                fromDate = from.Value.ToUtcKind(); toDate = to.Value.ToUtcKind();
-                label = $"{fromDate:yyyy-MM-dd}_{toDate:yyyy-MM-dd}";
+                fromDate = from.Value.ToUtcKind();
+                toDate = to.Value.Date.AddDays(1).ToUtcKind();
+                label = $"{fromDate:yyyy-MM-dd}_{toDate.AddDays(-1):yyyy-MM-dd}";
             }
             else
                 return BadRequest("Provide from/to or periodId.");

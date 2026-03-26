@@ -997,6 +997,29 @@ if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 }
 
+// AUTH GUARD: Require valid JWT for expense/purchase attachments.
+// Logos and product images stay public; sensitive financial docs require auth.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/uploads/expenses", StringComparison.OrdinalIgnoreCase)
+        || context.Request.Path.StartsWithSegments("/uploads/purchases", StringComparison.OrdinalIgnoreCase)
+        || context.Request.Path.StartsWithSegments("/uploads/attachments", StringComparison.OrdinalIgnoreCase))
+    {
+        var authHeader = context.Request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var tokenFromQuery = context.Request.Query["token"].ToString();
+            if (string.IsNullOrEmpty(tokenFromQuery))
+            {
+                context.Response.StatusCode = 401;
+                await context.Response.WriteAsync("Authentication required.");
+                return;
+            }
+        }
+    }
+    await next();
+});
+
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),

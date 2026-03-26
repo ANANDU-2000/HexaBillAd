@@ -246,7 +246,7 @@ namespace HexaBill.Api.Modules.Customers
             try
             {
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"SELECT COALESCE(SUM(""GrandTotal""), 0) FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" < @p2";
+                cmd.CommandText = @"SELECT COALESCE(SUM(""GrandTotal""), 0) FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" < @p2 AND ""Status"" = 1";
                 var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
                 var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
                 var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
@@ -265,7 +265,7 @@ namespace HexaBill.Api.Modules.Customers
             try
             {
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"SELECT ""ReturnDate"", ""ReturnNo"", ""GrandTotal"" FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" >= @p2 AND ""ReturnDate"" <= @p3 ORDER BY ""ReturnDate"", ""Id""";
+                cmd.CommandText = @"SELECT ""ReturnDate"", ""ReturnNo"", ""GrandTotal"" FROM ""SaleReturns"" WHERE ""CustomerId"" = @p0 AND ""TenantId"" = @p1 AND ""ReturnDate"" >= @p2 AND ""ReturnDate"" <= @p3 AND ""Status"" = 1 ORDER BY ""ReturnDate"", ""Id""";
                 var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = customerId; cmd.Parameters.Add(p0);
                 var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = tenantId; cmd.Parameters.Add(p1);
                 var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = fromDate; cmd.Parameters.Add(p2);
@@ -987,9 +987,8 @@ namespace HexaBill.Api.Modules.Customers
 
             var filteredSaleIds = new HashSet<int>(salesData.Select(s => s.Id));
 
-            // Payments: only include incoming payments (exclude refunds - those are Type "Refund" below)
             var paymentsQuery = _context.Payments
-                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null);
+                .Where(p => p.CustomerId.HasValue && p.CustomerId.Value == customerId && p.TenantId == tenantId && p.SaleReturnId == null && p.Status != PaymentStatus.VOID);
             var payments = await paymentsQuery
                 .OrderBy(p => p.PaymentDate)
                 .ThenBy(p => p.Id)
@@ -1002,7 +1001,7 @@ namespace HexaBill.Api.Modules.Customers
             // CRITICAL FIX: SQLite may not have BranchId/RouteId columns in SaleReturns table
             // Use projection to only select columns we actually use, avoiding BranchId/RouteId
             var salesReturnsQuery = _context.SaleReturns
-                .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId);
+                .Where(sr => sr.CustomerId.HasValue && sr.CustomerId.Value == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved);
             if (from.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate >= from.Value);
             if (toEnd.HasValue) salesReturnsQuery = salesReturnsQuery.Where(sr => sr.ReturnDate < toEnd.Value);
             
@@ -1088,7 +1087,8 @@ namespace HexaBill.Api.Modules.Customers
             foreach (var sale in salesData)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0);
-                var status = paidAmount >= sale.GrandTotal ? "Paid" 
+                var balance = sale.GrandTotal - paidAmount;
+                var status = balance <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" 
                     : paidAmount > 0 ? "Partial" 
                     : "Unpaid";
                 
@@ -2605,15 +2605,13 @@ namespace HexaBill.Api.Modules.Customers
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
             var totalSalesReturns = await _context.SaleReturns
-                .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
                 .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
 
-            // Refunds paid (money out) - payments linked to returns
             var refundsPaid = await _context.Payments
-                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
-            // Closing balance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid
             var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;
 
             // Get last payment date
@@ -2658,11 +2656,11 @@ namespace HexaBill.Api.Modules.Customers
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                 var totalSalesReturns = await _context.SaleReturns
-                    .Where(sr => sr.CustomerId == customer.Id && sr.TenantId == tenantId)
+                    .Where(sr => sr.CustomerId == customer.Id && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
                     .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
 
                 var refundsPaid = await _context.Payments
-                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.SaleReturnId != null)
+                    .Where(p => p.CustomerId == customer.Id && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
                     .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
                 var pendingBalance = totalSales - totalPayments - totalSalesReturns + refundsPaid;

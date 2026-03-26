@@ -363,11 +363,11 @@ namespace HexaBill.Api.Modules.Billing
                     }
                 }
 
-                // Credit note when Keep as Credit (not when Refund Now)
-                if ((request.CreateCreditNote || rt == ReturnType.CreditIssued) && rt != ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
+                // Credit note when Keep as Credit (not when Refund Now); only when return is approved (not pending)
+                if (!requireApproval && (request.CreateCreditNote || rt == ReturnType.CreditIssued) && rt != ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
                 {
                     var totalPaidForSale = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId)
+                        .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0;
                     if (totalPaidForSale >= saleInfo.GrandTotal)
                     {
@@ -770,6 +770,49 @@ namespace HexaBill.Api.Modules.Billing
 
                     if (ret.Sale?.CustomerId != null)
                     {
+                        // Credit note for CreditIssued returns (deferred from creation until approval)
+                        if (ret.ReturnType == ReturnType.CreditIssued && ret.Sale.CustomerId.HasValue)
+                        {
+                            var totalPaidForSale = await _context.Payments
+                                .Where(p => p.SaleId == ret.SaleId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
+                                .SumAsync(p => (decimal?)p.Amount) ?? 0;
+                            if (totalPaidForSale >= ret.Sale.GrandTotal)
+                            {
+                                _context.CreditNotes.Add(new CreditNote
+                                {
+                                    TenantId = tenantId,
+                                    CustomerId = ret.Sale.CustomerId.Value,
+                                    LinkedReturnId = ret.Id,
+                                    Amount = ret.GrandTotal,
+                                    Currency = "AED",
+                                    Status = "unused",
+                                    CreatedAt = DateTime.UtcNow,
+                                    CreatedBy = 0
+                                });
+                                await _context.SaveChangesAsync();
+                            }
+                        }
+
+                        // Refund Now on approval
+                        if (ret.ReturnType == ReturnType.RefundNow && ret.Sale.CustomerId.HasValue)
+                        {
+                            _context.Payments.Add(new Payment
+                            {
+                                TenantId = tenantId,
+                                SaleReturnId = ret.Id,
+                                CustomerId = ret.Sale.CustomerId,
+                                Amount = ret.GrandTotal,
+                                Mode = PaymentMode.CASH,
+                                Status = PaymentStatus.CLEARED,
+                                PaymentDate = DateTime.UtcNow,
+                                Reference = $"Refund for return {ret.ReturnNo}",
+                                CreatedBy = 0,
+                                CreatedAt = DateTime.UtcNow,
+                                OwnerId = tenantId
+                            });
+                            await _context.SaveChangesAsync();
+                        }
+
                         var customer = await _context.Customers.FindAsync(ret.Sale.CustomerId.Value);
                         if (customer != null)
                             await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, customer.TenantId ?? 0);
@@ -983,7 +1026,7 @@ namespace HexaBill.Api.Modules.Billing
                 .Where(p => p.SaleId == saleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0;
             var outstanding = sale.GrandTotal - paidSoFar;
-            if (outstanding <= 0)
+            if (outstanding <= SalePaymentHelpers.SettlementToleranceAed)
                 throw new InvalidOperationException("This invoice is already fully paid.");
             var applyAmount = amountToApply > outstanding ? outstanding : amountToApply;
             var returnNo = cn.LinkedReturn?.ReturnNo ?? $"RET-{cn.LinkedReturnId}";

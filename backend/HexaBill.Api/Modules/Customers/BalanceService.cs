@@ -74,10 +74,10 @@ namespace HexaBill.Api.Modules.Customers
                         .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                         .SumAsync(p => (decimal?)p.Amount);
                     var totalSalesReturnsTask = _context.SaleReturns
-                        .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                        .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
                         .SumAsync(sr => (decimal?)sr.GrandTotal);
                     var refundsPaidTask = _context.Payments
-                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                        .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
                         .SumAsync(p => (decimal?)p.Amount);
 
                     await Task.WhenAll(totalSalesTask, totalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);
@@ -216,10 +216,10 @@ namespace HexaBill.Api.Modules.Customers
                 .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => (decimal?)p.Amount);
             var totalSalesReturnsTask = _context.SaleReturns
-                .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
+                .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
                 .SumAsync(sr => (decimal?)sr.GrandTotal);
             var refundsPaidTask = _context.Payments
-                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null)
+                .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
                 .SumAsync(p => (decimal?)p.Amount);
 
             await Task.WhenAll(actualTotalSalesTask, actualTotalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);

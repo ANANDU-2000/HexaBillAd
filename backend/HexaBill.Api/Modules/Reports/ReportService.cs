@@ -409,16 +409,15 @@ namespace HexaBill.Api.Modules.Reports
                         baseSalesQuery = baseSalesQuery.Where(s => s.TenantId == tenantId);
                     }
                     
-                    // Pending bills: Filter in database (balance > 0.01m)
+                    var tol = SalePaymentHelpers.SettlementToleranceAed;
                     var pendingBillsQuery = baseSalesQuery
-                        .Where(s => (s.GrandTotal - s.PaidAmount) > 0.01m); // Filter in SQL
+                        .Where(s => (s.GrandTotal - s.PaidAmount) > tol);
                     
-                    pendingBillsCount = await pendingBillsQuery.CountAsync(); // Count in database
-                    pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0m; // Sum in database
+                    pendingBillsCount = await pendingBillsQuery.CountAsync();
+                    pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0m;
                     
-                    // Paid bills: Filter in database (balance <= 0.01m)
                     var paidBillsQuery = baseSalesQuery
-                        .Where(s => (s.GrandTotal - s.PaidAmount) <= 0.01m); // Filter in SQL
+                        .Where(s => (s.GrandTotal - s.PaidAmount) <= tol);
                     
                     paidBillsCount = await paidBillsQuery.CountAsync(); // Count in database
                     paidBillsAmount = await paidBillsQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m; // Sum in database
@@ -431,7 +430,7 @@ namespace HexaBill.Api.Modules.Reports
                                                join c in _context.Customers on s.CustomerId equals c.Id into customerGroup
                                                from c in customerGroup.DefaultIfEmpty()
                                                where !s.IsDeleted && 
-                                                     (s.GrandTotal - s.PaidAmount) > 0.01m // Actual balance > 0
+                                                     (s.GrandTotal - s.PaidAmount) > SalePaymentHelpers.SettlementToleranceAed
                                                select new { Sale = s, Customer = c };
                     
                     // Apply tenant filter if needed
@@ -888,11 +887,11 @@ namespace HexaBill.Api.Modules.Reports
             var startUtc = _timeZoneService.ConvertToUtc(fromLocal);
             var endUtc = _timeZoneService.ConvertToUtc(toEndLocal).ToUtcKind();
 
-            // TotalReceived = customer payments (not refunds) in period; exclude VOID
+            // TotalReceived = cleared customer payments (not refunds) in period
             var totalReceived = await _context.Payments
                 .Where(p => (p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId))
                     && p.SaleReturnId == null
-                    && p.Status != PaymentStatus.VOID
+                    && p.Status == PaymentStatus.CLEARED
                     && p.PaymentDate >= startUtc
                     && p.PaymentDate < endUtc)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0m;
@@ -1065,20 +1064,18 @@ namespace HexaBill.Api.Modules.Reports
             if (!string.IsNullOrWhiteSpace(status))
             {
                 var statusUpper = status.ToUpper();
+                var tol2 = SalePaymentHelpers.SettlementToleranceAed;
                 if (statusUpper == "PENDING" || statusUpper == "UNPAID")
                 {
-                    // Pending: balance > 0.01
-                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) > 0.01m);
+                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) > tol2);
                 }
                 else if (statusUpper == "PAID")
                 {
-                    // Paid: balance <= 0.01
-                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) <= 0.01m);
+                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) <= tol2);
                 }
                 else if (statusUpper == "PARTIAL")
                 {
-                    // Partial: paid > 0 but balance > 0.01
-                    query = query.Where(s => s.PaidAmount > 0 && (s.GrandTotal - s.PaidAmount) > 0.01m);
+                    query = query.Where(s => s.PaidAmount > 0 && (s.GrandTotal - s.PaidAmount) > tol2);
                 }
             }
             
@@ -1558,7 +1555,7 @@ namespace HexaBill.Api.Modules.Reports
                         from c in cGrp.DefaultIfEmpty()
                         where !s.IsDeleted
                               && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial)
-                              && (s.GrandTotal - s.PaidAmount) > 0.01m
+                              && (s.GrandTotal - s.PaidAmount) > SalePaymentHelpers.SettlementToleranceAed
                         select new { s, c };
 
             if (tenantId > 0)
@@ -2062,7 +2059,8 @@ namespace HexaBill.Api.Modules.Reports
                     .ToListAsync();
 
                 var payments = await _context.Payments
-                    .Where(p => p.CustomerId == customer.Id && p.PaymentDate >= fromDate && p.PaymentDate <= toDate)
+                    .Where(p => p.CustomerId == customer.Id && p.PaymentDate >= fromDate && p.PaymentDate <= toDate
+                        && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                     .ToListAsync();
 
                 var totalSales = sales.Sum(s => s.GrandTotal);

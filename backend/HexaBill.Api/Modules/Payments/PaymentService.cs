@@ -11,6 +11,7 @@ using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions; // CRITICAL: For ToUtcKind() extension
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Shared.Validation;
 
 namespace HexaBill.Api.Modules.Payments
@@ -270,7 +271,8 @@ namespace HexaBill.Api.Modules.Payments
                         var newPaidAmount = clearedSum + (paymentStatus == PaymentStatus.CLEARED ? request.Amount : 0);
                         invoiceSale.PaidAmount = newPaidAmount;
                         invoiceSale.LastPaymentDate = payment.PaymentDate;
-                        invoiceSale.PaymentStatus = newPaidAmount >= invoiceSale.GrandTotal ? SalePaymentStatus.Paid
+                        var shortfall = invoiceSale.GrandTotal - newPaidAmount;
+                        invoiceSale.PaymentStatus = shortfall <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
                             : (newPaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending);
                     }
 
@@ -395,21 +397,28 @@ namespace HexaBill.Api.Modules.Payments
             // - CLEARED → VOID/RETURNED: Reverse both PaidAmount and Balance
             // - CLEARED → PENDING: Reverse Balance only (keep PaidAmount)
 
-            // If changing from PENDING to CLEARED - customer balance and sale PaidAmount (recalc after save)
             if (oldStatus == PaymentStatus.PENDING && status == PaymentStatus.CLEARED)
             {
-                Console.WriteLine($"📋 Status change: PENDING → CLEARED for payment {paymentId}");
+                // Recalculate sale PaidAmount from cleared payments (this payment now counts)
+                if (payment.SaleId.HasValue)
+                {
+                    var sale = await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value);
+                    if (sale != null)
+                    {
+                        var clearedSum = await _context.Payments
+                            .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
+                            .SumAsync(p => (decimal?)p.Amount) ?? 0;
+                        clearedSum += payment.Amount;
+                        sale.PaidAmount = clearedSum;
+                        sale.LastPaymentDate = payment.PaymentDate;
+                        var sf = sale.GrandTotal - clearedSum;
+                        sale.PaymentStatus = sf <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
+                            : clearedSum > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
+                    }
+                }
                 if (payment.CustomerId.HasValue)
                 {
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        customer.Balance -= payment.Amount;
-                        customer.LastActivity = DateTime.UtcNow;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                        Console.WriteLine($"✅ Customer {customer.Name} balance updated: {customer.Balance}");
-                    }
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
                 }
             }
             // If voiding/returning - recalc Sale.PaidAmount from CLEARED only (this payment excluded after save)
@@ -432,9 +441,9 @@ namespace HexaBill.Api.Modules.Payments
                             .OrderByDescending(p => p.PaymentDate)
                             .Select(p => p.PaymentDate)
                             .FirstOrDefaultAsync();
-                        sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
+                        var sf2 = sale.GrandTotal - sale.PaidAmount;
+                        sale.PaymentStatus = sf2 <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
                             : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                        Console.WriteLine($"✅ Sale {sale.InvoiceNo} PaidAmount set to: {sale.PaidAmount}, Status: {sale.PaymentStatus}");
                     }
                 }
 
@@ -462,7 +471,8 @@ namespace HexaBill.Api.Modules.Payments
                     if (sale != null)
                     {
                         sale.PaidAmount = Math.Max(0, sale.PaidAmount - payment.Amount);
-                        sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
+                        var sf3 = sale.GrandTotal - sale.PaidAmount;
+                        sale.PaymentStatus = sf3 <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
                             : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
                     }
                 }
