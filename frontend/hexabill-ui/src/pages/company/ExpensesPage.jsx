@@ -492,6 +492,31 @@ const ExpensesPage = () => {
     }
   }
 
+  const handleExportPdf = async () => {
+    try {
+      setExportingPdf(true)
+      const params = {
+        fromDate: dateRange.from,
+        toDate: dateRange.to
+      }
+      if (selectedBranchId) params.branchId = selectedBranchId
+      const blob = await expensesAPI.exportPdf(params)
+      const safeFrom = String(dateRange.from || '').replace(/[^0-9-]/g, '')
+      const safeTo = String(dateRange.to || '').replace(/[^0-9-]/g, '')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `expenses_register_${safeFrom}_${safeTo}.pdf`
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      toast.success('PDF downloaded')
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Failed to export PDF')
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
   // Auto-select branch if only 1 for staff (branches/routes from shared context)
   useEffect(() => {
     if (user && !isAdminOrOwner(user) && branches?.length === 1) {
