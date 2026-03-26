@@ -162,11 +162,8 @@ namespace HexaBill.Api.Modules.Purchases
                 query = query.Where(p => p.ExpenseCategory == category);
             }
 
-            var totalCount = await query.CountAsync();
             var purchaseEntities = await query
                 .OrderByDescending(p => p.PurchaseDate)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
                 .ToListAsync();
 
             var supplierNames = purchaseEntities.Select(p => p.SupplierName).Distinct().ToList();
@@ -211,15 +208,23 @@ namespace HexaBill.Api.Modules.Purchases
             if (!string.IsNullOrWhiteSpace(status) && !status.Equals("all", StringComparison.OrdinalIgnoreCase))
             {
                 var statusLower = status.ToLowerInvariant();
-                if (statusLower == "overdue")
+                if (statusLower == "pending")
+                    purchases = purchases.Where(p => !string.Equals(p.PaymentStatus, "paid", StringComparison.OrdinalIgnoreCase)).ToList();
+                else if (statusLower == "overdue")
                     purchases = purchases.Where(p => p.IsOverdue).ToList();
                 else
                     purchases = purchases.Where(p => string.Equals(p.PaymentStatus, statusLower, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
+            var totalCount = purchases.Count;
+            var pagedPurchases = purchases
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
             return new PagedResponse<PurchaseDto>
             {
-                Items = purchases,
+                Items = pagedPurchases,
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,

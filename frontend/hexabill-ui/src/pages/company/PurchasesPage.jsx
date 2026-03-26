@@ -645,9 +645,9 @@ const PurchasesPage = () => {
         {pendingSummary && (
           <div className="mb-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-              {/* Total Pending */}
-              <button type="button" onClick={() => setStatusFilter('all')}
-                className={`col-span-2 sm:col-span-3 lg:col-span-1 text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'all' ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md ring-2 ring-amber-200' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-md'}`}>
+              {/* Total Pending (Unpaid + Partial + Overdue) */}
+              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('pending') }}
+                className={`col-span-2 sm:col-span-3 lg:col-span-1 text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'pending' ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md ring-2 ring-amber-200' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-md'}`}>
                 <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Total Pending</h3>
                 <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">
                   AED {(pendingSummary.totalPendingToPay ?? 0).toFixed(2)}
@@ -655,28 +655,28 @@ const PurchasesPage = () => {
                 <p className="text-xs text-amber-600 mt-1">All suppliers</p>
               </button>
               {/* Unpaid */}
-              <button type="button" onClick={() => setStatusFilter('unpaid')}
+              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('unpaid') }}
                 className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'unpaid' ? 'border-red-500 bg-red-50 shadow-md ring-2 ring-red-200' : 'border-red-200 bg-red-50 hover:shadow-md hover:border-red-400'}`}>
                 <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide">Unpaid</h3>
                 <p className="text-2xl font-bold text-red-700 mt-1">{pendingSummary.unpaidCount ?? 0}</p>
                 <p className="text-xs text-red-600">invoices</p>
               </button>
               {/* Partial */}
-              <button type="button" onClick={() => setStatusFilter('partial')}
+              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('partial') }}
                 className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'partial' ? 'border-amber-500 bg-amber-50 shadow-md ring-2 ring-amber-200' : 'border-amber-200 bg-amber-50 hover:shadow-md hover:border-amber-400'}`}>
                 <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wide">Partial</h3>
                 <p className="text-2xl font-bold text-amber-700 mt-1">{pendingSummary.partialCount ?? 0}</p>
                 <p className="text-xs text-amber-600">invoices</p>
               </button>
               {/* Paid */}
-              <button type="button" onClick={() => setStatusFilter('paid')}
+              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('paid') }}
                 className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'paid' ? 'border-green-500 bg-green-50 shadow-md ring-2 ring-green-200' : 'border-green-200 bg-green-50 hover:shadow-md hover:border-green-400'}`}>
                 <h3 className="text-xs font-bold text-green-800 uppercase tracking-wide">Paid</h3>
                 <p className="text-2xl font-bold text-green-700 mt-1">{pendingSummary.paidCount ?? 0}</p>
                 <p className="text-xs text-green-600">invoices</p>
               </button>
               {/* Overdue */}
-              <button type="button" onClick={() => setStatusFilter('overdue')}
+              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('overdue') }}
                 className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'overdue' ? 'border-rose-500 bg-rose-50 shadow-md ring-2 ring-rose-200' : 'border-rose-200 bg-rose-50 hover:shadow-md hover:border-rose-400'}`}>
                 <h3 className="text-xs font-bold text-rose-800 uppercase tracking-wide">Overdue</h3>
                 <p className="text-2xl font-bold text-rose-700 mt-1">{pendingSummary.overdueCount ?? 0}</p>
@@ -1052,7 +1052,6 @@ const PurchasesPage = () => {
                 <Filter className="h-4 w-4 mr-2" />
                 Filters & Search
               </h3>
-              {/* CRITICAL FIX: Show active filter status */}
               {filterPeriod !== 'all' && (
                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
                   {filterPeriod === 'today' && 'Today'}
@@ -1062,6 +1061,14 @@ const PurchasesPage = () => {
                   {filterPeriod === 'month' && 'This Month'}
                   {filterPeriod === 'custom' && 'Custom Range'}
                 </span>
+              )}
+              {statusFilter && statusFilter !== 'all' && (
+                <button
+                  onClick={() => { setCurrentPage(1); setStatusFilter('all') }}
+                  className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium hover:bg-amber-200 flex items-center gap-1"
+                >
+                  Status: {statusFilter} <X className="h-3 w-3" />
+                </button>
               )}
               {loading && (
                 <span className="flex items-center gap-1 text-blue-600 text-xs">
@@ -1168,6 +1175,7 @@ const PurchasesPage = () => {
               <div className="flex items-end">
                 <button
                   onClick={() => {
+                    setCurrentPage(1)
                     setFilterPeriod('all')
                     setStartDate('')
                     setEndDate('')
@@ -1620,7 +1628,12 @@ const PurchasesPage = () => {
                       <tr>
                         <td colSpan="13" className="px-4 py-8 text-center">
                           <div className="text-primary-500">
-                            {filterPeriod === 'today' ? (
+                            {statusFilter && statusFilter !== 'all' ? (
+                              <>
+                                <p className="font-medium text-primary-700 mb-1">No {statusFilter} purchases found</p>
+                                <p className="text-sm">Try a different status filter or clear filters</p>
+                              </>
+                            ) : filterPeriod === 'today' ? (
                               <>
                                 <p className="font-medium text-primary-700 mb-1">No purchases found for today</p>
                                 <p className="text-sm">Change filter to "All Time" to see all purchases or create a new purchase</p>
@@ -1733,7 +1746,12 @@ const PurchasesPage = () => {
                 {purchases.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-primary-500">
-                      {filterPeriod === 'today' ? (
+                      {statusFilter && statusFilter !== 'all' ? (
+                        <>
+                          <p className="font-medium text-primary-700 mb-1">No {statusFilter} purchases found</p>
+                          <p className="text-sm">Try a different status filter or clear filters</p>
+                        </>
+                      ) : filterPeriod === 'today' ? (
                         <>
                           <p className="font-medium text-primary-700 mb-1">No purchases found for today</p>
                           <p className="text-sm">Change filter to "All Time" to see all purchases or create a new purchase</p>
