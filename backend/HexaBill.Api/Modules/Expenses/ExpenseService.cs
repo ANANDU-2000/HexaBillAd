@@ -446,7 +446,8 @@ namespace HexaBill.Api.Modules.Expenses
                         partialPct = request.PartialCreditPct;
                     }
                     var isInclusive = request.VatInclusive == true;
-                    var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
+                    var isPetroleum = string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase);
+                    var vatResult = withVat && !isPetroleum
                         ? (isInclusive
                             ? VatCalculator.ForExpenseInclusive(request.Amount, taxType, isClaimable, isEnt, partialPct)
                             : VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct))
@@ -466,14 +467,14 @@ namespace HexaBill.Api.Modules.Expenses
                         RecurringExpenseId = request.RecurringExpenseId,
                         CreatedBy = userId,
                         CreatedAt = DateTime.UtcNow,
-                        VatRate = vatResult?.VatRate,
-                        VatAmount = vatResult?.VatAmount,
-                        TotalAmount = vatResult != null ? vatResult.TotalAmount : (decimal?)null,
+                        VatRate = vatResult?.VatRate ?? (withVat && isPetroleum ? 0m : (decimal?)null),
+                        VatAmount = vatResult?.VatAmount ?? (withVat && isPetroleum ? 0m : (decimal?)null),
+                        TotalAmount = vatResult?.TotalAmount ?? (withVat && isPetroleum ? request.Amount : (decimal?)null),
                         IsTaxClaimable = isClaimable,
                         TaxType = taxType,
                         IsEntertainment = isEnt,
                         PartialCreditPct = partialPct,
-                        ClaimableVat = vatResult?.ClaimableVat,
+                        ClaimableVat = vatResult?.ClaimableVat ?? (withVat && isPetroleum ? 0m : (decimal?)null),
                         VatInclusive = request.VatInclusive
                     };
 
@@ -613,20 +614,21 @@ namespace HexaBill.Api.Modules.Expenses
                         partialPct = request.PartialCreditPct;
                     }
                     var isInclusive = request.VatInclusive == true;
-                    var vatResult = withVat && !string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase)
+                    var isPetroleum = string.Equals(taxType, TaxTypes.Petroleum, StringComparison.OrdinalIgnoreCase);
+                    var vatResult = withVat && !isPetroleum
                         ? (isInclusive
                             ? VatCalculator.ForExpenseInclusive(request.Amount, taxType, isClaimable, isEnt, partialPct)
                             : VatCalculator.ForExpense(request.Amount, taxType, isClaimable, isEnt, partialPct))
                         : null;
                     expense.Amount = vatResult != null && isInclusive ? vatResult.NetAmount : request.Amount;
-                    expense.VatRate = vatResult?.VatRate;
-                    expense.VatAmount = vatResult?.VatAmount;
-                    expense.TotalAmount = vatResult != null ? vatResult.TotalAmount : (decimal?)null;
+                    expense.VatRate = vatResult?.VatRate ?? (withVat && isPetroleum ? 0m : (decimal?)null);
+                    expense.VatAmount = vatResult?.VatAmount ?? (withVat && isPetroleum ? 0m : (decimal?)null);
+                    expense.TotalAmount = vatResult?.TotalAmount ?? (withVat && isPetroleum ? request.Amount : (decimal?)null);
                     expense.IsTaxClaimable = isClaimable;
                     expense.TaxType = taxType;
                     expense.IsEntertainment = isEnt;
                     expense.PartialCreditPct = partialPct;
-                    expense.ClaimableVat = vatResult?.ClaimableVat;
+                    expense.ClaimableVat = vatResult?.ClaimableVat ?? (withVat && isPetroleum ? 0m : (decimal?)null);
                     expense.VatInclusive = request.VatInclusive;
 
                     await _context.SaveChangesAsync();

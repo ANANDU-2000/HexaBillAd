@@ -190,6 +190,61 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
+        [HttpGet("vat-readiness")]
+        public async Task<ActionResult<ApiResponse<object>>> GetVatReadiness(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                var from = (fromDate ?? DateTime.UtcNow.AddMonths(-3)).ToUtcKind();
+                var to = (toDate ?? DateTime.UtcNow).ToUtcKind();
+                var tenantId = CurrentTenantId;
+
+                var expenses = await _context.Expenses
+                    .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date <= to)
+                    .ToListAsync();
+
+                var total = expenses.Count;
+                var noVatData = expenses.Count(e => e.VatAmount == null || e.VatAmount == 0);
+                var notClaimable = expenses.Count(e => !e.IsTaxClaimable);
+                var petroleum = expenses.Count(e => string.Equals(e.TaxType, "Petroleum", StringComparison.OrdinalIgnoreCase));
+                var exempt = expenses.Count(e => string.Equals(e.TaxType, "Exempt", StringComparison.OrdinalIgnoreCase));
+                var pending = expenses.Count(e => e.Status == ExpenseStatus.Pending);
+                var rejected = expenses.Count(e => e.Status == ExpenseStatus.Rejected);
+                var approved = expenses.Count(e => e.Status == ExpenseStatus.Approved);
+                var claimableVatTotal = expenses
+                    .Where(e => e.Status == ExpenseStatus.Approved && e.IsTaxClaimable && e.ClaimableVat > 0)
+                    .Sum(e => e.ClaimableVat ?? 0m);
+                var vatReturnEligible = expenses.Count(e =>
+                    e.Status == ExpenseStatus.Approved && e.IsTaxClaimable && (e.ClaimableVat ?? 0) > 0
+                    && !string.Equals(e.TaxType, "Petroleum", StringComparison.OrdinalIgnoreCase));
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Data = new
+                    {
+                        total,
+                        noVatData,
+                        notClaimable,
+                        petroleum,
+                        exempt,
+                        pending,
+                        rejected,
+                        approved,
+                        claimableVatTotal,
+                        vatReturnEligible
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting VAT readiness");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<ExpenseDto>>> GetExpense(int id)
         {

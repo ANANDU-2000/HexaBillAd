@@ -683,6 +683,11 @@ export const expensesAPI = {
     return response.data
   },
 
+  getVatReadiness: async (params = {}) => {
+    const response = await api.get('/expenses/vat-readiness', { params })
+    return response.data
+  },
+
   getExpense: async (id) => {
     const response = await api.get(`/expenses/${id}`)
     return response.data

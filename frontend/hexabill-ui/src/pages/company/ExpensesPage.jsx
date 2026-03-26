@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -23,7 +23,9 @@ import {
   Repeat,
   Download,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Shield,
+  ChevronDown
 } from 'lucide-react'
 import { formatCurrency, roundMoney } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -185,8 +187,32 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
   )
 }
 
+/**
+ * FTA UAE VAT quarters: Q1=Feb-Apr, Q2=May-Jul, Q3=Aug-Oct, Q4=Nov-Jan (next year end).
+ * Returns { quarter, year, label, from, to } for a given date.
+ */
+function getVatQuarter(date) {
+  const d = new Date(date)
+  const m = d.getMonth() // 0-indexed
+  if (m >= 1 && m <= 3) return { quarter: 1, year: d.getFullYear(), label: `Q1 ${d.getFullYear()}`, from: `${d.getFullYear()}-02-01`, to: `${d.getFullYear()}-04-30` }
+  if (m >= 4 && m <= 6) return { quarter: 2, year: d.getFullYear(), label: `Q2 ${d.getFullYear()}`, from: `${d.getFullYear()}-05-01`, to: `${d.getFullYear()}-07-31` }
+  if (m >= 7 && m <= 9) return { quarter: 3, year: d.getFullYear(), label: `Q3 ${d.getFullYear()}`, from: `${d.getFullYear()}-08-01`, to: `${d.getFullYear()}-10-31` }
+  // Nov-Dec = Q4 of this year's filing, Jan = Q4 of previous year's filing
+  if (m >= 10) return { quarter: 4, year: d.getFullYear() + 1, label: `Q4 ${d.getFullYear() + 1}`, from: `${d.getFullYear()}-11-01`, to: `${d.getFullYear() + 1}-01-31` }
+  // Jan -> Q4 of current year
+  return { quarter: 4, year: d.getFullYear(), label: `Q4 ${d.getFullYear()}`, from: `${d.getFullYear() - 1}-11-01`, to: `${d.getFullYear()}-01-31` }
+}
+
+function getVatQuarterRange(q, year) {
+  if (q === 1) return { from: `${year}-02-01`, to: `${year}-04-30` }
+  if (q === 2) return { from: `${year}-05-01`, to: `${year}-07-31` }
+  if (q === 3) return { from: `${year}-08-01`, to: `${year}-10-31` }
+  return { from: `${year - 1}-11-01`, to: `${year}-01-31` }
+}
+
 const ExpensesPage = () => {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const [expenses, setExpenses] = useState([])
@@ -246,6 +272,8 @@ const ExpensesPage = () => {
   const [selectedExpenseIds, setSelectedExpenseIds] = useState([])
   const [bulkVatSubmitting, setBulkVatSubmitting] = useState(false)
   const [quickBulkVatInterpretation, setQuickBulkVatInterpretation] = useState('add-on-top')
+  const [vatReadiness, setVatReadiness] = useState(null)
+  const [showVatReadiness, setShowVatReadiness] = useState(false)
 
   const {
     register,
@@ -393,6 +421,19 @@ const ExpensesPage = () => {
           console.error('Failed to load expense summary:', e)
           setExpenseSummary(null)
         }
+
+        // Fetch VAT readiness data
+        try {
+          const readinessRes = await expensesAPI.getVatReadiness({
+            fromDate: dateRange.from,
+            toDate: dateRange.to
+          })
+          if (readinessRes?.success && readinessRes?.data) {
+            setVatReadiness(readinessRes.data)
+          }
+        } catch (e) {
+          console.error('Failed to load VAT readiness:', e)
+        }
       } else {
         setExpenses([])
         setFilteredExpenses([])
@@ -482,10 +523,20 @@ const ExpensesPage = () => {
     loadRecurringExpenses()
   }, [user])
 
+  const fetchExpensesRef = useRef(fetchExpenses)
+  fetchExpensesRef.current = fetchExpenses
+
   useEffect(() => {
     fetchCategories()
     fetchExpenses()
   }, [fetchCategories, fetchExpenses])
+
+  // Listen for dataUpdated events from other pages to refresh expenses
+  useEffect(() => {
+    const handler = () => fetchExpensesRef.current()
+    window.addEventListener('dataUpdated', handler)
+    return () => window.removeEventListener('dataUpdated', handler)
+  }, [])
 
   useEffect(() => {
     filterExpenses()
@@ -625,7 +676,11 @@ const ExpensesPage = () => {
       setAttachmentFile(null)
       setAttachmentPreview(null)
       setCurrentPage(1)
-      fetchExpenses()
+      // Refresh expense list and summary after a short delay so state updates propagate
+      setTimeout(async () => {
+        await fetchExpenses()
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+      }, 200)
     } catch (error) {
       console.error('Error saving expense:', error)
       const errMsg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || 'Failed to save expense. Check category, amount, and date.'
@@ -1000,6 +1055,24 @@ const ExpensesPage = () => {
             >
               This Year
             </button>
+            <span className="text-xs text-gray-400 mx-1 hidden sm:inline">|</span>
+            {[1, 2, 3, 4].map(q => {
+              const yr = new Date().getFullYear()
+              const qr = getVatQuarterRange(q, yr)
+              return (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => {
+                    setPendingDateRange(qr)
+                    setDateRange(qr)
+                  }}
+                  className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100 font-medium"
+                >
+                  Q{q} {yr}
+                </button>
+              )
+            })}
             <button
               type="button"
               onClick={() => setFilterNoVatOnly(prev => !prev)}
@@ -1129,6 +1202,100 @@ const ExpensesPage = () => {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* VAT Readiness Panel */}
+        {vatReadiness && (
+          <div className="bg-white rounded-xl border border-neutral-200 mb-4">
+            <button
+              type="button"
+              onClick={() => setShowVatReadiness(prev => !prev)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 rounded-xl"
+            >
+              <div className="flex items-center gap-2">
+                <Shield className="h-4 w-4 text-blue-600" />
+                <span className="text-sm font-semibold text-gray-900">VAT Readiness</span>
+                {vatReadiness.vatReturnEligible > 0 ? (
+                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">
+                    {vatReadiness.vatReturnEligible} eligible for VAT Return
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
+                    No expenses eligible for VAT Return
+                  </span>
+                )}
+              </div>
+              <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showVatReadiness ? 'rotate-180' : ''}`} />
+            </button>
+            {showVatReadiness && (
+              <div className="px-4 pb-4 border-t border-neutral-100 pt-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                  <div className="bg-blue-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-blue-900">{vatReadiness.total}</p>
+                    <p className="text-xs text-blue-700">Total Expenses</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-green-900">{vatReadiness.approved}</p>
+                    <p className="text-xs text-green-700">Approved</p>
+                  </div>
+                  <div className={`rounded-lg p-3 text-center ${vatReadiness.noVatData > 0 ? 'bg-amber-50' : 'bg-green-50'}`}>
+                    <p className={`text-2xl font-bold ${vatReadiness.noVatData > 0 ? 'text-amber-900' : 'text-green-900'}`}>{vatReadiness.noVatData}</p>
+                    <p className={`text-xs ${vatReadiness.noVatData > 0 ? 'text-amber-700' : 'text-green-700'}`}>No VAT Data</p>
+                  </div>
+                  <div className={`rounded-lg p-3 text-center ${vatReadiness.notClaimable > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+                    <p className={`text-2xl font-bold ${vatReadiness.notClaimable > 0 ? 'text-red-900' : 'text-green-900'}`}>{vatReadiness.notClaimable}</p>
+                    <p className={`text-xs ${vatReadiness.notClaimable > 0 ? 'text-red-700' : 'text-green-700'}`}>Not Claimable (ITC)</p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-3 text-center">
+                    <p className="text-2xl font-bold text-purple-900">{vatReadiness.vatReturnEligible}</p>
+                    <p className="text-xs text-purple-700">VAT Return Eligible</p>
+                  </div>
+                </div>
+                {(vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    {vatReadiness.petroleum > 0 && (
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{vatReadiness.petroleum} Petroleum (excluded from Box 9b)</span>
+                    )}
+                    {vatReadiness.exempt > 0 && (
+                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{vatReadiness.exempt} Exempt</span>
+                    )}
+                    {vatReadiness.pending > 0 && (
+                      <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">{vatReadiness.pending} Pending approval</span>
+                    )}
+                    {vatReadiness.rejected > 0 && (
+                      <span className="px-2 py-1 rounded bg-red-100 text-red-800">{vatReadiness.rejected} Rejected</span>
+                    )}
+                  </div>
+                )}
+                {vatReadiness.claimableVatTotal > 0 && (
+                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
+                    <p className="text-sm font-semibold text-green-900">
+                      Total Claimable VAT: {formatCurrency(vatReadiness.claimableVatTotal)}
+                    </p>
+                    <p className="text-xs text-green-700 mt-1">This should match Box 9b on the VAT Return for the same period.</p>
+                  </div>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {vatReadiness.noVatData > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFilterNoVatOnly(true)}
+                      className="px-3 py-1.5 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                    >
+                      Review {vatReadiness.noVatData} expenses with no VAT
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => navigate('/vat-return')}
+                    className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                  >
+                    Open VAT Return
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1417,11 +1584,11 @@ const ExpensesPage = () => {
             </div>
 
             {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-280px)]">
               <table className="min-w-full text-xs">
-                <thead className="bg-neutral-50">
+                <thead className="bg-neutral-50 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-2 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200 w-10">
+                    <th className="px-2 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200 w-10 bg-neutral-50">
                       <input
                         type="checkbox"
                         checked={displayExpenses.length > 0 && displayExpenses.every(e => selectedExpenseIds.includes(e.id))}
@@ -1432,7 +1599,7 @@ const ExpensesPage = () => {
                         className="rounded border-gray-300"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Category</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200 bg-neutral-50">Category</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Branch</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Route</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Amount</th>
@@ -1440,6 +1607,7 @@ const ExpensesPage = () => {
                     <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Claimable VAT</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Total</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Date</th>
+                    <th className="px-3 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200">VAT Period</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Status</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700">Note</th>
                     <th className="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
@@ -1448,7 +1616,7 @@ const ExpensesPage = () => {
                 <tbody className="divide-y divide-neutral-100">
                   {displayExpenses.length === 0 ? (
                     <tr>
-                      <td colSpan="13" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="14" className="px-6 py-8 text-center text-gray-500">
                         {user && !isAdminOrOwner(user)
                           ? 'No expenses in your assigned branch(es) for this period.'
                           : 'No expenses found'}
@@ -1471,10 +1639,26 @@ const ExpensesPage = () => {
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div
-                              className="w-3 h-3 rounded-full mr-3"
+                              className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                               style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
                             />
                             <span className="font-medium text-gray-900">{expense.categoryName}</span>
+                            {expense.isTaxClaimable && (expense.claimableVat > 0 || expense.ClaimableVat > 0) ? (
+                              <span className="ml-1.5 flex-shrink-0" title="VAT Claimable (ITC)">
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              </span>
+                            ) : expense.vatAmount != null && expense.vatAmount > 0 ? (
+                              <span className="ml-1.5 flex-shrink-0" title="Has VAT but not claimable">
+                                <DollarSign className="h-3.5 w-3.5 text-amber-500" />
+                              </span>
+                            ) : (
+                              <span className="ml-1.5 flex-shrink-0" title="No VAT data">
+                                <XCircle className="h-3.5 w-3.5 text-gray-300" />
+                              </span>
+                            )}
+                            {expense.taxType && expense.taxType !== 'Standard' && (
+                              <span className="ml-1 px-1 py-0.5 text-[10px] rounded bg-gray-100 text-gray-600">{expense.taxType}</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700 border-r border-neutral-200">
@@ -1505,6 +1689,13 @@ const ExpensesPage = () => {
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-gray-900">
                           {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
+                        </td>
+                        <td className="px-3 py-4 whitespace-nowrap text-center">
+                          {expense.date ? (
+                            <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-800">
+                              {getVatQuarter(expense.date).label}
+                            </span>
+                          ) : '-'}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -1614,7 +1805,7 @@ const ExpensesPage = () => {
                             {expense.routeName && `Route: ${expense.routeName}`}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
                           {expense.status === 'Approved' && <CheckCircle className="h-3 w-3 text-green-500" />}
                           {expense.status === 'Rejected' && <XCircle className="h-3 w-3 text-red-500" />}
                           {expense.status === 'Pending' && <Clock className="h-3 w-3 text-yellow-500" />}
@@ -1625,6 +1816,11 @@ const ExpensesPage = () => {
                           }`}>
                             {expense.status || 'Approved'}
                           </span>
+                          {expense.date && (
+                            <span className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
+                              {getVatQuarter(expense.date).label}
+                            </span>
+                          )}
                           {expense.attachmentUrl && (
                             <button
                               type="button"

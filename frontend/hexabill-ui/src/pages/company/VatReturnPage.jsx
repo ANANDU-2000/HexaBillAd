@@ -1334,20 +1334,59 @@ const VatReturnPage = () => {
               <h2 className="text-sm font-semibold text-gray-900">Expenses (Input VAT)</h2>
               {expenseLines.length === 0 && (
                 <>
-                  <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No data for this period.</p>
-                  <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                    No claimable expenses in this period. On the <strong>Expenses</strong> page, mark expenses as <strong>Tax claimable (ITC)</strong> and ensure they have VAT. Then click <strong>Refresh</strong> or <strong>Recalculate</strong> here to update.
-                  </p>
-                  {expenseCountInPeriod > 0 && expensesExcludedReasons && Object.keys(expensesExcludedReasons).length > 0 && (
-                    <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-                      {expenseCountInPeriod} expense(s) in this period: {[
-                        expensesExcludedReasons.TaxClaimableNo > 0 && `${expensesExcludedReasons.TaxClaimableNo} not marked Tax claimable`,
-                        expensesExcludedReasons.ClaimableZero > 0 && `${expensesExcludedReasons.ClaimableZero} with no claimable VAT`,
-                        expensesExcludedReasons.Petroleum > 0 && `${expensesExcludedReasons.Petroleum} petroleum (excluded)`
-                      ].filter(Boolean).join('; ')}. Edit on the <strong>Expenses</strong> page.
+                  <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No claimable expenses found for this period.</p>
+                </>
+              )}
+              {expenseCountInPeriod > 0 && (
+                <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-semibold text-blue-900">
+                      {expenseCountInPeriod} expense(s) in this period
+                    </h3>
+                    <a
+                      href={`/expenses?from=${fromDate}&to=${toDate}`}
+                      className="text-xs font-medium text-blue-700 hover:text-blue-900 underline"
+                    >
+                      View in Expenses page →
+                    </a>
+                  </div>
+                  {expensesExcludedReasons && Object.keys(expensesExcludedReasons).length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+                      {expensesExcludedReasons.TaxClaimableNo > 0 && (
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-red-200">
+                          <span className="w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.TaxClaimableNo}</span>
+                          <div>
+                            <p className="text-xs font-medium text-red-800">Not Tax Claimable</p>
+                            <p className="text-[10px] text-red-600">Mark as ITC on Expenses page</p>
+                          </div>
+                        </div>
+                      )}
+                      {expensesExcludedReasons.ClaimableZero > 0 && (
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-amber-200">
+                          <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.ClaimableZero}</span>
+                          <div>
+                            <p className="text-xs font-medium text-amber-800">Zero Claimable VAT</p>
+                            <p className="text-[10px] text-amber-600">Enable VAT on these expenses</p>
+                          </div>
+                        </div>
+                      )}
+                      {expensesExcludedReasons.Petroleum > 0 && (
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-gray-200">
+                          <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.Petroleum}</span>
+                          <div>
+                            <p className="text-xs font-medium text-gray-800">Petroleum</p>
+                            <p className="text-[10px] text-gray-600">Excluded from Box 9b per FTA</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {expenseLines.length > 0 && (
+                    <p className="mt-2 text-xs text-green-700">
+                      <strong>{expenseLines.length}</strong> expense(s) included in VAT Return calculation.
                     </p>
                   )}
-                </>
+                </div>
               )}
               <div className="overflow-x-auto mt-2">
                 <table className="min-w-full text-xs border border-gray-200 rounded-lg">
