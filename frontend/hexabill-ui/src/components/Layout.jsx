@@ -222,11 +222,13 @@ const Layout = () => {
   }
 
   const isSalesLedger = location.pathname === '/sales-ledger'
+  const isExpensesLedger = location.pathname === '/expenses'
   const layoutContentFullWidth =
     location.pathname === '/reports' ||
     location.pathname === '/suppliers' ||
     location.pathname.startsWith('/suppliers/') ||
-    isSalesLedger
+    isSalesLedger ||
+    isExpensesLedger
 
   return (
     <div className="min-h-screen bg-neutral-50 overflow-x-hidden">
@@ -532,8 +534,8 @@ const Layout = () => {
         </div>
         {/* Page content — full width max 1400px; Reports use full width (production plan Phase 2) */}
         <main id="main-content" className={`flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-20 lg:pb-6 bg-[#F8FAFC] ${userIsSystemAdmin && selectedTenantId ? 'pt-24 lg:pt-28' : 'pt-14 lg:pt-20'}`}>
-          <div className={`flex-1 min-h-0 ${isSalesLedger ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
-            <div className={`w-full mx-auto px-4 sm:px-6 lg:px-6 ${isSalesLedger ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-4 lg:py-6'} ${layoutContentFullWidth ? 'max-w-full' : 'max-w-[1280px]'}`}>
+          <div className={`flex-1 min-h-0 ${isSalesLedger || isExpensesLedger ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
+            <div className={`w-full mx-auto px-4 sm:px-6 lg:px-6 ${isSalesLedger || isExpensesLedger ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-4 lg:py-6'} ${layoutContentFullWidth ? 'max-w-full' : 'max-w-[1280px]'}`}>
               <Outlet />
             </div>
           </div>

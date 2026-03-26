@@ -939,11 +939,11 @@ const ExpensesPage = () => {
     return <LoadingCard message="Loading expenses..." />
   }
 
-  // TALLY ERP LEDGER STYLE
+  // TALLY ERP LEDGER STYLE — flex layout fills main viewport (see Layout isExpensesLedger)
   return (
-    <div className="min-h-screen bg-neutral-50 w-full">
+    <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-neutral-50">
       {/* Top Bar - Mobile Responsive */}
-      <div className="bg-white border-b border-neutral-200 px-2 sm:px-4 py-2">
+      <div className="shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 py-2">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-gray-900">Expenses Ledger</h1>
@@ -1026,7 +1026,8 @@ const ExpensesPage = () => {
         </div>
       </div>
 
-      <div className="p-2 sm:p-4 w-full">
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-full px-0 sm:px-1">
+        <div className="shrink-0">
         {/* Filters */}
         <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4 mb-4">
           <div className="flex items-center mb-3">
@@ -1612,20 +1613,22 @@ const ExpensesPage = () => {
           </div>
           )
         })()}
+        </div>
 
-        {/* Expenses Table - Tally Ledger Style */}
+        {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
         {!showAggregated && (
-          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
-            <div className="p-3 border-b border-neutral-200 bg-neutral-50">
+          <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
+            <div className="shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
               <h3 className="text-sm font-bold text-gray-900">Expenses Ledger</h3>
             </div>
 
             {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto max-h-[calc(100vh-280px)]">
-              <table className="min-w-full text-xs">
+            <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
+              <div className="flex-1 min-h-0 overflow-auto">
+              <table className="min-w-max w-full text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-2 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200 w-10 bg-neutral-50">
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 border-r border-neutral-200 w-10 bg-neutral-50">
                       <input
                         type="checkbox"
                         checked={displayExpenses.length > 0 && displayExpenses.every(e => selectedExpenseIds.includes(e.id))}
@@ -1636,18 +1639,18 @@ const ExpensesPage = () => {
                         className="rounded border-gray-300"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200 bg-neutral-50">Category</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Branch</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Route</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Amount</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">VAT</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Claimable VAT</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Total</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Date</th>
-                    <th className="px-3 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200">VAT Period</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Note</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-700">Actions</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200 bg-neutral-50">Category</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Branch</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Route</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Amount</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Claimable VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Total</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Date</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 border-r border-neutral-200">VAT Period</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Status</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Note</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
@@ -1662,7 +1665,7 @@ const ExpensesPage = () => {
                   ) : (
                     displayExpenses.map((expense) => (
                       <tr key={expense.id} className="hover:bg-neutral-50">
-                        <td className="px-2 py-4 text-center">
+                        <td className="px-2 py-2 text-center">
                           <input
                             type="checkbox"
                             checked={selectedExpenseIds.includes(expense.id)}
@@ -1673,7 +1676,7 @@ const ExpensesPage = () => {
                             className="rounded border-gray-300"
                           />
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="px-2 py-2 whitespace-nowrap">
                           <div className="flex items-center">
                             <div
                               className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
@@ -1698,13 +1701,13 @@ const ExpensesPage = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 border-r border-neutral-200">
+                        <td className="px-2 py-2 text-sm text-gray-700 border-r border-neutral-200">
                           {expense.branchName || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 border-r border-neutral-200">
+                        <td className="px-2 py-2 text-sm text-gray-700 border-r border-neutral-200">
                           {expense.routeName || '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right font-medium text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-gray-900">
                           {formatCurrency(expense.amount)}
                           {expense.vatAmount != null && expense.vatAmount > 0 && ((expense.vatInclusive ?? expense.VatInclusive) === true || (expense.vatInclusive ?? expense.VatInclusive) === false) && (
                             <span className={`ml-1 text-xs font-normal ${(expense.vatInclusive ?? expense.VatInclusive) ? 'text-blue-600' : 'text-gray-500'}`} title={(expense.vatInclusive ?? expense.VatInclusive) ? 'Amount was entered VAT-inclusive' : 'Amount was entered VAT-exclusive'}>
@@ -1712,29 +1715,29 @@ const ExpensesPage = () => {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right text-gray-700">
+                        <td className="px-2 py-2 whitespace-nowrap text-right text-gray-700">
                           {expense.vatAmount != null ? formatCurrency(expense.vatAmount) : '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right text-green-700">
+                        <td className="px-2 py-2 whitespace-nowrap text-right text-green-700">
                           {expense.claimableVat != null || expense.ClaimableVat != null ? formatCurrency(expense.claimableVat ?? expense.ClaimableVat) : '-'}
                           {expense.isEntertainment && (expense.claimableVat != null || expense.ClaimableVat != null) && (
                             <span className="ml-1 text-xs text-amber-600" title="50% cap">50%</span>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right font-medium text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-gray-900">
                           {expense.totalAmount != null ? formatCurrency(expense.totalAmount) : (expense.vatAmount != null ? formatCurrency((Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0)) : formatCurrency(expense.amount))}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-gray-900">
                           {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
                         </td>
-                        <td className="px-3 py-4 whitespace-nowrap text-center">
+                        <td className="px-2 py-2 whitespace-nowrap text-center">
                           {expense.date ? (
                             <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-800">
                               {getVatQuarter(expense.date).label}
                             </span>
                           ) : '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
+                        <td className="px-2 py-2 whitespace-nowrap">
                           <div className="flex items-center">
                             {getStatusIcon(expense.status)}
                             <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(expense.status)}`}>
@@ -1742,10 +1745,10 @@ const ExpensesPage = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-gray-900">
+                        <td className="px-2 py-2 text-gray-900 max-w-[220px] truncate" title={expense.note || ''}>
                           {expense.note || '-'}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-center space-x-2">
+                        <td className="px-2 py-2 whitespace-nowrap text-center space-x-2">
                           {expense.attachmentUrl && (
                             <button
                               type="button"
@@ -1802,10 +1805,11 @@ const ExpensesPage = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden space-y-3 p-4">
+            <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-3 p-3 max-h-[70vh]">
               {displayExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   {user && !isAdminOrOwner(user)
@@ -1930,7 +1934,7 @@ const ExpensesPage = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center mt-4 pb-4">
+              <div className="shrink-0 flex justify-center py-3 px-2 border-t border-neutral-200 bg-neutral-50/90">
                 <div className="flex space-x-2">
                   <button
                     type="button"
