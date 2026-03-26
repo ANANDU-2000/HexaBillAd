@@ -1900,6 +1900,138 @@ if (hasLogo)
             }
         }
 
+        public async Task<byte[]> GenerateExpensesRegisterPdfAsync(IReadOnlyList<ExpenseDto> expenses, DateTime fromDate, DateTime toDate, int tenantId)
+        {
+            try
+            {
+                var settings = await GetCompanySettingsAsync(tenantId);
+                var currency = settings.Currency ?? "AED";
+                var list = (expenses ?? Array.Empty<ExpenseDto>()).OrderBy(e => e.Date).ThenBy(e => e.Id).ToList();
+                var totalNet = list.Sum(e => e.Amount);
+                var totalVat = list.Sum(e => e.VatAmount ?? 0m);
+                var totalClaimable = list.Sum(e => e.ClaimableVat ?? 0m);
+                var totalGross = list.Sum(e =>
+                {
+                    if (e.TotalAmount.HasValue) return e.TotalAmount.Value;
+                    return e.Amount + (e.VatAmount ?? 0m);
+                });
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4.Landscape());
+                        page.Margin(12, Unit.Millimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(8));
+
+                        page.Header().Column(headerCol =>
+                        {
+                            RenderCompanyHeader(headerCol, settings, "EXPENSES REGISTER", $"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}");
+                            headerCol.Item().Height(4);
+                        });
+
+                        page.Content().Column(contentCol =>
+                        {
+                            contentCol.Item().PaddingBottom(4).Row(r =>
+                            {
+                                r.RelativeItem().Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(8).FontColor(Colors.Grey.Medium);
+                                r.RelativeItem().AlignRight().Text($"{list.Count} line(s) · Currency: {currency}").FontSize(8);
+                            });
+
+                            if (list.Count == 0)
+                            {
+                                contentCol.Item().PaddingVertical(20).AlignCenter().Text("No expenses in this period for the selected filters.").FontColor(Colors.Grey.Medium);
+                            }
+                            else
+                            {
+                                contentCol.Item().Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.ConstantColumn(62);
+                                        columns.RelativeColumn(1.4f);
+                                        columns.ConstantColumn(52);
+                                        columns.ConstantColumn(48);
+                                        columns.ConstantColumn(44);
+                                        columns.ConstantColumn(48);
+                                        columns.ConstantColumn(48);
+                                        columns.ConstantColumn(44);
+                                        columns.ConstantColumn(28);
+                                        columns.ConstantColumn(44);
+                                        columns.RelativeColumn(1.2f);
+                                    });
+
+                                    table.Header(header =>
+                                    {
+                                        void H(string label) => header.Cell().Border(1).Background(Colors.Grey.Lighten3).Padding(3).Text(label).FontSize(7).Bold();
+                                        H("Date");
+                                        H("Category");
+                                        H("Branch");
+                                        H("Net");
+                                        H("VAT");
+                                        H("Claim. VAT");
+                                        H("Total");
+                                        H("Tax type");
+                                        H("ITC");
+                                        H("Status");
+                                        H("Note");
+                                    });
+
+                                    foreach (var e in list)
+                                    {
+                                        var net = e.Amount;
+                                        var vat = e.VatAmount;
+                                        var claim = e.ClaimableVat;
+                                        var gross = e.TotalAmount ?? (e.Amount + (e.VatAmount ?? 0m));
+                                        var note = e.Note ?? "";
+                                        if (note.Length > 80) note = note.Substring(0, 77) + "...";
+
+                                        table.Cell().Border(1).Padding(2).Text(e.Date.ToString("dd-MM-yyyy")).FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(e.CategoryName ?? "").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(e.BranchName ?? "").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).AlignRight().Text(net.ToString("N2")).FontSize(7);
+                                        table.Cell().Border(1).Padding(2).AlignRight().Text(vat.HasValue ? vat.Value.ToString("N2") : "-").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).AlignRight().Text(claim.HasValue ? claim.Value.ToString("N2") : "-").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).AlignRight().Text(gross.ToString("N2")).FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(e.TaxType ?? "-").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(e.IsTaxClaimable ? "Y" : "N").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(e.Status ?? "").FontSize(7);
+                                        table.Cell().Border(1).Padding(2).Text(note).FontSize(6);
+                                    }
+
+                                    table.Footer(footer =>
+                                    {
+                                        footer.Cell().ColumnSpan(3).Border(1).Background(Colors.Grey.Lighten4).Padding(3).Text("Totals").Bold().FontSize(8);
+                                        footer.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalNet.ToString("N2")).Bold().FontSize(8);
+                                        footer.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalVat.ToString("N2")).Bold().FontSize(8);
+                                        footer.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalClaimable.ToString("N2")).Bold().FontSize(8);
+                                        footer.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalGross.ToString("N2")).Bold().FontSize(8);
+                                        footer.Cell().ColumnSpan(4).Border(1).Background(Colors.Grey.Lighten4).Padding(3).Text("").FontSize(8);
+                                    });
+                                });
+                            }
+                        });
+
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Page ").FontSize(7);
+                            x.CurrentPageNumber().FontSize(7);
+                            x.Span(" of ").FontSize(7);
+                            x.TotalPages().FontSize(7);
+                        });
+                    });
+                });
+
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Expenses register PDF error: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         public async Task<byte[]> GenerateCustomerPendingBillsPdfAsync(List<OutstandingInvoiceDto> outstandingInvoices, CustomerDto customer, DateTime asOfDate, DateTime fromDate, DateTime toDate, int tenantId)
         {
             try

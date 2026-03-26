@@ -265,6 +265,7 @@ const ExpensesPage = () => {
   const [recurringExpenses, setRecurringExpenses] = useState([])
   const [uploadingAttachment, setUploadingAttachment] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
   const [showCategorySettingsModal, setShowCategorySettingsModal] = useState(false)
   const [editingCategoryVat, setEditingCategoryVat] = useState(null)
   const [filterNoVatOnly, setFilterNoVatOnly] = useState(false)
@@ -321,8 +322,11 @@ const ExpensesPage = () => {
   const noVatCount = noVatExpenses.length
   const displayExpenses = filterNoVatOnly ? noVatExpenses : filteredExpenses
 
+  // Only overwrite VAT fields from category when defaults are locked; otherwise changing category
+  // would clear "Include VAT" after the user turned it on (double-save / must re-select VAT issue).
   useEffect(() => {
     if (!selectedCategory || showEditModal) return
+    if (!selectedCategory.vatDefaultLocked) return
     setValue('withVat', selectedCategory.defaultVatRate > 0)
     setValue('taxType', selectedCategory.defaultTaxType || 'Standard')
     setValue('isTaxClaimable', !!selectedCategory.defaultIsTaxClaimable)
@@ -338,11 +342,12 @@ const ExpensesPage = () => {
     try { localStorage.setItem(EXPENSES_BRANCH_KEY, selectedBranchId) } catch {}
   }, [selectedBranchId])
 
-  const fetchExpenses = useCallback(async () => {
+  const fetchExpenses = useCallback(async (pageOverride) => {
     try {
       setLoading(true)
+      const page = pageOverride != null ? pageOverride : currentPage
       const params = {
-        page: currentPage,
+        page,
         pageSize: 10,
         fromDate: dateRange.from,
         toDate: dateRange.to
@@ -605,7 +610,6 @@ const ExpensesPage = () => {
 
         if (response?.success) {
           toast.success('Expense updated successfully!', { id: 'expense-update', duration: 4000 })
-          window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
           toast.error(response?.message || 'Failed to update expense', { id: 'expense-update' })
           return
@@ -676,11 +680,8 @@ const ExpensesPage = () => {
       setAttachmentFile(null)
       setAttachmentPreview(null)
       setCurrentPage(1)
-      // Refresh expense list and summary after a short delay so state updates propagate
-      setTimeout(async () => {
-        await fetchExpenses()
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
-      }, 200)
+      await fetchExpenses(1)
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
       console.error('Error saving expense:', error)
       const errMsg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || 'Failed to save expense. Check category, amount, and date.'
@@ -700,7 +701,7 @@ const ExpensesPage = () => {
       : new Date().toISOString().split('T')[0]
     setValue('date', expenseDate)
     setValue('note', expense.note || '')
-    setValue('withVat', !!(expense.vatAmount != null && expense.vatAmount > 0))
+    setValue('withVat', expense.vatAmount != null || expense.VatAmount != null)
     setValue('taxType', expense.taxType || 'Standard')
     setValue('isTaxClaimable', expense.isTaxClaimable !== false)
     setValue('isEntertainment', !!expense.isEntertainment)
@@ -947,12 +948,23 @@ const ExpensesPage = () => {
             <button
               type="button"
               onClick={handleExportCsv}
-              disabled={exportingCsv}
+              disabled={exportingCsv || exportingPdf}
               className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-green-300 rounded hover:bg-green-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-50"
             >
               <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
               <span className="hidden sm:inline">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
               <span className="sm:hidden">{exportingCsv ? '…' : 'CSV'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPdf}
+              disabled={exportingCsv || exportingPdf}
+              title="Expenses register PDF for the current date range and branch filter"
+              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-rose-300 rounded hover:bg-rose-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-50"
+            >
+              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
+              <span className="hidden sm:inline">{exportingPdf ? 'PDF…' : 'Export PDF'}</span>
+              <span className="sm:hidden">{exportingPdf ? '…' : 'PDF'}</span>
             </button>
             <button
               type="button"

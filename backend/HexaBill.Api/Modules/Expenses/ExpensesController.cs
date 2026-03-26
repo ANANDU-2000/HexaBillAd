@@ -5,6 +5,7 @@ Date: 2024
 */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.Expenses;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
@@ -25,13 +26,15 @@ namespace HexaBill.Api.Modules.Expenses
         private readonly IExpenseService _expenseService;
         private readonly AppDbContext _context;
         private readonly IRouteScopeService _routeScopeService;
+        private readonly IPdfService _pdfService;
         private readonly ILogger<ExpensesController> _logger;
 
-        public ExpensesController(IExpenseService expenseService, AppDbContext context, IRouteScopeService routeScopeService, ILogger<ExpensesController> logger)
+        public ExpensesController(IExpenseService expenseService, AppDbContext context, IRouteScopeService routeScopeService, IPdfService pdfService, ILogger<ExpensesController> logger)
         {
             _expenseService = expenseService;
             _context = context;
             _routeScopeService = routeScopeService;
+            _pdfService = pdfService;
             _logger = logger;
         }
 
@@ -115,6 +118,37 @@ namespace HexaBill.Api.Modules.Expenses
             if (string.IsNullOrEmpty(value)) return "";
             if (value.Contains(',') || value.Contains('"') || value.Contains('\n')) return "\"" + value.Replace("\"", "\"\"") + "\"";
             return value;
+        }
+
+        /// <summary>Expenses register PDF for the selected date range and optional branch (same scope as CSV export).</summary>
+        [HttpGet("export/pdf")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult> ExportExpensesPdf(
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] int? branchId = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                var from = (fromDate ?? DateTime.UtcNow.AddMonths(-1)).ToUtcKind();
+                var to = (toDate ?? DateTime.UtcNow).ToUtcKind();
+                IReadOnlyList<int>? staffBranchIds = null;
+                if (IsStaff && User.FindFirst(ClaimTypes.NameIdentifier)?.Value is { } uidStr && int.TryParse(uidStr, out var uid))
+                    staffBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == uid).Select(bs => bs.BranchId).ToListAsync();
+
+                var result = await _expenseService.GetExpensesAsync(tenantId, 1, 10000, null, from, to, null, branchId, staffBranchIds);
+                var items = result.Items ?? new List<ExpenseDto>();
+                var pdfBytes = await _pdfService.GenerateExpensesRegisterPdfAsync(items, from, to, tenantId);
+                var fileName = $"expenses_register_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf";
+                return File(pdfBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Export expenses PDF failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
         }
 
         [HttpGet("aggregated")]

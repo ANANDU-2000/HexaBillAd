@@ -726,6 +726,14 @@ export const expensesAPI = {
     return response.data
   },
 
+  exportPdf: async (params = {}) => {
+    const p = { ...params }
+    if (p.fromDate) p.fromDate = toYYYYMMDD(p.fromDate)
+    if (p.toDate) p.toDate = toYYYYMMDD(p.toDate)
+    const response = await api.get('/expenses/export/pdf', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
   createCategory: async (categoryData) => {
     const response = await api.post('/expenses/categories', categoryData)
     return response.data

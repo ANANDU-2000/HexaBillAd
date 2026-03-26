@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using HexaBill.Api.Models;
 
 namespace HexaBill.Api.Modules.Billing
@@ -13,5 +14,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<byte[]> GenerateProfitLossPdfAsync(ProfitReportDto report, DateTime fromDate, DateTime toDate, int tenantId);
         /// <summary>Owner-only worksheet PDF: period and totals (sales, purchases, expenses, received, pending).</summary>
         Task<byte[]> GenerateWorksheetPdfAsync(WorksheetReportDto dto, DateTime fromDate, DateTime toDate, int tenantId);
+        /// <summary>Expenses register for a date range (filters match Expenses list / CSV export).</summary>
+        Task<byte[]> GenerateExpensesRegisterPdfAsync(IReadOnlyList<ExpenseDto> expenses, DateTime fromDate, DateTime toDate, int tenantId);
     }
 }
