@@ -367,9 +367,9 @@ namespace HexaBill.Api.Modules.Billing
                 if (!requireApproval && (request.CreateCreditNote || rt == ReturnType.CreditIssued) && rt != ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
                 {
                     var totalPaidForSale = await _context.Payments
-                        .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
+                        .Where(p => p.SaleId == request.SaleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                         .SumAsync(p => (decimal?)p.Amount) ?? 0;
-                    if (totalPaidForSale >= saleInfo.GrandTotal)
+                    if ((saleInfo.GrandTotal - totalPaidForSale) <= SalePaymentHelpers.SettlementToleranceAed)
                     {
                         _context.CreditNotes.Add(new CreditNote
                         {
@@ -774,9 +774,9 @@ namespace HexaBill.Api.Modules.Billing
                         if (ret.ReturnType == ReturnType.CreditIssued && ret.Sale.CustomerId.HasValue)
                         {
                             var totalPaidForSale = await _context.Payments
-                                .Where(p => p.SaleId == ret.SaleId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
+                                .Where(p => p.SaleId == ret.SaleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                                 .SumAsync(p => (decimal?)p.Amount) ?? 0;
-                            if (totalPaidForSale >= ret.Sale.GrandTotal)
+                            if ((ret.Sale.GrandTotal - totalPaidForSale) <= SalePaymentHelpers.SettlementToleranceAed)
                             {
                                 _context.CreditNotes.Add(new CreditNote
                                 {

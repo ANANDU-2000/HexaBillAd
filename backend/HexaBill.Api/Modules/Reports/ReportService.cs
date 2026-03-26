@@ -400,7 +400,7 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     // PERFORMANCE FIX: Filter in database instead of loading all sales into RAM
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
-                    // Use actual balance calculation: GrandTotal - PaidAmount > 0.01m
+                    // Use actual balance calculation with settlement tolerance (0.05 AED)
                     
                     // Build base query for tenant filtering
                     var baseSalesQuery = _context.Sales.Where(s => !s.IsDeleted);

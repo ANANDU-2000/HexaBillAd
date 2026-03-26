@@ -447,18 +447,9 @@ namespace HexaBill.Api.Modules.Payments
                     }
                 }
 
-                // Only reverse Customer.Balance if payment was CLEARED (balance was only affected for cleared payments)
-                if (oldStatus == PaymentStatus.CLEARED && payment.CustomerId.HasValue)
+                if (payment.CustomerId.HasValue)
                 {
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        customer.Balance += payment.Amount; // Reverse: customer owes more
-                        customer.LastActivity = DateTime.UtcNow;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                        Console.WriteLine($"✅ Customer {customer.Name} balance reversed to: {customer.Balance}");
-                    }
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
                 }
             }
             // If changing from CLEARED to PENDING - reverse Customer.Balance and recalc Sale.PaidAmount (this payment no longer cleared)
@@ -478,15 +469,7 @@ namespace HexaBill.Api.Modules.Payments
                 }
                 if (payment.CustomerId.HasValue)
                 {
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        customer.Balance += payment.Amount;
-                        customer.LastActivity = DateTime.UtcNow;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                        Console.WriteLine($"✅ Customer {customer.Name} balance reversed to: {customer.Balance}");
-                    }
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
                 }
             }
 

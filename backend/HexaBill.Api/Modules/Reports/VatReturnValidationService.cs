@@ -50,7 +50,7 @@ namespace HexaBill.Api.Modules.Reports
         {
             var issues = new List<ValidationIssueDto>();
             var fromUtc = from.ToUtcKind();
-            var toEnd = to.Date.AddDays(1).ToUtcKind();
+            var toEnd = to.ToUtcKind();
 
             // V-PURCH-EXP-ZERO: Purchases/expenses exist in period but Box12 (Input VAT) is 0 — guide user
             if (precomputed != null && precomputed.Box12 == 0)

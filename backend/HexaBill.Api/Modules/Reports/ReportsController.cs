@@ -541,7 +541,7 @@ namespace HexaBill.Api.Modules.Reports
             using var package = new ExcelPackage();
             var sheet = package.Workbook.Worksheets.Add("FTA 201 Summary");
             sheet.Cells[1, 1].Value = "FTA Form 201 VAT Return";
-            sheet.Cells[2, 1].Value = "Period"; sheet.Cells[2, 2].Value = $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}";
+            sheet.Cells[2, 1].Value = "Period"; sheet.Cells[2, 2].Value = $"{fromDate:dd-MMM-yyyy} to {toDate.AddDays(-1):dd-MMM-yyyy}";
             int row = 3;
             sheet.Cells[row, 1].Value = "1a Value of taxable supplies"; sheet.Cells[row, 2].Value = data.Box1a; row++;
             sheet.Cells[row, 1].Value = "1b VAT on taxable supplies"; sheet.Cells[row, 2].Value = data.Box1b; row++;
