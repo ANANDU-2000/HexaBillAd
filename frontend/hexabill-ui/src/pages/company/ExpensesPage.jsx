@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { clearCache } from '../../services/api'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -344,7 +345,8 @@ const ExpensesPage = () => {
 
   const fetchExpenses = useCallback(async (pageOverride) => {
     try {
-      setLoading(true)
+      if (!initialExpensesLoadDoneRef.current) setLoading(true)
+      else setRefreshing(true)
       const page = pageOverride != null ? pageOverride : currentPage
       const params = {
         page,
@@ -453,8 +455,17 @@ const ExpensesPage = () => {
       setExpenseSummary(null)
     } finally {
       setLoading(false)
+      setRefreshing(false)
+      initialExpensesLoadDoneRef.current = true
     }
   }, [currentPage, dateRange, showAggregated, groupBy, selectedBranchId])
+
+  const handleRefresh = useCallback(async () => {
+    clearCache('/expenses')
+    clearCache('/api/expenses')
+    clearCache('expenses')
+    await fetchExpenses()
+  }, [fetchExpenses])
 
   const filterExpenses = useCallback(() => {
     if (!searchTerm) {
@@ -964,11 +975,13 @@ const ExpensesPage = () => {
             </button>
             <button
               type="button"
-              onClick={fetchExpenses}
-              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center flex-1 sm:flex-none"
+              onClick={() => handleRefresh()}
+              disabled={refreshing}
+              title="Reload list and summary (bypasses short-lived cache)"
+              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-60"
             >
-              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
             </button>
             <button
               type="button"

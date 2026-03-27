@@ -279,7 +279,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<ApiResponse<ExpenseDto>>> GetExpense(int id)
         {
             try
@@ -373,7 +373,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<ExpenseDto>>> UpdateExpense(int id, [FromBody] CreateExpenseRequest request)
         {
@@ -437,7 +437,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteExpense(int id)
         {
@@ -621,7 +621,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpPut("categories/{id}")]
+        [HttpPut("categories/{id:int}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<ExpenseCategoryDto>>> UpdateCategory(int id, [FromBody] UpdateExpenseCategoryRequest request)
         {
@@ -734,7 +734,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpPost("{id}/attachment")]
+        [HttpPost("{id:int}/attachment")]
         [RequestSizeLimit(10 * 1024 * 1024)] // 10 MB
         public async Task<ActionResult<ApiResponse<string>>> UploadAttachment(int id, IFormFile file)
         {
@@ -813,7 +813,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpPost("{id}/approve")]
+        [HttpPost("{id:int}/approve")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<object>>> ApproveExpense(int id)
         {
@@ -865,7 +865,7 @@ namespace HexaBill.Api.Modules.Expenses
             }
         }
 
-        [HttpPost("{id}/reject")]
+        [HttpPost("{id:int}/reject")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<object>>> RejectExpense(int id, [FromBody] ApproveExpenseRequest request)
         {

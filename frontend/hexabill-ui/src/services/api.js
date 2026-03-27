@@ -92,6 +92,35 @@ const getRequestKey = (config) => {
   return `${method}_${url}_${JSON.stringify(params)}_tenant:${tenantId}`
 }
 
+/** Human-readable message from non-standard API / ProblemDetails / HTML error bodies (avoids generic "An error occurred"). */
+function extractErrorMessageFromResponse(error) {
+  const status = error.response?.status
+  const data = error.response?.data
+  if (data == null || data === '') {
+    return status ? `Request failed (HTTP ${status}). Please try again.` : null
+  }
+  if (typeof data === 'string') {
+    const t = data.trim()
+    if (t.startsWith('<') || t.toLowerCase().includes('<!doctype')) {
+      return status >= 500
+        ? 'Server temporarily unavailable. Please try again in a moment.'
+        : `Server returned an error (HTTP ${status || '?'}). Please try again.`
+    }
+    return t.length > 220 ? `${t.slice(0, 220)}…` : t
+  }
+  if (typeof data === 'object') {
+    const m =
+      data.message ||
+      data.Message ||
+      data.title ||
+      data.Title ||
+      data.detail ||
+      data.Detail
+    if (m) return String(m)
+  }
+  return status ? `Request failed (HTTP ${status}). Please try again.` : null
+}
+
 const showThrottledError = (message, isNetworkError = false, options = {}) => {
   const now = Date.now()
   const throttleTime = isNetworkError ? NETWORK_ERROR_THROTTLE_MS : ERROR_THROTTLE_MS
@@ -962,17 +991,21 @@ api.interceptors.response.use(
       const finalMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : errorMsg
       showThrottledError(finalMsg)
       error._handledByInterceptor = true
-    } else if (error.response?.data) {
-      // Server is responding but structure is different
+    } else if (error.response?.data !== undefined && error.response?.data !== null) {
+      // Server responded with a body but no message/errors (e.g. ProblemDetails shape, empty object)
       connectionManager.markConnected()
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
-      const errorMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : 'An error occurred. Please try again.'
+      const extracted = extractErrorMessageFromResponse(error)
+      const errorMsg = correlationId
+        ? `${extracted || 'Something went wrong'} (Ref: ${correlationId})`
+        : (extracted || 'An error occurred. Please try again.')
       showThrottledError(errorMsg)
       error._handledByInterceptor = true
     } else {
-      // Unknown error
+      // e.g. HTTP error with empty body
       connectionManager.markConnected()
-      showThrottledError('An error occurred. Please try again.')
+      const extracted = extractErrorMessageFromResponse(error)
+      showThrottledError(extracted || 'An error occurred. Please try again.')
       error._handledByInterceptor = true
     }
 
