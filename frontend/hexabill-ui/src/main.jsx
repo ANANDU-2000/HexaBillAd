@@ -8,7 +8,6 @@ import { BrandingProvider } from './contexts/TenantBrandingContext'
 import toast, { Toaster, useToasterStore } from 'react-hot-toast'
 import App from './App.jsx'
 import './index.css'
-import './styles/tokens.css'
 
 const TOAST_LIMIT = 3
 

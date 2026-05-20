@@ -1,0 +1,83 @@
+---
+description: HexaBill v2 production rules — multi-tenant ERP SaaS for Gulf market
+globs: "**/*"
+alwaysApply: true
+---
+
+# HexaBill Production Rules v2.0
+
+## Critical: This is a money system
+Real invoices. Real VAT. Real businesses in UAE/Gulf.  
+Every change must be safe, backward-compatible, isolated per tenant.
+
+## Multi-Tenant Law
+- ALL DB queries: `.Where(x => x.TenantId == tenantId)` — no exceptions
+- TenantId always from JWT claim: `User.GetTenantId()`
+- Never trust user-supplied tenantId
+
+## Money Math Law
+- Backend only: always use `VatCalculator.ForSupply()` or `VatCalculator.ForExpense()`
+- Frontend: NEVER calculate VAT or totals in JavaScript — display backend values only
+- Rounding: `Math.Round(value, 2, MidpointRounding.AwayFromZero)` — matches UAE FTA
+
+## Transaction Law
+- Sale creation + stock deduction: single DB transaction
+- Payment + balance update: single DB transaction
+- Return + stock restoration: single DB transaction
+```csharp
+using var tx = await _context.Database.BeginTransactionAsync();
+try { /* all operations */ await tx.CommitAsync(); }
+catch { await tx.RollbackAsync(); throw; }
+```
+
+## Backend API Law
+- Every endpoint: `[Authorize]` + tenant check + try/catch + ILogger
+- No `Console.WriteLine` — use `_logger.LogInformation/Warning/Error`
+- List endpoints: always paginated (default 20, max 100)
+- Response format: `{ data, total, page, pageSize }` for lists; `{ data }` for single; `{ message, code }` for errors
+
+## DB Migration Law
+- Additive only (no drop/rename without full deprecation plan)
+- Every new table: `TenantId int NOT NULL` + index on `(TenantId, CreatedAt)`
+- Soft delete: `IsDeleted bool`, `DeletedAt datetime?` — never hard delete financial records
+
+## Frontend Design Law
+- Mobile-first: all layouts start `flex-col` → `md:flex-row`
+- 8pt grid only: `p-4 gap-4` mobile, `p-6 gap-6` desktop
+- No horizontal scroll on any screen
+- Tables become cards on mobile (< 768px)
+- Touch targets: minimum `h-11 w-11` (44px) for all interactive elements
+- Icons: Lucide only — no emojis as icons
+- Cards: `bg-white border border-neutral-200 rounded-xl` — no shadow on cards
+- Primary color: `#2563EB` (blue-600) for CTAs only
+- Design tokens: `src/styles/tokens.css` — single source of truth
+
+## React Performance Law
+- `React.memo` on all pure display components (StatCard, Badge, Button, table rows)
+- `useCallback` for all handlers passed as props
+- `useMemo` for filtered/sorted lists
+- Search debounce: 300ms via `useDebounce.js` (not useDebounce.jsx — delete the .jsx)
+
+## State Law  
+- Every async component: loading → error → empty → data (all 4 states)
+- Loading: `<LoadingSkeleton />` or `<TableSkeleton />`
+- Error: `<ErrorState message={err} onRetry={fn} />`
+- Empty: `<EmptyState title="..." subtitle="Add your first..." />`
+
+## Security Law
+- SuperAdmin SQL Console: log every query, SELECT-only in production
+- File uploads: validate magic bytes, not just extension
+- Seed controller: guarded by `!env.IsProduction()`
+- Audit log: every SuperAdmin mutation
+
+## File Naming Law
+- Pages: `PascalCasePage.jsx`
+- Components: `PascalCase.jsx`
+- Hooks: `useCamelCase.js` (single file, no .jsx duplicates)
+- Services: `camelCaseAPI` in `services/api.js`
+
+## What NOT to change
+- `VatCalculator.cs` — correct per UAE FTA, do not edit rounding
+- Multi-tenant middleware chain — it works, don't refactor
+- Existing migration history — never edit past migrations
+- JWT auth middleware — it works, extend don't replace

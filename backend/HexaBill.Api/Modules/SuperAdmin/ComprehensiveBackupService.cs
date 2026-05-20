@@ -331,7 +331,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var dbPath = ExtractValue(connectionString.Split(';'), "Data Source");
                 if (string.IsNullOrEmpty(dbPath))
                 {
-                    Console.WriteLine("⚠️ No Data Source found in connection string - skipping database file backup");
+                    _logger.LogInformation("⚠️ No Data Source found in connection string - skipping database file backup");
                     return;
                 }
 
@@ -343,9 +343,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
                 if (!File.Exists(fullDbPath))
                 {
-                    Console.WriteLine($"⚠️ Database file not found at: {fullDbPath}");
-                    Console.WriteLine($"   Current directory: {Directory.GetCurrentDirectory()}");
-                    Console.WriteLine("   Skipping database file backup");
+                    _logger.LogInformation($"⚠️ Database file not found at: {fullDbPath}");
+                    _logger.LogInformation($"   Current directory: {Directory.GetCurrentDirectory()}");
+                    _logger.LogInformation("   Skipping database file backup");
                     return;
                 }
 
@@ -628,7 +628,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"   ⚠️ Failed to backup invoice PDF {pdfFile}: {ex.Message}");
+                            _logger.LogInformation($"   ⚠️ Failed to backup invoice PDF {pdfFile}: {ex.Message}");
                             skippedCount++;
                         }
                     }
@@ -664,17 +664,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"   ⚠️ Failed to generate PDF for invoice {sale.InvoiceNo}: {ex.Message}");
+                            _logger.LogInformation($"   ⚠️ Failed to generate PDF for invoice {sale.InvoiceNo}: {ex.Message}");
                         }
                     }
                 }
             }
 
-            Console.WriteLine($"   ✅ Backed up {backedUpCount} invoice PDF(s) for tenant {tenantId}");
+            _logger.LogInformation($"   ✅ Backed up {backedUpCount} invoice PDF(s) for tenant {tenantId}");
             if (skippedCount > 0)
-                Console.WriteLine($"   ⚠️ Skipped {skippedCount} PDF(s) (not matching tenant invoices)");
+                _logger.LogInformation($"   ⚠️ Skipped {skippedCount} PDF(s) (not matching tenant invoices)");
             if (!Directory.Exists(invoicesDir))
-                Console.WriteLine($"   ⚠️ Invoices directory not found: {invoicesDir}");
+                _logger.LogInformation($"   ⚠️ Invoices directory not found: {invoicesDir}");
         }
 
         private async Task BackupUploadedFilesAsync(ZipArchive zipArchive, int tenantId)
@@ -706,7 +706,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                     }
                 }
-                Console.WriteLine($"   Backed up {totalBackedUp} storage file(s) for tenant {tenantId}");
+                _logger.LogInformation($"   Backed up {totalBackedUp} storage file(s) for tenant {tenantId}");
             }
         }
 
@@ -772,7 +772,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var purchasesCsv = GeneratePurchasesCsv(purchases);
             AddCsvToZip(zipArchive, "database/purchases.csv", purchasesCsv);
 
-            Console.WriteLine("✅ CSV exports completed");
+            _logger.LogInformation("✅ CSV exports completed");
         }
 
         private async Task BackupCustomerStatementsAsync(ZipArchive zipArchive, int tenantId, AppDbContext? backupContext = null)
@@ -813,7 +813,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                     }
                 }
-                Console.WriteLine($"   Backed up {backedUpCount} customer statement PDF(s) for tenant {tenantId}");
+                _logger.LogInformation($"   Backed up {backedUpCount} customer statement PDF(s) for tenant {tenantId}");
             }
         }
 
@@ -849,15 +849,15 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     await entryStream.WriteAsync(previousMonthPdf, 0, previousMonthPdf.Length);
                 }
 
-                Console.WriteLine($"   Backed up monthly sales ledger reports for tenant {tenantId} ({currentMonthStart:yyyy-MM} and {previousMonthStart:yyyy-MM})");
+                _logger.LogInformation($"   Backed up monthly sales ledger reports for tenant {tenantId} ({currentMonthStart:yyyy-MM} and {previousMonthStart:yyyy-MM})");
             }
             catch (ObjectDisposedException ex)
             {
-                Console.WriteLine($"⚠️ Monthly sales ledger skipped (disposed): {ex.Message}");
+                _logger.LogInformation($"⚠️ Monthly sales ledger skipped (disposed): {ex.Message}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Monthly sales ledger generation failed: {ex.Message}");
+                _logger.LogInformation($"⚠️ Monthly sales ledger generation failed: {ex.Message}");
                 // 42703 (missing TenantId) or other DB errors: run FIX_PRODUCTION_MIGRATIONS.sql sections 6b, 7, 8
             }
         }
@@ -905,7 +905,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     backedUpCount++;
                 }
                 
-                Console.WriteLine($"   Backed up {backedUpCount} report file(s) for tenant {tenantId}");
+                _logger.LogInformation($"   Backed up {backedUpCount} report file(s) for tenant {tenantId}");
             }
         }
 
@@ -1255,7 +1255,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             // 5. Update foreign keys
 
             // For now, we'll use the existing restore logic but log that conflict resolution was applied
-            Console.WriteLine("Import with conflict resolution - using existing restore logic");
+            _logger.LogInformation("Import with conflict resolution - using existing restore logic");
             // Full implementation would require parsing the backup database and applying resolutions
             return Task.CompletedTask;
         }
@@ -1299,7 +1299,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 sourcePath = await ResolveBackupPathAsync(backupFilePath ?? "", uploadedFilePath);
                 if (string.IsNullOrEmpty(sourcePath) || !File.Exists(sourcePath))
                 {
-                    Console.WriteLine($"❌ Backup file not found: {backupFilePath}");
+                    _logger.LogInformation($"❌ Backup file not found: {backupFilePath}");
                     return false;
                 }
 
@@ -1350,7 +1350,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                             if (File.Exists(sqlDumpPath))
                             {
                                 // PostgreSQL restore from SQL dump
-                                Console.WriteLine("📥 Restoring PostgreSQL database from SQL dump...");
+                                _logger.LogInformation("📥 Restoring PostgreSQL database from SQL dump...");
                                 await RestorePostgreSQLDatabaseAsync(sqlDumpPath, tenantId);
                             }
                             else
@@ -1361,20 +1361,20 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 if (dbFile != null)
                                 {
                                     // CRITICAL: Dispose current DB connection before replacing database file
-                                    Console.WriteLine("🔄 Closing database connections...");
+                                    _logger.LogInformation("🔄 Closing database connections...");
                                     await _context.Database.CloseConnectionAsync();
                                     
                                     // Restore database
-                                    Console.WriteLine("📥 Restoring SQLite database file...");
+                                    _logger.LogInformation("📥 Restoring SQLite database file...");
                                     await RestoreDatabaseAsync(dbFile);
                                     
                                     // CRITICAL: Recreate context to use the new database file
-                                    Console.WriteLine("🔄 Reinitializing database context...");
+                                    _logger.LogInformation("🔄 Reinitializing database context...");
                                     await _context.Database.EnsureCreatedAsync();
                                 }
                                 else
                                 {
-                                    Console.WriteLine("⚠️ No database file (.db) or SQL dump (db_dump.sql) found in backup");
+                                    _logger.LogInformation("⚠️ No database file (.db) or SQL dump (db_dump.sql) found in backup");
                                 }
                             }
                         }
@@ -1383,7 +1383,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         var storageSource = Path.Combine(tempExtractPath, "storage");
                         if (Directory.Exists(storageSource))
                         {
-                            Console.WriteLine("📁 Restoring storage files...");
+                            _logger.LogInformation("📁 Restoring storage files...");
                             var storageDest = Path.Combine(Directory.GetCurrentDirectory(), "storage");
                             if (!Directory.Exists(storageDest))
                             {
@@ -1397,18 +1397,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         var settingsFile = Path.Combine(tempExtractPath, "settings.json");
                         if (File.Exists(settingsFile))
                         {
-                            Console.WriteLine("⚙️  Restoring settings...");
+                            _logger.LogInformation("⚙️  Restoring settings...");
                             await RestoreSettingsAsync(settingsFile, tenantId);
                         }
 
                         // AUDIT-8 FIX: Recalculate customer balances after restore
-                        Console.WriteLine("🔄 Recalculating customer balances...");
+                        _logger.LogInformation("🔄 Recalculating customer balances...");
                         var customerService = _serviceProvider.GetRequiredService<HexaBill.Api.Modules.Customers.ICustomerService>();
                         await customerService.RecalculateAllCustomerBalancesAsync(tenantId);
 
                         await transaction.CommitAsync();
                         await LogBackupActionAsync("Backup Restored", backupFilePath ?? string.Empty);
-                        Console.WriteLine($"✅ Backup restored successfully from {backupFilePath}");
+                        _logger.LogInformation($"✅ Backup restored successfully from {backupFilePath}");
                         return true;
                     }
                     catch
@@ -1428,8 +1428,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Restore failed: {ex.Message}");
-                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                _logger.LogInformation($"❌ Restore failed: {ex.Message}");
+                _logger.LogInformation($"   Stack: {ex.StackTrace}");
                 await LogBackupActionAsync("Backup Restore Failed", $"{backupFilePath ?? string.Empty}: {ex.Message}");
                 return false;
             }
@@ -1528,22 +1528,22 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         }
                     }
                     
-                    Console.WriteLine("✅ PostgreSQL database restored via psql");
+                    _logger.LogInformation("✅ PostgreSQL database restored via psql");
                 }
                 else
                 {
                     // Fallback: Parse SQL dump and execute via EF Core
-                    Console.WriteLine("⚠️ psql not found, using EF Core restore (slower but works)");
+                    _logger.LogInformation("⚠️ psql not found, using EF Core restore (slower but works)");
                     await RestorePostgreSQLViaEfCoreAsync(sqlDumpPath, tenantId);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ PostgreSQL restore failed: {ex.Message}");
+                _logger.LogInformation($"❌ PostgreSQL restore failed: {ex.Message}");
                     // Try fallback
                     try
                     {
-                        Console.WriteLine("🔄 Trying EF Core fallback restore...");
+                        _logger.LogInformation("🔄 Trying EF Core fallback restore...");
                         await RestorePostgreSQLViaEfCoreAsync(sqlDumpPath, tenantId);
                     }
                 catch (Exception fallbackEx)
@@ -1647,7 +1647,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Product {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Product {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1674,7 +1674,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Customer {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Customer {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1701,7 +1701,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Sale {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Sale {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1731,7 +1731,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                     .FirstOrDefaultAsync(s => s.Id == item.SaleId && s.TenantId == tenantId);
                                 if (sale == null)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping SaleItem {item.Id} - Sale {item.SaleId} doesn't belong to tenant {tenantId}");
+                                    _logger.LogInformation($"⚠️ Skipping SaleItem {item.Id} - Sale {item.SaleId} doesn't belong to tenant {tenantId}");
                                     continue;
                                 }
                                 
@@ -1758,7 +1758,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Payment {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Payment {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1785,7 +1785,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Expense {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Expense {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1812,7 +1812,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Only upsert if TenantId matches
                                 if (item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping User {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping User {item.Id} - TenantId mismatch (backup: {item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1839,7 +1839,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                 // AUDIT-8 FIX: Settings use OwnerId or TenantId, validate both
                                 if (item.OwnerId != tenantId && item.TenantId != tenantId)
                                 {
-                                    Console.WriteLine($"⚠️ Skipping Setting {item.Key} - OwnerId/TenantId mismatch (backup: OwnerId={item.OwnerId}, TenantId={item.TenantId}, restore: {tenantId})");
+                                    _logger.LogInformation($"⚠️ Skipping Setting {item.Key} - OwnerId/TenantId mismatch (backup: OwnerId={item.OwnerId}, TenantId={item.TenantId}, restore: {tenantId})");
                                     continue;
                                 }
                                 
@@ -1866,7 +1866,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Error upserting {tableName}: {ex.Message}");
+                _logger.LogInformation($"⚠️ Error upserting {tableName}: {ex.Message}");
                 // Continue with other tables
             }
         }
@@ -1984,7 +1984,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ S3 list backups failed: {ex.Message}");
+                _logger.LogInformation($"⚠️ S3 list backups failed: {ex.Message}");
             }
 
             return backups.OrderByDescending(b => b.CreatedDate).ToList();
@@ -2056,7 +2056,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ S3 download failed: {ex.Message}");
+                    _logger.LogInformation($"⚠️ S3 download failed: {ex.Message}");
                 }
                 finally
                 {
@@ -2100,7 +2100,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ S3 delete failed: {ex.Message}");
+                        _logger.LogInformation($"⚠️ S3 delete failed: {ex.Message}");
                     }
                     finally
                     {
@@ -2144,7 +2144,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ S3 resolve backup failed: {ex.Message}");
+                _logger.LogInformation($"⚠️ S3 resolve backup failed: {ex.Message}");
                 return null;
             }
             finally
@@ -2199,7 +2199,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
                 if (autoBackup)
                 {
-                    Console.WriteLine($"🔄 Starting scheduled backup at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    _logger.LogInformation($"🔄 Starting scheduled backup at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                     // AUDIT-8 FIX: Backup all active tenants (system-wide scheduled backup)
                     var activeTenantIds = await _context.Tenants
                         .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
@@ -2211,24 +2211,24 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         try
                         {
                             await CreateFullBackupAsync(tenantId, exportDesktop, uploadDrive, sendEmail);
-                            Console.WriteLine($"✅ Scheduled backup completed for tenant {tenantId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                            _logger.LogInformation($"✅ Scheduled backup completed for tenant {tenantId} at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                         }
                         catch (Exception ex)
                         {
-                            Console.WriteLine($"❌ Failed to backup tenant {tenantId}: {ex.Message}");
+                            _logger.LogInformation($"❌ Failed to backup tenant {tenantId}: {ex.Message}");
                         }
                     }
-                    Console.WriteLine($"✅ Scheduled backup completed at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    _logger.LogInformation($"✅ Scheduled backup completed at {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
                 }
                 else
                 {
-                    Console.WriteLine($"ℹ️ Auto-backup is disabled. Enable in BackupSettings:AutoBackup:Enabled");
+                    _logger.LogInformation($"ℹ️ Auto-backup is disabled. Enable in BackupSettings:AutoBackup:Enabled");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Scheduled backup failed: {ex.Message}");
-                Console.WriteLine($"   Stack trace: {ex.StackTrace}");
+                _logger.LogInformation($"❌ Scheduled backup failed: {ex.Message}");
+                _logger.LogInformation($"   Stack trace: {ex.StackTrace}");
             }
         }
 
@@ -2241,7 +2241,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 
                 if (!googleDriveEnabled)
                 {
-                    Console.WriteLine("ℹ️ Google Drive backup is disabled in configuration");
+                    _logger.LogInformation("ℹ️ Google Drive backup is disabled in configuration");
                     return;
                 }
 
@@ -2252,9 +2252,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
                 if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
                 {
-                    Console.WriteLine("⚠️ Google Drive credentials not configured. Skipping cloud upload.");
-                    Console.WriteLine("   To enable: Add GoogleDrive settings to appsettings.json");
-                    Console.WriteLine("   See BACKUP_CLOUD_INTEGRATION.md for setup instructions");
+                    _logger.LogInformation("⚠️ Google Drive credentials not configured. Skipping cloud upload.");
+                    _logger.LogInformation("   To enable: Add GoogleDrive settings to appsettings.json");
+                    _logger.LogInformation("   See BACKUP_CLOUD_INTEGRATION.md for setup instructions");
                     return;
                 }
 
@@ -2266,16 +2266,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 // 3. Use refresh token to get access token
                 // 4. Upload file to Drive folder
                 
-                Console.WriteLine($"📤 Google Drive upload requested for: {Path.GetFileName(zipPath)}");
-                Console.WriteLine("   ℹ️ Google Drive integration requires OAuth setup.");
-                Console.WriteLine("   See BACKUP_CLOUD_INTEGRATION.md for implementation guide.");
+                _logger.LogInformation($"📤 Google Drive upload requested for: {Path.GetFileName(zipPath)}");
+                _logger.LogInformation("   ℹ️ Google Drive integration requires OAuth setup.");
+                _logger.LogInformation("   See BACKUP_CLOUD_INTEGRATION.md for implementation guide.");
                 
                 // Placeholder - will be implemented when Google Drive API is configured
                 await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Google Drive upload failed: {ex.Message}");
+                _logger.LogInformation($"⚠️ Google Drive upload failed: {ex.Message}");
                 // Don't throw - backup should succeed even if cloud upload fails
             }
         }
@@ -2335,7 +2335,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     ContentType = "application/zip"
                 };
                 await client.PutObjectAsync(request);
-                Console.WriteLine($"✅ Backup uploaded to S3/R2: {bucket}/{key}");
+                _logger.LogInformation($"✅ Backup uploaded to S3/R2: {bucket}/{key}");
 
                 var deleteLocalAfterUpload = _configuration.GetValue<bool>("BackupSettings:S3:DeleteLocalAfterUpload", true);
                 if (deleteLocalAfterUpload && File.Exists(zipPath))
@@ -2358,7 +2358,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 
                 if (!emailEnabled)
                 {
-                    Console.WriteLine("ℹ️ Email backup notification is disabled in configuration");
+                    _logger.LogInformation("ℹ️ Email backup notification is disabled in configuration");
                     return;
                 }
 
@@ -2378,9 +2378,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
                 if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                 {
-                    Console.WriteLine("⚠️ Email credentials not configured. Skipping email notification.");
-                    Console.WriteLine("   To enable: Add Email settings to appsettings.json");
-                    Console.WriteLine("   See BACKUP_CLOUD_INTEGRATION.md for setup instructions");
+                    _logger.LogInformation("⚠️ Email credentials not configured. Skipping email notification.");
+                    _logger.LogInformation("   To enable: Add Email settings to appsettings.json");
+                    _logger.LogInformation("   See BACKUP_CLOUD_INTEGRATION.md for setup instructions");
                     return;
                 }
 
@@ -2391,17 +2391,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 // 3. Use SendGrid API
                 // 4. Use AWS SES
                 
-                Console.WriteLine($"📧 Email backup notification requested for: {Path.GetFileName(zipPath)}");
-                Console.WriteLine($"   To: {adminEmail}");
-                Console.WriteLine("   ℹ️ Email integration requires SMTP configuration.");
-                Console.WriteLine("   See BACKUP_CLOUD_INTEGRATION.md for implementation guide.");
+                _logger.LogInformation($"📧 Email backup notification requested for: {Path.GetFileName(zipPath)}");
+                _logger.LogInformation($"   To: {adminEmail}");
+                _logger.LogInformation("   ℹ️ Email integration requires SMTP configuration.");
+                _logger.LogInformation("   See BACKUP_CLOUD_INTEGRATION.md for implementation guide.");
                 
                 // Placeholder - will be implemented when SMTP is configured
                 await Task.CompletedTask;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Email backup notification failed: {ex.Message}");
+                _logger.LogInformation($"⚠️ Email backup notification failed: {ex.Message}");
                 // Don't throw - backup should succeed even if email fails
             }
         }

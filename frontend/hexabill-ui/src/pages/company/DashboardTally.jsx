@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-    Package, ShoppingCart, Users, Truck, FileText,
+    Package, ShoppingCart, Users, Truck, FileText, Percent,
     Settings, Database, BarChart3, DollarSign, TrendingUp,
     AlertTriangle, ChevronRight, BookOpen, Wallet,
-    Building2, MapPin, RefreshCw, RotateCcw, CheckCircle, X
+    Building2, MapPin, RefreshCw, RotateCcw, CheckCircle, X,
+    Banknote, Receipt
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,21 +17,31 @@ import { useBranding } from '../../contexts/TenantBrandingContext'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 // Helper components defined first so they are never used before initialization (avoids TDZ after minification)
-const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly }) => {
+const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly, valueType = 'currency', onClick }) => {
     const iconBgClasses = {
         green: 'bg-green-500/10 text-green-600',
         red: 'bg-red-500/10 text-red-600',
         blue: 'bg-blue-500/10 text-blue-600'
     }
     return (
-        <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div
+            role={onClick ? 'button' : undefined}
+            tabIndex={onClick ? 0 : undefined}
+            onClick={onClick}
+            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
+            className={`rounded-lg border border-neutral-200 bg-white p-4 transition-colors duration-200 ${onClick ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+        >
             <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                     <p className="text-xs font-medium text-neutral-600 mb-0.5 truncate">{title}</p>
                     {loading ? (
                         <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900">...</p>
                     ) : (
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900 truncate">{formatCurrency(value)}</p>
+                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900 truncate">
+                            {valueType === 'number'
+                                ? (typeof value === 'number' ? value.toLocaleString() : String(value ?? ''))
+                                : formatCurrency(value)}
+                        </p>
                     )}
                 </div>
                 <div className={`p-2 rounded-lg flex-shrink-0 ${iconBgClasses[color] || iconBgClasses.blue}`}>
@@ -51,9 +62,9 @@ const QuickActionButton = ({ icon: Icon, label, onClick, color, shortcut }) => {
     return (
         <button
             onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 flex flex-col items-center justify-center space-y-3 hover:shadow-lg transition-all group cursor-pointer min-h-[120px]`}
+            className={`${colorClasses[color]} rounded-lg border-2 p-4 sm:p-5 lg:p-6 flex flex-col items-center justify-center space-y-3 transition-colors group cursor-pointer min-h-[120px]`}
         >
-            <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm`}>
+            <div className={`p-2 sm:p-3 bg-white rounded-lg border border-neutral-200 ${colorClasses[color]}`}>
                 <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
             </div>
             <span className="text-sm sm:text-base font-bold text-center">{label}</span>
@@ -70,11 +81,11 @@ const AlertCard = ({ title, count, icon: Icon, color, onClick }) => {
     return (
         <button
             onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg shadow-md border-2 p-4 sm:p-5 lg:p-6 w-full text-left hover:shadow-lg transition-all group cursor-pointer`}
+            className={`${colorClasses[color]} rounded-lg border-2 p-4 sm:p-5 lg:p-6 w-full text-left transition-colors group cursor-pointer`}
         >
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 sm:space-x-4 min-w-0 flex-1">
-                    <div className={`p-2 sm:p-3 bg-white rounded-lg ${colorClasses[color]} shadow-sm flex-shrink-0`}>
+                    <div className={`p-2 sm:p-3 bg-white rounded-lg border border-neutral-200 ${colorClasses[color]} flex-shrink-0`}>
                         <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -104,7 +115,7 @@ const GatewayGroup = ({ group, user, navigate }) => {
         return true
     })
     return (
-        <div className="border-2 border-blue-200 rounded-lg shadow-md overflow-hidden">
+        <div className="border-2 border-blue-200 rounded-lg overflow-hidden">
             <button
                 onClick={() => setExpanded(!expanded)}
                 className="w-full bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between transition-colors cursor-pointer"
@@ -124,8 +135,8 @@ const GatewayGroup = ({ group, user, navigate }) => {
                                     }`}
                             >
                                 <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
-                                    <div className={`p-1 sm:p-1.5 rounded-lg flex-shrink-0 ${item.primary ? 'bg-emerald-200' : 'bg-blue-100'
-                                        } group-hover:shadow-md transition-shadow`}>
+                                    <div className={`p-1 sm:p-1.5 rounded-lg flex-shrink-0 border border-neutral-200 ${item.primary ? 'bg-emerald-200' : 'bg-blue-100'
+                                        }`}>
                                         <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                                     </div>
                                     <div className="text-left min-w-0 flex-1">
@@ -172,7 +183,12 @@ const DashboardTally = () => {
         lowStockCount: 0,
         invoicesToday: 0,
         invoicesWeekly: 0,
-        invoicesMonthly: 0
+        invoicesMonthly: 0,
+        cashCollectionsTotal: 0,
+        creditInvoicedTotal: 0,
+        overdueCustomersCount: 0,
+        overdueAmountTotal: 0,
+        netVatPayablePeriod: 0
     })
     const [branchBreakdown, setBranchBreakdown] = useState([])
     const [dailySalesTrend, setDailySalesTrend] = useState([])
@@ -255,7 +271,12 @@ const DashboardTally = () => {
                     lowStockCount: Array.isArray(data.lowStockProducts || data.LowStockProducts) ? (data.lowStockProducts || data.LowStockProducts || []).length : 0,
                     invoicesToday: parseInt(data.invoicesToday || data.InvoicesToday) || 0,
                     invoicesWeekly: parseInt(data.invoicesWeekly || data.InvoicesWeekly) || 0,
-                    invoicesMonthly: parseInt(data.invoicesMonthly || data.InvoicesMonthly) || 0
+                    invoicesMonthly: parseInt(data.invoicesMonthly || data.InvoicesMonthly) || 0,
+                    cashCollectionsTotal: parseFloat(data.cashCollectionsTotal ?? data.CashCollectionsTotal) || 0,
+                    creditInvoicedTotal: parseFloat(data.creditInvoicedTotal ?? data.CreditInvoicedTotal) || 0,
+                    overdueCustomersCount: parseInt(data.overdueCustomersCount ?? data.OverdueCustomersCount, 10) || 0,
+                    overdueAmountTotal: parseFloat(data.overdueAmountTotal ?? data.OverdueAmountTotal) || 0,
+                    netVatPayablePeriod: parseFloat(data.netVatPayablePeriod ?? data.NetVatPayablePeriod) || 0
                 })
                 
                 // Set branch breakdown
@@ -673,6 +694,53 @@ const DashboardTally = () => {
                                 loading={loading}
                             />
                         )}
+                        {canShow('cashCollections') !== false && (
+                            <StatCard
+                                title={
+                                    dateRange === 'today' ? 'Cash & bank collections' :
+                                        dateRange === 'week' ? 'Cash & bank collections (week)' :
+                                            dateRange === 'month' ? 'Cash & bank collections (month)' : 'Cash & bank collections'
+                                }
+                                value={stats.cashCollectionsTotal}
+                                icon={Banknote}
+                                color="green"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('creditInvoiced') !== false && (
+                            <StatCard
+                                title={
+                                    dateRange === 'today' ? 'On-account sales (billed)' :
+                                        dateRange === 'week' ? 'On-account sales (week)' :
+                                            dateRange === 'month' ? 'On-account sales (month)' : 'On-account sales (billed)'
+                                }
+                                value={stats.creditInvoicedTotal}
+                                icon={Receipt}
+                                color="blue"
+                                loading={loading}
+                            />
+                        )}
+                        {canShow('overdueAccounts') !== false && (
+                            <>
+                                <StatCard
+                                    title="Overdue customers (30d+)"
+                                    value={stats.overdueCustomersCount}
+                                    icon={Users}
+                                    color="red"
+                                    loading={loading}
+                                    valueType="number"
+                                    onClick={() => navigate('/reports?tab=overdue')}
+                                />
+                                <StatCard
+                                    title="Overdue balance (30d+)"
+                                    value={stats.overdueAmountTotal}
+                                    icon={AlertTriangle}
+                                    color="red"
+                                    loading={loading}
+                                    onClick={() => navigate('/reports?tab=overdue')}
+                                />
+                            </>
+                        )}
                         {isAdminOrOwner(user) && canShow('profitToday') && (
                             <StatCard
                                 title={dateRange === 'today' ? 'Profit Today' : dateRange === 'week' ? 'Profit This Week' : dateRange === 'month' ? 'Profit This Month' : 'Profit'}
@@ -681,6 +749,20 @@ const DashboardTally = () => {
                                 color="blue"
                                 loading={loading}
                                 adminOnly
+                            />
+                        )}
+                        {isOwner(user) && (
+                            <StatCard
+                                title={
+                                    dateRange === 'today' ? 'Net VAT payable (today)' :
+                                        dateRange === 'week' ? 'Net VAT payable (week)' :
+                                            dateRange === 'month' ? 'Net VAT payable (month)' : 'Net VAT payable (period)'
+                                }
+                                value={stats.netVatPayablePeriod}
+                                icon={Percent}
+                                color="blue"
+                                loading={loading}
+                                onClick={() => navigate('/reports?tab=summary')}
                             />
                         )}
                     </div>
@@ -831,7 +913,7 @@ const DashboardTally = () => {
 
                     {/* Quick Actions Bar */}
                     {canShow('quickActions') && (
-                        <div className="bg-white rounded-lg shadow-md p-4 lg:p-6">
+                        <div className="bg-white rounded-lg border border-neutral-200 p-4 lg:p-6">
                             <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                                 <QuickActionButton
@@ -875,7 +957,7 @@ const DashboardTally = () => {
                         {canShow('salesLedger') && (
                             <div
                                 onClick={() => navigate('/sales-ledger')}
-                                className="cursor-pointer bg-indigo-50 rounded-lg shadow-md border-2 border-indigo-300 p-4 lg:p-6 text-center hover:shadow-lg hover:border-indigo-400 transition-all"
+                                className="cursor-pointer bg-indigo-50 rounded-lg border-2 border-indigo-300 p-4 lg:p-6 text-center hover:border-indigo-400 transition-colors"
                             >
                                 <BookOpen className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
                                 <p className="text-sm font-semibold text-gray-700 mb-1">Sales Ledger</p>
@@ -886,7 +968,7 @@ const DashboardTally = () => {
                         {(canShow('expenses') || !isAdminOrOwner(user)) && (
                             <div
                                 onClick={() => navigate('/expenses')}
-                                className="cursor-pointer bg-purple-50 rounded-lg shadow-md border-2 border-purple-300 p-4 lg:p-6 text-center hover:shadow-lg hover:border-purple-400 transition-all"
+                                className="cursor-pointer bg-purple-50 rounded-lg border-2 border-purple-300 p-4 lg:p-6 text-center hover:border-purple-400 transition-colors"
                             >
                                 <Wallet className="h-8 w-8 mx-auto mb-2 text-purple-600" />
                                 <p className="text-sm font-semibold text-gray-700 mb-1">{isAdminOrOwner(user) ? 'Expenses' : 'Add expense'}</p>
@@ -909,16 +991,16 @@ const DashboardTally = () => {
                                 count={stats.lowStockCount}
                                 icon={Package}
                                 color="red"
-                                onClick={() => navigate('/products?filter=lowstock')}
+                                onClick={() => navigate('/products?tab=lowStock')}
                             />
                         )}
                     </div>
                 </div>
 
                 {/* Right: Gateway Column */}
-                <div className="hidden lg:block lg:w-72 bg-white shadow-lg border-l border-blue-200 rounded-lg overflow-hidden h-fit sticky top-4">
+                <div className="hidden lg:block lg:w-72 bg-white border border-blue-200 rounded-lg overflow-hidden h-fit sticky top-4">
                     <div className="p-4">
-                        <div className="bg-neutral-900 text-white rounded-lg p-3 mb-4 shadow-lg">
+                        <div className="bg-neutral-900 text-white rounded-lg p-3 mb-4 border border-neutral-700">
                             <h2 className="text-base font-bold text-center">{companyName} Dashboard</h2>
                             <p className="text-xs text-center text-blue-200 mt-0.5">Billing software for business</p>
                         </div>

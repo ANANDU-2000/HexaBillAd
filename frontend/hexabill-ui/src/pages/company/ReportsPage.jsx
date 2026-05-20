@@ -55,6 +55,9 @@ import {
 
 const REPORTS_DATE_RANGE_KEY = 'hexabill_reports_date_range'
 
+/** Gulf / enterprise default: AI Insights tab off unless explicitly enabled in env. */
+const REPORTS_AI_INSIGHTS_ENABLED = import.meta.env.VITE_REPORTS_AI_INSIGHTS === 'true'
+
 function getDefaultDateRange() {
   // Use 2 years to capture full history (e.g. migrated 2025 data) - prevents "No data found"
   return {
@@ -86,7 +89,8 @@ const ReportsPage = () => {
   const navigate = useNavigate()
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
-  const initialTab = searchParams.get('tab') || 'summary'
+  const rawInitialTab = searchParams.get('tab') || 'summary'
+  const initialTab = rawInitialTab === 'ai' && !REPORTS_AI_INSIGHTS_ENABLED ? 'summary' : rawInitialTab
   const [activeTab, setActiveTab] = useState(initialTab)
   // Shared date range across all report tabs; persisted so last range is restored (PRODUCTION_MASTER_TODO #40)
   const [dateRange, setDateRange] = useState(() => loadDateRangeFromStorage() || getDefaultDateRange())
@@ -190,6 +194,7 @@ const ReportsPage = () => {
     { id: 'sales', name: 'Sales Report', shortLabel: 'Sales', icon: TrendingUp },
     { id: 'products', name: 'Product Analysis', shortLabel: 'Product', icon: PieChart },
     { id: 'customers', name: 'Customer Report', shortLabel: 'Customers', icon: FileText },
+    { id: 'overdue', name: 'Overdue accounts', shortLabel: 'Overdue', icon: AlertTriangle },
     { id: 'expenses', name: 'Expenses', shortLabel: 'Expenses', icon: TrendingDown },
     { id: 'branch', name: 'Branch Report', shortLabel: 'Branch', icon: Building2 },
     { id: 'route', name: 'Route Report', shortLabel: 'Route', icon: MapPin },
@@ -207,6 +212,7 @@ const ReportsPage = () => {
     { id: 'staff', name: 'Staff Performance', shortLabel: 'Staff', icon: Users, adminOnly: true },
     { id: 'ai', name: 'AI Insights', shortLabel: 'AI', icon: Eye, adminOnly: true }
   ].filter(tab => !tab.adminOnly || isAdminOrOwner(user))
+    .filter((tab) => tab.id !== 'ai' || REPORTS_AI_INSIGHTS_ENABLED)
 
   // Update URL when tab changes (with debouncing to prevent request flood)
   const handleTabChange = (tabId) => {
@@ -489,14 +495,11 @@ const ReportsPage = () => {
         } finally {
           setLoading(false)
         }
-      } else if (activeTab === 'customers') {
+      } else if (activeTab === 'customers' || activeTab === 'overdue') {
         try {
           setLoading(true)
-          console.log('Loading Customer Report (Outstanding Customers)')
-
-          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: 30 })
-
-          console.log('Customer Report response:', customersResponse)
+          const daysParam = activeTab === 'overdue' ? 30 : 1
+          const customersResponse = await reportsAPI.getOutstandingCustomers({ days: daysParam, page: 1, pageSize: 100 })
 
           if (customersResponse?.success && customersResponse?.data) {
             // PagedResponse: data has { items, totalCount, page } - use items array
@@ -1727,11 +1730,15 @@ const ReportsPage = () => {
             </div>
           )}
 
-          {/* Customers Tab */}
-          {activeTab === 'customers' && (
+          {/* Customers / Overdue tabs */}
+          {(activeTab === 'customers' || activeTab === 'overdue') && (
             <div className="space-y-6">
               <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Outstanding Customers Report</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  {activeTab === 'overdue'
+                    ? 'Overdue accounts (invoice date 30+ days ago, unpaid)'
+                    : 'Outstanding customers (unpaid invoice at least 1 day old)'}
+                </h3>
                 {reportData.customers && reportData.customers.length > 0 ? (
                   <div className="space-y-4">
                     {reportData.customers.map((customer, index) => (
@@ -1784,8 +1791,12 @@ const ReportsPage = () => {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                     <FileText className="h-12 w-12 mb-2 text-gray-400" />
-                    <p>No outstanding customers found</p>
-                    <p className="text-sm mt-1">All customers have zero balance</p>
+                    <p>No matching customers found</p>
+                    <p className="text-sm mt-1">
+                      {activeTab === 'overdue'
+                        ? 'No unpaid invoices older than 30 days for these customers.'
+                        : 'Try a different days filter or confirm customers have open balances.'}
+                    </p>
                   </div>
                 )}
               </div>

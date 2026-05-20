@@ -27,13 +27,15 @@ namespace HexaBill.Api.Modules.Customers
         private readonly ITimeZoneService _timeZoneService;
         private readonly IRouteScopeService _routeScopeService;
         private readonly AppDbContext _context;
+        private readonly ILogger<CustomersController> _logger;
 
-        public CustomersController(ICustomerService customerService, ITimeZoneService timeZoneService, IRouteScopeService routeScopeService, AppDbContext context)
+        public CustomersController(ICustomerService customerService, ITimeZoneService timeZoneService, IRouteScopeService routeScopeService, AppDbContext context, ILogger<CustomersController> logger)
         {
             _customerService = customerService;
             _timeZoneService = timeZoneService;
             _routeScopeService = routeScopeService;
             _context = context;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -42,7 +44,8 @@ namespace HexaBill.Api.Modules.Customers
             [FromQuery] int pageSize = 10,
             [FromQuery] string? search = null,
             [FromQuery] int? branchId = null,
-            [FromQuery] int? routeId = null)
+            [FromQuery] int? routeId = null,
+            [FromQuery] string? sortBy = null)
         {
             try
             {
@@ -63,8 +66,15 @@ namespace HexaBill.Api.Modules.Customers
                     }
                     
                     var totalCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(query);
+                    var sortKey = (sortBy ?? "").Trim().ToLowerInvariant();
+                    var orderedQuery = sortKey switch
+                    {
+                        "balancedesc" => query.OrderByDescending(c => c.PendingBalance).ThenBy(c => c.Name),
+                        "activitydesc" => query.OrderByDescending(c => c.LastActivity ?? c.CreatedAt).ThenBy(c => c.Name),
+                        _ => query.OrderBy(c => c.Name)
+                    };
                     var customers = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
-                        query.OrderBy(c => c.Name)
+                        orderedQuery
                             .Skip((page - 1) * pageSize)
                             .Take(pageSize)
                             .Select(c => new CustomerDto
@@ -113,7 +123,7 @@ namespace HexaBill.Api.Modules.Customers
                     }
                 }
 
-                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds);
+                var result = await _customerService.GetCustomersAsync(tenantId, page, pageSize, search, branchId, routeId, restrictToBranchIds, restrictToRouteIds, sortBy);
                 return Ok(new ApiResponse<PagedResponse<CustomerDto>>
                 {
                     Success = true,
@@ -254,8 +264,7 @@ namespace HexaBill.Api.Modules.Customers
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
             {
                 var errorMessage = ex.InnerException?.Message ?? ex.Message;
-                Console.WriteLine($"❌ Database Error in CreateCustomer: {errorMessage}");
-                Console.WriteLine($"❌ Full Exception: {ex}");
+                _logger.LogError(ex, "Database error in CreateCustomer: {Message}", errorMessage);
                 return StatusCode(500, new ApiResponse<CustomerDto>
                 {
                     Success = false,
@@ -265,12 +274,7 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CreateCustomer Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "CreateCustomer error");
                 return StatusCode(500, new ApiResponse<CustomerDto>
                 {
                     Success = false,
@@ -404,10 +408,7 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetCustomerLedger] Error for customer {id}: {ex.Message}");
-                Console.WriteLine($"[GetCustomerLedger] Stack: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"[GetCustomerLedger] Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetCustomerLedger error for customer {CustomerId}", id);
                 // Return 500 with error so we can debug; frontend shows toast
                 return StatusCode(500, new ApiResponse<List<CustomerLedgerEntry>>
                 {
@@ -437,7 +438,7 @@ namespace HexaBill.Api.Modules.Customers
             catch (Exception ex)
             {
                 // PRODUCTION: Return empty list instead of 500 so Customer Ledger page keeps working
-                Console.WriteLine($"[GetCashCustomerLedger] Returning empty list after error: {ex.Message}");
+                _logger.LogWarning(ex, "GetCashCustomerLedger returning empty list after error");
                 return Ok(new ApiResponse<List<CustomerLedgerEntry>>
                 {
                     Success = true,
@@ -602,10 +603,7 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetCustomerStatement] Error for customer {id}: {ex.Message}");
-                Console.WriteLine($"[GetCustomerStatement] Stack: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"[GetCustomerStatement] Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetCustomerStatement error for customer {CustomerId}", id);
                 var userMessage = ex.Message ?? "Failed to generate statement PDF.";
                 if (ex.InnerException != null)
                     userMessage += " " + ex.InnerException.Message;
@@ -661,7 +659,7 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error generating customer pending bills PDF: {ex.Message}");
+                _logger.LogError(ex, "Error generating customer pending bills PDF");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,

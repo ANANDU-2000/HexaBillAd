@@ -371,6 +371,20 @@ const CustomerLedgerPage = () => {
     }
   }, [searchParams, customers])
 
+  const recordPaymentParam = searchParams.get('recordPayment')
+  useEffect(() => {
+    if (!recordPaymentParam || !selectedCustomer?.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0) return
+    const saleId = parseInt(recordPaymentParam, 10)
+    if (Number.isNaN(saleId)) return
+    setPaymentModalInvoiceId(saleId)
+    setShowPaymentModal(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('recordPayment')
+      return next
+    }, { replace: true })
+  }, [selectedCustomer?.id, recordPaymentParam, setSearchParams])
+
   // Load customer data when selected or date range changes (debounced to prevent excessive calls)
   useEffect(() => {
     if (selectedCustomer) {

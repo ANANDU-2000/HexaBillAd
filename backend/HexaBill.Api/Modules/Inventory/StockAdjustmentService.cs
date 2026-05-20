@@ -136,16 +136,21 @@ namespace HexaBill.Api.Modules.Inventory
                 .OrderByDescending(it => it.CreatedAt)
                 .ToListAsync();
 
-            return adjustments.Select(a => new StockAdjustmentDto
+            return adjustments.Select(a =>
             {
-                Id = a.Id,
-                ProductId = a.ProductId,
-                ProductName = a.Product?.NameEn ?? "",
-                OldStock = a.Product?.StockQty ?? 0, // Note: This is current stock, not historical
-                NewStock = (a.Product?.StockQty ?? 0) - a.ChangeQty, // Calculate old from change
-                Adjustment = a.ChangeQty,
-                Reason = a.Reason,
-                AdjustedAt = a.CreatedAt
+                var current = a.Product?.StockQty ?? 0;
+                var delta = a.ChangeQty;
+                return new StockAdjustmentDto
+                {
+                    Id = a.Id,
+                    ProductId = a.ProductId,
+                    ProductName = a.Product?.NameEn ?? "",
+                    OldStock = current - delta,
+                    NewStock = current,
+                    Adjustment = delta,
+                    Reason = a.Reason,
+                    AdjustedAt = a.CreatedAt
+                };
             }).ToList();
         }
     }

@@ -756,7 +756,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Warning: Could not load unassigned sales for branch report: {ex.Message}");
+                    _logger.LogWarning($"Warning: Could not load unassigned sales for branch report: {ex.Message}");
                 }
 
                 result = result.OrderByDescending(x => x.TotalSales).ToList();
@@ -770,7 +770,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetBranchComparison: {ex.Message}");
+                _logger.LogWarning($"Error in GetBranchComparison: {ex.Message}");
                 return Ok(new ApiResponse<List<BranchComparisonItemDto>> { Success = true, Data = new List<BranchComparisonItemDto>() });
             }
         }
@@ -796,7 +796,7 @@ namespace HexaBill.Api.Modules.Reports
                     result.ProfitToday = null;
                 }
 
-                Console.WriteLine($"? GetSummaryReport returning data: Sales={result.SalesToday}, Expenses={result.ExpensesToday}, PendingBills={result.PendingBills}");
+                _logger.LogWarning($"? GetSummaryReport returning data: Sales={result.SalesToday}, Expenses={result.ExpensesToday}, PendingBills={result.PendingBills}");
                 return Ok(new ApiResponse<SummaryReportDto>
                 {
                     Success = true,
@@ -807,7 +807,7 @@ namespace HexaBill.Api.Modules.Reports
             catch (Exception ex)
             {
                 // PRODUCTION: Return empty summary instead of 500 so Dashboard keeps working
-                Console.WriteLine($"[GetSummaryReport] Returning empty data after error: {ex.Message}");
+                _logger.LogWarning($"[GetSummaryReport] Returning empty data after error: {ex.Message}");
                 return Ok(new ApiResponse<SummaryReportDto>
                 {
                     Success = true,
@@ -911,11 +911,11 @@ namespace HexaBill.Api.Modules.Reports
             catch (Exception ex)
             {
                 // Log the full exception details for debugging
-                Console.WriteLine($"Error in GetSalesReport: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogWarning($"Error in GetSalesReport: {ex.Message}");
+                _logger.LogWarning($"Stack trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogWarning($"Inner exception: {ex.InnerException.Message}");
                 }
                 
                 return StatusCode(500, new ApiResponse<PagedResponse<SaleDto>>
@@ -962,11 +962,11 @@ namespace HexaBill.Api.Modules.Reports
             catch (Exception ex)
             {
                 // Log the full exception details for debugging
-                Console.WriteLine($"Error in GetProductSalesReport: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                _logger.LogWarning($"Error in GetProductSalesReport: {ex.Message}");
+                _logger.LogWarning($"Stack trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
+                    _logger.LogWarning($"Inner exception: {ex.InnerException.Message}");
                 }
                 
                 return StatusCode(500, new ApiResponse<List<ProductSalesDto>>
@@ -992,7 +992,7 @@ namespace HexaBill.Api.Modules.Reports
                 return Ok(new ApiResponse<PagedResponse<CustomerDto>>
                 {
                     Success = true,
-                    Message = "Outstanding customers retrieved successfully",
+                    Message = "Customers with unpaid balance and at least one unpaid invoice dated on or before the cutoff (UTC) were retrieved successfully",
                     Data = result
                 });
             }
@@ -1466,8 +1466,8 @@ namespace HexaBill.Api.Modules.Reports
             {
                 // Return 500 with real error so we can fix the cause (was hiding with empty data and data never showed).
                 var msg = ex.Message + (ex.InnerException != null ? " | " + ex.InnerException.Message : "");
-                Console.WriteLine($"[GetComprehensiveSalesLedger] ERROR: {msg}");
-                Console.WriteLine($"[GetComprehensiveSalesLedger] Stack: {ex.StackTrace}");
+                _logger.LogWarning($"[GetComprehensiveSalesLedger] ERROR: {msg}");
+                _logger.LogWarning($"[GetComprehensiveSalesLedger] Stack: {ex.StackTrace}");
                 return StatusCode(500, new ApiResponse<SalesLedgerReportDto>
                 {
                     Success = false,
@@ -1531,7 +1531,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error exporting sales ledger PDF: {ex.Message}");
+                _logger.LogWarning($"Error exporting sales ledger PDF: {ex.Message}");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -1577,7 +1577,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error exporting pending bills PDF: {ex.Message}");
+                _logger.LogWarning($"Error exporting pending bills PDF: {ex.Message}");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,

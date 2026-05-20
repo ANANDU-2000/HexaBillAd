@@ -36,11 +36,13 @@ namespace HexaBill.Api.Modules.Branches
     {
         private readonly AppDbContext _context;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly ILogger<RouteService> _logger;
 
-        public RouteService(AppDbContext context, ISalesSchemaService salesSchema)
+        public RouteService(AppDbContext context, ISalesSchemaService salesSchema, ILogger<RouteService> logger)
         {
             _context = context;
             _salesSchema = salesSchema;
+            _logger = logger;
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42P01 undefined_table. Handles wrapped exceptions and message-based detection.</summary>
@@ -104,8 +106,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetRoutesAsync Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetRoutesAsync error");
                 throw; // Re-throw to be handled by controller
             }
         }
@@ -485,7 +486,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ RouteService SaleReturns: {ex.Message}");
+                _logger.LogWarning(ex, "RouteService SaleReturns");
                 totalReturns = 0m;
             }
 
@@ -515,7 +516,7 @@ namespace HexaBill.Api.Modules.Branches
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Error calculating route COGS: {ex.Message}");
+                    _logger.LogError(ex, "Error calculating route COGS");
                     costOfGoodsSold = 0m;
                 }
             }

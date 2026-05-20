@@ -28,12 +28,14 @@ namespace HexaBill.Api.Modules.Branches
         private readonly AppDbContext _context;
         private readonly ISalesSchemaService _salesSchema;
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<BranchService> _logger;
 
-        public BranchService(AppDbContext context, ISalesSchemaService salesSchema, IServiceScopeFactory scopeFactory)
+        public BranchService(AppDbContext context, ISalesSchemaService salesSchema, IServiceScopeFactory scopeFactory, ILogger<BranchService> logger)
         {
             _context = context;
             _salesSchema = salesSchema;
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         public async Task<bool> CheckDatabaseConnectionAsync()
@@ -71,8 +73,8 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetBranchesAsync Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
+                _logger.LogError($"❌ GetBranchesAsync Error: {ex.Message}");
+                if (ex.InnerException != null) _logger.LogError($"❌ Inner: {ex.InnerException.Message}");
                 throw; // Re-throw to be handled by controller
             }
         }
@@ -258,7 +260,7 @@ namespace HexaBill.Api.Modules.Branches
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"❌ Error calculating branch COGS: {ex.Message}");
+                    _logger.LogError($"❌ Error calculating branch COGS: {ex.Message}");
                     // Return empty list - COGS will be 0 for all routes
                     cogsByRouteList = new List<(int RouteId, decimal Cogs)>();
                 }
@@ -279,7 +281,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ BranchService RouteExpenses/Expenses: {ex.Message}");
+                _logger.LogError($"⚠️ BranchService RouteExpenses/Expenses: {ex.Message}");
                 expensesByRouteList = new List<(int RouteId, decimal Total)>();
                 branchExpensesTotal = 0m;
             }
@@ -298,7 +300,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ BranchService SaleReturns: {ex.Message}");
+                _logger.LogError($"⚠️ BranchService SaleReturns: {ex.Message}");
                 branchReturnsTotal = 0m;
             }
 
@@ -334,7 +336,7 @@ namespace HexaBill.Api.Modules.Branches
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ BranchService Payments: {ex.Message}");
+                    _logger.LogError($"⚠️ BranchService Payments: {ex.Message}");
                     paymentsBySaleWithRoute = new List<(int? RouteId, decimal Amount)>();
                     totalPayments = 0m;
                 }
@@ -424,7 +426,7 @@ namespace HexaBill.Api.Modules.Branches
                 {
                     // CRITICAL: Don't let growth calculation crash the entire summary
                     // Log but continue - growth percent will remain null
-                    Console.WriteLine($"⚠️ Error calculating growth percent: {ex.Message}");
+                    _logger.LogError($"⚠️ Error calculating growth percent: {ex.Message}");
                     growthPercent = null;
                 }
             }

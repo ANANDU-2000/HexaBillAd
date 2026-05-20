@@ -21,11 +21,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         private readonly AppDbContext _context;
         private readonly IComprehensiveBackupService _backupService;
+        private readonly ILogger<ResetService> _logger;
 
-        public ResetService(AppDbContext context, IComprehensiveBackupService backupService)
+        public ResetService(AppDbContext context, IComprehensiveBackupService backupService, ILogger<ResetService> logger)
         {
             _context = context;
             _backupService = backupService;
+            _logger = logger;
         }
 
         public async Task<ResetResult> ResetSystemAsync(bool createBackup, bool clearAuditLogs, int userId)
@@ -59,11 +61,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
                             try
                             {
                                 await _backupService.CreateFullBackupAsync(tenantId, exportToDesktop: true, uploadToGoogleDrive: false, sendEmail: false);
-                                Console.WriteLine($"✅ Backup created for tenant {tenantId} before system reset");
+                                _logger.LogInformation($"✅ Backup created for tenant {tenantId} before system reset");
                             }
                             catch (Exception tenantBackupEx)
                             {
-                                Console.WriteLine($"⚠️ Failed to backup tenant {tenantId}: {tenantBackupEx.Message}");
+                                _logger.LogInformation($"⚠️ Failed to backup tenant {tenantId}: {tenantBackupEx.Message}");
                             }
                         }
                         
@@ -77,13 +79,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                             backupFileName
                         );
                         
-                        Console.WriteLine($"✅ Backup created before reset: {result.BackupFilePath}");
+                        _logger.LogInformation($"✅ Backup created before reset: {result.BackupFilePath}");
                     }
                     catch (Exception backupEx)
                     {
                         // Don't fail reset if backup fails, but warn admin
                         result.Message = $"Warning: Backup failed: {backupEx.Message}. Continue with reset?";
-                        Console.WriteLine($"⚠️ Backup failed: {backupEx.Message}");
+                        _logger.LogInformation($"⚠️ Backup failed: {backupEx.Message}");
                     }
                 }
 
@@ -149,8 +151,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     $"Reset: {productsUpdated} products (stock to 0), {customersUpdated} customers (balance to 0). " +
                     $"{(clearAuditLogs ? $"Cleared {auditLogsCount} audit logs." : "Audit logs preserved.")}";
 
-                Console.WriteLine($"✅ System reset completed by user {userId}");
-                Console.WriteLine($"   Summary: {result.Message}");
+                _logger.LogInformation($"✅ System reset completed by user {userId}");
+                _logger.LogInformation($"   Summary: {result.Message}");
 
                 return result;
             }
@@ -158,7 +160,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 result.Success = false;
                 result.Message = $"Reset failed: {ex.Message}";
-                Console.WriteLine($"❌ System reset failed: {ex.Message}");
+                _logger.LogInformation($"❌ System reset failed: {ex.Message}");
                 return result;
             }
         }
@@ -215,11 +217,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             try
             {
-                Console.WriteLine($"\n🔄 Starting owner-scoped reset for tenantId={tenantId} by UserId={userId}");
+                _logger.LogInformation($"\n🔄 Starting owner-scoped reset for tenantId={tenantId} by UserId={userId}");
 
                 // Get counts before deletion
                 var summaryBefore = await GetOwnerSummaryAsync(tenantId);
-                Console.WriteLine($"   Before: {summaryBefore.TotalSales} sales, {summaryBefore.TotalPayments} payments");
+                _logger.LogInformation($"   Before: {summaryBefore.TotalSales} sales, {summaryBefore.TotalPayments} payments");
 
                 // Delete all transactional data for this owner
                 // Sales and Sale Items - get sale IDs first
@@ -276,14 +278,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     $"{inventoryTxCount} inventory transactions, {salesReturnsCount} returns, {purchasesCount} purchases. " +
                     $"Reset: {productsUpdated} products (stock to 0), {customersUpdated} customers (balance to 0). Cleared {alertsCleared} alerts.";
 
-                Console.WriteLine($"✅ Owner reset completed: {result.Message}");
+                _logger.LogInformation($"✅ Owner reset completed: {result.Message}");
                 return result;
             }
             catch (Exception ex)
             {
                 result.Success = false;
                 result.Message = $"Reset failed: {ex.Message}";
-                Console.WriteLine($"❌ Owner reset failed: {ex.Message}");
+                _logger.LogInformation($"❌ Owner reset failed: {ex.Message}");
                 return result;
             }
         }

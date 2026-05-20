@@ -140,6 +140,10 @@ namespace HexaBill.Api.Modules.Reports
                 decimal salesToday = 0;
                 decimal purchasesToday = 0;
                 decimal expensesToday = 0;
+                decimal periodOutputVat = 0;
+                decimal periodReturnsVat = 0;
+                decimal periodPurchaseInputVat = 0;
+                decimal periodExpenseInputVat = 0;
 
                 try
                 {
@@ -174,12 +178,14 @@ namespace HexaBill.Api.Modules.Reports
                     var salesCount = await salesQuery.CountAsync();
                     _logger.LogDebug("Found {SalesCount} sales records in date range (SuperAdmin: {IsSuperAdmin})", salesCount, tenantId == 0);
                     salesToday = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+                    periodOutputVat = await salesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0;
                     _logger.LogDebug("Total sales today: {SalesToday}", salesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating salesToday: {Message}", ex.Message);
                     salesToday = 0;
+                    periodOutputVat = 0;
                 }
 
                 decimal returnsToday = 0;
@@ -215,6 +221,7 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     returnsCountToday = await returnsQuery.CountAsync();
                     returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
+                    periodReturnsVat = await returnsQuery.SumAsync(r => (decimal?)r.VatTotal) ?? 0;
                     _logger.LogDebug("Returns today: count={Count}, total={Total}", returnsCountToday, returnsToday);
                 }
                 catch (Exception ex)
@@ -222,6 +229,7 @@ namespace HexaBill.Api.Modules.Reports
                     _logger.LogError(ex, "Error calculating returnsToday: {Message}", ex.Message);
                     returnsToday = 0;
                     returnsCountToday = 0;
+                    periodReturnsVat = 0;
                 }
 
                 decimal damageLossToday = 0;
@@ -267,12 +275,16 @@ namespace HexaBill.Api.Modules.Reports
                     var purchasesCount = await purchasesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} purchase records in date range (SuperAdmin: {IsSuperAdmin})", purchasesCount, tenantId == 0);
                     purchasesToday = await purchasesQuery.SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
+                    var pv = await purchasesQuery.SumAsync(p => (decimal?)p.VatTotal) ?? 0;
+                    var prv = await purchasesQuery.SumAsync(p => (decimal?)p.ReverseChargeVat) ?? 0;
+                    periodPurchaseInputVat = pv + prv;
                     _logger.LogDebug("Total purchases today: {PurchasesToday}", purchasesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating purchasesToday: {Message}", ex.Message);
                     purchasesToday = 0;
+                    periodPurchaseInputVat = 0;
                 }
 
                 try
@@ -290,12 +302,14 @@ namespace HexaBill.Api.Modules.Reports
                     var expensesCount = await expensesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} expense records in date range (SuperAdmin: {IsSuperAdmin})", expensesCount, tenantId == 0);
                     expensesToday = await expensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0;
+                    periodExpenseInputVat = await expensesQuery.SumAsync(e => (decimal?)(e.ClaimableVat ?? e.VatAmount ?? 0m)) ?? 0;
                     _logger.LogDebug("Total expenses today: {ExpensesToday}", expensesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating expensesToday: {Message}", ex.Message);
                     expensesToday = 0;
+                    periodExpenseInputVat = 0;
                 }
 
                 // CRITICAL FIX: Calculate COGS (Cost of Goods Sold) from actual sales, not purchases
@@ -488,6 +502,52 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     pendingInvoices = new List<SaleDto>();
                     pendingBillsCount = 0;
+                }
+
+                decimal cashCollectionsTotal = 0m;
+                decimal creditInvoicedTotal = 0m;
+                int overdueCustomersCount = 0;
+                decimal overdueAmountTotal = 0m;
+                try
+                {
+                    var payQ = _context.Payments.Where(p =>
+                        p.Status == PaymentStatus.CLEARED
+                        && p.PaymentDate >= startDate && p.PaymentDate < endDate
+                        && (p.Mode == PaymentMode.CASH || p.Mode == PaymentMode.CHEQUE || p.Mode == PaymentMode.ONLINE || p.Mode == PaymentMode.DEBIT));
+                    if (tenantId > 0)
+                        payQ = payQ.Where(p => p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId));
+                    cashCollectionsTotal = await payQ.SumAsync(p => (decimal?)p.Amount) ?? 0m;
+
+                    var creditSalesQ = _context.Sales.Where(s =>
+                        !s.IsDeleted
+                        && s.InvoiceDate >= startDate && s.InvoiceDate < endDate
+                        && s.CustomerId != null);
+                    if (tenantId > 0)
+                        creditSalesQ = creditSalesQ.Where(s => s.TenantId == tenantId);
+                    creditInvoicedTotal = await creditSalesQ.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+
+                    if (tenantId > 0)
+                    {
+                        var overdueCutoff = DateTime.UtcNow.Date.AddDays(-30);
+                        var tolOverdue = SalePaymentHelpers.SettlementToleranceAed;
+                        var overdueSalesQ = _context.Sales.Where(s =>
+                            !s.IsDeleted
+                            && s.TenantId == tenantId
+                            && s.CustomerId != null
+                            && s.PaymentStatus != SalePaymentStatus.Paid
+                            && s.InvoiceDate <= overdueCutoff
+                            && (s.GrandTotal - s.PaidAmount) > tolOverdue);
+                        overdueAmountTotal = await overdueSalesQ.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0m;
+                        overdueCustomersCount = await overdueSalesQ.Select(s => s.CustomerId!.Value).Distinct().CountAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error computing cash/credit/overdue summary KPIs: {Message}", ex.Message);
+                    cashCollectionsTotal = 0m;
+                    creditInvoicedTotal = 0m;
+                    overdueCustomersCount = 0;
+                    overdueAmountTotal = 0m;
                 }
 
                 // Calculate invoice counts
@@ -816,6 +876,8 @@ namespace HexaBill.Api.Modules.Reports
                     topProducts = new List<TopProductDto>();
                 }
 
+                var netVatPayablePeriod = (periodOutputVat - periodReturnsVat) - (periodPurchaseInputVat + periodExpenseInputVat);
+
                 var result = new SummaryReportDto
                 {
                     SalesToday = salesToday,
@@ -833,6 +895,11 @@ namespace HexaBill.Api.Modules.Reports
                     PendingBillsAmount = pendingBillsAmount,
                     PaidBills = paidBillsCount,
                     PaidBillsAmount = paidBillsAmount,
+                    CashCollectionsTotal = cashCollectionsTotal,
+                    CreditInvoicedTotal = creditInvoicedTotal,
+                    OverdueCustomersCount = overdueCustomersCount,
+                    OverdueAmountTotal = overdueAmountTotal,
+                    NetVatPayablePeriod = netVatPayablePeriod,
                     InvoicesToday = invoicesToday,
                     InvoicesWeekly = invoicesWeekly,
                     InvoicesMonthly = invoicesMonthly,
@@ -864,7 +931,13 @@ namespace HexaBill.Api.Modules.Reports
                     DamageLossToday = 0,
                     PurchasesToday = 0,
                     ExpensesToday = 0,
+                    CogsToday = 0,
                     ProfitToday = 0,
+                    CashCollectionsTotal = 0,
+                    CreditInvoicedTotal = 0,
+                    OverdueCustomersCount = 0,
+                    OverdueAmountTotal = 0,
+                    NetVatPayablePeriod = 0,
                     LowStockProducts = new List<ProductDto>(),
                     PendingInvoices = new List<SaleDto>(),
                     PendingBills = 0,
@@ -1244,12 +1317,34 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
+                if (tenantId <= 0)
+                {
+                    return new PagedResponse<CustomerDto>
+                    {
+                        Items = new List<CustomerDto>(),
+                        TotalCount = 0,
+                        Page = page,
+                        PageSize = Math.Min(pageSize, 100),
+                        TotalPages = 0
+                    };
+                }
+
                 // CRITICAL: Get customers with outstanding balance > 0.01 (PendingBalance = what they owe, #7)
                 // AUDIT-6 FIX: Add pagination to prevent memory exhaustion with many outstanding customers
                 pageSize = Math.Min(pageSize, 100); // Max 100 items per page
-                
+                days = Math.Clamp(days, 1, 3650);
+                var tol = SalePaymentHelpers.SettlementToleranceAed;
+                var overdueCutoff = DateTime.UtcNow.Date.AddDays(-days);
+
                 var query = _context.Customers
-                    .Where(c => c.TenantId == tenantId && c.PendingBalance > 0.01m);
+                    .Where(c => c.TenantId == tenantId && c.PendingBalance > 0.01m
+                        && _context.Sales.Any(s =>
+                            !s.IsDeleted
+                            && s.TenantId == tenantId
+                            && s.CustomerId == c.Id
+                            && s.PaymentStatus != SalePaymentStatus.Paid
+                            && s.InvoiceDate <= overdueCutoff
+                            && (s.GrandTotal - s.PaidAmount) > tol));
                 
                 var totalCount = await query.CountAsync();
                 

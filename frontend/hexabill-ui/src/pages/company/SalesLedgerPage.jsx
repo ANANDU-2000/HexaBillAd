@@ -7,7 +7,8 @@ import {
   MessageCircle,
   Pencil,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Banknote
 } from 'lucide-react'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -50,7 +51,28 @@ function timeMs(d) {
   return Number.isFinite(n) ? n : 0
 }
 
-/** Prefer the id that matches row type so Payment rows sort by payment id, not related sale id. */
+/** Settlement tolerance aligned with backend (AED). */
+const LEDGER_PENDING_EPS = 0.05
+
+/** Days since invoice date for unpaid sale rows (null if not applicable). */
+function getSaleDaysOutstanding(entry) {
+  if (normalizeLedgerRowType(entry.type) !== 'Sale') return null
+  const pending = Number(entry.realPending) || 0
+  if (pending <= LEDGER_PENDING_EPS) return null
+  const d = new Date(entry.date)
+  if (!Number.isFinite(d.getTime())) return null
+  d.setHours(0, 0, 0, 0)
+  const t = new Date()
+  t.setHours(0, 0, 0, 0)
+  return Math.max(0, Math.floor((t - d) / 86400000))
+}
+
+/** Overdue = outstanding balance and invoice not from today (previous calendar days). */
+function isSaleOverdueForFilter(entry) {
+  const days = getSaleDaysOutstanding(entry)
+  return days != null && days >= 1
+}
+
 function primarySortId(e) {
   const t = normalizeLedgerRowType(e.type)
   if (t === 'Sale') return Number(e.saleId) || 0
@@ -228,15 +250,17 @@ const SalesLedgerPage = () => {
     } catch { return 'newest' }
   })
   const [sharingSaleId, setSharingSaleId] = useState(null)
+  const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1')
   const fetchSalesLedgerRef = useRef(null)
 
-  // Sync dateRange to URL so filters survive navigation and browser back
+  // Sync date range + overdue chip to URL
   useEffect(() => {
     const params = new URLSearchParams()
     if (dateRange.from) params.set('from', dateRange.from)
     if (dateRange.to) params.set('to', dateRange.to)
+    if (overdueOnly) params.set('overdue', '1')
     setSearchParams(params, { replace: true })
-  }, [dateRange.from, dateRange.to])
+  }, [dateRange.from, dateRange.to, overdueOnly])
 
   // Load staff users only (branches/routes from shared context)
   useEffect(() => {
@@ -463,6 +487,10 @@ const SalesLedgerPage = () => {
       )
     }
 
+    if (overdueOnly) {
+      filteredLedger = filteredLedger.filter(isSaleOverdueForFilter)
+    }
+
     return filteredLedger.map(entry => ({
       ...entry,
       balance: entry.customerBalance || 0
@@ -472,9 +500,9 @@ const SalesLedgerPage = () => {
   // Memoize filtered ledger to ensure it updates when filters or data change
   const filteredLedger = React.useMemo(() => {
     return getFilteredLedger()
-  }, [reportData.salesLedger, filters.date, filters.name, filters.type, filters.status, filters.invoiceNo, filters.branchId, filters.routeId, filters.staffId, filters.realPendingMin, filters.realPendingMax, filters.realGotPaymentMin, filters.realGotPaymentMax])
+  }, [reportData.salesLedger, filters.date, filters.name, filters.type, filters.status, filters.invoiceNo, filters.branchId, filters.routeId, filters.staffId, filters.realPendingMin, filters.realPendingMax, filters.realGotPaymentMin, filters.realGotPaymentMax, overdueOnly])
   
-  const hasActiveFilters = Object.values(filters).some(v => v !== '')
+  const hasActiveFilters = overdueOnly || Object.values(filters).some(v => v !== '')
 
   // Sale-only: flat global timeline (newest invoices at top of whole list). Otherwise: grouped by customer + subtotals.
   const displayLedgerSorted = React.useMemo(() => {
@@ -629,6 +657,24 @@ const SalesLedgerPage = () => {
     totalVat
   }
 
+  const goRecordPaymentForSale = (entry) => {
+    if (normalizeLedgerRowType(entry.type) !== 'Sale' || !entry.saleId) {
+      toast.error('Record payment is only available for invoices.')
+      return
+    }
+    const pending = Number(entry.realPending) || 0
+    if (pending <= LEDGER_PENDING_EPS) {
+      toast.error('This invoice has no outstanding balance.')
+      return
+    }
+    const cid = entry.customerId
+    if (!cid) {
+      toast.error('Record payment needs a linked customer. Use Customer Ledger or POS for this invoice.')
+      return
+    }
+    navigate(`/ledger?customerId=${cid}&recordPayment=${entry.saleId}`)
+  }
+
   const handleShareInvoiceWhatsApp = async (entry) => {
     if (entry.type !== 'Sale' || !entry.saleId) return
     setSharingSaleId(entry.saleId)
@@ -731,13 +777,14 @@ const SalesLedgerPage = () => {
       return
     }
     try {
-      const headers = ['Date', 'Type', 'Invoice No', 'Customer', 'Payment Mode', 'Bill Amount', 'VAT', 'Paid Amount', 'Pending', 'Status', 'Balance']
+      const headers = ['Date', 'Type', 'Invoice No', 'Customer', 'Payment Mode', 'Bill Amount', 'VAT', 'Paid Amount', 'Pending', 'Days overdue', 'Status', 'Balance']
       const rows = displayLedgerSorted.map(entry => {
         const dateStr = new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
         const billAmt = entry.type === 'Sale' ? (entry.grandTotal || 0) : entry.type === 'Payment' ? (entry.realGotPayment || 0) : 0
         const vatAmt = entry.type === 'Payment' ? 0 : (entry.vatTotal || 0)
         const paidAmt = entry.type === 'Sale' ? (entry.paidAmount || 0) : entry.type === 'Payment' ? (entry.realGotPayment || 0) : 0
         const pending = entry.type === 'Sale' ? (entry.realPending || 0) : 0
+        const daysOd = getSaleDaysOutstanding(entry)
         return [
           dateStr,
           entry.type || '',
@@ -748,6 +795,7 @@ const SalesLedgerPage = () => {
           vatAmt.toFixed(2),
           paidAmt.toFixed(2),
           pending.toFixed(2),
+          daysOd == null ? '' : String(daysOd),
           entry.status || 'Unpaid',
           (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)).toFixed(2)
         ]
@@ -803,6 +851,14 @@ const SalesLedgerPage = () => {
               {showKpiStrip ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">Summary</span>
             </button>
+              <button
+                type="button"
+                onClick={() => setOverdueOnly((v) => !v)}
+                className={`px-2 md:px-2.5 py-1.5 border border-gray-300 rounded text-xs font-medium ${overdueOnly ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                title="Show only overdue invoices (unpaid balance, invoice date before today)"
+              >
+                Overdue
+              </button>
             <div className="flex rounded-md border border-gray-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
               <button
                 type="button"
@@ -991,7 +1047,8 @@ const SalesLedgerPage = () => {
             </div>
             <div className="col-span-2 sm:col-span-1 flex items-end">
               <button
-                onClick={() => setFilters({
+                onClick={() => {
+                setFilters({
                   date: '',
                   name: '',
                   type: '',
@@ -1004,7 +1061,9 @@ const SalesLedgerPage = () => {
                   realPendingMax: '',
                   realGotPaymentMin: '',
                   realGotPaymentMax: ''
-                })}
+                })
+                setOverdueOnly(false)
+              }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
               >
                 Clear All
@@ -1133,13 +1192,16 @@ const SalesLedgerPage = () => {
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
                     Pending
                   </th>
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                    Days overdue
+                  </th>
                   <th className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
                     Status
                   </th>
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
                     Balance
                   </th>
-                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap min-w-[5.5rem] ${stickyActionTh}`}>
+                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
@@ -1147,7 +1209,7 @@ const SalesLedgerPage = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredLedger.length === 0 ? (
                   <tr>
-                    <td colSpan="12" className="px-4 py-8 text-center text-gray-500">
+                    <td colSpan="13" className="px-4 py-8 text-center text-gray-500">
                       <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                       <p>No transactions found matching the filters</p>
                     </td>
@@ -1183,6 +1245,9 @@ const SalesLedgerPage = () => {
                               </td>
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPending)}
+                              </td>
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                                —
                               </td>
                               <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-700 border-r border-gray-300">
                                 {prevCustomerGroup.subtotal.totalInvoices} invoices
@@ -1296,6 +1361,12 @@ const SalesLedgerPage = () => {
                             ? formatCurrency(entry.realPending)
                             : '-'}
                         </td>
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-gray-800 border-r border-gray-200">
+                          {(() => {
+                            const d = getSaleDaysOutstanding(entry)
+                            return d == null ? '—' : `${d}d`
+                          })()}
+                        </td>
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-gray-200">
                           {displayStatus && displayStatus !== '-' ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${statusColor}`}>
@@ -1343,6 +1414,16 @@ const SalesLedgerPage = () => {
                               >
                                 <MessageCircle className="w-4 h-4" />
                               </button>
+                              {(Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && entry.customerId ? (
+                                <button
+                                  type="button"
+                                  onClick={() => goRecordPaymentForSale(entry)}
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-amber-700 hover:bg-amber-50"
+                                  title="Record payment"
+                                >
+                                  <Banknote className="w-4 h-4" />
+                                </button>
+                              ) : null}
                             </div>
                           ) : (
                             <span className="text-gray-300">-</span>
@@ -1374,6 +1455,9 @@ const SalesLedgerPage = () => {
                             <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPending)}
                             </td>
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                              —
+                            </td>
                             <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-700 border-r border-gray-300">
                               {lastCustomerGroup.subtotal.totalInvoices} invoices
                             </td>
@@ -1391,7 +1475,7 @@ const SalesLedgerPage = () => {
                 )}
                 {hasMore && (
                   <tr>
-                    <td colSpan="12" className="px-4 py-3 text-center bg-gray-50">
+                    <td colSpan="13" className="px-4 py-3 text-center bg-gray-50">
                       <button
                         onClick={handleLoadMore}
                         className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
@@ -1424,6 +1508,9 @@ const SalesLedgerPage = () => {
                   </td>
                   <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
                     {formatCurrency(filteredSummary.totalRealPending)}
+                  </td>
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                    —
                   </td>
                   <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300">
                     -
@@ -1606,6 +1693,17 @@ const SalesLedgerPage = () => {
                           </div>
                         </div>
                       )}
+                      {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && (
+                        <div>
+                          <div className="text-xs text-gray-500 uppercase">Days overdue</div>
+                          <div className="font-bold text-gray-900">
+                            {(() => {
+                              const d = getSaleDaysOutstanding(entry)
+                              return d == null ? '—' : `${d}d`
+                            })()}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <div className="text-xs text-gray-500 uppercase">Balance</div>
                         <div className={`font-bold ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-green-600' :
@@ -1616,6 +1714,17 @@ const SalesLedgerPage = () => {
                         </div>
                       </div>
                     </div>
+
+                    {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && entry.customerId ? (
+                      <button
+                        type="button"
+                        onClick={() => goRecordPaymentForSale(entry)}
+                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 active:scale-[0.99] transition-transform"
+                      >
+                        <Banknote className="h-4 w-4 shrink-0" aria-hidden />
+                        Record payment
+                      </button>
+                    ) : null}
 
                     {entry.paymentMode && entry.paymentMode !== '-' && (
                       <div className="mt-1.5 pt-1.5 border-t border-gray-200">

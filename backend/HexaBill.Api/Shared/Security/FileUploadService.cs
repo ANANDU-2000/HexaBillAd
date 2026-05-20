@@ -55,11 +55,11 @@ namespace HexaBill.Api.Shared.Security
                 throw new ArgumentException("No file provided");
 
             // Validate file type
-            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/svg+xml" };
+            var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 throw new ArgumentException("Invalid file type. Only images are allowed.");
 
-            // Validate file size (max 5MB)
+            await FileContentSignatureValidator.EnsureRasterImageAsync(file);
             if (file.Length > 5 * 1024 * 1024)
                 throw new ArgumentException("File size too large. Maximum 5MB allowed.");
 
@@ -129,6 +129,8 @@ namespace HexaBill.Api.Shared.Security
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 throw new ArgumentException("Invalid file type. Only images and documents are allowed.");
 
+            await FileContentSignatureValidator.EnsureInvoiceAttachmentAsync(file);
+
             // Validate file size (max 10MB)
             if (file.Length > 10 * 1024 * 1024)
                 throw new ArgumentException("File size too large. Maximum 10MB allowed.");
@@ -154,6 +156,8 @@ namespace HexaBill.Api.Shared.Security
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 throw new ArgumentException("Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.");
+
+            await FileContentSignatureValidator.EnsureRasterImageAsync(file);
 
             // Validate file size (max 5MB)
             if (file.Length > 5 * 1024 * 1024)
@@ -187,6 +191,8 @@ namespace HexaBill.Api.Shared.Security
             var allowedTypes = new[] { "image/jpeg", "image/png", "image/gif", "image/webp" };
             if (!allowedTypes.Contains(file.ContentType.ToLower()))
                 throw new ArgumentException("Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.");
+
+            await FileContentSignatureValidator.EnsureRasterImageAsync(file);
 
             if (file.Length > 2 * 1024 * 1024) // 2MB
                 throw new ArgumentException("File size too large. Maximum 2MB allowed.");

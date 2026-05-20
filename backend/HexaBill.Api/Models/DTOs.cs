@@ -799,6 +799,16 @@ namespace HexaBill.Api.Models
         public decimal PendingBillsAmount { get; set; }
         public int PaidBills { get; set; }
         public decimal PaidBillsAmount { get; set; }
+        /// <summary>Cleared non-credit payments (cash, cheque, online, debit) in the selected date range.</summary>
+        public decimal CashCollectionsTotal { get; set; }
+        /// <summary>Grand total of on-account sales (customer-linked) in the selected date range.</summary>
+        public decimal CreditInvoicedTotal { get; set; }
+        /// <summary>Distinct customers with unpaid balance on invoices dated at least 30 days ago (UTC).</summary>
+        public int OverdueCustomersCount { get; set; }
+        /// <summary>Sum of unpaid balance on invoices dated at least 30 days ago (UTC).</summary>
+        public decimal OverdueAmountTotal { get; set; }
+        /// <summary>Approximate net VAT for the selected period (output from sales less returns, minus input VAT from purchases and approved expenses). Guidance only; VAT Return page is authoritative for filing.</summary>
+        public decimal NetVatPayablePeriod { get; set; }
         public int InvoicesToday { get; set; }
         public int InvoicesWeekly { get; set; }
         public int InvoicesMonthly { get; set; }

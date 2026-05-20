@@ -48,13 +48,19 @@ namespace HexaBill.Api.Modules.Customers
         /// </summary>
         public async Task RecalculateCustomerBalanceAsync(int customerId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            // Avoid nested transactions: PaymentService / other callers may already hold BeginTransactionAsync.
+            var ownsTransaction = _context.Database.CurrentTransaction == null;
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? txn = null;
+            if (ownsTransaction)
+                txn = await _context.Database.BeginTransactionAsync();
             try
             {
                 var customer = await _context.Customers.FindAsync(customerId);
                 if (customer == null)
                 {
                     _logger.LogWarning("Customer {CustomerId} not found for balance recalculation", customerId);
+                    if (txn != null)
+                        await txn.RollbackAsync();
                     return;
                 }
 
@@ -120,7 +126,8 @@ namespace HexaBill.Api.Modules.Customers
                 try
                 {
                     await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
+                    if (txn != null)
+                        await txn.CommitAsync();
                 }
                 catch (Exception ex)
                 {
@@ -135,10 +142,18 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                if (txn != null)
+                {
+                    try { await txn.RollbackAsync(); } catch { /* ignore */ }
+                }
                 _logger.LogError(ex, "Failed to recalculate balance for customer {CustomerId}. Inner: {InnerMessage}, InnerInner: {InnerInnerMessage}",
                     customerId, ex.InnerException?.Message, ex.InnerException?.InnerException?.Message);
                 throw;
+            }
+            finally
+            {
+                if (txn != null)
+                    await txn.DisposeAsync();
             }
         }
 

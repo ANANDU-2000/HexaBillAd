@@ -21,7 +21,8 @@ import {
   Bookmark,
   RotateCcw,
   Package,
-  RefreshCw
+  RefreshCw,
+  Camera
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../services'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
@@ -129,6 +130,10 @@ const PosPage = () => {
   const customerInputRef = useRef(null)
   const productSearchRefs = useRef({})
   const lastAddedRowIndexRef = useRef(null)
+  const didInitialPosProductFocusRef = useRef(false)
+  const barcodeScannerRef = useRef(null)
+
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
 
   // Auto-check Free sample when all cart items with qty>0 have unitPrice 0
   useEffect(() => {
@@ -542,6 +547,19 @@ const PosPage = () => {
     }
   }, [cart.length])
 
+  // One-time: focus first empty product row after catalog load (new invoice)
+  useEffect(() => {
+    if (didInitialPosProductFocusRef.current || loadingProducts || isEditMode || loading || loadingSale) return
+    const idx = cart.findIndex((r) => !r.productId)
+    if (idx < 0) return
+    const el = productSearchRefs.current[idx]
+    if (!el) return
+    didInitialPosProductFocusRef.current = true
+    requestAnimationFrame(() => {
+      try { el.focus({ preventScroll: true }) } catch (_) { el.focus() }
+    })
+  }, [loadingProducts, isEditMode, loading, loadingSale, cart])
+
   const filteredCustomers = customers
     .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
     .filter(customer =>
@@ -643,6 +661,86 @@ const PosPage = () => {
     }
   }
 
+  useEffect(() => {
+    if (!showBarcodeScanner) return undefined
+    let cancelled = false
+
+    const cleanupScanner = async () => {
+      const s = barcodeScannerRef.current
+      barcodeScannerRef.current = null
+      if (!s) return
+      try {
+        await s.stop()
+      } catch (_) { /* not running */ }
+      try {
+        await s.clear()
+      } catch (_) { /* noop */ }
+    }
+
+    const run = async () => {
+      try {
+        const { Html5Qrcode } = await import('html5-qrcode')
+        await new Promise((r) => setTimeout(r, 150))
+        if (cancelled) return
+        const scanner = new Html5Qrcode('pos-barcode-reader', { verbose: false })
+        barcodeScannerRef.current = scanner
+
+        const onCode = async (decodedText) => {
+          const code = String(decodedText || '').trim()
+          if (!code || cancelled) return
+          try {
+            await scanner.stop()
+          } catch (_) { /* */ }
+          try {
+            await scanner.clear()
+          } catch (_) { /* */ }
+          barcodeScannerRef.current = null
+          if (cancelled) return
+          setShowBarcodeScanner(false)
+
+          try {
+            const res = await productsAPI.searchProducts(code, 20)
+            const list = Array.isArray(res?.data) ? res.data : []
+            const lower = code.toLowerCase()
+            const found =
+              list.find((p) => String(p.barcode || '').toLowerCase() === lower) ||
+              list.find((p) => String(p.sku || '').toLowerCase() === lower) ||
+              list[0]
+            if (found) {
+              addToCart(found)
+              showToast.success(`Added ${found.nameEn || found.name || 'product'}`)
+            } else {
+              toast.error('No product found for this code')
+            }
+          } catch (err) {
+            if (!err?._handledByInterceptor) toast.error('Product lookup failed')
+          }
+        }
+
+        await scanner.start(
+          { facingMode: 'environment' },
+          { fps: 8, qrbox: { width: 280, height: 200 } },
+          onCode,
+          () => {}
+        )
+      } catch (e) {
+        console.error('Barcode camera error:', e)
+        if (!cancelled) {
+          toast.error('Camera scanner unavailable.')
+          setShowBarcodeScanner(false)
+        }
+      }
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+      void cleanupScanner()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount scanner when modal opens; addToCart is stable enough for POS session
+  }, [showBarcodeScanner])
+
   const addEmptyRow = () => {
     const newIndex = cart.length
     lastAddedRowIndexRef.current = newIndex
@@ -657,6 +755,13 @@ const PosPage = () => {
       vatAmount: 0,
       lineTotal: 0
     }])
+  }
+
+  const handleProductSearchKeyDown = (e, rowIndex) => {
+    if (e.key !== 'Enter') return
+    if (showProductDropdown[rowIndex]) return
+    e.preventDefault()
+    addEmptyRow()
   }
 
   const updateCartItem = (index, field, value) => {
@@ -2067,11 +2172,13 @@ const PosPage = () => {
           </div>
         </div>
 
+        <div className="flex-1 flex flex-col md:flex-row md:min-h-0 min-h-0 overflow-hidden">
+          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
         {/* Items Table - FULL WIDTH TALLY STYLE (Desktop) / CARD LAYOUT (Mobile) */}
         <div className="flex-1 overflow-hidden bg-neutral-50 min-w-0" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="flex-1 overflow-y-auto px-2 py-2 md:pb-2"> {/* Removed fixed bottom padding for mobile - now fully scrollable */}
             {/* Desktop Table View - with horizontal scroll on small screens */}
-            <div className="hidden md:block bg-white rounded-lg border-2 border-gray-300 shadow-lg overflow-x-auto">
+            <div className="hidden md:block bg-white rounded-lg border-2 border-gray-300 overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-gray-100 border-2 border-gray-300">
@@ -2147,32 +2254,51 @@ const PosPage = () => {
                                         setShowProductDropdown(prev => ({ ...prev, [index]: true }))
                                       }}
                                       onClick={(e) => e.stopPropagation()}
+                                      onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
                                       placeholder="Type to search product..."
                                       className="flex-1 px-3 py-3 border-2 border-blue-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
-                                    {/* Barcode Scanner Input */}
+                                    <button
+                                      type="button"
+                                      disabled={isFormDisabled}
+                                      onClick={() => setShowBarcodeScanner(true)}
+                                      className="inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 border-2 border-purple-300 rounded-lg bg-purple-50 text-purple-800 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Scan barcode with device camera"
+                                    >
+                                      <Camera className="h-5 w-5" aria-hidden />
+                                    </button>
                                     <input
                                       type="text"
                                       disabled={isFormDisabled}
                                       onKeyDown={async (e) => {
                                         if (e.key === 'Enter' && e.target.value.trim()) {
                                           const barcode = e.target.value.trim()
-                                          const product = products.find(p => 
+                                          let product = products.find(p =>
                                             p.barcode?.toLowerCase() === barcode.toLowerCase() ||
                                             p.sku?.toLowerCase() === barcode.toLowerCase()
                                           )
+                                          if (!product) {
+                                            try {
+                                              const res = await productsAPI.searchProducts(barcode, 15)
+                                              const list = Array.isArray(res?.data) ? res.data : []
+                                              const lower = barcode.toLowerCase()
+                                              product = list.find((p) => String(p.barcode || '').toLowerCase() === lower)
+                                                || list.find((p) => String(p.sku || '').toLowerCase() === lower)
+                                                || list[0]
+                                            } catch (_) { /* toast below */ }
+                                          }
                                           if (product) {
                                             addToCart(product, index)
                                             e.target.value = ''
-                                            toast.success(`Added ${product.nameEn}`)
+                                            showToast.success(`Added ${product.nameEn || product.name || 'product'}`)
                                           } else {
-                                            toast.error(`Product not found for barcode: ${barcode}`)
+                                            toast.error(`Product not found for code: ${barcode}`)
                                           }
                                         }
                                       }}
-                                      placeholder="📷 Scan"
-                                      className="w-20 px-2 py-3 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-purple-50 min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="Scan barcode or enter product code"
+                                      placeholder="USB / type code"
+                                      className="w-24 sm:w-32 px-2 py-3 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-purple-50 min-h-11 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="USB scanner: focus here and scan, or type code and press Enter"
                                     />
                                   </div>
                                   {showProductDropdown[index] && (
@@ -2343,7 +2469,7 @@ const PosPage = () => {
                               min="0"
                               step="0.01"
                               disabled={isFormDisabled}
-                              className="w-full px-2 py-2 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full px-2 py-2.5 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.discount === '' || item.discount === undefined ? '' : item.discount}
                               onChange={(e) => updateCartItem(index, 'discount', e.target.value)}
                               placeholder="0.00"
@@ -2453,9 +2579,54 @@ const PosPage = () => {
                               setShowProductDropdown(prev => ({ ...prev, [index]: true }))
                             }}
                             onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
                             placeholder="Search product name or code..."
                             className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                           />
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              type="button"
+                              disabled={isFormDisabled}
+                              onClick={() => setShowBarcodeScanner(true)}
+                              className="inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 border-2 border-purple-300 rounded-lg bg-purple-50 text-purple-800 hover:bg-purple-100 disabled:opacity-50"
+                              title="Scan with camera"
+                            >
+                              <Camera className="h-5 w-5" aria-hidden />
+                            </button>
+                            <input
+                              type="text"
+                              disabled={isFormDisabled}
+                              onKeyDown={async (e) => {
+                                if (e.key === 'Enter' && e.target.value.trim()) {
+                                  const barcode = e.target.value.trim()
+                                  let product = products.find(p =>
+                                    p.barcode?.toLowerCase() === barcode.toLowerCase() ||
+                                    p.sku?.toLowerCase() === barcode.toLowerCase()
+                                  )
+                                  if (!product) {
+                                    try {
+                                      const res = await productsAPI.searchProducts(barcode, 15)
+                                      const list = Array.isArray(res?.data) ? res.data : []
+                                      const lower = barcode.toLowerCase()
+                                      product = list.find((p) => String(p.barcode || '').toLowerCase() === lower)
+                                        || list.find((p) => String(p.sku || '').toLowerCase() === lower)
+                                        || list[0]
+                                    } catch (_) { /* noop */ }
+                                  }
+                                  if (product) {
+                                    addToCart(product, index)
+                                    e.target.value = ''
+                                    showToast.success(`Added ${product.nameEn || product.name || 'product'}`)
+                                  } else {
+                                    toast.error(`Product not found for code: ${barcode}`)
+                                  }
+                                }
+                              }}
+                              placeholder="USB / type code + Enter"
+                              className="flex-1 min-w-0 px-2 py-2.5 border-2 border-purple-300 rounded-lg text-sm bg-purple-50 min-h-11 disabled:opacity-50"
+                              title="USB scanner or type code and Enter"
+                            />
+                          </div>
                           {showProductDropdown[index] && (
                             <div
                               className="fixed bg-white border border-neutral-200 rounded-lg shadow-md z-[9998]"
@@ -2612,11 +2783,13 @@ const PosPage = () => {
             </button>
           </div>
         </div>
+          </div>
 
-        {/* Bottom - Totals, Discount & Payment. Mobile: moved to bottom sheet; desktop: 3-column */}
-        <div className="bg-white border-t border-[#E5E7EB] p-4 flex-shrink-0 md:static">
-          {/* DESKTOP: Original 3-column Layout */}
-          <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+          <div className="hidden md:flex md:flex-col md:w-[380px] lg:w-[420px] xl:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-[#E5E7EB] bg-white overflow-y-auto min-h-0 p-3 md:p-4">
+        {/* Bottom - Totals, Discount & Payment. Mobile: bottom sheet; tablet+: right column */}
+        <div className="flex flex-col min-h-0">
+          {/* DESKTOP: 3-column layout in side panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
             {/* Totals Box - Compact with No Number Wrapping */}
             <div className="bg-gray-50 rounded-lg border-2 border-gray-300 p-2 sm:p-3">
               <h3 className="text-xs sm:text-sm font-bold text-gray-900 mb-1.5 sm:mb-2 border-b border-gray-400 pb-1">Totals</h3>
@@ -2697,7 +2870,7 @@ const PosPage = () => {
                   type="text"
                   inputMode="decimal"
                   disabled={isFormDisabled || isZeroInvoice}
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-2 py-2.5 min-h-11 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   placeholder="0.00"
                   value={discountInput}
                   onChange={(e) => {
@@ -2817,6 +2990,8 @@ const PosPage = () => {
               </button>
               <p className="text-xs text-gray-500 text-center mt-1">Auto-backup enabled</p>
             </div>
+          </div>
+        </div>
           </div>
         </div>
       </div>
@@ -3418,7 +3593,7 @@ const PosPage = () => {
 
                 <button
                   onClick={handleWhatsAppShare}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center px-6 min-h-11 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Share via WhatsApp
@@ -3443,6 +3618,33 @@ const PosPage = () => {
                 Done
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showBarcodeScanner && (
+        <div
+          className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pos-barcode-scan-title"
+        >
+          <div className="bg-white rounded-xl max-w-lg w-full shadow-xl overflow-hidden border border-neutral-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
+              <h3 id="pos-barcode-scan-title" className="text-base font-semibold text-neutral-900">Scan barcode</h3>
+              <button
+                type="button"
+                onClick={() => setShowBarcodeScanner(false)}
+                className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-600 min-h-11 min-w-11 inline-flex items-center justify-center"
+                aria-label="Close scanner"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div id="pos-barcode-reader" className="w-full min-h-[240px] bg-black" />
+            <p className="text-xs text-neutral-600 px-4 py-3 bg-neutral-50">
+              Allow camera access. Matches product by barcode or SKU (server search). Close to cancel.
+            </p>
           </div>
         </div>
       )}

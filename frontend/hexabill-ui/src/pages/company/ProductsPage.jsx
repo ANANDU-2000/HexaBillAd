@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, Link } from 'react-router-dom'
 import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services'
 import ProductForm from '../../components/ProductForm'
@@ -930,6 +930,18 @@ const ProductsPage = () => {
                 <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline text-xs font-medium">Stock</span>
               </button>
+            )}
+            {canAdjustStock && (
+              <Link
+                to={`/stock-adjustments?productId=${product.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                title="Stock adjustment history for this product"
+                aria-label="Stock adjustment history"
+              >
+                <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline text-xs font-medium">History</span>
+              </Link>
             )}
             {canManageInventory && (
               product.isActive === false ? (

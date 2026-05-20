@@ -24,11 +24,13 @@ namespace HexaBill.Api.Modules.Reports
     {
         private readonly AppDbContext _context;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly ILogger<ProfitService> _logger;
 
-        public ProfitService(AppDbContext context, ISalesSchemaService salesSchema)
+        public ProfitService(AppDbContext context, ISalesSchemaService salesSchema, ILogger<ProfitService> logger)
         {
             _context = context;
             _salesSchema = salesSchema;
+            _logger = logger;
         }
 
         /// <summary>Single definition: Profit = GrandTotal(Sales) - COGS - Expenses. COGS from SaleItems (Qty×ConversionToBase×CostPrice).</summary>
@@ -39,7 +41,7 @@ namespace HexaBill.Api.Modules.Reports
             var from = new DateTime(fromDate.Year, fromDate.Month, fromDate.Day, 0, 0, 0, DateTimeKind.Utc);
             var to = toDate.AddDays(1).AddTicks(-1).ToUtcKind(); // End of day - FIX: Don't use .Date
             
-            Console.WriteLine($"?? CalculateProfitAsync: tenantId={tenantId} (SuperAdmin: {tenantId == 0}), fromDate={from:yyyy-MM-dd}, toDate={to:yyyy-MM-dd HH:mm:ss}");
+            _logger.LogDebug("CalculateProfitAsync tenantId={TenantId} from={From:yyyy-MM-dd} to={To:yyyy-MM-dd HH:mm:ss}", tenantId, from, to);
             
             // CRITICAL: Total Sales - use GrandTotal (includes VAT) for accurate reporting + OWNER FILTER
             // SUPER ADMIN (TenantId = 0): See ALL owners' data
@@ -158,8 +160,8 @@ namespace HexaBill.Api.Modules.Reports
                 currentDate = currentDate.AddDays(1);
             }
 
-            Console.WriteLine($"? Profit (UNIFIED): Sales={totalSales:C}, COGS={cogs:C}, Gross={grossProfit:C}, Expenses={totalExpenses:C}, Net={netProfit:C}");
-            Console.WriteLine($"? Daily Profit entries: {dailyProfit.Count} days");
+            _logger.LogDebug("Profit (unified): Sales={Sales} COGS={Cogs} Gross={Gross} Expenses={Expenses} Net={Net}", totalSales, cogs, grossProfit, totalExpenses, netProfit);
+            _logger.LogDebug("Daily profit entries: {Count} days", dailyProfit.Count);
 
             return new ProfitReportDto
             {

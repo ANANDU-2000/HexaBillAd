@@ -14,10 +14,12 @@ namespace HexaBill.Api.Modules.Branches
     public class RoutesController : TenantScopedController
     {
         private readonly IRouteService _routeService;
+        private readonly ILogger<RoutesController> _logger;
 
-        public RoutesController(IRouteService routeService)
+        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger)
         {
             _routeService = routeService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -43,8 +45,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetRoutes] Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"[GetRoutes] Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetRoutes error");
                 return StatusCode(500, new ApiResponse<List<RouteDto>>
                 {
                     Success = false,
@@ -68,8 +69,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetRoute Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ GetRoute Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetRoute error");
                 return StatusCode(500, new ApiResponse<RouteDetailDto> { Success = false, Message = ex.Message ?? "Error loading route.", Errors = new List<string> { ex.Message ?? "Unknown error" } });
             }
         }
@@ -87,7 +87,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetRouteSummary Error: {ex.Message}");
+                _logger.LogError(ex, "GetRouteSummary error");
                 return StatusCode(500, new ApiResponse<RouteSummaryDto> { Success = false, Message = ex.Message ?? "Error loading route summary.", Errors = new List<string> { ex.Message ?? "Unknown error" } });
             }
         }
@@ -126,8 +126,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CreateRoute Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "CreateRoute error");
                 return StatusCode(500, new ApiResponse<RouteDto>
                 {
                     Success = false,

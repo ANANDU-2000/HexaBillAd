@@ -32,10 +32,12 @@ namespace HexaBill.Api.Modules.Inventory
     public class ProductService : IProductService
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<ProductService> _logger;
 
-        public ProductService(AppDbContext context)
+        public ProductService(AppDbContext context, ILogger<ProductService> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null)
@@ -372,7 +374,7 @@ namespace HexaBill.Api.Modules.Inventory
                 // Optional: Notify admin if price change > 10%
                 if (Math.Abs(percentageChange) > 10)
                 {
-                    Console.WriteLine($"?? PRICE ALERT: Product {product.NameEn} price changed by {percentageChange:F2}% (was {product.SellPrice:C}, now {request.SellPrice:C})");
+                    _logger.LogWarning("Price alert: product {ProductName} price changed by {Pct:F2}% (was {OldPrice:C}, now {NewPrice:C})", product.NameEn, percentageChange, product.SellPrice, request.SellPrice);
                 }
             }
 

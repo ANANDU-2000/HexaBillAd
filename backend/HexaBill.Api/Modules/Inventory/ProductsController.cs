@@ -23,13 +23,17 @@ namespace HexaBill.Api.Modules.Inventory
         private readonly IExcelImportService _excelImportService;
         private readonly HexaBill.Api.Shared.Security.IFileUploadService? _fileUploadService;
         private readonly ISettingsService _settingsService;
+        private readonly IStockAdjustmentService _stockAdjustmentService;
+        private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(IProductService productService, IExcelImportService excelImportService, IServiceProvider serviceProvider, ISettingsService settingsService)
+        public ProductsController(IProductService productService, IExcelImportService excelImportService, IServiceProvider serviceProvider, ISettingsService settingsService, IStockAdjustmentService stockAdjustmentService, ILogger<ProductsController> logger)
         {
             _productService = productService;
             _excelImportService = excelImportService;
             _fileUploadService = serviceProvider.GetService<HexaBill.Api.Shared.Security.IFileUploadService>();
             _settingsService = settingsService;
+            _stockAdjustmentService = stockAdjustmentService;
+            _logger = logger;
         }
 
         private async Task<int?> GetGlobalLowStockThresholdAsync()
@@ -145,6 +149,47 @@ namespace HexaBill.Api.Modules.Inventory
             }
         }
 
+        /// <summary>
+        /// List manual stock adjustments (inventory transactions of type Adjustment) for the current tenant.
+        /// </summary>
+        [HttpGet("stock-adjustments")]
+        [Authorize(Roles = "Owner,Admin,Staff")]
+        public async Task<ActionResult<ApiResponse<List<StockAdjustmentDto>>>> GetStockAdjustments(
+            [FromQuery] int? productId = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                {
+                    return BadRequest(new ApiResponse<List<StockAdjustmentDto>>
+                    {
+                        Success = false,
+                        Message = "Invalid tenant context."
+                    });
+                }
+
+                var list = await _stockAdjustmentService.GetAdjustmentsAsync(productId, fromDate, toDate, tenantId);
+                return Ok(new ApiResponse<List<StockAdjustmentDto>>
+                {
+                    Success = true,
+                    Message = "Stock adjustments retrieved successfully",
+                    Data = list
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetStockAdjustments failed for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<List<StockAdjustmentDto>>
+                {
+                    Success = false,
+                    Message = "An error occurred while loading stock adjustments."
+                });
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponse<ProductDto>>> GetProduct(int id)
         {
@@ -231,7 +276,7 @@ namespace HexaBill.Api.Modules.Inventory
                         Errors = new List<string> { errorMessage }
                     });
                 }
-                Console.WriteLine($"❌ Database Error in CreateProduct: {errorMessage}");
+                _logger.LogError(ex, "Database error in CreateProduct: {Message}", errorMessage);
                 return StatusCode(500, new ApiResponse<ProductDto>
                 {
                     Success = false,
@@ -241,12 +286,7 @@ namespace HexaBill.Api.Modules.Inventory
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CreateProduct Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "CreateProduct error");
                 return StatusCode(500, new ApiResponse<ProductDto>
                 {
                     Success = false,
@@ -625,12 +665,7 @@ namespace HexaBill.Api.Modules.Inventory
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ ResetAllStock Error: {ex.Message}");
-                Console.WriteLine(ex.StackTrace);
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "ResetAllStock error");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,

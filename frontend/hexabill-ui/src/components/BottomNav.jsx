@@ -1,19 +1,19 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Package, ShoppingCart, Truck, BookOpen } from 'lucide-react'
+import { Home, ShoppingCart, BookOpen, Users, MoreHorizontal } from 'lucide-react'
 
 const BottomNav = () => {
   const location = useLocation()
 
-  // Order: Home, Products, POS (center), Purchases, Ledger
+  // Mobile IA: Home, POS (center), Ledger, Customers, More (mega prompt)
   const navItems = [
     { name: 'Home', href: '/dashboard', icon: Home },
-    { name: 'Products', href: '/products', icon: Package },
     { name: 'POS', href: '/pos', icon: ShoppingCart, center: true },
-    { name: 'Purchases', href: '/purchases', icon: Truck },
     { name: 'Ledger', href: '/ledger', icon: BookOpen },
+    { name: 'Customers', href: '/customers', icon: Users },
+    { name: 'More', href: '/more', icon: MoreHorizontal },
   ]
 
-  const isActive = (href) => location.pathname === href
+  const isActive = (href) => location.pathname === href || (href !== '/dashboard' && location.pathname.startsWith(`${href}/`))
 
   return (
     <nav

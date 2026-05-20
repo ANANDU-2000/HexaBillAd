@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
@@ -22,11 +24,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
         // BUG #2.3 FIX: Reduce max rows to 500 for better performance and security
         private const int MaxRows = 500;
         private const int CommandTimeoutSeconds = 30;
+        private const int MaxQueriesPerSlidingWindow = 30;
+        private static readonly TimeSpan RateLimitWindow = TimeSpan.FromMinutes(1);
 
         private static readonly Regex CommentBlockRegex = new Regex(@"/\*[\s\S]*?\*/", RegexOptions.Multiline);
         // BUG #2.3 FIX: Enhanced blacklist - catch DELETE/UPDATE/TRUNCATE without WHERE clause
         private static readonly Regex ForbiddenKeywordRegex = new Regex(
-            @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|EXEC|CALL|REFRESH|LOCK|COPY|VACUUM)\b",
+            @"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|EXECUTE|EXEC|CALL|REFRESH|LOCK|COPY|VACUUM|INTO)\b",
             RegexOptions.IgnoreCase);
         // BUG #2.3 FIX: Detect DELETE/UPDATE without WHERE clause (dangerous even if keyword is allowed)
         private static readonly Regex DangerousDeleteUpdateRegex = new Regex(
@@ -34,10 +38,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
             RegexOptions.IgnoreCase);
 
         private readonly AppDbContext _db;
+        private readonly IMemoryCache _cache;
+        private readonly ILogger<SqlConsoleController> _logger;
 
-        public SqlConsoleController(AppDbContext db)
+        public SqlConsoleController(AppDbContext db, IMemoryCache cache, ILogger<SqlConsoleController> logger)
         {
             _db = db;
+            _cache = cache;
+            _logger = logger;
         }
 
         /// <summary>
@@ -62,6 +70,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             // BUG #2.3 FIX: Get admin user ID for AuditLog
             var adminUserId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+
+            var rateKey = $"sql_console_rl_{adminUserId}";
+            var count = _cache.Get<int>(rateKey);
+            if (count >= MaxQueriesPerSlidingWindow)
+            {
+                _logger.LogWarning("SQL console rate limit exceeded for user {UserId}", adminUserId);
+                return StatusCode(429, new ApiResponse<SqlConsoleResultDto>
+                {
+                    Success = false,
+                    Message = "Too many SQL console requests. Try again in about a minute."
+                });
+            }
+            _cache.Set(rateKey, count + 1, new MemoryCacheEntryOptions { SlidingExpiration = RateLimitWindow });
 
             if (!_db.Database.IsNpgsql())
                 return BadRequest(new ApiResponse<SqlConsoleResultDto> { Success = false, Message = "SQL console is only supported for PostgreSQL." });
@@ -99,8 +120,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         for (var i = 0; i < reader.FieldCount; i++)
                             columns.Add(reader.GetName(i));
 
-                        var count = 0;
-                        while (await reader.ReadAsync() && count < MaxRows)
+                        var rowCount = 0;
+                        while (await reader.ReadAsync() && rowCount < MaxRows)
                         {
                             var row = new Dictionary<string, object?>();
                             for (var i = 0; i < reader.FieldCount; i++)
@@ -113,7 +134,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                                     row[name] = value;
                             }
                             rows.Add(row);
-                            count++;
+                            rowCount++;
                         }
                         if (await reader.ReadAsync())
                             truncated = true;
@@ -122,6 +143,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     await transaction.CommitAsync();
                     }
                     sw.Stop();
+
+                    _logger.LogWarning(
+                        "SQL console query by user {UserId}: rows={RowCount} ms={Ms} snippet={Snippet}",
+                        adminUserId, rows.Count, sw.ElapsedMilliseconds, query.Substring(0, Math.Min(200, query.Length)));
 
                     // BUG #2.3 FIX: Log every SQL query execution to AuditLog for security auditing
                     try

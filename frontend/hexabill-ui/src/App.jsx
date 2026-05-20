@@ -41,6 +41,8 @@ import RouteDetailPage from './pages/company/RouteDetailPage'
 import ReturnCreatePage from './pages/company/ReturnCreatePage'
 import CustomersPage from './pages/company/CustomersPage'
 import CustomerDetailPage from './pages/company/CustomerDetailPage'
+import MorePage from './pages/company/MorePage'
+import StockAdjustmentsHistoryPage from './pages/company/StockAdjustmentsHistoryPage'
 import SignupPage from './pages/SignupPage'
 import OnboardingWizard from './pages/OnboardingWizard'
 import ErrorPage from './pages/ErrorPage'
@@ -147,8 +149,9 @@ function App() {
     if (p === '/pos') return 'pos'
     if (p === '/ledger') return 'invoices'
     if (p === '/sales-ledger' || p.startsWith('/reports')) return 'reports'
-    if (p === '/products' || p === '/pricelist') return 'products'
+    if (p === '/products' || p === '/pricelist' || p === '/stock-adjustments') return 'products'
     if (p === '/customers' || p.startsWith('/customers/')) return 'customers'
+    if (p === '/more') return null
     if (p === '/expenses') return 'expenses'
     if (p === '/users') return 'users'
     if (p === '/settings') return 'settings'
@@ -197,6 +200,7 @@ function App() {
             <Route element={<BranchesRoutesProvider><Layout /></BranchesRoutesProvider>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<ProductsPage />} />
+              <Route path="/stock-adjustments" element={<StockAdjustmentsHistoryPage />} />
               <Route path="/pricelist" element={<PriceList />} />
               <Route path="/purchases" element={<PurchasesPage />} />
               <Route path="/suppliers" element={<SuppliersPage />} />
@@ -219,6 +223,7 @@ function App() {
               <Route path="/routes/:id" element={isStaffOnly ? <Navigate to="/dashboard" replace /> : <RouteDetailPage />} />
               <Route path="/customers" element={<CustomersPage />} />
               <Route path="/customers/:id" element={<CustomerDetailPage />} />
+              <Route path="/more" element={<MorePage />} />
               <Route path="/users" element={<UsersPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/audit" element={<AuditLogPage />} />

@@ -131,9 +131,7 @@ namespace HexaBill.Api.Modules.Users
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ PingMe Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogError(ex, "PingMe error");
                 
                 return StatusCode(500, new ApiResponse<object> 
                 { 

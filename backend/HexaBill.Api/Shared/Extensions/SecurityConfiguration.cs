@@ -152,7 +152,6 @@ namespace HexaBill.Api.Shared.Extensions
                     .Select(o => o.Trim())
                     .Where(o => !string.IsNullOrEmpty(o))
                     .ToArray();
-                Console.WriteLine($"CORS: Using ALLOWED_ORIGINS env var with {allowedOrigins.Length} origins");
             }
             else
             {
@@ -166,13 +165,6 @@ namespace HexaBill.Api.Shared.Extensions
                                     "https://localhost:5173",
                                     "http://localhost:5174"
                                 };
-                Console.WriteLine($"CORS: Using appsettings.json with {allowedOrigins.Length} origins");
-            }
-
-            // Log all allowed origins for debugging
-            foreach (var origin in allowedOrigins)
-            {
-                Console.WriteLine($"CORS: Allowed origin: {origin}");
             }
 
             services.AddCors(options =>
@@ -224,9 +216,7 @@ namespace HexaBill.Api.Shared.Extensions
                 });
             });
 
-            Console.WriteLine($"✅ CORS: Configuration complete. Environment: {(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Not Set")}");
-
-            // Built-in rate limiter (replaces custom in-memory RateLimitingMiddleware) - PRODUCTION_MASTER_TODO #31
+            // Built-in rate limiter
             // Increased from 100 to 300 req/min to prevent 429 when multiple pages load branches/routes
             services.AddRateLimiter(options =>
             {

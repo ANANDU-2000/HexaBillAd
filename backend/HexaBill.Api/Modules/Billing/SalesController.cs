@@ -62,7 +62,7 @@ namespace HexaBill.Api.Modules.Billing
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
             {
                 var errorMessage = ex.InnerException?.Message ?? ex.Message;
-                Console.WriteLine($"❌ Database Error in GetSales: {errorMessage}");
+                _logger.LogWarning($"❌ Database Error in GetSales: {errorMessage}");
                 
                 return StatusCode(500, new ApiResponse<PagedResponse<SaleDto>>
                 {
@@ -73,8 +73,8 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetSales Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogWarning($"❌ GetSales Error: {ex.Message}");
+                _logger.LogWarning($"❌ Stack Trace: {ex.StackTrace}");
                 
                 return StatusCode(500, new ApiResponse<PagedResponse<SaleDto>>
                 {
@@ -328,8 +328,8 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Combined PDF Generation Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogWarning($"❌ Combined PDF Generation Error: {ex.Message}");
+                _logger.LogWarning($"❌ Stack Trace: {ex.StackTrace}");
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -351,14 +351,14 @@ namespace HexaBill.Api.Modules.Billing
                 if (!new[] { "A4", "A5", "80mm", "58mm" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
                     formatNormalized = "A4";
 
-                Console.WriteLine($"\n📄 PDF Request: Getting invoice {id}, format={formatNormalized}");
+                _logger.LogWarning($"\n📄 PDF Request: Getting invoice {id}, format={formatNormalized}");
                 
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
                 // Validate sale exists first
                 var sale = await _saleService.GetSaleByIdAsync(id, tenantId);
                 if (sale == null)
                 {
-                    Console.WriteLine($"❌ PDF Request: Invoice {id} not found");
+                    _logger.LogWarning($"❌ PDF Request: Invoice {id} not found");
                     return NotFound(new ApiResponse<object>
                     {
                         Success = false,
@@ -366,12 +366,12 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
 
-                Console.WriteLine($"✅ PDF Request: Invoice {id} found, generating PDF ({formatNormalized})...");
+                _logger.LogWarning($"✅ PDF Request: Invoice {id} found, generating PDF ({formatNormalized})...");
                 var pdfBytes = await _saleService.GenerateInvoicePdfAsync(id, tenantId, formatNormalized);
                 
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
-                    Console.WriteLine($"❌ PDF Request: PDF bytes are empty for invoice {id}");
+                    _logger.LogWarning($"❌ PDF Request: PDF bytes are empty for invoice {id}");
                     return StatusCode(500, new ApiResponse<object>
                     {
                         Success = false,
@@ -379,7 +379,7 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
                 
-                Console.WriteLine($"✅ PDF Request: Successfully generated {pdfBytes.Length} bytes for invoice {id}");
+                _logger.LogWarning($"✅ PDF Request: Successfully generated {pdfBytes.Length} bytes for invoice {id}");
                 
                 var filename = sale != null ? $"INV-{sale.InvoiceNo}.pdf" : $"invoice_{id}.pdf";
                 
@@ -393,8 +393,8 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (InvalidOperationException ex)
             {
-                Console.WriteLine($"❌ PDF Generation Error (InvalidOperation): {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogWarning($"❌ PDF Generation Error (InvalidOperation): {ex.Message}");
+                _logger.LogWarning($"❌ Stack Trace: {ex.StackTrace}");
                 // Return 500 instead of 404 for PDF generation errors
                 return StatusCode(500, new ApiResponse<object>
                 {
@@ -405,14 +405,14 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ PDF Generation Error: {ex.GetType().Name}");
-                Console.WriteLine($"❌ Message: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogWarning($"❌ PDF Generation Error: {ex.GetType().Name}");
+                _logger.LogWarning($"❌ Message: {ex.Message}");
+                _logger.LogWarning($"❌ Stack Trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
-                    Console.WriteLine($"❌ Inner Message: {ex.InnerException.Message}");
-                    Console.WriteLine($"❌ Inner Stack: {ex.InnerException.StackTrace}");
+                    _logger.LogWarning($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
+                    _logger.LogWarning($"❌ Inner Message: {ex.InnerException.Message}");
+                    _logger.LogWarning($"❌ Inner Stack: {ex.InnerException.StackTrace}");
                 }
                 // Return 500 with detailed error info for debugging
                 return StatusCode(500, new ApiResponse<object>
@@ -505,13 +505,13 @@ namespace HexaBill.Api.Modules.Billing
             catch (Exception ex)
             {
                 // Log the exception for debugging
-                Console.WriteLine($"❌ UpdateSale Controller Error: {ex.GetType().Name}");
-                Console.WriteLine($"❌ Message: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogWarning($"❌ UpdateSale Controller Error: {ex.GetType().Name}");
+                _logger.LogWarning($"❌ Message: {ex.Message}");
+                _logger.LogWarning($"❌ Stack Trace: {ex.StackTrace}");
                 if (ex.InnerException != null)
                 {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
-                    Console.WriteLine($"❌ Inner Message: {ex.InnerException.Message}");
+                    _logger.LogWarning($"❌ Inner Exception: {ex.InnerException.GetType().Name}");
+                    _logger.LogWarning($"❌ Inner Message: {ex.InnerException.Message}");
                 }
                 
                 return StatusCode(500, new ApiResponse<SaleDto>
@@ -850,7 +850,7 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\u274c ReconcilePaymentStatus Error: {ex.Message}");
+                _logger.LogWarning($"\u274c ReconcilePaymentStatus Error: {ex.Message}");
                 return StatusCode(500, new ApiResponse<ReconciliationResult>
                 {
                     Success = false,

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
-import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -19,11 +19,12 @@ import {
   UserPlus,
   DollarSign,
   Inbox,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
-import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { isAdminOrOwner, canAccessPage } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { validateEmail } from '../../utils/validation'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
@@ -34,6 +35,17 @@ import { TabNavigation } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+
+/** wa.me URL with digits-only MSISDN; Gulf-oriented defaults for UAE-style local numbers. */
+function buildWhatsAppUrlFromPhone(phone) {
+  if (!phone || typeof phone !== 'string') return null
+  const d = phone.replace(/\D/g, '')
+  if (!d) return null
+  if (d.startsWith('971') || d.startsWith('966') || d.startsWith('973')) return `https://wa.me/${d}`
+  if (d.startsWith('0') && d.length >= 9) return `https://wa.me/971${d.slice(1)}`
+  if (d.length === 9 && d.startsWith('5')) return `https://wa.me/971${d}`
+  return `https://wa.me/${d}`
+}
 
 const CustomersPage = () => {
   const { user } = useAuth()
@@ -52,6 +64,7 @@ const CustomersPage = () => {
   const [hasMore, setHasMore] = useState(false)
   const PAGE_SIZE_OPTIONS = [25, 50, 100]
   const [pageSize, setPageSize] = useState(100)
+  const [sortBy, setSortBy] = useState('name')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showLedgerModal, setShowLedgerModal] = useState(false)
@@ -84,7 +97,7 @@ const CustomersPage = () => {
   // Fetch page 1 on mount and when search or page size changes (PRODUCTION_MASTER_TODO #42: pagination)
   useEffect(() => {
     fetchCustomers(1)
-  }, [debouncedSearchTerm, pageSize])
+  }, [debouncedSearchTerm, pageSize, sortBy])
 
   // Handle ?edit=ID URL parameter from Customer Ledger
   useEffect(() => {
@@ -128,10 +141,11 @@ const CustomersPage = () => {
       setLoading(true)
       // Server-side search: pass search term to API
       const searchParam = debouncedSearchTerm || undefined
-      const response = await customersAPI.getCustomers({ 
-        page, 
+      const response = await customersAPI.getCustomers({
+        page,
         pageSize,
-        search: searchParam
+        search: searchParam,
+        ...(sortBy && sortBy !== 'name' ? { sortBy } : {})
       })
       if (response.success && response.data) {
         const newCustomers = response.data.items || []
@@ -619,6 +633,17 @@ const CustomersPage = () => {
             activeTab={activeTab}
             onChange={setActiveTab}
           />
+          {canAccessPage(user, 'reports') && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Link
+                to="/reports?tab=overdue"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 min-h-11 hover:bg-amber-100 transition-colors"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
+                Overdue invoices (Reports)
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -659,6 +684,22 @@ const CustomersPage = () => {
               className="hidden"
               onChange={handleImportCustomers}
             />
+            <div className="w-full sm:w-48">
+              <label htmlFor="customer-sort" className="block text-xs text-gray-500 mb-1">Sort</label>
+              <select
+                id="customer-sort"
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value)
+                  setCurrentPage(1)
+                }}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-11"
+              >
+                <option value="name">Name (A–Z)</option>
+                <option value="balanceDesc">Balance (highest first)</option>
+                <option value="activityDesc">Last activity (recent first)</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -752,6 +793,19 @@ const CustomersPage = () => {
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           <span className="hidden sm:inline text-xs font-medium">View</span>
                         </button>
+                        {buildWhatsAppUrlFromPhone(customer.phone) ? (
+                          <a
+                            href={buildWhatsAppUrlFromPhone(customer.phone)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-50 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            title="WhatsApp"
+                            aria-label="WhatsApp"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline text-xs font-medium">WhatsApp</span>
+                          </a>
+                        ) : null}
                         <button
                           onClick={() => handleSendStatement(customer.id)}
                           className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
@@ -813,6 +867,18 @@ const CustomersPage = () => {
                     <Eye className="h-3.5 w-3.5" />
                     View
                   </button>
+                  {buildWhatsAppUrlFromPhone(customer.phone) ? (
+                    <a
+                      href={buildWhatsAppUrlFromPhone(customer.phone)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 min-h-11"
+                      title="WhatsApp"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      WA
+                    </a>
+                  ) : null}
                   <button
                     onClick={() => handleSendStatement(customer.id)}
                     className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"

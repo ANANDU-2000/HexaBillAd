@@ -91,6 +91,11 @@ export const productsAPI = {
     return response.data
   },
 
+  getStockAdjustments: async (params = {}) => {
+    const response = await api.get('/products/stock-adjustments', { params })
+    return response.data
+  },
+
   getLowStockProducts: async (page = 1, pageSize = 50) => {
     const response = await api.get('/products/low-stock', { params: { page, pageSize } })
     return response.data

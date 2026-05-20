@@ -18,10 +18,12 @@ namespace HexaBill.Api.Modules.Reports
     public class ProfitController : TenantScopedController // MULTI-TENANT: Owner-scoped profit
     {
         private readonly IProfitService _profitService;
+        private readonly ILogger<ProfitController> _logger;
 
-        public ProfitController(IProfitService profitService)
+        public ProfitController(IProfitService profitService, ILogger<ProfitController> logger)
         {
             _profitService = profitService;
+            _logger = logger;
         }
 
         /// <summary>Export P&amp;L as PDF for accountant (#58).</summary>
@@ -154,7 +156,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetBranchProfit: {ex.Message}");
+                _logger.LogError(ex, "Error in GetBranchProfit");
                 return Ok(new ApiResponse<List<BranchProfitDto>> { Success = true, Data = new List<BranchProfitDto>() });
             }
         }

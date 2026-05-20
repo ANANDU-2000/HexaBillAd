@@ -57,7 +57,7 @@ namespace HexaBill.Api.Modules.Payments
             catch (Exception ex)
             {
                 // Fail open: return hasDuplicate=false so payment flow can proceed (Render/DB transient errors)
-                Console.WriteLine($"⚠️ Duplicate-check failed (proceeding): {ex.Message}");
+                _logger.LogWarning(ex, "Duplicate-check failed; proceeding");
                 return Ok(new ApiResponse<object> { Success = true, Data = new { hasDuplicate = false } });
             }
         }
@@ -585,7 +585,7 @@ namespace HexaBill.Api.Modules.Payments
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"\u274c CleanupDuplicatePayments Error: {ex.Message}");
+                _logger.LogError(ex, "CleanupDuplicatePayments error");
                 return StatusCode(500, new ApiResponse<DuplicateCleanupResult>
                 {
                     Success = false,

@@ -21,7 +21,7 @@ namespace HexaBill.Api.Modules.Customers
     public interface ICustomerService
     {
         // MULTI-TENANT: All methods now require tenantId for data isolation
-        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null);
+        Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null);
         Task<CustomerDto?> GetCustomerByIdAsync(int id, int tenantId);
         Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId);
         Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId);
@@ -286,7 +286,7 @@ namespace HexaBill.Api.Modules.Customers
             finally { if (!wasOpen) await conn.CloseAsync(); }
         }
 
-        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null)
+        public async Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null)
         {
             // NOTE: DatabaseFixer should only run at application startup (Program.cs)
             // Calling it here could interfere with transactions if this method is called
@@ -341,7 +341,7 @@ namespace HexaBill.Api.Modules.Customers
                     // Staff with no assignments: return empty result (frontend will show helpful message)
                     // This is intentional - staff must be assigned to branches/routes to see customers
                     query = query.Where(c => false);
-                    Console.WriteLine("⚠️ Staff user has no branch/route assignments - returning empty customer list");
+                    _logger.LogWarning("Staff user has no branch/route assignments — returning empty customer list");
                 }
                 else
                 {
@@ -359,7 +359,7 @@ namespace HexaBill.Api.Modules.Customers
                         (hasBranch && c.BranchId.HasValue && restrictToBranchIds!.Contains(c.BranchId.Value)) ||
                         (hasRoute && (c.RouteId.HasValue && restrictToRouteIds!.Contains(c.RouteId.Value) || routeCustomerIdsForRestrict.Contains(c.Id))));
                     
-                    Console.WriteLine($"✅ Staff user filtered to {restrictToBranchIds?.Count ?? 0} branches and {restrictToRouteIds?.Count ?? 0} routes");
+                    _logger.LogInformation("Staff user filtered to {BranchCount} branches and {RouteCount} routes", restrictToBranchIds?.Count ?? 0, restrictToRouteIds?.Count ?? 0);
                 }
             }
 
@@ -373,10 +373,16 @@ namespace HexaBill.Api.Modules.Customers
             }
 
             var totalCount = await query.CountAsync();
-            
-            // Load into memory first to avoid column ordinal issues
-            var customersList = await query
-                .OrderBy(c => c.Name)
+
+            var sortKey = (sortBy ?? "").Trim().ToLowerInvariant();
+            IOrderedQueryable<Customer> ordered = sortKey switch
+            {
+                "balancedesc" => query.OrderByDescending(c => c.PendingBalance).ThenBy(c => c.Name),
+                "activitydesc" => query.OrderByDescending(c => c.LastActivity ?? c.CreatedAt).ThenBy(c => c.Name),
+                _ => query.OrderBy(c => c.Name)
+            };
+
+            var customersList = await ordered
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -439,6 +445,7 @@ namespace HexaBill.Api.Modules.Customers
                 TotalPayments = customer.TotalPayments,
                 PendingBalance = customer.PendingBalance,
                 LastPaymentDate = customer.LastPaymentDate,
+                LastActivity = customer.LastActivity,
                 BranchId = customer.BranchId,
                 RouteId = customer.RouteId
             };
@@ -482,7 +489,7 @@ namespace HexaBill.Api.Modules.Customers
                 // Explicitly validate the value before creating entity
                 if (creditLimit < 0) creditLimit = 0;
                 
-                Console.WriteLine($"🔍 Creating customer with CreditLimit: {creditLimit}");
+                _logger.LogDebug("Creating customer with CreditLimit {CreditLimit}", creditLimit);
                 
                 // Ensure RowVersion is always a valid non-empty byte array
                 var rowVersion = Array.Empty<byte>();
@@ -540,7 +547,7 @@ namespace HexaBill.Api.Modules.Customers
                     customer.CreditLimit = 0;
                 }
                 
-                Console.WriteLine($"🔍 Customer entity CreditLimit value: {customer.CreditLimit}");
+                _logger.LogDebug("Customer entity CreditLimit value {CreditLimit}", customer.CreditLimit);
 
                 _context.Customers.Add(customer);
                 
@@ -578,7 +585,7 @@ namespace HexaBill.Api.Modules.Customers
                 
                 // Use the customer entity directly - SaveChanges already populated it with all values
                 // No need to fetch fresh - this avoids transaction scope issues
-                Console.WriteLine($"✅ Customer created successfully: {customer.Name} (ID: {customer.Id})");
+                _logger.LogInformation("Customer created successfully: {Name} (Id {CustomerId})", customer.Name, customer.Id);
 
                 return new CustomerDto
                 {
@@ -602,24 +609,18 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"❌ Customer creation timed out after 30 seconds");
+                _logger.LogWarning("Customer creation timed out after 30 seconds");
                 throw new InvalidOperationException("Customer creation timed out. Please try again.");
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
             {
                 var errorMessage = ex.InnerException?.Message ?? ex.Message;
-                Console.WriteLine($"❌ Database Error in CreateCustomerAsync: {errorMessage}");
-                Console.WriteLine($"❌ Full Exception: {ex}");
+                _logger.LogError(ex, "Database error in CreateCustomerAsync: {Message}", errorMessage);
                 throw new InvalidOperationException($"Database error: {errorMessage}", ex);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CreateCustomerAsync Error: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "CreateCustomerAsync error");
                 throw;
             }
         }
@@ -719,7 +720,7 @@ namespace HexaBill.Api.Modules.Customers
             // Log customer type change if it changed
             if (oldCustomerType != newCustomerType)
             {
-                Console.WriteLine($"🔄 Customer {customer.Name} type changed from {oldCustomerType} to {newCustomerType}");
+                _logger.LogInformation("Customer {CustomerName} type changed from {OldType} to {NewType}", customer.Name, oldCustomerType, newCustomerType);
             }
 
             await _context.SaveChangesAsync();
@@ -963,11 +964,11 @@ namespace HexaBill.Api.Modules.Customers
                 
                 if (hasBranchIdColumn)
                 {
-                    Console.WriteLine($"✅ BranchId column exists (cached), applying branch/route/staff filters");
+                    _logger.LogDebug("BranchId column exists (cached), applying branch/route/staff filters");
                 }
                 else
                 {
-                    Console.WriteLine($"⚠️ Warning: BranchId column doesn't exist in Sales table (cached), skipping branch/route/staff filters");
+                    _logger.LogWarning("BranchId column does not exist in Sales table (cached), skipping branch/route/staff filters");
                 }
                 
                 // Apply filters only if column exists. Include sales with null BranchId/RouteId so legacy data still shows.
@@ -986,7 +987,7 @@ namespace HexaBill.Api.Modules.Customers
                     .ThenBy(s => s.Id)
                     .ToListAsync();
 
-                Console.WriteLine($"[GetCustomerLedger] customerId={customerId}, tenantId={tenantId}, from={from?.ToString("yyyy-MM-dd")}, toEnd={toEnd?.ToString("yyyy-MM-dd")}, salesCount={salesData.Count}, branchId={branchId}, routeId={routeId}");
+                _logger.LogDebug("GetCustomerLedger customerId={CustomerId} tenantId={TenantId} salesCount={SalesCount} branchId={BranchId} routeId={RouteId}", customerId, tenantId, salesData.Count, branchId, routeId);
 
             var filteredSaleIds = new HashSet<int>(salesData.Select(s => s.Id));
 
@@ -1021,7 +1022,7 @@ namespace HexaBill.Api.Modules.Customers
             catch (Exception dbEx) when (IsMissingColumnException(dbEx))
             {
                 // Schema mismatch (SQLite missing columns or PostgreSQL migrations not applied) - use safe projection
-                Console.WriteLine($"⚠️ Schema fallback - using projection to exclude possibly missing columns: {dbEx.Message}");
+                _logger.LogWarning(dbEx, "Schema fallback — projection excludes possibly missing columns");
                 var salesReturnsData = await salesReturnsQuery
                     .Select(sr => new
                     {
@@ -1242,7 +1243,7 @@ namespace HexaBill.Api.Modules.Customers
                 var transactionKey = (transaction.SaleId, transaction.PaymentId, transaction.ReturnId, transaction.Date, transaction.Debit + transaction.Credit);
                 if (seenTransactions.Contains(transactionKey))
                 {
-                    Console.WriteLine($"⚠️ Duplicate transaction detected and skipped: SaleId={transaction.SaleId}, PaymentId={transaction.PaymentId}, ReturnId={transaction.ReturnId}, Date={transaction.Date:yyyy-MM-dd}, Amount={transaction.Debit + transaction.Credit}");
+                    _logger.LogWarning("Duplicate ledger transaction skipped: SaleId={SaleId} PaymentId={PaymentId} ReturnId={ReturnId}", transaction.SaleId, transaction.PaymentId, transaction.ReturnId);
                     continue;
                 }
                 seenTransactions.Add(transactionKey);
@@ -1265,17 +1266,12 @@ namespace HexaBill.Api.Modules.Customers
                 });
             }
 
-                Console.WriteLine($"✅ Ledger entries generated: {ledgerEntries.Count} unique transactions for customer {customerId}");
+                _logger.LogInformation("Ledger entries generated: {Count} unique transactions for customer {CustomerId}", ledgerEntries.Count, customerId);
                 return ledgerEntries;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error in GetCustomerLedgerAsync for customer {customerId}, tenant {tenantId}: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "Error in GetCustomerLedgerAsync for customer {CustomerId} tenant {TenantId}", customerId, tenantId);
                 throw; // Re-throw to be caught by controller
             }
         }
@@ -1454,17 +1450,12 @@ namespace HexaBill.Api.Modules.Customers
                 });
             }
 
-                Console.WriteLine($"✅ Cash customer ledger entries generated: {ledgerEntries.Count} transactions");
+                _logger.LogInformation("Cash customer ledger entries generated: {Count} transactions", ledgerEntries.Count);
                 return ledgerEntries;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error in GetCashCustomerLedgerAsync for tenant {tenantId}: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"Inner exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "Error in GetCashCustomerLedgerAsync for tenant {TenantId}", tenantId);
                 throw; // Re-throw to be caught by controller
             }
         }
@@ -2522,22 +2513,14 @@ namespace HexaBill.Api.Modules.Customers
                 }
                 catch (Exception pdfEx)
                 {
-                    Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF failed for customer {customerId}: {pdfEx.Message}");
-                    Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF Stack: {pdfEx.StackTrace}");
-                    if (pdfEx.InnerException != null)
-                        Console.WriteLine($"[GenerateCustomerStatementAsync] QuestPDF Inner: {pdfEx.InnerException.Message}");
+                    _logger.LogError(pdfEx, "GenerateCustomerStatementAsync QuestPDF failed for customer {CustomerId}", customerId);
                     throw new InvalidOperationException($"Failed to generate PDF. {pdfEx.Message}", pdfEx);
                 }
             return pdfBytes;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error generating customer statement PDF: {ex.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                {
-                    Console.WriteLine($"❌ Inner Exception: {ex.InnerException.Message}");
-                }
+                _logger.LogError(ex, "Error generating customer statement PDF");
                 throw; // Re-throw to be handled by controller
             }
         }
@@ -2593,7 +2576,7 @@ namespace HexaBill.Api.Modules.Customers
                 .FirstOrDefaultAsync();
             if (customer == null)
             {
-                Console.WriteLine($"⚠️ Customer {customerId} not found for balance recalculation");
+                _logger.LogWarning("Customer {CustomerId} not found for balance recalculation", customerId);
                 return;
             }
 
@@ -2633,7 +2616,7 @@ namespace HexaBill.Api.Modules.Customers
             customer.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ Recalculated balance for {customer.Name}: PendingBalance={pendingBalance:N2} (Sales: {totalSales:N2}, Payments: {totalPayments:N2}, Returns: {totalSalesReturns:N2}, RefundsPaid: {refundsPaid:N2})");
+            _logger.LogInformation("Recalculated balance for {CustomerName}: PendingBalance={PendingBalance}", customer.Name, pendingBalance);
         }
 
         /// <summary>
@@ -2694,7 +2677,7 @@ namespace HexaBill.Api.Modules.Customers
             }
 
             await _context.SaveChangesAsync();
-            Console.WriteLine($"✅ Recalculated balances for {customers.Count} customers, fixed {fixedCount} with discrepancies");
+            _logger.LogInformation("Recalculated balances for {CustomerCount} customers, fixed {FixedCount} with discrepancies", customers.Count, fixedCount);
         }
 
         public async Task<List<Models.OutstandingInvoiceDto>> GetOutstandingInvoicesAsync(int customerId, int tenantId)
@@ -2774,14 +2757,14 @@ namespace HexaBill.Api.Modules.Customers
                 if (oldPaid != actualPaid || oldStatus != sale.PaymentStatus)
                 {
                     fixedCount++;
-                    Console.WriteLine($"\u2705 Fixed Invoice {sale.InvoiceNo}: PaidAmount {oldPaid}->{actualPaid}, Status {oldStatus}->{sale.PaymentStatus}");
+                    _logger.LogInformation("Fixed invoice {InvoiceNo}: PaidAmount {OldPaid}->{ActualPaid} Status {OldStatus}->{NewStatus}", sale.InvoiceNo, oldPaid, actualPaid, oldStatus, sale.PaymentStatus);
                 }
             }
 
             if (fixedCount > 0)
                 await _context.SaveChangesAsync();
 
-            Console.WriteLine($"\u2705 Recalculated {sales.Count} invoices for customer {customerId}, fixed {fixedCount}");
+            _logger.LogInformation("Recalculated {InvoiceCount} invoices for customer {CustomerId}, fixed {FixedCount}", sales.Count, customerId, fixedCount);
             return fixedCount;
         }
 
@@ -2821,14 +2804,14 @@ namespace HexaBill.Api.Modules.Customers
                 if (oldPaid != actualPaid || oldStatus != sale.PaymentStatus)
                 {
                     fixedCount++;
-                    Console.WriteLine($"\u2705 Fixed Cash Invoice {sale.InvoiceNo}: PaidAmount {oldPaid}->{actualPaid}, Status {oldStatus}->{sale.PaymentStatus}");
+                    _logger.LogInformation("Fixed cash invoice {InvoiceNo}: PaidAmount {OldPaid}->{ActualPaid} Status {OldStatus}->{NewStatus}", sale.InvoiceNo, oldPaid, actualPaid, oldStatus, sale.PaymentStatus);
                 }
             }
 
             if (fixedCount > 0)
                 await _context.SaveChangesAsync();
 
-            Console.WriteLine($"\u2705 Recalculated {sales.Count} cash customer invoices, fixed {fixedCount}");
+            _logger.LogInformation("Recalculated {InvoiceCount} cash customer invoices, fixed {FixedCount}", sales.Count, fixedCount);
             return fixedCount;
         }
     }

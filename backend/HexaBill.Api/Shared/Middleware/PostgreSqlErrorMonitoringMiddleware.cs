@@ -123,11 +123,6 @@ namespace HexaBill.Api.Shared.Middleware
 
             // Log the full error details
             _logger.LogError(exception, errorDetails.ToString());
-            
-            // Also log to console for immediate visibility
-            Console.WriteLine("\n" + new string('=', 80));
-            Console.WriteLine(errorDetails.ToString());
-            Console.WriteLine(new string('=', 80) + "\n");
 
             // Skip persisting to ErrorLogs when the error is missing column / ResolvedAt (avoids second failure if ErrorLogs schema is behind)
             if (!IsMissingColumnOrErrorLogsException(exception))

@@ -169,6 +169,23 @@ namespace HexaBill.Api.Modules.Billing
             {
                 try
                 {
+                    var expectedNote = $"Recurring invoice (template #{rec.Id})";
+                    var alreadyInvoiced = await _context.Sales.AsNoTracking().AnyAsync(s =>
+                        !s.IsDeleted
+                        && s.TenantId == rec.TenantId
+                        && s.Notes == expectedNote
+                        && s.InvoiceDate >= rec.NextRunDate.Date
+                        && s.InvoiceDate < rec.NextRunDate.Date.AddDays(1), ct);
+                    if (alreadyInvoiced)
+                    {
+                        _logger.LogWarning("Skipping recurring template {Id} for tenant {TenantId}: invoice already exists for run date {RunDate}", rec.Id, rec.TenantId, rec.NextRunDate.Date);
+                        rec.LastRunDate = rec.NextRunDate;
+                        rec.NextRunDate = ComputeNextRunDate(rec.NextRunDate, rec.Frequency, rec.DayOfRecurrence);
+                        rec.UpdatedAt = DateTime.UtcNow;
+                        await _context.SaveChangesAsync(ct);
+                        continue;
+                    }
+
                     var saleReq = new CreateSaleRequest
                     {
                         CustomerId = rec.CustomerId,

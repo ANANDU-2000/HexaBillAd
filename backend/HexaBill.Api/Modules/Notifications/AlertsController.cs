@@ -17,10 +17,12 @@ namespace HexaBill.Api.Modules.Notifications
     public class AlertsController : TenantScopedController // MULTI-TENANT: Owner-scoped alerts
     {
         private readonly IAlertService _alertService;
+        private readonly ILogger<AlertsController> _logger;
 
-        public AlertsController(IAlertService alertService)
+        public AlertsController(IAlertService alertService, ILogger<AlertsController> logger)
         {
             _alertService = alertService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -69,9 +71,7 @@ namespace HexaBill.Api.Modules.Notifications
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetUnreadCount Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
-                Console.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                _logger.LogError(ex, "GetUnreadCount error");
                 
                 return StatusCode(500, new ApiResponse<int>
                 {

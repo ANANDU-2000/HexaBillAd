@@ -14,10 +14,12 @@ namespace HexaBill.Api.Modules.Branches
     public class BranchesController : TenantScopedController
     {
         private readonly IBranchService _branchService;
+        private readonly ILogger<BranchesController> _logger;
 
-        public BranchesController(IBranchService branchService)
+        public BranchesController(IBranchService branchService, ILogger<BranchesController> logger)
         {
             _branchService = branchService;
+            _logger = logger;
         }
 
         [HttpGet]
@@ -43,8 +45,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[GetBranches] Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"[GetBranches] Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetBranches error");
                 return StatusCode(500, new ApiResponse<List<BranchDto>>
                 {
                     Success = false,
@@ -78,10 +79,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ GetBranchSummary Error (branchId={id}): {ex.Message}");
-                Console.WriteLine($"❌ StackTrace: {ex.StackTrace}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"❌ InnerException: {ex.InnerException.Message}");
+                _logger.LogError(ex, "GetBranchSummary error branchId={BranchId}", id);
                 return StatusCode(500, new ApiResponse<BranchSummaryDto>
                 {
                     Success = false,
@@ -116,8 +114,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ CreateBranch Error: {ex.Message}");
-                if (ex.InnerException != null) Console.WriteLine($"❌ Inner: {ex.InnerException.Message}");
+                _logger.LogError(ex, "CreateBranch error");
                 return StatusCode(500, new ApiResponse<BranchDto>
                 {
                     Success = false,

@@ -18,10 +18,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         private const int PLATFORM_OWNER_ID = 0;
         private readonly AppDbContext _context;
+        private readonly ILogger<PlatformSettingsController> _logger;
 
-        public PlatformSettingsController(AppDbContext context)
+        public PlatformSettingsController(AppDbContext context, ILogger<PlatformSettingsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         private async Task UpsertSetting(string key, string value, DateTime now)
@@ -73,7 +75,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Platform settings get error: {ex.Message}");
+                _logger.LogError(ex, "Platform settings get error");
                 return StatusCode(500, new ApiResponse<PlatformSettingsDto> { Success = false, Message = ex.Message });
             }
         }
@@ -109,7 +111,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Platform settings put error: {ex.Message}");
+                _logger.LogError(ex, "Platform settings put error");
                 return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
             }
         }

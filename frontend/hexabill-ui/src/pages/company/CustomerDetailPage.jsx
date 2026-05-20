@@ -13,6 +13,13 @@ const CustomerDetailPage = () => {
   const [ledger, setLedger] = useState([])
   const [loading, setLoading] = useState(true)
   const [ledgerLoading, setLedgerLoading] = useState(false)
+  const [statementFrom, setStatementFrom] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 90)
+    return d.toISOString().split('T')[0]
+  })
+  const [statementTo, setStatementTo] = useState(() => new Date().toISOString().split('T')[0])
+  const [statementDownloading, setStatementDownloading] = useState(false)
 
   useEffect(() => {
     if (id) {
@@ -58,15 +65,22 @@ const CustomerDetailPage = () => {
   }
 
   const handleSendStatement = async () => {
+    if (!id) return
+    if (!statementFrom || !statementTo) {
+      toast.error('Please choose both dates for the statement.')
+      return
+    }
+    if (statementFrom > statementTo) {
+      toast.error('From date must be on or before To date.')
+      return
+    }
     try {
-      const fromDate = new Date()
-      fromDate.setDate(fromDate.getDate() - 30) // Last 30 days
-      const toDate = new Date()
-      const blob = await customersAPI.getCustomerStatement(id, fromDate.toISOString().split('T')[0], toDate.toISOString().split('T')[0])
+      setStatementDownloading(true)
+      const blob = await customersAPI.getCustomerStatement(id, statementFrom, statementTo)
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `customer_statement_${id}_${new Date().toISOString().split('T')[0]}.pdf`
+      a.download = `customer_statement_${id}_${statementFrom}_${statementTo}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -74,7 +88,10 @@ const CustomerDetailPage = () => {
       toast.success('Statement downloaded successfully')
     } catch (error) {
       console.error('Failed to download statement:', error)
-      toast.error('Failed to download statement')
+      const msg = error?.response?.data?.message || error?.message || 'Failed to download statement'
+      toast.error(typeof msg === 'string' ? msg : 'Failed to download statement')
+    } finally {
+      setStatementDownloading(false)
     }
   }
 
@@ -102,7 +119,7 @@ const CustomerDetailPage = () => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/customers')}
@@ -115,20 +132,56 @@ const CustomerDetailPage = () => {
             <p className="text-sm text-gray-500">Customer Details</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => navigate(`/customers?edit=${customer.id}`)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2 min-h-11 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
           >
             <Edit className="h-4 w-4 mr-2" />
             Edit
           </button>
-          <button
-            onClick={handleSendStatement}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          <Link
+            to="/reports?tab=overdue"
+            className="inline-flex items-center px-4 py-2 min-h-11 border border-amber-200 rounded-md text-sm font-medium text-amber-900 bg-amber-50 hover:bg-amber-100"
           >
-            <Mail className="h-4 w-4 mr-2" />
-            Send Statement
+            Overdue report
+          </Link>
+        </div>
+      </div>
+
+      {/* Statement PDF — date range + loading / error handled via toast + disabled state */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Account statement (PDF)</h2>
+        <p className="text-sm text-gray-600 mb-4">Pick the period, then download. Large ranges may take longer.</p>
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+            <input
+              type="date"
+              value={statementFrom}
+              onChange={(e) => setStatementFrom(e.target.value)}
+              disabled={statementDownloading}
+              className="block w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+            <input
+              type="date"
+              value={statementTo}
+              onChange={(e) => setStatementTo(e.target.value)}
+              disabled={statementDownloading}
+              className="block w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleSendStatement}
+            disabled={statementDownloading}
+            className="inline-flex items-center justify-center px-4 py-2 min-h-11 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <Mail className="h-4 w-4 mr-2 shrink-0" />
+            {statementDownloading ? 'Generating…' : 'Download statement'}
           </button>
         </div>
       </div>

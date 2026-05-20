@@ -161,7 +161,7 @@ namespace HexaBill.Api.Modules.Payments
                         var sale = existingRequest.Payment?.Sale;
                         var customer = existingRequest.Payment?.Customer;
                         
-                        Console.WriteLine($"⚠️ DUPLICATE PAYMENT DETECTED (Idempotency Key): {idempotencyKey}");
+                        _logger.LogWarning("Duplicate payment detected (idempotency key). Key: {IdempotencyKey}", idempotencyKey);
                         return new CreatePaymentResponse
                         {
                             Payment = existingPayment,
@@ -424,7 +424,7 @@ namespace HexaBill.Api.Modules.Payments
             // If voiding/returning - recalc Sale.PaidAmount from CLEARED only (this payment excluded after save)
             else if ((status == PaymentStatus.VOID || status == PaymentStatus.RETURNED) && oldStatus != PaymentStatus.VOID)
             {
-                Console.WriteLine($"📋 Status change: {oldStatus} → {status} for payment {paymentId} - Reversing effects");
+                _logger.LogInformation("Payment status change {OldStatus} to {NewStatus} for payment {PaymentId}; reversing effects", oldStatus, status, paymentId);
                 if (payment.SaleId.HasValue)
                 {
                     var sale = await _context.Sales
@@ -455,7 +455,7 @@ namespace HexaBill.Api.Modules.Payments
             // If changing from CLEARED to PENDING - reverse Customer.Balance and recalc Sale.PaidAmount (this payment no longer cleared)
             else if (oldStatus == PaymentStatus.CLEARED && status == PaymentStatus.PENDING)
             {
-                Console.WriteLine($"📋 Status change: CLEARED → PENDING for payment {paymentId}");
+                _logger.LogInformation("Payment status change CLEARED to PENDING for payment {PaymentId}", paymentId);
                 if (payment.SaleId.HasValue)
                 {
                     var sale = await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
@@ -498,7 +498,7 @@ namespace HexaBill.Api.Modules.Payments
             catch (Exception ex)
             {
                 try { await transaction.RollbackAsync(); } catch { }
-                Console.WriteLine($"❌ Error updating payment status: {ex.Message}");
+                _logger.LogError(ex, "Error updating payment status");
                 throw;
             }
         }
@@ -581,7 +581,7 @@ namespace HexaBill.Api.Modules.Payments
                     sale.LastPaymentDate = payment.PaymentDate;
                     sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
                         : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                    Console.WriteLine($"📋 UpdatePayment: Sale {sale.InvoiceNo} PaidAmount now: {sale.PaidAmount}");
+                    _logger.LogInformation("UpdatePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount}", sale.InvoiceNo, sale.PaidAmount);
                 }
             }
             if (isNowCleared && payment.CustomerId.HasValue)
@@ -626,7 +626,7 @@ namespace HexaBill.Api.Modules.Payments
                     if (customer != null)
                     {
                         await customerService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, customer.TenantId ?? 0);
-                        Console.WriteLine($"✅ Customer balance recalculated after payment update. New balance: {customer.Balance}");
+                        _logger.LogInformation("Customer balance recalculated after payment update. CustomerId {CustomerId} NewBalance {Balance}", customer.Id, customer.Balance);
                     }
                 }
 
@@ -638,7 +638,7 @@ namespace HexaBill.Api.Modules.Payments
             catch (Exception ex)
             {
                 try { await transaction.RollbackAsync(); } catch { }
-                Console.WriteLine($"❌ Error updating payment: {ex.Message}");
+                _logger.LogError(ex, "Error updating payment");
                 throw;
             }
         }
@@ -682,7 +682,7 @@ namespace HexaBill.Api.Modules.Payments
                         .FirstOrDefaultAsync();
                     sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
                         : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                    Console.WriteLine($"📋 DeletePayment: Sale {sale.InvoiceNo} PaidAmount now: {sale.PaidAmount}, Status: {sale.PaymentStatus}");
+                    _logger.LogInformation("DeletePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount} Status {Status}", sale.InvoiceNo, sale.PaidAmount, sale.PaymentStatus);
                 }
             }
             if (wasNonVoid)
@@ -742,7 +742,7 @@ namespace HexaBill.Api.Modules.Payments
                     if (customer != null)
                     {
                         await customerService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, customer.TenantId ?? 0);
-                        Console.WriteLine($"✅ Customer balance recalculated after payment deletion. New balance: {customer.Balance}");
+                        _logger.LogInformation("Customer balance recalculated after payment deletion. CustomerId {CustomerId} NewBalance {Balance}", customer.Id, customer.Balance);
                     }
                 }
 
@@ -753,7 +753,7 @@ namespace HexaBill.Api.Modules.Payments
             catch (Exception ex)
             {
                 try { await transaction.RollbackAsync(); } catch { }
-                Console.WriteLine($"❌ Error deleting payment: {ex.Message}");
+                _logger.LogError(ex, "Error deleting payment");
                 throw;
             }
         }
@@ -943,7 +943,7 @@ namespace HexaBill.Api.Modules.Payments
                 {
                     var customerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
                     await customerService.RecalculateCustomerBalanceAsync(request.CustomerId.Value, customer.TenantId ?? 0);
-                    Console.WriteLine($"✅ Customer balance recalculated after allocation. New balance will be available after reload.");
+                    _logger.LogInformation("Customer balance recalculated after payment allocation for customer {CustomerId}", request.CustomerId);
                 }
 
                 // Create audit log

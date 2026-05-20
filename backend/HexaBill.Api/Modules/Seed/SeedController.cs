@@ -2,6 +2,7 @@
  * Seed controller - Demo data for testing (100 customers, products, sales).
  * Author: Plan Build
  */
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -17,10 +18,20 @@ namespace HexaBill.Api.Modules.Seed
     public class SeedController : TenantScopedController
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _environment;
 
-        public SeedController(AppDbContext context)
+        public SeedController(AppDbContext context, IWebHostEnvironment environment)
         {
             _context = context;
+            _environment = environment;
+        }
+
+        /// <summary>Production safety: demo/load-test seed endpoints return 404 in Production so they are not discoverable or callable.</summary>
+        private ActionResult<ApiResponse<object>>? RejectInProduction()
+        {
+            if (_environment.IsProduction())
+                return NotFound(new ApiResponse<object> { Success = false, Message = "Not found." });
+            return null;
         }
 
         /// <summary>
@@ -30,6 +41,9 @@ namespace HexaBill.Api.Modules.Seed
         [HttpPost("demo")]
         public async Task<ActionResult<ApiResponse<object>>> SeedDemo()
         {
+            var blocked = RejectInProduction();
+            if (blocked != null) return blocked;
+
             var tenantId = CurrentTenantId;
             if (tenantId <= 0)
             {
@@ -176,6 +190,9 @@ namespace HexaBill.Api.Modules.Seed
             [FromQuery] int products = 100,
             [FromQuery] int sales = 1000)
         {
+            var blocked = RejectInProduction();
+            if (blocked != null) return blocked;
+
             if (customers > 5000 || products > 500 || sales > 5000)
             {
                 return BadRequest(new ApiResponse<object> { Success = false, Message = "Limits: customers≤5000, products≤500, sales≤5000." });

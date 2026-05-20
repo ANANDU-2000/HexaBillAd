@@ -2183,7 +2183,7 @@ namespace HexaBill.Api.Modules.Billing
                         newCustomer.Balance -= saleForUpdate.PaidAmount;
                     }
                     
-                    Console.WriteLine($"   ✅ Added new invoice to Customer {newCustomerId}: +{newOutstanding:C}, Payments: -{saleForUpdate.PaidAmount:C}");
+                    _logger.LogInformation("Added new invoice to customer {CustomerId}: outstanding +{Outstanding}, payments -{Paid}", newCustomerId, newOutstanding, saleForUpdate.PaidAmount);
                 }
 
                 // Recalculate customer balance with new amount
@@ -2446,7 +2446,7 @@ namespace HexaBill.Api.Modules.Billing
                     }
                     catch (Exception balanceEx)
                     {
-                        Console.WriteLine($"⚠️ Failed to update balance after deletion: {balanceEx.Message}");
+                        _logger.LogWarning(balanceEx, "Failed to update balance after sale deletion");
                         // Create alert for admin (tenant-specific)
                         await _alertService.CreateAlertAsync(
                             AlertType.BalanceMismatch,
@@ -2476,7 +2476,7 @@ namespace HexaBill.Api.Modules.Billing
 
             try
             {
-                Console.WriteLine($"\n📄 PDF Generation: Starting for sale {saleId}, tenantId={tenantId}, format={formatNormalized}");
+                _logger.LogInformation("PDF generation starting for sale {SaleId} tenant {TenantId} format {Format}", saleId, tenantId, formatNormalized);
                 
                 // CRITICAL: Build query - super admin (tenantId=0) can access any sale
                 IQueryable<Sale> query = _context.Sales.Where(s => s.Id == saleId);
@@ -2495,11 +2495,11 @@ namespace HexaBill.Api.Modules.Billing
 
                 if (sale == null)
                 {
-                    Console.WriteLine($"❌ PDF Generation: Sale with ID {saleId} not found");
+                    _logger.LogWarning("PDF generation: sale {SaleId} not found", saleId);
                     throw new InvalidOperationException($"Sale with ID {saleId} not found");
                 }
                 
-                Console.WriteLine($"✅ PDF Generation: Sale {saleId} found - {sale.Items?.Count ?? 0} items");
+                _logger.LogInformation("PDF generation: sale {SaleId} found with {ItemCount} items", saleId, sale.Items?.Count ?? 0);
                 
                 var saleDto = new SaleDto
                 {
@@ -2529,15 +2529,15 @@ namespace HexaBill.Api.Modules.Billing
                     }).ToList() ?? new List<SaleItemDto>()
                 };
 
-                Console.WriteLine($"✅ PDF Generation: Calling PdfService (format={formatNormalized})...");
+                _logger.LogInformation("PDF generation: calling PdfService format {Format}", formatNormalized);
                 var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(saleDto, formatNormalized);
                 
-                Console.WriteLine($"✅ PDF Generation: SUCCESS! Generated {pdfBytes?.Length ?? 0} bytes");
+                _logger.LogInformation("PDF generation succeeded for sale {SaleId} size {Bytes} bytes", saleId, pdfBytes?.Length ?? 0);
                 return pdfBytes ?? Array.Empty<byte>();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ PDF Error: {ex.Message}");
+                _logger.LogError(ex, "PDF generation failed for sale {SaleId}", saleId);
                 throw;
             }
         }
@@ -2750,7 +2750,7 @@ namespace HexaBill.Api.Modules.Billing
                     return 5;
                 }
                 // Log other errors but continue with default
-                Console.WriteLine($"⚠️ Error loading VAT percent: {ex.Message}");
+                _logger.LogWarning(ex, "Error loading VAT percent");
                 return 5;
             }
         }
@@ -2853,14 +2853,14 @@ namespace HexaBill.Api.Modules.Billing
 
                     await _context.SaveChangesAsync();
 
-                    Console.WriteLine($"✅ Reconciled Sale {sale.InvoiceNo}: Status {oldStatus}->{correctStatus}, PaidAmount {oldPaidAmount}->{correctedPaid}");
+                    _logger.LogInformation("Reconciled sale {InvoiceNo}: status {OldStatus}->{NewStatus} paid {OldPaid}->{NewPaid}", sale.InvoiceNo, oldStatus, correctStatus, oldPaidAmount, correctedPaid);
                 }
                 
                 return true;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error reconciling sale {saleId}: {ex.Message}");
+                _logger.LogError(ex, "Error reconciling sale {SaleId}", saleId);
                 return false;
             }
         }
@@ -2954,7 +2954,7 @@ namespace HexaBill.Api.Modules.Billing
                             || Math.Abs(sale.PaidAmount - correctedPaidAll) > 0.01m
                             || !SalePaymentHelpers.LastPaymentDatesMatch(sale.LastPaymentDate, correctedLastAll))
                         {
-                            Console.WriteLine($"📋 Fixing Sale {sale.InvoiceNo}: Status {sale.PaymentStatus}->{correctStatus}, PaidAmount {sale.PaidAmount}->{correctedPaidAll}");
+                            _logger.LogInformation("Fixing sale {InvoiceNo}: status {OldStatus}->{NewStatus} paid {OldPaid}->{NewPaid}", sale.InvoiceNo, sale.PaymentStatus, correctStatus, sale.PaidAmount, correctedPaidAll);
 
                             sale.PaymentStatus = correctStatus;
                             sale.PaidAmount = correctedPaidAll;
@@ -2993,13 +2993,13 @@ namespace HexaBill.Api.Modules.Billing
                 _context.AuditLogs.Add(auditLog);
                 await _context.SaveChangesAsync();
                 
-                Console.WriteLine($"✅ Reconciliation complete: {result.SalesFixed}/{result.TotalSales} sales fixed, {result.SalesWithDuplicatePayments.Count} duplicates found, {result.SalesWithOverpayment.Count} overpayments found");
+                _logger.LogInformation("Reconciliation complete: fixed {Fixed}/{Total} sales, duplicate payment sales {Dupes}, overpayment sales {Overpay}", result.SalesFixed, result.TotalSales, result.SalesWithDuplicatePayments.Count, result.SalesWithOverpayment.Count);
                 
                 return result;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Error during reconciliation: {ex.Message}");
+                _logger.LogError(ex, "Error during payment reconciliation for tenant");
                 result.Errors.Add($"Fatal error: {ex.Message}");
                 return result;
             }

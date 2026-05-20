@@ -6,6 +6,9 @@ using System.Text;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Shared.Security;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 namespace HexaBill.Api.Modules.Billing
 {
     /// <summary>
@@ -13,6 +16,7 @@ namespace HexaBill.Api.Modules.Billing
     /// </summary>
     public class SimplePdfService
     {
+        private static readonly ILogger<SimplePdfService> Log = NullLogger<SimplePdfService>.Instance;
         private readonly string _arabicFont;
 
         public SimplePdfService(IFontService fontService)
@@ -21,14 +25,14 @@ namespace HexaBill.Api.Modules.Billing
             QuestPDF.Settings.License = LicenseType.Community;
             QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
             _arabicFont = fontService.GetArabicFontFamily();
-            Console.WriteLine($"✅ SimplePdfService initialized with font: {_arabicFont}");
+            Log.LogInformation("SimplePdfService initialized with font: {Font}", _arabicFont);
         }
 
         public byte[] GenerateSimpleInvoicePdf(SaleDto sale, InvoiceTemplateService.CompanySettings settings)
         {
             try
             {
-                Console.WriteLine($"📄 Generating SIMPLE PDF for sale {sale.Id}");
+                Log.LogInformation("Generating simple PDF for sale {SaleId}", sale.Id);
 
                 var document = Document.Create(container =>
                 {
@@ -143,14 +147,12 @@ namespace HexaBill.Api.Modules.Billing
                 });
 
                 var pdfBytes = document.GeneratePdf();
-                Console.WriteLine($"✅ Simple PDF generated: {pdfBytes.Length} bytes");
+                Log.LogInformation("Simple PDF generated: {Bytes} bytes", pdfBytes.Length);
                 return pdfBytes;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ SimplePdfService Error: {ex.GetType().Name}");
-                Console.WriteLine($"   Message: {ex.Message}");
-                Console.WriteLine($"   Stack: {ex.StackTrace}");
+                Log.LogError(ex, "SimplePdfService error generating PDF");
                 throw;
             }
         }

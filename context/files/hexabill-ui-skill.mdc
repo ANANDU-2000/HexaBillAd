@@ -1,0 +1,379 @@
+---
+description: HexaBill UI/UX skill — apply when editing any frontend component, page, or style file
+globs: "frontend/hexabill-ui/**/*"
+alwaysApply: false
+---
+
+# HexaBill UI Skill v2.0
+**ERP-grade design system for Gulf VAT business operators**
+
+---
+
+## Design Philosophy
+HexaBill must feel like: **modern Tally + mobile owner dashboard**  
+NOT: startup SaaS, Material Design, Bootstrap, animation-heavy apps  
+Target users: non-technical Gulf business owners + office staff on phones and tablets
+
+---
+
+## Color System (LOCKED)
+
+```css
+/* Brand — use for CTAs only */
+primary-600: #2563EB
+primary-700: #1D4ED8  /* hover */
+primary-50:  #EFF6FF  /* active backgrounds */
+
+/* Surfaces */
+bg-base: #FAFAFA       (page background)
+bg-card: #FFFFFF       (cards, panels)
+bg-elevated: #F1F5F9   (sidebar, table headers)
+
+/* Text */
+text-primary:   #0F172A  (headings, primary content)
+text-secondary: #475569  (labels, secondary info)
+text-tertiary:  #94A3B8  (captions, placeholders)
+
+/* Borders */
+border: #E2E8F0         (cards, inputs)
+border-focus: #2563EB   (focus rings)
+
+/* Status — Invoice/Payment */
+paid:    #059669  (emerald-600)
+partial: #D97706  (amber-600)
+unpaid:  #DC2626  (red-600)
+draft:   #6B7280  (gray-500)
+credit:  #7C3AED  (violet-600)
+
+/* VAT Status */
+vat-filed:   #059669
+vat-pending: #D97706
+vat-locked:  #1E40AF
+```
+
+---
+
+## Typography Scale
+
+Font family: **Inter** (already in tailwind config)
+
+```
+11px font-medium  → Badge text, table labels, chip labels
+13px font-normal  → Table rows, secondary form text
+14px font-normal  → Default body, form inputs, dropdown items
+15px font-medium  → Form labels, card titles
+18px font-semibold → Section headers, tab labels
+22px font-bold    → Page titles
+28px font-bold + tracking-tight → KPI dashboard numbers
+```
+
+Dashboard KPI numbers:
+```jsx
+<p className="text-[28px] font-bold tracking-tight leading-none">
+  {formatCurrency(value)}
+</p>
+```
+
+---
+
+## Spacing — 8pt Grid Only
+
+```
+4px  → inline icon gap, badge padding x
+8px  → gap-2, compact groupings
+12px → input internal padding
+16px → p-4, gap-4 (mobile default, card padding mobile)
+24px → p-6, gap-6 (desktop card padding, section gap mobile)
+32px → gap-8 (major section gaps)
+48px → gap-12 (page top padding desktop)
+```
+
+---
+
+## Component Patterns
+
+### Card
+```jsx
+<div className="bg-white border border-neutral-200 rounded-xl p-4 md:p-6">
+  {/* content */}
+</div>
+```
+No shadow on regular cards. `shadow-md` for dropdowns only. `shadow-lg` for modals only.
+
+### StatCard (KPI)
+```jsx
+<div className="bg-white border border-neutral-200 rounded-xl p-4 md:p-5">
+  <div className="flex items-center justify-between mb-3">
+    <p className="text-[13px] text-neutral-500">{label}</p>
+    <Icon className="w-4 h-4 text-neutral-400" />
+  </div>
+  <p className="text-[28px] font-bold tracking-tight text-neutral-900">{value}</p>
+  {trend && <TrendBadge value={trend} />}
+</div>
+```
+
+### Button — Primary
+```jsx
+<button className="
+  h-10 px-4 
+  bg-primary-600 hover:bg-primary-700 active:bg-primary-800
+  text-white text-[14px] font-medium
+  rounded-lg
+  transition-colors duration-150
+  disabled:opacity-50 disabled:cursor-not-allowed
+  flex items-center gap-2
+">
+```
+
+### Button — Secondary
+```jsx
+<button className="
+  h-10 px-4
+  bg-white hover:bg-neutral-50 active:bg-neutral-100
+  text-neutral-700 text-[14px] font-medium
+  border border-neutral-200
+  rounded-lg transition-colors duration-150
+">
+```
+
+### Button — Mobile (larger touch target)
+```jsx
+<button className="
+  h-11 px-4   /* 44px minimum on mobile */
+  md:h-10
+">
+```
+
+### Input Field
+```jsx
+<input className="
+  w-full h-10
+  px-3 py-2
+  text-[14px] text-neutral-900
+  bg-white border border-neutral-200
+  rounded-lg
+  placeholder:text-neutral-400
+  focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+  transition-colors duration-150
+" />
+```
+
+### Badge — Status
+```jsx
+const statusStyles = {
+  paid:    'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  partial: 'bg-amber-50 text-amber-700 border border-amber-200',
+  unpaid:  'bg-red-50 text-red-700 border border-red-200',
+  draft:   'bg-neutral-100 text-neutral-600 border border-neutral-200',
+}
+
+<span className={`
+  inline-flex items-center
+  px-2 py-0.5
+  text-[11px] font-medium
+  rounded-md
+  ${statusStyles[status]}
+`}>
+  {label}
+</span>
+```
+
+---
+
+## Table Pattern — Responsive
+
+```jsx
+const SalesList = ({ rows }) => (
+  <>
+    {/* Mobile: cards */}
+    <div className="block md:hidden space-y-2 px-4 py-2">
+      {rows.map(row => (
+        <div key={row.id} className="bg-white border border-neutral-200 rounded-xl p-4">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[14px] font-medium text-neutral-900">{row.customerName}</p>
+              <p className="text-[12px] text-neutral-500 mt-0.5">{row.invoiceNumber} · {row.date}</p>
+            </div>
+            <StatusBadge status={row.paymentStatus} />
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            <p className="text-[12px] text-neutral-500">{row.itemCount} items</p>
+            <p className="text-[15px] font-semibold text-neutral-900">{formatCurrency(row.total)}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Desktop: table */}
+    <div className="hidden md:block overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-neutral-50 border-b border-neutral-200">
+          <tr>
+            {columns.map(col => (
+              <th key={col.key} className="px-4 py-3 text-left text-[11px] font-medium text-neutral-500 uppercase tracking-wide">
+                {col.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-100">
+          {rows.map(row => (
+            <tr key={row.id} className="hover:bg-neutral-50 transition-colors duration-100 cursor-pointer">
+              {/* cells */}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </>
+)
+```
+
+---
+
+## Form Pattern
+
+```jsx
+{/* Grouped form fields */}
+<div className="space-y-4">
+  <div>
+    <label className="block text-[13px] font-medium text-neutral-700 mb-1.5">
+      Customer Name <span className="text-red-500">*</span>
+    </label>
+    <input className="..." />
+    {error && <p className="mt-1 text-[12px] text-red-600">{error}</p>}
+  </div>
+</div>
+```
+
+---
+
+## Navigation — BottomNav (Mobile)
+
+```jsx
+// 5 tabs: Home, POS (primary), Ledger, Customers, More
+// Height: h-14 (56px) + safe area bottom
+// Primary tab (POS): bg-primary-600 text-white
+// Active: text-primary-600 with bottom indicator dot
+// Inactive: text-neutral-500
+```
+
+---
+
+## Dashboard Layout
+
+```jsx
+{/* KPI grid — responsive */}
+<div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+  {/* 5 KPI cards */}
+</div>
+
+{/* Main content — 2 column desktop */}
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+  <div className="lg:col-span-2">
+    {/* Sales chart / ledger */}
+  </div>
+  <div>
+    {/* Low stock + overdue alerts */}
+  </div>
+</div>
+```
+
+---
+
+## POS Page Layout
+
+```jsx
+{/* Mobile: stacked — items list → sticky total bar → payment */}
+{/* Tablet (md): side-by-side 60/40 */}
+{/* Desktop (lg): same as tablet with wider panels */}
+
+<div className="
+  flex flex-col h-full
+  md:flex-row
+">
+  {/* Left: product search + line items */}
+  <div className="flex-1 md:w-3/5 overflow-y-auto pb-24 md:pb-0">
+    <ProductSearch />
+    <LineItemsList />
+  </div>
+
+  {/* Right: customer + totals + payment */}
+  <div className="
+    fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200
+    md:relative md:w-2/5 md:border-t-0 md:border-l
+  ">
+    <CustomerSelect />
+    <TotalsSummary />
+    <PaymentButton />
+  </div>
+</div>
+```
+
+---
+
+## State Pattern — Required for Every Async Component
+
+```jsx
+const MyPage = () => {
+  const [data, setData] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const result = await someAPI.getAll()
+        setData(result)
+      } catch (err) {
+        setError(err.message || 'Failed to load')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
+
+  if (loading) return <LoadingSkeleton rows={5} />
+  if (error) return <ErrorState message={error} onRetry={() => fetch()} />
+  if (!data.length) return <EmptyState title="No records yet" subtitle="Create your first record" />
+  return <DataView data={data} />
+}
+```
+
+---
+
+## Micro-Interactions (Minimal)
+
+Only these. Nothing else:
+- Button click: `active:scale-[0.97] transition-transform duration-75`
+- Save success: `<SuccessFeedback />` component — slide up toast, 2s auto-dismiss
+- Form error: shake animation on submit `animate-shake`
+- Page transitions: none (instant is faster, feels operational)
+- List item add: no animation (just re-render)
+
+---
+
+## Accessibility
+
+- All inputs: `aria-label` or `<label htmlFor>`
+- Icon-only buttons: `aria-label="..."`
+- Color not sole indicator: status badges have text + color
+- Focus visible: `focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500`
+- Min contrast: text-neutral-500 on white = 4.6:1 (passes AA)
+
+---
+
+## What NOT to Do
+
+- No `shadow-xl` or larger on cards
+- No gradients (no `bg-gradient-*`)
+- No emoji as icons
+- No inline `style={{}}` except computed values
+- No `p-1`, `p-2`, `p-3`, `p-5`, `p-7` — use 8pt grid only
+- No animations on data tables or form fields
+- No `text-xs` below 11px on any mobile element
+- No `overflow-x-scroll` on page level (fix the layout instead)
+- No mixing oklch and hex in same token system
