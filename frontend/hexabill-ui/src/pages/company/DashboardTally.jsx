@@ -15,6 +15,8 @@ import { reportsAPI, alertsAPI } from '../../services'
 import { isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+import { MobilePeriodBar, mobilePeriodChipClass } from '../../components/mobilePageUi'
+import { mobilePageShellClass } from '../../components/tallyFormClasses'
 
 // Helper components defined first so they are never used before initialization (avoids TDZ after minification)
 const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly, valueType = 'currency', onClick }) => {
@@ -468,7 +470,7 @@ const DashboardTally = () => {
     ]
 
     return (
-        <div className="h-full">
+        <div className={`h-full ${mobilePageShellClass}`}>
             <div className="flex flex-col lg:flex-row h-full gap-4">
                 {/* Central Content */}
                 <div className="flex-1 space-y-4">
@@ -518,108 +520,76 @@ const DashboardTally = () => {
                         </div>
                     )}
 
-                    {/* Date Range Selector */}
-                    <div className="bg-white rounded-lg border border-neutral-200 p-4">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <span className="text-sm font-medium text-neutral-700">Period:</span>
+                    {/* Date Range — 2×2 chips on phone; one row on tablet+ */}
+                    <MobilePeriodBar>
+                        <div className="col-span-2 sm:col-span-1 flex items-center justify-between sm:justify-start gap-2">
+                            <span className="text-sm font-medium text-neutral-700">Period</span>
                             <button
                                 type="button"
                                 onClick={handleRefresh}
                                 disabled={loading}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60"
+                                className="inline-flex items-center justify-center gap-1 min-h-10 px-3 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-60"
                                 title="Refresh dashboard data"
                             >
                                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                <span>Refresh</span>
+                                <span className="hidden sm:inline">Refresh</span>
                             </button>
-                            <button
-                                onClick={() => setDateRange('today')}
-                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                                    dateRange === 'today'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                }`}
-                            >
-                                Today
-                            </button>
-                            <button
-                                onClick={() => setDateRange('week')}
-                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                                    dateRange === 'week'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                }`}
-                            >
-                                This Week
-                            </button>
-                            <button
-                                onClick={() => setDateRange('month')}
-                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                                    dateRange === 'month'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                }`}
-                            >
-                                This Month
-                            </button>
-                            <button
-                                onClick={() => {
-                                    if (dateRange !== 'custom') {
-                                        const today = new Date()
-                                        const weekAgo = new Date(today)
-                                        weekAgo.setDate(today.getDate() - 6)
-                                        setCustomFromDate(weekAgo.toISOString().split('T')[0])
-                                        setCustomToDate(today.toISOString().split('T')[0])
-                                    }
-                                    setDateRange('custom')
-                                }}
-                                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                                    dateRange === 'custom'
-                                        ? 'bg-blue-600 text-white'
-                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
-                                }`}
-                            >
-                                Custom
-                            </button>
-                            {dateRange === 'custom' && (
-                                <>
-                                    <input
-                                        type="date"
-                                        value={customFromDate}
-                                        onChange={(e) => setCustomFromDate(e.target.value)}
-                                        className="px-3 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="From"
-                                    />
-                                    <span className="text-neutral-500">to</span>
-                                    <input
-                                        type="date"
-                                        value={customToDate}
-                                        onChange={(e) => setCustomToDate(e.target.value)}
-                                        className="px-3 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="To"
-                                    />
-                                </>
-                            )}
-                            {/* Branch Selector for Staff with multiple branches */}
-                            {!isAdminOrOwner(user) && availableBranches.length > 1 && (
-                                <>
-                                    <span className="text-sm font-medium text-neutral-700 ml-2">Branch:</span>
-                                    <select
-                                        value={selectedBranchId || ''}
-                                        onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value) : null)}
-                                        className="px-3 py-1.5 text-sm border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">All Branches</option>
-                                        {availableBranches.map(branch => (
-                                            <option key={branch.id} value={branch.id}>
-                                                {branch.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </>
-                            )}
                         </div>
-                    </div>
+                        <button type="button" onClick={() => setDateRange('today')} className={mobilePeriodChipClass(dateRange === 'today')}>
+                            Today
+                        </button>
+                        <button type="button" onClick={() => setDateRange('week')} className={mobilePeriodChipClass(dateRange === 'week')}>
+                            Week
+                        </button>
+                        <button type="button" onClick={() => setDateRange('month')} className={mobilePeriodChipClass(dateRange === 'month')}>
+                            Month
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (dateRange !== 'custom') {
+                                    const today = new Date()
+                                    const weekAgo = new Date(today)
+                                    weekAgo.setDate(today.getDate() - 6)
+                                    setCustomFromDate(weekAgo.toISOString().split('T')[0])
+                                    setCustomToDate(today.toISOString().split('T')[0])
+                                }
+                                setDateRange('custom')
+                            }}
+                            className={mobilePeriodChipClass(dateRange === 'custom')}
+                        >
+                            Custom
+                        </button>
+                        {dateRange === 'custom' && (
+                            <div className="col-span-2 sm:col-span-full flex items-center gap-2 min-w-0">
+                                <input
+                                    type="date"
+                                    value={customFromDate}
+                                    onChange={(e) => setCustomFromDate(e.target.value)}
+                                    className="flex-1 min-w-0 px-2 py-2 text-sm border border-neutral-300 rounded-lg"
+                                />
+                                <span className="text-neutral-500 text-sm shrink-0">–</span>
+                                <input
+                                    type="date"
+                                    value={customToDate}
+                                    onChange={(e) => setCustomToDate(e.target.value)}
+                                    className="flex-1 min-w-0 px-2 py-2 text-sm border border-neutral-300 rounded-lg"
+                                />
+                            </div>
+                        )}
+                        {!isAdminOrOwner(user) && availableBranches.length > 1 && (
+                            <select
+                                value={selectedBranchId || ''}
+                                onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value) : null)}
+                                className="col-span-2 sm:col-span-1 min-h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white"
+                            >
+                                <option value="">All branches</option>
+                                {availableBranches.map((branch) => (
+                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                                ))}
+                            </select>
+                        )}
+                    </MobilePeriodBar>
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">

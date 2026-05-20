@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
+import { mobileFormFieldClass, mobilePageShellClass, mobileFilterGridClass } from '../../components/tallyFormClasses'
+import { mobilePageTitleClass, MobileActionStrip, mobileActionBtnClass } from '../../components/mobilePageUi'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import { reportsAPI, adminAPI, salesAPI, customersAPI } from '../../services'
@@ -819,27 +821,37 @@ const SalesLedgerPage = () => {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-neutral-50">
+    <div className={`flex flex-col flex-1 min-h-0 ${mobilePageShellClass} overflow-hidden bg-neutral-50`}>
       {/* Header — full width, filters horizontal, export right */}
       <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 lg:px-6 py-2 md:py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2 md:gap-3 w-full">
-          <div>
-            <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-neutral-900">Sales Ledger</h1>
-            <p className="text-xs text-neutral-600 hidden md:block">Comprehensive sales and payment tracking</p>
-          </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 flex-wrap justify-end">
-            <div className="flex gap-1.5 sm:gap-2">
+        <h1 className={`${mobilePageTitleClass} md:text-xl lg:text-2xl mb-2`}>Sales Ledger</h1>
+        <div className={`${mobileFilterGridClass} mb-2 md:hidden`}>
+          <input
+            type="date"
+            value={dateRange.from}
+            onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+            className={mobileFormFieldClass}
+          />
+          <input
+            type="date"
+            value={dateRange.to}
+            onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+            className={mobileFormFieldClass}
+          />
+        </div>
+        <MobileActionStrip className="md:flex-wrap md:overflow-visible">
+            <div className="hidden md:flex gap-1.5 sm:gap-2 shrink-0">
               <input
                 type="date"
                 value={dateRange.from}
                 onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-                className="flex-1 md:flex-initial px-2 py-1.5 border border-gray-300 rounded text-xs"
+                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
               />
               <input
                 type="date"
                 value={dateRange.to}
                 onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-                className="flex-1 md:flex-initial px-2 py-1.5 border border-gray-300 rounded text-xs"
+                className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
               />
             </div>
             <button
@@ -895,13 +907,12 @@ const SalesLedgerPage = () => {
             </button>
             <button
               onClick={handleExport}
-              className="px-3 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 flex items-center gap-1.5"
+              className={`${mobileActionBtnClass} bg-primary-600 text-white hover:bg-primary-700`}
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export PDF</span>
+              <span className="hidden sm:inline">PDF</span>
             </button>
-          </div>
-        </div>
+        </MobileActionStrip>
       </div>
 
       {filters.type === 'Sale' && (

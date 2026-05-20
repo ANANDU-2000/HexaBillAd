@@ -31,6 +31,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import toast from 'react-hot-toast'
+import { mobileFormFieldClass, mobileFormSelectClass, mobilePageShellClass } from '../../components/tallyFormClasses'
 import { showToast } from '../../utils/toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import PrintOptionsModal from '../../components/PrintOptionsModal'
@@ -1791,7 +1792,7 @@ const PosPage = () => {
   const totals = calculateTotals()
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col max-w-full overflow-x-hidden pb-24 lg:pb-0">
+    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${mobilePageShellClass} pb-24 lg:pb-0`}>
       {/* TAX INVOICE Header - compact on mobile (16px), navy primary */}
       <div className="bg-primary-900 text-white px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
@@ -1799,7 +1800,7 @@ const PosPage = () => {
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 drop-shadow-md truncate">TAX INVOICE</h1>
             <p className="text-xs sm:text-sm text-blue-100">{companyName} · فاتورة ضريبية</p>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2 lg:space-x-4 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
             <button
               onClick={() => setShowCustomerSearch(true)}
               disabled={isFormDisabled}
@@ -1861,7 +1862,7 @@ const PosPage = () => {
               placeholder="e.g. Customer interrupted, Table 5"
               value={holdNameInput}
               onChange={(e) => setHoldNameInput(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={mobileFormFieldClass}
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleHoldConfirm()}
             />
@@ -1969,7 +1970,7 @@ const PosPage = () => {
 
       {/* Customer & invoice info - compact on mobile (16px), single row */}
       <div className="bg-white border-b border-[#E5E7EB] px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm overflow-x-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm w-full max-w-full">
           <div className="bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm border border-blue-200 flex items-center gap-1 flex-wrap">
             <span className="font-medium text-blue-700">Invoice No:</span>
             <span className={`ml-1 sm:ml-0 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
@@ -2632,9 +2633,11 @@ const PosPage = () => {
                               className="fixed bg-white border border-neutral-200 rounded-lg shadow-md z-[9998]"
                               style={{
                                 maxHeight: '60vh',
-                                width: 'calc(100vw - 32px)',
                                 top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 4}px`,
-                                left: '16px'
+                                left: '16px',
+                                right: '16px',
+                                width: 'auto',
+                                maxWidth: 'calc(100% - 32px)',
                               }}
                               onMouseDown={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
@@ -2832,7 +2835,7 @@ const PosPage = () => {
                         }
                       }}
                       disabled={isFormDisabled || isZeroInvoice}
-                      className="w-20 text-right border border-gray-300 rounded px-2 py-1 text-sm disabled:opacity-50"
+                      className="w-24 max-w-full text-right border border-gray-300 rounded-lg px-2 py-2.5 min-h-11 text-base disabled:opacity-50"
                     />
                   </div>
                 </div>
@@ -2997,7 +3000,7 @@ const PosPage = () => {
       </div>
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
-      <div className="md:hidden fixed bottom-14 left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+      <div className="md:hidden fixed bottom-[4.75rem] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs text-[#475569] block">Total</span>
           <span className="text-lg font-bold text-[#10B981]">AED {totals.grandTotal.toFixed(2)}</span>
@@ -3021,7 +3024,7 @@ const PosPage = () => {
       {showPaymentSheet && (
         <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPaymentSheet(false)} aria-hidden />
-          <div className="relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp">
+          <div className={`relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp ${mobilePageShellClass}`}>
             <div className="flex-shrink-0 px-4 pt-4 pb-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-[#0F172A]">Payment</h3>
@@ -3030,7 +3033,7 @@ const PosPage = () => {
                 </button>
               </div>
             </div>
-            <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2 space-y-3 text-sm">
+            <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-2 space-y-3 text-sm ${mobilePageShellClass}`}>
               <div className="flex justify-between">
                 <span className="text-[#475569]">Subtotal</span>
                 <span className="font-medium text-[#0F172A]">AED {totals.subtotal.toFixed(2)}</span>
@@ -3044,7 +3047,7 @@ const PosPage = () => {
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className={mobileFormFieldClass}
                   placeholder="0.00"
                   value={discountInput}
                   onChange={(e) => {
@@ -3065,7 +3068,7 @@ const PosPage = () => {
                     step="0.01"
                     min="-1"
                     max="1"
-                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className={`${mobileFormFieldClass} text-right`}
                     placeholder="0.00"
                     value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
                     onChange={(e) => {
@@ -3083,7 +3086,7 @@ const PosPage = () => {
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Payment method</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className={mobileFormSelectClass}
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
@@ -3101,7 +3104,7 @@ const PosPage = () => {
                     type="number"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className={mobileFormFieldClass}
                     placeholder={totals.grandTotal.toFixed(2)}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
@@ -3128,7 +3131,7 @@ const PosPage = () => {
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Notes (optional)</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className={`${mobileFormFieldClass} resize-none min-h-[4.5rem]`}
                   rows={2}
                   placeholder="Notes..."
                   value={notes}
@@ -3181,7 +3184,7 @@ const PosPage = () => {
                   ref={customerInputRef}
                   type="text"
                   placeholder="Search customers (F4)..."
-                  className="w-full px-3 py-2.5 min-h-11 text-base border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`${mobileFormFieldClass} border-2 border-blue-300`}
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
                 />

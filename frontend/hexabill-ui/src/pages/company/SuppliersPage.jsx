@@ -5,7 +5,8 @@ import { suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
-import { tallyInputClass, tallyLabelClass, tallySectionClass, tallySectionTitleClass } from '../../components/tallyFormClasses'
+import { tallyInputClass, tallyLabelClass, mobilePageShellClass } from '../../components/tallyFormClasses'
+import { mobilePageTitleClass, mobileLedgerCardClass } from '../../components/mobilePageUi'
 
 const SuppliersPage = () => {
   const navigate = useNavigate()
@@ -248,10 +249,10 @@ const SuppliersPage = () => {
   }
 
   return (
-    <div className="w-full p-4 sm:p-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-bold text-primary-900">Suppliers</h1>
-        <p className="text-primary-600 mt-1 text-sm">Manage suppliers, create new ones, search the full list, and open Supplier Ledger for balances and payments.</p>
+    <div className={`w-full p-3 sm:p-6 pb-24 lg:pb-6 ${mobilePageShellClass}`}>
+      <div className="mb-3">
+        <h1 className={`${mobilePageTitleClass} text-primary-900 sm:text-2xl`}>Suppliers</h1>
+        <p className="text-primary-600 mt-0.5 text-xs hidden sm:block">Search, add suppliers, open ledger for balances and payments.</p>
       </div>
 
       {/* Search bar + Add Supplier — always visible at top */}
@@ -415,24 +416,24 @@ const SuppliersPage = () => {
                 </div>
               ) : (
                 filteredSuppliers.map((s, i) => (
-                  <div key={i} className="bg-primary-50 rounded-lg border border-primary-200 p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <span className="font-medium text-primary-900 inline-flex items-center gap-2">{s.supplierName}
-                          {s.isActive === false && <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 border border-amber-300">Deactivated</span>}
-                        </span>
-                        {s.phone && <p className="text-sm text-primary-600 flex items-center gap-1"><Phone className="h-3 w-3" /> {s.phone}</p>}
+                  <div key={i} className={`${mobileLedgerCardClass} border-primary-200`}>
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-primary-900 truncate">{s.supplierName}</p>
+                        {s.isActive === false && <span className="text-[10px] font-medium text-amber-800">Deactivated</span>}
+                        {s.phone && <p className="text-xs text-primary-600 flex items-center gap-1 mt-0.5"><Phone className="h-3 w-3 shrink-0" /> {s.phone}</p>}
                       </div>
-                      <p className="font-bold text-amber-700">{formatCurrency(s.netPayable || 0)}</p>
+                      <div className="text-right shrink-0">
+                        <p className="text-[10px] font-medium text-primary-500 uppercase">Due</p>
+                        <p className="text-base font-bold text-amber-700 tabular-nums">{formatCurrency(s.netPayable || 0)}</p>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm text-primary-600 mb-3">
-                      <p>Purchases: {formatCurrency(s.totalPurchases || 0)}</p>
-                      <p>Paid: {formatCurrency(s.totalPaid || 0)}</p>
-                      <p>Last Purchase: {formatDate(s.lastPurchaseDate)}</p>
-                      <p>Invoices: {s.invoiceCount ?? '-'}</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-primary-700 mb-3">
+                      <p><span className="text-primary-500">Purchases</span><br /><span className="font-semibold tabular-nums">{formatCurrency(s.totalPurchases || 0)}</span></p>
+                      <p><span className="text-primary-500">Paid</span><br /><span className="font-semibold tabular-nums">{formatCurrency(s.totalPaid || 0)}</span></p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex-1 flex items-center justify-center gap-1 py-2 bg-primary-200 hover:bg-primary-300 rounded text-sm font-medium">
+                    <div className="flex gap-2">
+                      <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex-1 flex items-center justify-center gap-1 min-h-10 py-2 bg-primary-600 text-white hover:bg-primary-700 rounded-lg text-sm font-medium">
                         <Eye className="h-4 w-4" /> Ledger
                       </button>
                       {s.id != null && (

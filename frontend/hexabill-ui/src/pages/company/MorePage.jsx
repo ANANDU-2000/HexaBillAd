@@ -8,11 +8,13 @@ import {
   FileText,
   AlertTriangle,
   History,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { canAccessPage, isAdminOrOwner } from '../../utils/roles'
 
 const moreLinks = [
+  { to: '/customers', label: 'Customers', pageId: 'customers', icon: Users },
   { to: '/expenses', label: 'Expenses', pageId: 'expenses', icon: Wallet },
   { to: '/products', label: 'Products', pageId: 'products', icon: Package },
   { to: '/products?tab=lowStock', label: 'Low stock', pageId: 'products', icon: AlertTriangle },

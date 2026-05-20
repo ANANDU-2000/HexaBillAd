@@ -6,6 +6,8 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
+import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, MobileLedgerTxnCard } from '../../components/mobilePageUi'
+import { mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
 const DISCOUNT_TYPES = [
   'Cash Discount',
   'Free Products',
@@ -14,10 +16,10 @@ const DISCOUNT_TYPES = [
 ]
 
 const tabs = [
-  { id: 'summary', label: 'Summary', icon: FileText },
-  { id: 'ledger', label: 'Ledger', icon: DollarSign },
-  { id: 'purchases', label: 'Purchase History', icon: FileText },
-  { id: 'payments', label: 'Payment History', icon: CreditCard }
+  { id: 'summary', label: 'Summary', shortLabel: 'Summary', icon: FileText },
+  { id: 'ledger', label: 'Ledger', shortLabel: 'Ledger', icon: DollarSign },
+  { id: 'purchases', label: 'Purchases', shortLabel: 'Bills', icon: FileText },
+  { id: 'payments', label: 'Payments', shortLabel: 'Paid', icon: CreditCard }
 ]
 
 const SupplierDetailPage = () => {
@@ -304,26 +306,25 @@ const SupplierDetailPage = () => {
   }
 
   return (
-    <div className="w-full p-4 sm:p-6">
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <Link to="/suppliers" className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-800 font-medium">
-          <ArrowLeft className="h-4 w-4" /> Back to Suppliers
+    <div className={`w-full p-3 sm:p-6 pb-24 lg:pb-6 ${mobilePageShellClass}`}>
+      <div className="mb-3 flex items-center gap-2">
+        <Link to="/suppliers" className="inline-flex items-center justify-center min-h-10 min-w-10 text-primary-600 hover:bg-primary-50 rounded-lg shrink-0" title="Back">
+          <ArrowLeft className="h-5 w-5" />
         </Link>
-        <span className="text-primary-400">|</span>
-        <Link to="/suppliers" className="text-sm text-primary-600 hover:text-primary-800 underline">View all suppliers</Link>
-        <Link to={`/suppliers?edit=${encodeURIComponent(supplierName)}`} className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-800 font-medium">
-          <Pencil className="h-4 w-4" /> Edit supplier
-        </Link>
-      </div>
-
-      <div className="mb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-bold text-primary-900">Supplier Ledger: {supplierName}</h1>
-          {supplierInfo?.id && supplierInfo.isActive === false && (
-            <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 border border-amber-300">Deactivated</span>
-          )}
+        <div className="min-w-0 flex-1">
+          <h1 className={`${mobilePageTitleClass} text-primary-900 truncate`}>{supplierName}</h1>
+          <p className="text-xs text-primary-600 hidden sm:block">Supplier ledger</p>
         </div>
-        <p className="text-primary-600 mt-1">Outstanding balance, transactions and payments — same as Customer Ledger</p>
+        <Link
+          to={`/suppliers?edit=${encodeURIComponent(supplierName)}`}
+          className="shrink-0 p-2 min-h-10 min-w-10 flex items-center justify-center text-amber-700 hover:bg-amber-50 rounded-lg"
+          title="Edit supplier"
+        >
+          <Pencil className="h-5 w-5" />
+        </Link>
+        {supplierInfo?.id && supplierInfo.isActive === false && (
+          <span className="px-2 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 shrink-0">Off</span>
+        )}
       </div>
 
       {/* Summary data cards above tabs */}
@@ -342,37 +343,24 @@ const SupplierDetailPage = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2 mb-4 border-b border-primary-200 pb-2">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-t font-medium text-sm ${
-              activeTab === t.id ? 'bg-primary-100 text-primary-800 border-b-2 border-primary-600 -mb-[2px]' : 'text-primary-600 hover:bg-primary-50'
-            }`}
-          >
-            <t.icon className="h-4 w-4" />
-            {t.label}
+      <MobileIconTabBar tabs={tabs} activeId={activeTab} onChange={setActiveTab} className="mb-3 rounded-xl border border-primary-200 overflow-hidden" />
+      <MobileActionStrip className="mb-3">
+        {activeTab === 'ledger' && (
+          <button type="button" onClick={handleExportCsv} className={`${mobileActionBtnClass} bg-primary-100 text-primary-800`}>
+            <Download className="h-4 w-4" /> CSV
           </button>
-        ))}
-        <div className="ml-auto flex items-center gap-2">
-          {activeTab === 'ledger' && (
-            <button type="button" onClick={handleExportCsv} className="flex items-center gap-1 px-3 py-2 bg-primary-100 hover:bg-primary-200 rounded-lg text-sm font-medium">
-              <Download className="h-4 w-4" /> Export CSV
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setPreFillPayment({ amount: '', reference: '' })
-              setShowRecordPayment(!showRecordPayment)
-            }}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium text-sm"
-          >
-            <DollarSign className="h-4 w-4" /> Record Payment
-          </button>
-        </div>
-      </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            setPreFillPayment({ amount: '', reference: '' })
+            setShowRecordPayment(!showRecordPayment)
+          }}
+          className={`${mobileActionBtnClass} bg-green-600 text-white hover:bg-green-700`}
+        >
+          <DollarSign className="h-4 w-4" /> Pay
+        </button>
+      </MobileActionStrip>
 
       {showRecordPayment && (
         <div className="mb-6 bg-lime-50 border-2 border-lime-300 rounded-lg p-4 w-full">
@@ -534,22 +522,57 @@ const SupplierDetailPage = () => {
             <div className="bg-white rounded-lg border-2 border-lime-300 overflow-hidden w-full">
               {/* Summary: Total paid, Pending balance */}
               {balance != null && (
-                <div className="p-4 bg-primary-50 border-b-2 border-lime-300 flex flex-wrap gap-6 items-center">
-                  <span className="text-sm"><span className="font-semibold text-primary-700">Total purchases (Debits):</span> <span className="font-bold text-primary-900">{formatCurrency(balance.totalPurchases || 0)}</span></span>
-                  <span className="text-sm"><span className="font-semibold text-green-700">Total paid (Credits):</span> <span className="font-bold text-green-800">{formatCurrency(balance.totalPayments || 0)}</span></span>
-                  {(balance.totalLedgerCredits || 0) > 0 && (
-                    <span className="text-sm"><span className="font-semibold text-teal-700">Ledger credits:</span> <span className="font-bold text-teal-800">{formatCurrency(balance.totalLedgerCredits || 0)}</span></span>
-                  )}
-                  <span className="text-sm"><span className="font-semibold text-amber-700">Pending balance:</span> <span className="font-bold text-amber-800">{formatCurrency(balance.netPayable || 0)}</span></span>
+                <div className="p-3 bg-primary-50 border-b-2 border-lime-300 grid grid-cols-2 gap-2 text-xs sm:flex sm:flex-wrap sm:gap-4 sm:text-sm">
+                  <span><span className="font-semibold text-primary-700">Purchases:</span> {formatCurrency(balance.totalPurchases || 0)}</span>
+                  <span><span className="font-semibold text-green-700">Paid:</span> {formatCurrency(balance.totalPayments || 0)}</span>
+                  <span className="col-span-2 sm:col-span-1"><span className="font-semibold text-amber-700">Pending:</span> {formatCurrency(balance.netPayable || 0)}</span>
                 </div>
               )}
-              <div className="p-4 border-b border-lime-300 flex flex-wrap gap-2 items-center">
-                <Calendar className="h-4 w-4 text-primary-500" />
-                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="border-2 border-lime-300 rounded px-2 py-1 text-sm" />
-                <span className="text-primary-500">to</span>
-                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border-2 border-lime-300 rounded px-2 py-1 text-sm" />
+              <div className={`p-3 border-b border-lime-300 ${mobileFilterGridClass}`}>
+                <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className={mobileDateInputClass} />
+                <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className={mobileDateInputClass} />
               </div>
-              <div className="overflow-x-auto">
+              <div className="md:hidden p-3 space-y-2.5 max-h-[60vh] overflow-y-auto">
+                {transactions.length === 0 ? (
+                  <p className="text-sm text-center text-primary-500 py-6">No transactions</p>
+                ) : (
+                  transactions.map((t, i) => {
+                    const isPurchase = (t.type || '').toLowerCase() === 'purchase'
+                    const purchaseMatch = isPurchase ? purchases.find(p => (p.invoiceNo || '') === (t.reference || '')) : null
+                    const hasBalance = purchaseMatch && (purchaseMatch.balanceAmount || 0) > 0
+                    return (
+                      <MobileLedgerTxnCard
+                        key={i}
+                        type={t.type}
+                        reference={t.reference}
+                        dateStr={formatDate(t.date)}
+                        debit={t.debit || 0}
+                        credit={t.credit || 0}
+                        balance={t.balance}
+                        formatCurrency={formatCurrency}
+                        formatBalance={(n) => formatCurrency(n)}
+                        variant={(t.debit || 0) > 0 ? 'debit' : (t.credit || 0) > 0 ? 'credit' : 'neutral'}
+                        actions={
+                          hasBalance ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPaymentForm(prev => ({ ...prev, amount: String(purchaseMatch.balanceAmount || 0) }))
+                                setPreFillPayment({ amount: String(purchaseMatch.balanceAmount || 0), reference: purchaseMatch.invoiceNo || '' })
+                                setShowRecordPayment(true)
+                              }}
+                              className={`${mobileActionBtnClass} bg-green-100 text-green-800`}
+                            >
+                              <Banknote className="h-3.5 w-3.5" /> Pay
+                            </button>
+                          ) : null
+                        }
+                      />
+                    )
+                  })
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-primary-100">
                     <tr>
@@ -619,7 +642,44 @@ const SupplierDetailPage = () => {
                   Total paid: {formatCurrency(balance.totalPayments || 0)} &nbsp;|&nbsp; Pending balance: {formatCurrency(balance.netPayable || 0)}
                 </div>
               )}
-              <div className="overflow-x-auto">
+              <div className="md:hidden p-3 space-y-2.5">
+                {purchases.length === 0 ? (
+                  <p className="text-sm text-center text-primary-500 py-6">No purchases</p>
+                ) : (
+                  purchases.map((p) => {
+                    const hasBalance = (p.balanceAmount || 0) > 0
+                    const status = (p.paymentStatus || 'Unpaid').toLowerCase()
+                    return (
+                      <div key={p.id} className="rounded-xl border border-lime-200 bg-white p-3.5 text-sm shadow-sm">
+                        <div className="flex justify-between gap-2 mb-2">
+                          <div>
+                            <p className="font-semibold text-primary-900">{p.invoiceNo}</p>
+                            <p className="text-xs text-primary-600">{formatDate(p.purchaseDate)}</p>
+                          </div>
+                          <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded h-fit ${
+                            status === 'paid' ? 'bg-green-100 text-green-800' : status === 'partial' ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-700'
+                          }`}>{p.paymentStatus || 'Unpaid'}</span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                          <div><p className="text-primary-500">Total</p><p className="font-bold tabular-nums">{formatCurrency(p.totalAmount || 0)}</p></div>
+                          <div><p className="text-primary-500">Paid</p><p className="font-bold text-green-700 tabular-nums">{formatCurrency(p.paidAmount || 0)}</p></div>
+                          <div><p className="text-primary-500">Due</p><p className="font-bold text-amber-700 tabular-nums">{formatCurrency(p.balanceAmount || 0)}</p></div>
+                        </div>
+                        {hasBalance && (
+                          <button
+                            type="button"
+                            onClick={() => { setPaymentForm(prev => ({ ...prev, amount: String(p.balanceAmount || 0) })); setPreFillPayment({ amount: String(p.balanceAmount || 0), reference: p.invoiceNo || '' }); setShowRecordPayment(true) }}
+                            className={`w-full ${mobileActionBtnClass} bg-green-600 text-white justify-center`}
+                          >
+                            <Banknote className="h-4 w-4" /> Pay bill
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-primary-100">
                     <tr>
@@ -675,7 +735,29 @@ const SupplierDetailPage = () => {
 
           {activeTab === 'payments' && (
             <div className="bg-white rounded-lg border-2 border-lime-300 overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="md:hidden p-3 space-y-2.5">
+                {payments.length === 0 ? (
+                  <p className="text-sm text-center text-primary-500 py-6">No payments</p>
+                ) : (
+                  payments.map((t, i) => (
+                    <div key={t.paymentId ?? i} className="rounded-xl border border-lime-200 bg-white p-3.5 text-sm">
+                      <div className="flex justify-between mb-1">
+                        <p className="font-semibold text-green-800 tabular-nums">{formatCurrency(t.credit || 0)}</p>
+                        <p className="text-xs text-primary-600">{formatDate(t.date)}</p>
+                      </div>
+                      <p className="text-xs text-primary-600">{t.reference || '—'} · {t.mode || '—'}</p>
+                      <p className="text-xs text-primary-500 mt-1">Balance after: {formatCurrency(t.balance)}</p>
+                      {t.paymentId != null && (
+                        <div className="flex gap-2 mt-2 pt-2 border-t border-primary-100">
+                          <button type="button" onClick={() => openEditPayment(t)} className={`${mobileActionBtnClass} bg-primary-100`}><Pencil className="h-3.5 w-3.5" /> Edit</button>
+                          <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className={`${mobileActionBtnClass} bg-red-100 text-red-800`}><Trash2 className="h-3.5 w-3.5" /> Delete</button>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-primary-100">
                     <tr>

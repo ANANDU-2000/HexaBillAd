@@ -13,6 +13,7 @@ import {
   tallySectionClass,
   tallySectionTitleClass,
   tallyVoucherShellClass,
+  mobilePageShellClass,
 } from '../../components/tallyFormClasses'
 
 const VoucherSection = ({ sectionId, title, isOpen, onToggle, children }) => (
@@ -678,7 +679,7 @@ const PurchasesPage = () => {
 
   // TALLY ERP PURCHASE VOUCHER STYLE
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 pb-20 overflow-x-hidden w-full">
+    <div className={`min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 pb-20 ${mobilePageShellClass}`}>
       {/* Top Bar */}
       <div className="bg-primary-100 border-b-2 border-primary-200 px-2 sm:px-4 py-2 sticky top-0 z-20 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
@@ -1651,7 +1652,7 @@ const PurchasesPage = () => {
               </VoucherSection>
 
               {/* (6) Totals - shown in items table foot; (7) Actions - sticky on mobile above BottomNav */}
-              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-14 left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
+              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-lime-300 rounded text-base font-medium hover:bg-lime-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
                   <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}

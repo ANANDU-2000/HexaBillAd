@@ -147,7 +147,7 @@ function App() {
 
   // Staff page-level access: redirect if they don't have permission for this page
   const getPageIdForPath = (p) => {
-    if (p === '/pos') return 'pos'
+    if (p === '/pos' || p === '/billing-history' || p.startsWith('/billing-history/')) return 'pos'
     if (p === '/ledger') return 'invoices'
     if (p === '/sales-ledger' || p.startsWith('/reports')) return 'reports'
     if (p === '/products' || p.startsWith('/products/') || p === '/pricelist' || p === '/stock-adjustments') return 'products'

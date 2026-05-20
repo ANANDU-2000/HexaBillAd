@@ -39,6 +39,8 @@ import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI }
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
+import { mobileFormFieldClass, mobileFormSelectClass, mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
+import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -1915,28 +1917,27 @@ const CustomerLedgerPage = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full">
-      {/* TOP BAR - Header - Responsive */}
-      <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 sm:py-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <div className="flex items-center space-x-3 sm:space-x-6">
-            {/* Return/Back Button */}
+    <div className={`min-h-screen flex flex-col bg-neutral-50 ${mobilePageShellClass}`}>
+      {/* TOP BAR — compact on mobile */}
+      <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 sm:py-3 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <button
               onClick={() => navigate('/customers')}
-              className="inline-flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
               title="Back to Customers"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <div>
-              <h1 className="text-base sm:text-xl font-bold text-gray-900">{companyName ? `${companyName} – Customer Ledger` : 'Customer Ledger'}</h1>
-              <p className="text-xs sm:text-sm text-gray-600">CUSTOMER LEDGER MODULE</p>
+            <div className="min-w-0">
+              <h1 className={mobilePageTitleClass}>Customer Ledger</h1>
+              <p className="text-xs text-gray-500 truncate hidden sm:block">{companyName || 'Select a customer below'}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Date: {new Date().toLocaleDateString('en-GB')}</p>
-              <p className="text-sm text-gray-600">User: {user?.name || 'Admin'} ({user?.role || 'Admin'})</p>
+          <div className="hidden md:flex items-center gap-3 shrink-0">
+            <div className="text-right text-xs text-gray-600">
+              <p>{new Date().toLocaleDateString('en-GB')}</p>
+              <p>{user?.name || 'Admin'}</p>
             </div>
             <div className="flex items-center space-x-1">
               <button
@@ -1984,14 +1985,27 @@ const CustomerLedgerPage = () => {
               </button>
             </div>
           </div>
+          <div className="flex md:hidden items-center gap-0.5 shrink-0">
+            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg" title="Export PDF">
+              <Download className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => selectedCustomer && loadCustomerData(selectedCustomer.id)}
+              className="p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg"
+              title="Refresh"
+              disabled={!selectedCustomer}
+            >
+              <RefreshCw className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white">
         {/* Branch / Route filters for customer list - visible before selecting a customer */}
-        <div className="bg-neutral-100/80 border-b border-neutral-200 px-3 py-2 flex items-center gap-2 flex-wrap">
-          <span className="text-xs font-medium text-neutral-600">Filter:</span>
+        <div className={`bg-neutral-100/80 border-b border-neutral-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap ${mobilePageShellClass}`}>
+          <span className="text-xs font-medium text-neutral-600 shrink-0">Filter:</span>
           <select
             value={filterDraft.branchId}
             onChange={(e) => {
@@ -2000,7 +2014,7 @@ const CustomerLedgerPage = () => {
               setLedgerBranchId(v)
               setLedgerRouteId('')
             }}
-            className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+            className={`${mobileFormSelectClass} sm:max-w-[200px]`}
             title="Filter customers by branch"
           >
             <option value="">All branches</option>
@@ -2013,7 +2027,7 @@ const CustomerLedgerPage = () => {
               setFilterDraft(prev => ({ ...prev, routeId: v }))
               setLedgerRouteId(v)
             }}
-            className="border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px]"
+            className={`${mobileFormSelectClass} sm:max-w-[200px]`}
             title="Filter customers by route"
           >
             <option value="">All routes</option>
@@ -2032,7 +2046,7 @@ const CustomerLedgerPage = () => {
               placeholder="Search customer (F2)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className={`w-full pl-10 pr-4 ${mobileFormFieldClass}`}
             />
           </div>
           <button
@@ -2163,8 +2177,8 @@ const CustomerLedgerPage = () => {
                     )}
                   </div>
 
-                  {/* Action Buttons - Compact */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
+                  {/* Action Buttons — scroll strip on mobile */}
+                  <MobileActionStrip className="w-full sm:w-auto flex-shrink-0 md:flex-wrap md:overflow-visible">
                     {selectedCustomer.id !== 'cash' && (
                       <>
                         <button
@@ -2183,10 +2197,10 @@ const CustomerLedgerPage = () => {
                             customerForm.setValue('routeId', selectedCustomer.routeId || '')
                             setShowEditCustomerModal(true)
                           }}
-                          className="px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 flex items-center gap-1 transition-colors"
+                          className={`${mobileActionBtnClass} bg-primary-600 text-white hover:bg-primary-700`}
                           title="Edit Customer (F3)"
                         >
-                          <Edit className="h-3 w-3" />
+                          <Edit className="h-3.5 w-3.5" />
                           <span className="hidden sm:inline">Edit</span>
                         </button>
                         <button
@@ -2303,7 +2317,7 @@ const CustomerLedgerPage = () => {
                       <Send className="h-3 w-3" />
                       <span className="hidden lg:inline">Send Statement</span>
                     </button>
-                  </div>
+                  </MobileActionStrip>
                 </div>
               </div>
 
@@ -2374,28 +2388,26 @@ const CustomerLedgerPage = () => {
 
               {/* Date Range & Branch/Route/Staff Filters — only show when customer selected */}
               {selectedCustomer && (
-                <div className="bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4 flex items-center gap-3 flex-wrap">
-                  <label className="text-sm font-medium text-neutral-700">Date:</label>
-                  <Input
+                <div className={`bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4 ${mobileFilterGridClass}`}>
+                  <label className="col-span-2 sm:col-span-full text-xs font-medium text-neutral-600">Date range</label>
+                  <input
                     type="date"
                     value={filterDraft.from}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
-                    className="w-36"
+                    className={mobileDateInputClass}
                   />
-                  <span className="text-neutral-600">to</span>
-                  <Input
+                  <input
                     type="date"
                     value={filterDraft.to}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
-                    className="w-36"
+                    className={mobileDateInputClass}
                   />
-                  <span className="text-neutral-400 mx-1">|</span>
 
                   {/* Branch Filter */}
                   <select
                     value={filterDraft.branchId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
                     title="Filter by branch"
                   >
@@ -2407,7 +2419,7 @@ const CustomerLedgerPage = () => {
                   <select
                     value={filterDraft.routeId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
                     title="Filter by route"
                   >
@@ -2421,7 +2433,7 @@ const CustomerLedgerPage = () => {
                   <select
                     value={filterDraft.staffId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                    className={`border border-neutral-300 rounded px-2 py-1.5 text-sm bg-white min-w-[100px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user)}
                     title="Filter by staff"
                   >
@@ -2432,48 +2444,28 @@ const CustomerLedgerPage = () => {
                   <button
                     type="button"
                     onClick={() => applyLedgerFilters(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded hover:bg-primary-700"
-                    title="Filters auto-apply after 0.8s. Click to apply immediately."
+                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 min-h-10 px-3 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
+                    title="Apply filters now"
                   >
-                    <Filter className="h-3.5 w-3.5" />
-                    Apply Now
+                    <Filter className="h-4 w-4" />
+                    Apply
                   </button>
-                  <span className="text-xs text-neutral-500 italic">
-                    (Auto-applies in 0.8s)
-                  </span>
                 </div>
               )}
 
               {/* TAB SECTIONS - Full Width */}
               <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
-                <div className="border-b border-neutral-200 bg-white w-full sticky top-0 z-10">
-                  <div className="overflow-x-auto w-full scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <div className="flex space-x-1 px-2 min-w-max">
-                      {[
-                        { id: 'ledger', name: 'Ledger', mobileName: 'Ledger', icon: FileText },
-                        { id: 'invoices', name: 'Invoices', mobileName: 'Invoices', icon: FileText },
-                        { id: 'payments', name: 'Payments', mobileName: 'Payments', icon: CreditCard },
-                        { id: 'reports', name: 'Reports', mobileName: 'Reports', icon: TrendingUp }
-                      ].map((tab) => {
-                        const Icon = tab.icon
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`px-3 md:px-4 py-2.5 md:py-3 flex items-center space-x-1.5 md:space-x-2 border-b-2 transition-colors whitespace-nowrap text-xs md:text-sm ${activeTab === tab.id
-                              ? 'border-primary-600 text-primary-600 font-medium bg-primary-50'
-                              : 'border-transparent text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
-                              }`}
-                          >
-                            <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-                            <span className="hidden sm:inline">{tab.name}</span>
-                            <span className="sm:hidden">{tab.mobileName}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </div>
+                <MobileIconTabBar
+                  className="sticky top-0 z-10 shrink-0"
+                  activeId={activeTab}
+                  onChange={setActiveTab}
+                  tabs={[
+                    { id: 'ledger', label: 'Ledger', shortLabel: 'Ledger', icon: FileText },
+                    { id: 'invoices', label: 'Invoices', shortLabel: 'Bills', icon: FileText },
+                    { id: 'payments', label: 'Payments', shortLabel: 'Paid', icon: CreditCard },
+                    { id: 'reports', label: 'Reports', shortLabel: 'Stats', icon: TrendingUp }
+                  ]}
+                />
 
                 {/* TAB CONTENT - Full Width - Zero Padding; pb-20 for bottom nav on mobile */}
                 <div className="flex-1 overflow-auto w-full pb-24 lg:pb-0" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
@@ -3859,36 +3851,48 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
       </div>
 
       {/* Ledger Cards - Mobile */}
-      <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
+      <div className="md:hidden flex-1 overflow-y-auto space-y-2.5 px-2 py-2 pb-4">
         {displayedEntries.length === 0 ? (
-          <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
+          <div className={`${mobileLedgerCardClass} text-center text-neutral-500`}>
             No transactions found
           </div>
         ) : (
           <>
             {displayedEntries.map((entry, idx) => {
-            // CRITICAL: Initialize all variables at the top to prevent TDZ errors
-            // Use constant property name to prevent minifier from creating 'st' from entry.status
             const entryStatus = entry[STATUS_PROP] ?? (entry.type === 'Payment' ? '-' : '-')
             const dateStr = entry.type === 'Payment'
               ? new Date(entry.date).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
               : new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+            const debit = Number(entry.debit) || 0
+            const credit = Number(entry.credit) || 0
+            const bal = Number(entry.balance) || 0
             return (
-              <div key={idx} className={`rounded-lg border p-4 shadow-sm ${(Number(entry.debit) || 0) > 0 ? 'border-red-200 bg-red-50/50' : (Number(entry.credit) || 0) > 0 ? 'border-green-200 bg-green-50/50' : 'bg-white border-neutral-200'}`}>
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-semibold text-neutral-900">{entry.type}</p>
-                    <p className="text-xs text-neutral-500">{entry.reference || '-'}</p>
-                    <p className="text-xs text-neutral-600 mt-0.5">{dateStr}</p>
+              <div key={idx} className={`${mobileLedgerCardClass} ${debit > 0 ? 'border-red-200 bg-red-50/40' : credit > 0 ? 'border-green-200 bg-green-50/40' : ''}`}>
+                <div className="flex justify-between items-start gap-2 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-neutral-900">{entry.type}</p>
+                    <p className="text-xs text-neutral-600 truncate">{entry.reference || '—'}</p>
+                    <p className="text-xs text-neutral-500 mt-0.5">{dateStr}</p>
                   </div>
-                  <span className={`text-sm font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
-                    {formatBalance(Number(entry.balance) || 0)}
-                  </span>
+                  <div className="text-right shrink-0">
+                    <p className={mobileLedgerLabelClass}>Balance</p>
+                    <p className={`${mobileLedgerAmountClass} ${bal < 0 ? 'text-green-600' : bal > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                      {formatBalance(bal)}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-xs text-neutral-600 border-t border-neutral-200 pt-2">
-                  <div className="flex gap-2">
-                    <span>{(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}</span>
-                    <span>{(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}</span>
+                <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                  <div>
+                    <span className={mobileLedgerLabelClass}>Debit</span>
+                    <p className="font-semibold tabular-nums">{debit > 0 ? formatCurrency(debit) : '—'}</p>
+                  </div>
+                  <div>
+                    <span className={mobileLedgerLabelClass}>Credit</span>
+                    <p className="font-semibold tabular-nums">{credit > 0 ? formatCurrency(credit) : '—'}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-2">
+                  <div className="flex gap-2 text-xs text-neutral-600">
                     {entryStatus && entryStatus !== '-' && (
                       <span className="font-medium">{entryStatus}</span>
                     )}
