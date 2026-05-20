@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useSearchParams, Link } from 'react-router-dom'
-import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle } from 'lucide-react'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye } from 'lucide-react'
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
@@ -12,6 +12,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import toast from 'react-hot-toast'
 
 const ProductsPage = () => {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const canManageInventory = isAdminOrOwner(user)
   const canAdjustStock = !!user
@@ -787,6 +788,7 @@ const ProductsPage = () => {
       <ModernTable
         data={products}
         loading={loading}
+        onRowClick={(product) => navigate(`/products/${product.id}`)}
         columns={[
           {
             key: 'imageUrl',
@@ -828,7 +830,16 @@ const ProductsPage = () => {
             sortable: true,
             render: (product) => (
               <div className="flex items-center gap-2">
-                <span>{product.nameEn}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/products/${product.id}`)
+                  }}
+                  className="text-left text-primary-700 hover:text-primary-900 hover:underline font-medium"
+                >
+                  {product.nameEn}
+                </button>
                 {product.isActive === false && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
                     Inactive
@@ -902,12 +913,23 @@ const ProductsPage = () => {
         ]}
         actions={(product) => (
           <div className="flex space-x-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/products/${product.id}`)
+              }}
+              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+              title="View product"
+              aria-label="View product"
+            >
+              <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline text-xs font-medium">View</span>
+            </button>
             {canManageInventory && (
               <button
                 onClick={(e) => {
                   e.stopPropagation()
-                  setEditingProduct(product)
-                  setShowForm(true)
+                  navigate(`/products/${product.id}?edit=1`)
                 }}
                 className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
                 title="Edit Product"

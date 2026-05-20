@@ -2013,7 +2013,7 @@ const PosPage = () => {
                   }}
                   onFocus={() => setShowQuickCustomerDropdown(true)}
                   onBlur={() => setTimeout(() => setShowQuickCustomerDropdown(false), 150)}
-                  className="w-full px-2 py-1.5 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2.5 min-h-11 text-base md:text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {showQuickCustomerDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
@@ -3181,7 +3181,7 @@ const PosPage = () => {
                   ref={customerInputRef}
                   type="text"
                   placeholder="Search customers (F4)..."
-                  className="w-full px-3 py-2 border-2 border-blue-300 rounded text-sm"
+                  className="w-full px-3 py-2.5 min-h-11 text-base border-2 border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
                 />

@@ -7,6 +7,7 @@ import { getApiBaseUrlNoSuffix } from './services/apiConfig'
 import Login from './pages/Login'
 import Dashboard from './pages/company/DashboardTally'
 import ProductsPage from './pages/company/ProductsPage'
+import ProductDetailPage from './pages/company/ProductDetailPage'
 import PriceList from './pages/company/PriceList'
 import PurchasesPage from './pages/company/PurchasesPage'
 import SuppliersPage from './pages/company/SuppliersPage'
@@ -149,7 +150,7 @@ function App() {
     if (p === '/pos') return 'pos'
     if (p === '/ledger') return 'invoices'
     if (p === '/sales-ledger' || p.startsWith('/reports')) return 'reports'
-    if (p === '/products' || p === '/pricelist' || p === '/stock-adjustments') return 'products'
+    if (p === '/products' || p.startsWith('/products/') || p === '/pricelist' || p === '/stock-adjustments') return 'products'
     if (p === '/customers' || p.startsWith('/customers/')) return 'customers'
     if (p === '/more') return null
     if (p === '/expenses') return 'expenses'
@@ -200,6 +201,7 @@ function App() {
             <Route element={<BranchesRoutesProvider><Layout /></BranchesRoutesProvider>}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/products" element={<ProductsPage />} />
+              <Route path="/products/:id" element={<ProductDetailPage />} />
               <Route path="/stock-adjustments" element={<StockAdjustmentsHistoryPage />} />
               <Route path="/pricelist" element={<PriceList />} />
               <Route path="/purchases" element={<PurchasesPage />} />

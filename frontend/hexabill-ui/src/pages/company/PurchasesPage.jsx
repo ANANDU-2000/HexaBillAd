@@ -6,6 +6,30 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
+import {
+  tallyInputClass,
+  tallySelectClass,
+  tallyLabelClass,
+  tallySectionClass,
+  tallySectionTitleClass,
+  tallyVoucherShellClass,
+} from '../../components/tallyFormClasses'
+
+const VoucherSection = ({ sectionId, title, isOpen, onToggle, children }) => (
+  <div className={tallySectionClass}>
+    <button
+      type="button"
+      className="md:hidden w-full flex items-center justify-between gap-2 text-left"
+      onClick={() => onToggle(sectionId)}
+      aria-expanded={isOpen}
+    >
+      <h3 className={tallySectionTitleClass}>{title}</h3>
+      <span className="text-primary-600 text-xs font-medium shrink-0">{isOpen ? 'Hide' : 'Show'}</span>
+    </button>
+    <h3 className={`${tallySectionTitleClass} hidden md:block`}>{title}</h3>
+    <div className={`${isOpen ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>{children}</div>
+  </div>
+)
 
 const PurchasesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -64,6 +88,11 @@ const PurchasesPage = () => {
   const navigate = useNavigate()
   const [expandedPurchaseId, setExpandedPurchaseId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [mobileVoucherSection, setMobileVoucherSection] = useState('supplier')
+
+  const toggleVoucherSection = (sectionId) => {
+    setMobileVoucherSection((s) => (s === sectionId ? '' : sectionId))
+  }
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-GB')
@@ -580,7 +609,8 @@ const PurchasesPage = () => {
       isTaxClaimable: true,
       items: []
     })
-    setShowForm(true)
+        setMobileVoucherSection('supplier')
+        setShowForm(true)
 
     // CRITICAL FIX: Scroll to form after it opens
     setTimeout(() => {
@@ -608,7 +638,8 @@ const PurchasesPage = () => {
         unitCost: item.unitCost || 0
       })) || []
     })
-    setShowForm(true)
+        setMobileVoucherSection('supplier')
+        setShowForm(true)
   }
 
   const handleDeletePurchase = (purchase) => {
@@ -1230,7 +1261,7 @@ const PurchasesPage = () => {
 
         {/* Purchase Form - Tally Style - mobile: single column, no horizontal scroll */}
         {showForm && (
-          <div ref={formRef} className="bg-white rounded-lg border-2 border-lime-300 shadow-lg p-4 sm:p-6 mb-6 w-full max-w-full overflow-hidden">
+          <div ref={formRef} className={`${tallyVoucherShellClass} shadow-lg`}>
             <div className="flex items-center justify-between mb-3 sm:mb-4 border-b-2 border-lime-400 pb-2">
               <h2 className="text-base sm:text-lg font-bold text-primary-800">
                 {editingPurchase ? 'Edit Purchase Entry' : 'New Purchase Entry'}
@@ -1245,14 +1276,18 @@ const PurchasesPage = () => {
 
             <form onSubmit={handleSubmit} className="pb-24 md:pb-0">
               {/* (1) Supplier Section */}
-              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
-                <h3 className="text-sm font-bold text-primary-800 mb-3">Supplier</h3>
+              <VoucherSection
+                sectionId="supplier"
+                title="Supplier"
+                isOpen={mobileVoucherSection === 'supplier'}
+                onToggle={toggleVoucherSection}
+              >
                 <div className="relative">
-                  <label className="block text-sm font-medium text-primary-700 mb-1">Supplier Name *</label>
+                  <label className={tallyLabelClass}>Supplier Name *</label>
                   <input
                     type="text"
                     required
-                    className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
+                    className={tallyInputClass}
                     value={formData.supplierName}
                     onChange={(e) => setFormData((prev) => ({ ...prev, supplierName: e.target.value }))}
                     onBlur={() => setTimeout(() => setShowSupplierSuggestions(false), 200)}
@@ -1283,23 +1318,27 @@ const PurchasesPage = () => {
                     </div>
                   )}
                 </div>
-              </div>
+              </VoucherSection>
 
               {/* (2) Invoice Information */}
-              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
-                <h3 className="text-sm font-bold text-primary-800 mb-3">Invoice Information</h3>
+              <VoucherSection
+                sectionId="invoice"
+                title="Invoice Information"
+                isOpen={mobileVoucherSection === 'invoice'}
+                onToggle={toggleVoucherSection}
+              >
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-primary-700 mb-1">Invoice No *</label>
-                    <input type="text" required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
+                    <label className={tallyLabelClass}>Invoice No *</label>
+                    <input type="text" required className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-primary-700 mb-1">Purchase Date *</label>
-                    <input type="date" required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.purchaseDate} onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })} />
+                    <label className={tallyLabelClass}>Purchase Date *</label>
+                    <input type="date" required className={tallyInputClass} value={formData.purchaseDate} onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-primary-700 mb-1">Expense Category *</label>
-                    <select required className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.expenseCategory} onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}>
+                    <label className={tallyLabelClass}>Expense Category *</label>
+                    <select required className={tallySelectClass} value={formData.expenseCategory} onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}>
                       <option value="Inventory">Inventory (Stock Items)</option>
                       <option value="Supplies">Supplies (Office/Packaging)</option>
                       <option value="Equipment">Equipment (Machinery/Tools)</option>
@@ -1308,13 +1347,17 @@ const PurchasesPage = () => {
                     </select>
                   </div>
                 </div>
-              </div>
+              </VoucherSection>
 
               {/* (3) Payment Type + VAT Return ITC */}
-              <div className="mb-4 sm:mb-6 p-3 bg-primary-50 rounded-lg border-2 border-primary-200">
-                <h3 className="text-sm font-bold text-primary-800 mb-3">Payment Type & VAT Return</h3>
+              <VoucherSection
+                sectionId="payment"
+                title="Payment Type & VAT Return"
+                isOpen={mobileVoucherSection === 'payment'}
+                onToggle={toggleVoucherSection}
+              >
                 <div className="flex flex-wrap gap-4 items-center">
-                  <select className="px-3 py-2 border-2 border-lime-300 rounded text-sm" value={formData.paymentType} onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}>
+                  <select className={tallySelectClass} value={formData.paymentType} onChange={(e) => setFormData({ ...formData, paymentType: e.target.value })}>
                     <option value="Cash">Cash (Pay Now)</option>
                     <option value="Credit">Credit (Pay Later)</option>
                   </select>
@@ -1329,7 +1372,7 @@ const PurchasesPage = () => {
                     <span className="text-xs text-primary-500" title="Include input VAT in VAT Return Box 9b">Include in VAT Return</span>
                   </label>
                 </div>
-              </div>
+              </VoucherSection>
 
               {/* (4) Supplier Balance Info */}
               {formData.supplierName.trim() && supplierBalance != null && (
@@ -1343,15 +1386,19 @@ const PurchasesPage = () => {
               )}
 
               {/* (5) Product Entry Table */}
-              <div className="mb-4 p-3 bg-lime-50 rounded-lg border-2 border-lime-300">
-                <h3 className="text-sm font-bold text-primary-800 mb-3">Product Entry</h3>
-                <label className="block text-sm font-medium text-primary-700 mb-1">Add Product (F3)</label>
+              <VoucherSection
+                sectionId="items"
+                title="Product Entry & line items"
+                isOpen={mobileVoucherSection === 'items'}
+                onToggle={toggleVoucherSection}
+              >
+                <label className={tallyLabelClass}>Add Product (F3)</label>
                 <div className="relative">
                   <input
                     ref={searchInputRef}
                     type="text"
                     placeholder="Search products..."
-                    className="w-full px-3 py-2 border-2 border-lime-300 rounded text-sm"
+                    className={tallyInputClass}
                     value={productSearchTerm}
                     onChange={(e) => {
                       setProductSearchTerm(e.target.value)
@@ -1384,10 +1431,9 @@ const PurchasesPage = () => {
                     ))}
                   </div>
                 )}
-              </div>
 
               {/* Items - Mobile: vertical cards (no horizontal scroll); Desktop: table */}
-              <div className="mb-6 w-full max-w-full">
+              <div className="mb-4 w-full max-w-full mt-4">
                 <div className="bg-lime-100 p-2 border-b-2 border-lime-400">
                   <h3 className="text-sm font-bold text-primary-800">Items</h3>
                 </div>
@@ -1602,11 +1648,12 @@ const PurchasesPage = () => {
                   </table>
                 </div>
               </div>
+              </VoucherSection>
 
-              {/* (6) Totals - shown in items table foot; (7) Actions - Phase 10.3: sticky on mobile */}
-              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-0 left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:p-0 z-10 md:z-auto">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 border-2 border-lime-300 rounded text-sm font-medium hover:bg-lime-50">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-4 py-2 bg-primary-600 text-white rounded text-sm font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center min-h-[44px]">
+              {/* (6) Totals - shown in items table foot; (7) Actions - sticky on mobile above BottomNav */}
+              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-14 left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
+                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-lime-300 rounded text-base font-medium hover:bg-lime-50">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
                   <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}
                 </button>
               </div>

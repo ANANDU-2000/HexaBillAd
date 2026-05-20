@@ -5,6 +5,7 @@ import { suppliersAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
+import { tallyInputClass, tallyLabelClass, tallySectionClass, tallySectionTitleClass } from '../../components/tallyFormClasses'
 
 const SuppliersPage = () => {
   const navigate = useNavigate()
@@ -264,7 +265,7 @@ const SuppliersPage = () => {
               placeholder="Search suppliers by name or phone..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-3 py-2.5 border-2 border-lime-300 rounded-lg text-primary-900 placeholder:text-primary-400 focus:ring-2 focus:ring-primary-400 focus:border-primary-500"
+              className={`${tallyInputClass} pl-10 text-primary-900 placeholder:text-primary-400`}
               aria-label="Search suppliers"
             />
           </div>
@@ -463,7 +464,7 @@ const SuppliersPage = () => {
               value={createForm.name}
               onChange={e => setCreateForm(f => ({ ...f, name: e.target.value }))}
               placeholder="Supplier name"
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
               required
             />
           </div>
@@ -474,7 +475,7 @@ const SuppliersPage = () => {
               value={createForm.phone}
               onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))}
               placeholder="Phone"
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
             />
           </div>
           <div>
@@ -484,7 +485,7 @@ const SuppliersPage = () => {
               value={createForm.email}
               onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))}
               placeholder="Email"
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
             />
           </div>
           <div>
@@ -494,7 +495,7 @@ const SuppliersPage = () => {
               onChange={e => setCreateForm(f => ({ ...f, address: e.target.value }))}
               placeholder="Address"
               rows={2}
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
             />
           </div>
           <div>
@@ -506,7 +507,7 @@ const SuppliersPage = () => {
               value={createForm.creditLimit}
               onChange={e => setCreateForm(f => ({ ...f, creditLimit: e.target.value }))}
               placeholder="0"
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
             />
           </div>
           <div>
@@ -516,7 +517,7 @@ const SuppliersPage = () => {
               value={createForm.paymentTerms}
               onChange={e => setCreateForm(f => ({ ...f, paymentTerms: e.target.value }))}
               placeholder="e.g. Net 30"
-              className="w-full border-2 border-lime-300 rounded px-3 py-2"
+              className={tallyInputClass}
             />
           </div>
           <div className="flex gap-2 justify-end pt-2">
@@ -569,7 +570,7 @@ const SuppliersPage = () => {
                 value={editForm.name}
                 onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
                 placeholder="Supplier name"
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
                 required
               />
             </div>
@@ -580,7 +581,7 @@ const SuppliersPage = () => {
                 value={editForm.phone}
                 onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
                 placeholder="Phone"
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
               />
             </div>
             <div>
@@ -590,7 +591,7 @@ const SuppliersPage = () => {
                 value={editForm.email}
                 onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
                 placeholder="Email"
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
               />
             </div>
             <div>
@@ -600,7 +601,7 @@ const SuppliersPage = () => {
                 onChange={e => setEditForm(f => ({ ...f, address: e.target.value }))}
                 placeholder="Address"
                 rows={2}
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
               />
             </div>
             <div>
@@ -612,7 +613,7 @@ const SuppliersPage = () => {
                 value={editForm.creditLimit}
                 onChange={e => setEditForm(f => ({ ...f, creditLimit: e.target.value }))}
                 placeholder="0"
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
               />
             </div>
             <div>
@@ -622,7 +623,7 @@ const SuppliersPage = () => {
                 value={editForm.paymentTerms}
                 onChange={e => setEditForm(f => ({ ...f, paymentTerms: e.target.value }))}
                 placeholder="e.g. Net 30"
-                className="w-full border-2 border-lime-300 rounded px-3 py-2"
+                className={tallyInputClass}
               />
             </div>
             <div className="flex items-center gap-2">

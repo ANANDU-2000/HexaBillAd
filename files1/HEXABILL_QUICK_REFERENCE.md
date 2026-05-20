@@ -176,16 +176,14 @@ STILL USEFUL:
 - Swipe actions on mobile rows (optional)
 
 ### Customers (CustomersPage.jsx)
-DONE (recent): Sort **balance desc** / **activity desc** / name (API `sortBy`); **WhatsApp** when phone present (desktop + mobile).
+DONE: Sort + WhatsApp; **Overdue (30d+)** tab; statement on **CustomerDetailPage**.
 STILL USEFUL:
-- Overdue-only filter on this list (if product wants parity with ledger)
-- “Generate Statement” on customer detail
+- Optional badge on mobile customer cards for overdue tab
 
-### Products (ProductsPage.jsx)
-DONE (recent): **History** link to stock adjustments with `productId` filter; barcode surfaced in list (verify column vs product data).
+### Products (ProductsPage.jsx + ProductDetailPage.jsx)
+DONE: **History** link; barcode column; **`/products/:id`** detail (stock, pricing, movements, edit, adjust stock); View + row navigation from list.
 STILL USEFUL:
-- Low stock filter
-- Richer stock movement drill-down from catalog
+- Low stock filter on list (tab exists; verify UX)
 
 ### Reports (ReportsPage.jsx)
 DONE (recent): **AI Insights** tab behind `VITE_REPORTS_AI_INSIGHTS` (default off).
@@ -205,16 +203,15 @@ STILL USEFUL:
 - Reports AI tab feature-flag (off by default)
 - POS tablet split + Enter-to-add-row + initial product focus
 
+### Purchases / Suppliers (Tally-style entry)
+DONE: Sectioned voucher UI; **`tallyFormClasses.js`**; mobile accordion; `min-h-11` fields; purchase save bar `bottom-14`; supplier create/edit fields aligned.
+
 ### NEXT (revenue / daily ops):
-1. WhatsApp share button on POS invoice success ← 2-4 hours
-2. Sticky total bar on POS mobile ← 1-2 hours
-3. 44px touch targets in POS (audit + fixes) ← 1-2 hours
-4. Mobile card rows for Sales Ledger (if still desired over current layout) ← 2-3 hours
+1. Further POS 44px pass on remaining cart/discount controls
+2. Low-stock WhatsApp (flagged) when product requests it
 
 ### THIS WEEK (retention impact):
-5. BottomNav redesign + MorePage ← 2-3 hours
-6. Customer statement PDF endpoint + button ← 1 day
-7. Overdue-only filter on Customers page (optional parity) ← 2-3 hours
+3. Tier 2: recurring purchases, purchase return (see `docs/TIER2_IMPLEMENTATION_NOTES.md`)
 
 ### THIS MONTH (trust impact):
 8. Verify all 3 atomic transactions (sale/payment/return) in staging

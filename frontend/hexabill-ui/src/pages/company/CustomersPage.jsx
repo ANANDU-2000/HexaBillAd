@@ -195,6 +195,15 @@ const CustomersPage = () => {
         const lastActivityDate = new Date(c.lastActivity)
         return lastActivityDate >= ninetyDaysAgo
       })
+    } else if (activeTab === 'overdue') {
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      filtered = filtered.filter((c) => {
+        const bal = (c.pendingBalance ?? c.balance ?? 0)
+        if (bal <= 0) return false
+        if (!c.lastActivity) return true
+        return new Date(c.lastActivity) < thirtyDaysAgo
+      })
     } else if (activeTab === 'inactive') {
       // Inactive: customers with no transactions in last 90 days
       const ninetyDaysAgo = new Date()
@@ -576,10 +585,20 @@ const CustomersPage = () => {
     window.open(whatsappUrl, '_blank')
   }
 
+  const overdueCount = customers.filter((c) => {
+    const bal = (c.pendingBalance ?? c.balance ?? 0)
+    if (bal <= 0) return false
+    if (!c.lastActivity) return true
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    return new Date(c.lastActivity) < thirtyDaysAgo
+  }).length
+
   const tabs = [
     { id: 'all', label: 'All Customers', icon: Users },
     { id: 'active', label: 'Active', icon: UserPlus },
     { id: 'outstanding', label: 'Outstanding', icon: AlertCircle, badge: customers.filter(c => (c.balance || 0) > 0).length },
+    { id: 'overdue', label: 'Overdue (30d+)', icon: AlertCircle, badge: overdueCount || null },
     { id: 'inactive', label: 'Inactive', icon: Users }
   ]
 
