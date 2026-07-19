@@ -147,8 +147,8 @@ const WorksheetPage = () => {
   const periodLabel = effectiveRange ? formatPeriodLabel(effectiveRange.fromDate, effectiveRange.toDate) : '—'
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div className="w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary-600" />
           Worksheet
@@ -199,7 +199,7 @@ const WorksheetPage = () => {
         </div>
       </div>
 
-      <p className="text-sm text-gray-500 mb-4 flex items-center gap-1">
+      <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
         <Calendar className="h-4 w-4" />
         Period: {periodLabel}
       </p>
@@ -207,7 +207,7 @@ const WorksheetPage = () => {
       {loading && <LoadingCard message="Loading worksheet…" />}
 
       {!loading && data && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <TrendingUp className="h-5 w-5 text-green-600" />
@@ -236,7 +236,7 @@ const WorksheetPage = () => {
             </div>
             <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.totalReceived)}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm sm:col-span-2 lg:col-span-1">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm col-span-2 md:col-span-1 lg:col-span-1">
             <div className="flex items-center gap-2 text-gray-600 mb-1">
               <AlertCircle className="h-5 w-5 text-amber-600" />
               <span className="text-sm font-medium">Pending Amount</span>

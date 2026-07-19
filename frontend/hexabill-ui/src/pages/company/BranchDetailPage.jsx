@@ -500,9 +500,9 @@ const BranchDetailPage = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <Link to="/branches" className="inline-flex items-center gap-1 text-primary-600 hover:underline">
+    <div className="w-full h-full min-h-0 flex flex-col">
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <Link to="/branches" className="inline-flex items-center gap-1 text-primary-600 hover:underline text-sm">
           <ArrowLeft className="h-4 w-4" />
           Back to Branches
         </Link>
@@ -551,13 +551,13 @@ const BranchDetailPage = () => {
         </div>
       </div>
 
-      <div className="border-b border-neutral-200 mb-3 overflow-x-auto">
+      <div className="border-b border-neutral-200 mb-3 overflow-x-auto shrink-0">
         <nav className="-mb-px flex gap-2 min-w-max">
           {TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-2 px-1.5 border-b-2 font-medium text-xs whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`py-2 px-2 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -565,6 +565,7 @@ const BranchDetailPage = () => {
         </nav>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-auto">
       {activeTab === 'overview' && (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
@@ -1060,6 +1061,7 @@ const BranchDetailPage = () => {
           )}
         </div>
       )}
+      </div>
 
       {showEditModal && (
         <Modal isOpen title="Edit Branch" onClose={() => !saving && setShowEditModal(false)}>

@@ -227,12 +227,29 @@ const Layout = () => {
 
   const isSalesLedger = location.pathname === '/sales-ledger'
   const isExpensesLedger = location.pathname === '/expenses'
-  const layoutContentFullWidth =
+  const isPosRoute = location.pathname === '/pos'
+  // Data-heavy pages: fill viewport height, internal scroll (no airy document scroll)
+  const isViewportShellRoute =
+    isSalesLedger ||
+    isExpensesLedger ||
+    isPosRoute ||
+    location.pathname === '/billing-history' ||
+    location.pathname === '/products' ||
+    location.pathname.startsWith('/products/') ||
+    location.pathname === '/ledger' ||
+    location.pathname.startsWith('/ledger/') ||
+    location.pathname === '/worksheet' ||
+    location.pathname === '/customers' ||
+    location.pathname.startsWith('/customers/') ||
+    location.pathname === '/purchases' ||
+    location.pathname === '/branches' ||
+    location.pathname.startsWith('/branches/') ||
+    location.pathname === '/routes' ||
+    location.pathname.startsWith('/routes/') ||
+    location.pathname === '/users' ||
     location.pathname === '/reports' ||
     location.pathname === '/suppliers' ||
-    location.pathname.startsWith('/suppliers/') ||
-    isSalesLedger ||
-    isExpensesLedger
+    location.pathname.startsWith('/suppliers/')
 
   return (
     <div className="min-h-screen bg-neutral-50 overflow-x-hidden">
@@ -257,7 +274,8 @@ const Layout = () => {
         </div>
       )}
 
-      {/* Mobile Header with Hamburger Menu — below impersonation banner when visible (System Admin only) */}
+      {/* Mobile Header — hidden on /pos for full-viewport cashier mode (use BottomNav) */}
+      {!isPosRoute && (
       <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center justify-between px-4 py-3">
           <button
@@ -288,6 +306,7 @@ const Layout = () => {
           </button>
         </div>
       </div>
+      )}
 
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
@@ -404,7 +423,8 @@ const Layout = () => {
         )}
         <SubscriptionGraceBanner />
         <CloudHostingCostReminder />
-        {/* Top Header Bar for Other Pages - Similar to Dashboard */}
+        {/* Top Header Bar — fully hidden on /pos for full-viewport cashier mode */}
+        {!isPosRoute && (
         <div className={`hidden lg:block fixed right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30 transition-all duration-300 ${isSidebarCollapsed ? 'left-20' : 'left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
@@ -456,26 +476,16 @@ const Layout = () => {
                   >
                     <Users className="h-5 w-5" />
                   </button>
-                  <button
-                    onClick={() => window.print()}
-                    className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                    title="Print this page"
-                    aria-label="Print current page"
-                  >
-                    <Printer className="h-5 w-5" />
-                  </button>
                 </>
               )}
-              {!isAdminOrOwner(user) && (
-                <button
+              <button
                   onClick={() => window.print()}
                   className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
                   title="Print this page"
-                  aria-label="Print"
+                  aria-label="Print current page"
                 >
                   <Printer className="h-5 w-5" />
                 </button>
-              )}
               <div className="relative ml-2" ref={profileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -537,10 +547,14 @@ const Layout = () => {
             </div>
           </div>
         </div>
-        {/* Page content — full width max 1400px; Reports use full width (production plan Phase 2) */}
-        <main id="main-content" className={`flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-[4.75rem] lg:pb-6 bg-[#F8FAFC] ${userIsSystemAdmin && selectedTenantId ? 'pt-24 lg:pt-28' : 'pt-14 lg:pt-20'}`}>
-          <div className={`flex-1 min-h-0 ${isSalesLedger || isExpensesLedger ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
-            <div className={`w-full mx-auto px-4 sm:px-6 lg:px-6 ${isSalesLedger || isExpensesLedger ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-4 lg:py-6'} ${layoutContentFullWidth ? 'max-w-full' : 'max-w-[1280px]'}`}>
+        )}
+        {/* Page content — POS has no top header padding for full viewport */}
+        <main id="main-content" className={`flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-[4.75rem] lg:pb-6 bg-[#F8FAFC] ${userIsSystemAdmin && selectedTenantId
+          ? (isPosRoute ? 'pt-10' : 'pt-24 lg:pt-28')
+          : (isPosRoute ? 'pt-0' : 'pt-14 lg:pt-20')
+          }`}>
+          <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
+            <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
               <Outlet />
             </div>
           </div>

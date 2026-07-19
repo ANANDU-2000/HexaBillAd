@@ -452,12 +452,12 @@ const RouteDetailPage = () => {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <Link to="/branches?tab=routes" className="inline-flex items-center gap-1 text-primary-600 hover:underline mb-4">
+    <div className="w-full h-full min-h-0 flex flex-col">
+      <Link to="/branches?tab=routes" className="inline-flex items-center gap-1 text-primary-600 hover:underline mb-2 text-sm shrink-0">
         <ArrowLeft className="h-4 w-4" />
         Back to Routes
       </Link>
-      <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary-50">
             <MapPin className="h-6 w-6 text-primary-600" />
@@ -489,13 +489,13 @@ const RouteDetailPage = () => {
         )}
       </div>
 
-      <div className="border-b border-neutral-200 mb-4 overflow-x-auto">
-        <nav className="-mb-px flex gap-4 min-w-max">
+      <div className="border-b border-neutral-200 mb-3 overflow-x-auto shrink-0">
+        <nav className="-mb-px flex gap-2 min-w-max">
           {ROUTE_TABS.map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`py-3 px-2 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
+              className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -503,32 +503,33 @@ const RouteDetailPage = () => {
         </nav>
       </div>
 
+      <div className="flex-1 min-h-0 overflow-auto">
       {activeTab === 'overview' && (
         <>
-          <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
             <input type="date" value={dateDraftFrom} onChange={(e) => setDateDraftFrom(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <input type="date" value={dateDraftTo} onChange={(e) => setDateDraftTo(e.target.value)} className="border border-neutral-300 rounded px-2 py-1 text-sm" />
             <button type="button" onClick={applyDateRange} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium">Apply</button>
           </div>
           {summary && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-              <div className="bg-white rounded-lg border border-neutral-200 p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
+              <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Total Sales</p>
                 <p className="text-lg font-semibold text-neutral-900">{formatCurrency(summary.totalSales)}</p>
               </div>
-              <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Paid</p>
                 <p className="text-lg font-semibold text-emerald-600">{formatCurrency(summary.totalPayments ?? 0)}</p>
               </div>
-              <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Unpaid / Pending</p>
                 <p className="text-lg font-semibold text-amber-600">{formatCurrency(summary.unpaidAmount ?? 0)}</p>
               </div>
-              <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Total Expenses</p>
                 <p className="text-lg font-semibold text-neutral-900">{formatCurrency(summary.totalExpenses)}</p>
               </div>
-              <div className="bg-white rounded-lg border border-neutral-200 p-4">
+              <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Profit</p>
                 <p className={`text-lg font-semibold ${summary.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary.profit)}</p>
               </div>
@@ -914,6 +915,7 @@ const RouteDetailPage = () => {
           <p className="mt-4 text-sm text-neutral-500 flex items-center gap-1"><BarChart3 className="h-4 w-4" />Route performance metrics for selected date range.</p>
         </div>
       )}
+      </div>
 
       {showExpenseModal && (
         <Modal

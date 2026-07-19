@@ -1917,11 +1917,12 @@ const CustomerLedgerPage = () => {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col bg-neutral-50 ${mobilePageShellClass}`}>
+    <div className={`h-full min-h-0 flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full ${mobilePageShellClass}`}>
       {/* TOP BAR — compact on mobile */}
       <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 sm:py-3 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0 flex-1">
+            {/* Return/Back Button */}
             <button
               onClick={() => navigate('/customers')}
               className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
@@ -2138,10 +2139,10 @@ const CustomerLedgerPage = () => {
         {/* MAIN LEDGER VIEW */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {!selectedCustomer ? (
-            <div className="flex-1 flex items-center justify-center p-6 w-full">
+            <div className="flex-1 flex items-start justify-center pt-8 sm:pt-12 px-4 w-full">
               <div className="text-center w-full max-w-lg">
-                <Users className="h-16 w-16 mx-auto mb-4 text-neutral-300" />
-                <h3 className="text-lg font-medium text-neutral-900 mb-2">Search and select a customer to view ledger</h3>
+                <Users className="h-12 w-12 mx-auto mb-3 text-neutral-300" />
+                <h3 className="text-base font-medium text-neutral-900 mb-1">Search and select a customer to view ledger</h3>
                 <p className="text-sm text-neutral-500">Use the search bar above (Press F2 to focus)</p>
               </div>
             </div>

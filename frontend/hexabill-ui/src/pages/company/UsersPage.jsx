@@ -540,8 +540,8 @@ const UsersPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50">
-      <div className="p-6">
+    <div className="h-full min-h-0 bg-gradient-to-br from-blue-50 to-slate-50 overflow-auto">
+      <div className="p-4 sm:p-6 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>

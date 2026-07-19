@@ -270,12 +270,12 @@ const BillingHistoryPage = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 max-w-full overflow-x-hidden">
+    <div className="space-y-3 max-w-full overflow-x-hidden h-full min-h-0 flex flex-col">
       {/* Header - Responsive */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 shrink-0">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Billing History</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             View and manage all invoices and bills
           </p>
         </div>
@@ -300,9 +300,9 @@ const BillingHistoryPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="bg-white border border-gray-200 rounded-lg p-3 shrink-0">
+        <form onSubmit={handleSearch} className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />

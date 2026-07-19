@@ -679,7 +679,7 @@ const PurchasesPage = () => {
 
   // TALLY ERP PURCHASE VOUCHER STYLE
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 pb-20 ${mobilePageShellClass}`}>
+    <div className={`h-full min-h-0 bg-gradient-to-br from-blue-50 to-slate-50 overflow-x-hidden w-full flex flex-col ${mobilePageShellClass}`}>
       {/* Top Bar */}
       <div className="bg-primary-100 border-b-2 border-primary-200 px-2 sm:px-4 py-2 sticky top-0 z-20 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">

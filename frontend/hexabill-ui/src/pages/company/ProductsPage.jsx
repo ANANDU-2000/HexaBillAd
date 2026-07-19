@@ -509,9 +509,9 @@ const ProductsPage = () => {
   }
 
   return (
-    <div className="w-full space-y-4 lg:space-y-6">
-      {/* Header — title left, actions right; filter bar full width */}
-      <div className="bg-white border-b border-neutral-200 -mx-2 sm:-mx-4 lg:-mx-6 xl:-mx-10 px-4 sm:px-6 lg:px-8 xl:px-10 py-4">
+    <div className="w-full space-y-3 h-full min-h-0 flex flex-col">
+      {/* Header — title left, actions right; full width */}
+      <div className="bg-white border border-neutral-200 rounded-lg px-3 sm:px-4 py-3 shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
           <div>
             <div className="flex items-center gap-3">
@@ -520,7 +520,7 @@ const ProductsPage = () => {
                 {totalCount} Total
               </span>
             </div>
-            <p className="text-xs sm:text-sm text-neutral-600 mt-0.5 sm:mt-1">Manage your inventory</p>
+            <p className="text-xs sm:text-sm text-neutral-600 mt-0.5">Manage your inventory</p>
           </div>
           <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:space-x-3 w-full sm:w-auto">
             <button
