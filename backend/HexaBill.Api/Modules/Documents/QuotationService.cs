@@ -76,7 +76,7 @@ namespace HexaBill.Api.Modules.Documents
                     OwnerId = tenantId,
                     TenantId = tenantId,
                     QuoteNo = quoteNo,
-                    QuoteDate = request.QuoteDate?.Date ?? DateTime.UtcNow.Date,
+                    QuoteDate = ToUtcDate(request.QuoteDate),
                     CustomerName = request.CustomerName?.Trim(),
                     CustomerAddress = request.CustomerAddress?.Trim(),
                     CustomerPhone = request.CustomerPhone?.Trim(),
@@ -120,7 +120,9 @@ namespace HexaBill.Api.Modules.Documents
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var (items, subtotal, vatTotal, grandTotal) = ComputeTotals(request.Items, request.Discount, vatPercent);
 
-                entity.QuoteDate = request.QuoteDate?.Date ?? entity.QuoteDate;
+                entity.QuoteDate = request.QuoteDate.HasValue
+                    ? ToUtcDate(request.QuoteDate)
+                    : ToUtcDate(entity.QuoteDate);
                 entity.CustomerName = request.CustomerName?.Trim();
                 entity.CustomerAddress = request.CustomerAddress?.Trim();
                 entity.CustomerPhone = request.CustomerPhone?.Trim();
@@ -223,6 +225,13 @@ namespace HexaBill.Api.Modules.Documents
 
         private static string NormalizeText(string? value, string fallback)
             => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
+        /// <summary>Npgsql timestamptz rejects Unspecified Kind from .Date — always store UTC midnight.</summary>
+        private static DateTime ToUtcDate(DateTime? value)
+        {
+            var d = value ?? DateTime.UtcNow;
+            return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
 
         private static QuotationDto Map(Quotation q) => new()
         {

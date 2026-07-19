@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Plus, Trash2, Save, Download, Printer, Search } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { quotationsAPI } from '../../services/documentsApi'
 import { productsAPI, settingsAPI } from '../../services'
 import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
+
+/** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
+function unwrapProductList(res) {
+  if (!res) return []
+  if (Array.isArray(res)) return res
+  if (Array.isArray(res.data)) return res.data
+  if (Array.isArray(res.data?.items)) return res.data.items
+  if (Array.isArray(res.items)) return res.items
+  return []
+}
 
 const DEFAULT_SALUTATION = 'Dear Sir/Mam,'
 const DEFAULT_INTRO = 'Thank you for your valuable inquiry. We are pleased to quote as below:'
@@ -283,26 +294,31 @@ export default function QuotationEditorPage() {
   const addItem = () => setItems((prev) => [...prev, emptyLine()])
   const removeItem = (index) => setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)))
 
-  const buildPayload = () => ({
-    quoteDate,
-    customerName,
-    customerAddress,
-    status,
-    notes,
-    salutation,
-    introLine,
-    closingLine,
-    discount: Number(discount) || 0,
-    items: items.map((i) => ({
-      productId: i.productId || null,
-      description: i.description,
-      descriptionSubtitle: i.descriptionSubtitle || null,
-      unitLabel: i.unitLabel || 'Pcs',
-      qty: Number(i.qty),
-      unitPrice: Number(i.unitPrice),
-      vatRate: Number(i.vatRate) || 5,
-    })),
-  })
+  const buildPayload = () => {
+    const lineItems = items
+      .filter((i) => i.description?.trim())
+      .map((i) => ({
+        productId: i.productId || null,
+        description: i.description.trim(),
+        descriptionSubtitle: i.descriptionSubtitle?.trim() || null,
+        unitLabel: i.unitLabel || 'Pcs',
+        qty: Number(i.qty),
+        unitPrice: Number(i.unitPrice),
+        vatRate: Number(i.vatRate) || 5,
+      }))
+    return {
+      quoteDate,
+      customerName,
+      customerAddress,
+      status,
+      notes,
+      salutation,
+      introLine,
+      closingLine,
+      discount: Number(discount) || 0,
+      items: lineItems,
+    }
+  }
 
   const markCleanFromState = (q) => {
     const mappedItems = (q.items || items).map((i) => ({
@@ -331,10 +347,10 @@ export default function QuotationEditorPage() {
   }
 
   const persist = async () => {
-    if (!items.some((i) => i.description?.trim())) {
+    const payload = buildPayload()
+    if (!payload.items.length) {
       throw new Error('Add at least one line with a description')
     }
-    const payload = buildPayload()
     const res = savedId
       ? await quotationsAPI.update(savedId, payload)
       : await quotationsAPI.create(payload)
@@ -437,10 +453,10 @@ export default function QuotationEditorPage() {
         const res = q
           ? await productsAPI.searchProducts(q, 40)
           : await productsAPI.getProducts({ page: 1, pageSize: 40 })
-        const list = res?.data ?? res?.items ?? res ?? []
-        setDrawerProducts(Array.isArray(list) ? list : list.data || [])
+        setDrawerProducts(unwrapProductList(res))
       } catch {
         setDrawerProducts([])
+        toast.error('Could not load products')
       } finally {
         setDrawerLoading(false)
       }
@@ -548,17 +564,16 @@ export default function QuotationEditorPage() {
               </button>
             </div>
             <div className="overflow-x-auto border rounded">
-              <table className="w-full text-xs min-w-[680px]">
+              <table className="w-full text-xs table-fixed">
                 <thead className="bg-slate-100">
                   <tr>
-                    <th className="p-1 text-left">Description</th>
-                    <th className="p-1 text-left">Subtitle</th>
-                    <th className="p-1 text-right w-14">Qty</th>
-                    <th className="p-1 text-left w-14">Unit</th>
-                    <th className="p-1 text-right w-16">Price</th>
-                    <th className="p-1 text-right w-12">VAT%</th>
-                    <th className="p-1 text-right w-16">Tax</th>
-                    <th className="p-1 text-right w-16">Total</th>
+                    <th className="p-1 text-left w-[38%]">Description</th>
+                    <th className="p-1 text-right w-[8%]">Qty</th>
+                    <th className="p-1 text-left w-[8%]">Unit</th>
+                    <th className="p-1 text-right w-[12%]">Price</th>
+                    <th className="p-1 text-right w-[8%]">VAT%</th>
+                    <th className="p-1 text-right w-[10%]">Tax</th>
+                    <th className="p-1 text-right w-[12%]">Total</th>
                     <th className="p-1 w-8" />
                   </tr>
                 </thead>
@@ -571,7 +586,7 @@ export default function QuotationEditorPage() {
                           <div className="flex gap-1">
                             <input
                               data-quote-cell={`${idx}-description`}
-                              className="w-full border rounded px-1 py-1"
+                              className="w-full min-w-0 border rounded px-1 py-1"
                               value={row.description}
                               onChange={(e) => updateItem(idx, { description: e.target.value, productId: null })}
                               onFocus={() => openDrawer(idx)}
@@ -582,12 +597,10 @@ export default function QuotationEditorPage() {
                               <Search className="w-4 h-4" />
                             </button>
                           </div>
-                        </td>
-                        <td className="p-1">
                           <input
                             data-quote-cell={`${idx}-descriptionSubtitle`}
-                            className="w-full border rounded px-1 py-1"
-                            placeholder="e.g. 100% Natural"
+                            className="mt-1 w-full border rounded px-1 py-1 text-[11px] text-text-secondary"
+                            placeholder="Subtitle (optional)"
                             value={row.descriptionSubtitle}
                             onChange={(e) => updateItem(idx, { descriptionSubtitle: e.target.value })}
                             onKeyDown={(e) => onLineKeyDown(e, idx, 'descriptionSubtitle')}

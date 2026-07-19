@@ -64,7 +64,7 @@ namespace HexaBill.Api.Modules.Documents
             return Task.FromResult(Map(new Agreement
             {
                 AgreementNo = "(preview)",
-                AgreementDate = DateTime.UtcNow.Date,
+                AgreementDate = ToUtcDate(null),
                 Status = "Draft",
                 TemplateVersion = AgreementTemplate.Version
             }));
@@ -80,7 +80,7 @@ namespace HexaBill.Api.Modules.Documents
                     OwnerId = tenantId,
                     TenantId = tenantId,
                     AgreementNo = agreementNo,
-                    AgreementDate = request.AgreementDate?.Date ?? DateTime.UtcNow.Date,
+                    AgreementDate = ToUtcDate(request.AgreementDate),
                     SecondPartyName = request.SecondPartyName?.Trim(),
                     SecondPartyLicense = request.SecondPartyLicense?.Trim(),
                     SecondPartyAddress = request.SecondPartyAddress?.Trim(),
@@ -110,7 +110,9 @@ namespace HexaBill.Api.Modules.Documents
                     .FirstOrDefaultAsync(a => a.Id == id && a.TenantId == tenantId && !a.IsDeleted);
                 if (entity == null) return null;
 
-                entity.AgreementDate = request.AgreementDate?.Date ?? entity.AgreementDate;
+                entity.AgreementDate = request.AgreementDate.HasValue
+                    ? ToUtcDate(request.AgreementDate)
+                    : ToUtcDate(entity.AgreementDate);
                 entity.SecondPartyName = request.SecondPartyName?.Trim();
                 entity.SecondPartyLicense = request.SecondPartyLicense?.Trim();
                 entity.SecondPartyAddress = request.SecondPartyAddress?.Trim();
@@ -166,6 +168,13 @@ namespace HexaBill.Api.Modules.Documents
 
         private static string NormalizeStatus(string? status)
             => string.Equals(status, "Final", StringComparison.OrdinalIgnoreCase) ? "Final" : "Draft";
+
+        /// <summary>Npgsql timestamptz rejects Unspecified Kind from .Date — always store UTC midnight.</summary>
+        private static DateTime ToUtcDate(DateTime? value)
+        {
+            var d = value ?? DateTime.UtcNow;
+            return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
+        }
 
         private static AgreementDto Map(Agreement a)
         {
