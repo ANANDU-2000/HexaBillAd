@@ -1,11 +1,7 @@
-/*
-Purpose: Agreement CRUD — fixed clause template; Second Party fields only
-Feature flag: Feature_QuotesAgreements
-*/
-using Microsoft.EntityFrameworkCore;
-using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace HexaBill.Api.Modules.Documents
 {
@@ -13,84 +9,83 @@ namespace HexaBill.Api.Modules.Documents
     {
         Task<List<AgreementDto>> ListAsync(int tenantId);
         Task<AgreementDto?> GetByIdAsync(int id, int tenantId);
+        Task<AgreementDto> GetBlankPreviewAsync(int tenantId);
         Task<AgreementDto> CreateAsync(CreateAgreementRequest request, int userId, int tenantId);
         Task<AgreementDto?> UpdateAsync(int id, UpdateAgreementRequest request, int userId, int tenantId);
         Task<bool> DeleteAsync(int id, int userId, int tenantId);
-        Task<AgreementDto> GetBlankPreviewAsync(int tenantId);
     }
 
     public class AgreementService : IAgreementService
     {
-        public const string DefaultLicense = "CN-4937175";
-        public const string TemplateVersion = "v1";
-
         private readonly AppDbContext _context;
-        private readonly ISettingsService _settings;
         private readonly ILogger<AgreementService> _logger;
 
-        public AgreementService(AppDbContext context, ISettingsService settings, ILogger<AgreementService> logger)
+        public AgreementService(AppDbContext context, ILogger<AgreementService> logger)
         {
             _context = context;
-            _settings = settings;
             _logger = logger;
         }
 
         public async Task<List<AgreementDto>> ListAsync(int tenantId)
         {
-            var list = await _context.Agreements
-                .AsNoTracking()
-                .Where(a => a.TenantId == tenantId && !a.IsDeleted)
-                .OrderByDescending(a => a.AgreementDate)
-                .ThenByDescending(a => a.Id)
-                .ToListAsync();
-            var first = await LoadFirstPartyAsync(tenantId);
-            return list.Select(a => Map(a, first)).ToList();
+            try
+            {
+                var rows = await _context.Agreements.AsNoTracking()
+                    .Where(a => a.TenantId == tenantId && !a.IsDeleted)
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ToListAsync();
+                return rows.Select(Map).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to list agreements for tenant {TenantId}", tenantId);
+                throw;
+            }
         }
 
         public async Task<AgreementDto?> GetByIdAsync(int id, int tenantId)
         {
-            var a = await _context.Agreements
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId && !x.IsDeleted);
-            if (a == null) return null;
-            return Map(a, await LoadFirstPartyAsync(tenantId));
+            try
+            {
+                var a = await _context.Agreements.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId && !x.IsDeleted);
+                return a == null ? null : Map(a);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to get agreement {Id} for tenant {TenantId}", id, tenantId);
+                throw;
+            }
         }
 
-        public async Task<AgreementDto> GetBlankPreviewAsync(int tenantId)
+        public Task<AgreementDto> GetBlankPreviewAsync(int tenantId)
         {
-            var first = await LoadFirstPartyAsync(tenantId);
-            return new AgreementDto
+            _ = tenantId;
+            return Task.FromResult(Map(new Agreement
             {
-                AgreementNo = "",
+                AgreementNo = "(preview)",
                 AgreementDate = DateTime.UtcNow.Date,
-                TemplateVersion = TemplateVersion,
                 Status = "Draft",
-                FirstPartyName = first.Name,
-                FirstPartyLicense = first.License,
-                FirstPartyAddress = first.Address,
-                FirstPartyMobile = first.Mobile,
-                FirstPartyEmail = first.Email,
-                FirstPartyWebsite = first.Website,
-                FirstPartyPhones = first.Phones
-            };
+                TemplateVersion = AgreementTemplate.Version
+            }));
         }
 
         public async Task<AgreementDto> CreateAsync(CreateAgreementRequest request, int userId, int tenantId)
         {
             try
             {
-                var nextNo = await GenerateAgreementNoAsync(tenantId);
+                var agreementNo = await GenerateAgreementNoAsync(tenantId);
                 var entity = new Agreement
                 {
                     OwnerId = tenantId,
                     TenantId = tenantId,
-                    AgreementNo = nextNo,
+                    AgreementNo = agreementNo,
                     AgreementDate = request.AgreementDate?.Date ?? DateTime.UtcNow.Date,
                     SecondPartyName = request.SecondPartyName?.Trim(),
                     SecondPartyLicense = request.SecondPartyLicense?.Trim(),
                     SecondPartyAddress = request.SecondPartyAddress?.Trim(),
                     SecondPartyMobile = request.SecondPartyMobile?.Trim(),
-                    TemplateVersion = TemplateVersion,
+                    TemplateVersion = AgreementTemplate.Version,
                     Status = NormalizeStatus(request.Status),
                     Notes = request.Notes,
                     CreatedBy = userId,
@@ -98,8 +93,7 @@ namespace HexaBill.Api.Modules.Documents
                 };
                 _context.Agreements.Add(entity);
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Agreement {No} created for tenant {TenantId}", nextNo, tenantId);
-                return Map(entity, await LoadFirstPartyAsync(tenantId));
+                return Map(entity);
             }
             catch (Exception ex)
             {
@@ -125,9 +119,8 @@ namespace HexaBill.Api.Modules.Documents
                 entity.Notes = request.Notes;
                 entity.LastModifiedBy = userId;
                 entity.LastModifiedAt = DateTime.UtcNow;
-
                 await _context.SaveChangesAsync();
-                return Map(entity, await LoadFirstPartyAsync(tenantId));
+                return Map(entity);
             }
             catch (Exception ex)
             {
@@ -171,26 +164,13 @@ namespace HexaBill.Api.Modules.Documents
             return $"AGR-{max + 1}";
         }
 
-        private async Task<(string Name, string License, string Address, string Mobile, string Email, string Website, string Phones)>
-            LoadFirstPartyAsync(int tenantId)
-        {
-            var dict = await _settings.GetOwnerSettingsAsync(tenantId);
-            var name = dict.GetValueOrDefault("COMPANY_NAME_EN", "HexaBill");
-            var license = dict.GetValueOrDefault("COMPANY_LICENSE", DefaultLicense);
-            if (string.IsNullOrWhiteSpace(license)) license = DefaultLicense;
-            var address = dict.GetValueOrDefault("COMPANY_ADDRESS", "Abu Dhabi, UAE");
-            var mobile = dict.GetValueOrDefault("COMPANY_PHONE", "");
-            var email = dict.GetValueOrDefault("COMPANY_EMAIL", "");
-            var website = dict.GetValueOrDefault("COMPANY_WEBSITE", "");
-            var phones = dict.GetValueOrDefault("COMPANY_PHONES", mobile);
-            return (name, license, address, mobile, email, website, phones);
-        }
-
         private static string NormalizeStatus(string? status)
             => string.Equals(status, "Final", StringComparison.OrdinalIgnoreCase) ? "Final" : "Draft";
 
-        private static AgreementDto Map(Agreement a, (string Name, string License, string Address, string Mobile, string Email, string Website, string Phones) first)
-            => new()
+        private static AgreementDto Map(Agreement a)
+        {
+            var secondDisplay = string.IsNullOrWhiteSpace(a.SecondPartyName) ? "________________" : a.SecondPartyName.Trim();
+            return new AgreementDto
             {
                 Id = a.Id,
                 AgreementNo = a.AgreementNo,
@@ -199,35 +179,53 @@ namespace HexaBill.Api.Modules.Documents
                 SecondPartyLicense = a.SecondPartyLicense,
                 SecondPartyAddress = a.SecondPartyAddress,
                 SecondPartyMobile = a.SecondPartyMobile,
-                TemplateVersion = a.TemplateVersion,
+                TemplateVersion = string.IsNullOrWhiteSpace(a.TemplateVersion) ? AgreementTemplate.Version : a.TemplateVersion,
                 Status = a.Status,
                 Notes = a.Notes,
                 CreatedAt = a.CreatedAt,
-                FirstPartyName = first.Name,
-                FirstPartyLicense = first.License,
-                FirstPartyAddress = first.Address,
-                FirstPartyMobile = first.Mobile,
-                FirstPartyEmail = first.Email,
-                FirstPartyWebsite = first.Website,
-                FirstPartyPhones = first.Phones
+                FirstPartyName = AgreementTemplate.FirstPartyName,
+                FirstPartyLicense = AgreementTemplate.FirstPartyLicense,
+                FirstPartyAddress = AgreementTemplate.FirstPartyAddress,
+                FirstPartyMobile = AgreementTemplate.FirstPartyMobile,
+                FirstPartyEmail = AgreementTemplate.Email,
+                FirstPartyWebsite = AgreementTemplate.Website,
+                FirstPartyPhones = AgreementTemplate.FooterPhones,
+                FooterAddress = AgreementTemplate.FooterAddress,
+                WhereasText = AgreementTemplate.Whereas(secondDisplay),
+                Clauses = AgreementTemplate.BuildClauses().ToList()
             };
+        }
     }
 
-    /// <summary>Fixed Business Development Agreement clause text (v1).</summary>
+    /// <summary>Verbatim Zayoga Business Development Agreement text (v1) from signed sample.</summary>
     public static class AgreementTemplate
     {
+        public const string Version = "v1";
         public const string Title = "BUSINESS DEVELOPMENT AGREEMENT";
 
-        public static string Whereas(string firstName, string secondName) =>
-            $"Whereas the First Party ({firstName}) is a licensed Ice popsicles and Sip up Distributors and the Second Party ({(string.IsNullOrWhiteSpace(secondName) ? "________________" : secondName)}) is a Licensed trader.";
+        public const string FirstPartyName = "ZAYOGA GENERAL TRADING SOLE PROPRIETORSHIP LLC";
+        public const string FirstPartyLicense = "CN-4937175";
+        public const string FirstPartyAddress = "ABUDHABI UAE";
+        public const string FirstPartyMobile = "+971564525130";
+        public const string Email = "info@zayoga.ae";
+        public const string Website = "www.zayoga.ae";
+        public const string FooterAddress = "OFFICE M14,AL SAWARI TOWER B,KHALIDIYA ABUDHABI UAE";
+        public const string FooterPhones = "TEL- 022450340, 0564525130,0547595982";
 
-        public static readonly string[] Clauses =
+        public static string Whereas(string secondPartyDisplayName) =>
+            $"Whereas, {FirstPartyName} is a licensed Ice popsicles and Sip up Distributors based in UAE an {secondPartyDisplayName} is Licensed trader selling products directly to the customers, both parties agreed on the following points:";
+
+        public static IReadOnlyList<string> BuildClauses() => new[]
         {
-            "The First Party will provide frozen items meeting food safety and quality standards.",
-            "The Second Party will purchase and sell popsicles in their outlet.",
-            "The First Party will provide a freezer to the Second Party; the Second Party agrees to provide space in the outlet.",
-            "There is no return policy for the items once items delivered unless there is damage; and in case of nonmoving, items should return with good condition which is able to sell at least two months before expiry.",
-            "The First Party retains ownership of the freezer and may request its return; the Second Party shall comply."
+            $"{FirstPartyName} will provide frozen items that meets all applicable food safety and quality standards.",
+            "will purchase these items based on the following terms and conditions: -",
+            "Second party to sell popsicles in outlet.",
+            "Display Support: The First party will provide freezer to the second party and they agreed to provide space in outlet to generate a good business for both parties.",
+            "Return Policy: there is no return policy for the items once items delivered unless there is no damage and in case of nonmoving, items should return with good condition which is able to sell at least two months before expiry.",
+            "The first party retains the ownership of the freezer and may request the return of the same, second party shall comply with such request."
         };
+
+        /// <summary>Legacy alias used by older call sites.</summary>
+        public static IReadOnlyList<string> Clauses => BuildClauses();
     }
 }

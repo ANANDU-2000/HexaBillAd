@@ -10,6 +10,7 @@ namespace HexaBill.Api.Models
         public int Id { get; set; }
         public int? ProductId { get; set; }
         public string Description { get; set; } = string.Empty;
+        public string? DescriptionSubtitle { get; set; }
         public string UnitLabel { get; set; } = "Pcs";
         public decimal Qty { get; set; }
         public decimal UnitPrice { get; set; }
@@ -35,8 +36,18 @@ namespace HexaBill.Api.Models
         public decimal GrandTotal { get; set; }
         public string Status { get; set; } = "Draft";
         public string? Notes { get; set; }
+        public string Salutation { get; set; } = QuotationDefaults.Salutation;
+        public string IntroLine { get; set; } = QuotationDefaults.IntroLine;
+        public string ClosingLine { get; set; } = QuotationDefaults.ClosingLine;
         public DateTime CreatedAt { get; set; }
         public List<QuotationItemDto> Items { get; set; } = new();
+    }
+
+    public static class QuotationDefaults
+    {
+        public const string Salutation = "Dear Sir/Mam,";
+        public const string IntroLine = "Thank you for your valuable inquiry. We are pleased to quote as below:";
+        public const string ClosingLine = "We hope you find our offer to be in line with your requirement.";
     }
 
     public class QuotationItemRequest
@@ -45,6 +56,8 @@ namespace HexaBill.Api.Models
         [Required]
         [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
+        [MaxLength(500)]
+        public string? DescriptionSubtitle { get; set; }
         [MaxLength(50)]
         public string UnitLabel { get; set; } = "Pcs";
         [Range(0.0001, 999999)]
@@ -71,6 +84,12 @@ namespace HexaBill.Api.Models
         [MaxLength(20)]
         public string Status { get; set; } = "Draft";
         public string? Notes { get; set; }
+        [MaxLength(200)]
+        public string? Salutation { get; set; }
+        [MaxLength(500)]
+        public string? IntroLine { get; set; }
+        [MaxLength(500)]
+        public string? ClosingLine { get; set; }
         [Required]
         [MinLength(1)]
         public List<QuotationItemRequest> Items { get; set; } = new();
@@ -92,7 +111,6 @@ namespace HexaBill.Api.Models
         public string? Notes { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        // First party snapshot for preview/PDF (from Settings + license fallback)
         public string FirstPartyName { get; set; } = string.Empty;
         public string FirstPartyLicense { get; set; } = "CN-4937175";
         public string FirstPartyAddress { get; set; } = string.Empty;
@@ -100,6 +118,9 @@ namespace HexaBill.Api.Models
         public string FirstPartyEmail { get; set; } = string.Empty;
         public string FirstPartyWebsite { get; set; } = string.Empty;
         public string FirstPartyPhones { get; set; } = string.Empty;
+        public string FooterAddress { get; set; } = string.Empty;
+        public string WhereasText { get; set; } = string.Empty;
+        public List<string> Clauses { get; set; } = new();
     }
 
     public class CreateAgreementRequest

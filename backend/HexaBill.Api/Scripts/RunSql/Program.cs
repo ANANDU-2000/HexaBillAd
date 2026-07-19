@@ -52,7 +52,16 @@ var user = env.GetValueOrDefault("DB_USER");
 var pass = env.GetValueOrDefault("DB_PASSWORD");
 if (!string.IsNullOrEmpty(host) && !string.IsNullOrEmpty(db) && !string.IsNullOrEmpty(user) && !string.IsNullOrEmpty(pass))
 {
-    var sb = new NpgsqlConnectionStringBuilder { Host = host, Port = int.Parse(port), Database = db, Username = user, Password = pass };
+    var sb = new NpgsqlConnectionStringBuilder
+    {
+        Host = host,
+        Port = int.Parse(port),
+        Database = db,
+        Username = user,
+        Password = pass,
+        SslMode = SslMode.Require,
+        TrustServerCertificate = true
+    };
     connStr = sb.ConnectionString;
 }
 else
@@ -75,7 +84,9 @@ else
                 Port = uri.Port > 0 ? uri.Port : 5432,
                 Database = string.IsNullOrEmpty(seg) ? "postgres" : seg,
                 Username = uri.UserInfo?.Split(':')[0],
-                Password = uri.UserInfo?.Contains(':') == true ? string.Join(":", uri.UserInfo.Split(':').Skip(1)) : null
+                Password = uri.UserInfo?.Contains(':') == true ? string.Join(":", uri.UserInfo.Split(':').Skip(1)) : null,
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true
             };
             connStr = builder.ConnectionString;
         }
@@ -99,6 +110,10 @@ var statements = sql
 
 try
 {
+    // Log host/db only — never password
+    var safe = new NpgsqlConnectionStringBuilder(connStr);
+    Console.WriteLine($"Connecting host={safe.Host} db={safe.Database} ssl={safe.SslMode}");
+
     await using var conn = new NpgsqlConnection(connStr);
     await conn.OpenAsync();
     foreach (var stmt in statements)
@@ -107,8 +122,15 @@ try
         {
             await using var cmd = new NpgsqlCommand(stmt + ";", conn);
             await using var r = await cmd.ExecuteReaderAsync();
-            if (await r.ReadAsync())
-                Console.WriteLine(r.GetString(0));
+            var cols = Enumerable.Range(0, r.FieldCount).Select(r.GetName).ToArray();
+            Console.WriteLine(string.Join(" | ", cols));
+            while (await r.ReadAsync())
+            {
+                var vals = new string[r.FieldCount];
+                for (var i = 0; i < r.FieldCount; i++)
+                    vals[i] = r.IsDBNull(i) ? "NULL" : Convert.ToString(r.GetValue(i)) ?? "";
+                Console.WriteLine(string.Join(" | ", vals));
+            }
         }
         else
         {

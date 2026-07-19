@@ -1677,6 +1677,14 @@ namespace HexaBill.Api.Migrations
                     b.Property<int?>("LastModifiedBy")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ClosingLine")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("IntroLine")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Notes")
                         .HasColumnType("TEXT");
 
@@ -1689,6 +1697,10 @@ namespace HexaBill.Api.Migrations
                     b.Property<string>("QuoteNo")
                         .IsRequired()
                         .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Salutation")
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Status")
@@ -1726,6 +1738,10 @@ namespace HexaBill.Api.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DescriptionSubtitle")
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 

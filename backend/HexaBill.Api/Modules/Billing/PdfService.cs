@@ -2190,7 +2190,12 @@ if (hasLogo)
         public async Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4")
         {
             var fmt = NormalizePageFormat(format);
-            var company = await _settingsService.GetCompanySettingsAsync(tenantId);
+            var settings = await GetCompanySettingsAsync(tenantId);
+            string? companyEmail = null;
+            try { companyEmail = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_EMAIL"); } catch { /* optional */ }
+            var salutation = string.IsNullOrWhiteSpace(quotation.Salutation) ? QuotationDefaults.Salutation : quotation.Salutation;
+            var intro = string.IsNullOrWhiteSpace(quotation.IntroLine) ? QuotationDefaults.IntroLine : quotation.IntroLine;
+            var closing = string.IsNullOrWhiteSpace(quotation.ClosingLine) ? QuotationDefaults.ClosingLine : quotation.ClosingLine;
             try
             {
                 var document = Document.Create(container =>
@@ -2198,95 +2203,144 @@ if (hasLogo)
                     container.Page(page =>
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
-                        page.Margin(fmt == "A5" ? 28 : 40);
+                        page.Margin(fmt == "A5" ? 24 : 36);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
 
-                        page.Header().Column(col =>
+                        page.Header().Row(row =>
                         {
-                            col.Item().Text(company.LegalNameEn ?? "Company").Bold().FontSize(fmt == "A5" ? 11 : 14).AlignCenter();
-                            if (!string.IsNullOrWhiteSpace(company.Address))
-                                col.Item().AlignCenter().Text(company.Address).FontSize(8);
-                            var contact = string.Join("  |  ", new[] { company.Mobile, $"TRN: {company.VatNumber}" }.Where(s => !string.IsNullOrWhiteSpace(s)));
-                            if (!string.IsNullOrWhiteSpace(contact))
-                                col.Item().AlignCenter().Text(contact).FontSize(8);
-                            col.Item().PaddingTop(8).AlignRight().Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
+                            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                            if (hasLogo)
+                                row.ConstantItem(70).AlignMiddle().Width(64).Height(48).Image(settings.LogoImageBytes!).FitArea();
+                            else
+                                row.ConstantItem(16);
+
+                            row.RelativeItem().Column(col =>
+                            {
+                                col.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").Bold()
+                                    .FontSize(fmt == "A5" ? 10 : 12);
+                                if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                                    col.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(7);
+                                var contactBits = new[] { settings.CompanyPhone, companyEmail, string.IsNullOrWhiteSpace(settings.CompanyTrn) ? null : settings.CompanyTrn }
+                                    .Where(s => !string.IsNullOrWhiteSpace(s));
+                                if (contactBits.Any())
+                                    col.Item().AlignCenter().Text(string.Join("  |  ", contactBits!)).FontSize(7);
+                            });
+
+                            row.ConstantItem(90).AlignRight().AlignMiddle()
+                                .Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
                         });
 
-                        page.Content().PaddingTop(10).Column(col =>
+                        page.Content().PaddingTop(12).Column(col =>
                         {
                             col.Item().Row(row =>
                             {
                                 row.RelativeItem().Column(c =>
                                 {
-                                    c.Item().Text("To:").Bold();
-                                    c.Item().Text(quotation.CustomerName ?? "");
+                                    c.Item().Text("To").Bold().FontSize(8);
+                                    c.Item().Text(quotation.CustomerName ?? "").Bold();
                                     if (!string.IsNullOrWhiteSpace(quotation.CustomerAddress))
                                         c.Item().Text(quotation.CustomerAddress).FontSize(8);
                                 });
-                                row.ConstantItem(140).AlignRight().Column(c =>
+                                row.ConstantItem(150).AlignRight().Column(c =>
                                 {
-                                    c.Item().Text($"Quotation #: {quotation.QuoteNo}").Bold();
+                                    c.Item().Text($"Quotation#: {quotation.QuoteNo}").Bold();
                                     c.Item().Text($"Date: {quotation.QuoteDate:dd-MM-yyyy}");
                                 });
                             });
 
-                            col.Item().PaddingTop(10).Text("Dear Sir/Madam, Thank you for your valuable inquiry. We are pleased to quote as below:")
-                                .FontSize(8);
+                            col.Item().PaddingTop(12).Text(salutation).FontSize(9);
+                            col.Item().PaddingTop(2).Text(intro).FontSize(8);
 
-                            col.Item().PaddingTop(8).Table(table =>
+                            col.Item().PaddingTop(10).Table(table =>
                             {
                                 table.ColumnsDefinition(columns =>
                                 {
-                                    columns.ConstantColumn(24);
-                                    columns.RelativeColumn(3);
-                                    columns.ConstantColumn(50);
-                                    columns.ConstantColumn(55);
-                                    columns.ConstantColumn(55);
-                                    columns.ConstantColumn(60);
+                                    columns.ConstantColumn(22);
+                                    columns.RelativeColumn(3.2f);
+                                    columns.ConstantColumn(48);
+                                    columns.ConstantColumn(58);
+                                    columns.ConstantColumn(58);
+                                    columns.ConstantColumn(62);
                                 });
                                 table.Header(header =>
                                 {
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text("#").Bold().FontSize(8);
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text("DESCRIPTION").Bold().FontSize(8);
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("QTY").Bold().FontSize(8);
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("PRICE").Bold().FontSize(8);
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("TAX").Bold().FontSize(8);
-                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("TOTAL").Bold().FontSize(8);
+                                    void H(string t, bool right = false)
+                                    {
+                                        var cell = header.Cell().Background(Colors.Grey.Darken2).PaddingVertical(4).PaddingHorizontal(3);
+                                        if (right) cell.AlignRight().Text(t).Bold().FontSize(8).FontColor(Colors.White);
+                                        else cell.Text(t).Bold().FontSize(8).FontColor(Colors.White);
+                                    }
+                                    H("#");
+                                    H("DESCRIPTION");
+                                    H("QTY", true);
+                                    H("PRICE", true);
+                                    H("TAX", true);
+                                    H("TOTAL", true);
                                 });
                                 var i = 1;
                                 foreach (var item in quotation.Items.OrderBy(x => x.SortOrder))
                                 {
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(i.ToString()).FontSize(8);
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(item.Description).FontSize(8);
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.Qty:0.##} {item.UnitLabel}").FontSize(8);
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.UnitPrice:N2}").FontSize(8);
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.VatAmount:N2}").FontSize(8);
-                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.LineTotal:N2}").FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3)
+                                        .Text(i.ToString()).FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Column(c =>
+                                    {
+                                        c.Item().Text(item.Description).Bold().FontSize(8);
+                                        if (!string.IsNullOrWhiteSpace(item.DescriptionSubtitle))
+                                            c.Item().Text(item.DescriptionSubtitle).FontSize(7).FontColor(Colors.Grey.Darken1);
+                                    });
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Column(c =>
+                                    {
+                                        c.Item().AlignRight().Text($"{item.Qty:0.##}").FontSize(8);
+                                        c.Item().AlignRight().Text(item.UnitLabel ?? "Pcs").FontSize(7).FontColor(Colors.Grey.Darken1);
+                                    });
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight()
+                                        .Text($"AED {item.UnitPrice:N2}").FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Column(c =>
+                                    {
+                                        c.Item().AlignRight().Text($"AED {item.VatAmount:N2}").FontSize(8);
+                                        c.Item().AlignRight().Text($"{item.VatRate:N2}%").FontSize(7).FontColor(Colors.Grey.Darken1);
+                                    });
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight()
+                                        .Text($"AED {item.LineTotal:N2}").FontSize(8);
                                     i++;
                                 }
                             });
 
-                            col.Item().PaddingTop(12).AlignRight().Width(200).Column(totals =>
+                            col.Item().PaddingTop(14).AlignRight().Width(210).Column(totals =>
                             {
                                 totals.Item().Row(r =>
                                 {
                                     r.RelativeItem().Text("SUBTOTAL");
-                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.Subtotal:N2}");
+                                    r.ConstantItem(90).AlignRight().Text($"AED {quotation.Subtotal:N2}");
                                 });
                                 totals.Item().Row(r =>
                                 {
                                     r.RelativeItem().Text("TAX");
-                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.VatTotal:N2}");
+                                    r.ConstantItem(90).AlignRight().Text($"AED {quotation.VatTotal:N2}");
                                 });
                                 totals.Item().PaddingTop(4).BorderTop(1).BorderBottom(2).PaddingVertical(4).Row(r =>
                                 {
                                     r.RelativeItem().Text("GRAND TOTAL").Bold();
-                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.GrandTotal:N2}").Bold();
+                                    r.ConstantItem(90).AlignRight().Text($"AED {quotation.GrandTotal:N2}").Bold();
                                 });
+                            });
+
+                            col.Item().PaddingTop(18).Text(closing).FontSize(8);
+
+                            col.Item().PaddingTop(28).AlignRight().Width(160).Column(sig =>
+                            {
+                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                if (hasLogo)
+                                    sig.Item().AlignCenter().Width(72).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                                else
+                                    sig.Item().Height(28);
+                                sig.Item().PaddingTop(6).AlignCenter().Text("AUTHORIZED SIGNATURE").Bold().FontSize(8);
+                                if (!string.IsNullOrWhiteSpace(settings.CompanyNameEn))
+                                    sig.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7);
                             });
                         });
 
-                        page.Footer().AlignCenter().Text(x =>
+                        page.Footer().AlignRight().Text(x =>
                         {
                             x.Span("Page ");
                             x.CurrentPageNumber();
@@ -2304,12 +2358,26 @@ if (hasLogo)
             }
         }
 
-        public Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, string format = "A4")
+        public async Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, int tenantId, string format = "A4")
         {
             var fmt = NormalizePageFormat(format);
+            InvoiceTemplateService.CompanySettings? settings = null;
+            try { settings = await GetCompanySettingsAsync(tenantId); } catch { /* logo optional */ }
             try
             {
-                var secondName = string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? "________________" : agreement.SecondPartyName!;
+                var blank = "________________";
+                var secondName = string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? blank : agreement.SecondPartyName!.Trim();
+                var secondLicense = string.IsNullOrWhiteSpace(agreement.SecondPartyLicense) ? blank : agreement.SecondPartyLicense!.Trim();
+                var secondAddress = string.IsNullOrWhiteSpace(agreement.SecondPartyAddress) ? blank : agreement.SecondPartyAddress!.Trim();
+                var secondMobile = string.IsNullOrWhiteSpace(agreement.SecondPartyMobile) ? blank : agreement.SecondPartyMobile!.Trim();
+                var whereas = string.IsNullOrWhiteSpace(agreement.WhereasText)
+                    ? HexaBill.Api.Modules.Documents.AgreementTemplate.Whereas(secondName)
+                    : agreement.WhereasText;
+                var clauses = (agreement.Clauses != null && agreement.Clauses.Count > 0)
+                    ? agreement.Clauses
+                    : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses().ToList();
+                var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+
                 var document = Document.Create(container =>
                 {
                     container.Page(page =>
@@ -2320,72 +2388,78 @@ if (hasLogo)
 
                         page.Header().Column(col =>
                         {
-                            col.Item().Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
-                                .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12).AlignCenter();
-                            col.Item().PaddingTop(6).AlignCenter().Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
+                            col.Item().Row(row =>
+                            {
+                                if (hasLogo)
+                                    row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
+                                else
+                                    row.ConstantItem(8);
+                                row.RelativeItem().AlignMiddle().AlignCenter()
+                                    .Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
+                                    .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12);
+                            });
+                            col.Item().PaddingTop(8).AlignCenter().Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
                                 .Bold().FontSize(fmt == "A5" ? 11 : 13).Underline();
-                            col.Item().PaddingTop(4).AlignCenter().Text(agreement.AgreementDate.ToString("dd/MM/yyyy")).FontSize(9);
+                            col.Item().PaddingTop(4).AlignCenter().Text($"DATE-{agreement.AgreementDate:dd/MM/yyyy}").FontSize(9).Underline();
                         });
 
-                        page.Content().PaddingTop(12).Column(col =>
+                        page.Content().PaddingTop(14).Column(col =>
                         {
-                            col.Item().Text("First Party:").Bold();
+                            col.Item().Text("First party:").Bold();
                             col.Item().Text(agreement.FirstPartyName);
-                            col.Item().Text($"License: {agreement.FirstPartyLicense}");
-                            col.Item().Text($"Location: {agreement.FirstPartyAddress}");
-                            if (!string.IsNullOrWhiteSpace(agreement.FirstPartyMobile))
-                                col.Item().Text($"Mobile: {agreement.FirstPartyMobile}");
+                            col.Item().Text($"License number: {agreement.FirstPartyLicense}");
+                            col.Item().Text(agreement.FirstPartyAddress);
+                            col.Item().Text($"Mob: {agreement.FirstPartyMobile}");
 
-                            col.Item().PaddingTop(8).Text("Second Party:").Bold();
-                            col.Item().Text(string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? "________________" : agreement.SecondPartyName);
-                            col.Item().Text($"License: {(string.IsNullOrWhiteSpace(agreement.SecondPartyLicense) ? "________________" : agreement.SecondPartyLicense)}");
-                            col.Item().Text($"Location: {(string.IsNullOrWhiteSpace(agreement.SecondPartyAddress) ? "________________" : agreement.SecondPartyAddress)}");
-                            col.Item().Text($"Mobile: {(string.IsNullOrWhiteSpace(agreement.SecondPartyMobile) ? "________________" : agreement.SecondPartyMobile)}");
+                            col.Item().PaddingTop(12).Text("Second Party").Bold();
+                            col.Item().Text($"Name: {secondName}");
+                            col.Item().Text($"License number: {secondLicense}");
+                            col.Item().Text(secondAddress);
+                            col.Item().Text($"Mob: {secondMobile}");
 
-                            col.Item().PaddingTop(10).Text(
-                                HexaBill.Api.Modules.Documents.AgreementTemplate.Whereas(agreement.FirstPartyName, secondName));
+                            col.Item().PaddingTop(14).Text(whereas).FontSize(8);
 
-                            col.Item().PaddingTop(8).Text("The parties agree as follows:").Bold();
-                            var n = 1;
-                            foreach (var clause in HexaBill.Api.Modules.Documents.AgreementTemplate.Clauses)
+                            for (var n = 0; n < clauses.Count; n++)
                             {
-                                col.Item().PaddingTop(4).Text($"{n}. {clause}");
-                                n++;
+                                var clause = clauses[n];
+                                var isSub = n >= 2;
+                                col.Item().PaddingTop(isSub ? 3 : 6).PaddingLeft(isSub ? 14 : 0)
+                                    .Text(isSub ? $"❖ {clause}" : $"• {clause}").FontSize(8);
                             }
 
-                            col.Item().PaddingTop(28).Row(row =>
+                            col.Item().PaddingTop(32).Row(row =>
                             {
                                 row.RelativeItem().Column(c =>
                                 {
-                                    c.Item().Text("________________________").AlignCenter();
-                                    c.Item().AlignCenter().Text("First Party").Bold();
-                                    c.Item().AlignCenter().Text(agreement.FirstPartyName).FontSize(7);
+                                    c.Item().Text("First Party:").Bold();
+                                    c.Item().Text(agreement.FirstPartyName).FontSize(8);
+                                    c.Item().PaddingTop(40).Text("________________________");
                                 });
                                 row.RelativeItem().Column(c =>
                                 {
-                                    c.Item().Text("________________________").AlignCenter();
-                                    c.Item().AlignCenter().Text("Second Party").Bold();
-                                    c.Item().AlignCenter().Text(secondName).FontSize(7);
+                                    c.Item().Text("Second Party").Bold();
+                                    c.Item().Text(secondName).FontSize(8);
+                                    c.Item().PaddingTop(40).Text("________________________");
                                 });
                             });
                         });
 
                         page.Footer().Column(col =>
                         {
-                            var footerBits = new[] { agreement.FirstPartyAddress, agreement.FirstPartyPhones, agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
-                                .Where(s => !string.IsNullOrWhiteSpace(s));
-                            col.Item().AlignCenter().Text(string.Join("  |  ", footerBits)).FontSize(7).FontColor(Colors.Grey.Darken1);
-                            col.Item().AlignCenter().Text(x =>
-                            {
-                                x.Span("Page ");
-                                x.CurrentPageNumber();
-                                x.Span(" of ");
-                                x.TotalPages();
-                            });
+                            col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                            col.Item().PaddingTop(6).AlignCenter().Text(agreement.FirstPartyName).Bold().FontSize(7);
+                            if (!string.IsNullOrWhiteSpace(agreement.FooterAddress))
+                                col.Item().AlignCenter().Text(agreement.FooterAddress).FontSize(7);
+                            if (!string.IsNullOrWhiteSpace(agreement.FirstPartyPhones))
+                                col.Item().AlignCenter().Text(agreement.FirstPartyPhones).FontSize(7);
+                            var mailWeb = string.Join("  |  ", new[] { agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
+                                .Where(s => !string.IsNullOrWhiteSpace(s)));
+                            if (!string.IsNullOrWhiteSpace(mailWeb))
+                                col.Item().AlignCenter().Text(mailWeb).FontSize(7);
                         });
                     });
                 });
-                return Task.FromResult(document.GeneratePdf());
+                return await Task.FromResult(document.GeneratePdf());
             }
             catch (Exception ex)
             {

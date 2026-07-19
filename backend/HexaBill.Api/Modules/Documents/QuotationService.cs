@@ -88,6 +88,9 @@ namespace HexaBill.Api.Modules.Documents
                     GrandTotal = grandTotal,
                     Status = status,
                     Notes = request.Notes,
+                    Salutation = NormalizeText(request.Salutation, QuotationDefaults.Salutation),
+                    IntroLine = NormalizeText(request.IntroLine, QuotationDefaults.IntroLine),
+                    ClosingLine = NormalizeText(request.ClosingLine, QuotationDefaults.ClosingLine),
                     CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow,
                     Items = items
@@ -129,6 +132,9 @@ namespace HexaBill.Api.Modules.Documents
                 entity.GrandTotal = grandTotal;
                 entity.Status = NormalizeStatus(request.Status);
                 entity.Notes = request.Notes;
+                entity.Salutation = NormalizeText(request.Salutation, QuotationDefaults.Salutation);
+                entity.IntroLine = NormalizeText(request.IntroLine, QuotationDefaults.IntroLine);
+                entity.ClosingLine = NormalizeText(request.ClosingLine, QuotationDefaults.ClosingLine);
                 entity.LastModifiedBy = userId;
                 entity.LastModifiedAt = DateTime.UtcNow;
 
@@ -185,6 +191,7 @@ namespace HexaBill.Api.Modules.Documents
                 {
                     ProductId = r.ProductId,
                     Description = r.Description.Trim(),
+                    DescriptionSubtitle = string.IsNullOrWhiteSpace(r.DescriptionSubtitle) ? null : r.DescriptionSubtitle.Trim(),
                     UnitLabel = string.IsNullOrWhiteSpace(r.UnitLabel) ? "Pcs" : r.UnitLabel.Trim(),
                     Qty = r.Qty,
                     UnitPrice = r.UnitPrice,
@@ -214,6 +221,9 @@ namespace HexaBill.Api.Modules.Documents
             return "Draft";
         }
 
+        private static string NormalizeText(string? value, string fallback)
+            => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+
         private static QuotationDto Map(Quotation q) => new()
         {
             Id = q.Id,
@@ -230,12 +240,16 @@ namespace HexaBill.Api.Modules.Documents
             GrandTotal = q.GrandTotal,
             Status = q.Status,
             Notes = q.Notes,
+            Salutation = string.IsNullOrWhiteSpace(q.Salutation) ? QuotationDefaults.Salutation : q.Salutation,
+            IntroLine = string.IsNullOrWhiteSpace(q.IntroLine) ? QuotationDefaults.IntroLine : q.IntroLine,
+            ClosingLine = string.IsNullOrWhiteSpace(q.ClosingLine) ? QuotationDefaults.ClosingLine : q.ClosingLine,
             CreatedAt = q.CreatedAt,
             Items = q.Items.OrderBy(i => i.SortOrder).Select(i => new QuotationItemDto
             {
                 Id = i.Id,
                 ProductId = i.ProductId,
                 Description = i.Description,
+                DescriptionSubtitle = i.DescriptionSubtitle,
                 UnitLabel = i.UnitLabel,
                 Qty = i.Qty,
                 UnitPrice = i.UnitPrice,

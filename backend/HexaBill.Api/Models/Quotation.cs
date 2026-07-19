@@ -42,6 +42,16 @@ namespace HexaBill.Api.Models
         public string Status { get; set; } = "Draft";
 
         public string? Notes { get; set; }
+
+        [MaxLength(200)]
+        public string? Salutation { get; set; }
+
+        [MaxLength(500)]
+        public string? IntroLine { get; set; }
+
+        [MaxLength(500)]
+        public string? ClosingLine { get; set; }
+
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
         public int? LastModifiedBy { get; set; }
@@ -63,6 +73,9 @@ namespace HexaBill.Api.Models
         [Required]
         [MaxLength(500)]
         public string Description { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string? DescriptionSubtitle { get; set; }
 
         [MaxLength(50)]
         public string UnitLabel { get; set; } = "Pcs";
