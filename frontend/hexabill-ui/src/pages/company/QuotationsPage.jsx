@@ -79,9 +79,12 @@ export default function QuotationsPage() {
       <div className="flex items-center justify-between mb-3 gap-2">
         <div>
           <h1 className="text-h2 font-bold text-text-primary">Quotations</h1>
-          <p className="text-sm text-text-secondary">History · edit · reprint · delete · A4/A5 PDF</p>
+          <p className="text-sm text-text-secondary">Create, edit, reprint, and delete quotes (A4 / A5 PDF)</p>
         </div>
-        <Link to="/quotations/new" className="inline-flex items-center gap-1 px-3 py-2 bg-primary text-white rounded-md text-sm">
+        <Link
+          to="/quotations/new"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-md text-sm shadow-sm min-h-[44px]"
+        >
           <Plus className="w-4 h-4" /> New quotation
         </Link>
       </div>
@@ -89,9 +92,16 @@ export default function QuotationsPage() {
       {loading ? (
         <p className="text-sm text-text-secondary">Loading…</p>
       ) : rows.length === 0 ? (
-        <div className="border rounded-lg p-6 text-center text-text-secondary">
-          <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          No quotations yet.
+        <div className="border rounded-lg p-8 text-center bg-white">
+          <FileText className="w-10 h-10 mx-auto mb-3 text-slate-400" />
+          <p className="text-text-primary font-medium mb-1">No quotations yet</p>
+          <p className="text-sm text-text-secondary mb-4">Create your first quote for a customer, then print or download PDF.</p>
+          <Link
+            to="/quotations/new"
+            className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-md text-sm shadow-sm min-h-[44px]"
+          >
+            <Plus className="w-4 h-4" /> Create first quotation
+          </Link>
         </div>
       ) : (
         <div className="border rounded-lg overflow-x-auto bg-white">

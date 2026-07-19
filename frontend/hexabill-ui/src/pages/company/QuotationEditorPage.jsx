@@ -486,7 +486,7 @@ export default function QuotationEditorPage() {
             onClick={save}
             disabled={saving || !isDirty}
             className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md disabled:opacity-50 ${
-              isDirty ? 'bg-primary text-white' : 'border text-text-secondary bg-slate-50'
+              isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
             }`}
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
