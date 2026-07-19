@@ -610,10 +610,11 @@ const SupplierDetailPage = () => {
                                     setPreFillPayment({ amount: String(purchaseMatch.balanceAmount || 0), reference: purchaseMatch.invoiceNo || '' })
                                     setShowRecordPayment(true)
                                   }}
-                                  className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 hover:bg-green-200 rounded text-xs font-medium"
+                                  className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-green-100 text-green-800 hover:bg-green-200 rounded-lg"
                                   title={`Pay ${formatCurrency(purchaseMatch.balanceAmount)} towards this bill (FIFO)`}
+                                  aria-label={`Pay ${formatCurrency(purchaseMatch.balanceAmount)}`}
                                 >
-                                  <Banknote className="h-3.5 w-3.5" /> Pay
+                                  <Banknote className="h-4 w-4" />
                                 </button>
                               ) : (
                                 <span className="text-primary-400 text-xs">—</span>
@@ -716,8 +717,8 @@ const SupplierDetailPage = () => {
                             </td>
                             <td className="p-2 text-center">
                               {hasBalance ? (
-                                <button type="button" onClick={() => { setPaymentForm(prev => ({ ...prev, amount: String(p.balanceAmount || 0) })); setPreFillPayment({ amount: String(p.balanceAmount || 0), reference: p.invoiceNo || '' }); setShowRecordPayment(true) }} className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 hover:bg-green-200 rounded text-xs font-medium">
-                                  <Banknote className="h-3.5 w-3.5" /> Pay
+                                <button type="button" onClick={() => { setPaymentForm(prev => ({ ...prev, amount: String(p.balanceAmount || 0) })); setPreFillPayment({ amount: String(p.balanceAmount || 0), reference: p.invoiceNo || '' }); setShowRecordPayment(true) }} className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-green-100 text-green-800 hover:bg-green-200 rounded-lg" title="Pay bill" aria-label="Pay bill">
+                                  <Banknote className="h-4 w-4" />
                                 </button>
                               ) : (
                                 <span className="text-primary-400 text-xs">—</span>

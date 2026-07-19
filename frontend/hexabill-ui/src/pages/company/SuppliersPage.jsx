@@ -334,16 +334,16 @@ const SuppliersPage = () => {
               <table className="w-full">
                 <thead className="bg-primary-100">
                   <tr>
-                    <th className="text-left p-3 font-medium text-primary-800">Supplier</th>
-                    <th className="text-left p-3 font-medium text-primary-800">Phone</th>
-                    <th className="text-right p-3 font-medium text-primary-800">Total Purchases</th>
-                    <th className="text-right p-3 font-medium text-primary-800">Total Paid</th>
-                    <th className="text-right p-3 font-medium text-primary-800">Outstanding</th>
-                    <th className="text-right p-3 font-medium text-primary-800">Overdue</th>
-                    <th className="text-center p-3 font-medium text-primary-800">Last Purchase</th>
-                    <th className="text-center p-3 font-medium text-primary-800">Invoices</th>
-                    <th className="text-center p-3 font-medium text-primary-800">Last Payment</th>
-                    <th className="p-3 font-medium text-primary-800">Actions</th>
+                    <th className="text-left p-2 font-medium text-primary-800 text-sm">Supplier</th>
+                    <th className="text-left p-2 font-medium text-primary-800 text-sm">Phone</th>
+                    <th className="text-right p-2 font-medium text-primary-800 text-sm">Total Purchases</th>
+                    <th className="text-right p-2 font-medium text-primary-800 text-sm">Total Paid</th>
+                    <th className="text-right p-2 font-medium text-primary-800 text-sm">Outstanding</th>
+                    <th className="text-right p-2 font-medium text-primary-800 text-sm">Overdue</th>
+                    <th className="text-center p-2 font-medium text-primary-800 text-sm">Last Purchase</th>
+                    <th className="text-center p-2 font-medium text-primary-800 text-sm">Invoices</th>
+                    <th className="text-center p-2 font-medium text-primary-800 text-sm">Last Payment</th>
+                    <th className="p-2 font-medium text-primary-800 text-sm w-auto whitespace-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -378,18 +378,36 @@ const SuppliersPage = () => {
                         <td className="p-3 text-center text-sm">{formatDate(s.lastPurchaseDate)}</td>
                         <td className="p-3 text-center">{s.invoiceCount ?? '-'}</td>
                         <td className="p-3 text-center text-sm">{formatDate(s.lastPaymentDate)}</td>
-                        <td className="p-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm font-medium">
-                              <Eye className="h-4 w-4" /> Supplier Ledger
+                        <td className="p-2 whitespace-nowrap w-auto">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/suppliers/${encodeURIComponent(s.supplierName)}`)}
+                              className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-primary-100 hover:bg-primary-200 rounded-lg"
+                              title="Supplier Ledger"
+                              aria-label="Supplier Ledger"
+                            >
+                              <Eye className="h-4 w-4" />
                             </button>
                             {s.id != null && (
                               <>
-                                <button onClick={() => openEditModal(s)} className="flex items-center gap-1 px-2 py-1 bg-amber-100 hover:bg-amber-200 rounded text-sm font-medium" title="Edit supplier">
-                                  <Pencil className="h-4 w-4" /> Edit
+                                <button
+                                  type="button"
+                                  onClick={() => openEditModal(s)}
+                                  className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-amber-100 hover:bg-amber-200 rounded-lg"
+                                  title="Edit supplier"
+                                  aria-label="Edit supplier"
+                                >
+                                  <Pencil className="h-4 w-4" />
                                 </button>
-                                <button onClick={() => setDeleteConfirm(s)} className="flex items-center gap-1 px-2 py-1 bg-red-100 hover:bg-red-200 rounded text-sm font-medium text-red-800" title="Deactivate supplier">
-                                  <Trash2 className="h-4 w-4" /> Delete
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteConfirm(s)}
+                                  className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-red-100 hover:bg-red-200 rounded-lg text-red-800"
+                                  title="Deactivate supplier"
+                                  aria-label="Deactivate supplier"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </>
                             )}

@@ -3738,16 +3738,16 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         }`}>
                         {formatBalance(Number(entry.balance) || 0)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center">
+                      <td className="px-2 py-1.5 whitespace-nowrap text-center w-auto">
                         {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
                           <button
                             type="button"
                             onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
                             title="Create return for this bill"
+                            aria-label="Create return"
                           >
-                            <RotateCcw className="h-3 w-3" />
-                            Return
+                            <RotateCcw className="h-4 w-4" />
                           </button>
                         ) : entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
                           <div className="inline-flex items-center gap-1">
@@ -3769,32 +3769,32 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                                   if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
                                 }
                               }}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                              className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
                               title="View / download return bill PDF"
+                              aria-label="Return bill PDF"
                             >
-                              <FileText className="h-3 w-3" />
-                              Return bill
+                              <FileText className="h-4 w-4" />
                             </button>
                             {onDeleteReturn && (
                               <button
                                 type="button"
                                 onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded hover:bg-red-200"
+                                className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
                                 title="Delete this return"
+                                aria-label="Delete return"
                               >
-                                <Trash2 className="h-3 w-3" />
-                                Delete return
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             )}
                             {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit && (
                               <button
                                 type="button"
                                 onClick={() => onSettleCredit(entry)}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-emerald-100 text-emerald-800 rounded hover:bg-emerald-200"
+                                className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-200"
                                 title="Apply credit to invoice or issue refund"
+                                aria-label="Settle credit"
                               >
-                                <CreditCard className="h-3 w-3" />
-                                Settle credit
+                                <CreditCard className="h-4 w-4" />
                               </button>
                             )}
                           </div>

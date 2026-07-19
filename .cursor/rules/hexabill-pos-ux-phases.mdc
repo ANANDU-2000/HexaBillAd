@@ -1,0 +1,31 @@
+---
+description: Scope-locked POS + Ledger UI/UX phase rules for HexaBill production billing
+globs: "**/PosPage.jsx,**/CustomerLedgerPage.jsx,**/SuppliersPage.jsx,**/SupplierDetailPage.jsx,**/SupplierLedgerModal.jsx"
+alwaysApply: false
+---
+
+# HexaBill POS + Ledger UI/UX Phases
+
+Live production billing app with paying Gulf clients. A UI/UX win that breaks invoice/payment flows is a failed change.
+
+Also follow: `.cursor/rules/enterprise-saas-production.mdc` and `.cursor/rules/hexabill-ui-ux-design.mdc`.
+Line-number source of truth after Phase 0: `docs/pos-ux-audit.md`.
+
+## Non-negotiable rules
+
+1. **READ BEFORE EDIT.** Open and read the full target file(s) before writing any diff. Quote the current relevant code block before proposing a change.
+2. **SCOPE LOCK.** Touch ONLY the file(s) named for the current phase. If a change requires a second file, STOP and report what and why instead of doing it.
+3. **NO HARDCODED VALUES.** No hardcoded pixel breakpoints, row counts, or colors that duplicate a value already defined elsewhere (Tailwind config, existing constants). Derive density from row-height × viewport.
+4. **NO BEHAVIOR CHANGE TO DATA LOGIC.** VAT calculation, cart totals, invoice numbering, payment posting, and stock deduction must stay byte-for-byte unchanged unless a phase explicitly says otherwise. UI-only refactor.
+5. **BUILD CHECK.** Run `npm run build` in `frontend/hexabill-ui` after the change (JSX project — not `tsc --noEmit`). Fix until clean before calling the phase done.
+6. **SELF-DIAGNOSE FIRST.** Before writing code, state: what is broken, why (root cause), and the minimal fix. If you cannot point to the actual line, investigate further — do not guess-patch.
+7. **PRESERVE WORKING KEYBOARD BEHAVIOR.** Enter-to-add-row and other working shortcuts — extend them, do not silently replace.
+8. **ONE COMPONENT TREE.** Desktop/tablet/mobile share Tailwind responsive classes. After each change, verify all three breakpoints mentally or via responsive tools.
+9. **CHANGE SUMMARY.** End every phase with: files touched, what changed, what you manually verified, what you did NOT verify and why.
+
+## Ship discipline
+
+- One phase = one commit. Never batch phases.
+- Do not create new component files without explicit user sign-off mid-phase.
+- Prefer always-visible keyboard hint bar (Phase 1). Product picker stays in `PosPage.jsx` unless extraction is approved (Phase 2).
+---

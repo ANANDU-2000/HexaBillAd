@@ -156,11 +156,12 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                 <span className="text-primary-500">to</span>
                 <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="border rounded px-2 py-1 text-sm" placeholder="To" />
               </div>
-              <button onClick={handleExportCsv} className="flex items-center gap-1 px-2 py-1 bg-primary-100 hover:bg-primary-200 rounded text-sm">
-                <Download className="h-4 w-4" /> Export CSV
+              <button onClick={handleExportCsv} className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-primary-100 hover:bg-primary-200 rounded-lg" title="Export CSV" aria-label="Export CSV">
+                <Download className="h-4 w-4" />
               </button>
-              <button onClick={() => setShowRecordPayment(true)} className="flex items-center gap-1 px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm">
-                <DollarSign className="h-4 w-4" /> Record Payment
+              <button onClick={() => setShowRecordPayment(true)} className="inline-flex items-center justify-center min-h-11 px-3 gap-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm" title="Record Payment" aria-label="Record Payment">
+                <DollarSign className="h-4 w-4" />
+                <span className="hidden sm:inline">Pay</span>
               </button>
             </div>
 

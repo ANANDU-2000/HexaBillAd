@@ -21,8 +21,7 @@ import {
   Bookmark,
   RotateCcw,
   Package,
-  RefreshCw,
-  Camera
+  RefreshCw
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../services'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
@@ -31,7 +30,6 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import toast from 'react-hot-toast'
-import { mobileFormFieldClass, mobileFormSelectClass, mobilePageShellClass } from '../../components/tallyFormClasses'
 import { showToast } from '../../utils/toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import PrintOptionsModal from '../../components/PrintOptionsModal'
@@ -76,6 +74,8 @@ const PosPage = () => {
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [showQuickCustomerDropdown, setShowQuickCustomerDropdown] = useState(false)
   const [showProductDropdown, setShowProductDropdown] = useState({})
+  /** Active cart row for product picker sidebar/sheet (null = closed). Preferred over per-row fixed dropdowns. */
+  const [productPickerRowIndex, setProductPickerRowIndex] = useState(null)
   const [productSearchTerms, setProductSearchTerms] = useState({}) // Search term for each row
   const [paymentMethod, setPaymentMethod] = useState('Cash')
   const [paymentAmount, setPaymentAmount] = useState('')
@@ -130,11 +130,13 @@ const PosPage = () => {
 
   const customerInputRef = useRef(null)
   const productSearchRefs = useRef({})
+  const qtyInputRefs = useRef({})
+  const unitPriceInputRefs = useRef({})
+  const discountInputRefs = useRef({})
   const lastAddedRowIndexRef = useRef(null)
-  const didInitialPosProductFocusRef = useRef(false)
-  const barcodeScannerRef = useRef(null)
-
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+  const handleSaveRef = useRef(null)
+  /** Highlight index inside open product dropdown, keyed by cart row */
+  const [productHighlightByRow, setProductHighlightByRow] = useState({})
 
   // Auto-check Free sample when all cart items with qty>0 have unitPrice 0
   useEffect(() => {
@@ -548,19 +550,6 @@ const PosPage = () => {
     }
   }, [cart.length])
 
-  // One-time: focus first empty product row after catalog load (new invoice)
-  useEffect(() => {
-    if (didInitialPosProductFocusRef.current || loadingProducts || isEditMode || loading || loadingSale) return
-    const idx = cart.findIndex((r) => !r.productId)
-    if (idx < 0) return
-    const el = productSearchRefs.current[idx]
-    if (!el) return
-    didInitialPosProductFocusRef.current = true
-    requestAnimationFrame(() => {
-      try { el.focus({ preventScroll: true }) } catch (_) { el.focus() }
-    })
-  }, [loadingProducts, isEditMode, loading, loadingSale, cart])
-
   const filteredCustomers = customers
     .filter((c, i, arr) => arr.findIndex(x => String(x.id) === String(c.id)) === i)
     .filter(customer =>
@@ -616,6 +605,7 @@ const PosPage = () => {
 
       // Close dropdown IMMEDIATELY for this row
       setShowProductDropdown(prev => ({ ...prev, [rowIndex]: false }))
+      setProductPickerRowIndex(null)
       setProductSearchTerms(prev => {
         const newTerms = { ...prev }
         delete newTerms[rowIndex]
@@ -659,88 +649,38 @@ const PosPage = () => {
 
       // Close all dropdowns
       setShowProductDropdown({})
+      setProductPickerRowIndex(null)
     }
   }
 
-  useEffect(() => {
-    if (!showBarcodeScanner) return undefined
-    let cancelled = false
+  /** Single selection path for keyboard + mouse product picker */
+  const selectProduct = (product, rowIndex) => {
+    if (!product) return
+    addToCart(product, rowIndex)
+    setProductPickerRowIndex(null)
+    focusCartField(rowIndex, 'qty')
+  }
 
-    const cleanupScanner = async () => {
-      const s = barcodeScannerRef.current
-      barcodeScannerRef.current = null
-      if (!s) return
-      try {
-        await s.stop()
-      } catch (_) { /* not running */ }
-      try {
-        await s.clear()
-      } catch (_) { /* noop */ }
+  const openProductPicker = (rowIndex) => {
+    if (isFormDisabled) return
+    setProductPickerRowIndex(rowIndex)
+    setShowProductDropdown(prev => ({ ...prev, [rowIndex]: true }))
+    setProductHighlightByRow(prev => ({ ...prev, [rowIndex]: prev[rowIndex] ?? 0 }))
+  }
+
+  const closeProductPicker = (rowIndex = null) => {
+    setProductPickerRowIndex(null)
+    if (rowIndex !== null) {
+      setShowProductDropdown(prev => ({ ...prev, [rowIndex]: false }))
+      setProductHighlightByRow(prev => {
+        const next = { ...prev }
+        delete next[rowIndex]
+        return next
+      })
+    } else {
+      setShowProductDropdown({})
     }
-
-    const run = async () => {
-      try {
-        const { Html5Qrcode } = await import('html5-qrcode')
-        await new Promise((r) => setTimeout(r, 150))
-        if (cancelled) return
-        const scanner = new Html5Qrcode('pos-barcode-reader', { verbose: false })
-        barcodeScannerRef.current = scanner
-
-        const onCode = async (decodedText) => {
-          const code = String(decodedText || '').trim()
-          if (!code || cancelled) return
-          try {
-            await scanner.stop()
-          } catch (_) { /* */ }
-          try {
-            await scanner.clear()
-          } catch (_) { /* */ }
-          barcodeScannerRef.current = null
-          if (cancelled) return
-          setShowBarcodeScanner(false)
-
-          try {
-            const res = await productsAPI.searchProducts(code, 20)
-            const list = Array.isArray(res?.data) ? res.data : []
-            const lower = code.toLowerCase()
-            const found =
-              list.find((p) => String(p.barcode || '').toLowerCase() === lower) ||
-              list.find((p) => String(p.sku || '').toLowerCase() === lower) ||
-              list[0]
-            if (found) {
-              addToCart(found)
-              showToast.success(`Added ${found.nameEn || found.name || 'product'}`)
-            } else {
-              toast.error('No product found for this code')
-            }
-          } catch (err) {
-            if (!err?._handledByInterceptor) toast.error('Product lookup failed')
-          }
-        }
-
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 8, qrbox: { width: 280, height: 200 } },
-          onCode,
-          () => {}
-        )
-      } catch (e) {
-        console.error('Barcode camera error:', e)
-        if (!cancelled) {
-          toast.error('Camera scanner unavailable.')
-          setShowBarcodeScanner(false)
-        }
-      }
-    }
-
-    void run()
-
-    return () => {
-      cancelled = true
-      void cleanupScanner()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount scanner when modal opens; addToCart is stable enough for POS session
-  }, [showBarcodeScanner])
+  }
 
   const addEmptyRow = () => {
     const newIndex = cart.length
@@ -758,11 +698,129 @@ const PosPage = () => {
     }])
   }
 
-  const handleProductSearchKeyDown = (e, rowIndex) => {
-    if (e.key !== 'Enter') return
-    if (showProductDropdown[rowIndex]) return
-    e.preventDefault()
+  /** Cart Tab order: product → qty → unitPrice → discount → next row product */
+  const focusCartField = (rowIndex, field) => {
+    const refMap = {
+      product: productSearchRefs,
+      qty: qtyInputRefs,
+      unitPrice: unitPriceInputRefs,
+      discount: discountInputRefs
+    }
+    const el = refMap[field]?.current?.[rowIndex]
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        if (typeof el.select === 'function' && field !== 'product') {
+          try { el.select() } catch (_) { /* ignore */ }
+        }
+      })
+    }
+  }
+
+  const focusNextCartField = (rowIndex, field) => {
+    const order = ['product', 'qty', 'unitPrice', 'discount']
+    const refMap = {
+      product: productSearchRefs,
+      qty: qtyInputRefs,
+      unitPrice: unitPriceInputRefs,
+      discount: discountInputRefs
+    }
+    const i = order.indexOf(field)
+    for (let j = i + 1; j < order.length; j++) {
+      if (refMap[order[j]]?.current?.[rowIndex]) {
+        focusCartField(rowIndex, order[j])
+        return
+      }
+    }
+    if (rowIndex < cart.length - 1) {
+      focusCartField(rowIndex + 1, 'product')
+      return
+    }
     addEmptyRow()
+  }
+
+  const trySelectProductFromSearch = (rowIndex) => {
+    const term = (productSearchTerms[rowIndex] || '').trim()
+    if (!term) {
+      addEmptyRow()
+      return
+    }
+    const lower = term.toLowerCase()
+    const exact = products.find(p =>
+      p.barcode?.toLowerCase() === lower ||
+      p.sku?.toLowerCase() === lower ||
+      p.nameEn?.toLowerCase() === lower
+    )
+    if (exact) {
+      selectProduct(exact, rowIndex)
+      return
+    }
+    const filtered = getFilteredProducts(rowIndex)
+    if (filtered.length === 1) {
+      selectProduct(filtered[0], rowIndex)
+      return
+    }
+    if (filtered.length > 1) {
+      openProductPicker(rowIndex)
+      setProductHighlightByRow(prev => ({ ...prev, [rowIndex]: 0 }))
+      return
+    }
+    addEmptyRow()
+  }
+
+  const handleProductSearchKeyDown = (e, rowIndex) => {
+    if (isFormDisabled) return
+    const dropdownOpen = productPickerRowIndex === rowIndex || !!showProductDropdown[rowIndex]
+    const filtered = getFilteredProducts(rowIndex)
+    const hi = productHighlightByRow[rowIndex] ?? 0
+
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      closeProductPicker(rowIndex)
+      setProductSearchTerms(prev => {
+        const next = { ...prev }
+        delete next[rowIndex]
+        return next
+      })
+      e.currentTarget.blur()
+      return
+    }
+
+    if (dropdownOpen && filtered.length > 0 && e.key === 'ArrowDown') {
+      e.preventDefault()
+      setProductHighlightByRow(prev => ({
+        ...prev,
+        [rowIndex]: Math.min((prev[rowIndex] ?? 0) + 1, filtered.length - 1)
+      }))
+      return
+    }
+    if (dropdownOpen && filtered.length > 0 && e.key === 'ArrowUp') {
+      e.preventDefault()
+      setProductHighlightByRow(prev => ({
+        ...prev,
+        [rowIndex]: Math.max((prev[rowIndex] ?? 0) - 1, 0)
+      }))
+      return
+    }
+
+    if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey && dropdownOpen && filtered.length > 0)) {
+      if (dropdownOpen && filtered.length > 0) {
+        e.preventDefault()
+        const product = filtered[Math.min(hi, filtered.length - 1)] || filtered[0]
+        selectProduct(product, rowIndex)
+        return
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        trySelectProductFromSearch(rowIndex)
+      }
+    }
+  }
+
+  const handleCartNumericKeyDown = (e, rowIndex, field) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    focusNextCartField(rowIndex, field)
   }
 
   const updateCartItem = (index, field, value) => {
@@ -1788,11 +1846,37 @@ const PosPage = () => {
 
   // Disable form inputs while saving or loading a sale for edit (fixes ReferenceError: isFormDisabled is not defined)
   const isFormDisabled = loading || loadingSale
+  handleSaveRef.current = handleSave
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const isSaveCombo = e.key === 'F9' || ((e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey))
+      if (!isSaveCombo) return
+      e.preventDefault()
+      if (loading || loadingSale) return
+      handleSaveRef.current?.()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [loading, loadingSale])
+
+  useEffect(() => {
+    if (productPickerRowIndex === null) return undefined
+    const onPointerDown = (e) => {
+      const t = e.target
+      if (!(t instanceof Element)) return
+      if (t.closest('[data-product-picker]')) return
+      if (t.closest('.product-dropdown-container')) return
+      closeProductPicker(productPickerRowIndex)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [productPickerRowIndex])
 
   const totals = calculateTotals()
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] flex flex-col ${mobilePageShellClass} pb-24 lg:pb-0`}>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col max-w-full overflow-x-hidden pb-24 lg:pb-0">
       {/* TAX INVOICE Header - compact on mobile (16px), navy primary */}
       <div className="bg-primary-900 text-white px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
@@ -1800,7 +1884,7 @@ const PosPage = () => {
             <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold mb-0.5 sm:mb-1 drop-shadow-md truncate">TAX INVOICE</h1>
             <p className="text-xs sm:text-sm text-blue-100">{companyName} · فاتورة ضريبية</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
+          <div className="flex items-center gap-1.5 sm:gap-2 lg:space-x-4 w-full sm:w-auto">
             <button
               onClick={() => setShowCustomerSearch(true)}
               disabled={isFormDisabled}
@@ -1862,7 +1946,7 @@ const PosPage = () => {
               placeholder="e.g. Customer interrupted, Table 5"
               value={holdNameInput}
               onChange={(e) => setHoldNameInput(e.target.value)}
-              className={mobileFormFieldClass}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleHoldConfirm()}
             />
@@ -1970,7 +2054,7 @@ const PosPage = () => {
 
       {/* Customer & invoice info - compact on mobile (16px), single row */}
       <div className="bg-white border-b border-[#E5E7EB] px-4 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 flex-shrink-0">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm w-full max-w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2 lg:gap-4 text-xs sm:text-sm overflow-x-auto">
           <div className="bg-white rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 shadow-sm border border-blue-200 flex items-center gap-1 flex-wrap">
             <span className="font-medium text-blue-700">Invoice No:</span>
             <span className={`ml-1 sm:ml-0 font-semibold font-mono text-xs sm:text-sm ${isEditMode ? 'text-primary-700' : 'text-[#0F172A]'
@@ -2014,7 +2098,7 @@ const PosPage = () => {
                   }}
                   onFocus={() => setShowQuickCustomerDropdown(true)}
                   onBlur={() => setTimeout(() => setShowQuickCustomerDropdown(false), 150)}
-                  className="w-full px-3 py-2.5 min-h-11 text-base md:text-sm border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-2 py-1.5 border border-neutral-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 {showQuickCustomerDropdown && (
                   <div className="absolute left-0 right-0 mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto">
@@ -2173,27 +2257,26 @@ const PosPage = () => {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col md:flex-row md:min-h-0 min-h-0 overflow-hidden">
-          <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-        {/* Items Table - FULL WIDTH TALLY STYLE (Desktop) / CARD LAYOUT (Mobile) */}
+        {/* Items Table - FULL WIDTH TALLY STYLE (Desktop) / CARD LAYOUT (Mobile) + product picker sidebar */}
         <div className="flex-1 overflow-hidden bg-neutral-50 min-w-0" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="flex-1 overflow-y-auto px-2 py-2 md:pb-2"> {/* Removed fixed bottom padding for mobile - now fully scrollable */}
+          <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
+          <div className="flex-1 min-w-0 overflow-y-auto px-2 py-2 md:pb-2"> {/* Removed fixed bottom padding for mobile - now fully scrollable */}
             {/* Desktop Table View - with horizontal scroll on small screens */}
-            <div className="hidden md:block bg-white rounded-lg border-2 border-gray-300 overflow-x-auto">
+            <div className="hidden md:block bg-white rounded-lg border-2 border-gray-300 shadow-lg overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
                   <thead className="bg-gray-100 border-2 border-gray-300">
                     <tr>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-12 text-xs sm:text-sm">SL<br /><span className="text-xs sm:text-xs font-normal text-gray-600">رقم</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-left font-bold text-gray-900 border-r-2 border-gray-300 w-80 text-xs sm:text-sm">Description<br /><span className="text-xs sm:text-xs font-normal text-gray-600">التفاصيل</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Unit<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الوحدة</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Qty<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الكمية</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Unit Price<br /><span className="text-xs sm:text-xs font-normal text-gray-600">سعر الوحدة</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Total<br /><span className="text-xs sm:text-xs font-normal text-gray-600">الإجمالي</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Discount<br /><span className="text-xs sm:text-xs font-normal text-gray-600">خصم</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-28 text-xs sm:text-sm">Vat:{vatPercent}%<br /><span className="text-xs sm:text-xs font-normal text-gray-600">ضريبة {vatPercent}%</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-32 text-xs sm:text-sm">Amount<br /><span className="text-xs sm:text-xs font-normal text-gray-600">المبلغ</span></th>
-                      <th className="px-2 sm:px-3 py-2 sm:py-3 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs sm:text-sm">Actions<br /><span className="text-xs sm:text-xs font-normal text-gray-600">إجراءات</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-left font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-10 text-xs">SL<br /><span className="text-[10px] font-normal text-gray-600">رقم</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-left font-bold text-gray-900 border-r-2 border-gray-300 text-xs min-w-0">Description<br /><span className="text-[10px] font-normal text-gray-600">التفاصيل</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-20 text-xs">Qty<br /><span className="text-[10px] font-normal text-gray-600">الكمية</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-16 text-xs">Unit<br /><span className="text-[10px] font-normal text-gray-600">الوحدة</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs">Unit Price<br /><span className="text-[10px] font-normal text-gray-600">سعر الوحدة</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-20 text-xs">Total<br /><span className="text-[10px] font-normal text-gray-600">الإجمالي</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-20 text-xs">Discount<br /><span className="text-[10px] font-normal text-gray-600">خصم</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-20 text-xs">Vat:{vatPercent}%<br /><span className="text-[10px] font-normal text-gray-600">ضريبة {vatPercent}%</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-right font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-24 text-xs">Amount<br /><span className="text-[10px] font-normal text-gray-600">المبلغ</span></th>
+                      <th className="px-1 sm:px-2 py-2 text-center font-bold text-gray-900 border-r-2 border-gray-300 whitespace-nowrap w-14 text-xs">Actions<br /><span className="text-[10px] font-normal text-gray-600">إجراءات</span></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -2205,10 +2288,18 @@ const PosPage = () => {
                       </tr>
                     ) : (
                       cart.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 border-b border-gray-200">
+                        <tr
+                          key={index}
+                          className="hover:bg-gray-50 border-b border-gray-200"
+                          onClick={() => {
+                            if (isFormDisabled || item.productId) return
+                            openProductPicker(index)
+                            focusCartField(index, 'product')
+                          }}
+                        >
                           <td className="px-2 sm:px-3 py-3 sm:py-4 text-center border-r-2 border-gray-200 font-medium text-sm align-middle">{index + 1}</td>
-                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 min-h-[80px] align-top" style={{ position: 'relative', overflow: 'visible' }}>
-                            <div className="relative product-dropdown-container" style={{ zIndex: showProductDropdown[index] ? 9999 : 1 }}>
+                          <td className="px-2 sm:px-3 py-3 sm:py-4 border-r-2 border-gray-200 min-h-[80px] align-top">
+                            <div className="relative product-dropdown-container">
                               {item.productId ? (
                                 <div className="py-2 flex items-start gap-2">
                                   {/* Product Image Thumbnail */}
@@ -2244,166 +2335,42 @@ const PosPage = () => {
                                       onChange={(e) => {
                                         const searchValue = e.target.value
                                         setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                                        // Auto-open dropdown when user starts typing OR when empty (to browse all)
-                                        if (!showProductDropdown[index]) {
-                                          setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                                        }
+                                        setProductHighlightByRow(prev => ({ ...prev, [index]: 0 }))
+                                        openProductPicker(index)
                                       }}
-                                      onFocus={() => {
-                                        if (isFormDisabled) return
-                                        // Always show dropdown when focused (even if empty - allows browsing all products)
-                                        setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
+                                      onFocus={() => openProductPicker(index)}
                                       onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
+                                      onClick={(e) => e.stopPropagation()}
                                       placeholder="Type to search product..."
                                       className="flex-1 px-3 py-3 border-2 border-blue-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     />
-                                    <button
-                                      type="button"
-                                      disabled={isFormDisabled}
-                                      onClick={() => setShowBarcodeScanner(true)}
-                                      className="inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 border-2 border-purple-300 rounded-lg bg-purple-50 text-purple-800 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="Scan barcode with device camera"
-                                    >
-                                      <Camera className="h-5 w-5" aria-hidden />
-                                    </button>
+                                    {/* Barcode Scanner Input */}
                                     <input
                                       type="text"
+                                      tabIndex={-1}
                                       disabled={isFormDisabled}
+                                      onClick={(e) => e.stopPropagation()}
                                       onKeyDown={async (e) => {
                                         if (e.key === 'Enter' && e.target.value.trim()) {
                                           const barcode = e.target.value.trim()
-                                          let product = products.find(p =>
+                                          const product = products.find(p => 
                                             p.barcode?.toLowerCase() === barcode.toLowerCase() ||
                                             p.sku?.toLowerCase() === barcode.toLowerCase()
                                           )
-                                          if (!product) {
-                                            try {
-                                              const res = await productsAPI.searchProducts(barcode, 15)
-                                              const list = Array.isArray(res?.data) ? res.data : []
-                                              const lower = barcode.toLowerCase()
-                                              product = list.find((p) => String(p.barcode || '').toLowerCase() === lower)
-                                                || list.find((p) => String(p.sku || '').toLowerCase() === lower)
-                                                || list[0]
-                                            } catch (_) { /* toast below */ }
-                                          }
                                           if (product) {
-                                            addToCart(product, index)
+                                            selectProduct(product, index)
                                             e.target.value = ''
-                                            showToast.success(`Added ${product.nameEn || product.name || 'product'}`)
+                                            toast.success(`Added ${product.nameEn}`)
                                           } else {
-                                            toast.error(`Product not found for code: ${barcode}`)
+                                            toast.error(`Product not found for barcode: ${barcode}`)
                                           }
                                         }
                                       }}
-                                      placeholder="USB / type code"
-                                      className="w-24 sm:w-32 px-2 py-3 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-purple-50 min-h-11 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                      title="USB scanner: focus here and scan, or type code and press Enter"
+                                      placeholder="📷 Scan"
+                                      className="w-20 px-2 py-3 border-2 border-purple-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-purple-50 min-h-[52px] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      title="Scan barcode or enter product code"
                                     />
                                   </div>
-                                  {showProductDropdown[index] && (
-                                    <>
-                                      {/* Arrow pointing down */}
-                                      <div className="absolute z-[9999] top-full left-4 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-blue-400" style={{ marginTop: '-1px' }}></div>
-                                      {/* Dropdown - Positioned ABOVE table overflow with HIGHEST z-index */}
-                                      <div
-                                        className="fixed bg-white border-2 border-blue-400 rounded-lg shadow-lg z-[10000]"
-                                        style={{
-                                          maxHeight: '500px',
-                                          width: '600px',
-                                          overflowY: 'auto',
-                                          overflowX: 'hidden',
-                                          top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 2}px`,
-                                          left: `${productSearchRefs.current[index]?.getBoundingClientRect().left}px`,
-                                          boxShadow: '0 10px 25px rgba(0,0,0,0.3)'
-                                        }}
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        {(() => {
-                                          if (loadingProducts) {
-                                            return (
-                                              <div className="p-4 text-center">
-                                                <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                                <p className="text-sm text-gray-500 mt-2">Loading products...</p>
-                                              </div>
-                                            )
-                                          }
-
-                                          const filtered = getFilteredProducts(index)
-                                          const searchTerm = productSearchTerms[index] || ''
-                                          const totalProducts = products.length
-                                          const showingCount = filtered.length
-                                          const hasMore = totalProducts > showingCount
-                                          
-                                          // Show "Browse All" message when no search term
-                                          const isBrowsingAll = !searchTerm.trim()
-
-                                          return filtered.length > 0 ? (
-                                            <>
-                                              {/* Show browse message when no search term */}
-                                              {isBrowsingAll && (
-                                                <div className="p-3 bg-blue-50 border-b border-blue-200">
-                                                  <p className="text-sm text-blue-700 font-medium">
-                                                    📦 Browsing all products ({showingCount} shown, {totalProducts} total)
-                                                  </p>
-                                                  <p className="text-xs text-blue-600 mt-1">
-                                                    Type to search or scroll to browse
-                                                  </p>
-                                                </div>
-                                              )}
-                                              
-                                              {/* Product list */}
-                                              {filtered.map((product) => (
-                                                <div
-                                                  key={product.id}
-                                                  className="p-2.5 border-b border-gray-200 hover:bg-blue-50 cursor-pointer transition-colors active:bg-blue-100"
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                  }}
-                                                  onClick={(e) => {
-                                                    e.preventDefault()
-                                                    e.stopPropagation()
-                                                    addToCart(product, index)
-                                                  }}
-                                                >
-                                                  <div className="flex items-center justify-between w-full">
-                                                    <div className="flex-1 min-w-0">
-                                                      <p className="font-medium text-sm text-gray-900 truncate">{product.nameEn}</p>
-                                                      <p className="text-xs text-gray-600">AED {product.sellPrice.toFixed(2)}</p>
-                                                    </div>
-                                                    <div className="text-right ml-2 flex-shrink-0">
-                                                      <p className={`text-xs font-semibold ${product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600' : 'text-green-600'}`}>
-                                                        Stock: {product.stockQty} {product.unitType || 'KG'}
-                                                      </p>
-                                                      {product.stockQty <= (product.reorderLevel || 0) && (
-                                                        <p className="text-xs text-red-500">Low Stock!</p>
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                              {/* Show more indicator */}
-                                              {hasMore && (
-                                                <div className="p-2 bg-blue-50 border-t border-blue-200 text-center">
-                                                  <p className="text-xs text-blue-700 font-medium">
-                                                    Showing {showingCount} of {totalProducts} products. Type to search for more...
-                                                  </p>
-                                                </div>
-                                              )}
-                                            </>
-                                          ) : (
-                                            <div className="p-3 text-center">
-                                              <p className="text-sm text-gray-500">No products found</p>
-                                              <p className="text-xs text-gray-500 mt-1">Try a different search term</p>
-                                            </div>
-                                          )
-                                        })()}
-                                      </div>
-                                    </>
-                                  )}
                                 </div>
                               )}
                             </div>
@@ -2414,10 +2381,12 @@ const PosPage = () => {
                               type="number"
                               min="0"
                               step="0.01"
+                              ref={(el) => { qtyInputRefs.current[index] = el }}
                               disabled={isFormDisabled}
-                              className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full px-2 py-2 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.qty === '' ? '' : item.qty}
                               onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
+                              onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
                               placeholder="1.5"
                             />
                           </td>
@@ -2429,6 +2398,7 @@ const PosPage = () => {
                               </div>
                             ) : (
                               <select
+                                tabIndex={-1}
                                 disabled={isFormDisabled}
                                 className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-medium uppercase min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
                                 value={item.unitType || 'CRTN'}
@@ -2450,10 +2420,12 @@ const PosPage = () => {
                               type="number"
                               min="0"
                               step="0.01"
+                              ref={(el) => { unitPriceInputRefs.current[index] = el }}
                               disabled={isFormDisabled}
                               className="w-full px-3 py-3 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-base font-semibold min-h-[52px] disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.unitPrice === '' ? '' : item.unitPrice}
                               onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
+                              onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
                             />
                           </td>
                           <td className="px-2 sm:px-3 py-3 sm:py-4 text-right border-r-2 border-gray-200 font-semibold text-base align-middle">
@@ -2469,10 +2441,12 @@ const PosPage = () => {
                               type="number"
                               min="0"
                               step="0.01"
+                              ref={(el) => { discountInputRefs.current[index] = el }}
                               disabled={isFormDisabled}
-                              className="w-full px-2 py-2.5 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-11 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full px-2 py-2 border-2 border-gray-300 rounded-lg text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-[40px] disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.discount === '' || item.discount === undefined ? '' : item.discount}
                               onChange={(e) => updateCartItem(index, 'discount', e.target.value)}
+                              onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'discount')}
                               placeholder="0.00"
                             />
                           </td>
@@ -2484,6 +2458,8 @@ const PosPage = () => {
                           </td>
                           <td className="px-2 sm:px-3 py-3 sm:py-4 text-center align-middle border-r-2 border-gray-200">
                             <button
+                              type="button"
+                              tabIndex={-1}
                               onClick={() => removeFromCart(index)}
                               disabled={isFormDisabled}
                               className="text-red-600 hover:text-red-800 hover:bg-red-50 p-2 rounded-lg transition-colors inline-flex items-center justify-center min-w-[44px] min-h-[44px] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -2571,125 +2547,15 @@ const PosPage = () => {
                             onChange={(e) => {
                               const searchValue = e.target.value
                               setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                              if (searchValue.trim() && !showProductDropdown[index]) {
-                                setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                              }
+                              setProductHighlightByRow(prev => ({ ...prev, [index]: 0 }))
+                              openProductPicker(index)
                             }}
-                            onFocus={() => {
-                              if (isFormDisabled) return
-                              setShowProductDropdown(prev => ({ ...prev, [index]: true }))
-                            }}
-                            onClick={(e) => e.stopPropagation()}
+                            onFocus={() => openProductPicker(index)}
                             onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
+                            onClick={(e) => e.stopPropagation()}
                             placeholder="Search product name or code..."
                             className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                           />
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              type="button"
-                              disabled={isFormDisabled}
-                              onClick={() => setShowBarcodeScanner(true)}
-                              className="inline-flex items-center justify-center min-h-11 min-w-11 shrink-0 border-2 border-purple-300 rounded-lg bg-purple-50 text-purple-800 hover:bg-purple-100 disabled:opacity-50"
-                              title="Scan with camera"
-                            >
-                              <Camera className="h-5 w-5" aria-hidden />
-                            </button>
-                            <input
-                              type="text"
-                              disabled={isFormDisabled}
-                              onKeyDown={async (e) => {
-                                if (e.key === 'Enter' && e.target.value.trim()) {
-                                  const barcode = e.target.value.trim()
-                                  let product = products.find(p =>
-                                    p.barcode?.toLowerCase() === barcode.toLowerCase() ||
-                                    p.sku?.toLowerCase() === barcode.toLowerCase()
-                                  )
-                                  if (!product) {
-                                    try {
-                                      const res = await productsAPI.searchProducts(barcode, 15)
-                                      const list = Array.isArray(res?.data) ? res.data : []
-                                      const lower = barcode.toLowerCase()
-                                      product = list.find((p) => String(p.barcode || '').toLowerCase() === lower)
-                                        || list.find((p) => String(p.sku || '').toLowerCase() === lower)
-                                        || list[0]
-                                    } catch (_) { /* noop */ }
-                                  }
-                                  if (product) {
-                                    addToCart(product, index)
-                                    e.target.value = ''
-                                    showToast.success(`Added ${product.nameEn || product.name || 'product'}`)
-                                  } else {
-                                    toast.error(`Product not found for code: ${barcode}`)
-                                  }
-                                }
-                              }}
-                              placeholder="USB / type code + Enter"
-                              className="flex-1 min-w-0 px-2 py-2.5 border-2 border-purple-300 rounded-lg text-sm bg-purple-50 min-h-11 disabled:opacity-50"
-                              title="USB scanner or type code and Enter"
-                            />
-                          </div>
-                          {showProductDropdown[index] && (
-                            <div
-                              className="fixed bg-white border border-neutral-200 rounded-lg shadow-md z-[9998]"
-                              style={{
-                                maxHeight: '60vh',
-                                top: `${productSearchRefs.current[index]?.getBoundingClientRect().bottom + 4}px`,
-                                left: '16px',
-                                right: '16px',
-                                width: 'auto',
-                                maxWidth: 'calc(100% - 32px)',
-                              }}
-                              onMouseDown={(e) => e.stopPropagation()}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {(() => {
-                                if (loadingProducts) {
-                                  return (
-                                    <div className="p-4 text-center">
-                                      <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                                      <p className="text-sm text-gray-500 mt-2">Loading products...</p>
-                                    </div>
-                                  )
-                                }
-
-                                const filtered = getFilteredProducts(index)
-                                return filtered.length > 0 ? (
-                                  <div className="divide-y divide-gray-200">
-                                    {filtered.map((product) => (
-                                      <div
-                                        key={product.id}
-                                        className="p-3 hover:bg-primary-50 active:bg-primary-100 cursor-pointer"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
-                                          addToCart(product, index)
-                                        }}
-                                      >
-                                        <div className="flex items-start justify-between">
-                                          <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 truncate">{product.nameEn}</p>
-                                            <p className="text-xs text-gray-600 mt-0.5">AED {product.sellPrice.toFixed(2)}</p>
-                                          </div>
-                                          <span className={`ml-2 text-xs font-medium px-2 py-0.5 rounded ${product.stockQty > (product.reorderLevel || 0) ? 'bg-success/10 text-success' : 'bg-error/10 text-error'
-                                            }`}>
-                                            Stock: {product.stockQty}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <div className="p-4 text-center text-neutral-500 text-sm">
-                                    No products found
-                                  </div>
-                                )
-                              })()}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -2704,10 +2570,12 @@ const PosPage = () => {
                             type="number"
                             min="0"
                             step="0.01"
+                            ref={(el) => { qtyInputRefs.current[index] = el }}
                             disabled={isFormDisabled}
                             className="w-full min-h-[44px] px-3 py-2.5 border border-neutral-300 rounded-lg text-center text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             value={item.qty === '' ? '' : item.qty}
                             onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
+                            onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
                             placeholder="1"
                           />
                         </div>
@@ -2738,10 +2606,12 @@ const PosPage = () => {
                           type="number"
                           min="0"
                           step="0.01"
+                          ref={(el) => { unitPriceInputRefs.current[index] = el }}
                           disabled={isFormDisabled}
                           className="w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-right text-base font-bold focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
                           value={item.unitPrice === '' ? '' : item.unitPrice}
                           onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
+                          onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
                           placeholder="0.00"
                         />
                       </div>
@@ -2774,6 +2644,111 @@ const PosPage = () => {
             </div>
           </div>
 
+          {/* Desktop product picker sidebar — fixed column, not getBoundingClientRect */}
+          {productPickerRowIndex !== null && (
+            <aside
+              className="product-picker-panel hidden md:flex w-80 shrink-0 flex-col border-l-2 border-blue-300 bg-white min-h-0"
+              data-product-picker="desktop"
+              aria-label="Product picker"
+            >
+              <div className="flex items-center justify-between px-3 py-2 border-b border-blue-200 bg-blue-50 shrink-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-blue-900 truncate">
+                    Products{productSearchTerms[productPickerRowIndex]?.trim() ? '' : ' (browse)'}
+                  </p>
+                  <p className="text-[11px] text-blue-700">Row {productPickerRowIndex + 1} · ↑↓ Enter Esc</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => closeProductPicker(productPickerRowIndex)}
+                  className="p-2 min-h-[44px] min-w-[44px] rounded-lg hover:bg-blue-100 text-blue-800"
+                  aria-label="Close product picker"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {loadingProducts ? (
+                  <div className="p-4 text-center text-sm text-neutral-500">Loading products...</div>
+                ) : (() => {
+                  const filtered = getFilteredProducts(productPickerRowIndex)
+                  const searchTerm = productSearchTerms[productPickerRowIndex] || ''
+                  const showingCount = filtered.length
+                  const totalProducts = products.length
+                  if (filtered.length === 0) {
+                    return <div className="p-4 text-center text-sm text-neutral-500">No products found</div>
+                  }
+                  return (
+                    <>
+                      {!searchTerm.trim() && (
+                        <div className="p-2 bg-blue-50 border-b border-blue-100 text-xs text-blue-700">
+                          Showing {showingCount} of {totalProducts}. Type to filter.
+                        </div>
+                      )}
+                      {filtered.map((product, fi) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className={`w-full text-left p-2.5 border-b border-neutral-100 hover:bg-blue-50 ${(productHighlightByRow[productPickerRowIndex] ?? 0) === fi ? 'bg-blue-100 ring-1 ring-inset ring-blue-400' : ''}`}
+                          onMouseEnter={() => setProductHighlightByRow(prev => ({ ...prev, [productPickerRowIndex]: fi }))}
+                          onClick={() => selectProduct(product, productPickerRowIndex)}
+                        >
+                          <p className="font-medium text-sm text-neutral-900 truncate">{product.nameEn}</p>
+                          <div className="flex justify-between gap-2 mt-0.5">
+                            <span className="text-xs text-neutral-600">AED {(product.sellPrice ?? 0).toFixed(2)}</span>
+                            <span className={`text-xs font-semibold ${product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600' : 'text-green-600'}`}>
+                              Stock: {product.stockQty}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )
+                })()}
+              </div>
+            </aside>
+          )}
+          </div>
+
+          {/* Mobile product picker bottom sheet */}
+          {productPickerRowIndex !== null && (
+            <div className="md:hidden fixed inset-0 z-[10000]" data-product-picker="mobile" role="dialog" aria-modal="true" aria-label="Product picker">
+              <button
+                type="button"
+                className="absolute inset-0 bg-black/40"
+                aria-label="Close product picker"
+                onClick={() => closeProductPicker(productPickerRowIndex)}
+              />
+              <div className="absolute bottom-0 left-0 right-0 max-h-[70vh] bg-white rounded-t-2xl shadow-xl flex flex-col border-t border-neutral-200">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 shrink-0">
+                  <p className="text-sm font-bold text-neutral-900">Select product · Row {productPickerRowIndex + 1}</p>
+                  <button type="button" onClick={() => closeProductPicker(productPickerRowIndex)} className="p-2 min-h-[44px] min-w-[44px]" aria-label="Close">
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="overflow-y-auto flex-1 min-h-0 pb-safe">
+                  {loadingProducts ? (
+                    <div className="p-4 text-center text-sm text-neutral-500">Loading...</div>
+                  ) : getFilteredProducts(productPickerRowIndex).length === 0 ? (
+                    <div className="p-4 text-center text-sm text-neutral-500">No products found</div>
+                  ) : (
+                    getFilteredProducts(productPickerRowIndex).map((product, fi) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        className={`w-full text-left px-4 py-3 border-b border-neutral-100 min-h-[44px] ${(productHighlightByRow[productPickerRowIndex] ?? 0) === fi ? 'bg-primary-50' : ''}`}
+                        onClick={() => selectProduct(product, productPickerRowIndex)}
+                      >
+                        <p className="font-semibold text-sm truncate">{product.nameEn}</p>
+                        <p className="text-xs text-neutral-600">AED {(product.sellPrice ?? 0).toFixed(2)} · Stock {product.stockQty}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Add Row Button - Desktop Only; pb-safe ensures clickable above fixed bottom nav on tablet */}
           <div className="hidden md:block px-2 py-2 pb-20 lg:pb-2">
             <button
@@ -2784,37 +2759,33 @@ const PosPage = () => {
               <Plus className="h-4 w-4 mr-2" />
               Add Product Row
             </button>
+            <p className="mt-2 text-[11px] sm:text-xs text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
+              <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
+              Tab = next field · Enter = select / next · Esc = cancel search · Ctrl+S / F9 = save invoice
+            </p>
           </div>
         </div>
-          </div>
 
-          <div className="hidden md:flex md:flex-col md:w-[380px] lg:w-[420px] xl:w-[440px] shrink-0 border-t md:border-t-0 md:border-l border-[#E5E7EB] bg-white overflow-y-auto min-h-0 p-3 md:p-4">
-        {/* Bottom - Totals, Discount & Payment. Mobile: bottom sheet; tablet+: right column */}
-        <div className="flex flex-col min-h-0">
-          {/* DESKTOP: 3-column layout in side panel */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
-            {/* Totals Box - Compact with No Number Wrapping */}
-            <div className="bg-gray-50 rounded-lg border-2 border-gray-300 p-2 sm:p-3">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 mb-1.5 sm:mb-2 border-b border-gray-400 pb-1">Totals</h3>
-              <div className="space-y-1 sm:space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-gray-700">INV.Amount</span>
-                  <span className="font-bold text-xs sm:text-sm text-gray-900 whitespace-nowrap">AED {totals.subtotal.toFixed(2)}</span>
+        {/* Bottom - Totals, Discount & Payment. Stacks below cart; desktop uses even 3-col grid */}
+        <div className="bg-white border-t border-[#E5E7EB] p-3 sm:p-4 flex-shrink-0 md:static">
+          {/* DESKTOP / TABLET: stack on md width, 3-col from lg */}
+          <div className="hidden md:flex md:flex-col lg:grid lg:grid-cols-3 gap-3">
+            {/* Totals — receipt order: lines → VAT → round-off → discount → grand total */}
+            <div className="bg-neutral-50 rounded-xl border border-neutral-200 p-3 space-y-3">
+              <h3 className="text-sm font-bold text-neutral-900 border-b border-neutral-200 pb-2">Totals</h3>
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm font-medium text-neutral-600">INV. Amount</span>
+                  <span className="text-sm font-semibold text-neutral-900 tabular-nums whitespace-nowrap">AED {totals.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-medium text-gray-700">VAT {vatPercent}%</span>
-                  <span className="font-bold text-xs sm:text-sm text-gray-900 whitespace-nowrap">AED {totals.vatTotal.toFixed(2)}</span>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm font-medium text-neutral-600">VAT {vatPercent}%</span>
+                  <span className="text-sm font-semibold text-neutral-900 tabular-nums whitespace-nowrap">AED {totals.vatTotal.toFixed(2)}</span>
                 </div>
-                {discount > 0 && (
-                  <div className="flex justify-between items-center text-red-700">
-                    <span className="text-xs font-medium">Discount</span>
-                    <span className="font-bold text-xs sm:text-sm whitespace-nowrap">-AED {discount.toFixed(2)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-xs font-medium text-gray-700">Round Off / تقريب</span>
-                  <div className="flex items-center gap-1">
-                    <button type="button" onClick={handleAutoRoundOff} disabled={isFormDisabled || isZeroInvoice} className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50">Auto</button>
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-sm font-medium text-neutral-600">Round Off</span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={handleAutoRoundOff} disabled={isFormDisabled || isZeroInvoice} className="text-xs font-medium text-primary-600 hover:text-primary-700 disabled:opacity-50 min-h-11 px-2">Auto</button>
                     <input
                       type="number"
                       step="0.01"
@@ -2835,19 +2806,48 @@ const PosPage = () => {
                         }
                       }}
                       disabled={isFormDisabled || isZeroInvoice}
-                      className="w-24 max-w-full text-right border border-gray-300 rounded-lg px-2 py-2.5 min-h-11 text-base disabled:opacity-50"
+                      className="w-24 min-h-11 text-right border border-neutral-300 rounded-lg px-2 text-sm disabled:opacity-50"
                     />
                   </div>
                 </div>
-                <div className="flex justify-between items-center text-xs sm:text-sm font-bold border-t border-gray-400 pt-1.5">
-                  <span className="text-gray-800">Total / المجموع</span>
-                  <span className="text-green-700 text-sm sm:text-base whitespace-nowrap">AED {totals.grandTotal.toFixed(2)}</span>
+                <div>
+                  <label className="block text-sm font-medium text-neutral-600 mb-1.5">Discount</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    disabled={isFormDisabled || isZeroInvoice}
+                    className="w-full min-h-11 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                    placeholder="0.00"
+                    value={discountInput}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setDiscountInput(value)
+                        const numValue = value === '' ? 0 : parseFloat(value)
+                        setDiscount(isNaN(numValue) ? 0 : numValue)
+                      }
+                    }}
+                    onBlur={() => {
+                      if (discountInput === '' || discountInput === '0' || discountInput === '0.') {
+                        setDiscountInput('')
+                        setDiscount(0)
+                      } else {
+                        const numValue = parseFloat(discountInput)
+                        if (!isNaN(numValue)) {
+                          setDiscountInput(numValue.toFixed(2))
+                          setDiscount(numValue)
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-center gap-2 border-t-2 border-neutral-300 pt-3">
+                  <span className="text-base font-bold text-neutral-900">Total / المجموع</span>
+                  <span className="text-xl font-extrabold text-green-700 tabular-nums whitespace-nowrap">AED {totals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
-
-              {/* Zero invoice / Free sample (FTA) */}
               {!isEditMode && (
-                <div className="mt-2 pt-1.5 border-t border-gray-300 flex items-center gap-2">
+                <div className="pt-2 border-t border-neutral-200 flex items-center gap-2 min-h-11">
                   <input
                     type="checkbox"
                     id="pos-zero-invoice"
@@ -2860,60 +2860,25 @@ const PosPage = () => {
                         setDiscountInput('0')
                       }
                     }}
-                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                    className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500 h-4 w-4"
                   />
-                  <label htmlFor="pos-zero-invoice" className="text-xs font-medium text-gray-700">Free sample / Zero invoice</label>
+                  <label htmlFor="pos-zero-invoice" className="text-sm font-medium text-neutral-700">Free sample / Zero invoice</label>
                   {isZeroInvoice && <span className="text-xs bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">0 VAT</span>}
                 </div>
               )}
-              {/* Optional Discount Field - Compact */}
-              <div className="mt-2 pt-1.5 border-t border-gray-300">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Discount</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  disabled={isFormDisabled || isZeroInvoice}
-                  className="w-full px-2 py-2.5 min-h-11 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  placeholder="0.00"
-                  value={discountInput}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    // Allow empty, numbers, and one decimal point
-                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      setDiscountInput(value)
-                      // Update numeric discount for calculations
-                      const numValue = value === '' ? 0 : parseFloat(value)
-                      setDiscount(isNaN(numValue) ? 0 : numValue)
-                    }
-                  }}
-                  onBlur={() => {
-                    // Format on blur: if empty, set to 0, otherwise format to 2 decimals
-                    if (discountInput === '' || discountInput === '0' || discountInput === '0.') {
-                      setDiscountInput('')
-                      setDiscount(0)
-                    } else {
-                      const numValue = parseFloat(discountInput)
-                      if (!isNaN(numValue)) {
-                        setDiscountInput(numValue.toFixed(2))
-                        setDiscount(numValue)
-                      }
-                    }
-                  }}
-                />
-              </div>
             </div>
 
-            {/* Payment Info Box - Compact */}
-            <div className="bg-gray-50 rounded-lg border-2 border-gray-300 p-2 sm:p-3">
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 mb-1.5 sm:mb-2 border-b border-gray-400 pb-1">
-                Payment <span className="text-xs font-normal text-gray-500">(Optional)</span>
+            {/* Payment — same field spacing scale as Totals */}
+            <div className="bg-neutral-50 rounded-xl border border-neutral-200 p-3 space-y-3">
+              <h3 className="text-sm font-bold text-neutral-900 border-b border-neutral-200 pb-2">
+                Payment <span className="text-xs font-normal text-neutral-500">(Optional)</span>
               </h3>
-              <div className="space-y-1.5 sm:space-y-2">
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Method</label>
+                  <label className="block text-sm font-medium text-neutral-600 mb-1.5">Method</label>
                   <select
                     disabled={isFormDisabled}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full min-h-11 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                   >
@@ -2924,33 +2889,31 @@ const PosPage = () => {
                     <option value="Online">Online</option>
                   </select>
                 </div>
-
                 {paymentMethod !== 'Pending' && (
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Amount</label>
+                    <label className="block text-sm font-medium text-neutral-600 mb-1.5">Amount</label>
                     <input
                       type="number"
                       min="0"
                       step="0.01"
                       disabled={isFormDisabled}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full min-h-11 px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
                       placeholder="Full amount if empty"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
                     />
-                    {/* Quick Amount Buttons */}
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {[100, 500, 1000, 2000, 5000].map(amount => (
                         <button
                           key={amount}
                           type="button"
                           disabled={isFormDisabled}
                           onClick={() => {
-                            const totals = calculateTotals()
-                            const maxAmount = Math.min(amount, totals.grandTotal)
+                            const t = calculateTotals()
+                            const maxAmount = Math.min(amount, t.grandTotal)
                             setPaymentAmount(maxAmount.toFixed(2))
                           }}
-                          className="px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 active:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="min-h-11 px-3 text-sm font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-100 disabled:opacity-50"
                         >
                           {amount}
                         </button>
@@ -2958,13 +2921,12 @@ const PosPage = () => {
                     </div>
                   </div>
                 )}
-
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Notes</label>
+                  <label className="block text-sm font-medium text-neutral-600 mb-1.5">Notes</label>
                   <textarea
                     disabled={isFormDisabled}
-                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    rows="2"
+                    className="w-full min-h-[5.5rem] px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+                    rows="3"
                     placeholder="Notes..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
@@ -2973,28 +2935,31 @@ const PosPage = () => {
               </div>
             </div>
 
-            {/* Save Button Box - Compact */}
-            <div className="flex flex-col justify-end">
+            {/* Save */}
+            <div className="flex flex-col justify-end gap-2">
               <button
                 onClick={handleSave}
                 disabled={loading || loadingSale || cart.length === 0}
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-                className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-bold text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-lg transition-all active:scale-95 ${isEditMode
+                className={`w-full min-h-14 px-4 py-3 rounded-xl font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-md transition-all active:scale-[0.98] ${isEditMode
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
               >
                 {(loading || loadingSale) ? (
-                  <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-b-2 border-white mr-1.5"></div>
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                    {isEditMode ? 'Updating...' : 'Saving...'}
+                  </>
                 ) : (
-                  <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5" />
+                  <>
+                    <Save className="h-5 w-5 mr-2" />
+                    {isEditMode ? 'Update Invoice' : 'Save Invoice'}
+                  </>
                 )}
-                <span className="text-xs sm:text-sm">{isEditMode ? 'Update Invoice' : 'Save Invoice'}</span>
               </button>
-              <p className="text-xs text-gray-500 text-center mt-1">Auto-backup enabled</p>
+              <p className="text-xs text-center text-neutral-500">Auto-backup enabled · Ctrl+S / F9</p>
             </div>
-          </div>
-        </div>
           </div>
         </div>
       </div>
@@ -3009,7 +2974,7 @@ const PosPage = () => {
           onClick={() => (cart.length > 0 ? setShowPaymentSheet(true) : null)}
           disabled={loading || loadingSale || cart.length === 0}
           title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-          className="flex-1 max-w-[200px] px-4 py-3 rounded-xl font-bold text-sm bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 max-w-[200px] min-h-11 px-4 py-3 rounded-xl font-bold text-sm bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {(loading || loadingSale) ? (
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
@@ -3024,7 +2989,7 @@ const PosPage = () => {
       {showPaymentSheet && (
         <div className="md:hidden fixed inset-0 z-[60] flex flex-col justify-end">
           <div className="absolute inset-0 bg-black/40" onClick={() => setShowPaymentSheet(false)} aria-hidden />
-          <div className={`relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp ${mobilePageShellClass}`}>
+          <div className="relative bg-white rounded-t-xl shadow-xl max-h-[90vh] flex flex-col animate-slideUp">
             <div className="flex-shrink-0 px-4 pt-4 pb-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-[#0F172A]">Payment</h3>
@@ -3033,7 +2998,7 @@ const PosPage = () => {
                 </button>
               </div>
             </div>
-            <div className={`flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 pb-2 space-y-3 text-sm ${mobilePageShellClass}`}>
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2 space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#475569]">Subtotal</span>
                 <span className="font-medium text-[#0F172A]">AED {totals.subtotal.toFixed(2)}</span>
@@ -3047,7 +3012,7 @@ const PosPage = () => {
                 <input
                   type="text"
                   inputMode="decimal"
-                  className={mobileFormFieldClass}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="0.00"
                   value={discountInput}
                   onChange={(e) => {
@@ -3068,7 +3033,7 @@ const PosPage = () => {
                     step="0.01"
                     min="-1"
                     max="1"
-                    className={`${mobileFormFieldClass} text-right`}
+                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="0.00"
                     value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
                     onChange={(e) => {
@@ -3086,7 +3051,7 @@ const PosPage = () => {
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Payment method</label>
                 <select
-                  className={mobileFormSelectClass}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
@@ -3104,7 +3069,7 @@ const PosPage = () => {
                     type="number"
                     min="0"
                     step="0.01"
-                    className={mobileFormFieldClass}
+                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder={totals.grandTotal.toFixed(2)}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
@@ -3131,7 +3096,7 @@ const PosPage = () => {
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Notes (optional)</label>
                 <textarea
-                  className={`${mobileFormFieldClass} resize-none min-h-[4.5rem]`}
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   rows={2}
                   placeholder="Notes..."
                   value={notes}
@@ -3184,7 +3149,7 @@ const PosPage = () => {
                   ref={customerInputRef}
                   type="text"
                   placeholder="Search customers (F4)..."
-                  className={`${mobileFormFieldClass} border-2 border-blue-300`}
+                  className="w-full px-3 py-2 border-2 border-blue-300 rounded text-sm"
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
                 />
@@ -3596,7 +3561,7 @@ const PosPage = () => {
 
                 <button
                   onClick={handleWhatsAppShare}
-                  className="w-full flex items-center justify-center px-6 min-h-11 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
                 >
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Share via WhatsApp
@@ -3621,33 +3586,6 @@ const PosPage = () => {
                 Done
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showBarcodeScanner && (
-        <div
-          className="fixed inset-0 z-[20000] flex items-center justify-center bg-black/60 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="pos-barcode-scan-title"
-        >
-          <div className="bg-white rounded-xl max-w-lg w-full shadow-xl overflow-hidden border border-neutral-200">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200">
-              <h3 id="pos-barcode-scan-title" className="text-base font-semibold text-neutral-900">Scan barcode</h3>
-              <button
-                type="button"
-                onClick={() => setShowBarcodeScanner(false)}
-                className="p-2 rounded-lg hover:bg-neutral-100 text-neutral-600 min-h-11 min-w-11 inline-flex items-center justify-center"
-                aria-label="Close scanner"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div id="pos-barcode-reader" className="w-full min-h-[240px] bg-black" />
-            <p className="text-xs text-neutral-600 px-4 py-3 bg-neutral-50">
-              Allow camera access. Matches product by barcode or SKU (server search). Close to cancel.
-            </p>
           </div>
         </div>
       )}
