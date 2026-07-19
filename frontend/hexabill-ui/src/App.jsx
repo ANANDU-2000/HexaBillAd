@@ -43,6 +43,10 @@ import ReturnCreatePage from './pages/company/ReturnCreatePage'
 import CustomersPage from './pages/company/CustomersPage'
 import CustomerDetailPage from './pages/company/CustomerDetailPage'
 import MorePage from './pages/company/MorePage'
+import QuotationsPage from './pages/company/QuotationsPage'
+import QuotationEditorPage from './pages/company/QuotationEditorPage'
+import AgreementsPage from './pages/company/AgreementsPage'
+import AgreementEditorPage from './pages/company/AgreementEditorPage'
 import StockAdjustmentsHistoryPage from './pages/company/StockAdjustmentsHistoryPage'
 import SignupPage from './pages/SignupPage'
 import OnboardingWizard from './pages/OnboardingWizard'
@@ -214,6 +218,12 @@ function App() {
               <Route path="/billing-history" element={<BillingHistoryPage />} />
               <Route path="/recurring-invoices" element={<Navigate to="/dashboard" replace />} />
               <Route path="/returns/create" element={<ReturnCreatePage />} />
+              <Route path="/quotations" element={<QuotationsPage />} />
+              <Route path="/quotations/new" element={<QuotationEditorPage />} />
+              <Route path="/quotations/:id" element={<QuotationEditorPage />} />
+              <Route path="/agreements" element={<AgreementsPage />} />
+              <Route path="/agreements/new" element={<AgreementEditorPage />} />
+              <Route path="/agreements/:id" element={<AgreementEditorPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
               <Route path="/vat-return" element={<VatReturnPage />} />

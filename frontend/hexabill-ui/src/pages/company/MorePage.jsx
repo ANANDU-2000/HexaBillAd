@@ -21,6 +21,8 @@ const moreLinks = [
   { to: '/stock-adjustments', label: 'Stock adjustment history', pageId: 'products', icon: History },
   { to: '/purchases', label: 'Purchases', pageId: 'purchases', icon: Truck, adminOnly: true },
   { to: '/sales-ledger', label: 'Sales ledger', pageId: 'reports', icon: FileText },
+  { to: '/quotations', label: 'Quotations', pageId: 'reports', icon: FileText },
+  { to: '/agreements', label: 'Agreements', pageId: 'reports', icon: FileText },
   { to: '/reports', label: 'Reports', pageId: 'reports', icon: BarChart3 },
   { to: '/settings', label: 'Settings', pageId: 'settings', icon: Settings, adminOnly: true },
 ]

@@ -2187,6 +2187,219 @@ if (hasLogo)
             }
         }
 
+        public async Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4")
+        {
+            var fmt = NormalizePageFormat(format);
+            var company = await _settingsService.GetCompanySettingsAsync(tenantId);
+            try
+            {
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
+                        page.Margin(fmt == "A5" ? 28 : 40);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
+
+                        page.Header().Column(col =>
+                        {
+                            col.Item().Text(company.LegalNameEn ?? "Company").Bold().FontSize(fmt == "A5" ? 11 : 14).AlignCenter();
+                            if (!string.IsNullOrWhiteSpace(company.Address))
+                                col.Item().AlignCenter().Text(company.Address).FontSize(8);
+                            var contact = string.Join("  |  ", new[] { company.Mobile, $"TRN: {company.VatNumber}" }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                            if (!string.IsNullOrWhiteSpace(contact))
+                                col.Item().AlignCenter().Text(contact).FontSize(8);
+                            col.Item().PaddingTop(8).AlignRight().Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
+                        });
+
+                        page.Content().PaddingTop(10).Column(col =>
+                        {
+                            col.Item().Row(row =>
+                            {
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text("To:").Bold();
+                                    c.Item().Text(quotation.CustomerName ?? "");
+                                    if (!string.IsNullOrWhiteSpace(quotation.CustomerAddress))
+                                        c.Item().Text(quotation.CustomerAddress).FontSize(8);
+                                });
+                                row.ConstantItem(140).AlignRight().Column(c =>
+                                {
+                                    c.Item().Text($"Quotation #: {quotation.QuoteNo}").Bold();
+                                    c.Item().Text($"Date: {quotation.QuoteDate:dd-MM-yyyy}");
+                                });
+                            });
+
+                            col.Item().PaddingTop(10).Text("Dear Sir/Madam, Thank you for your valuable inquiry. We are pleased to quote as below:")
+                                .FontSize(8);
+
+                            col.Item().PaddingTop(8).Table(table =>
+                            {
+                                table.ColumnsDefinition(columns =>
+                                {
+                                    columns.ConstantColumn(24);
+                                    columns.RelativeColumn(3);
+                                    columns.ConstantColumn(50);
+                                    columns.ConstantColumn(55);
+                                    columns.ConstantColumn(55);
+                                    columns.ConstantColumn(60);
+                                });
+                                table.Header(header =>
+                                {
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text("#").Bold().FontSize(8);
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).Text("DESCRIPTION").Bold().FontSize(8);
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("QTY").Bold().FontSize(8);
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("PRICE").Bold().FontSize(8);
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("TAX").Bold().FontSize(8);
+                                    header.Cell().Background(Colors.Grey.Lighten3).Padding(3).AlignRight().Text("TOTAL").Bold().FontSize(8);
+                                });
+                                var i = 1;
+                                foreach (var item in quotation.Items.OrderBy(x => x.SortOrder))
+                                {
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(i.ToString()).FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Text(item.Description).FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.Qty:0.##} {item.UnitLabel}").FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.UnitPrice:N2}").FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.VatAmount:N2}").FontSize(8);
+                                    table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Text($"{item.LineTotal:N2}").FontSize(8);
+                                    i++;
+                                }
+                            });
+
+                            col.Item().PaddingTop(12).AlignRight().Width(200).Column(totals =>
+                            {
+                                totals.Item().Row(r =>
+                                {
+                                    r.RelativeItem().Text("SUBTOTAL");
+                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.Subtotal:N2}");
+                                });
+                                totals.Item().Row(r =>
+                                {
+                                    r.RelativeItem().Text("TAX");
+                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.VatTotal:N2}");
+                                });
+                                totals.Item().PaddingTop(4).BorderTop(1).BorderBottom(2).PaddingVertical(4).Row(r =>
+                                {
+                                    r.RelativeItem().Text("GRAND TOTAL").Bold();
+                                    r.ConstantItem(80).AlignRight().Text($"AED {quotation.GrandTotal:N2}").Bold();
+                                });
+                            });
+                        });
+
+                        page.Footer().AlignCenter().Text(x =>
+                        {
+                            x.Span("Page ");
+                            x.CurrentPageNumber();
+                            x.Span(" of ");
+                            x.TotalPages();
+                        });
+                    });
+                });
+                return await Task.FromResult(document.GeneratePdf());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating quotation PDF {QuoteNo}", quotation.QuoteNo);
+                throw;
+            }
+        }
+
+        public Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, string format = "A4")
+        {
+            var fmt = NormalizePageFormat(format);
+            try
+            {
+                var secondName = string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? "________________" : agreement.SecondPartyName!;
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
+                        page.Margin(fmt == "A5" ? 28 : 40);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
+
+                        page.Header().Column(col =>
+                        {
+                            col.Item().Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
+                                .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12).AlignCenter();
+                            col.Item().PaddingTop(6).AlignCenter().Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
+                                .Bold().FontSize(fmt == "A5" ? 11 : 13).Underline();
+                            col.Item().PaddingTop(4).AlignCenter().Text(agreement.AgreementDate.ToString("dd/MM/yyyy")).FontSize(9);
+                        });
+
+                        page.Content().PaddingTop(12).Column(col =>
+                        {
+                            col.Item().Text("First Party:").Bold();
+                            col.Item().Text(agreement.FirstPartyName);
+                            col.Item().Text($"License: {agreement.FirstPartyLicense}");
+                            col.Item().Text($"Location: {agreement.FirstPartyAddress}");
+                            if (!string.IsNullOrWhiteSpace(agreement.FirstPartyMobile))
+                                col.Item().Text($"Mobile: {agreement.FirstPartyMobile}");
+
+                            col.Item().PaddingTop(8).Text("Second Party:").Bold();
+                            col.Item().Text(string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? "________________" : agreement.SecondPartyName);
+                            col.Item().Text($"License: {(string.IsNullOrWhiteSpace(agreement.SecondPartyLicense) ? "________________" : agreement.SecondPartyLicense)}");
+                            col.Item().Text($"Location: {(string.IsNullOrWhiteSpace(agreement.SecondPartyAddress) ? "________________" : agreement.SecondPartyAddress)}");
+                            col.Item().Text($"Mobile: {(string.IsNullOrWhiteSpace(agreement.SecondPartyMobile) ? "________________" : agreement.SecondPartyMobile)}");
+
+                            col.Item().PaddingTop(10).Text(
+                                HexaBill.Api.Modules.Documents.AgreementTemplate.Whereas(agreement.FirstPartyName, secondName));
+
+                            col.Item().PaddingTop(8).Text("The parties agree as follows:").Bold();
+                            var n = 1;
+                            foreach (var clause in HexaBill.Api.Modules.Documents.AgreementTemplate.Clauses)
+                            {
+                                col.Item().PaddingTop(4).Text($"{n}. {clause}");
+                                n++;
+                            }
+
+                            col.Item().PaddingTop(28).Row(row =>
+                            {
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text("________________________").AlignCenter();
+                                    c.Item().AlignCenter().Text("First Party").Bold();
+                                    c.Item().AlignCenter().Text(agreement.FirstPartyName).FontSize(7);
+                                });
+                                row.RelativeItem().Column(c =>
+                                {
+                                    c.Item().Text("________________________").AlignCenter();
+                                    c.Item().AlignCenter().Text("Second Party").Bold();
+                                    c.Item().AlignCenter().Text(secondName).FontSize(7);
+                                });
+                            });
+                        });
+
+                        page.Footer().Column(col =>
+                        {
+                            var footerBits = new[] { agreement.FirstPartyAddress, agreement.FirstPartyPhones, agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
+                                .Where(s => !string.IsNullOrWhiteSpace(s));
+                            col.Item().AlignCenter().Text(string.Join("  |  ", footerBits)).FontSize(7).FontColor(Colors.Grey.Darken1);
+                            col.Item().AlignCenter().Text(x =>
+                            {
+                                x.Span("Page ");
+                                x.CurrentPageNumber();
+                                x.Span(" of ");
+                                x.TotalPages();
+                            });
+                        });
+                    });
+                });
+                return Task.FromResult(document.GeneratePdf());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating agreement PDF {No}", agreement.AgreementNo);
+                throw;
+            }
+        }
+
+        private static string NormalizePageFormat(string? format)
+        {
+            var f = (format ?? "A4").Trim().ToUpperInvariant();
+            return f == "A5" ? "A5" : "A4";
+        }
+
     }
 }
 

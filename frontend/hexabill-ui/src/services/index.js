@@ -2119,3 +2119,5 @@ export const demoRequestAPI = {
     return response.data
   }
 }
+
+export { quotationsAPI, agreementsAPI } from './documentsApi'

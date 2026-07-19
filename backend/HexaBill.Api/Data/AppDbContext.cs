@@ -79,6 +79,9 @@ namespace HexaBill.Api.Data
         public DbSet<RecurringInvoiceItem> RecurringInvoiceItems { get; set; }
         public DbSet<VatReturnPeriod> VatReturnPeriods { get; set; }
         public DbSet<PaymentReceipt> PaymentReceipts { get; set; }
+        public DbSet<Quotation> Quotations { get; set; }
+        public DbSet<QuotationItem> QuotationItems { get; set; }
+        public DbSet<Agreement> Agreements { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -877,6 +880,52 @@ namespace HexaBill.Api.Data
                 if (Database.IsNpgsql())
                     entity.Property(e => e.Id).UseIdentityByDefaultColumn();
                 entity.Property(e => e.RoundOff).HasColumnType("decimal(18,2)");
+            });
+
+            // Quotations (additive Documents module)
+            modelBuilder.Entity<Quotation>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.QuoteNo).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.VatTotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.GrandTotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+                entity.HasIndex(e => new { e.TenantId, e.QuoteNo })
+                    .IsUnique()
+                    .HasFilter("\"IsDeleted\" = false");
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId).OnDelete(DeleteBehavior.SetNull);
+                entity.HasMany(e => e.Items).WithOne(i => i.Quotation).HasForeignKey(i => i.QuotationId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<QuotationItem>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Description).IsRequired().HasMaxLength(500);
+                entity.Property(e => e.UnitLabel).HasMaxLength(50);
+                entity.Property(e => e.Qty).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.UnitPrice).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.VatRate).HasColumnType("decimal(18,4)");
+                entity.Property(e => e.VatAmount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.LineTotal).HasColumnType("decimal(18,2)");
+                entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.SetNull);
+            });
+
+            // Agreements (additive Documents module)
+            modelBuilder.Entity<Agreement>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.AgreementNo).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.TemplateVersion).HasMaxLength(20);
+                entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+                entity.HasIndex(e => new { e.TenantId, e.AgreementNo })
+                    .IsUnique()
+                    .HasFilter("\"IsDeleted\" = false");
+                entity.HasIndex(e => e.TenantId);
             });
 
             // Seed data

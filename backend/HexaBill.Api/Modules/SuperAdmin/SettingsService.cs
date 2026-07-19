@@ -393,7 +393,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 { "VAT_LEGAL_TEXT", "VAT registered under Federal Decree-Law No. 8 of 2017, UAE" },
                 { "LOGO_PATH", "/uploads/logo.png" },
                 { "LOW_STOCK_GLOBAL_THRESHOLD", "" }, // Optional: alert when stock <= this for products with ReorderLevel 0 (#55)
-                { "ALLOW_NEGATIVE_STOCK", "true" }
+                { "ALLOW_NEGATIVE_STOCK", "true" },
+                // Documents module. Explicit false disables. Missing = enabled (greenfield opt-out).
+                { "Feature_QuotesAgreements", "true" },
+                { "COMPANY_LICENSE", "CN-4937175" }
             };
         }
     }

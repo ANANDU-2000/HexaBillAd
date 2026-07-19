@@ -16,5 +16,9 @@ namespace HexaBill.Api.Modules.Billing
         Task<byte[]> GenerateWorksheetPdfAsync(WorksheetReportDto dto, DateTime fromDate, DateTime toDate, int tenantId);
         /// <summary>Expenses register for a date range (filters match Expenses list / CSV export).</summary>
         Task<byte[]> GenerateExpensesRegisterPdfAsync(IReadOnlyList<ExpenseDto> expenses, DateTime fromDate, DateTime toDate, int tenantId);
+        /// <summary>Quotation PDF (A4 or A5).</summary>
+        Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4");
+        /// <summary>Business Development Agreement PDF (A4 or A5).</summary>
+        Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, string format = "A4");
     }
 }
