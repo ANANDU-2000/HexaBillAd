@@ -6,6 +6,8 @@ namespace HexaBill.Api.Modules.Billing
     public interface IPdfService
     {
         Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4");
+        /// <summary>Packing-list delivery note from sale (no prices/VAT/totals).</summary>
+        Task<byte[]> GenerateDeliveryNotePdfAsync(SaleDto sale, string format = "A4");
         Task<byte[]> GenerateCombinedInvoicePdfAsync(List<SaleDto> sales);
         Task<byte[]> GenerateSalesLedgerPdfAsync(SalesLedgerReportDto ledgerReport, DateTime fromDate, DateTime toDate, int tenantId);
         Task<byte[]> GeneratePendingBillsPdfAsync(List<PendingBillDto> pendingBills, DateTime fromDate, DateTime toDate, int tenantId);

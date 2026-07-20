@@ -281,6 +281,59 @@ export const salesAPI = {
     }
   },
 
+  getDeliveryNotePdf: async (id, options = {}) => {
+    try {
+      const params = {}
+      if (options.format) params.format = options.format
+      const response = await api.get(`/sales/${id}/delivery-note-pdf`, {
+        responseType: 'blob',
+        timeout: 120000,
+        _bypassCache: true,
+        ...(Object.keys(params).length > 0 && { params })
+      })
+
+      const contentType = response.headers['content-type'] || ''
+      if (response.status >= 400 || contentType.includes('application/json')) {
+        const text = await response.data.text()
+        let errorData
+        try {
+          errorData = JSON.parse(text)
+        } catch {
+          throw new Error(`Server error: ${response.status}`)
+        }
+        throw new Error(errorData?.message || errorData?.errors?.join(', ') || 'Failed to generate delivery note')
+      }
+
+      if (!response.data || !(response.data instanceof Blob)) {
+        throw new Error('Invalid PDF data received from server')
+      }
+
+      return response.data
+    } catch (error) {
+      if (error.response) {
+        const contentType = error.response.headers['content-type'] || ''
+        if (contentType.includes('application/json')) {
+          const errorData = error.response.data
+          throw new Error(errorData?.message || errorData?.errors?.join(', ') || 'Failed to generate delivery note')
+        }
+        if (error.response.data instanceof Blob) {
+          try {
+            const text = await error.response.data.text()
+            if (text.trim().startsWith('{')) {
+              const errorData = JSON.parse(text)
+              throw new Error(errorData.message || errorData.errors?.join(', ') || 'Failed to generate delivery note')
+            }
+            throw new Error(`Server error: ${error.response.status}`)
+          } catch (parseError) {
+            if (parseError.message) throw parseError
+            throw new Error(`Server error: ${error.response.status}`)
+          }
+        }
+      }
+      throw new Error(error.message || 'Failed to generate delivery note')
+    }
+  },
+
   sendInvoiceEmail: async (id, email) => {
     const response = await api.post(`/sales/${id}/email`, { email })
     return response.data

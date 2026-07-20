@@ -508,6 +508,161 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
+        public async Task<byte[]> GenerateDeliveryNotePdfAsync(SaleDto sale, string format = "A4")
+        {
+            var formatNormalized = (format ?? "A4").Trim();
+            if (!new[] { "A4", "A5" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
+                formatNormalized = "A4";
+
+            try
+            {
+                if (sale.Items == null || !sale.Items.Any())
+                    throw new InvalidOperationException($"Sale {sale.Id} has no items. Cannot generate delivery note.");
+
+                var settings = await GetCompanySettingsAsync(sale.OwnerId);
+                var customerTrn = await GetCustomerTrnAsync(sale.CustomerId, sale.OwnerId);
+                var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
+                var isA5 = formatNormalized.Equals("A5", StringComparison.OrdinalIgnoreCase);
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        if (isA5)
+                        {
+                            page.Size(148, 210, Unit.Millimetre);
+                            page.Margin(4, Unit.Millimetre);
+                            page.DefaultTextStyle(x => x.FontSize(8f).FontFamily(_arabicFont));
+                        }
+                        else
+                        {
+                            page.Size(PageSizes.A4);
+                            page.Margin(5, Unit.Millimetre);
+                            page.DefaultTextStyle(x => x.FontSize(10f).FontFamily(_arabicFont));
+                        }
+                        page.PageColor(Colors.White);
+
+                        page.Content().Column(column =>
+                        {
+                            column.Item().Padding(3).Column(innerColumn =>
+                            {
+                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
+                                var titleSize = isA5 ? 10f : 12f;
+                                var bodySize = isA5 ? 8f : 9f;
+
+                                innerColumn.Item().Row(headerRow =>
+                                {
+                                    if (hasLogo)
+                                        headerRow.ConstantItem(isA5 ? 90 : 130).AlignLeft().AlignMiddle()
+                                            .Width(isA5 ? 80 : 120).Height(isA5 ? 40 : 56).Image(settings.LogoImageBytes!).FitArea();
+                                    headerRow.RelativeItem().AlignCenter().Column(nameCol =>
+                                    {
+                                        nameCol.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(isA5 ? 12 : 18).Bold().AlignCenter();
+                                        nameCol.Item().PaddingTop(1).Text(settings.CompanyNameAr).FontSize(isA5 ? 10 : 16).Bold()
+                                            .FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
+                                        nameCol.Item().PaddingTop(2).Text($"Mob: {settings.CompanyPhone}, {settings.CompanyAddress}")
+                                            .FontSize(isA5 ? 8 : 12).Bold().AlignCenter();
+                                    });
+                                    headerRow.ConstantItem(isA5 ? 60 : 80).AlignRight().AlignMiddle()
+                                        .Text($"DATE: {invoiceDateStr}").FontSize(bodySize).Bold();
+                                });
+
+                                innerColumn.Item().PaddingTop(2).BorderTop(1f).BorderBottom(1f).PaddingVertical(2)
+                                    .Text("DELIVERY NOTE").FontSize(titleSize).Bold().AlignCenter();
+
+                                innerColumn.Item().PaddingTop(4).Row(custRow =>
+                                {
+                                    custRow.RelativeItem().Column(col =>
+                                    {
+                                        col.Item().Text(text =>
+                                        {
+                                            text.Span("Invoice Ref : ").FontSize(bodySize).Bold();
+                                            text.Span(sale.InvoiceNo ?? "").FontSize(bodySize).Bold();
+                                        });
+                                        col.Item().Text(text =>
+                                        {
+                                            text.Span("Customer : ").FontSize(bodySize).Bold();
+                                            text.Span(string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName).FontSize(bodySize);
+                                        });
+                                    });
+                                    if (!string.IsNullOrWhiteSpace(trnDisplay))
+                                    {
+                                        custRow.RelativeItem().AlignRight().Text(text =>
+                                        {
+                                            text.Span("Customer TRN : ").FontSize(bodySize).Bold();
+                                            text.Span(trnDisplay).FontSize(bodySize);
+                                        });
+                                    }
+                                });
+
+                                innerColumn.Item().PaddingTop(4).Border(0.5f).Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.RelativeColumn(8);
+                                        columns.RelativeColumn(52);
+                                        columns.RelativeColumn(15);
+                                        columns.RelativeColumn(15);
+                                    });
+
+                                    void AddHeader(string eng)
+                                    {
+                                        table.Cell().Border(0.5f).PaddingVertical(3).PaddingHorizontal(2)
+                                            .AlignCenter().Text(eng).FontSize(bodySize).Bold();
+                                    }
+
+                                    AddHeader("SL.No");
+                                    AddHeader("Description");
+                                    AddHeader("Unit");
+                                    AddHeader("Qty");
+
+                                    for (int i = 0; i < sale.Items.Count; i++)
+                                    {
+                                        var item = sale.Items[i];
+                                        table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1)
+                                            .AlignCenter().Text((i + 1).ToString()).FontSize(bodySize);
+                                        table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(2)
+                                            .AlignLeft().Text(item.ProductName ?? "").FontSize(bodySize);
+                                        var unitTypeText = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpper();
+                                        table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1)
+                                            .AlignCenter().Text(unitTypeText).FontSize(bodySize);
+                                        table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1)
+                                            .AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(bodySize);
+                                    }
+                                });
+
+                                innerColumn.Item().PaddingTop(8).Column(footerCol =>
+                                {
+                                    footerCol.Item().AlignLeft().Text("Received the above goods in good order.").FontSize(bodySize);
+                                    footerCol.Item().PaddingTop(6).Row(sigRow =>
+                                    {
+                                        sigRow.RelativeItem().Column(leftCol =>
+                                        {
+                                            leftCol.Item().Text("Receiver's Name: " + new string('.', 28)).FontSize(bodySize);
+                                            leftCol.Item().PaddingTop(4).Text("Receiver's Sign: " + new string('.', 28)).FontSize(bodySize);
+                                        });
+                                        sigRow.RelativeItem().Column(rightCol =>
+                                        {
+                                            rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(bodySize);
+                                            rightCol.Item().AlignRight().Text(new string('.', 30)).FontSize(bodySize);
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Delivery note PDF generation error: {Message}", ex.Message);
+                throw;
+            }
+        }
+
         /// <summary>A5 (148x210mm) compact invoice - fixed table structure, no overflow, minimal white space.</summary>
         private byte[] GenerateInvoicePdfA5(SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay)
         {

@@ -31,6 +31,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<bool> DeleteSaleAsync(int saleId, int userId, int tenantId);
         Task<string> GenerateInvoiceNumberAsync(int tenantId);
         Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4");
+        Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4");
         Task<bool> CanEditInvoiceAsync(int saleId, int userId, string userRole, int tenantId);
         Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId);
         Task<List<InvoiceVersion>> GetInvoiceVersionsAsync(int saleId, int tenantId);
@@ -2538,6 +2539,56 @@ namespace HexaBill.Api.Modules.Billing
             catch (Exception ex)
             {
                 _logger.LogError(ex, "PDF generation failed for sale {SaleId}", saleId);
+                throw;
+            }
+        }
+
+        public async Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4")
+        {
+            var formatNormalized = string.IsNullOrWhiteSpace(format) ? "A4" : format.Trim();
+            if (!new[] { "A4", "A5" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
+                formatNormalized = "A4";
+
+            try
+            {
+                _logger.LogInformation("Delivery note PDF starting for sale {SaleId} tenant {TenantId} format {Format}", saleId, tenantId, formatNormalized);
+
+                IQueryable<Sale> query = _context.Sales.Where(s => s.Id == saleId);
+                if (tenantId > 0)
+                    query = query.Where(s => s.TenantId == tenantId);
+
+                var sale = await query
+                    .Include(s => s.Customer)
+                    .Include(s => s.Items)
+                        .ThenInclude(i => i.Product)
+                    .FirstOrDefaultAsync();
+
+                if (sale == null)
+                    throw new InvalidOperationException($"Sale with ID {saleId} not found");
+
+                var saleDto = new SaleDto
+                {
+                    Id = sale.Id,
+                    OwnerId = sale.TenantId ?? 0,
+                    InvoiceNo = sale.InvoiceNo ?? $"INV-{saleId}",
+                    InvoiceDate = sale.InvoiceDate,
+                    CustomerId = sale.CustomerId,
+                    CustomerName = sale.Customer?.Name ?? "Cash Customer",
+                    Items = sale.Items?.Select(i => new SaleItemDto
+                    {
+                        Id = i.Id,
+                        ProductId = i.ProductId,
+                        ProductName = i.Product?.NameEn ?? $"Product {i.ProductId}",
+                        Qty = i.Qty,
+                        UnitType = i.Product?.UnitType ?? "CRTN",
+                    }).ToList() ?? new List<SaleItemDto>()
+                };
+
+                return await _pdfService.GenerateDeliveryNotePdfAsync(saleDto, formatNormalized);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Delivery note PDF failed for sale {SaleId}", saleId);
                 throw;
             }
         }

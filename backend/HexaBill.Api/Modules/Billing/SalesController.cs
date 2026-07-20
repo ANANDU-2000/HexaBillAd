@@ -429,6 +429,67 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
+        [HttpGet("{id}/delivery-note-pdf")]
+        [Authorize(Roles = "Admin,Owner,Staff")]
+        public async Task<ActionResult> GetDeliveryNotePdf(int id, [FromQuery] string? format = "A4")
+        {
+            try
+            {
+                var formatNormalized = (format ?? "A4").Trim();
+                if (string.IsNullOrEmpty(formatNormalized)) formatNormalized = "A4";
+                if (!new[] { "A4", "A5" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
+                    formatNormalized = "A4";
+
+                var tenantId = CurrentTenantId;
+                var sale = await _saleService.GetSaleByIdAsync(id, tenantId);
+                if (sale == null)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = $"Invoice with ID {id} not found"
+                    });
+                }
+
+                var pdfBytes = await _saleService.GenerateDeliveryNotePdfAsync(id, tenantId, formatNormalized);
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    return StatusCode(500, new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Failed to generate delivery note PDF."
+                    });
+                }
+
+                var filename = $"DN-{sale.InvoiceNo}.pdf";
+                var isPrint = Request.Query.ContainsKey("print") || Request.Headers["Accept"].ToString().Contains("application/pdf");
+                var disposition = isPrint ? "inline" : "attachment";
+                Response.Headers.Append("Content-Disposition", $"{disposition}; filename=\"{filename}\"");
+                Response.ContentType = "application/pdf";
+                return File(pdfBytes, "application/pdf", filename);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("Delivery note PDF error: {Message}", ex.Message);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Failed to generate delivery note: {ex.Message}",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Delivery note PDF error: {Message}", ex.Message);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Failed to generate delivery note: {ex.Message}",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpPut("{id}")]
         [Authorize(Roles = "Admin,Owner,Staff")] // CRITICAL: Allow Owner role to edit invoices
         public async Task<ActionResult<ApiResponse<SaleDto>>> UpdateSale(int id, [FromBody] UpdateSaleRequest request)

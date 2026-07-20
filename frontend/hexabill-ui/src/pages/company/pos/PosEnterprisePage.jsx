@@ -102,6 +102,7 @@ const PosEnterprisePage = () => {
   const [productPickerRowIndex, setProductPickerRowIndex] = useState(null)
   const [productPickerPage, setProductPickerPage] = useState(0)
   const [productSearchTerms, setProductSearchTerms] = useState({}) // Search term for each row
+  const [productSearchTermsByRowId, setProductSearchTermsByRowId] = useState({})
   const [paymentMethod, setPaymentMethod] = useState('Cash')
   const [paymentAmount, setPaymentAmount] = useState('')
   const [notes, setNotes] = useState('')
@@ -479,11 +480,10 @@ const PosEnterprisePage = () => {
 
     // Click outside handler for product dropdowns - use mousedown to prevent conflicts
     const handleClickOutside = (e) => {
-      // Only close if clicking outside the dropdown container
-      const dropdownContainer = e.target.closest('.product-dropdown-container')
-      if (!dropdownContainer) {
+      const insideDropdown = e.target.closest('.product-dropdown-container')
+      const insideDrawer = e.target.closest('[data-product-picker]')
+      if (!insideDropdown && !insideDrawer) {
         setShowProductDropdown({})
-        // Clear search terms when clicking outside
         setProductSearchTerms({})
       }
     }
@@ -965,38 +965,71 @@ const PosEnterprisePage = () => {
       toast.error('No invoice to print. Save the invoice first.')
       return
     }
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+    if (!printWindow) {
+      toast.error('Pop-up blocked. Allow pop-ups for this site.')
+      return
+    }
+    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing document…</p>')
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
       const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
-      const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer')
-      if (printWindow) {
-        printWindow.onload = () => {
-          try {
-            printWindow.print()
-            toast.dismiss(toastId)
-            toast.success('Print dialog opened')
-          } catch (e) {
-            toast.dismiss(toastId)
-            toast.error('Could not open print dialog')
-          }
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
-        }
-        setTimeout(() => {
+      printWindow.location.href = blobUrl
+      printWindow.onload = () => {
+        try {
+          printWindow.print()
           toast.dismiss(toastId)
-          toast.success('PDF opened. Use Ctrl+P to print if needed.')
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 3000)
-        }, 2500)
-      } else {
-        URL.revokeObjectURL(blobUrl)
-        toast.dismiss(toastId)
-        toast.error('Pop-up blocked. Allow pop-ups for this site.')
+          toast.success('Print dialog opened')
+        } catch {
+          toast.dismiss(toastId)
+          toast.error('Could not open print dialog')
+        }
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
       }
     } catch (error) {
-      console.error('Print error:', error)
+      printWindow.close()
       toast.dismiss(toastId)
+      console.error('Print error:', error)
       if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare PDF')
+    }
+  }
+
+  /** Packing-list delivery note (no prices) — same synchronous window pattern as invoice print. */
+  const handleDeliveryNotePrint = async (format = 'A4') => {
+    if (!lastCreatedInvoice?.id) {
+      toast.error('No invoice to print. Save the invoice first.')
+      return
+    }
+    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
+    if (!printWindow) {
+      toast.error('Pop-up blocked. Allow pop-ups for this site.')
+      return
+    }
+    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing delivery note…</p>')
+    const toastId = 'delivery-note-print'
+    try {
+      toast.loading('Preparing delivery note...', { id: toastId })
+      const blob = await salesAPI.getDeliveryNotePdf(lastCreatedInvoice.id, { format })
+      const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
+      printWindow.location.href = blobUrl
+      printWindow.onload = () => {
+        try {
+          printWindow.print()
+          toast.dismiss(toastId)
+          toast.success('Delivery note opened')
+        } catch {
+          toast.dismiss(toastId)
+          toast.error('Could not open print dialog')
+        }
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+      }
+    } catch (error) {
+      printWindow.close()
+      toast.dismiss(toastId)
+      console.error('Delivery note print error:', error)
+      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare delivery note')
     }
   }
 
@@ -1954,14 +1987,13 @@ const PosEnterprisePage = () => {
   const drawerOpen = usePosInteractionStore((s) => s.drawerOpen)
   const activeInvoiceRowId = usePosInteractionStore((s) => s.activeInvoiceRowId)
 
-  const catalogSearchTerm = (() => {
-    if (drawerOwnerRowId) {
-      const idx = findLineIndexByRowId(cart, drawerOwnerRowId)
-      if (idx >= 0) return productSearchTerms[idx] || ''
-    }
-    if (productPickerRowIndex != null) return productSearchTerms[productPickerRowIndex] || ''
-    return ''
-  })()
+  const catalogSearchTerm = drawerOwnerRowId
+    ? (productSearchTermsByRowId[drawerOwnerRowId] || '')
+    : (productPickerRowIndex != null ? (productSearchTerms[productPickerRowIndex] || '') : '')
+
+  const ownerSearchTerm = drawerOwnerRowId
+    ? (productSearchTermsByRowId[drawerOwnerRowId] || '')
+    : ''
 
   const catalogForDrawer = useProductCatalog({
     products,
@@ -2577,21 +2609,14 @@ const PosEnterprisePage = () => {
                                   <div className="flex gap-1 items-stretch">
                                     <input
                                       type="text"
+                                      readOnly
                                       ref={(el) => productSearchRefs.current[index] = el}
-                                      value={productSearchTerms[index] || ''}
+                                      value={(item.rowId && productSearchTermsByRowId[item.rowId]) || productSearchTerms[index] || ''}
                                       disabled={isFormDisabled}
-                                      onChange={(e) => {
-                                        const searchValue = e.target.value
-                                        setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                                        setProductHighlightByRow(prev => ({ ...prev, [index]: 0 }))
-                                        setProductPickerPage(0)
-                                        openProductPicker(index)
-                                      }}
-                                      onFocus={() => openProductPicker(index)}
-                                      onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
-                                      onClick={(e) => e.stopPropagation()}
-                                      placeholder="Search in panel…"
-                                      className="flex-1 min-w-0 px-2 py-0.5 border border-blue-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => openProductPicker(item.rowId || index)}
+                                      onFocus={() => openProductPicker(item.rowId || index)}
+                                      placeholder="Click to search…"
+                                      className="flex-1 min-w-0 px-2 py-0.5 border border-blue-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                       aria-label={`Product search row ${index + 1}`}
                                     />
                                     <input
@@ -2798,24 +2823,17 @@ const PosEnterprisePage = () => {
                         </button>
                       </div>
                       {!item.productId && (
-                        <div className="relative w-full mt-2">
+                        <div className="relative w-full mt-2 cursor-pointer" onClick={() => openProductPicker(item.rowId || index)}>
                           <p className="text-xs text-neutral-600 mb-1">#{index + 1} Select Product:</p>
                           <input
                             type="text"
+                            readOnly
                             ref={(el) => productSearchRefs.current[index] = el}
-                            value={productSearchTerms[index] || ''}
+                            value={(item.rowId && productSearchTermsByRowId[item.rowId]) || productSearchTerms[index] || ''}
                             disabled={isFormDisabled}
-                            onChange={(e) => {
-                              const searchValue = e.target.value
-                              setProductSearchTerms(prev => ({ ...prev, [index]: searchValue }))
-                              setProductHighlightByRow(prev => ({ ...prev, [index]: 0 }))
-                              openProductPicker(index)
-                            }}
-                            onFocus={() => openProductPicker(index)}
-                            onKeyDown={(e) => handleProductSearchKeyDown(e, index)}
-                            onClick={(e) => e.stopPropagation()}
-                            placeholder="Search product name or code..."
-                            className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            onFocus={() => openProductPicker(item.rowId || index)}
+                            placeholder="Tap to search…"
+                            className="product-search w-full px-3 py-2.5 border border-neutral-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           />
                         </div>
                       )}
@@ -2913,28 +2931,40 @@ const PosEnterprisePage = () => {
             open={drawerOpen}
             rowIndex={pickerRowIndex >= 0 ? pickerRowIndex : 0}
             ownerRowId={drawerOwnerRowId || ''}
-            searchValue={pickerRowIndex >= 0 ? (productSearchTerms[pickerRowIndex] || '') : ''}
+            searchValue={ownerSearchTerm}
             onSearchChange={(searchValue) => {
-              if (pickerRowIndex < 0) return
-              setProductSearchTerms(prev => ({ ...prev, [pickerRowIndex]: searchValue }))
-              setProductHighlightByRow(prev => ({ ...prev, [pickerRowIndex]: 0 }))
+              if (!drawerOwnerRowId) return
+              setProductSearchTermsByRowId((prev) => ({ ...prev, [drawerOwnerRowId]: searchValue }))
+              setProductHighlight(0)
               setProductPickerPage(0)
-              // Barcode auto-match when scanner dumps full code
               if (searchValue && searchValue.length >= 3) {
                 barcodeEngineRef.current?.fromInputValue(searchValue)
               }
             }}
-            onKeyDown={(e) => pickerRowIndex >= 0 && handleProductSearchKeyDown(e, pickerRowIndex)}
+            onKeyDown={(e) => {
+              if (!drawerOwnerRowId) return
+              const idx = findLineIndexByRowId(cart, drawerOwnerRowId)
+              if (idx >= 0) handleProductSearchKeyDown(e, idx)
+            }}
             onClose={() => closeProductPicker()}
             searchRef={drawerSearchRef}
             loading={loadingProducts}
             catalog={catalogForDrawer}
             highlightIndex={productHighlight}
             onHighlight={(localIdx) => setProductHighlight(localIdx)}
-            onSelect={(product) => interaction.selectProductForOwner(product)}
+            onSelect={(product) => {
+              interaction.selectProductForOwner(product)
+              if (drawerOwnerRowId) {
+                const idx = findLineIndexByRowId(cart, drawerOwnerRowId)
+                const term = productSearchTermsByRowId[drawerOwnerRowId] || ''
+                if (idx >= 0 && term) {
+                  setProductSearchTerms((prev) => ({ ...prev, [idx]: term }))
+                }
+              }
+            }}
             onPageChange={(p) => {
               setProductPickerPage(Math.max(0, p))
-              if (pickerRowIndex >= 0) setProductHighlightByRow(prev => ({ ...prev, [pickerRowIndex]: 0 }))
+              setProductHighlight(0)
             }}
             disabled={isFormDisabled}
           />
@@ -3762,6 +3792,15 @@ const PosEnterprisePage = () => {
                     </button>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeliveryNotePrint('A4')}
+                  className="w-full flex items-center justify-center px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
+                >
+                  <Package className="h-5 w-5 mr-2" />
+                  Print Delivery Note
+                </button>
 
                 <button
                   onClick={() => handleDownloadPdf(lastCreatedInvoice.id, lastCreatedInvoice.invoiceNo)}
