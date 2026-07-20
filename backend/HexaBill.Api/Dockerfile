@@ -13,6 +13,10 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
+# Prevent inotify exhaustion on Render (exit 139 at startup during config file watching)
+ENV DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE=false
+ENV ASPNETCORE_ENVIRONMENT=Production
+
 COPY --from=build /app/publish ./
 
 # PORT is set by Render at runtime; Program.cs reads it and binds to 0.0.0.0:PORT

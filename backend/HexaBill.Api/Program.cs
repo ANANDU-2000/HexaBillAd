@@ -37,6 +37,13 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Serilog;
 
+// Render/Docker: default config reload uses inotify FileSystemWatchers; limit (128) on shared
+// hosts causes IOException at CreateBuilder → exit 139 during deploy overlap. Disable outside Development.
+if (!string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase))
+{
+    Environment.SetEnvironmentVariable("DOTNET_HOSTBUILDER__RELOADCONFIGONCHANGE", "false");
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Sentry error tracking (optional: set SENTRY_DSN env var for production)
