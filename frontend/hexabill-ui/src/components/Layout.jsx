@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -79,11 +79,25 @@ const Layout = () => {
     return () => clearInterval(interval)
   }, [user?.id])
 
-  const toggleSidebar = () => {
-    const newState = !isSidebarCollapsed
-    setIsSidebarCollapsed(newState)
-    localStorage.setItem('sidebar_collapsed', String(newState))
-  }
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed((prev) => {
+      const newState = !prev
+      localStorage.setItem('sidebar_collapsed', String(newState))
+      return newState
+    })
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key !== '\\') return
+      const tag = e.target?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) return
+      e.preventDefault()
+      toggleSidebar()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [toggleSidebar])
   const profileDropdownRef = useRef(null)
 
   // Close dropdown when clicking outside
@@ -387,6 +401,22 @@ const Layout = () => {
       {/* Desktop sidebar - 240px per design system (Task 11) */}
       <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col lg:min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex flex-col flex-grow bg-primary-900 text-white border-r border-primary-800 min-h-screen overflow-hidden w-full">
+          <div className={`flex items-center border-b border-primary-800 px-2 py-2 shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
+            {!isSidebarCollapsed && (
+              <span className="text-[11px] font-medium text-primary-300 truncate pl-2" title="Ctrl+\ toggle menu">
+                Menu
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="p-2 rounded-lg hover:bg-primary-800 text-primary-200 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
+              aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
+          </div>
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0 scrollbar-hide">
             {navigation.map((item) => {
               const Icon = item.icon
@@ -437,9 +467,9 @@ const Layout = () => {
               <button
                 onClick={toggleSidebar}
                 className="p-1.5 rounded-lg hover:bg-primary-800 text-primary-200 hover:text-white transition-colors"
-                title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               >
-                <Menu className="h-5 w-5" />
+                {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
               </button>
               <Logo size="default" showText={false} className="flex-shrink-0" />
               <div className="min-w-0 flex-1">

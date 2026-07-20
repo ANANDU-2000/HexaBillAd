@@ -135,6 +135,7 @@ const PosEnterprisePage = () => {
   const [selectedBranchId, setSelectedBranchId] = useState('')
   const [selectedRouteId, setSelectedRouteId] = useState('')
   const [nextInvoiceNumberPreview, setNextInvoiceNumberPreview] = useState('')
+  const [customInvoiceNo, setCustomInvoiceNo] = useState('')
   const [isZeroInvoice, setIsZeroInvoice] = useState(false) // Free sample / zero value invoice (FTA)
   // VAT from company settings; fallback only when settings unavailable (PRODUCTION_MASTER_TODO #4)
   const FALLBACK_VAT_PERCENT = 5
@@ -302,7 +303,10 @@ const PosEnterprisePage = () => {
       .then(res => {
         if (cancelled) return
         const num = res?.data ?? res?.invoiceNo ?? res
-        if (typeof num === 'string' && num) setNextInvoiceNumberPreview(num)
+        if (typeof num === 'string' && num) {
+          setNextInvoiceNumberPreview(num)
+          setCustomInvoiceNo(num)
+        }
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -960,8 +964,9 @@ const PosEnterprisePage = () => {
   }
 
   /** One-click print for specified format (A4, A5, 80mm, 58mm). Opens PDF in new tab and triggers print dialog. */
-  const handlePrintFormat = async (format) => {
-    if (!lastCreatedInvoice?.id) {
+  const handlePrintFormat = async (format, saleIdOverride) => {
+    const saleId = saleIdOverride ?? lastCreatedInvoice?.id ?? (isEditMode ? editingSaleId : null)
+    if (!saleId) {
       toast.error('No invoice to print. Save the invoice first.')
       return
     }
@@ -974,7 +979,7 @@ const PosEnterprisePage = () => {
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
-      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format })
+      const blob = await salesAPI.getInvoicePdf(saleId, { format })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       printWindow.location.href = blobUrl
       printWindow.onload = () => {
@@ -997,8 +1002,9 @@ const PosEnterprisePage = () => {
   }
 
   /** Packing-list delivery note (no prices) — same synchronous window pattern as invoice print. */
-  const handleDeliveryNotePrint = async (format = 'A4') => {
-    if (!lastCreatedInvoice?.id) {
+  const handleDeliveryNotePrint = async (format = 'A4', saleIdOverride) => {
+    const saleId = saleIdOverride ?? lastCreatedInvoice?.id ?? (isEditMode ? editingSaleId : null)
+    if (!saleId) {
       toast.error('No invoice to print. Save the invoice first.')
       return
     }
@@ -1011,7 +1017,7 @@ const PosEnterprisePage = () => {
     const toastId = 'delivery-note-print'
     try {
       toast.loading('Preparing delivery note...', { id: toastId })
-      const blob = await salesAPI.getDeliveryNotePdf(lastCreatedInvoice.id, { format })
+      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       printWindow.location.href = blobUrl
       printWindow.onload = () => {
@@ -1032,8 +1038,6 @@ const PosEnterprisePage = () => {
       if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare delivery note')
     }
   }
-
-  const handleQuickPrintA4 = () => handlePrintFormat('A4')
 
   const handlePrintReceipt = async () => {
     console.log('Print Receipt Called')
@@ -1536,7 +1540,8 @@ const PosEnterprisePage = () => {
         editReason: isEditMode ? editReason : undefined,
         invoiceDate: invoiceDate ? `${invoiceDate}T12:00:00.000Z` : undefined,
         branchId: branchIdNum || undefined,
-        routeId: routeIdNum || undefined
+        routeId: routeIdNum || undefined,
+        ...(!isEditMode && customInvoiceNo?.trim() ? { invoiceNo: customInvoiceNo.trim() } : {})
       }
 
       // Final validation
@@ -1818,9 +1823,13 @@ const PosEnterprisePage = () => {
     setSearchParams({}) // Clear URL params
     setShowProductDropdown({}) // Close all dropdowns
     setLastCreatedInvoice(null)
+    setCustomInvoiceNo('')
     salesAPI.getNextInvoiceNumber().then(res => {
       const num = res?.data ?? res?.invoiceNo ?? res
-      if (typeof num === 'string' && num) setNextInvoiceNumberPreview(num)
+      if (typeof num === 'string' && num) {
+        setNextInvoiceNumberPreview(num)
+        setCustomInvoiceNo(num)
+      }
     }).catch(() => {})
     // Reset invoice date to today
     const today = new Date()
@@ -2073,9 +2082,15 @@ const PosEnterprisePage = () => {
   void selectionTick
 
   const totals = calculateTotals()
+  const printableSaleId = lastCreatedInvoice?.id ?? (isEditMode ? editingSaleId : null)
+  const printableInvoiceNo = lastCreatedInvoice?.invoiceNo
+    ?? (isEditMode && editingSale ? editingSale.invoiceNo : null)
+    ?? customInvoiceNo
+    ?? nextInvoiceNumberPreview
+    ?? ''
   const invoiceNoDisplay = isEditMode && editingSale
     ? editingSale.invoiceNo
-    : (lastCreatedInvoice?.invoiceNo || nextInvoiceNumberPreview || '(Auto)')
+    : (lastCreatedInvoice?.invoiceNo || customInvoiceNo || nextInvoiceNumberPreview || '(Auto)')
 
   const posHeader = (
       <>
@@ -2083,19 +2098,56 @@ const PosEnterprisePage = () => {
       <div className="bg-primary-900 text-white px-2 sm:px-3 h-14 max-h-14 flex items-center justify-between gap-2 flex-shrink-0">
         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
           <span className="text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
-          <span className={`font-mono text-xs sm:text-sm truncate ${isEditMode ? 'text-amber-200' : 'text-blue-100'}`}>
-            {invoiceNoDisplay}
-          </span>
+          {isEditMode ? (
+            <span
+              className="font-mono text-xs sm:text-sm truncate text-amber-200 max-w-[6rem] sm:max-w-[8rem]"
+              title="Invoice number is fixed after creation"
+            >
+              {invoiceNoDisplay}
+            </span>
+          ) : (
+            <input
+              type="text"
+              value={customInvoiceNo}
+              onChange={(e) => setCustomInvoiceNo(e.target.value)}
+              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-[4.5rem] sm:w-24 text-blue-100 placeholder:text-blue-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
+              title="Invoice # (editable before save). Tab to continue · Enter to move to next field."
+              placeholder={nextInvoiceNumberPreview || 'Auto'}
+              maxLength={32}
+              aria-label="Invoice number"
+            />
+          )}
           <button
             type="button"
-            onClick={lastCreatedInvoice?.id ? handleQuickPrintA4 : undefined}
-            disabled={!lastCreatedInvoice?.id}
-            title={lastCreatedInvoice?.id ? 'Quick print (A4)' : 'Save invoice first to print'}
+            onClick={printableSaleId ? () => handlePrintFormat('A4', printableSaleId) : undefined}
+            disabled={!printableSaleId}
+            title={printableSaleId ? 'Quick print invoice (A4)' : 'Save invoice first to print'}
             className="p-1.5 rounded hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
-            aria-label={lastCreatedInvoice?.id ? 'Quick print invoice' : 'Save invoice first to print'}
+            aria-label={printableSaleId ? 'Quick print invoice' : 'Save invoice first to print'}
           >
             <Printer className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            onClick={printableSaleId ? () => handleDeliveryNotePrint('A4', printableSaleId) : undefined}
+            disabled={!printableSaleId}
+            title={printableSaleId ? 'Print delivery note (packing list, no prices)' : 'Save invoice first for delivery note'}
+            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            aria-label={printableSaleId ? 'Print delivery note' : 'Save invoice first for delivery note'}
+          >
+            <Package className="h-4 w-4" />
+          </button>
+          {printableSaleId && (
+            <button
+              type="button"
+              onClick={() => handleDownloadPdf(printableSaleId, printableInvoiceNo)}
+              title="Download invoice PDF"
+              className="p-1.5 rounded hover:bg-white/10 text-white"
+              aria-label="Download invoice PDF"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
           <button
@@ -2423,35 +2475,41 @@ const PosEnterprisePage = () => {
           )}
           {!staffHasNoAssignments && (
             <>
-              <select
-                value={selectedBranchId}
-                onChange={(e) => {
-                  setSelectedBranchId(e.target.value)
-                  setSelectedRouteId('')
-                }}
-                disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
-                className="h-9 px-1.5 border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 max-w-[7rem]"
-                title="Branch"
-              >
-                <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
-                {branches.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-              <select
-                value={selectedRouteId}
-                onChange={(e) => setSelectedRouteId(e.target.value)}
-                disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
-                className="h-9 px-1.5 border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 max-w-[7rem]"
-                title="Route"
-              >
-                <option value="">Route</option>
-                {routes
-                  .filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
-                  .map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedBranchId}
+                  onChange={(e) => {
+                    setSelectedBranchId(e.target.value)
+                    setSelectedRouteId('')
+                  }}
+                  disabled={branchesRoutesLoading || branches.length === 0 || (!isAdminOrOwner(user) && branches.length === 1)}
+                  className="h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
+                  title="Branch"
+                >
+                  <option value="">{branchesRoutesLoading ? '…' : 'Branch'}</option>
+                  {branches.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
                   ))}
-              </select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" aria-hidden />
+              </div>
+              <div className="relative inline-flex items-center">
+                <select
+                  value={selectedRouteId}
+                  onChange={(e) => setSelectedRouteId(e.target.value)}
+                  disabled={branchesRoutesLoading || routes.length === 0 || !selectedBranchId || (!isAdminOrOwner(user) && (selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : routes).length <= 1)}
+                  className="h-9 pl-2 pr-8 min-w-[7.5rem] max-w-[11rem] border border-neutral-300 rounded-md text-xs bg-white disabled:opacity-50 appearance-none truncate"
+                  title="Route"
+                >
+                  <option value="">Route</option>
+                  {routes
+                    .filter(r => !selectedBranchId || r.branchId === parseInt(selectedBranchId))
+                    .map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-neutral-500" aria-hidden />
+              </div>
             </>
           )}
           <input
@@ -2972,7 +3030,7 @@ const PosEnterprisePage = () => {
           <div className="hidden md:block px-2 py-1 shrink-0">
             <p className="text-[10px] sm:text-[11px] text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
               <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
-              F2 customer · F3/Ctrl+L products · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row
+              F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Delivery note icon after save
             </p>
           </div>
           </div>
@@ -3186,7 +3244,7 @@ const PosEnterprisePage = () => {
                   </>
                 )}
               </button>
-              <p className="text-[10px] text-center text-neutral-500">Ctrl+S / F9</p>
+              <p className="text-[10px] text-center text-neutral-500">Ctrl+S / F9 · Tab through fields · Enter next row</p>
             </div>
           </div>
           </div>
