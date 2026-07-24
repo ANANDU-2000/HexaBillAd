@@ -1924,9 +1924,21 @@ const CustomerLedgerPage = () => {
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Return/Back Button */}
             <button
-              onClick={() => navigate('/customers')}
+              onClick={() => {
+                if (selectedCustomer) {
+                  setSelectedCustomer(null)
+                  setCustomerLedger([])
+                  setCustomerInvoices([])
+                  setCustomerPayments([])
+                  setOutstandingInvoices([])
+                  setCustomerSummary(null)
+                  ledgerLoadInProgressRef.current = null
+                  return
+                }
+                navigate('/customers')
+              }}
               className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
-              title="Back to Customers"
+              title={selectedCustomer ? 'Back to customer list' : 'Back to Customers'}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -2003,9 +2015,10 @@ const CustomerLedgerPage = () => {
       </div>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-white">
-        {/* Branch / Route filters for customer list - visible before selecting a customer */}
-        <div className={`bg-neutral-100/80 border-b border-neutral-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap ${mobilePageShellClass}`}>
+      <div className="flex-1 flex flex-col overflow-hidden bg-white min-h-0">
+        {/* Branch / Route filters for customer list — only before selecting a customer */}
+        {!selectedCustomer && (
+        <div className={`shrink-0 bg-neutral-100/80 border-b border-neutral-200 px-3 py-1.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap ${mobilePageShellClass}`}>
           <span className="text-xs font-medium text-neutral-600 shrink-0">Filter:</span>
           <select
             value={filterDraft.branchId}
@@ -2015,7 +2028,7 @@ const CustomerLedgerPage = () => {
               setLedgerBranchId(v)
               setLedgerRouteId('')
             }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px]`}
+            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-9 !py-1.5 !text-sm`}
             title="Filter customers by branch"
           >
             <option value="">All branches</option>
@@ -2028,7 +2041,7 @@ const CustomerLedgerPage = () => {
               setFilterDraft(prev => ({ ...prev, routeId: v }))
               setLedgerRouteId(v)
             }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px]`}
+            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-9 !py-1.5 !text-sm`}
             title="Filter customers by route"
           >
             <option value="">All routes</option>
@@ -2037,17 +2050,18 @@ const CustomerLedgerPage = () => {
             ))}
           </select>
         </div>
-        {/* TOP BAR - Customer Search: full width, design-lock */}
-        <div className="bg-neutral-50 border-b border-neutral-200 p-3 sm:p-4 flex items-center gap-3 flex-wrap">
+        )}
+        {/* TOP BAR - Customer Search */}
+        <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-0 max-w-full lg:max-w-xl">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
               ref={searchInputRef}
               type="text"
               placeholder="Search customer (F2)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 ${mobileFormFieldClass}`}
+              className={`w-full pl-9 pr-3 !min-h-9 !py-1.5 !text-sm ${mobileFormFieldClass}`}
             />
           </div>
           <button
@@ -2056,7 +2070,7 @@ const CustomerLedgerPage = () => {
               e.stopPropagation()
               setShowAddCustomerModal(true)
             }}
-            className="px-3 py-2 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 flex items-center space-x-1.5 transition-colors whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-[44px]"
+            className="px-2.5 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 flex items-center space-x-1.5 transition-colors whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-9"
             title="Add New Customer"
             type="button"
           >
@@ -2064,7 +2078,7 @@ const CustomerLedgerPage = () => {
             <span className="hidden sm:inline">Add Customer</span>
           </button>
           {selectedCustomer && (
-            <div className="px-3 py-2 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold whitespace-nowrap min-w-0 truncate max-w-[200px] sm:max-w-none" title={selectedCustomer.name}>
+            <div className="px-2.5 py-1.5 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold whitespace-nowrap min-w-0 truncate max-w-[200px] sm:max-w-none" title={selectedCustomer.name}>
               {selectedCustomer.name}
             </div>
           )}
@@ -2073,52 +2087,50 @@ const CustomerLedgerPage = () => {
           </div>
         </div>
 
-        {/* CUSTOMER SELECTION DROPDOWN - visible, z-50, full width */}
+        {/* CUSTOMER LIST — fills remaining viewport when no customer selected */}
         {(searchTerm || !selectedCustomer) && (
-          <div className="bg-white border-b border-neutral-200 max-h-96 overflow-y-auto overflow-x-hidden z-50 shadow-md">
-            <div className="p-2 space-y-1">
+          <div className={`${selectedCustomer ? 'max-h-48 shrink-0 border-b shadow-sm' : 'flex-1 min-h-0'} overflow-y-auto overflow-x-hidden bg-white z-20`}>
+            <div className="p-1 space-y-0.5">
               {/* Cash Customer Option */}
               <button
                 onClick={() => {
                   setSelectedCustomer({ id: 'cash', name: 'Cash Customer', balance: 0 })
                   loadCustomerData('cash')
                 }}
-                className={`w-full text-left p-3 rounded-lg transition-colors text-sm border border-transparent ${selectedCustomer?.id === 'cash'
+                className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border border-transparent ${selectedCustomer?.id === 'cash'
                   ? 'bg-primary-600 text-white'
                   : 'bg-neutral-50 hover:bg-neutral-100 text-neutral-900 border-neutral-200'
                   }`}
               >
-                <div className="font-semibold">Cash Customer</div>
-                <div className={`text-xs ${selectedCustomer?.id === 'cash' ? 'text-primary-100' : 'text-neutral-500'}`}>
-                  All cash sales and payments • Balance: AED 0.00
+                <div className="font-semibold text-sm">Cash Customer</div>
+                <div className={`text-[11px] ${selectedCustomer?.id === 'cash' ? 'text-primary-100' : 'text-neutral-500'}`}>
+                  Cash sales • AED 0.00
                 </div>
               </button>
-              {/* Regular Customers - server-side search results */}
               {searchDropdownLoading && searchDropdownResults.length === 0 && (
-                <div className="p-3 text-sm text-neutral-500">Searching…</div>
+                <div className="px-2.5 py-2 text-sm text-neutral-500">Searching…</div>
               )}
               {!searchDropdownLoading && searchDropdownResults.length === 0 && searchTerm && (
-                <div className="p-3 text-sm text-neutral-500">No customers found. Try a different search.</div>
+                <div className="px-2.5 py-2 text-sm text-neutral-500">No customers found. Try a different search.</div>
               )}
               {searchDropdownResults.map((customer) => (
                 <button
                   key={customer.id}
                   onClick={() => handleSelectCustomer(customer)}
-                  className={`w-full text-left p-3 rounded-lg transition-colors text-sm border last:border-b-0 ${selectedCustomer?.id === customer.id
+                  className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border ${selectedCustomer?.id === customer.id
                     ? 'bg-primary-600 text-white border-primary-600'
-                    : 'bg-white hover:bg-neutral-50 text-neutral-900 border-neutral-100'
+                    : 'bg-white hover:bg-neutral-50 text-neutral-900 border-transparent border-b-neutral-100'
                     }`}
                 >
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-neutral-900 truncate">{customer.name}</p>
-                      {customer.phone && <p className="text-xs text-neutral-500 truncate">{customer.phone}</p>}
+                      <p className={`font-medium truncate text-sm ${selectedCustomer?.id === customer.id ? 'text-white' : 'text-neutral-900'}`}>{customer.name}</p>
+                      {customer.phone && <p className={`text-[11px] truncate ${selectedCustomer?.id === customer.id ? 'text-primary-100' : 'text-neutral-500'}`}>{customer.phone}</p>}
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className={`text-sm font-semibold ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-neutral-600'}`}>
+                      <p className={`text-xs font-semibold ${selectedCustomer?.id === customer.id ? 'text-white' : customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-neutral-600'}`}>
                         {formatBalance(customer.balance ?? 0)}
                       </p>
-                      <p className="text-xs text-neutral-500">{customer.balance < 0 ? 'Credit' : customer.balance > 0 ? 'Outstanding' : 'Settled'}</p>
                     </div>
                   </div>
                 </button>
@@ -2127,7 +2139,7 @@ const CustomerLedgerPage = () => {
                 <button
                   type="button"
                   onClick={() => fetchCustomerSearch(searchTerm, searchDropdownPage + 1, true)}
-                  className="w-full p-3 text-sm text-primary-600 hover:bg-primary-50 font-medium"
+                  className="w-full py-2 text-sm text-primary-600 hover:bg-primary-50 font-medium"
                 >
                   Load more ({searchDropdownResults.length} of {searchDropdownTotal})
                 </button>
@@ -2137,56 +2149,40 @@ const CustomerLedgerPage = () => {
         )}
 
         {/* MAIN LEDGER VIEW */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {!selectedCustomer ? (
-            <div className="flex-1 flex items-start justify-center pt-8 sm:pt-12 px-4 w-full">
-              <div className="text-center w-full max-w-lg">
-                <Users className="h-12 w-12 mx-auto mb-3 text-neutral-300" />
-                <h3 className="text-base font-medium text-neutral-900 mb-1">Search and select a customer to view ledger</h3>
-                <p className="text-sm text-neutral-500">Use the search bar above (Press F2 to focus)</p>
-              </div>
-            </div>
-          ) : (
+        <div className={`flex flex-col overflow-hidden min-h-0 ${selectedCustomer ? 'flex-1' : 'hidden'}`}>
+          {selectedCustomer && (
             <>
-              {/* Customer Info & Balance - full width, balance prominent */}
-              <div className="bg-neutral-50 border-b border-neutral-200 px-4 py-3 sm:px-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 flex-wrap">
-                  {/* Customer Info */}
+              {/* Compact customer + balance + actions */}
+              <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="min-w-0">
-                      <h2 className="text-base sm:text-lg font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
-                      <div className="flex items-center gap-2 text-xs sm:text-sm text-neutral-600 flex-wrap">
+                      <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
+                      <div className="flex items-center gap-2 text-[11px] sm:text-xs text-neutral-600 flex-wrap">
                         {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
-                        {selectedCustomer.id !== 'cash' && selectedCustomer.email && <span className="hidden sm:inline">• {selectedCustomer.email}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
-                        {selectedCustomer.id === 'cash' && <span className="text-primary-600 font-medium">All cash sales and payments</span>}
+                        {selectedCustomer.id === 'cash' && <span className="text-primary-600 font-medium">Cash sales</span>}
                       </div>
                     </div>
                   </div>
-                  {/* Current Balance - prominent */}
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-neutral-600 mb-0.5">Current balance</p>
+                    <p className="text-[10px] text-neutral-600 uppercase tracking-wide">Balance</p>
                     {balanceRefreshSkeleton ? (
-                      <p className="text-lg text-neutral-500 animate-pulse">Refreshing balance…</p>
+                      <p className="text-sm text-neutral-500 animate-pulse">Refreshing…</p>
                     ) : (
-                      <>
-                        <p className={`text-xl sm:text-2xl font-bold ${(selectedCustomer.balance ?? 0) < 0 ? 'text-green-600' : (selectedCustomer.balance ?? 0) > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
-                          {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
-                        </p>
-                        <p className="text-xs text-neutral-500">{(selectedCustomer.balance ?? 0) < 0 ? 'In credit' : (selectedCustomer.balance ?? 0) > 0 ? 'Outstanding' : 'Settled'}</p>
-                      </>
+                      <p className={`text-base sm:text-lg font-bold ${(selectedCustomer.balance ?? 0) < 0 ? 'text-green-600' : (selectedCustomer.balance ?? 0) > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                        {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
+                        <span className="text-[10px] font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
+                      </p>
                     )}
                   </div>
 
-                  {/* Action Buttons — scroll strip on mobile */}
                   <MobileActionStrip className="w-full sm:w-auto flex-shrink-0 md:flex-wrap md:overflow-visible">
                     {selectedCustomer.id !== 'cash' && (
                       <>
                         <button
                           onClick={() => {
-                            // Open edit modal directly instead of navigating
                             setEditingCustomer(selectedCustomer)
-                            // Pre-fill form with current customer data
                             customerForm.setValue('name', selectedCustomer.name)
                             customerForm.setValue('phone', selectedCustomer.phone || '')
                             customerForm.setValue('email', selectedCustomer.email || '')
@@ -2387,40 +2383,37 @@ const CustomerLedgerPage = () => {
                 </Modal>
               )}
 
-              {/* Date Range & Branch/Route/Staff Filters — only show when customer selected */}
+              {/* Date + branch/route/staff — one compact horizontal strip */}
               {selectedCustomer && (
-                <div className={`bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4 ${mobileFilterGridClass}`}>
-                  <label className="col-span-2 sm:col-span-full text-xs font-medium text-neutral-600">Date range</label>
+                <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="text-[10px] font-medium text-neutral-500 uppercase shrink-0">From</span>
                   <input
                     type="date"
                     value={filterDraft.from}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
-                    className={mobileDateInputClass}
+                    className="w-auto min-w-0 px-2 py-1 min-h-8 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
+                  <span className="text-[10px] font-medium text-neutral-500 uppercase shrink-0">To</span>
                   <input
                     type="date"
                     value={filterDraft.to}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
-                    className={mobileDateInputClass}
+                    className="w-auto min-w-0 px-2 py-1 min-h-8 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
-
-                  {/* Branch Filter */}
                   <select
                     value={filterDraft.branchId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
                     title="Filter by branch"
                   >
                     {isAdminOrOwner(user) && <option value="">All branches</option>}
                     {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
-
-                  {/* Route Filter */}
                   <select
                     value={filterDraft.routeId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
                     title="Filter by route"
                   >
@@ -2429,33 +2422,30 @@ const CustomerLedgerPage = () => {
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
-
-                  {/* Staff Filter */}
                   <select
                     value={filterDraft.staffId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                    className={`${mobileFormSelectClass} sm:max-w-[180px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user)}
                     title="Filter by staff"
                   >
                     {isAdminOrOwner(user) && <option value="">All staff</option>}
                     {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
                   </select>
-
                   <button
                     type="button"
                     onClick={() => applyLedgerFilters(true)}
-                    className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 min-h-10 px-3 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
+                    className="inline-flex items-center justify-center gap-1 min-h-8 px-2.5 bg-primary-600 text-white text-xs font-medium rounded-md hover:bg-primary-700"
                     title="Apply filters now"
                   >
-                    <Filter className="h-4 w-4" />
+                    <Filter className="h-3.5 w-3.5" />
                     Apply
                   </button>
                 </div>
               )}
 
               {/* TAB SECTIONS - Full Width */}
-              <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0">
+              <div className="flex-1 flex flex-col overflow-hidden w-full min-w-0 min-h-0">
                 <MobileIconTabBar
                   className="sticky top-0 z-10 shrink-0"
                   activeId={activeTab}
@@ -2468,8 +2458,8 @@ const CustomerLedgerPage = () => {
                   ]}
                 />
 
-                {/* TAB CONTENT - Full Width - Zero Padding; pb-20 for bottom nav on mobile */}
-                <div className="flex-1 overflow-auto w-full pb-24 lg:pb-0" style={{ paddingBottom: 'calc(80px + env(safe-area-inset-bottom))' }}>
+                {/* TAB CONTENT — primary scroll region */}
+                <div className="flex-1 min-h-0 overflow-auto w-full pb-24 lg:pb-2">
                   {activeTab === 'ledger' && (
                     loading ? (
                       <div className="flex items-center justify-center h-full p-8">
@@ -3562,38 +3552,23 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
   )
 
   return (
-    <div className="w-full h-full flex flex-col bg-neutral-50 min-w-0">
-      {/* Summary Cards - border only per design lock */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <div className="bg-white rounded-lg border border-neutral-200 p-3 border-l-4 border-l-primary-500">
-          <div className="text-xs text-neutral-500 uppercase">Total Sales</div>
-          <div className="text-lg font-bold text-neutral-900">{formatCurrency(Number(totalDebit) || 0)}</div>
-        </div>
-        <div className="bg-white rounded-lg border border-neutral-200 p-3 border-l-4 border-l-green-500">
-          <div className="text-xs text-neutral-500 uppercase">Payments Received</div>
-          <div className="text-lg font-bold text-green-600">{formatCurrency(Number(totalCredit) || 0)}</div>
-        </div>
-        <div className={`bg-white rounded-lg border border-neutral-200 p-3 border-l-4 ${closingBalance < 0 ? 'border-l-green-500' : closingBalance > 0 ? 'border-l-red-500' : 'border-l-neutral-500'
-          }`}>
-          <div className="text-xs text-neutral-500 uppercase">Closing Balance</div>
-          <div className={`text-lg font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
-            }`}>
-            {formatBalance(Number(closingBalance) || 0)}
-          </div>
-        </div>
+    <div className="w-full h-full flex flex-col bg-neutral-50 min-w-0 min-h-0">
+      {/* Compact metrics strip */}
+      <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1.5 bg-white border-b border-neutral-200 text-xs">
+        <span className="text-neutral-500">Sales <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalDebit) || 0)}</strong></span>
+        <span className="text-neutral-500">Paid <strong className="text-green-700 tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
+        <span className="text-neutral-500">Closing <strong className={`tabular-nums ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</strong></span>
       </div>
 
       {/* Action Bar with Filters */}
-      <div className="bg-white rounded-lg border border-neutral-200 mb-3 p-3 space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-neutral-700">Ledger Statement</span>
-          </div>
-          <div className="flex items-center space-x-2 flex-wrap">
+      <div className="shrink-0 bg-white border-b border-neutral-200 px-2 py-1.5">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <span className="text-xs font-medium text-neutral-700">Ledger Statement</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
             <select
               value={safeFilters.statusFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('status', e.target.value)}
-              className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="px-1.5 py-0.5 text-[11px] border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="all">All Status</option>
               <option value="paid">Paid</option>
@@ -3603,7 +3578,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             <select
               value={safeFilters.typeFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('type', e.target.value)}
-              className="px-2 py-1 text-xs border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="px-1.5 py-0.5 text-[11px] border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="all">All Types</option>
               <option value="Invoice">Invoices</option>
@@ -3612,51 +3587,50 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             </select>
             <button
               onClick={onPrintPreview}
-              className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center space-x-1"
+              className="px-2 py-1 text-[11px] bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
               title="Print Preview"
             >
               <Eye className="h-3 w-3" />
-              <span>Preview</span>
+              <span className="hidden sm:inline">Preview</span>
             </button>
             <button
               onClick={onExportExcel}
-              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
+              className="px-2 py-1 text-[11px] bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
               title="Export to Excel"
             >
               <FileText className="h-3 w-3" />
-              <span>Excel</span>
+              <span className="hidden sm:inline">Excel</span>
             </button>
             <button
               onClick={onGeneratePDF}
-              className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center space-x-1"
+              className="px-2 py-1 text-[11px] bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
               title="Download PDF Statement"
             >
               <Printer className="h-3 w-3" />
-              <span>PDF</span>
+              <span className="hidden sm:inline">PDF</span>
             </button>
             <button
               onClick={onShareWhatsApp}
-              className="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 flex items-center space-x-1"
+              className="px-2 py-1 text-[11px] bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
               title="Share via WhatsApp"
             >
               <Send className="h-3 w-3" />
-              <span>WhatsApp</span>
+              <span className="hidden sm:inline">WhatsApp</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* Ledger Table - Desktop - full width */}
-      <div className="hidden md:block bg-white rounded-lg border border-neutral-200 flex-1 flex flex-col overflow-hidden min-w-0">
+      <div className="hidden md:flex bg-white flex-1 flex-col overflow-hidden min-w-0 min-h-0">
         <div className="overflow-x-auto overflow-y-auto flex-1 min-w-0">
-          {/* CRITICAL FIX: Ensure table doesn't overflow on tablets - add horizontal scroll wrapper */}
           <div className="overflow-x-auto w-full">
             <table className="w-full min-w-[1000px] divide-y divide-neutral-200 text-sm">
-              <thead className="bg-neutral-100 sticky top-0 z-10 border-b-2 border-neutral-300">
+              <thead className="bg-neutral-100 sticky top-0 z-10 border-b border-neutral-300">
                 <tr>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Date</th>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Type</th>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Invoice No</th>
+                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Date</th>
+                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Type</th>
+                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Invoice No</th>
                 <th className="px-3 py-2.5 text-left text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Payment Mode</th>
                 <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Debit (AED)</th>
                 <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Credit (AED)</th>
