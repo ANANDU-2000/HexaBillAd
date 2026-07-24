@@ -181,6 +181,9 @@ const PosEnterprisePage = () => {
   const interactionRef = useRef(null)
   const cartRef = useRef(cart)
   cartRef.current = cart
+  const productsRef = useRef(products)
+  productsRef.current = products
+  const handleCameraProductMatchedRef = useRef(null)
   /** Highlight index inside open product dropdown */
   const [productHighlight, setProductHighlight] = useState(0)
   const [productHighlightByRow, setProductHighlightByRow] = useState({})
@@ -768,7 +771,7 @@ const PosEnterprisePage = () => {
     }
   }
 
-  /** Camera continuous-scan: same product → qty+1; else fill empty row then silent next row. */
+  /** Camera / gun scan: same product → qty+1; else fill row with catalog sell price. */
   const handleCameraProductMatched = useCallback((product) => {
     if (!product?.id) return { name: 'Unknown', qty: 1 }
     const name = product.nameEn || product.name || 'Product'
@@ -792,6 +795,7 @@ const PosEnterprisePage = () => {
     interactionRef.current?.addRowSilent?.()
     return { name, qty: 1 }
   }, [vatPercent])
+  handleCameraProductMatchedRef.current = handleCameraProductMatched
 
   const openProductPicker = (rowIndexOrId) => {
     if (isFormDisabled) return
@@ -1977,10 +1981,11 @@ const PosEnterprisePage = () => {
 
   if (!barcodeEngineRef.current) {
     barcodeEngineRef.current = createBarcodeEngine({
-      getProducts: () => products,
+      getProducts: () => productsRef.current || [],
       idleMs: 70,
       onMatch: (product) => {
-        interactionRef.current?.selectProductForOwner?.(product)
+        // Same path as camera scan: sell price from product, qty+1 if already on bill
+        handleCameraProductMatchedRef.current?.(product)
       },
     })
   }
@@ -3308,7 +3313,7 @@ const PosEnterprisePage = () => {
 
     <PosContinuousScanPanel
       active={scanModeOn}
-      getProducts={() => products}
+      getProducts={() => productsRef.current || []}
       onProductMatched={handleCameraProductMatched}
       onStop={() => setScanModeOn(false)}
     />

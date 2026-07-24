@@ -381,6 +381,16 @@ namespace HexaBill.Api.Modules.Inventory
                 throw new InvalidOperationException("SKU already exists");
             }
 
+            // Barcode uniqueness per tenant (required for reliable POS scan match)
+            if (!string.IsNullOrWhiteSpace(request.Barcode))
+            {
+                var barcodeSanitized = InputValidator.SanitizeString(request.Barcode, 100);
+                if (await _context.Products.AnyAsync(p => p.Barcode == barcodeSanitized && p.Id != id && p.TenantId == tenantId))
+                {
+                    throw new InvalidOperationException("Barcode already exists for another product");
+                }
+            }
+
             // Log price change if sell price changed
             if (product.SellPrice != request.SellPrice && userId.HasValue)
             {

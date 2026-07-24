@@ -312,7 +312,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Barcode <span className="text-xs text-gray-500">(Optional — auto-uses SKU on create if empty)</span>
+                Barcode <span className="text-xs text-gray-500">(code on the box — Scan or type, then Save; POS matches this exact code)</span>
               </label>
               <div className="flex flex-wrap gap-2">
                 <input
