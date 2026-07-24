@@ -1,11 +1,18 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Plus, Upload, Image as ImageIcon, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
+import { X, Plus, Upload, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from './ConfirmDangerModal'
 import { useCameraBarcodeScanner } from '../pages/company/pos/barcode/useCameraBarcodeScanner'
 import { playScanSuccessBeep } from '../pages/company/pos/barcode/scanBeep'
 import { downloadOrShareBarcodePdf } from '../utils/barcodePdf'
+
+const SCAN_STATUS_LABEL = {
+  starting: 'Starting camera…',
+  scanning: 'Looking for barcode…',
+  found: 'Barcode found',
+  timeout: 'No barcode yet — keep aiming or tap Try again',
+}
 
 const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode = '' }) => {
   const [formData, setFormData] = useState({
@@ -19,7 +26,6 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     sellPrice: product?.sellPrice || 0,
     expiryDate: product?.expiryDate ? product.expiryDate.split('T')[0] : '',
     categoryId: product?.categoryId || null,
-    // Stock and reorder level removed - stock is computed from transactions only
     descriptionEn: product?.descriptionEn || '',
     descriptionAr: product?.descriptionAr || ''
   })
@@ -87,7 +93,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     start: startBarcodeCam,
     stop: stopBarcodeCam,
     switchCamera: switchBarcodeCam,
-    isScanning: barcodeCamScanning,
+    scanStatus: barcodeScanStatus,
   } = useCameraBarcodeScanner({
     onDetect: (code) => onBarcodeDetect(code),
     onError: (reason) => {
@@ -125,18 +131,15 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         toast.error('Please select an image file')
         return
       }
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         toast.error('Image size must be less than 5MB')
         return
       }
       setImageFile(file)
-      // Create preview
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result)
@@ -185,17 +188,19 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       }
     } catch (error) {
       console.error('Error loading categories:', error)
-      // Don't show error - categories table might not exist yet (migration not run)
       setCategories([])
     } finally {
       setLoadingCategories(false)
     }
   }
 
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // CRITICAL FIX: Client-side validation
     if (!formData.nameEn || !formData.nameEn.trim()) {
       toast.error('Product name (English) is required')
       return
@@ -217,7 +222,6 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       return
     }
     
-    // Decimal precision validation (max 2 decimal places)
     const validateDecimal = (value, maxDecimals = 2) => {
       if (value === null || value === undefined || value === '') return true
       const parts = value.toString().split('.')
@@ -237,7 +241,6 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       return
     }
     
-    // Business logic validation: warn if sell price < cost price
     if (formData.sellPrice < formData.costPrice) {
       setShowLossConfirm(true)
       return
@@ -250,12 +253,14 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
     }
     let imageUrl = formData.imageUrl || product?.imageUrl
+    let uploadedAlready = false
     if (imageFile && product?.id) {
       try {
         setUploadingImage(true)
         const uploadResponse = await productsAPI.uploadProductImage(product.id, imageFile)
         if (uploadResponse?.success) {
           imageUrl = uploadResponse.data
+          uploadedAlready = true
           toast.success('Image uploaded successfully')
         }
       } catch (error) {
@@ -271,221 +276,344 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       ...formData,
       costPrice: roundToDecimals(formData.costPrice),
       sellPrice: roundToDecimals(formData.sellPrice),
-      conversionToBase: roundToDecimals(formData.conversionToBase, 4)
+      conversionToBase: roundToDecimals(formData.conversionToBase, 4),
+      expiryDate: formData.expiryDate?.trim() || null,
     }
     if (imageUrl) {
       productData.imageUrl = imageUrl
     }
-    onSave(productData, imageFile)
+    // Avoid double-upload: page also uploads when imageFile is passed for edits
+    onSave(productData, uploadedAlready ? null : imageFile)
   }
 
+  const scanStatusText = scanCamError
+    || SCAN_STATUS_LABEL[barcodeScanStatus]
+    || (barcodeScanOn ? 'Starting camera…' : '')
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg w-full max-w-5xl max-h-[92vh] flex flex-col shadow-xl">
+        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 shrink-0">
+          <h2 className="text-lg font-semibold text-gray-900">
             {product ? 'Edit Product' : 'Add New Product'}
           </h2>
           <button
+            type="button"
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                SKU *
-              </label>
-              <input
-                type="text"
-                name="sku"
-                required
-                className="input"
-                value={formData.sku}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Barcode <span className="text-xs text-gray-500">(code on the box — Scan or type, then Save; POS matches this exact code)</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  SKU *
+                </label>
                 <input
                   type="text"
-                  name="barcode"
-                  className="input flex-1 min-w-[8rem]"
-                  value={formData.barcode}
+                  name="sku"
+                  required
+                  className="input"
+                  value={formData.sku}
                   onChange={handleChange}
-                  placeholder="EAN-13, UPC, SKU…"
                 />
-                <button
-                  type="button"
-                  onClick={handleAutoCreateBarcode}
-                  className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0"
-                  title="Set barcode from SKU"
-                >
-                  <Wand2 className="h-4 w-4" />
-                  Auto
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBarcodeScanOn((v) => !v)}
-                  className={`px-3 py-2 text-sm font-medium rounded-lg border inline-flex items-center gap-1.5 shrink-0 ${
-                    barcodeScanOn
-                      ? 'bg-amber-500 text-white border-amber-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                  }`}
-                  title={barcodeScanOn ? 'Stop camera' : 'Scan barcode with camera'}
-                >
-                  <ScanBarcode className="h-4 w-4" />
-                  {barcodeScanOn ? 'Stop' : 'Scan'}
-                </button>
-                {product?.id && formData.barcode && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={barcodePdfBusy}
-                      onClick={() => handleBarcodePdf(false)}
-                      className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                      title="Download barcode PDF"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Print
-                    </button>
-                    <button
-                      type="button"
-                      disabled={barcodePdfBusy}
-                      onClick={() => handleBarcodePdf(true)}
-                      className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50"
-                      title="Share barcode PDF"
-                    >
-                      <Share2 className="h-4 w-4" />
-                      Share
-                    </button>
-                  </>
-                )}
               </div>
-              {barcodeScanOn && (
-                <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-300 bg-black max-w-xs">
-                  <video
-                    ref={barcodeVideoRef}
-                    className="w-full aspect-[4/3] object-cover"
-                    playsInline
-                    muted
-                    autoPlay
-                  />
-                  <div className="absolute top-1 right-1 flex gap-1">
-                    <button
-                      type="button"
-                      onClick={() => switchBarcodeCam()}
-                      className="p-1.5 rounded bg-black/50 text-white"
-                      title="Switch camera"
-                    >
-                      <SwitchCamera className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <p className="px-2 py-1 text-[11px] text-neutral-200 bg-neutral-900">
-                    {scanCamError || (barcodeCamScanning ? 'Aim at barcode…' : 'Starting camera…')}
-                  </p>
-                </div>
-              )}
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Category <span className="text-xs text-gray-500">(Optional)</span>
-              </label>
-              <div className="flex gap-2">
-                <select
-                  name="categoryId"
-                  className="input flex-1"
-                  value={formData.categoryId || ''}
-                  onChange={handleChange}
-                  disabled={loadingCategories}
-                >
-                  <option value="">No Category</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setShowCategoryInput(!showCategoryInput)}
-                  className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
-                  title="Create new category"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-              {showCategoryInput && (
-                <div className="mt-2 flex gap-2">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Barcode <span className="text-xs text-gray-500 font-normal">(box code — Scan or type, then Save)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5">
                   <input
                     type="text"
-                    placeholder="New category name"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
-                    className="input flex-1"
-                    disabled={creatingCategory}
+                    name="barcode"
+                    className="input flex-1 min-w-[8rem]"
+                    value={formData.barcode}
+                    onChange={handleChange}
+                    placeholder="EAN-13, UPC, SKU…"
                   />
                   <button
                     type="button"
-                    onClick={handleCreateCategory}
-                    disabled={creatingCategory || !newCategoryName.trim()}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    onClick={handleAutoCreateBarcode}
+                    className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0"
+                    title="Set barcode from SKU"
                   >
-                    {creatingCategory ? 'Creating...' : 'Create'}
+                    <Wand2 className="h-4 w-4" />
+                    Auto
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setShowCategoryInput(false)
-                      setNewCategoryName('')
-                    }}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    onClick={() => setBarcodeScanOn((v) => !v)}
+                    className={`px-2.5 py-1.5 text-sm font-medium rounded-lg border inline-flex items-center gap-1 shrink-0 ${
+                      barcodeScanOn
+                        ? 'bg-amber-500 text-white border-amber-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                    title={barcodeScanOn ? 'Stop camera' : 'Scan barcode with camera'}
                   >
-                    Cancel
+                    <ScanBarcode className="h-4 w-4" />
+                    {barcodeScanOn ? 'Stop' : 'Scan'}
                   </button>
-                </div>
-              )}
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Product Image <span className="text-xs text-gray-500">(Optional - for POS)</span>
-              </label>
-              <div className="space-y-2">
-                {imagePreview && (
-                  <div className="relative inline-block">
-                    <img 
-                      src={typeof imagePreview === 'string' && (imagePreview.startsWith('http') || imagePreview.startsWith('/') || imagePreview.startsWith('data:')) 
-                        ? imagePreview 
-                        : imagePreview} 
-                      alt="Product preview" 
-                      className="h-24 w-24 object-cover rounded-lg border border-gray-300"
-                    />
-                    {product?.id && (
+                  {product?.id && formData.barcode && (
+                    <>
                       <button
                         type="button"
-                        onClick={() => {
-                          setImageFile(null)
-                          setImagePreview(null)
-                        }}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                        title="Remove image"
+                        disabled={barcodePdfBusy}
+                        onClick={() => handleBarcodePdf(false)}
+                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        title="Download barcode PDF"
                       >
-                        <X className="h-3 w-3" />
+                        <Printer className="h-4 w-4" />
+                        Print
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        disabled={barcodePdfBusy}
+                        onClick={() => handleBarcodePdf(true)}
+                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        title="Share barcode PDF"
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                      </button>
+                    </>
+                  )}
+                </div>
+                {barcodeScanOn && (
+                  <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-300 bg-black max-w-[220px]">
+                    <video
+                      ref={barcodeVideoRef}
+                      className="w-full aspect-[4/3] object-cover"
+                      playsInline
+                      muted
+                      autoPlay
+                    />
+                    <div className="absolute top-1 right-1 flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => switchBarcodeCam()}
+                        className="p-1.5 rounded bg-black/50 text-white"
+                        title="Switch camera"
+                      >
+                        <SwitchCamera className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="px-2 py-1.5 text-[11px] text-neutral-200 bg-neutral-900 flex items-center justify-between gap-2">
+                      <span>{scanStatusText}</span>
+                      {barcodeScanStatus === 'timeout' && (
+                        <button
+                          type="button"
+                          className="underline text-amber-200 shrink-0"
+                          onClick={() => {
+                            setScanCamError(null)
+                            startBarcodeCam()
+                          }}
+                        >
+                          Try again
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name (English) *
+                </label>
+                <input
+                  type="text"
+                  name="nameEn"
+                  required
+                  className="input"
+                  value={formData.nameEn}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name (Arabic)
+                </label>
+                <input
+                  type="text"
+                  name="nameAr"
+                  className="input"
+                  value={formData.nameAr}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <select
+                    name="categoryId"
+                    className="input flex-1"
+                    value={formData.categoryId || ''}
+                    onChange={handleChange}
+                    disabled={loadingCategories}
+                  >
+                    <option value="">No Category</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setShowCategoryInput(!showCategoryInput)}
+                    className="px-2.5 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center"
+                    title="Create new category"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </div>
+                {showCategoryInput && (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="New category name"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+                      className="input flex-1"
+                      disabled={creatingCategory}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateCategory}
+                      disabled={creatingCategory || !newCategoryName.trim()}
+                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {creatingCategory ? '…' : 'Create'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Qty Type *
+                </label>
+                <select
+                  name="unitType"
+                  required
+                  className="input uppercase"
+                  value={formData.unitType}
+                  onChange={handleChange}
+                >
+                  <option value="CRTN">CRTN (Carton)</option>
+                  <option value="KG">KG (Kilogram)</option>
+                  <option value="PIECE">PIECE</option>
+                  <option value="BOX">BOX</option>
+                  <option value="PKG">PKG (Package)</option>
+                  <option value="BAG">BAG</option>
+                  <option value="PC">PC (Piece)</option>
+                  <option value="UNIT">UNIT</option>
+                  <option value="CTN">CTN (Carton)</option>
+                  <option value="PCS">PCS (Pieces)</option>
+                  <option value="LTR">LTR (Liter)</option>
+                  <option value="MTR">MTR (Meter)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Conversion to Base *
+                </label>
+                <input
+                  type="number"
+                  name="conversionToBase"
+                  required
+                  min="0"
+                  step="0.01"
+                  className="input"
+                  value={formData.conversionToBase}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Cost Price *
+                </label>
+                <input
+                  type="number"
+                  name="costPrice"
+                  required
+                  min="0"
+                  step="0.01"
+                  className="input"
+                  value={formData.costPrice}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sell Price *
+                </label>
+                <input
+                  type="number"
+                  name="sellPrice"
+                  required
+                  min="0"
+                  step="0.01"
+                  className="input"
+                  value={formData.sellPrice}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Expiry Date <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                </label>
+                <input
+                  type="date"
+                  name="expiryDate"
+                  className="input"
+                  value={formData.expiryDate}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Image <span className="text-xs text-gray-500 font-normal">(Optional — product photo, not barcode)</span>
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {imagePreview && (
+                    <div className="relative inline-block">
+                      <img
+                        src={typeof imagePreview === 'string' && (imagePreview.startsWith('http') || imagePreview.startsWith('/') || imagePreview.startsWith('data:'))
+                          ? imagePreview
+                          : imagePreview}
+                        alt="Product preview"
+                        className="h-16 w-16 object-cover rounded-lg border border-gray-300"
+                      />
+                      {product?.id && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setImageFile(null)
+                            setImagePreview(null)
+                          }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          title="Remove image"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
                     <Upload className="h-4 w-4" />
                     <span className="text-sm">{imageFile ? imageFile.name : product?.id ? 'Change Image' : 'Upload Image'}</span>
                     <input
@@ -500,164 +628,41 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     <span className="text-sm text-gray-500">Uploading...</span>
                   )}
                 </div>
-                {product?.id && imageFile && (
-                  <p className="text-xs text-gray-500">
-                    Image will be uploaded when you save the product
-                  </p>
-                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description (English)
+                </label>
+                <textarea
+                  name="descriptionEn"
+                  rows="2"
+                  className="input"
+                  value={formData.descriptionEn}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description (Arabic)
+                </label>
+                <textarea
+                  name="descriptionAr"
+                  rows="2"
+                  className="input"
+                  value={formData.descriptionAr}
+                  onChange={handleChange}
+                />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Qty Type * <span className="text-xs text-gray-500">(e.g., CRTN, KG, PIECE)</span>
-              </label>
-              <select
-                name="unitType"
-                required
-                className="input uppercase"
-                value={formData.unitType}
-                onChange={handleChange}
-              >
-                <option value="CRTN">CRTN (Carton)</option>
-                <option value="KG">KG (Kilogram)</option>
-                <option value="PIECE">PIECE</option>
-                <option value="BOX">BOX</option>
-                <option value="PKG">PKG (Package)</option>
-                <option value="BAG">BAG</option>
-                <option value="PC">PC (Piece)</option>
-                <option value="UNIT">UNIT</option>
-                <option value="CTN">CTN (Carton)</option>
-                <option value="PCS">PCS (Pieces)</option>
-                <option value="LTR">LTR (Liter)</option>
-                <option value="MTR">MTR (Meter)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Name (English) *
-              </label>
-              <input
-                type="text"
-                name="nameEn"
-                required
-                className="input"
-                value={formData.nameEn}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Name (Arabic)
-              </label>
-              <input
-                type="text"
-                name="nameAr"
-                className="input"
-                value={formData.nameAr}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Conversion to Base *
-              </label>
-              <input
-                type="number"
-                name="conversionToBase"
-                required
-                min="0"
-                step="0.01"
-                className="input"
-                value={formData.conversionToBase}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Cost Price *
-              </label>
-              <input
-                type="number"
-                name="costPrice"
-                required
-                min="0"
-                step="0.01"
-                className="input"
-                value={formData.costPrice}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Sell Price *
-              </label>
-              <input
-                type="number"
-                name="sellPrice"
-                required
-                min="0"
-                step="0.01"
-                className="input"
-                value={formData.sellPrice}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Expiry Date <span className="text-xs text-gray-500">(Optional - for tracking old products)</span>
-              </label>
-              <input
-                type="date"
-                name="expiryDate"
-                className="input"
-                value={formData.expiryDate}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-          
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> Stock quantity is automatically calculated from purchase and sales transactions. 
-              New products start with 0 stock. To set opening stock, create the product first, then use the "Stock Adjustment" 
-              feature with reason "Opening Stock" to ensure proper audit trail.
+            <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+              Stock is calculated from purchases and sales. New products start at 0 — use Stock Adjustment (Opening Stock) after create.
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Description (English)
-            </label>
-            <textarea
-              name="descriptionEn"
-              rows="3"
-              className="input"
-              value={formData.descriptionEn}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1.5">
-              Description (Arabic)
-            </label>
-            <textarea
-              name="descriptionAr"
-              rows="3"
-              className="input"
-              value={formData.descriptionAr}
-              onChange={handleChange}
-            />
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200 shrink-0 bg-white">
             <button
               type="button"
               onClick={onCancel}
@@ -668,7 +673,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
             <button
               type="submit"
               className="btn btn-primary"
-              disabled={saving}
+              disabled={saving || uploadingImage}
             >
               {saving ? (
                 <>

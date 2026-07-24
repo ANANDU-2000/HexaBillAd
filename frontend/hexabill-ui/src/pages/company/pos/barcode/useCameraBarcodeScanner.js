@@ -56,9 +56,14 @@ export function useCameraBarcodeScanner({
   const [lastError, setLastError] = useState(null)
   const [engineType, setEngineType] = useState(null) // 'native' | 'wasm'
   const [facingMode, setFacingMode] = useState(initialFacing)
+  /** idle | starting | scanning | found | timeout */
+  const [scanStatus, setScanStatus] = useState('idle')
 
   const emitError = useCallback((reason) => {
     setLastError(reason)
+    if (reason === 'decode_timeout') {
+      setScanStatus('timeout')
+    }
     onErrorRef.current?.(reason)
   }, [])
 
@@ -85,6 +90,7 @@ export function useCameraBarcodeScanner({
       wasmScannerRef.current = null
     }
     setIsScanning(false)
+    setScanStatus('idle')
   }, [])
 
   const handleDecoded = useCallback((rawCode) => {
@@ -97,6 +103,7 @@ export function useCameraBarcodeScanner({
     lastCodeRef.current = { code, at: now }
     timeoutFiredRef.current = true // success resets soft-timeout pressure
     startedAtRef.current = now
+    setScanStatus('found')
 
     let match = null
     const getter = getProductsRef.current
@@ -176,6 +183,7 @@ export function useCameraBarcodeScanner({
     facingRef.current = facing
     setFacingMode(facing)
     setLastError(null)
+    setScanStatus('starting')
     timeoutFiredRef.current = false
     startedAtRef.current = Date.now()
     lastCodeRef.current = { code: '', at: 0 }
@@ -192,6 +200,7 @@ export function useCameraBarcodeScanner({
       })
     } catch (err) {
       const name = err?.name || ''
+      setScanStatus('idle')
       if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
         emitError('permission_denied')
       } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
@@ -259,6 +268,7 @@ export function useCameraBarcodeScanner({
       } catch {
         stream.getTracks().forEach((t) => t.stop())
         streamRef.current = null
+        setScanStatus('idle')
         emitError('not_supported')
         return false
       }
@@ -266,6 +276,8 @@ export function useCameraBarcodeScanner({
 
     runningRef.current = true
     setIsScanning(true)
+    setScanStatus('scanning')
+    startedAtRef.current = Date.now()
     rafRef.current = requestAnimationFrame(() => { tickDetect() })
     return true
   }, [emitError, stopTracks, tickDetect])
@@ -296,5 +308,6 @@ export function useCameraBarcodeScanner({
     lastError,
     engineType,
     facingMode,
+    scanStatus,
   }
 }

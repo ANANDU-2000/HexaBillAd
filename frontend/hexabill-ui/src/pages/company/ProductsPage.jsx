@@ -250,7 +250,7 @@ const ProductsPage = () => {
 
     try {
       setSaving(true)
-      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || undefined }
+      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
       const response = await productsAPI.createProduct(payload)
       if (response?.success) {
         // Upload image if provided (for new products, upload after creation)
@@ -320,7 +320,7 @@ const ProductsPage = () => {
 
     try {
       setSaving(true)
-      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || undefined }
+      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
       const response = await productsAPI.updateProduct(id, payload)
       if (response?.success) {
         if (imageFile) {
@@ -1069,18 +1069,18 @@ const ProductsPage = () => {
           }
         ]}
         actions={(product) => (
-          <div className="flex space-x-2">
+          <div className="flex items-center gap-1">
             <button
               onClick={(e) => {
                 e.stopPropagation()
                 navigate(`/products/${product.id}`)
               }}
-              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
               title="View product"
               aria-label="View product"
             >
-              <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline text-xs font-medium">View</span>
+              <Eye className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline text-xs font-medium">View</span>
             </button>
             {canManageInventory && (
               <button
@@ -1088,12 +1088,12 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   navigate(`/products/${product.id}?edit=1`)
                 }}
-                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
                 title="Edit Product"
                 aria-label="Edit Product"
               >
-                <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline text-xs font-medium">Edit</span>
+                <Edit className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Edit</span>
               </button>
             )}
             {product.barcode && (
@@ -1102,12 +1102,12 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   handleBarcodePdfForProducts([product.id], { share: false })
                 }}
-                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
                 title="Print barcode PDF"
                 aria-label="Print barcode"
               >
-                <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline text-xs font-medium">Barcode</span>
+                <Printer className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Barcode</span>
               </button>
             )}
             {canAdjustStock && (
@@ -1116,24 +1116,24 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   handleStockAdjustment(product)
                 }}
-                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
                 title="Adjust Stock"
                 aria-label="Adjust Stock"
               >
-                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline text-xs font-medium">Stock</span>
+                <Package className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Stock</span>
               </button>
             )}
             {canAdjustStock && (
               <Link
                 to={`/stock-adjustments?productId=${product.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
                 title="Stock adjustment history for this product"
                 aria-label="Stock adjustment history"
               >
-                <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline text-xs font-medium">History</span>
+                <History className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">History</span>
               </Link>
             )}
             {canManageInventory && (
@@ -1143,7 +1143,7 @@ const ProductsPage = () => {
                     e.stopPropagation()
                     handleActivateProduct(product.id)
                   }}
-                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
                   title="Activate Product"
                   aria-label="Activate Product"
                 >

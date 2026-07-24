@@ -299,6 +299,84 @@ namespace HexaBill.Api.Modules.Inventory
             }
         }
 
+        [HttpPost("{id}/upload-image")]
+        [Authorize(Roles = "Owner,Admin,Staff")]
+        [RequestSizeLimit(6 * 1024 * 1024)]
+        public async Task<ActionResult<ApiResponse<string>>> UploadProductImage(int id, [FromForm] IFormFile file)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                {
+                    return Unauthorized(new ApiResponse<string>
+                    {
+                        Success = false,
+                        Message = "Invalid tenant"
+                    });
+                }
+
+                if (_fileUploadService == null)
+                {
+                    return StatusCode(503, new ApiResponse<string>
+                    {
+                        Success = false,
+                        Message = "File upload is not configured"
+                    });
+                }
+
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new ApiResponse<string>
+                    {
+                        Success = false,
+                        Message = "No file uploaded"
+                    });
+                }
+
+                var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
+                var product = await context.Products
+                    .FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+                if (product == null)
+                {
+                    return NotFound(new ApiResponse<string>
+                    {
+                        Success = false,
+                        Message = "Product not found"
+                    });
+                }
+
+                var relativePath = await _fileUploadService.UploadProductImageAsync(file, id, tenantId);
+                product.ImageUrl = relativePath;
+                await context.SaveChangesAsync();
+
+                return Ok(new ApiResponse<string>
+                {
+                    Success = true,
+                    Message = "Product image uploaded",
+                    Data = relativePath
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadProductImage failed for product {ProductId}", id);
+                return StatusCode(500, new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "An error occurred",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
         [HttpPut("{id}")]
         public async Task<ActionResult<ApiResponse<ProductDto>>> UpdateProduct(int id, [FromBody] CreateProductRequest request)
         {

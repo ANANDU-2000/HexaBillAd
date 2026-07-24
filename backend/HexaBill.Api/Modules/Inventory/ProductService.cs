@@ -75,22 +75,23 @@ namespace HexaBill.Api.Modules.Inventory
 
             if (!string.IsNullOrEmpty(search))
             {
-                // Try to include category in search, but handle if Category navigation doesn't exist
+                // Case-insensitive (Postgres + EF): align with SearchProductsAsync
+                var searchTerm = search.Trim().ToLower();
                 try
                 {
-                    query = query.Where(p => p.NameEn.Contains(search) || 
-                                           p.NameAr!.Contains(search) || 
-                                           p.Sku.Contains(search) ||
-                                           (p.Barcode != null && p.Barcode.Contains(search)) ||
-                                           (p.Category != null && p.Category.Name.Contains(search)));
+                    query = query.Where(p => p.NameEn.ToLower().Contains(searchTerm) ||
+                                           (p.NameAr != null && p.NameAr.ToLower().Contains(searchTerm)) ||
+                                           p.Sku.ToLower().Contains(searchTerm) ||
+                                           (p.Barcode != null && p.Barcode.ToLower().Contains(searchTerm)) ||
+                                           (p.Category != null && p.Category.Name.ToLower().Contains(searchTerm)));
                 }
                 catch
                 {
                     // Fallback search without category (if migration not run)
-                    query = query.Where(p => p.NameEn.Contains(search) || 
-                                           p.NameAr!.Contains(search) || 
-                                           p.Sku.Contains(search) ||
-                                           (p.Barcode != null && p.Barcode.Contains(search)));
+                    query = query.Where(p => p.NameEn.ToLower().Contains(searchTerm) ||
+                                           (p.NameAr != null && p.NameAr.ToLower().Contains(searchTerm)) ||
+                                           p.Sku.ToLower().Contains(searchTerm) ||
+                                           (p.Barcode != null && p.Barcode.ToLower().Contains(searchTerm)));
                 }
             }
 
