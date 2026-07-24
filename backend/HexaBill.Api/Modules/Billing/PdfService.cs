@@ -2758,19 +2758,22 @@ if (hasLogo)
                             });
                         });
 
-                        page.Footer().Column(col =>
+                        if (!letterheadOnly)
                         {
-                            col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
-                            col.Item().PaddingTop(6).AlignCenter().Text(agreement.FirstPartyName).Bold().FontSize(7);
-                            if (!string.IsNullOrWhiteSpace(agreement.FooterAddress))
-                                col.Item().AlignCenter().Text(agreement.FooterAddress).FontSize(7);
-                            if (!string.IsNullOrWhiteSpace(agreement.FirstPartyPhones))
-                                col.Item().AlignCenter().Text(agreement.FirstPartyPhones).FontSize(7);
-                            var mailWeb = string.Join("  |  ", new[] { agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
-                                .Where(s => !string.IsNullOrWhiteSpace(s)));
-                            if (!string.IsNullOrWhiteSpace(mailWeb))
-                                col.Item().AlignCenter().Text(mailWeb).FontSize(7);
-                        });
+                            page.Footer().Column(col =>
+                            {
+                                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                                col.Item().PaddingTop(6).AlignCenter().Text(agreement.FirstPartyName).Bold().FontSize(7);
+                                if (!string.IsNullOrWhiteSpace(agreement.FooterAddress))
+                                    col.Item().AlignCenter().Text(agreement.FooterAddress).FontSize(7);
+                                if (!string.IsNullOrWhiteSpace(agreement.FirstPartyPhones))
+                                    col.Item().AlignCenter().Text(agreement.FirstPartyPhones).FontSize(7);
+                                var mailWeb = string.Join("  |  ", new[] { agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
+                                    .Where(s => !string.IsNullOrWhiteSpace(s)));
+                                if (!string.IsNullOrWhiteSpace(mailWeb))
+                                    col.Item().AlignCenter().Text(mailWeb).FontSize(7);
+                            });
+                        }
                     });
                 });
                 return await Task.FromResult(document.GeneratePdf());

@@ -47,6 +47,8 @@ import QuotationsPage from './pages/company/QuotationsPage'
 import QuotationEditorPage from './pages/company/QuotationEditorPage'
 import AgreementsPage from './pages/company/AgreementsPage'
 import AgreementEditorPage from './pages/company/AgreementEditorPage'
+import DeliveryNotesPage from './pages/company/DeliveryNotesPage'
+import DeliveryNoteViewPage from './pages/company/DeliveryNoteViewPage'
 import StockAdjustmentsHistoryPage from './pages/company/StockAdjustmentsHistoryPage'
 import SignupPage from './pages/SignupPage'
 import OnboardingWizard from './pages/OnboardingWizard'
@@ -224,6 +226,8 @@ function App() {
               <Route path="/agreements" element={<AgreementsPage />} />
               <Route path="/agreements/new" element={<AgreementEditorPage />} />
               <Route path="/agreements/:id" element={<AgreementEditorPage />} />
+              <Route path="/delivery-notes" element={<DeliveryNotesPage />} />
+              <Route path="/delivery-notes/:saleId" element={<DeliveryNoteViewPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
               <Route path="/vat-return" element={<VatReturnPage />} />

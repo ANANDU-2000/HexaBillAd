@@ -22,6 +22,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { salesAPI } from '../../services'
 import { formatCurrency } from '../../utils/currency'
 import { getInvoicePaymentBadge } from '../../utils/salePaymentSettlement'
+import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input } from '../../components/Form'
@@ -36,8 +37,9 @@ const BillingHistoryPage = () => {
   const [loading, setLoading] = useState(true)
   const [sales, setSales] = useState([])
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
+  const debouncedSearch = useDebounce(searchTerm, 300)
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1)
-  const [pageSize, setPageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(30)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [dateFilter, setDateFilter] = useState(() => ({
@@ -60,8 +62,8 @@ const BillingHistoryPage = () => {
         pageSize: pageSize
       }
 
-      if (searchTerm.trim()) {
-        params.search = searchTerm.trim()
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim()
       }
 
       if (dateFilter.from) {
@@ -97,15 +99,24 @@ const BillingHistoryPage = () => {
     } finally {
       setLoading(false)
     }
-  }, [currentPage, pageSize, searchTerm, dateFilter])
+  }, [currentPage, pageSize, debouncedSearch, dateFilter])
 
   const fetchSalesRef = useRef(fetchSales)
   fetchSalesRef.current = fetchSales
 
-  // Refetch when pagination or date filters change
+  // Live search + pagination + dates
   useEffect(() => {
     fetchSalesRef.current()
-  }, [currentPage, pageSize, dateFilter.from, dateFilter.to])
+  }, [currentPage, pageSize, debouncedSearch, dateFilter.from, dateFilter.to])
+
+  // Reset to page 1 when search text settles
+  const prevSearch = useRef(debouncedSearch)
+  useEffect(() => {
+    if (prevSearch.current !== debouncedSearch) {
+      prevSearch.current = debouncedSearch
+      if (currentPage !== 1) setCurrentPage(1)
+    }
+  }, [debouncedSearch, currentPage])
 
   // After POS/payment updates: refresh with current page + filters (ref avoids stale closure from [])
   useEffect(() => {
@@ -271,99 +282,75 @@ const BillingHistoryPage = () => {
 
   return (
     <div className="space-y-3 max-w-full overflow-x-hidden h-full min-h-0 flex flex-col">
-      {/* Header - Responsive */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 shrink-0">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Billing History</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-            View and manage all invoices and bills
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      {/* Header + compact filters */}
+      <div className="flex flex-col gap-2 shrink-0">
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900">Billing History</h1>
+            <p className="text-xs text-gray-500">
+              Showing {sales.length} of {totalCount} invoices
+            </p>
+          </div>
           {selectedInvoices.length > 0 && (
             <button
               onClick={handleCombinedPdf}
-              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md shadow-sm text-sm font-medium hover:bg-green-700"
+              className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Download Combined PDF ({selectedInvoices.length})
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Combined PDF ({selectedInvoices.length})
+            </button>
+          )}
+        </div>
+
+        <form onSubmit={handleSearch} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5">
+          <div className="relative flex-1 min-w-[10rem]">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
+            <input
+              type="search"
+              placeholder="Invoice #, customer, status, method…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded pl-7 pr-2 py-1 text-sm"
+            />
+          </div>
+          <input
+            type="date"
+            value={dateFilter.from}
+            onChange={(e) => { setDateFilter({ ...dateFilter, from: e.target.value }); setCurrentPage(1) }}
+            className="border border-gray-300 rounded px-1.5 py-1 text-xs w-[8.5rem]"
+            title="From"
+          />
+          <input
+            type="date"
+            value={dateFilter.to}
+            onChange={(e) => { setDateFilter({ ...dateFilter, to: e.target.value }); setCurrentPage(1) }}
+            className="border border-gray-300 rounded px-1.5 py-1 text-xs w-[8.5rem]"
+            title="To"
+          />
+          <button
+            type="submit"
+            className="inline-flex items-center px-2.5 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+          >
+            <Filter className="h-3.5 w-3.5 mr-1" />
+            Apply
+          </button>
+          {(searchTerm || dateFilter.from || dateFilter.to) && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-50"
+            >
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
           <button
+            type="button"
             onClick={fetchSales}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-50"
+            title="Refresh"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+            <RefreshCw className="h-3.5 w-3.5" />
           </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-lg p-3 shrink-0">
-        <form onSubmit={handleSearch} className="space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Search by invoice number, customer..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Date From */}
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="date"
-                placeholder="From Date"
-                value={dateFilter.from}
-                onChange={(e) => setDateFilter({ ...dateFilter, from: e.target.value })}
-                className="pl-10"
-              />
-            </div>
-
-            {/* Date To */}
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
-                type="date"
-                placeholder="To Date"
-                value={dateFilter.to}
-                onChange={(e) => setDateFilter({ ...dateFilter, to: e.target.value })}
-                className="pl-10"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Apply Filters
-              </button>
-              {(searchTerm || dateFilter.from || dateFilter.to) && (
-                <button
-                  type="button"
-                  onClick={clearFilters}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Clear
-                </button>
-              )}
-            </div>
-            <div className="text-sm text-gray-500">
-              Showing {sales.length} of {totalCount} invoices
-            </div>
-          </div>
         </form>
       </div>
 
@@ -386,43 +373,43 @@ const BillingHistoryPage = () => {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       <button
                         onClick={toggleSelectAll}
                         className="text-gray-500 hover:text-gray-700"
                       >
                         {selectedInvoices.length === sales.length && sales.length > 0 ? (
-                          <CheckSquare className="h-5 w-5" />
+                          <CheckSquare className="h-4 w-4" />
                         ) : (
-                          <Square className="h-5 w-5" />
+                          <Square className="h-4 w-4" />
                         )}
                       </button>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Invoice #
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Subtotal
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       VAT
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" title="First cleared payment mode (Cash, Debit, …). Not the same as Paid/Partial.">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" title="First cleared payment mode (Cash, Debit, …). Not the same as Paid/Partial.">
                       Method
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 z-20 bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 z-20 bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
                       Actions
                     </th>
                   </tr>
@@ -432,55 +419,55 @@ const BillingHistoryPage = () => {
                     const payBadge = getInvoicePaymentBadge(sale)
                     return (
                     <tr key={sale.id} className="group hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <button
                           onClick={() => toggleSelectInvoice(sale.id)}
                           className="text-gray-500 hover:text-blue-600"
                         >
                           {selectedInvoices.includes(sale.id) ? (
-                            <CheckSquare className="h-5 w-5 text-blue-600" />
+                            <CheckSquare className="h-4 w-4 text-blue-600" />
                           ) : (
-                            <Square className="h-5 w-5" />
+                            <Square className="h-4 w-4" />
                           )}
                         </button>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
                           {sale.invoiceNo || `#${sale.id}`}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {formatDate(sale.invoiceDate)}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           {sale.customerName || 'Cash Customer'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-gray-900">
                         {formatCurrency(sale.subtotal || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-gray-900">
                         {formatCurrency(sale.vatTotal || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium text-gray-900">
                         {formatCurrency(sale.grandTotal || 0)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-3 py-1.5 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${payBadge.colorClass}`}>
                           {payBadge.label}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
                         {sale.primaryPaymentMode ? (
                           <span title="Payment mode from first cleared line">{sale.primaryPaymentMode}</span>
                         ) : (
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium sticky right-0 z-10 bg-white group-hover:bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.08)]">
+                      <td className="px-4 sm:px-3 py-1.5 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium sticky right-0 z-10 bg-white group-hover:bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                           <button
                             onClick={() => handleViewInvoice(sale)}
@@ -488,7 +475,7 @@ const BillingHistoryPage = () => {
                             title="View Invoice"
                             aria-label="View Invoice"
                           >
-                            <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                            <Eye className="h-4 w-4" />
                           </button>
                           {canEdit && (
                             <button
@@ -497,7 +484,7 @@ const BillingHistoryPage = () => {
                               title="Edit Invoice"
                               aria-label="Edit Invoice"
                             >
-                              <Edit className="h-4 w-4 sm:h-5 sm:w-5" />
+                              <Edit className="h-4 w-4" />
                             </button>
                           )}
                           {isAdmin && (
@@ -507,7 +494,7 @@ const BillingHistoryPage = () => {
                               title="Delete Invoice (Admin Only)"
                               aria-label="Delete Invoice (Admin Only)"
                             >
-                              <Trash2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                              <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                         </div>
@@ -591,7 +578,7 @@ const BillingHistoryPage = () => {
 
             {/* Pagination */}
             {(totalPages > 1 || totalCount > 10) && (
-              <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200 flex-wrap gap-2">
+              <div className="bg-gray-50 px-3 py-1.5 flex items-center justify-between border-t border-gray-200 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
                   <span className="text-sm text-gray-600">Rows per page:</span>
                   <select

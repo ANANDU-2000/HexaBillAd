@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Save, Download, Printer } from 'lucide-react'
 import { agreementsAPI } from '../../services/documentsApi'
+import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)
@@ -52,6 +53,7 @@ export default function AgreementEditorPage() {
   const [error, setError] = useState('')
   const [baseline, setBaseline] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
+  const [letterheadOnly, setLetterheadOnly] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
   const autoSaveTimer = useRef(null)
   const persistRef = useRef(null)
@@ -199,7 +201,10 @@ export default function AgreementEditorPage() {
         const res = await settingsAPI.getCompanySettings()
         const raw = res?.data ?? res ?? {}
         const dict = raw.data && typeof raw.data === 'object' && !raw.legalNameEn ? raw.data : raw
-        if (!cancelled) setLogoUrl(dict.logoPath || dict.LogoPath || dict.logoUrl || dict.LogoUrl || '')
+        if (!cancelled) {
+          setLogoUrl(getSetting(dict, 'logoPath') || getSetting(dict, 'LogoPath') || getSetting(dict, 'logoUrl') || getSetting(dict, 'LogoUrl') || getSetting(dict, 'COMPANY_LOGO') || '')
+          setLetterheadOnly(getSettingBool(dict, 'Feature_LetterheadOnlyPrint'))
+        }
       } catch {
         /* optional */
       }
@@ -370,14 +375,18 @@ export default function AgreementEditorPage() {
         </div>
 
         <div className="border rounded-lg bg-white p-3">
-          <div className="flex items-start gap-2 mb-1">
-            {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-            ) : null}
-            <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide">
-              {first.firstPartyName || 'First Party'}
+          {!letterheadOnly ? (
+            <div className="flex items-start gap-2 mb-1">
+              {logoUrl ? (
+                <img src={logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              ) : null}
+              <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide">
+                {first.firstPartyName || 'First Party'}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="text-[10px] text-text-secondary italic mb-2">Letterhead paper (body only)</div>
+          )}
           <div className="text-center font-bold underline text-sm mb-1">BUSINESS DEVELOPMENT AGREEMENT</div>
           <div className="text-center text-xs mb-4 underline">DATE-{agreementDate ? agreementDate.split('-').reverse().join('/') : ''}</div>
 
@@ -416,12 +425,16 @@ export default function AgreementEditorPage() {
               <div className="border-t border-black pt-1 mt-10" />
             </div>
           </div>
-          <div className="mt-6 pt-3 border-t text-[10px] text-center text-text-secondary space-y-0.5">
-            <div className="font-semibold text-text-primary">{first.firstPartyName}</div>
-            <div>{first.footerAddress}</div>
-            <div>{first.firstPartyPhones}</div>
-            <div>{[first.firstPartyEmail, first.firstPartyWebsite].filter(Boolean).join('  |  ')}</div>
-          </div>
+          {!letterheadOnly ? (
+            <div className="mt-6 pt-3 border-t text-[10px] text-center text-text-secondary space-y-0.5">
+              <div className="font-semibold text-text-primary">{first.firstPartyName}</div>
+              <div>{first.footerAddress}</div>
+              <div>{first.firstPartyPhones}</div>
+              <div>{[first.firstPartyEmail, first.firstPartyWebsite].filter(Boolean).join('  |  ')}</div>
+            </div>
+          ) : (
+            <div className="mt-8 text-[10px] text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
+          )}
         </div>
       </div>
     </div>

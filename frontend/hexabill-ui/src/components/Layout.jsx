@@ -218,6 +218,7 @@ const Layout = () => {
       ] : []),
     { name: 'Quotations', href: '/quotations', icon: FileText },
     { name: 'Agreements', href: '/agreements', icon: FileText },
+    { name: 'Delivery Notes', href: '/delivery-notes', icon: Package },
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
     ...(isAdminOrOwner(user) ? [{ name: 'VAT Return', href: '/vat-return', icon: FileText }] : []),
@@ -239,6 +240,7 @@ const Layout = () => {
     if (href === '/suppliers' && location.pathname.startsWith('/suppliers/')) return true
     if (href === '/quotations' && location.pathname.startsWith('/quotations')) return true
     if (href === '/agreements' && location.pathname.startsWith('/agreements')) return true
+    if (href === '/delivery-notes' && location.pathname.startsWith('/delivery-notes')) return true
     if (href === '/more' && location.pathname === '/more') return true
     return false
   }
@@ -269,7 +271,8 @@ const Layout = () => {
     location.pathname === '/suppliers' ||
     location.pathname.startsWith('/suppliers/') ||
     location.pathname.startsWith('/quotations/') ||
-    location.pathname.startsWith('/agreements/')
+    location.pathname.startsWith('/agreements/') ||
+    location.pathname.startsWith('/delivery-notes')
 
   return (
     <div className="min-h-screen bg-neutral-50 overflow-x-hidden">

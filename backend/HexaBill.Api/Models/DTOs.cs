@@ -390,6 +390,8 @@ namespace HexaBill.Api.Models
         public bool IsZeroInvoice { get; set; }
         /// <summary>First cleared payment mode for list/detail (e.g. CASH). Not the same as PaymentStatus.</summary>
         public string? PrimaryPaymentMode { get; set; }
+        /// <summary>Line item count for list views (delivery notes, etc.).</summary>
+        public int ItemCount { get; set; }
         /// <summary>Payment lines for POS edit (non-VOID).</summary>
         public List<SalePaymentLineDto>? Payments { get; set; }
     }

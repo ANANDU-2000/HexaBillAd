@@ -6,6 +6,7 @@ import { quotationsAPI } from '../../services/documentsApi'
 import { productsAPI, settingsAPI } from '../../services'
 import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
+import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
 function unwrapProductList(res) {
@@ -84,6 +85,7 @@ export default function QuotationEditorPage() {
     email: '',
     trn: '',
     logoUrl: '',
+    letterheadOnly: false,
   })
 
   const [drawerRow, setDrawerRow] = useState(null)
@@ -198,12 +200,13 @@ export default function QuotationEditorPage() {
         const dict = raw.data && typeof raw.data === 'object' && !raw.legalNameEn ? raw.data : raw
         if (cancelled) return
         setCompany({
-          name: dict.legalNameEn || dict.LegalNameEn || dict.COMPANY_NAME_EN || '',
-          address: dict.address || dict.Address || dict.COMPANY_ADDRESS || '',
-          phone: dict.mobile || dict.Mobile || dict.COMPANY_PHONE || '',
-          email: dict.email || dict.Email || dict.COMPANY_EMAIL || '',
-          trn: dict.vatNumber || dict.VatNumber || dict.COMPANY_TRN || '',
-          logoUrl: dict.logoPath || dict.LogoPath || dict.logoUrl || dict.LogoUrl || '',
+          name: getSetting(dict, 'legalNameEn') || getSetting(dict, 'LegalNameEn') || getSetting(dict, 'COMPANY_NAME_EN') || '',
+          address: getSetting(dict, 'address') || getSetting(dict, 'Address') || getSetting(dict, 'COMPANY_ADDRESS') || '',
+          phone: getSetting(dict, 'mobile') || getSetting(dict, 'Mobile') || getSetting(dict, 'COMPANY_PHONE') || '',
+          email: getSetting(dict, 'email') || getSetting(dict, 'Email') || getSetting(dict, 'COMPANY_EMAIL') || '',
+          trn: getSetting(dict, 'vatNumber') || getSetting(dict, 'VatNumber') || getSetting(dict, 'COMPANY_TRN') || '',
+          logoUrl: getSetting(dict, 'logoPath') || getSetting(dict, 'LogoPath') || getSetting(dict, 'logoUrl') || getSetting(dict, 'LogoUrl') || getSetting(dict, 'COMPANY_LOGO') || '',
+          letterheadOnly: getSettingBool(dict, 'Feature_LetterheadOnlyPrint'),
         })
       } catch {
         /* preview header optional */
@@ -676,16 +679,20 @@ export default function QuotationEditorPage() {
 
         <div className="border rounded-lg bg-white p-3 shadow-inner">
           <div className="flex justify-between items-start gap-3 mb-3">
-            <div className="flex gap-2 min-w-0 flex-1">
-              {company.logoUrl ? (
-                <img src={company.logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-              ) : null}
-              <div className="text-center flex-1 min-w-0">
-                <div className="font-bold text-xs uppercase leading-tight">{company.name || 'Company'}</div>
-                {company.address ? <div className="text-[10px] text-text-secondary whitespace-pre-wrap">{company.address}</div> : null}
-                {contactLine ? <div className="text-[10px] text-text-secondary">{contactLine}</div> : null}
+            {!company.letterheadOnly ? (
+              <div className="flex gap-2 min-w-0 flex-1">
+                {company.logoUrl ? (
+                  <img src={company.logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+                ) : null}
+                <div className="text-center flex-1 min-w-0">
+                  <div className="font-bold text-xs uppercase leading-tight">{company.name || 'Company'}</div>
+                  {company.address ? <div className="text-[10px] text-text-secondary whitespace-pre-wrap">{company.address}</div> : null}
+                  {contactLine ? <div className="text-[10px] text-text-secondary">{contactLine}</div> : null}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 text-[10px] text-text-secondary italic">Letterhead paper (body only)</div>
+            )}
             <div className="text-lg font-bold shrink-0">Quotation</div>
           </div>
           <div className="flex justify-between text-sm mb-3 gap-4">
@@ -740,15 +747,19 @@ export default function QuotationEditorPage() {
             <div className="flex justify-between font-bold border-t border-b-2 py-1"><span>GRAND TOTAL</span><span>AED {totals.grandTotal.toFixed(2)}</span></div>
           </div>
           <p className="text-xs mt-4">{closingLine}</p>
-          <div className="mt-8 ml-auto w-40 text-center text-xs">
-            {company.logoUrl ? (
-              <img src={company.logoUrl} alt="" className="h-8 mx-auto object-contain mb-1" onError={(e) => { e.currentTarget.style.display = 'none' }} />
-            ) : (
-              <div className="h-8" />
-            )}
-            <div className="font-semibold border-t pt-1">AUTHORIZED SIGNATURE</div>
-            {company.name ? <div className="text-[10px] text-text-secondary mt-0.5">{company.name}</div> : null}
-          </div>
+          {!company.letterheadOnly ? (
+            <div className="mt-8 ml-auto w-40 text-center text-xs">
+              {company.logoUrl ? (
+                <img src={company.logoUrl} alt="" className="h-8 mx-auto object-contain mb-1" onError={(e) => { e.currentTarget.style.display = 'none' }} />
+              ) : (
+                <div className="h-8" />
+              )}
+              <div className="font-semibold border-t pt-1">AUTHORIZED SIGNATURE</div>
+              {company.name ? <div className="text-[10px] text-text-secondary mt-0.5">{company.name}</div> : null}
+            </div>
+          ) : (
+            <div className="mt-10 text-[10px] text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
+          )}
         </div>
       </div>
 

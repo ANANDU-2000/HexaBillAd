@@ -147,8 +147,53 @@ namespace HexaBill.Api.Modules.Billing
 
                 if (!string.IsNullOrEmpty(search))
                 {
-                    query = query.Where(s => s.InvoiceNo.Contains(search) || 
-                                           (s.Customer != null && s.Customer.Name.Contains(search)));
+                    var term = search.Trim();
+                    var termLower = term.ToLowerInvariant();
+                    var statusPaid = termLower is "paid";
+                    var statusPartial = termLower is "partial" or "part";
+                    var statusPending = termLower is "pending" or "unpaid" or "due";
+                    var cashCustomer = termLower.Contains("cash") && termLower.Contains("customer");
+
+                    var modeFilter = Enum.TryParse<PaymentMode>(term, true, out var matchedMode);
+                    if (!modeFilter)
+                    {
+                        // Common aliases → PaymentMode
+                        modeFilter = termLower switch
+                        {
+                            "cash" => Enum.TryParse("CASH", true, out matchedMode),
+                            "card" or "debit" => Enum.TryParse("DEBIT", true, out matchedMode),
+                            "online" or "transfer" or "bank" => Enum.TryParse("ONLINE", true, out matchedMode),
+                            "cheque" or "check" => Enum.TryParse("CHEQUE", true, out matchedMode),
+                            "credit" => Enum.TryParse("CREDIT", true, out matchedMode),
+                            _ => false
+                        };
+                    }
+
+                    List<int>? saleIdsMatchingMode = null;
+                    if (modeFilter && tenantId > 0)
+                    {
+                        saleIdsMatchingMode = await _context.Payments.AsNoTracking()
+                            .Where(p => p.TenantId == tenantId && p.SaleId != null && p.Status == PaymentStatus.CLEARED && p.Mode == matchedMode)
+                            .Select(p => p.SaleId!.Value)
+                            .Distinct()
+                            .ToListAsync();
+                    }
+
+                    query = query.Where(s =>
+                        s.InvoiceNo.ToLower().Contains(termLower) ||
+                        (s.Customer != null && (
+                            (s.Customer.Name != null && s.Customer.Name.ToLower().Contains(termLower)) ||
+                            (s.Customer.Phone != null && s.Customer.Phone.Contains(term))
+                        )) ||
+                        (s.Notes != null && s.Notes.ToLower().Contains(termLower)) ||
+                        (cashCustomer && s.CustomerId == null) ||
+                        (s.CustomerId == null && termLower == "cash") ||
+                        (saleIdsMatchingMode != null && saleIdsMatchingMode.Contains(s.Id)) ||
+                        (statusPaid && s.PaymentStatus == SalePaymentStatus.Paid) ||
+                        (statusPartial && s.PaymentStatus == SalePaymentStatus.Partial) ||
+                        (statusPending && s.PaymentStatus == SalePaymentStatus.Pending) ||
+                        s.GrandTotal.ToString().Contains(term)
+                    );
                 }
 
                 if (fromDate.HasValue)
@@ -222,6 +267,7 @@ namespace HexaBill.Api.Modules.Billing
                         PaidAmount = payState.PaidAmount,
                         PaymentStatus = payState.Status.ToString(),
                         PrimaryPaymentMode = primaryPaymentModeBySaleId.GetValueOrDefault(s.Id),
+                        ItemCount = s.Items?.Count ?? 0,
                         Notes = s.Notes,
                         Items = s.Items.Select(i => new SaleItemDto
                         {

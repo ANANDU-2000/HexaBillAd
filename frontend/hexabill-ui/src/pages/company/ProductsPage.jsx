@@ -912,21 +912,21 @@ const ProductsPage = () => {
                         ? product.imageUrl 
                         : `/uploads/${product.imageUrl}`}
                       alt={product.nameEn}
-                      className="h-10 w-10 object-cover rounded border border-gray-200"
+                      className="h-8 w-8 object-cover rounded border border-gray-200"
                       onError={(e) => {
                         e.target.style.display = 'none'
                         const placeholder = e.target.parentElement.querySelector('.image-placeholder')
                         if (placeholder) placeholder.style.display = 'flex'
                       }}
                     />
-                    <div className="image-placeholder h-10 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center" style={{ display: 'none' }}>
+                    <div className="image-placeholder h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center" style={{ display: 'none' }}>
                       <ImageIcon className="h-4 w-4 text-gray-400" />
                     </div>
                   </div>
                 )
               }
               return (
-                <div className="h-10 w-10 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                <div className="h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
                   <ImageIcon className="h-4 w-4 text-gray-400" />
                 </div>
               )

@@ -49,7 +49,7 @@ const ModernTable = ({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider ${column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                  className={`px-2 sm:px-3 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider ${column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
                     }`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
@@ -67,7 +67,7 @@ const ModernTable = ({
                   </div>
                 </th>
               ))}
-              {actions && <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>}
+              {actions && <th className="px-2 sm:px-3 py-1.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>}
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -96,12 +96,12 @@ const ModernTable = ({
                   onClick={() => onRowClick && onRowClick(row)}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                    <td key={column.key} className="px-2 sm:px-3 py-1.5 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {column.render ? column.render(row) : row[column.key]}
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 lg:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                    <td className="px-2 sm:px-3 py-1.5 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
                       {actions(row)}
                     </td>
                   )}
