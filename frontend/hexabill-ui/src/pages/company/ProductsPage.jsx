@@ -175,6 +175,58 @@ const ProductsPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters]) // Only refresh when filters change
 
+  /** After create: toast with optional Print barcode action (no need to re-open Edit). */
+  const offerCreateSuccessWithPrint = (created) => {
+    const id = created?.id
+    const barcode = created?.barcode
+    const msg = barcode ? `Product created (barcode: ${barcode})` : 'Product created successfully'
+    if (!id || !barcode) {
+      toast.success(msg)
+      return
+    }
+    toast.success(
+      (t) => (
+        <div className="flex flex-col gap-1.5 text-sm max-w-xs">
+          <span>{msg}</span>
+          <button
+            type="button"
+            className="self-start font-semibold text-blue-700 underline hover:text-blue-900"
+            onClick={async () => {
+              toast.dismiss(t.id)
+              try {
+                const blob = await productsAPI.downloadBarcodeLabelsPdf({ productIds: [id] })
+                await downloadOrShareBarcodePdf(blob, {
+                  fileName: `barcode-${barcode || id}.pdf`,
+                  share: false,
+                })
+                toast.success('Barcode PDF downloaded')
+              } catch (error) {
+                console.error(error)
+                if (!error?._handledByInterceptor) {
+                  let errMsg = error?.message || 'Failed to print barcode'
+                  try {
+                    const data = error?.response?.data
+                    if (data instanceof Blob) {
+                      const text = await data.text()
+                      const parsed = JSON.parse(text)
+                      errMsg = parsed.message || errMsg
+                    } else if (data?.message) {
+                      errMsg = data.message
+                    }
+                  } catch { /* ignore */ }
+                  toast.error(errMsg)
+                }
+              }
+            }}
+          >
+            Print barcode
+          </button>
+        </div>
+      ),
+      { duration: 10000 }
+    )
+  }
+
   const handleCreateProduct = async (productData, imageFile) => {
     // Prevent multiple clicks
     if (saving) {
@@ -205,19 +257,15 @@ const ProductsPage = () => {
         if (imageFile && response.data?.id) {
           try {
             const uploadResponse = await productsAPI.uploadProductImage(response.data.id, imageFile)
-            if (uploadResponse?.success) {
-              toast.success('Product created and image uploaded successfully')
-            } else {
-              toast.success('Product created successfully, but image upload failed')
+            if (!uploadResponse?.success) {
+              toast.error('Product created, but image upload failed')
             }
           } catch (uploadError) {
             console.error('Error uploading image:', uploadError)
-            toast.success('Product created successfully, but image upload failed')
+            toast.error('Product created, but image upload failed')
           }
-        } else {
-          const bc = response.data?.barcode
-          toast.success(bc ? `Product created (barcode: ${bc})` : 'Product created successfully')
         }
+        offerCreateSuccessWithPrint(response.data)
         setShowForm(false)
         loadProducts()
       } else {
