@@ -2,7 +2,7 @@ import { flushSync } from 'react-dom'
 import { Cmd } from './commands'
 import { usePosInteractionStore } from './invoiceStore'
 import { RowPhase, transitionPhase } from './rowStateMachine'
-import { createEmptyLine, findLineIndexByRowId } from './rowId'
+import { createEmptyLine, findLineIndexByRowId, ensureAtMostOneTrailingEmptyRow } from './rowId'
 import { scheduleFocusCell, scheduleOpenDrawerFocus } from './InteractionEffects'
 import { posLog } from './PosLogger'
 
@@ -242,20 +242,24 @@ export function createCommandDispatcher(adapters) {
     scheduleOpenDrawerFocus(focusEffects(empty.rowId))
   }
 
-  /** Append empty row for continuous scan — no ProductDrawer, pointers on new empty row. */
+  /** Append empty row for continuous scan — no ProductDrawer; never stack blanks. */
   function addRowSilent() {
     if (isFormDisabled?.()) return
-    const empty = createEmptyLine()
-    commitCart(setCart, [...getCart(), empty])
+    const cart = getCart()
+    const pruned = ensureAtMostOneTrailingEmptyRow(cart, { ensureOne: true })
+    commitCart(setCart, pruned)
+    const empty = pruned.find((l) => !l?.productId) || pruned[pruned.length - 1]
     store().closeDrawer()
-    store().setPointers({
-      activeInvoiceRowId: empty.rowId,
-      editingRowId: empty.rowId,
-      drawerOwnerRowId: null,
-      focusedControl: null,
-      rowPhase: RowPhase.IDLE,
-    })
-    posLog('ADD_ROW_SILENT', { rowId: empty.rowId })
+    if (empty?.rowId) {
+      store().setPointers({
+        activeInvoiceRowId: empty.rowId,
+        editingRowId: empty.rowId,
+        drawerOwnerRowId: null,
+        focusedControl: null,
+        rowPhase: RowPhase.IDLE,
+      })
+    }
+    posLog('ADD_ROW_SILENT', { rowId: empty?.rowId })
   }
 
   function dispatch(cmd, payload = {}) {

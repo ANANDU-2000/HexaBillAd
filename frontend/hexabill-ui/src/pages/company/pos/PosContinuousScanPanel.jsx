@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, CameraOff, SwitchCamera, X, ExternalLink } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useCameraBarcodeScanner } from './barcode/useCameraBarcodeScanner'
 import { playScanSuccessBeep, playScanErrorBeep } from './barcode/scanBeep'
 
@@ -9,6 +10,13 @@ const ERROR_COPY = {
   no_camera: 'No camera found on this device. Use product search instead.',
   not_supported: "Camera scanning isn't supported in this browser. Use product search instead.",
   decode_timeout: null, // soft — keep scanning
+}
+
+const SCAN_STATUS_LABEL = {
+  starting: 'Starting camera…',
+  scanning: 'Looking for barcode…',
+  found: 'Barcode found',
+  timeout: 'No barcode yet — keep aiming',
 }
 
 /**
@@ -46,6 +54,7 @@ export default function PosContinuousScanPanel({
     playScanErrorBeep()
     setStatusOk(null)
     setStatusMiss({ code })
+    toast.error(`No product for ${code}`, { id: 'pos-scan', duration: 2500 })
     if (clearMissTimer.current) clearTimeout(clearMissTimer.current)
     clearMissTimer.current = setTimeout(() => setStatusMiss(null), 4000)
   }, [onProductMatched])
@@ -63,6 +72,7 @@ export default function PosContinuousScanPanel({
     isScanning,
     engineType,
     facingMode,
+    scanStatus,
   } = useCameraBarcodeScanner({
     onDetect: handleDetect,
     onError: handleError,
@@ -102,6 +112,9 @@ export default function PosContinuousScanPanel({
   const addProductUrl = statusMiss?.code
     ? `/products?barcode=${encodeURIComponent(statusMiss.code)}`
     : null
+
+  const idleHint = SCAN_STATUS_LABEL[scanStatus]
+    || (isScanning ? 'Looking for barcode…' : null)
 
   return (
     <div
@@ -192,7 +205,7 @@ export default function PosContinuousScanPanel({
         )}
         {!statusOk && !statusMiss && !panelError && (
           <p className="text-neutral-400 flex items-center gap-1">
-            {isScanning ? 'Aim at barcode…' : (
+            {idleHint || (
               <>
                 <CameraOff className="h-3 w-3" /> Waiting for camera
               </>

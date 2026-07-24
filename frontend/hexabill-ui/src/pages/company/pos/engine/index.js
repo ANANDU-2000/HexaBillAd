@@ -1,4 +1,4 @@
-export { createRowId, ensureRowId, ensureCartRowIds, findLineIndexByRowId, createEmptyLine } from './rowId'
+export { createRowId, ensureRowId, ensureCartRowIds, findLineIndexByRowId, createEmptyLine, isEmptyCartLine, ensureAtMostOneTrailingEmptyRow } from './rowId'
 export { posLog } from './PosLogger'
 export { RowPhase } from './rowStateMachine'
 export { Cmd } from './commands'

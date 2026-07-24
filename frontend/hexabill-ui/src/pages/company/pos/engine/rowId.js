@@ -35,3 +35,27 @@ export function createEmptyLine() {
     lineTotal: 0,
   }
 }
+
+/** True when line has no product (placeholder / search row). */
+export function isEmptyCartLine(line) {
+  return !line?.productId
+}
+
+/**
+ * Keep all product lines + at most one trailing empty row.
+ * @param {object[]} cart
+ * @param {{ ensureOne?: boolean }} [opts] - if true and no empty exists, append one
+ */
+export function ensureAtMostOneTrailingEmptyRow(cart, { ensureOne = false } = {}) {
+  const list = Array.isArray(cart) ? cart : []
+  const filled = list.filter((l) => l?.productId)
+  const empties = list.filter((l) => !l?.productId)
+  if (empties.length > 0) {
+    return ensureCartRowIds([...filled, empties[0]])
+  }
+  if (ensureOne) {
+    return ensureCartRowIds([...filled, createEmptyLine()])
+  }
+  return ensureCartRowIds(filled)
+}
+

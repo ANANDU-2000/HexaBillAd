@@ -13,6 +13,7 @@ import {
   ensureCartRowIds,
   createEmptyLine,
   findLineIndexByRowId,
+  ensureAtMostOneTrailingEmptyRow,
   usePosInteractionStore,
   Cmd,
 } from './engine'
@@ -771,7 +772,7 @@ const PosEnterprisePage = () => {
     }
   }
 
-  /** Camera / gun scan: same product → qty+1; else fill row with catalog sell price. */
+  /** Camera / gun scan: same product → qty+1; else fill row. Never stack blank rows. */
   const handleCameraProductMatched = useCallback((product) => {
     if (!product?.id) return { name: 'Unknown', qty: 1 }
     const name = product.nameEn || product.name || 'Product'
@@ -787,12 +788,32 @@ const PosEnterprisePage = () => {
       const lineTotal = rowTotal + vatAmount
       const next = [...cartNow]
       next[existingIdx] = { ...item, qty: newQty, vatAmount, lineTotal }
-      flushSync(() => setCart(next))
-      interactionRef.current?.addRowSilent?.()
+      const pruned = ensureAtMostOneTrailingEmptyRow(next, { ensureOne: false })
+      flushSync(() => setCart(pruned))
+      const s = usePosInteractionStore.getState()
+      s.closeDrawer()
+      const rowId = item.rowId
+      if (rowId) {
+        s.setPointers({
+          activeInvoiceRowId: rowId,
+          editingRowId: rowId,
+          drawerOwnerRowId: null,
+          focusedControl: 'qty',
+        })
+        interactionRef.current?.dispatch?.(Cmd.FOCUS_CELL, { rowId, control: 'qty' })
+      }
+      toast.success(`Qty ${newQty} · ${name}`, { id: 'pos-scan', duration: 1800 })
       return { name, qty: newQty }
     }
     interactionRef.current?.selectProductForOwner?.(product)
-    interactionRef.current?.addRowSilent?.()
+    const after = cartRef.current || []
+    const ensured = ensureAtMostOneTrailingEmptyRow(after, { ensureOne: true })
+    const afterEmptyCount = after.filter((l) => !l?.productId).length
+    const ensuredEmptyCount = ensured.filter((l) => !l?.productId).length
+    if (after.length !== ensured.length || afterEmptyCount !== ensuredEmptyCount) {
+      flushSync(() => setCart(ensured))
+    }
+    toast.success(`Added ${name} · qty 1`, { id: 'pos-scan', duration: 1800 })
     return { name, qty: 1 }
   }, [vatPercent])
   handleCameraProductMatchedRef.current = handleCameraProductMatched
@@ -930,14 +951,26 @@ const PosEnterprisePage = () => {
 
   const removeFromCart = (index) => {
     undoApi.push({ cart, discount, discountInput })
-    const removed = cart[index]
     const next = cart.filter((_, i) => i !== index)
     setCart(next)
     const s = usePosInteractionStore.getState()
-    if (removed?.rowId && (s.activeInvoiceRowId === removed.rowId || s.drawerOwnerRowId === removed.rowId || s.editingRowId === removed.rowId)) {
-      s.closeDrawer()
-      s.resetInteraction()
-    }
+    s.closeDrawer()
+    s.resetInteraction()
+    setProductPickerRowIndex(null)
+    // Avoid focus landing on empty "Click to search…" (which opens Products sidebar)
+    requestAnimationFrame(() => {
+      const remaining = next.find((l) => l?.productId)
+      if (remaining?.rowId) {
+        const qtyEl = qtyInputRefsByRowId.current[remaining.rowId]
+        if (qtyEl && typeof qtyEl.focus === 'function') {
+          try { qtyEl.focus({ preventScroll: true }) } catch { /* ignore */ }
+          return
+        }
+      }
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur()
+      }
+    })
   }
 
   const calculateTotals = () => {
@@ -1987,6 +2020,9 @@ const PosEnterprisePage = () => {
         // Same path as camera scan: sell price from product, qty+1 if already on bill
         handleCameraProductMatchedRef.current?.(product)
       },
+      onMiss: (code) => {
+        toast.error(`No product for ${code}`, { id: 'pos-scan', duration: 2500 })
+      },
     })
   }
 
@@ -2857,7 +2893,15 @@ const PosEnterprisePage = () => {
                             <button
                               type="button"
                               tabIndex={-1}
-                              onClick={() => removeFromCart(index)}
+                              onMouseDown={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                              }}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                removeFromCart(index)
+                              }}
                               disabled={isFormDisabled}
                               className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors inline-flex items-center justify-center min-w-8 min-h-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Delete item"
@@ -2925,7 +2969,17 @@ const PosEnterprisePage = () => {
                           ) : null}
                         </div>
                         <button
-                          onClick={() => removeFromCart(index)}
+                          type="button"
+                          tabIndex={-1}
+                          onMouseDown={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            removeFromCart(index)
+                          }}
                           disabled={isFormDisabled}
                           className="text-error hover:text-error/90 p-2 rounded-lg hover:bg-error/10 min-w-[44px] min-h-[44px] flex items-center justify-center active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
                           aria-label="Delete item"

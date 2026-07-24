@@ -7,6 +7,7 @@ import { matchProductByCode } from './matchProductByCode'
 export function createBarcodeEngine({
   getProducts,
   onMatch,
+  onMiss,
   idleMs = 60,
   minLength = 3,
 } = {}) {
@@ -28,6 +29,8 @@ export function createBarcodeEngine({
     const product = matchProductByCode(getProducts?.() || [], code)
     if (product) {
       onMatch?.(product, code)
+    } else {
+      onMiss?.(code)
     }
   }
 
