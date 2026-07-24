@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
 import { flushSync } from 'react-dom'
 import ProductDrawer from './ProductDrawer'
 import PosShell from './PosShell'
+import PosContinuousScanPanel from './PosContinuousScanPanel'
 import { PosSelectionProvider, usePosSelection } from './managers/SelectionManager'
 import { createBarcodeEngine } from './barcode/BarcodeEngine'
 import { usePosUndo } from './hooks/usePosUndo'
@@ -39,7 +40,8 @@ import {
   Package,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ScanBarcode
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../../services'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../../utils/currency'
@@ -136,6 +138,7 @@ const PosEnterprisePage = () => {
   const [selectedRouteId, setSelectedRouteId] = useState('')
   const [nextInvoiceNumberPreview, setNextInvoiceNumberPreview] = useState('')
   const [customInvoiceNo, setCustomInvoiceNo] = useState('')
+  const [scanModeOn, setScanModeOn] = useState(false)
   const [isZeroInvoice, setIsZeroInvoice] = useState(false) // Free sample / zero value invoice (FTA)
   // VAT from company settings; fallback only when settings unavailable (PRODUCTION_MASTER_TODO #4)
   const FALLBACK_VAT_PERCENT = 5
@@ -176,6 +179,8 @@ const PosEnterprisePage = () => {
   const removeFromCartRef = useRef(null)
   const barcodeEngineRef = useRef(null)
   const interactionRef = useRef(null)
+  const cartRef = useRef(cart)
+  cartRef.current = cart
   /** Highlight index inside open product dropdown */
   const [productHighlight, setProductHighlight] = useState(0)
   const [productHighlightByRow, setProductHighlightByRow] = useState({})
@@ -762,6 +767,31 @@ const PosEnterprisePage = () => {
       usePosInteractionStore.getState().closeDrawer()
     }
   }
+
+  /** Camera continuous-scan: same product → qty+1; else fill empty row then silent next row. */
+  const handleCameraProductMatched = useCallback((product) => {
+    if (!product?.id) return { name: 'Unknown', qty: 1 }
+    const name = product.nameEn || product.name || 'Product'
+    const cartNow = cartRef.current || []
+    const existingIdx = cartNow.findIndex((item) => item.productId === product.id)
+    if (existingIdx >= 0) {
+      const item = cartNow[existingIdx]
+      const newQty = (typeof item.qty === 'number' ? item.qty : 0) + 1
+      const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : 0
+      const itemDiscount = typeof item.discount === 'number' ? item.discount : 0
+      const rowTotal = (newQty * unitPrice) - itemDiscount
+      const vatAmount = Math.round((rowTotal * (vatPercent / 100)) * 100) / 100
+      const lineTotal = rowTotal + vatAmount
+      const next = [...cartNow]
+      next[existingIdx] = { ...item, qty: newQty, vatAmount, lineTotal }
+      flushSync(() => setCart(next))
+      interactionRef.current?.addRowSilent?.()
+      return { name, qty: newQty }
+    }
+    interactionRef.current?.selectProductForOwner?.(product)
+    interactionRef.current?.addRowSilent?.()
+    return { name, qty: 1 }
+  }, [vatPercent])
 
   const openProductPicker = (rowIndexOrId) => {
     if (isFormDisabled) return
@@ -1631,6 +1661,7 @@ const PosEnterprisePage = () => {
               invoiceNo: invoiceNo,
               data: response.data
             })
+            setScanModeOn(false)
             setShowInvoiceOptionsModal(true)
 
             // If we came from another page, offer to go back (with filters preserved in URL)
@@ -1697,6 +1728,7 @@ const PosEnterprisePage = () => {
               invoiceNo: invoiceNo,
               data: response.data
             })
+            setScanModeOn(false)
             setShowInvoiceOptionsModal(true)
           } else {
             // Clear cart and reset for new invoice if no saleId
@@ -1824,6 +1856,7 @@ const PosEnterprisePage = () => {
     setShowProductDropdown({}) // Close all dropdowns
     setLastCreatedInvoice(null)
     setCustomInvoiceNo('')
+    setScanModeOn(false)
     salesAPI.getNextInvoiceNumber().then(res => {
       const num = res?.data ?? res?.invoiceNo ?? res
       if (typeof num === 'string' && num) {
@@ -2531,6 +2564,21 @@ const PosEnterprisePage = () => {
           </button>
           <button
             type="button"
+            onClick={() => setScanModeOn((v) => !v)}
+            disabled={isFormDisabled}
+            className={`h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
+              scanModeOn
+                ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
+                : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
+            }`}
+            title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
+            aria-pressed={scanModeOn}
+          >
+            <ScanBarcode className="h-3.5 w-3.5" />
+            Scan
+          </button>
+          <button
+            type="button"
             onClick={handleRefreshData}
             disabled={refreshingData}
             className="h-9 px-2 text-xs border border-neutral-300 rounded-md hover:bg-neutral-50 disabled:opacity-60 inline-flex items-center"
@@ -3030,7 +3078,7 @@ const PosEnterprisePage = () => {
           <div className="hidden md:block px-2 py-1 shrink-0">
             <p className="text-[10px] sm:text-[11px] text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
               <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
-              F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Delivery note icon after save
+              F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Scan toggle for camera
             </p>
           </div>
           </div>
@@ -3257,6 +3305,13 @@ const PosEnterprisePage = () => {
     <PosShell className="pb-24 lg:pb-0" header={posHeader} toolbar={posToolbar} footer={posFooter}>
       {posBody}
     </PosShell>
+
+    <PosContinuousScanPanel
+      active={scanModeOn}
+      getProducts={() => products}
+      onProductMatched={handleCameraProductMatched}
+      onStop={() => setScanModeOn(false)}
+    />
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
       <div className="md:hidden fixed bottom-[4.75rem] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
@@ -3605,6 +3660,7 @@ const PosEnterprisePage = () => {
                             invoiceNo: invoiceNo,
                             data: response.data
                           })
+                          setScanModeOn(false)
                           setShowInvoiceOptionsModal(true)
                         } else {
                           handleNewInvoice()
@@ -3741,6 +3797,7 @@ const PosEnterprisePage = () => {
                             invoiceNo: invoiceNo,
                             data: response.data
                           })
+                          setScanModeOn(false)
                           setShowInvoiceOptionsModal(true)
                         } else {
                           handleNewInvoice()

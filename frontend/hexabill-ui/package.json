@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.14.6",
+    "@undecaf/zbar-wasm": "^0.11.0",
     "axios": "^1.6.0",
     "camelcase-keys": "^10.0.2",
     "clsx": "^2.0.0",
-    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.294.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",

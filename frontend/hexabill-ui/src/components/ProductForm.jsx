@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
-import { X, Plus, Upload, Image as ImageIcon } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { X, Plus, Upload, Image as ImageIcon, ScanBarcode, SwitchCamera } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from './ConfirmDangerModal'
+import { useCameraBarcodeScanner } from '../pages/company/pos/barcode/useCameraBarcodeScanner'
+import { playScanSuccessBeep } from '../pages/company/pos/barcode/scanBeep'
 
-const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
+const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode = '' }) => {
   const [formData, setFormData] = useState({
     sku: product?.sku || '',
-    barcode: product?.barcode || '',
+    barcode: product?.barcode || initialBarcode || '',
     nameEn: product?.nameEn || '',
     nameAr: product?.nameAr || '',
     unitType: product?.unitType || 'CRTN',
@@ -30,6 +32,47 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
   const [imagePreview, setImagePreview] = useState(product?.imageUrl || null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [showLossConfirm, setShowLossConfirm] = useState(false)
+  const [barcodeScanOn, setBarcodeScanOn] = useState(false)
+  const [scanCamError, setScanCamError] = useState(null)
+
+  const onBarcodeDetect = useCallback((code) => {
+    if (!code) return
+    setFormData((prev) => ({ ...prev, barcode: code }))
+    playScanSuccessBeep()
+    toast.success(`Barcode: ${code}`)
+    setBarcodeScanOn(false)
+  }, [])
+
+  const {
+    videoRef: barcodeVideoRef,
+    start: startBarcodeCam,
+    stop: stopBarcodeCam,
+    switchCamera: switchBarcodeCam,
+    isScanning: barcodeCamScanning,
+  } = useCameraBarcodeScanner({
+    onDetect: (code) => onBarcodeDetect(code),
+    onError: (reason) => {
+      if (reason === 'decode_timeout') return
+      const msg = {
+        permission_denied: 'Camera access blocked. Enable it in browser settings.',
+        no_camera: 'No camera found on this device.',
+        not_supported: 'Camera scanning is not supported in this browser.',
+      }[reason] || 'Camera error'
+      setScanCamError(msg)
+      toast.error(msg)
+    },
+    facingMode: 'environment',
+  })
+
+  useEffect(() => {
+    if (!barcodeScanOn) {
+      stopBarcodeCam()
+      return undefined
+    }
+    setScanCamError(null)
+    startBarcodeCam()
+    return () => stopBarcodeCam()
+  }, [barcodeScanOn, startBarcodeCam, stopBarcodeCam])
 
   const handleChange = (e) => {
     const { name, value, type } = e.target
@@ -232,14 +275,53 @@ const ProductForm = ({ product, saving = false, onSave, onCancel }) => {
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Barcode <span className="text-xs text-gray-500">(Optional - for POS scanning)</span>
               </label>
-              <input
-                type="text"
-                name="barcode"
-                className="input"
-                value={formData.barcode}
-                onChange={handleChange}
-                placeholder="EAN-13, UPC, etc."
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  name="barcode"
+                  className="input flex-1"
+                  value={formData.barcode}
+                  onChange={handleChange}
+                  placeholder="EAN-13, UPC, etc."
+                />
+                <button
+                  type="button"
+                  onClick={() => setBarcodeScanOn((v) => !v)}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg border inline-flex items-center gap-1.5 shrink-0 ${
+                    barcodeScanOn
+                      ? 'bg-amber-500 text-white border-amber-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                  }`}
+                  title={barcodeScanOn ? 'Stop camera' : 'Scan barcode with camera'}
+                >
+                  <ScanBarcode className="h-4 w-4" />
+                  {barcodeScanOn ? 'Stop' : 'Scan'}
+                </button>
+              </div>
+              {barcodeScanOn && (
+                <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-300 bg-black max-w-xs">
+                  <video
+                    ref={barcodeVideoRef}
+                    className="w-full aspect-[4/3] object-cover"
+                    playsInline
+                    muted
+                    autoPlay
+                  />
+                  <div className="absolute top-1 right-1 flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => switchBarcodeCam()}
+                      className="p-1.5 rounded bg-black/50 text-white"
+                      title="Switch camera"
+                    >
+                      <SwitchCamera className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="px-2 py-1 text-[11px] text-neutral-200 bg-neutral-900">
+                    {scanCamError || (barcodeCamScanning ? 'Aim at barcode…' : 'Starting camera…')}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>

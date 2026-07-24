@@ -27,6 +27,13 @@ const ProductsPage = () => {
   const [totalCount, setTotalCount] = useState(0)
   const [showForm, setShowForm] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [prefillBarcode] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('barcode') || ''
+    } catch {
+      return ''
+    }
+  })
   const [showStockModal, setShowStockModal] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState(null)
   const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'all')
@@ -64,6 +71,13 @@ const ProductsPage = () => {
   const [movementsFilter, setMovementsFilter] = useState({ fromDate: '', toDate: '', transactionType: '' })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  // Open create form when arriving from POS "Add as new product" (?barcode=)
+  useEffect(() => {
+    if (!prefillBarcode) return
+    setEditingProduct(null)
+    setShowForm(true)
+  }, [prefillBarcode])
 
   // Sync filter state to URL so filters survive navigation and browser back
   useEffect(() => {
@@ -1046,6 +1060,7 @@ const ProductsPage = () => {
         showForm && (
           <ProductForm
             product={editingProduct}
+            initialBarcode={!editingProduct ? prefillBarcode : ''}
             saving={saving}
             onSave={(data, imageFile) => editingProduct ? handleUpdateProduct(editingProduct.id, data, imageFile) : handleCreateProduct(data, imageFile)}
             onCancel={() => {

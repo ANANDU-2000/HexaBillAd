@@ -1,3 +1,5 @@
+import { matchProductByCode } from './matchProductByCode'
+
 /**
  * Accumulates rapid keystrokes from a hardware scanner.
  * On idle, if exact barcode/SKU match → callback (no Enter required).
@@ -23,15 +25,9 @@ export function createBarcodeEngine({
     const code = buffer.trim()
     reset()
     if (!code || code.length < minLength) return
-    const products = getProducts?.() || []
-    const lower = code.toLowerCase()
-    const matches = products.filter(
-      (p) =>
-        p.barcode?.toLowerCase() === lower ||
-        p.sku?.toLowerCase() === lower
-    )
-    if (matches.length === 1) {
-      onMatch?.(matches[0], code)
+    const product = matchProductByCode(getProducts?.() || [], code)
+    if (product) {
+      onMatch?.(product, code)
     }
   }
 

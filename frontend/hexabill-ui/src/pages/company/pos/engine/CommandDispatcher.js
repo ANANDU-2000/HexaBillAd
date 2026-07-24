@@ -242,6 +242,22 @@ export function createCommandDispatcher(adapters) {
     scheduleOpenDrawerFocus(focusEffects(empty.rowId))
   }
 
+  /** Append empty row for continuous scan — no ProductDrawer, pointers on new empty row. */
+  function addRowSilent() {
+    if (isFormDisabled?.()) return
+    const empty = createEmptyLine()
+    commitCart(setCart, [...getCart(), empty])
+    store().closeDrawer()
+    store().setPointers({
+      activeInvoiceRowId: empty.rowId,
+      editingRowId: empty.rowId,
+      drawerOwnerRowId: null,
+      focusedControl: null,
+      rowPhase: RowPhase.IDLE,
+    })
+    posLog('ADD_ROW_SILENT', { rowId: empty.rowId })
+  }
+
   function dispatch(cmd, payload = {}) {
     posLog('dispatch', { cmd, payload })
     if (isFormDisabled?.() && ![Cmd.SAVE].includes(cmd)) {
@@ -316,6 +332,9 @@ export function createCommandDispatcher(adapters) {
       case Cmd.ADD_ROW:
         addRow()
         break
+      case Cmd.ADD_ROW_SILENT:
+        addRowSilent()
+        break
       case Cmd.HIGHLIGHT_NEXT: {
         const items = getPickerPageItems?.() || []
         if (!items.length) break
@@ -337,5 +356,5 @@ export function createCommandDispatcher(adapters) {
     }
   }
 
-  return { dispatch, openDrawer, selectProduct, commitRowAndNext, addRow, focusControl }
+  return { dispatch, openDrawer, selectProduct, commitRowAndNext, addRow, addRowSilent, focusControl }
 }

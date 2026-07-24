@@ -137,6 +137,7 @@ export function usePosInteraction({
     openDrawerForRow: (rowId) => dispatch(Cmd.OPEN_DRAWER, { rowId }),
     selectProductForOwner: (product) => dispatch(Cmd.SELECT_PRODUCT, { product }),
     addRow: () => dispatch(Cmd.ADD_ROW),
+    addRowSilent: () => dispatch(Cmd.ADD_ROW_SILENT),
     commitRowAndNext: () => dispatch(Cmd.COMMIT_ROW_AND_NEXT),
   }
 }
