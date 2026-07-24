@@ -24,15 +24,17 @@ namespace HexaBill.Api.Modules.Inventory
         private readonly HexaBill.Api.Shared.Security.IFileUploadService? _fileUploadService;
         private readonly ISettingsService _settingsService;
         private readonly IStockAdjustmentService _stockAdjustmentService;
+        private readonly IProductBarcodeLabelService _barcodeLabelService;
         private readonly ILogger<ProductsController> _logger;
 
-        public ProductsController(IProductService productService, IExcelImportService excelImportService, IServiceProvider serviceProvider, ISettingsService settingsService, IStockAdjustmentService stockAdjustmentService, ILogger<ProductsController> logger)
+        public ProductsController(IProductService productService, IExcelImportService excelImportService, IServiceProvider serviceProvider, ISettingsService settingsService, IStockAdjustmentService stockAdjustmentService, IProductBarcodeLabelService barcodeLabelService, ILogger<ProductsController> logger)
         {
             _productService = productService;
             _excelImportService = excelImportService;
             _fileUploadService = serviceProvider.GetService<HexaBill.Api.Shared.Security.IFileUploadService>();
             _settingsService = settingsService;
             _stockAdjustmentService = stockAdjustmentService;
+            _barcodeLabelService = barcodeLabelService;
             _logger = logger;
         }
 
@@ -54,7 +56,8 @@ namespace HexaBill.Api.Modules.Inventory
             [FromQuery] bool lowStock = false,
             [FromQuery] string? unitType = null,
             [FromQuery] int? categoryId = null,
-            [FromQuery] bool includeInactive = false)
+            [FromQuery] bool includeInactive = false,
+            [FromQuery] bool missingBarcode = false)
         {
             try
             {
@@ -126,7 +129,7 @@ namespace HexaBill.Api.Modules.Inventory
                 }
                 
                 var globalThreshold = await GetGlobalLowStockThresholdAsync();
-                var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold);
+                var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold, missingBarcode);
                 // Phase 1.2: Prevent browser/axios caching so stock updates are visible immediately
                 Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
                 Response.Headers["Pragma"] = "no-cache";
@@ -695,6 +698,7 @@ namespace HexaBill.Api.Modules.Inventory
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "RecomputeStock failed for tenant {TenantId}", CurrentTenantId);
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -703,6 +707,84 @@ namespace HexaBill.Api.Modules.Inventory
                 });
             }
         }
+
+        /// <summary>Assign barcodes to active products that are missing one (SKU if unique, else HB{tenant}-{id}).</summary>
+        [HttpPost("barcodes/auto-fill-missing")]
+        [Authorize(Roles = "Owner,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> AutoFillMissingBarcodes()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid tenant context." });
+
+                var count = await _productService.AutoFillMissingBarcodesAsync(tenantId);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = count == 0 ? "No products missing barcodes." : $"Assigned barcodes to {count} product(s).",
+                    Data = new { Updated = count }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AutoFillMissingBarcodes failed for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Failed to auto-fill barcodes"
+                });
+            }
+        }
+
+        /// <summary>PDF sheet of barcode labels for selected products (or all with barcodes / missingOnly after auto-fill).</summary>
+        [HttpPost("barcodes/pdf")]
+        [Authorize(Roles = "Owner,Admin,Staff")]
+        public async Task<IActionResult> DownloadBarcodeLabelsPdf([FromBody] BarcodeLabelsPdfRequest? request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Invalid tenant context." });
+
+                request ??= new BarcodeLabelsPdfRequest();
+                var products = await _productService.GetProductsForBarcodeLabelsAsync(
+                    tenantId,
+                    request.ProductIds,
+                    request.MissingOnly);
+
+                // If caller asked for specific ids that still lack barcodes, skip them in PDF
+                var printable = products.Where(p => !string.IsNullOrWhiteSpace(p.Barcode)).ToList();
+                if (printable.Count == 0)
+                {
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "No products with barcodes to print. Assign barcodes first."
+                    });
+                }
+
+                var pdf = _barcodeLabelService.GenerateLabelsPdf(printable);
+                var fileName = $"barcode-labels-{DateTime.UtcNow:yyyyMMdd-HHmmss}.pdf";
+                return File(pdf, "application/pdf", fileName);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Barcode labels PDF failed for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Failed to generate barcode PDF"
+                });
+            }
+        }
+
         [HttpGet("stock-movements")]
         [Authorize(Roles = "Owner,Admin,Staff")]
         public async Task<ActionResult<ApiResponse<object>>> GetStockMovements(
@@ -785,6 +867,12 @@ namespace HexaBill.Api.Modules.Inventory
     {
         public decimal ChangeQty { get; set; }
         public string Reason { get; set; } = string.Empty;
+    }
+
+    public class BarcodeLabelsPdfRequest
+    {
+        public List<int>? ProductIds { get; set; }
+        public bool MissingOnly { get; set; }
     }
 }
 

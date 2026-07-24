@@ -13,7 +13,7 @@ namespace HexaBill.Api.Modules.Inventory
     public interface IProductService
     {
         // MULTI-TENANT: All methods now require tenantId for data isolation
-        Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null);
+        Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false);
         Task<bool> ActivateProductAsync(int id, int tenantId);
         Task<ProductDto?> GetProductByIdAsync(int id, int tenantId);
         Task<ProductDto> CreateProductAsync(CreateProductRequest request, int tenantId);
@@ -27,6 +27,10 @@ namespace HexaBill.Api.Modules.Inventory
         Task<BulkPriceUpdateResponse> BulkUpdatePricesAsync(BulkPriceUpdateRequest request, int tenantId, int? userId = null);
         /// <summary>Recompute Product.StockQty from InventoryTransactions (SUM of ChangeQty per product). Use to repair drift.</summary>
         Task<int> RecomputeStockFromMovementsAsync(int tenantId);
+        /// <summary>Assign barcodes to active products missing one (SKU if unique, else HB{tenant}-{id}). Returns count updated.</summary>
+        Task<int> AutoFillMissingBarcodesAsync(int tenantId);
+        /// <summary>Products for barcode label PDF (tenant-scoped). If productIds empty and missingOnly, all missing; if productIds set, those with barcodes.</summary>
+        Task<List<ProductDto>> GetProductsForBarcodeLabelsAsync(int tenantId, IReadOnlyList<int>? productIds, bool missingOnly);
     }
 
     public class ProductService : IProductService
@@ -40,7 +44,7 @@ namespace HexaBill.Api.Modules.Inventory
             _logger = logger;
         }
 
-        public async Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null)
+        public async Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false)
         {
             // CRITICAL: Filter by tenantId for data isolation
             // By default, only show active products (IsActive = true)
@@ -114,6 +118,11 @@ namespace HexaBill.Api.Modules.Inventory
                 {
                     // CategoryId column might not exist yet - skip filter
                 }
+            }
+
+            if (missingBarcode)
+            {
+                query = query.Where(p => p.Barcode == null || p.Barcode == "");
             }
 
             var totalCount = await query.CountAsync();
@@ -252,13 +261,24 @@ namespace HexaBill.Api.Modules.Inventory
                 throw new InvalidOperationException("SKU already exists");
             }
 
-            // Check barcode uniqueness if provided (barcode should be unique per tenant)
-            if (!string.IsNullOrWhiteSpace(request.Barcode))
+            // Resolve barcode: explicit value, else SKU if unique as barcode, else assign after insert
+            string? barcode = !string.IsNullOrWhiteSpace(request.Barcode)
+                ? InputValidator.SanitizeString(request.Barcode, 100)
+                : null;
+
+            if (!string.IsNullOrWhiteSpace(barcode))
             {
-                if (await _context.Products.AnyAsync(p => p.Barcode == request.Barcode && p.TenantId == tenantId))
+                if (await _context.Products.AnyAsync(p => p.Barcode == barcode && p.TenantId == tenantId))
                 {
                     throw new InvalidOperationException("Barcode already exists for another product");
                 }
+            }
+            else
+            {
+                var skuAsBarcode = InputValidator.SanitizeString(request.Sku, 50);
+                var skuBarcodeTaken = await _context.Products.AnyAsync(p => p.Barcode == skuAsBarcode && p.TenantId == tenantId);
+                if (!skuBarcodeTaken)
+                    barcode = skuAsBarcode;
             }
 
             var product = new Product
@@ -266,7 +286,7 @@ namespace HexaBill.Api.Modules.Inventory
                 TenantId = tenantId,
                 OwnerId = tenantId,
                 Sku = InputValidator.SanitizeString(request.Sku, 50),
-                Barcode = !string.IsNullOrWhiteSpace(request.Barcode) ? InputValidator.SanitizeString(request.Barcode, 100) : null,
+                Barcode = barcode,
                 NameEn = InputValidator.SanitizeString(request.NameEn, 200),
                 NameAr = InputValidator.SanitizeString(request.NameAr, 200),
                 UnitType = InputValidator.SanitizeString(request.UnitType, 50),
@@ -299,6 +319,17 @@ namespace HexaBill.Api.Modules.Inventory
 
             _context.Products.Add(product);
             await _context.SaveChangesAsync();
+
+            // Fallback unique barcode when SKU was already used as another product's barcode
+            if (string.IsNullOrWhiteSpace(product.Barcode))
+            {
+                var generated = $"HB{tenantId}-{product.Id}";
+                if (await _context.Products.AnyAsync(p => p.Barcode == generated && p.TenantId == tenantId && p.Id != product.Id))
+                    generated = $"HB{tenantId}-{product.Id}-{Guid.NewGuid().ToString("N")[..6]}";
+                product.Barcode = generated;
+                product.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+            }
 
             // Reload with category for DTO
             await _context.Entry(product).Reference(p => p.Category).LoadAsync();
@@ -881,6 +912,100 @@ namespace HexaBill.Api.Modules.Inventory
                 ""UpdatedAt"" = (now() AT TIME ZONE 'utc')
                 WHERE p.""TenantId"" = {tenantId}");
             return updated;
+        }
+
+        public async Task<int> AutoFillMissingBarcodesAsync(int tenantId)
+        {
+            await using var tx = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var missing = await _context.Products
+                    .Where(p => p.TenantId == tenantId && p.IsActive && (p.Barcode == null || p.Barcode == ""))
+                    .OrderBy(p => p.Id)
+                    .ToListAsync();
+
+                if (missing.Count == 0)
+                {
+                    await tx.CommitAsync();
+                    return 0;
+                }
+
+                var existingBarcodes = await _context.Products
+                    .Where(p => p.TenantId == tenantId && p.Barcode != null && p.Barcode != "")
+                    .Select(p => p.Barcode!)
+                    .ToListAsync();
+                var used = new HashSet<string>(existingBarcodes, StringComparer.OrdinalIgnoreCase);
+
+                var count = 0;
+                foreach (var product in missing)
+                {
+                    string candidate;
+                    if (!string.IsNullOrWhiteSpace(product.Sku) && !used.Contains(product.Sku))
+                        candidate = product.Sku.Trim();
+                    else
+                        candidate = $"HB{tenantId}-{product.Id}";
+
+                    if (used.Contains(candidate))
+                        candidate = $"HB{tenantId}-{product.Id}-{Guid.NewGuid().ToString("N")[..6]}";
+
+                    product.Barcode = candidate.Length > 100 ? candidate[..100] : candidate;
+                    product.UpdatedAt = DateTime.UtcNow;
+                    used.Add(product.Barcode);
+                    count++;
+                }
+
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                _logger.LogInformation("Auto-filled {Count} missing barcodes for tenant {TenantId}", count, tenantId);
+                return count;
+            }
+            catch (Exception ex)
+            {
+                await tx.RollbackAsync();
+                _logger.LogError(ex, "AutoFillMissingBarcodes failed for tenant {TenantId}", tenantId);
+                throw;
+            }
+        }
+
+        public async Task<List<ProductDto>> GetProductsForBarcodeLabelsAsync(int tenantId, IReadOnlyList<int>? productIds, bool missingOnly)
+        {
+            var query = _context.Products
+                .AsNoTracking()
+                .Where(p => p.TenantId == tenantId && p.IsActive);
+
+            if (productIds != null && productIds.Count > 0)
+            {
+                query = query.Where(p => productIds.Contains(p.Id));
+            }
+            else if (missingOnly)
+            {
+                query = query.Where(p => p.Barcode == null || p.Barcode == "");
+            }
+            else
+            {
+                query = query.Where(p => p.Barcode != null && p.Barcode != "");
+            }
+
+            return await query
+                .OrderBy(p => p.NameEn)
+                .Select(p => new ProductDto
+                {
+                    Id = p.Id,
+                    Sku = p.Sku,
+                    Barcode = p.Barcode,
+                    NameEn = p.NameEn,
+                    NameAr = p.NameAr,
+                    UnitType = p.UnitType,
+                    ConversionToBase = p.ConversionToBase,
+                    CostPrice = p.CostPrice,
+                    SellPrice = p.SellPrice,
+                    StockQty = p.StockQty,
+                    ReorderLevel = p.ReorderLevel,
+                    ExpiryDate = p.ExpiryDate,
+                    IsActive = p.IsActive
+                })
+                .Take(500)
+                .ToListAsync();
         }
     }
 }

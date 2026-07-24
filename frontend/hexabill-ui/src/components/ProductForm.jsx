@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { X, Plus, Upload, Image as ImageIcon, ScanBarcode, SwitchCamera } from 'lucide-react'
+import { X, Plus, Upload, Image as ImageIcon, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from './ConfirmDangerModal'
 import { useCameraBarcodeScanner } from '../pages/company/pos/barcode/useCameraBarcodeScanner'
 import { playScanSuccessBeep } from '../pages/company/pos/barcode/scanBeep'
+import { downloadOrShareBarcodePdf } from '../utils/barcodePdf'
 
 const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode = '' }) => {
   const [formData, setFormData] = useState({
@@ -34,6 +35,44 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   const [showLossConfirm, setShowLossConfirm] = useState(false)
   const [barcodeScanOn, setBarcodeScanOn] = useState(false)
   const [scanCamError, setScanCamError] = useState(null)
+  const [barcodePdfBusy, setBarcodePdfBusy] = useState(false)
+
+  const handleAutoCreateBarcode = () => {
+    const sku = (formData.sku || '').trim()
+    if (!sku) {
+      toast.error('Enter SKU first, then auto-create barcode')
+      return
+    }
+    setFormData((prev) => ({ ...prev, barcode: sku }))
+    toast.success(`Barcode set to SKU: ${sku}`)
+  }
+
+  const handleBarcodePdf = async (share = false) => {
+    if (!product?.id) {
+      toast.error('Save the product first, then print or share the barcode')
+      return
+    }
+    if (!formData.barcode?.trim()) {
+      toast.error('Add or auto-create a barcode first')
+      return
+    }
+    try {
+      setBarcodePdfBusy(true)
+      const blob = await productsAPI.downloadBarcodeLabelsPdf({ productIds: [product.id] })
+      const result = await downloadOrShareBarcodePdf(blob, {
+        fileName: `barcode-${formData.sku || product.id}.pdf`,
+        share,
+      })
+      toast.success(result === 'shared' ? 'Shared barcode PDF' : 'Barcode PDF downloaded')
+    } catch (error) {
+      console.error(error)
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.message || 'Failed to get barcode PDF')
+      }
+    } finally {
+      setBarcodePdfBusy(false)
+    }
+  }
 
   const onBarcodeDetect = useCallback((code) => {
     if (!code) return
@@ -273,17 +312,26 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Barcode <span className="text-xs text-gray-500">(Optional - for POS scanning)</span>
+                Barcode <span className="text-xs text-gray-500">(Optional — auto-uses SKU on create if empty)</span>
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <input
                   type="text"
                   name="barcode"
-                  className="input flex-1"
+                  className="input flex-1 min-w-[8rem]"
                   value={formData.barcode}
                   onChange={handleChange}
-                  placeholder="EAN-13, UPC, etc."
+                  placeholder="EAN-13, UPC, SKU…"
                 />
+                <button
+                  type="button"
+                  onClick={handleAutoCreateBarcode}
+                  className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0"
+                  title="Set barcode from SKU"
+                >
+                  <Wand2 className="h-4 w-4" />
+                  Auto
+                </button>
                 <button
                   type="button"
                   onClick={() => setBarcodeScanOn((v) => !v)}
@@ -297,6 +345,30 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   <ScanBarcode className="h-4 w-4" />
                   {barcodeScanOn ? 'Stop' : 'Scan'}
                 </button>
+                {product?.id && formData.barcode && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={barcodePdfBusy}
+                      onClick={() => handleBarcodePdf(false)}
+                      className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                      title="Download barcode PDF"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Print
+                    </button>
+                    <button
+                      type="button"
+                      disabled={barcodePdfBusy}
+                      onClick={() => handleBarcodePdf(true)}
+                      className="px-3 py-2 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                      title="Share barcode PDF"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Share
+                    </button>
+                  </>
+                )}
               </div>
               {barcodeScanOn && (
                 <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-300 bg-black max-w-xs">

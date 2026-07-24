@@ -127,6 +127,16 @@ export const productsAPI = {
     return response.data
   },
 
+  autoFillMissingBarcodes: async () => {
+    const response = await api.post('/products/barcodes/auto-fill-missing')
+    return response.data
+  },
+
+  downloadBarcodeLabelsPdf: async (body = {}) => {
+    const response = await api.post('/products/barcodes/pdf', body, { responseType: 'blob' })
+    return response.data
+  },
+
   getStockMovements: async (params = {}) => {
     const response = await api.get('/products/stock-movements', { params })
     return response.data

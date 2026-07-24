@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
-import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye } from 'lucide-react'
+import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye, ScanBarcode, Printer, Share2, Wand2 } from 'lucide-react'
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
@@ -9,6 +9,7 @@ import { TabNavigation, FilterPanel, ModernTable } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
+import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
 import toast from 'react-hot-toast'
 
 const ProductsPage = () => {
@@ -97,6 +98,7 @@ const ProductsPage = () => {
         pageSize: pageSize,
         search: debouncedSearchTerm || undefined,
         lowStock: activeTab === 'lowStock',
+        missingBarcode: activeTab === 'missingBarcode',
         unitType: activeFilters.unitType || undefined,
         categoryId: activeFilters.categoryId ? parseInt(activeFilters.categoryId) : undefined,
         includeInactive: activeTab === 'inactive' // Include inactive products when on inactive tab
@@ -213,7 +215,8 @@ const ProductsPage = () => {
             toast.success('Product created successfully, but image upload failed')
           }
         } else {
-          toast.success('Product created successfully')
+          const bc = response.data?.barcode
+          toast.success(bc ? `Product created (barcode: ${bc})` : 'Product created successfully')
         }
         setShowForm(false)
         loadProducts()
@@ -465,9 +468,69 @@ const ProductsPage = () => {
   const tabs = [
     { id: 'all', label: 'All Products', icon: Package },
     { id: 'lowStock', label: 'Low Stock', icon: AlertTriangle, badge: products.filter(p => p.stockQty <= (p.reorderLevel || 0)).length },
+    { id: 'missingBarcode', label: 'Missing Barcode', icon: ScanBarcode, badge: activeTab === 'missingBarcode' ? totalCount : null },
     { id: 'inactive', label: 'Inactive', icon: Trash2, badge: products.filter(p => !p.isActive).length },
     { id: 'movements', label: 'Stock Movement', icon: History, badge: movementsTotalCount || null }
   ]
+
+  const handleAutoFillMissingBarcodes = async () => {
+    if (!canManageInventory) return
+    try {
+      const response = await productsAPI.autoFillMissingBarcodes()
+      if (response?.success) {
+        toast.success(response.message || 'Barcodes assigned')
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to auto-fill barcodes')
+      }
+    } catch (error) {
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to auto-fill barcodes')
+      }
+    }
+  }
+
+  const handleBarcodePdfForProducts = async (productIds, { share = false } = {}) => {
+    const ids = (productIds || []).filter(Boolean)
+    if (ids.length === 0) {
+      toast.error('No products selected')
+      return
+    }
+    try {
+      const blob = await productsAPI.downloadBarcodeLabelsPdf({ productIds: ids })
+      const result = await downloadOrShareBarcodePdf(blob, {
+        fileName: ids.length === 1 ? `barcode-${ids[0]}.pdf` : 'barcode-labels.pdf',
+        share,
+      })
+      toast.success(result === 'shared' ? 'Shared barcode PDF' : 'Barcode PDF downloaded')
+    } catch (error) {
+      console.error(error)
+      if (error?._handledByInterceptor) return
+      let msg = error?.message || 'Failed to generate barcode PDF'
+      try {
+        const data = error?.response?.data
+        if (data instanceof Blob) {
+          const text = await data.text()
+          const parsed = JSON.parse(text)
+          msg = parsed.message || msg
+        } else if (data?.message) {
+          msg = data.message
+        }
+      } catch { /* ignore */ }
+      toast.error(msg)
+    }
+  }
+
+  const handlePrintMissingBarcodes = async ({ share = false } = {}) => {
+    // Print labels for products currently listed that already have barcodes after auto-fill;
+    // if still missing, ask to auto-fill first.
+    const withBc = products.filter((p) => p.barcode).map((p) => p.id)
+    if (withBc.length === 0) {
+      toast.error('No barcodes to print. Use Auto-fill missing first, or edit each product.')
+      return
+    }
+    await handleBarcodePdfForProducts(withBc, { share })
+  }
 
   const handleCreateCategory = async () => {
     if (!categoryFormData.name || !categoryFormData.name.trim()) {
@@ -765,6 +828,38 @@ const ProductsPage = () => {
         </div>
       ) : (
       <>
+      {activeTab === 'missingBarcode' && canManageInventory && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <ScanBarcode className="h-4 w-4 text-amber-800 shrink-0" />
+          <p className="text-sm text-amber-900 flex-1 min-w-[12rem]">
+            Products without a barcode ({totalCount}). Auto-fill uses SKU when unique, otherwise HB(tenant)-id. Then print or share labels.
+          </p>
+          <button
+            type="button"
+            onClick={handleAutoFillMissingBarcodes}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+          >
+            <Wand2 className="h-4 w-4" />
+            Auto-fill missing
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrintMissingBarcodes({ share: false })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          >
+            <Printer className="h-4 w-4" />
+            Print PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrintMissingBarcodes({ share: true })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          >
+            <Share2 className="h-4 w-4" />
+            Share PDF
+          </button>
+        </div>
+      )}
       {/* Modern Search & Filters */}
       <FilterPanel
         searchPlaceholder="Search products by name, SKU..."
@@ -951,6 +1046,20 @@ const ProductsPage = () => {
               >
                 <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 <span className="hidden sm:inline text-xs font-medium">Edit</span>
+              </button>
+            )}
+            {product.barcode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleBarcodePdfForProducts([product.id], { share: false })
+                }}
+                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                title="Print barcode PDF"
+                aria-label="Print barcode"
+              >
+                <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline text-xs font-medium">Barcode</span>
               </button>
             )}
             {canAdjustStock && (

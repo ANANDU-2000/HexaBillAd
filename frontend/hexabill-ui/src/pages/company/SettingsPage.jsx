@@ -28,6 +28,7 @@ import Modal from '../../components/Modal'
 import { LoadingCard } from '../../components/Loading'
 import { TabNavigation } from '../../components/ui'
 import { adminAPI, settingsAPI } from '../../services'
+import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 import api from '../../services/api'
 import { clearAllCache, clearCache } from '../../services/api'
 import { getApiBaseUrlNoSuffix } from '../../services/apiConfig'
@@ -179,11 +180,11 @@ const SettingsPage = () => {
         const response = await adminAPI.getSettings()
         if (response.success) {
           // Canonical key: COMPANY_LOGO; LOGO_PUBLIC_URL fallback so logo persists after refresh
-          const logoUrl = response.data.COMPANY_LOGO ||
-            response.data.LOGO_PUBLIC_URL ||
-            response.data.LOGO_URL ||
-            response.data.company_logo ||
-            response.data.logoUrl ||
+          const logoUrl = getSetting(response.data, 'COMPANY_LOGO') ||
+            getSetting(response.data, 'LOGO_PUBLIC_URL') ||
+            getSetting(response.data, 'LOGO_URL') ||
+            getSetting(response.data, 'company_logo') ||
+            getSetting(response.data, 'logoUrl') ||
             ''
           if (logoUrl) {
             await updateAppIcon(logoUrl)
@@ -399,48 +400,49 @@ const SettingsPage = () => {
       setLoading(true)
       const response = await adminAPI.getSettings()
       if (response.success && response.data) {
-        // Map backend keys to frontend keys. Canonical logo key: COMPANY_LOGO (backend sets it on upload). LOGO_PUBLIC_URL fallback so logo persists after refresh.
-        const logoUrl = response.data.COMPANY_LOGO ||
-          response.data.LOGO_PUBLIC_URL ||
-          response.data.COMPANY_LOGO_URL ||
-          response.data.company_logo ||
-          response.data.logoUrl ||
+        // Map backend keys to frontend keys. Use case-insensitive lookup (ASP.NET CamelCase dict keys).
+        const d = response.data
+        const logoUrl = getSetting(d, 'COMPANY_LOGO') ||
+          getSetting(d, 'LOGO_PUBLIC_URL') ||
+          getSetting(d, 'COMPANY_LOGO_URL') ||
+          getSetting(d, 'company_logo') ||
+          getSetting(d, 'logoUrl') ||
           ''
 
         const mappedSettings = {
-          companyNameEn: response.data.COMPANY_NAME_EN || response.data.companyNameEn || '',
-          companyNameAr: response.data.COMPANY_NAME_AR || response.data.companyNameAr || '',
-          companyTrn: response.data.COMPANY_TRN || response.data.companyTrn || '',
-          companyAddress: response.data.COMPANY_ADDRESS || response.data.companyAddress || '',
-          companyPhone: response.data.COMPANY_PHONE || response.data.companyPhone || '',
-          companyEmail: response.data.COMPANY_EMAIL || response.data.companyEmail || '',
-          defaultCurrency: response.data.CURRENCY || response.data.defaultCurrency || 'AED',
-          vatPercentage: parseFloat(response.data.VAT_PERCENT || response.data.vatPercentage || '5'),
-          invoiceTemplate: response.data.INVOICE_TEMPLATE || response.data.invoiceTemplate || '',
+          companyNameEn: getSetting(d, 'COMPANY_NAME_EN') || getSetting(d, 'companyNameEn') || '',
+          companyNameAr: getSetting(d, 'COMPANY_NAME_AR') || getSetting(d, 'companyNameAr') || '',
+          companyTrn: getSetting(d, 'COMPANY_TRN') || getSetting(d, 'companyTrn') || '',
+          companyAddress: getSetting(d, 'COMPANY_ADDRESS') || getSetting(d, 'companyAddress') || '',
+          companyPhone: getSetting(d, 'COMPANY_PHONE') || getSetting(d, 'companyPhone') || '',
+          companyEmail: getSetting(d, 'COMPANY_EMAIL') || getSetting(d, 'companyEmail') || '',
+          defaultCurrency: getSetting(d, 'CURRENCY') || getSetting(d, 'defaultCurrency') || 'AED',
+          vatPercentage: parseFloat(getSetting(d, 'VAT_PERCENT') || getSetting(d, 'vatPercentage') || '5'),
+          invoiceTemplate: getSetting(d, 'INVOICE_TEMPLATE') || getSetting(d, 'invoiceTemplate') || '',
           logoUrl: logoUrl,
-          cloudBackupEnabled: response.data.CLOUD_BACKUP_ENABLED === 'true' || response.data.cloudBackupEnabled === true,
-          cloudBackupClientId: response.data.CLOUD_BACKUP_CLIENT_ID || response.data.cloudBackupClientId || '',
-          cloudBackupClientSecret: response.data.CLOUD_BACKUP_CLIENT_SECRET || response.data.cloudBackupClientSecret || '',
-          cloudBackupRefreshToken: response.data.CLOUD_BACKUP_REFRESH_TOKEN || response.data.cloudBackupRefreshToken || '',
-          cloudBackupFolderId: response.data.CLOUD_BACKUP_FOLDER_ID || response.data.cloudBackupFolderId || '',
-          lowStockGlobalThreshold: response.data.LOW_STOCK_GLOBAL_THRESHOLD ?? response.data.lowStockGlobalThreshold ?? '',
-          allowNegativeStock: response.data.ALLOW_NEGATIVE_STOCK === 'true',
-          returnPolicyHeader: response.data.RETURN_POLICY_HEADER ?? response.data.returnPolicyHeader ?? '',
-          returnPolicyBody: response.data.RETURN_POLICY_BODY ?? response.data.returnPolicyBody ?? '',
-          returnPolicyFooter: response.data.RETURN_POLICY_FOOTER ?? response.data.returnPolicyFooter ?? '',
-          returnBillTitle: response.data.RETURN_BILL_TITLE ?? response.data.returnBillTitle ?? 'SALES RETURN NOTE',
-          letterheadOnlyPrint: String(response.data.Feature_LetterheadOnlyPrint || '').toLowerCase() === 'true',
-          documentStampSignatureEnabled: String(response.data.Feature_DocumentStampSignature || '').toLowerCase() === 'true',
-          printMarginTopMm: response.data.PRINT_MARGIN_TOP_MM ?? '52',
-          printMarginBottomMm: response.data.PRINT_MARGIN_BOTTOM_MM ?? '35',
-          stampWidthMm: response.data.STAMP_WIDTH_MM ?? '38',
-          signatureWidthMm: response.data.SIGNATURE_WIDTH_MM ?? '42',
-          stampOffsetRightMm: response.data.STAMP_OFFSET_RIGHT_MM ?? '55',
-          stampOffsetBottomMm: response.data.STAMP_OFFSET_BOTTOM_MM ?? '18',
-          signatureOffsetRightMm: response.data.SIGNATURE_OFFSET_RIGHT_MM ?? '12',
-          signatureOffsetBottomMm: response.data.SIGNATURE_OFFSET_BOTTOM_MM ?? '14',
-          stampUrl: response.data.STAMP_PUBLIC_URL || '',
-          signatureUrl: response.data.SIGNATURE_PUBLIC_URL || '',
+          cloudBackupEnabled: getSettingBool(d, 'CLOUD_BACKUP_ENABLED') || getSettingBool(d, 'cloudBackupEnabled'),
+          cloudBackupClientId: getSetting(d, 'CLOUD_BACKUP_CLIENT_ID') || getSetting(d, 'cloudBackupClientId') || '',
+          cloudBackupClientSecret: getSetting(d, 'CLOUD_BACKUP_CLIENT_SECRET') || getSetting(d, 'cloudBackupClientSecret') || '',
+          cloudBackupRefreshToken: getSetting(d, 'CLOUD_BACKUP_REFRESH_TOKEN') || getSetting(d, 'cloudBackupRefreshToken') || '',
+          cloudBackupFolderId: getSetting(d, 'CLOUD_BACKUP_FOLDER_ID') || getSetting(d, 'cloudBackupFolderId') || '',
+          lowStockGlobalThreshold: getSetting(d, 'LOW_STOCK_GLOBAL_THRESHOLD') ?? getSetting(d, 'lowStockGlobalThreshold') ?? '',
+          allowNegativeStock: getSettingBool(d, 'ALLOW_NEGATIVE_STOCK'),
+          returnPolicyHeader: getSetting(d, 'RETURN_POLICY_HEADER') ?? getSetting(d, 'returnPolicyHeader') ?? '',
+          returnPolicyBody: getSetting(d, 'RETURN_POLICY_BODY') ?? getSetting(d, 'returnPolicyBody') ?? '',
+          returnPolicyFooter: getSetting(d, 'RETURN_POLICY_FOOTER') ?? getSetting(d, 'returnPolicyFooter') ?? '',
+          returnBillTitle: getSetting(d, 'RETURN_BILL_TITLE') ?? getSetting(d, 'returnBillTitle') ?? 'SALES RETURN NOTE',
+          letterheadOnlyPrint: getSettingBool(d, 'Feature_LetterheadOnlyPrint'),
+          documentStampSignatureEnabled: getSettingBool(d, 'Feature_DocumentStampSignature'),
+          printMarginTopMm: getSetting(d, 'PRINT_MARGIN_TOP_MM') ?? '52',
+          printMarginBottomMm: getSetting(d, 'PRINT_MARGIN_BOTTOM_MM') ?? '35',
+          stampWidthMm: getSetting(d, 'STAMP_WIDTH_MM') ?? '38',
+          signatureWidthMm: getSetting(d, 'SIGNATURE_WIDTH_MM') ?? '42',
+          stampOffsetRightMm: getSetting(d, 'STAMP_OFFSET_RIGHT_MM') ?? '55',
+          stampOffsetBottomMm: getSetting(d, 'STAMP_OFFSET_BOTTOM_MM') ?? '18',
+          signatureOffsetRightMm: getSetting(d, 'SIGNATURE_OFFSET_RIGHT_MM') ?? '12',
+          signatureOffsetBottomMm: getSetting(d, 'SIGNATURE_OFFSET_BOTTOM_MM') ?? '14',
+          stampUrl: getSetting(d, 'STAMP_PUBLIC_URL') || '',
+          signatureUrl: getSetting(d, 'SIGNATURE_PUBLIC_URL') || '',
         }
         setSettings(mappedSettings)
         setInitialSettings(JSON.parse(JSON.stringify(mappedSettings))) // Deep copy for comparison

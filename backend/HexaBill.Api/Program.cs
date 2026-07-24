@@ -292,6 +292,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IFontService, FontService>(); // Singleton for font registration
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IProductBarcodeLabelService, ProductBarcodeLabelService>();
 builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Import.ISalesLedgerImportService, HexaBill.Api.Modules.Import.SalesLedgerImportService>();
 builder.Services.AddScoped<IInvoiceTemplateService, InvoiceTemplateService>();
