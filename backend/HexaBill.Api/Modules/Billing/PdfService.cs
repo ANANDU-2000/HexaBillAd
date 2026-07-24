@@ -155,9 +155,9 @@ namespace HexaBill.Api.Modules.Billing
                 {
                     container.Page(page =>
                     {
-                        // A4 Portrait: 210mm x 297mm with minimal margins
+                        // A4 Portrait: 210mm x 297mm
                         page.Size(PageSizes.A4);
-                        page.Margin(5, Unit.Millimetre);
+                        ApplyDocumentPageMargins(page, settings, 5f);
                         page.PageColor(Colors.White);
                         
                         // CRITICAL FIX: Arabic font for print compatibility
@@ -166,6 +166,8 @@ namespace HexaBill.Api.Modules.Billing
                             .FontSize(10f)
                             .FontFamily(_arabicFont)
                         );
+
+                        RenderStampSignatureFooter(page, settings);
 
                         page.Content().Column(column =>
                         {
@@ -176,9 +178,12 @@ namespace HexaBill.Api.Modules.Billing
                                 innerColumn.Spacing(0);
 
                                 // Invoice header: one clear block — logo (left) | company name + address (center) | date (right)
-                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                // Letterhead-only: skip digital branding (pre-printed paper supplies it).
+                                var hasLogo = !settings.LetterheadOnlyPrint && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
 
+                                if (!settings.LetterheadOnlyPrint)
+                                {
                                 // Row 1: Logo | Company block (name EN, AR, address) | Date
                                 innerColumn.Item().Row(headerRow =>
                                 {
@@ -212,6 +217,11 @@ namespace HexaBill.Api.Modules.Billing
                                     trnRow.AutoItem().Text("TRN : No : ").FontSize(10).Bold();
                                     trnRow.AutoItem().Text(settings.CompanyTrn).FontSize(10).Bold();
                                 });
+                                }
+                                else
+                                {
+                                    innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(10).Bold();
+                                }
 
                                 // TAX INVOICE title - compact with borders
                                 innerColumn.Item().PaddingTop(2).PaddingBottom(2).BorderTop(1f).BorderBottom(1f).PaddingVertical(2)
@@ -389,10 +399,17 @@ namespace HexaBill.Api.Modules.Billing
                                             leftCol.Item().PaddingTop(1).Text("Receiver's Sign: " + new string('.', 30)).FontSize(8);
                                         });
                                         
-                                        // Right column: Company name
+                                        // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
                                         sigRow.RelativeItem().Column(rightCol => {
-                                            rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
-                                            rightCol.Item().AlignRight().Text(new string('.', 35)).FontSize(8);
+                                            if (!settings.LetterheadOnlyPrint)
+                                            {
+                                                rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
+                                                rightCol.Item().AlignRight().Text(new string('.', 35)).FontSize(8);
+                                            }
+                                            else
+                                            {
+                                                rightCol.Item().Height(24);
+                                            }
                                         });
                                     });
                                     
@@ -531,26 +548,29 @@ namespace HexaBill.Api.Modules.Billing
                         if (isA5)
                         {
                             page.Size(148, 210, Unit.Millimetre);
-                            page.Margin(4, Unit.Millimetre);
+                            ApplyDocumentPageMargins(page, settings, 4f);
                             page.DefaultTextStyle(x => x.FontSize(8f).FontFamily(_arabicFont));
                         }
                         else
                         {
                             page.Size(PageSizes.A4);
-                            page.Margin(5, Unit.Millimetre);
+                            ApplyDocumentPageMargins(page, settings, 5f);
                             page.DefaultTextStyle(x => x.FontSize(10f).FontFamily(_arabicFont));
                         }
                         page.PageColor(Colors.White);
+                        RenderStampSignatureFooter(page, settings);
 
                         page.Content().Column(column =>
                         {
                             column.Item().Padding(3).Column(innerColumn =>
                             {
-                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                var hasLogo = !settings.LetterheadOnlyPrint && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
                                 var titleSize = isA5 ? 10f : 12f;
                                 var bodySize = isA5 ? 8f : 9f;
 
+                                if (!settings.LetterheadOnlyPrint)
+                                {
                                 innerColumn.Item().Row(headerRow =>
                                 {
                                     if (hasLogo)
@@ -567,6 +587,11 @@ namespace HexaBill.Api.Modules.Billing
                                     headerRow.ConstantItem(isA5 ? 60 : 80).AlignRight().AlignMiddle()
                                         .Text($"DATE: {invoiceDateStr}").FontSize(bodySize).Bold();
                                 });
+                                }
+                                else
+                                {
+                                    innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(bodySize).Bold();
+                                }
 
                                 innerColumn.Item().PaddingTop(2).BorderTop(1f).BorderBottom(1f).PaddingVertical(2)
                                     .Text("DELIVERY NOTE").FontSize(titleSize).Bold().AlignCenter();
@@ -644,8 +669,15 @@ namespace HexaBill.Api.Modules.Billing
                                         });
                                         sigRow.RelativeItem().Column(rightCol =>
                                         {
-                                            rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(bodySize);
-                                            rightCol.Item().AlignRight().Text(new string('.', 30)).FontSize(bodySize);
+                                            if (!settings.LetterheadOnlyPrint)
+                                            {
+                                                rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(bodySize);
+                                                rightCol.Item().AlignRight().Text(new string('.', 30)).FontSize(bodySize);
+                                            }
+                                            else
+                                            {
+                                                rightCol.Item().Height(20);
+                                            }
                                         });
                                     });
                                 });
@@ -1265,7 +1297,17 @@ if (hasLogo)
                 VatPercent = companySettings.VatPercent,
                 InvoicePrefix = companySettings.InvoicePrefix ?? "INV",
                 VatEffectiveDate = companySettings.VatEffectiveDate ?? "",
-                VatLegalText = companySettings.VatLegalText ?? ""
+                VatLegalText = companySettings.VatLegalText ?? "",
+                LetterheadOnlyPrint = companySettings.LetterheadOnlyPrint,
+                DocumentStampSignatureEnabled = companySettings.DocumentStampSignatureEnabled,
+                PrintMarginTopMm = companySettings.LetterheadOnlyPrint ? companySettings.PrintMarginTopMm : 5f,
+                PrintMarginBottomMm = companySettings.LetterheadOnlyPrint ? companySettings.PrintMarginBottomMm : 5f,
+                StampWidthMm = companySettings.StampWidthMm,
+                SignatureWidthMm = companySettings.SignatureWidthMm,
+                StampOffsetRightMm = companySettings.StampOffsetRightMm,
+                StampOffsetBottomMm = companySettings.StampOffsetBottomMm,
+                SignatureOffsetRightMm = companySettings.SignatureOffsetRightMm,
+                SignatureOffsetBottomMm = companySettings.SignatureOffsetBottomMm,
             };
             // Logo: read from storage using key stored in Settings (uploaded in Settings page). Per-tenant isolation via tenantId.
             if (!string.IsNullOrWhiteSpace(companySettings.LogoStorageKey))
@@ -1334,7 +1376,91 @@ if (hasLogo)
                 }
             }
 
+            if (dto.DocumentStampSignatureEnabled)
+            {
+                dto.StampImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.StampStorageKey, "STAMP_BASE64_DATA_URI");
+                dto.SignatureImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.SignatureStorageKey, "SIGNATURE_BASE64_DATA_URI");
+            }
+
             return dto;
+        }
+
+        private async Task<byte[]?> TryLoadAssetBytesAsync(int tenantId, string? storageKey, string base64SettingKey)
+        {
+            if (!string.IsNullOrWhiteSpace(storageKey))
+            {
+                try
+                {
+                    return await _storageService.ReadBytesAsync(storageKey);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "PDF asset load failed for tenant {TenantId}, key={Key}", tenantId, storageKey);
+                }
+            }
+            try
+            {
+                var base64Setting = await _settingsService.GetSettingValueAsync(tenantId, base64SettingKey);
+                if (!string.IsNullOrWhiteSpace(base64Setting) && base64Setting.Contains(",", StringComparison.Ordinal))
+                {
+                    var parts = base64Setting.Split(",", 2, StringSplitOptions.None);
+                    if (parts.Length == 2)
+                        return Convert.FromBase64String(parts[1].Trim());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "PDF asset base64 fallback failed for tenant {TenantId}, key={Key}", tenantId, base64SettingKey);
+            }
+            return null;
+        }
+
+        private static void ApplyDocumentPageMargins(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, float fallbackMm = 5f)
+        {
+            var top = settings.LetterheadOnlyPrint ? Math.Max(settings.PrintMarginTopMm, 5f) : fallbackMm;
+            var bottom = settings.LetterheadOnlyPrint
+                ? Math.Max(settings.PrintMarginBottomMm, HasStampOrSignature(settings) ? 28f : 5f)
+                : (HasStampOrSignature(settings) ? Math.Max(fallbackMm, 22f) : fallbackMm);
+            page.MarginTop(top, Unit.Millimetre);
+            page.MarginBottom(bottom, Unit.Millimetre);
+            page.MarginLeft(fallbackMm, Unit.Millimetre);
+            page.MarginRight(fallbackMm, Unit.Millimetre);
+        }
+
+        private static bool HasStampOrSignature(InvoiceTemplateService.CompanySettings settings) =>
+            settings.DocumentStampSignatureEnabled &&
+            ((settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
+             || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
+
+        /// <summary>Bottom-right stamp + signature overlay for A4/A5 documents.</summary>
+        private static void RenderStampSignatureFooter(PageDescriptor page, InvoiceTemplateService.CompanySettings settings)
+        {
+            if (!HasStampOrSignature(settings)) return;
+
+            page.Footer().AlignRight().Height(Math.Max(settings.PrintMarginBottomMm - 4f, 24f), Unit.Millimetre).Row(row =>
+            {
+                row.RelativeItem();
+                if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
+                {
+                    row.ConstantItem(settings.StampWidthMm, Unit.Millimetre)
+                        .PaddingRight(Math.Max(0, settings.StampOffsetRightMm - settings.SignatureWidthMm - 4f), Unit.Millimetre)
+                        .PaddingBottom(Math.Max(0, settings.StampOffsetBottomMm - 8f), Unit.Millimetre)
+                        .AlignBottom()
+                        .Width(settings.StampWidthMm, Unit.Millimetre)
+                        .Height(settings.StampWidthMm, Unit.Millimetre)
+                        .Image(settings.StampImageBytes).FitArea();
+                }
+                if (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0)
+                {
+                    row.ConstantItem(settings.SignatureWidthMm, Unit.Millimetre)
+                        .PaddingRight(Math.Max(0, settings.SignatureOffsetRightMm - 4f), Unit.Millimetre)
+                        .PaddingBottom(Math.Max(0, settings.SignatureOffsetBottomMm - 8f), Unit.Millimetre)
+                        .AlignBottom()
+                        .Width(settings.SignatureWidthMm, Unit.Millimetre)
+                        .Height(settings.SignatureWidthMm * 0.55f, Unit.Millimetre)
+                        .Image(settings.SignatureImageBytes).FitArea();
+                }
+            });
         }
         
         /// <summary>
@@ -2358,9 +2484,17 @@ if (hasLogo)
                     container.Page(page =>
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
-                        page.Margin(fmt == "A5" ? 24 : 36);
+                        var fallbackMargin = fmt == "A5" ? 24f : 36f;
+                        if (settings.LetterheadOnlyPrint)
+                            ApplyDocumentPageMargins(page, settings, 5f);
+                        else
+                            page.Margin(fallbackMargin);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
 
+                        RenderStampSignatureFooter(page, settings);
+
+                        if (!settings.LetterheadOnlyPrint)
+                        {
                         page.Header().Row(row =>
                         {
                             var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
@@ -2384,6 +2518,11 @@ if (hasLogo)
                             row.ConstantItem(90).AlignRight().AlignMiddle()
                                 .Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
                         });
+                        }
+                        else
+                        {
+                            page.Header().AlignRight().Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
+                        }
 
                         page.Content().PaddingTop(12).Column(col =>
                         {
@@ -2484,17 +2623,26 @@ if (hasLogo)
 
                             col.Item().PaddingTop(28).AlignRight().Width(160).Column(sig =>
                             {
-                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
-                                if (hasLogo)
-                                    sig.Item().AlignCenter().Width(72).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                                if (!settings.LetterheadOnlyPrint)
+                                {
+                                    var hasLogoSig = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                    if (hasLogoSig)
+                                        sig.Item().AlignCenter().Width(72).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                                    else
+                                        sig.Item().Height(28);
+                                    sig.Item().PaddingTop(6).AlignCenter().Text("AUTHORIZED SIGNATURE").Bold().FontSize(8);
+                                    if (!string.IsNullOrWhiteSpace(settings.CompanyNameEn))
+                                        sig.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7);
+                                }
                                 else
-                                    sig.Item().Height(28);
-                                sig.Item().PaddingTop(6).AlignCenter().Text("AUTHORIZED SIGNATURE").Bold().FontSize(8);
-                                if (!string.IsNullOrWhiteSpace(settings.CompanyNameEn))
-                                    sig.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7);
+                                {
+                                    sig.Item().Height(48);
+                                }
                             });
                         });
 
+                        if (!HasStampOrSignature(settings))
+                        {
                         page.Footer().AlignRight().Text(x =>
                         {
                             x.Span("Page ");
@@ -2502,6 +2650,7 @@ if (hasLogo)
                             x.Span(" of ");
                             x.TotalPages();
                         });
+                        }
                     });
                 });
                 return await Task.FromResult(document.GeneratePdf());
@@ -2532,17 +2681,26 @@ if (hasLogo)
                     ? agreement.Clauses
                     : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses().ToList();
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                var letterheadOnly = settings?.LetterheadOnlyPrint == true;
 
                 var document = Document.Create(container =>
                 {
                     container.Page(page =>
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
-                        page.Margin(fmt == "A5" ? 28 : 40);
+                        if (letterheadOnly && settings != null)
+                            ApplyDocumentPageMargins(page, settings, 5f);
+                        else
+                            page.Margin(fmt == "A5" ? 28 : 40);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
+
+                        if (settings != null)
+                            RenderStampSignatureFooter(page, settings);
 
                         page.Header().Column(col =>
                         {
+                            if (!letterheadOnly)
+                            {
                             col.Item().Row(row =>
                             {
                                 if (hasLogo)
@@ -2553,6 +2711,7 @@ if (hasLogo)
                                     .Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
                                     .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12);
                             });
+                            }
                             col.Item().PaddingTop(8).AlignCenter().Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
                                 .Bold().FontSize(fmt == "A5" ? 11 : 13).Underline();
                             col.Item().PaddingTop(4).AlignCenter().Text($"DATE-{agreement.AgreementDate:dd/MM/yyyy}").FontSize(9).Underline();

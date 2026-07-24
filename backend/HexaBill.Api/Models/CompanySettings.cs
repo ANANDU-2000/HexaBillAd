@@ -86,5 +86,26 @@ namespace HexaBill.Api.Models
         /// Storage key for server-side logo read (e.g. PDF). tenants/{tenantId}/logos/{guid}.png
         /// </summary>
         public string? LogoStorageKey { get; set; }
+
+        /// <summary>When true, A4/A5 PDFs omit digital letterhead header/footer branding.</summary>
+        public bool LetterheadOnlyPrint { get; set; }
+
+        /// <summary>When true, stamp/signature overlays are allowed on PDFs when assets exist.</summary>
+        public bool DocumentStampSignatureEnabled { get; set; }
+
+        public float PrintMarginTopMm { get; set; } = 5f;
+        public float PrintMarginBottomMm { get; set; } = 5f;
+
+        public string? StampStorageKey { get; set; }
+        public string? StampPublicUrl { get; set; }
+        public string? SignatureStorageKey { get; set; }
+        public string? SignaturePublicUrl { get; set; }
+
+        public float StampWidthMm { get; set; } = 38f;
+        public float SignatureWidthMm { get; set; } = 42f;
+        public float StampOffsetRightMm { get; set; } = 55f;
+        public float StampOffsetBottomMm { get; set; } = 18f;
+        public float SignatureOffsetRightMm { get; set; } = 12f;
+        public float SignatureOffsetBottomMm { get; set; } = 14f;
     }
 }

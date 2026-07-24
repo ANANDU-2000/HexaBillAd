@@ -468,6 +468,19 @@ namespace HexaBill.Api.Modules.Billing
             public string VatLegalText { get; set; } = "";
             /// <summary>Logo image bytes (PNG) for PDF header. Null when no logo.</summary>
             public byte[]? LogoImageBytes { get; set; }
+
+            public bool LetterheadOnlyPrint { get; set; }
+            public bool DocumentStampSignatureEnabled { get; set; }
+            public float PrintMarginTopMm { get; set; } = 5f;
+            public float PrintMarginBottomMm { get; set; } = 5f;
+            public byte[]? StampImageBytes { get; set; }
+            public byte[]? SignatureImageBytes { get; set; }
+            public float StampWidthMm { get; set; } = 38f;
+            public float SignatureWidthMm { get; set; } = 42f;
+            public float StampOffsetRightMm { get; set; } = 55f;
+            public float StampOffsetBottomMm { get; set; } = 18f;
+            public float SignatureOffsetRightMm { get; set; } = 12f;
+            public float SignatureOffsetBottomMm { get; set; } = 14f;
         }
     }
 }

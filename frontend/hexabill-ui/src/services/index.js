@@ -1185,6 +1185,34 @@ export const adminAPI = {
     return response.data
   },
 
+  uploadStamp: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post('/admin/stamp/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  deleteStamp: async () => {
+    const response = await api.delete('/admin/stamp')
+    return response.data
+  },
+
+  uploadSignature: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post('/admin/signature/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  deleteSignature: async () => {
+    const response = await api.delete('/admin/signature')
+    return response.data
+  },
+
   getLogoDataUri: async () => {
     const response = await api.get('/settings/logo-data-uri')
     return response.data

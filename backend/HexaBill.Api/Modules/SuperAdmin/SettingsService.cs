@@ -28,6 +28,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         Task<CompanySettings> GetCompanySettingsAsync(int tenantId);
         Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId);
         Task ClearLogoAsync(int tenantId);
+        Task ClearStampAsync(int tenantId);
+        Task ClearSignatureAsync(int tenantId);
     }
 
     public class SettingsService : ISettingsService
@@ -250,7 +252,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only) so logo persists after refresh
             var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "COMPANY_LOGO", "LOGO_PATH", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "LOGO_PREVIOUS_KEYS" };
+                {
+                    "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "COMPANY_LOGO", "LOGO_PATH", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "LOGO_PREVIOUS_KEYS", "LOGO_BASE64_DATA_URI",
+                    "STAMP_STORAGE_KEY", "STAMP_PUBLIC_URL", "STAMP_ORIGINAL_NAME", "STAMP_MIME_TYPE", "STAMP_FILE_SIZE_BYTES", "STAMP_UPLOADED_AT", "STAMP_UPLOADED_BY_USER_ID", "STAMP_PREVIOUS_KEYS", "STAMP_BASE64_DATA_URI",
+                    "SIGNATURE_STORAGE_KEY", "SIGNATURE_PUBLIC_URL", "SIGNATURE_ORIGINAL_NAME", "SIGNATURE_MIME_TYPE", "SIGNATURE_FILE_SIZE_BYTES", "SIGNATURE_UPLOADED_AT", "SIGNATURE_UPLOADED_BY_USER_ID", "SIGNATURE_PREVIOUS_KEYS", "SIGNATURE_BASE64_DATA_URI"
+                };
             foreach (var kvp in settings)
             {
                 var key = kvp.Key?.Trim();
@@ -310,9 +316,40 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 VatPercent = decimal.TryParse(settingsDict.GetValueOrDefault("VAT_PERCENT", "5"), out var vat) ? vat : 5.0m,
                 InvoicePrefix = settingsDict.GetValueOrDefault("INVOICE_PREFIX", "FM"),
                 LogoPath = settingsDict.GetValueOrDefault("LOGO_PUBLIC_URL", settingsDict.GetValueOrDefault("COMPANY_LOGO", settingsDict.GetValueOrDefault("LOGO_PATH", "/uploads/logo.png"))),
-                LogoStorageKey = GetLogoStorageKeyForInvoice(settingsDict)
+                LogoStorageKey = GetLogoStorageKeyForInvoice(settingsDict),
+                LetterheadOnlyPrint = IsTruthy(settingsDict.GetValueOrDefault("Feature_LetterheadOnlyPrint", "false")),
+                DocumentStampSignatureEnabled = IsTruthy(settingsDict.GetValueOrDefault("Feature_DocumentStampSignature", "false")),
+                PrintMarginTopMm = ParseFloatSetting(settingsDict, "PRINT_MARGIN_TOP_MM", 5f),
+                PrintMarginBottomMm = ParseFloatSetting(settingsDict, "PRINT_MARGIN_BOTTOM_MM", 5f),
+                StampStorageKey = NullIfEmpty(settingsDict.GetValueOrDefault("STAMP_STORAGE_KEY", "")),
+                StampPublicUrl = NullIfEmpty(settingsDict.GetValueOrDefault("STAMP_PUBLIC_URL", "")),
+                SignatureStorageKey = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_STORAGE_KEY", "")),
+                SignaturePublicUrl = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_PUBLIC_URL", "")),
+                StampWidthMm = ParseFloatSetting(settingsDict, "STAMP_WIDTH_MM", 38f),
+                SignatureWidthMm = ParseFloatSetting(settingsDict, "SIGNATURE_WIDTH_MM", 42f),
+                StampOffsetRightMm = ParseFloatSetting(settingsDict, "STAMP_OFFSET_RIGHT_MM", 55f),
+                StampOffsetBottomMm = ParseFloatSetting(settingsDict, "STAMP_OFFSET_BOTTOM_MM", 18f),
+                SignatureOffsetRightMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_RIGHT_MM", 12f),
+                SignatureOffsetBottomMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_BOTTOM_MM", 14f),
             };
         }
+
+        private static bool IsTruthy(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return false;
+            return raw.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || raw.Equals("1", StringComparison.OrdinalIgnoreCase)
+                || raw.Equals("yes", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static float ParseFloatSetting(Dictionary<string, string> dict, string key, float fallback)
+        {
+            if (dict.TryGetValue(key, out var raw) && float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v))
+                return v;
+            return fallback;
+        }
+
+        private static string? NullIfEmpty(string? s) => string.IsNullOrWhiteSpace(s) ? null : s;
 
         /// <summary>Resolve logo storage key for PDF: prefer LOGO_STORAGE_KEY; fallback to key derived from COMPANY_LOGO / LOGO_PUBLIC_URL / LOGO_PATH when it looks like a storage path (so invoice header shows uploaded logo).</summary>
         private static string? GetLogoStorageKeyForInvoice(Dictionary<string, string> settingsDict)
@@ -350,7 +387,24 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// <summary>Clear logo settings. Does NOT delete files from storage.</summary>
         public async Task ClearLogoAsync(int tenantId)
         {
-            var keys = new[] { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "COMPANY_LOGO", "LOGO_PATH" };
+            var keys = new[] { "LOGO_STORAGE_KEY", "LOGO_PUBLIC_URL", "LOGO_ORIGINAL_NAME", "LOGO_MIME_TYPE", "LOGO_FILE_SIZE_BYTES", "LOGO_UPLOADED_AT", "LOGO_UPLOADED_BY_USER_ID", "COMPANY_LOGO", "LOGO_PATH", "LOGO_BASE64_DATA_URI" };
+            await ClearSettingKeysAsync(tenantId, keys);
+        }
+
+        public async Task ClearStampAsync(int tenantId)
+        {
+            var keys = new[] { "STAMP_STORAGE_KEY", "STAMP_PUBLIC_URL", "STAMP_ORIGINAL_NAME", "STAMP_MIME_TYPE", "STAMP_FILE_SIZE_BYTES", "STAMP_UPLOADED_AT", "STAMP_UPLOADED_BY_USER_ID", "STAMP_BASE64_DATA_URI" };
+            await ClearSettingKeysAsync(tenantId, keys);
+        }
+
+        public async Task ClearSignatureAsync(int tenantId)
+        {
+            var keys = new[] { "SIGNATURE_STORAGE_KEY", "SIGNATURE_PUBLIC_URL", "SIGNATURE_ORIGINAL_NAME", "SIGNATURE_MIME_TYPE", "SIGNATURE_FILE_SIZE_BYTES", "SIGNATURE_UPLOADED_AT", "SIGNATURE_UPLOADED_BY_USER_ID", "SIGNATURE_BASE64_DATA_URI" };
+            await ClearSettingKeysAsync(tenantId, keys);
+        }
+
+        private async Task ClearSettingKeysAsync(int tenantId, IEnumerable<string> keys)
+        {
             foreach (var key in keys)
             {
                 var setting = await _context.Settings
@@ -396,6 +450,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 { "ALLOW_NEGATIVE_STOCK", "true" },
                 // Documents module. Explicit false disables. Missing = enabled (greenfield opt-out).
                 { "Feature_QuotesAgreements", "true" },
+                { "Feature_LetterheadOnlyPrint", "false" },
+                { "Feature_DocumentStampSignature", "false" },
                 { "COMPANY_LICENSE", "CN-4937175" }
             };
         }

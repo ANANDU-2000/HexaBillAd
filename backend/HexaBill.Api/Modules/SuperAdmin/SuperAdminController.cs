@@ -29,18 +29,20 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly AppDbContext _context;
         private readonly IFileUploadService _fileUploadService;
         private readonly ILogoUploadService _logoUploadService;
+        private readonly IDocumentAssetUploadService _documentAssetUploadService;
         private readonly ISettingsService _settingsService;
         private readonly IStorageService _storageService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<AdminController> _logger;
 
-        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, ILogoUploadService logoUploadService, ISettingsService settingsService, IStorageService storageService, IConfiguration configuration, ILogger<AdminController> logger)
+        public AdminController(IBackupService backupService, IComprehensiveBackupService comprehensiveBackupService, AppDbContext context, IFileUploadService fileUploadService, ILogoUploadService logoUploadService, IDocumentAssetUploadService documentAssetUploadService, ISettingsService settingsService, IStorageService storageService, IConfiguration configuration, ILogger<AdminController> logger)
         {
             _backupService = backupService;
             _comprehensiveBackupService = comprehensiveBackupService;
             _context = context;
             _fileUploadService = fileUploadService;
             _logoUploadService = logoUploadService;
+            _documentAssetUploadService = documentAssetUploadService;
             _settingsService = settingsService;
             _storageService = storageService;
             _configuration = configuration;
@@ -336,6 +338,92 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     Message = "An error occurred",
                     Errors = new List<string> { ex.Message }
                 });
+            }
+        }
+
+        [HttpPost("stamp/upload")]
+        public async Task<ActionResult<ApiResponse<object>>> UploadStamp([FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "No file uploaded" });
+                var tenantId = CurrentTenantId;
+                var userId = int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid) ? (int?)uid : null;
+                var result = await _documentAssetUploadService.UploadAsync(file, tenantId, userId, DocumentAssetKind.Stamp);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Stamp uploaded successfully",
+                    Data = new { url = result.Url, storageKey = result.StorageKey, width = result.Width, height = result.Height, fileSizeKb = result.FileSizeKb }
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadStamp failed for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "An error occurred", Errors = new List<string> { ex.Message } });
+            }
+        }
+
+        [HttpDelete("stamp")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteStamp()
+        {
+            try
+            {
+                await _settingsService.ClearStampAsync(CurrentTenantId);
+                return Ok(new ApiResponse<object> { Success = true, Message = "Stamp removed from settings." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteStamp failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "An error occurred", Errors = new List<string> { ex.Message } });
+            }
+        }
+
+        [HttpPost("signature/upload")]
+        public async Task<ActionResult<ApiResponse<object>>> UploadSignature([FromForm] IFormFile file)
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "No file uploaded" });
+                var tenantId = CurrentTenantId;
+                var userId = int.TryParse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid) ? (int?)uid : null;
+                var result = await _documentAssetUploadService.UploadAsync(file, tenantId, userId, DocumentAssetKind.Signature);
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = "Signature uploaded successfully",
+                    Data = new { url = result.Url, storageKey = result.StorageKey, width = result.Width, height = result.Height, fileSizeKb = result.FileSizeKb }
+                });
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UploadSignature failed for tenant {TenantId}", CurrentTenantId);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "An error occurred", Errors = new List<string> { ex.Message } });
+            }
+        }
+
+        [HttpDelete("signature")]
+        public async Task<ActionResult<ApiResponse<object>>> DeleteSignature()
+        {
+            try
+            {
+                await _settingsService.ClearSignatureAsync(CurrentTenantId);
+                return Ok(new ApiResponse<object> { Success = true, Message = "Signature removed from settings." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "DeleteSignature failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "An error occurred", Errors = new List<string> { ex.Message } });
             }
         }
 

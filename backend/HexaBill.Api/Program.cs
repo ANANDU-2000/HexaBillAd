@@ -348,6 +348,7 @@ builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<IBalanceService, BalanceService>();
 builder.Services.AddScoped<ISettingsService, SettingsService>(); // Owner-specific company settings
 builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.ILogoUploadService, HexaBill.Api.Modules.SuperAdmin.LogoUploadService>();
+builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.IDocumentAssetUploadService, HexaBill.Api.Modules.SuperAdmin.DocumentAssetUploadService>();
 builder.Services.AddSingleton<ITimeZoneService, TimeZoneService>(); // Gulf Standard Time (GST, UTC+4)
 builder.Services.AddScoped<IStartupDiagnosticsService, StartupDiagnosticsService>(); // CRITICAL: Startup diagnostics
 builder.Services.AddScoped<ISuperAdminTenantService, SuperAdminTenantService>(); // Super Admin tenant management

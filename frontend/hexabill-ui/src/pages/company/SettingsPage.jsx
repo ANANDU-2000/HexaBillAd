@@ -91,8 +91,25 @@ const SettingsPage = () => {
     returnPolicyHeader: '',
     returnPolicyBody: '',
     returnPolicyFooter: '',
-    returnBillTitle: 'SALES RETURN NOTE'
+    returnBillTitle: 'SALES RETURN NOTE',
+    letterheadOnlyPrint: false,
+    documentStampSignatureEnabled: false,
+    printMarginTopMm: '52',
+    printMarginBottomMm: '35',
+    stampWidthMm: '38',
+    signatureWidthMm: '42',
+    stampOffsetRightMm: '55',
+    stampOffsetBottomMm: '18',
+    signatureOffsetRightMm: '12',
+    signatureOffsetBottomMm: '14',
+    stampUrl: '',
+    signatureUrl: '',
   })
+
+  const [stampPreview, setStampPreview] = useState(null)
+  const [signaturePreview, setSignaturePreview] = useState(null)
+  const [uploadingStamp, setUploadingStamp] = useState(false)
+  const [uploadingSignature, setUploadingSignature] = useState(false)
 
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
@@ -411,7 +428,19 @@ const SettingsPage = () => {
           returnPolicyHeader: response.data.RETURN_POLICY_HEADER ?? response.data.returnPolicyHeader ?? '',
           returnPolicyBody: response.data.RETURN_POLICY_BODY ?? response.data.returnPolicyBody ?? '',
           returnPolicyFooter: response.data.RETURN_POLICY_FOOTER ?? response.data.returnPolicyFooter ?? '',
-          returnBillTitle: response.data.RETURN_BILL_TITLE ?? response.data.returnBillTitle ?? 'SALES RETURN NOTE'
+          returnBillTitle: response.data.RETURN_BILL_TITLE ?? response.data.returnBillTitle ?? 'SALES RETURN NOTE',
+          letterheadOnlyPrint: String(response.data.Feature_LetterheadOnlyPrint || '').toLowerCase() === 'true',
+          documentStampSignatureEnabled: String(response.data.Feature_DocumentStampSignature || '').toLowerCase() === 'true',
+          printMarginTopMm: response.data.PRINT_MARGIN_TOP_MM ?? '52',
+          printMarginBottomMm: response.data.PRINT_MARGIN_BOTTOM_MM ?? '35',
+          stampWidthMm: response.data.STAMP_WIDTH_MM ?? '38',
+          signatureWidthMm: response.data.SIGNATURE_WIDTH_MM ?? '42',
+          stampOffsetRightMm: response.data.STAMP_OFFSET_RIGHT_MM ?? '55',
+          stampOffsetBottomMm: response.data.STAMP_OFFSET_BOTTOM_MM ?? '18',
+          signatureOffsetRightMm: response.data.SIGNATURE_OFFSET_RIGHT_MM ?? '12',
+          signatureOffsetBottomMm: response.data.SIGNATURE_OFFSET_BOTTOM_MM ?? '14',
+          stampUrl: response.data.STAMP_PUBLIC_URL || '',
+          signatureUrl: response.data.SIGNATURE_PUBLIC_URL || '',
         }
         setSettings(mappedSettings)
         setInitialSettings(JSON.parse(JSON.stringify(mappedSettings))) // Deep copy for comparison
@@ -461,7 +490,16 @@ const SettingsPage = () => {
         RETURN_POLICY_HEADER: data.returnPolicyHeader ?? '',
         RETURN_POLICY_BODY: data.returnPolicyBody ?? '',
         RETURN_POLICY_FOOTER: data.returnPolicyFooter ?? '',
-        RETURN_BILL_TITLE: (data.returnBillTitle && data.returnBillTitle.trim() !== '') ? data.returnBillTitle.trim() : 'SALES RETURN NOTE'
+        RETURN_BILL_TITLE: (data.returnBillTitle && data.returnBillTitle.trim() !== '') ? data.returnBillTitle.trim() : 'SALES RETURN NOTE',
+        Feature_LetterheadOnlyPrint: data.letterheadOnlyPrint ? 'true' : 'false',
+        PRINT_MARGIN_TOP_MM: String(data.printMarginTopMm ?? '52'),
+        PRINT_MARGIN_BOTTOM_MM: String(data.printMarginBottomMm ?? '35'),
+        STAMP_WIDTH_MM: String(data.stampWidthMm ?? '38'),
+        SIGNATURE_WIDTH_MM: String(data.signatureWidthMm ?? '42'),
+        STAMP_OFFSET_RIGHT_MM: String(data.stampOffsetRightMm ?? '55'),
+        STAMP_OFFSET_BOTTOM_MM: String(data.stampOffsetBottomMm ?? '18'),
+        SIGNATURE_OFFSET_RIGHT_MM: String(data.signatureOffsetRightMm ?? '12'),
+        SIGNATURE_OFFSET_BOTTOM_MM: String(data.signatureOffsetBottomMm ?? '14'),
       }
 
       // Only include logoUrl if it's set
@@ -592,6 +630,97 @@ const SettingsPage = () => {
       if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to delete logo')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const resolveAssetSrc = (url, preview) => {
+    if (preview) return preview
+    if (!url) return null
+    if (url.startsWith('http') || url.startsWith('data:')) return url
+    return `${getApiBaseUrlNoSuffix()}${url.startsWith('/') ? '' : '/'}${url}`
+  }
+
+  const handleStampUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      setUploadingStamp(true)
+      const response = await adminAPI.uploadStamp(file)
+      if (response?.success) {
+        const url = response.data?.url || response.data?.Url || ''
+        setSettings((prev) => ({ ...prev, stampUrl: url }))
+        setValue('stampUrl', url)
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader()
+          reader.onloadend = () => setStampPreview(reader.result)
+          reader.readAsDataURL(file)
+        }
+        toast.success('Stamp uploaded')
+        await fetchSettings()
+      } else {
+        toast.error(response?.message || 'Failed to upload stamp')
+      }
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to upload stamp')
+    } finally {
+      setUploadingStamp(false)
+    }
+  }
+
+  const handleStampDelete = async () => {
+    try {
+      const response = await adminAPI.deleteStamp()
+      if (response?.success) {
+        setStampPreview(null)
+        setSettings((prev) => ({ ...prev, stampUrl: '' }))
+        setValue('stampUrl', '')
+        toast.success('Stamp removed')
+      } else toast.error(response?.message || 'Failed to remove stamp')
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to remove stamp')
+    }
+  }
+
+  const handleSignatureUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      setUploadingSignature(true)
+      const response = await adminAPI.uploadSignature(file)
+      if (response?.success) {
+        const url = response.data?.url || response.data?.Url || ''
+        setSettings((prev) => ({ ...prev, signatureUrl: url }))
+        setValue('signatureUrl', url)
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader()
+          reader.onloadend = () => setSignaturePreview(reader.result)
+          reader.readAsDataURL(file)
+        }
+        toast.success('Signature uploaded')
+        await fetchSettings()
+      } else {
+        toast.error(response?.message || 'Failed to upload signature')
+      }
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to upload signature')
+    } finally {
+      setUploadingSignature(false)
+    }
+  }
+
+  const handleSignatureDelete = async () => {
+    try {
+      const response = await adminAPI.deleteSignature()
+      if (response?.success) {
+        setSignaturePreview(null)
+        setSettings((prev) => ({ ...prev, signatureUrl: '' }))
+        setValue('signatureUrl', '')
+        toast.success('Signature removed')
+      } else toast.error(response?.message || 'Failed to remove signature')
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to remove signature')
     }
   }
 
@@ -932,6 +1061,90 @@ const SettingsPage = () => {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Letterhead + stamp/signature (Zayoga / Feature_DocumentStampSignature) */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center mb-2">
+                <Printer className="h-6 w-6 text-primary-600 mr-3" />
+                <h2 className="text-lg font-semibold text-neutral-900">Print / Letterhead</h2>
+              </div>
+              <p className="text-sm text-gray-500 mb-4">
+                Letterhead-only prints body content for pre-printed paper (no digital header/footer).
+                Stamp and signature align with the &quot;For company&quot; zone on A4/A5 invoices, delivery notes, quotations, and agreements.
+              </p>
+
+              <div className="space-y-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
+                  <input type="checkbox" className="rounded border-neutral-300" {...register('letterheadOnlyPrint')} />
+                  Letterhead-only print (body only — hide digital header/footer)
+                </label>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
+                  <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
+                  <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />
+                  <Input label="Signature width (mm)" type="number" step="1" {...register('signatureWidthMm')} />
+                  <Input label="Stamp offset right (mm)" type="number" step="1" {...register('stampOffsetRightMm')} />
+                  <Input label="Stamp offset bottom (mm)" type="number" step="1" {...register('stampOffsetBottomMm')} />
+                  <Input label="Sig offset right (mm)" type="number" step="1" {...register('signatureOffsetRightMm')} />
+                  <Input label="Sig offset bottom (mm)" type="number" step="1" {...register('signatureOffsetBottomMm')} />
+                </div>
+                <p className="text-xs text-neutral-500">Aligns with For ZAYOGA on pre-printed paper. Save settings after changing numbers.</p>
+
+                {(watch('documentStampSignatureEnabled') || settings.documentStampSignatureEnabled) ? (
+                  <div className="grid md:grid-cols-2 gap-6 pt-2 border-t border-neutral-100">
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-800 mb-2">Company stamp</p>
+                      {(stampPreview || settings.stampUrl) ? (
+                        <img
+                          src={resolveAssetSrc(settings.stampUrl, stampPreview)}
+                          alt="Stamp"
+                          className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
+                        />
+                      ) : (
+                        <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No stamp</div>
+                      )}
+                      <div className="flex gap-2">
+                        <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
+                          <Upload className="h-4 w-4 mr-1.5" />
+                          {uploadingStamp ? 'Uploading…' : 'Upload stamp'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleStampUpload} disabled={uploadingStamp} />
+                        </label>
+                        {(stampPreview || settings.stampUrl) && (
+                          <button type="button" onClick={handleStampDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-neutral-800 mb-2">Authorized signature</p>
+                      {(signaturePreview || settings.signatureUrl) ? (
+                        <img
+                          src={resolveAssetSrc(settings.signatureUrl, signaturePreview)}
+                          alt="Signature"
+                          className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
+                        />
+                      ) : (
+                        <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No signature</div>
+                      )}
+                      <div className="flex gap-2">
+                        <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
+                          <Upload className="h-4 w-4 mr-1.5" />
+                          {uploadingSignature ? 'Uploading…' : 'Upload signature'}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
+                        </label>
+                        {(signaturePreview || settings.signatureUrl) && (
+                          <button type="button" onClick={handleSignatureDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
+                    Stamp/signature upload is disabled for this company (feature flag off). Contact support to enable.
+                  </p>
+                )}
               </div>
             </div>
 
