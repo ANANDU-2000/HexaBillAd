@@ -1413,7 +1413,9 @@ if (hasLogo)
             {
                 try
                 {
-                    return await _storageService.ReadBytesAsync(storageKey);
+                    var bytes = await _storageService.ReadBytesAsync(storageKey);
+                    if (bytes != null && bytes.Length > 0)
+                        return bytes;
                 }
                 catch (Exception ex)
                 {

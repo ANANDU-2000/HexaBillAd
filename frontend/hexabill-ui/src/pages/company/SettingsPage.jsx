@@ -442,8 +442,8 @@ const SettingsPage = () => {
           stampOffsetBottomMm: getSetting(d, 'STAMP_OFFSET_BOTTOM_MM') ?? '18',
           signatureOffsetRightMm: getSetting(d, 'SIGNATURE_OFFSET_RIGHT_MM') ?? '12',
           signatureOffsetBottomMm: getSetting(d, 'SIGNATURE_OFFSET_BOTTOM_MM') ?? '14',
-          stampUrl: getSetting(d, 'STAMP_PUBLIC_URL') || '',
-          signatureUrl: getSetting(d, 'SIGNATURE_PUBLIC_URL') || '',
+          stampUrl: getSetting(d, 'STAMP_PUBLIC_URL') || getSetting(d, 'STAMP_BASE64_DATA_URI') || '',
+          signatureUrl: getSetting(d, 'SIGNATURE_PUBLIC_URL') || getSetting(d, 'SIGNATURE_BASE64_DATA_URI') || '',
         }
         setSettings(mappedSettings)
         setInitialSettings(JSON.parse(JSON.stringify(mappedSettings))) // Deep copy for comparison
