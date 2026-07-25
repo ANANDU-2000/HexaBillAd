@@ -103,6 +103,8 @@ namespace HexaBill.Api.Models
 
         public float StampWidthMm { get; set; } = 38f;
         public float SignatureWidthMm { get; set; } = 42f;
+        /// <summary>left = First Party style; right = For-company footer zone. Horizontal offsets are from that edge.</summary>
+        public string StampAlign { get; set; } = "right";
         public float StampOffsetRightMm { get; set; } = 55f;
         public float StampOffsetBottomMm { get; set; } = 18f;
         public float SignatureOffsetRightMm { get; set; } = 12f;

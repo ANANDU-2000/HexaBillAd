@@ -98,12 +98,13 @@ const SettingsPage = () => {
     documentStampSignatureEnabled: false,
     printMarginTopMm: '52',
     printMarginBottomMm: '35',
-    stampWidthMm: '62',
+    stampWidthMm: '50',
     signatureWidthMm: '42',
-    stampOffsetRightMm: '14',
-    stampOffsetBottomMm: '14',
-    signatureOffsetRightMm: '12',
-    signatureOffsetBottomMm: '14',
+    stampAlignLeft: true,
+    stampOffsetRightMm: '22',
+    stampOffsetBottomMm: '28',
+    signatureOffsetRightMm: '22',
+    signatureOffsetBottomMm: '22',
     stampUrl: '',
     signatureUrl: '',
   })
@@ -436,12 +437,13 @@ const SettingsPage = () => {
           documentStampSignatureEnabled: getSettingBool(d, 'Feature_DocumentStampSignature'),
           printMarginTopMm: getSetting(d, 'PRINT_MARGIN_TOP_MM') ?? '52',
           printMarginBottomMm: getSetting(d, 'PRINT_MARGIN_BOTTOM_MM') ?? '35',
-          stampWidthMm: getSetting(d, 'STAMP_WIDTH_MM') ?? '38',
+          stampWidthMm: getSetting(d, 'STAMP_WIDTH_MM') ?? '50',
           signatureWidthMm: getSetting(d, 'SIGNATURE_WIDTH_MM') ?? '42',
-          stampOffsetRightMm: getSetting(d, 'STAMP_OFFSET_RIGHT_MM') ?? '55',
-          stampOffsetBottomMm: getSetting(d, 'STAMP_OFFSET_BOTTOM_MM') ?? '18',
-          signatureOffsetRightMm: getSetting(d, 'SIGNATURE_OFFSET_RIGHT_MM') ?? '12',
-          signatureOffsetBottomMm: getSetting(d, 'SIGNATURE_OFFSET_BOTTOM_MM') ?? '14',
+          stampAlignLeft: (getSetting(d, 'STAMP_ALIGN') || 'right').toLowerCase() === 'left',
+          stampOffsetRightMm: getSetting(d, 'STAMP_OFFSET_RIGHT_MM') ?? '22',
+          stampOffsetBottomMm: getSetting(d, 'STAMP_OFFSET_BOTTOM_MM') ?? '28',
+          signatureOffsetRightMm: getSetting(d, 'SIGNATURE_OFFSET_RIGHT_MM') ?? '22',
+          signatureOffsetBottomMm: getSetting(d, 'SIGNATURE_OFFSET_BOTTOM_MM') ?? '22',
           stampUrl: getSetting(d, 'STAMP_PUBLIC_URL') || getSetting(d, 'STAMP_BASE64_DATA_URI') || '',
           signatureUrl: getSetting(d, 'SIGNATURE_PUBLIC_URL') || getSetting(d, 'SIGNATURE_BASE64_DATA_URI') || '',
         }
@@ -498,12 +500,13 @@ const SettingsPage = () => {
         Feature_DocumentStampSignature: data.documentStampSignatureEnabled ? 'true' : 'false',
         PRINT_MARGIN_TOP_MM: String(data.printMarginTopMm ?? '52'),
         PRINT_MARGIN_BOTTOM_MM: String(data.printMarginBottomMm ?? '35'),
-        STAMP_WIDTH_MM: String(data.stampWidthMm ?? '62'),
+        STAMP_WIDTH_MM: String(data.stampWidthMm ?? '50'),
         SIGNATURE_WIDTH_MM: String(data.signatureWidthMm ?? '42'),
-        STAMP_OFFSET_RIGHT_MM: String(data.stampOffsetRightMm ?? '14'),
-        STAMP_OFFSET_BOTTOM_MM: String(data.stampOffsetBottomMm ?? '14'),
-        SIGNATURE_OFFSET_RIGHT_MM: String(data.signatureOffsetRightMm ?? '12'),
-        SIGNATURE_OFFSET_BOTTOM_MM: String(data.signatureOffsetBottomMm ?? '14'),
+        STAMP_ALIGN: data.stampAlignLeft ? 'left' : 'right',
+        STAMP_OFFSET_RIGHT_MM: String(data.stampOffsetRightMm ?? '22'),
+        STAMP_OFFSET_BOTTOM_MM: String(data.stampOffsetBottomMm ?? '28'),
+        SIGNATURE_OFFSET_RIGHT_MM: String(data.signatureOffsetRightMm ?? '22'),
+        SIGNATURE_OFFSET_BOTTOM_MM: String(data.signatureOffsetBottomMm ?? '22'),
       }
 
       // Only include logoUrl if it's set
@@ -1089,15 +1092,29 @@ const SettingsPage = () => {
                   <input type="checkbox" className="rounded border-neutral-300" {...register('documentStampSignatureEnabled')} />
                   Enable stamp &amp; signature on A4/A5 PDF prints
                 </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
+                  <input type="checkbox" className="rounded border-neutral-300" {...register('stampAlignLeft')} />
+                  Place stamp on left (First Party style — Zayoga agreement look)
+                </label>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
                   <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
                   <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />
                   <Input label="Signature width (mm)" type="number" step="1" {...register('signatureWidthMm')} />
-                  <Input label="Stamp offset right (mm)" type="number" step="0.1" {...register('stampOffsetRightMm')} />
+                  <Input
+                    label={watch('stampAlignLeft') ? 'Stamp inset left (mm)' : 'Stamp offset right (mm)'}
+                    type="number"
+                    step="0.1"
+                    {...register('stampOffsetRightMm')}
+                  />
                   <Input label="Stamp offset bottom (mm)" type="number" step="0.1" {...register('stampOffsetBottomMm')} />
-                  <Input label="Sig offset right (mm)" type="number" step="0.1" {...register('signatureOffsetRightMm')} />
+                  <Input
+                    label={watch('stampAlignLeft') ? 'Sig inset left (mm)' : 'Sig offset right (mm)'}
+                    type="number"
+                    step="0.1"
+                    {...register('signatureOffsetRightMm')}
+                  />
                   <Input label="Sig offset bottom (mm)" type="number" step="0.1" {...register('signatureOffsetBottomMm')} />
                 </div>
                 <p className="text-xs text-neutral-500">Drag on the preview below or edit mm fields. Save settings after placing stamp/sign.</p>
@@ -1162,6 +1179,7 @@ const SettingsPage = () => {
                         stampOffsetBottomMm={watch('stampOffsetBottomMm')}
                         signatureOffsetRightMm={watch('signatureOffsetRightMm')}
                         signatureOffsetBottomMm={watch('signatureOffsetBottomMm')}
+                        alignLeft={!!watch('stampAlignLeft')}
                         onChangeOffsets={(patch) => {
                           Object.entries(patch).forEach(([key, value]) => {
                             setValue(key, value, { shouldDirty: true })

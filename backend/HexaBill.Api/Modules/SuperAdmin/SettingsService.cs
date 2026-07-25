@@ -327,6 +327,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 SignaturePublicUrl = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_PUBLIC_URL", "")),
                 StampWidthMm = ParseFloatSetting(settingsDict, "STAMP_WIDTH_MM", 38f),
                 SignatureWidthMm = ParseFloatSetting(settingsDict, "SIGNATURE_WIDTH_MM", 42f),
+                StampAlign = (settingsDict.GetValueOrDefault("STAMP_ALIGN", "right") ?? "right").Trim().ToLowerInvariant() == "left" ? "left" : "right",
                 StampOffsetRightMm = ParseFloatSetting(settingsDict, "STAMP_OFFSET_RIGHT_MM", 55f),
                 StampOffsetBottomMm = ParseFloatSetting(settingsDict, "STAMP_OFFSET_BOTTOM_MM", 18f),
                 SignatureOffsetRightMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_RIGHT_MM", 12f),

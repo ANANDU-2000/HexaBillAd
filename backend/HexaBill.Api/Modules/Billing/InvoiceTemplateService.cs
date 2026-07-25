@@ -477,6 +477,8 @@ namespace HexaBill.Api.Modules.Billing
             public byte[]? SignatureImageBytes { get; set; }
             public float StampWidthMm { get; set; } = 38f;
             public float SignatureWidthMm { get; set; } = 42f;
+            /// <summary>When true, stamp/signature align to bottom-left (First Party style). Horizontal offsets are from the left edge.</summary>
+            public bool StampAlignLeft { get; set; }
             public float StampOffsetRightMm { get; set; } = 55f;
             public float StampOffsetBottomMm { get; set; } = 18f;
             public float SignatureOffsetRightMm { get; set; } = 12f;

@@ -1316,6 +1316,7 @@ if (hasLogo)
                 PrintMarginBottomMm = companySettings.LetterheadOnlyPrint ? companySettings.PrintMarginBottomMm : 5f,
                 StampWidthMm = companySettings.StampWidthMm,
                 SignatureWidthMm = companySettings.SignatureWidthMm,
+                StampAlignLeft = string.Equals(companySettings.StampAlign, "left", StringComparison.OrdinalIgnoreCase),
                 StampOffsetRightMm = companySettings.StampOffsetRightMm,
                 StampOffsetBottomMm = companySettings.StampOffsetBottomMm,
                 SignatureOffsetRightMm = companySettings.SignatureOffsetRightMm,
@@ -1469,13 +1470,14 @@ if (hasLogo)
              || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
 
         /// <summary>
-        /// Full-page foreground overlay: stamp + signature at bottom-right with independent mm offsets.
-        /// Offsets are distance from the right / bottom page edges; layers can overlap (signature drawn on top).
-        /// Uses Foreground (not Footer) so document footers never conflict.
+        /// Full-page foreground overlay: stamp + signature at bottom with independent mm offsets.
+        /// Align left (First Party) or right (For-company). Horizontal offset is inset from that edge; bottom from page bottom.
         /// </summary>
         private static void RenderStampSignatureFooter(PageDescriptor page, InvoiceTemplateService.CompanySettings settings)
         {
             if (!HasStampOrSignature(settings)) return;
+
+            var alignLeft = settings.StampAlignLeft;
 
             page.Foreground().Layers(layers =>
             {
@@ -1484,10 +1486,13 @@ if (hasLogo)
                 if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
                 {
                     var stampW = Math.Max(settings.StampWidthMm, 8f);
-                    layers.Layer()
-                        .AlignBottom()
-                        .AlignRight()
-                        .PaddingRight(Math.Max(0f, settings.StampOffsetRightMm), Unit.Millimetre)
+                    var layer = layers.Layer().AlignBottom();
+                    layer = alignLeft ? layer.AlignLeft() : layer.AlignRight();
+                    if (alignLeft)
+                        layer = layer.PaddingLeft(Math.Max(0f, settings.StampOffsetRightMm), Unit.Millimetre);
+                    else
+                        layer = layer.PaddingRight(Math.Max(0f, settings.StampOffsetRightMm), Unit.Millimetre);
+                    layer
                         .PaddingBottom(Math.Max(0f, settings.StampOffsetBottomMm), Unit.Millimetre)
                         .Width(stampW, Unit.Millimetre)
                         .Height(stampW, Unit.Millimetre)
@@ -1499,10 +1504,13 @@ if (hasLogo)
                 {
                     var sigW = Math.Max(settings.SignatureWidthMm, 8f);
                     var sigH = Math.Max(sigW * 0.55f, 10f);
-                    layers.Layer()
-                        .AlignBottom()
-                        .AlignRight()
-                        .PaddingRight(Math.Max(0f, settings.SignatureOffsetRightMm), Unit.Millimetre)
+                    var layer = layers.Layer().AlignBottom();
+                    layer = alignLeft ? layer.AlignLeft() : layer.AlignRight();
+                    if (alignLeft)
+                        layer = layer.PaddingLeft(Math.Max(0f, settings.SignatureOffsetRightMm), Unit.Millimetre);
+                    else
+                        layer = layer.PaddingRight(Math.Max(0f, settings.SignatureOffsetRightMm), Unit.Millimetre);
+                    layer
                         .PaddingBottom(Math.Max(0f, settings.SignatureOffsetBottomMm), Unit.Millimetre)
                         .Width(sigW, Unit.Millimetre)
                         .Height(sigH, Unit.Millimetre)

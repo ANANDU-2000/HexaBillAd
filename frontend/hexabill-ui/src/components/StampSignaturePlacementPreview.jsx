@@ -6,7 +6,7 @@ const PX_PER_MM = 1.85
 
 /**
  * Visual A4 drag preview for stamp/signature placement.
- * Offsets are mm from the right / bottom page edges (matches PDF Foreground renderer).
+ * Horizontal mm = inset from left (alignLeft) or right edge; bottom = from page bottom.
  */
 export default function StampSignaturePlacementPreview({
   stampSrc,
@@ -17,6 +17,7 @@ export default function StampSignaturePlacementPreview({
   stampOffsetBottomMm = 18,
   signatureOffsetRightMm = 12,
   signatureOffsetBottomMm = 14,
+  alignLeft = false,
   onChangeOffsets,
 }) {
   const canvasRef = useRef(null)
@@ -26,9 +27,9 @@ export default function StampSignaturePlacementPreview({
   const stampW = Math.max(Number(stampWidthMm) || 38, 8)
   const sigW = Math.max(Number(signatureWidthMm) || 42, 8)
   const sigH = Math.max(sigW * 0.55, 10)
-  const stampRight = Math.max(0, Number(stampOffsetRightMm) || 0)
+  const stampHInset = Math.max(0, Number(stampOffsetRightMm) || 0)
   const stampBottom = Math.max(0, Number(stampOffsetBottomMm) || 0)
-  const sigRight = Math.max(0, Number(signatureOffsetRightMm) || 0)
+  const sigHInset = Math.max(0, Number(signatureOffsetRightMm) || 0)
   const sigBottom = Math.max(0, Number(signatureOffsetBottomMm) || 0)
 
   const emit = useCallback(
@@ -47,7 +48,7 @@ export default function StampSignaturePlacementPreview({
       kind,
       startX: e.clientX,
       startY: e.clientY,
-      startRight: kind === 'stamp' ? stampRight : sigRight,
+      startH: kind === 'stamp' ? stampHInset : sigHInset,
       startBottom: kind === 'stamp' ? stampBottom : sigBottom,
       widthMm: kind === 'stamp' ? stampW : sigW,
       heightMm: kind === 'stamp' ? stampW : sigH,
@@ -60,17 +61,17 @@ export default function StampSignaturePlacementPreview({
     if (!d) return
     const dx = e.clientX - d.startX
     const dy = e.clientY - d.startY
-    // Moving right on screen decreases offset-from-right; moving down decreases offset-from-bottom
-    let nextRight = d.startRight - dx / PX_PER_MM
+    // Left align: move right increases inset-from-left; right align: move right decreases inset-from-right
+    let nextH = alignLeft ? d.startH + dx / PX_PER_MM : d.startH - dx / PX_PER_MM
     let nextBottom = d.startBottom - dy / PX_PER_MM
-    nextRight = Math.max(0, Math.min(A4_WIDTH_MM - d.widthMm, nextRight))
+    nextH = Math.max(0, Math.min(A4_WIDTH_MM - d.widthMm, nextH))
     nextBottom = Math.max(0, Math.min(A4_HEIGHT_MM - d.heightMm, nextBottom))
-    nextRight = Math.round(nextRight * 10) / 10
+    nextH = Math.round(nextH * 10) / 10
     nextBottom = Math.round(nextBottom * 10) / 10
     if (d.kind === 'stamp') {
-      emit({ stampOffsetRightMm: String(nextRight), stampOffsetBottomMm: String(nextBottom) })
+      emit({ stampOffsetRightMm: String(nextH), stampOffsetBottomMm: String(nextBottom) })
     } else {
-      emit({ signatureOffsetRightMm: String(nextRight), signatureOffsetBottomMm: String(nextBottom) })
+      emit({ signatureOffsetRightMm: String(nextH), signatureOffsetBottomMm: String(nextBottom) })
     }
   }
 
@@ -88,11 +89,17 @@ export default function StampSignaturePlacementPreview({
 
   const canvasW = A4_WIDTH_MM * PX_PER_MM
   const canvasH = A4_HEIGHT_MM * PX_PER_MM
+  const stampPos = alignLeft
+    ? { left: stampHInset * PX_PER_MM, bottom: stampBottom * PX_PER_MM }
+    : { right: stampHInset * PX_PER_MM, bottom: stampBottom * PX_PER_MM }
+  const sigPos = alignLeft
+    ? { left: sigHInset * PX_PER_MM, bottom: sigBottom * PX_PER_MM }
+    : { right: sigHInset * PX_PER_MM, bottom: sigBottom * PX_PER_MM }
 
   return (
     <div className="space-y-2">
       <p className="text-xs text-neutral-600">
-        Drag stamp or signature on the A4 preview. Position saves as mm from the right and bottom edges (same as PDF print).
+        Drag stamp/signature. Horizontal mm is from the {alignLeft ? 'left' : 'right'} edge; bottom from page bottom (matches PDF).
         Thermal POS receipts are unchanged.
       </p>
       <div
@@ -105,7 +112,9 @@ export default function StampSignaturePlacementPreview({
       >
         <div className="absolute inset-x-3 top-3 bottom-10 border border-dashed border-neutral-200 pointer-events-none" />
         <div className="absolute left-2 top-2 text-[10px] text-neutral-400 pointer-events-none">A4 body area</div>
-        <div className="absolute right-2 bottom-2 text-[10px] text-neutral-400 pointer-events-none">For company</div>
+        <div className={`absolute bottom-2 text-[10px] text-neutral-400 pointer-events-none ${alignLeft ? 'left-2' : 'right-2'}`}>
+          {alignLeft ? 'First Party / stamp' : 'For company'}
+        </div>
 
         {stampSrc ? (
           <img
@@ -117,8 +126,7 @@ export default function StampSignaturePlacementPreview({
             style={{
               width: stampW * PX_PER_MM,
               height: stampW * PX_PER_MM,
-              right: stampRight * PX_PER_MM,
-              bottom: stampBottom * PX_PER_MM,
+              ...stampPos,
             }}
           />
         ) : null}
@@ -133,8 +141,7 @@ export default function StampSignaturePlacementPreview({
             style={{
               width: sigW * PX_PER_MM,
               height: sigH * PX_PER_MM,
-              right: sigRight * PX_PER_MM,
-              bottom: sigBottom * PX_PER_MM,
+              ...sigPos,
             }}
           />
         ) : null}
