@@ -2623,17 +2623,20 @@ if (hasLogo)
                                 var i = 1;
                                 foreach (var item in quotation.Items.OrderBy(x => x.SortOrder))
                                 {
+                                    var desc = (item.Description ?? "").Trim();
+                                    if (!string.IsNullOrEmpty(desc))
+                                        desc = desc.ToUpperInvariant();
                                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3)
                                         .Text(i.ToString()).FontSize(8);
                                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).Column(c =>
                                     {
-                                        c.Item().Text(item.Description).Bold().FontSize(8);
+                                        c.Item().Text(desc).Bold().FontSize(8);
                                         if (!string.IsNullOrWhiteSpace(item.DescriptionSubtitle))
                                             c.Item().Text(item.DescriptionSubtitle).FontSize(7).FontColor(Colors.Grey.Darken1);
                                     });
                                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight().Column(c =>
                                     {
-                                        c.Item().AlignRight().Text($"{item.Qty:0.##}").FontSize(8);
+                                        c.Item().AlignRight().Text($"{item.Qty:0.##}").FontSize(8).Bold();
                                         c.Item().AlignRight().Text(item.UnitLabel ?? "Pcs").FontSize(7).FontColor(Colors.Grey.Darken1);
                                     });
                                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight()
@@ -2644,7 +2647,7 @@ if (hasLogo)
                                         c.Item().AlignRight().Text($"{item.VatRate:N2}%").FontSize(7).FontColor(Colors.Grey.Darken1);
                                     });
                                     table.Cell().BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).Padding(3).AlignRight()
-                                        .Text($"AED {item.LineTotal:N2}").FontSize(8);
+                                        .Text($"AED {item.LineTotal:N2}").FontSize(8).Bold();
                                     i++;
                                 }
                             });
@@ -2793,11 +2796,10 @@ if (hasLogo)
                                 {
                                     c.Item().Text("First Party:").Bold();
                                     c.Item().Text(agreement.FirstPartyName).FontSize(8);
-                                    // Stamp/sign drawn via foreground overlay; keep space so text doesn't collide
+                                    // Always show signature line (matches Second Party); stamp overlays nearby via Foreground
+                                    c.Item().PaddingTop(40).Text("________________________");
                                     if (settings != null && HasStampOrSignature(settings))
-                                        c.Item().PaddingTop(8).Height(56);
-                                    else
-                                        c.Item().PaddingTop(40).Text("________________________");
+                                        c.Item().Height(24);
                                 });
                                 row.RelativeItem().Column(c =>
                                 {

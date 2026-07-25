@@ -338,6 +338,31 @@ const DashboardTally = () => {
     }
 
     useEffect(() => {
+        // Period / branch change: always fetch immediately (bypass throttle) so chips feel live
+        lastFetchTimeRef.current = 0
+        const runImmediate = async () => {
+            if (isFetchingRef.current) {
+                // Queue one refresh after in-flight request
+                if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
+                fetchTimeoutRef.current = setTimeout(() => {
+                    lastFetchTimeRef.current = 0
+                    if (!isFetchingRef.current) {
+                        isFetchingRef.current = true
+                        fetchStats(true).finally(() => { isFetchingRef.current = false })
+                    }
+                }, 120)
+                return
+            }
+            isFetchingRef.current = true
+            lastFetchTimeRef.current = Date.now()
+            try {
+                await fetchStats(true)
+            } finally {
+                isFetchingRef.current = false
+            }
+        }
+        runImmediate()
+
         const fetchStatsThrottled = async () => {
             const now = Date.now()
             const timeSinceLastFetch = now - lastFetchTimeRef.current
@@ -355,7 +380,6 @@ const DashboardTally = () => {
                 isFetchingRef.current = false
             }
         }
-        fetchStatsThrottled()
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible' && !isFetchingRef.current) fetchStatsThrottled()
         }, 120000) // 2 minutes

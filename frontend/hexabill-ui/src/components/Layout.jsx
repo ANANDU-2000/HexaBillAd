@@ -270,8 +270,8 @@ const Layout = () => {
     location.pathname === '/reports' ||
     location.pathname === '/suppliers' ||
     location.pathname.startsWith('/suppliers/') ||
-    location.pathname.startsWith('/quotations/') ||
-    location.pathname.startsWith('/agreements/') ||
+    location.pathname.startsWith('/quotations') ||
+    location.pathname.startsWith('/agreements') ||
     location.pathname.startsWith('/delivery-notes')
 
   return (

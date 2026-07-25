@@ -25,6 +25,11 @@ export const quotationsAPI = {
     const response = await api.delete(`/quotations/${id}`)
     return response.data
   },
+  /** Alias — list pages call .delete */
+  delete: async (id) => {
+    const response = await api.delete(`/quotations/${id}`)
+    return response.data
+  },
   getPdf: async (id, format = 'A4') => {
     const response = await api.get(`/quotations/${id}/pdf`, {
       params: { format },
@@ -57,6 +62,11 @@ export const agreementsAPI = {
     return response.data
   },
   remove: async (id) => {
+    const response = await api.delete(`/agreements/${id}`)
+    return response.data
+  },
+  /** Alias — list pages call .delete */
+  delete: async (id) => {
     const response = await api.delete(`/agreements/${id}`)
     return response.data
   },

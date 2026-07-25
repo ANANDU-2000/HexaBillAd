@@ -29,7 +29,7 @@ WHERE NOT EXISTS (
   SELECT 1 FROM "Settings" WHERE "Key" = 'PRINT_MARGIN_BOTTOM_MM' AND ("OwnerId" = 6 OR "TenantId" = 6)
 );
 INSERT INTO "Settings" ("OwnerId", "TenantId", "Key", "Value", "CreatedAt", "UpdatedAt")
-SELECT 6, 6, 'STAMP_WIDTH_MM', '38', NOW(), NOW()
+SELECT 6, 6, 'STAMP_WIDTH_MM', '62', NOW(), NOW()
 WHERE NOT EXISTS (
   SELECT 1 FROM "Settings" WHERE "Key" = 'STAMP_WIDTH_MM' AND ("OwnerId" = 6 OR "TenantId" = 6)
 );
