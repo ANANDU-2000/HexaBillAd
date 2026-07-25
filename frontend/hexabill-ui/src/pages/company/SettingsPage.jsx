@@ -37,6 +37,7 @@ import { showToast } from '../../utils/toast'
 import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { useBranding } from '../../contexts/TenantBrandingContext'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import StampSignaturePlacementPreview from '../../components/StampSignaturePlacementPreview'
 
 const SettingsPage = () => {
   const { user } = useAuth()
@@ -494,6 +495,7 @@ const SettingsPage = () => {
         RETURN_POLICY_FOOTER: data.returnPolicyFooter ?? '',
         RETURN_BILL_TITLE: (data.returnBillTitle && data.returnBillTitle.trim() !== '') ? data.returnBillTitle.trim() : 'SALES RETURN NOTE',
         Feature_LetterheadOnlyPrint: data.letterheadOnlyPrint ? 'true' : 'false',
+        Feature_DocumentStampSignature: data.documentStampSignatureEnabled ? 'true' : 'false',
         PRINT_MARGIN_TOP_MM: String(data.printMarginTopMm ?? '52'),
         PRINT_MARGIN_BOTTOM_MM: String(data.printMarginBottomMm ?? '35'),
         STAMP_WIDTH_MM: String(data.stampWidthMm ?? '38'),
@@ -1074,7 +1076,8 @@ const SettingsPage = () => {
               </div>
               <p className="text-sm text-gray-500 mb-4">
                 Letterhead-only prints body content for pre-printed paper (no digital header/footer).
-                Stamp and signature align with the &quot;For company&quot; zone on A4/A5 invoices, delivery notes, quotations, and agreements.
+                Stamp and signature print on A4/A5 invoices, delivery notes, quotations, and agreements.
+                Thermal POS (80mm/58mm) receipts are not stamped.
               </p>
 
               <div className="space-y-4">
@@ -1082,69 +1085,95 @@ const SettingsPage = () => {
                   <input type="checkbox" className="rounded border-neutral-300" {...register('letterheadOnlyPrint')} />
                   Letterhead-only print (body only — hide digital header/footer)
                 </label>
+                <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
+                  <input type="checkbox" className="rounded border-neutral-300" {...register('documentStampSignatureEnabled')} />
+                  Enable stamp &amp; signature on A4/A5 PDF prints
+                </label>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
                   <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
                   <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />
                   <Input label="Signature width (mm)" type="number" step="1" {...register('signatureWidthMm')} />
-                  <Input label="Stamp offset right (mm)" type="number" step="1" {...register('stampOffsetRightMm')} />
-                  <Input label="Stamp offset bottom (mm)" type="number" step="1" {...register('stampOffsetBottomMm')} />
-                  <Input label="Sig offset right (mm)" type="number" step="1" {...register('signatureOffsetRightMm')} />
-                  <Input label="Sig offset bottom (mm)" type="number" step="1" {...register('signatureOffsetBottomMm')} />
+                  <Input label="Stamp offset right (mm)" type="number" step="0.1" {...register('stampOffsetRightMm')} />
+                  <Input label="Stamp offset bottom (mm)" type="number" step="0.1" {...register('stampOffsetBottomMm')} />
+                  <Input label="Sig offset right (mm)" type="number" step="0.1" {...register('signatureOffsetRightMm')} />
+                  <Input label="Sig offset bottom (mm)" type="number" step="0.1" {...register('signatureOffsetBottomMm')} />
                 </div>
-                <p className="text-xs text-neutral-500">Aligns with For ZAYOGA on pre-printed paper. Save settings after changing numbers.</p>
+                <p className="text-xs text-neutral-500">Drag on the preview below or edit mm fields. Save settings after placing stamp/sign.</p>
 
-                {(watch('documentStampSignatureEnabled') || settings.documentStampSignatureEnabled) ? (
-                  <div className="grid md:grid-cols-2 gap-6 pt-2 border-t border-neutral-100">
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-800 mb-2">Company stamp</p>
-                      {(stampPreview || settings.stampUrl) ? (
-                        <img
-                          src={resolveAssetSrc(settings.stampUrl, stampPreview)}
-                          alt="Stamp"
-                          className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
-                        />
-                      ) : (
-                        <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No stamp</div>
-                      )}
-                      <div className="flex gap-2">
-                        <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
-                          <Upload className="h-4 w-4 mr-1.5" />
-                          {uploadingStamp ? 'Uploading…' : 'Upload stamp'}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleStampUpload} disabled={uploadingStamp} />
-                        </label>
-                        {(stampPreview || settings.stampUrl) && (
-                          <button type="button" onClick={handleStampDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                {watch('documentStampSignatureEnabled') ? (
+                  <>
+                    <div className="grid md:grid-cols-2 gap-6 pt-2 border-t border-neutral-100">
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-800 mb-2">Company stamp</p>
+                        {(stampPreview || settings.stampUrl) ? (
+                          <img
+                            src={resolveAssetSrc(settings.stampUrl, stampPreview)}
+                            alt="Stamp"
+                            className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
+                          />
+                        ) : (
+                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No stamp</div>
                         )}
+                        <div className="flex gap-2">
+                          <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            {uploadingStamp ? 'Uploading…' : 'Upload stamp'}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleStampUpload} disabled={uploadingStamp} />
+                          </label>
+                          {(stampPreview || settings.stampUrl) && (
+                            <button type="button" onClick={handleStampDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-800 mb-2">Authorized signature</p>
+                        {(signaturePreview || settings.signatureUrl) ? (
+                          <img
+                            src={resolveAssetSrc(settings.signatureUrl, signaturePreview)}
+                            alt="Signature"
+                            className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
+                          />
+                        ) : (
+                          <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No signature</div>
+                        )}
+                        <div className="flex gap-2">
+                          <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
+                            <Upload className="h-4 w-4 mr-1.5" />
+                            {uploadingSignature ? 'Uploading…' : 'Upload signature'}
+                            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
+                          </label>
+                          {(signaturePreview || settings.signatureUrl) && (
+                            <button type="button" onClick={handleSignatureDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-800 mb-2">Authorized signature</p>
-                      {(signaturePreview || settings.signatureUrl) ? (
-                        <img
-                          src={resolveAssetSrc(settings.signatureUrl, signaturePreview)}
-                          alt="Signature"
-                          className="h-24 object-contain border border-neutral-200 rounded mb-2 bg-white"
-                        />
-                      ) : (
-                        <div className="h-24 border-2 border-dashed border-neutral-300 rounded mb-2 flex items-center justify-center text-xs text-neutral-400">No signature</div>
-                      )}
-                      <div className="flex gap-2">
-                        <label className="inline-flex items-center px-3 py-1.5 text-sm border border-neutral-300 rounded-md bg-white hover:bg-neutral-50 cursor-pointer">
-                          <Upload className="h-4 w-4 mr-1.5" />
-                          {uploadingSignature ? 'Uploading…' : 'Upload signature'}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
-                        </label>
-                        {(signaturePreview || settings.signatureUrl) && (
-                          <button type="button" onClick={handleSignatureDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
-                        )}
-                      </div>
+
+                    <div className="pt-4 border-t border-neutral-100 overflow-x-auto">
+                      <p className="text-sm font-semibold text-neutral-800 mb-2">Placement preview (A4)</p>
+                      <StampSignaturePlacementPreview
+                        stampSrc={resolveAssetSrc(settings.stampUrl, stampPreview)}
+                        signatureSrc={resolveAssetSrc(settings.signatureUrl, signaturePreview)}
+                        stampWidthMm={watch('stampWidthMm')}
+                        signatureWidthMm={watch('signatureWidthMm')}
+                        stampOffsetRightMm={watch('stampOffsetRightMm')}
+                        stampOffsetBottomMm={watch('stampOffsetBottomMm')}
+                        signatureOffsetRightMm={watch('signatureOffsetRightMm')}
+                        signatureOffsetBottomMm={watch('signatureOffsetBottomMm')}
+                        onChangeOffsets={(patch) => {
+                          Object.entries(patch).forEach(([key, value]) => {
+                            setValue(key, value, { shouldDirty: true })
+                          })
+                          setHasUnsavedChanges(true)
+                        }}
+                      />
                     </div>
-                  </div>
+                  </>
                 ) : (
                   <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
-                    Stamp/signature upload is disabled for this company (feature flag off). Contact support to enable.
+                    Enable stamp &amp; signature above, then upload images and drag them into place. Save when done.
                   </p>
                 )}
               </div>

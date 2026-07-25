@@ -695,18 +695,21 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
-        /// <summary>A5 (148x210mm) compact invoice - fixed table structure, no overflow, minimal white space.</summary>
+        /// <summary>A5 (148x210mm) compact invoice - letterhead-only + stamp/sign when enabled.</summary>
         private byte[] GenerateInvoicePdfA5(SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay)
         {
             var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
+            var letterheadOnly = settings.LetterheadOnlyPrint;
             var document = Document.Create(container =>
             {
                 container.Page(page =>
                 {
                     page.Size(148, 210, Unit.Millimetre);
-                    page.Margin(4, Unit.Millimetre);
+                    ApplyDocumentPageMargins(page, settings, 4f);
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(8f).FontFamily(_arabicFont));
+
+                    RenderStampSignatureFooter(page, settings);
 
                     page.Content().Column(column =>
                     {
@@ -714,15 +717,21 @@ namespace HexaBill.Api.Modules.Billing
                         column.Item().PaddingVertical(2).Column(inner =>
                         {
                             inner.Spacing(0);
-                            // Header
-                            inner.Item().AlignCenter().Column(c =>
+                            if (!letterheadOnly)
                             {
-                                c.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(11).Bold().AlignCenter();
-                                if (!string.IsNullOrEmpty(settings.CompanyNameAr))
-                                    c.Item().Text(settings.CompanyNameAr).FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
-                                c.Item().Text($"TRN: {settings.CompanyTrn}").FontSize(7);
-                                c.Item().Text($"Mob: {settings.CompanyPhone} | {settings.CompanyAddress}").FontSize(6);
-                            });
+                                inner.Item().AlignCenter().Column(c =>
+                                {
+                                    c.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(11).Bold().AlignCenter();
+                                    if (!string.IsNullOrEmpty(settings.CompanyNameAr))
+                                        c.Item().Text(settings.CompanyNameAr).FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
+                                    c.Item().Text($"TRN: {settings.CompanyTrn}").FontSize(7);
+                                    c.Item().Text($"Mob: {settings.CompanyPhone} | {settings.CompanyAddress}").FontSize(6);
+                                });
+                            }
+                            else
+                            {
+                                inner.Item().AlignRight().Text($"Date: {invoiceDateStr}").FontSize(7);
+                            }
                             inner.Item().PaddingVertical(1).BorderTop(0.5f).BorderBottom(0.5f)
                                 .Text("TAX INVOICE").FontSize(9).Bold().AlignCenter();
                             inner.Item().PaddingTop(1).Row(r =>
@@ -775,7 +784,10 @@ namespace HexaBill.Api.Modules.Billing
                                 table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(7).Bold();
                                 table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
                             });
-                            inner.Item().PaddingTop(2).AlignCenter().Text("Thank you").FontSize(6);
+                            if (!letterheadOnly)
+                                inner.Item().PaddingTop(2).AlignCenter().Text("Thank you").FontSize(6);
+                            else if (HasStampOrSignature(settings))
+                                inner.Item().Height(28);
                         });
                     });
                 });
@@ -1380,6 +1392,16 @@ if (hasLogo)
             {
                 dto.StampImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.StampStorageKey, "STAMP_BASE64_DATA_URI");
                 dto.SignatureImageBytes = await TryLoadAssetBytesAsync(tenantId, companySettings.SignatureStorageKey, "SIGNATURE_BASE64_DATA_URI");
+                var hasStamp = dto.StampImageBytes != null && dto.StampImageBytes.Length > 0;
+                var hasSig = dto.SignatureImageBytes != null && dto.SignatureImageBytes.Length > 0;
+                if (!hasStamp && !hasSig)
+                {
+                    _logger.LogWarning(
+                        "PDF stamp/signature enabled for tenant {TenantId} but no image bytes loaded (stampKey={StampKey}, sigKey={SigKey}). Upload assets in Settings.",
+                        tenantId,
+                        companySettings.StampStorageKey ?? "(none)",
+                        companySettings.SignatureStorageKey ?? "(none)");
+                }
             }
 
             return dto;
@@ -1418,9 +1440,21 @@ if (hasLogo)
         private static void ApplyDocumentPageMargins(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, float fallbackMm = 5f)
         {
             var top = settings.LetterheadOnlyPrint ? Math.Max(settings.PrintMarginTopMm, 5f) : fallbackMm;
+            float stampClearance = 0f;
+            if (HasStampOrSignature(settings))
+            {
+                var stampH = settings.StampImageBytes != null && settings.StampImageBytes.Length > 0
+                    ? Math.Max(settings.StampWidthMm, 8f) : 0f;
+                var sigH = settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0
+                    ? Math.Max(settings.SignatureWidthMm * 0.55f, 10f) : 0f;
+                stampClearance = Math.Max(
+                    stampH + Math.Max(0f, settings.StampOffsetBottomMm),
+                    sigH + Math.Max(0f, settings.SignatureOffsetBottomMm)) + 4f;
+                stampClearance = Math.Max(stampClearance, 28f);
+            }
             var bottom = settings.LetterheadOnlyPrint
-                ? Math.Max(settings.PrintMarginBottomMm, HasStampOrSignature(settings) ? 28f : 5f)
-                : (HasStampOrSignature(settings) ? Math.Max(fallbackMm, 22f) : fallbackMm);
+                ? Math.Max(settings.PrintMarginBottomMm, stampClearance > 0 ? stampClearance : 5f)
+                : (stampClearance > 0 ? Math.Max(fallbackMm, stampClearance) : fallbackMm);
             page.MarginTop(top, Unit.Millimetre);
             page.MarginBottom(bottom, Unit.Millimetre);
             page.MarginLeft(fallbackMm, Unit.Millimetre);
@@ -1432,33 +1466,46 @@ if (hasLogo)
             ((settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
              || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
 
-        /// <summary>Bottom-right stamp + signature overlay for A4/A5 documents.</summary>
+        /// <summary>
+        /// Full-page foreground overlay: stamp + signature at bottom-right with independent mm offsets.
+        /// Offsets are distance from the right / bottom page edges; layers can overlap (signature drawn on top).
+        /// Uses Foreground (not Footer) so document footers never conflict.
+        /// </summary>
         private static void RenderStampSignatureFooter(PageDescriptor page, InvoiceTemplateService.CompanySettings settings)
         {
             if (!HasStampOrSignature(settings)) return;
 
-            page.Footer().AlignRight().Height(Math.Max(settings.PrintMarginBottomMm - 4f, 24f), Unit.Millimetre).Row(row =>
+            page.Foreground().Layers(layers =>
             {
-                row.RelativeItem();
+                layers.PrimaryLayer();
+
                 if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
                 {
-                    row.ConstantItem(settings.StampWidthMm, Unit.Millimetre)
-                        .PaddingRight(Math.Max(0, settings.StampOffsetRightMm - settings.SignatureWidthMm - 4f), Unit.Millimetre)
-                        .PaddingBottom(Math.Max(0, settings.StampOffsetBottomMm - 8f), Unit.Millimetre)
+                    var stampW = Math.Max(settings.StampWidthMm, 8f);
+                    layers.Layer()
                         .AlignBottom()
-                        .Width(settings.StampWidthMm, Unit.Millimetre)
-                        .Height(settings.StampWidthMm, Unit.Millimetre)
-                        .Image(settings.StampImageBytes).FitArea();
+                        .AlignRight()
+                        .PaddingRight(Math.Max(0f, settings.StampOffsetRightMm), Unit.Millimetre)
+                        .PaddingBottom(Math.Max(0f, settings.StampOffsetBottomMm), Unit.Millimetre)
+                        .Width(stampW, Unit.Millimetre)
+                        .Height(stampW, Unit.Millimetre)
+                        .Image(settings.StampImageBytes)
+                        .FitArea();
                 }
+
                 if (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0)
                 {
-                    row.ConstantItem(settings.SignatureWidthMm, Unit.Millimetre)
-                        .PaddingRight(Math.Max(0, settings.SignatureOffsetRightMm - 4f), Unit.Millimetre)
-                        .PaddingBottom(Math.Max(0, settings.SignatureOffsetBottomMm - 8f), Unit.Millimetre)
+                    var sigW = Math.Max(settings.SignatureWidthMm, 8f);
+                    var sigH = Math.Max(sigW * 0.55f, 10f);
+                    layers.Layer()
                         .AlignBottom()
-                        .Width(settings.SignatureWidthMm, Unit.Millimetre)
-                        .Height(settings.SignatureWidthMm * 0.55f, Unit.Millimetre)
-                        .Image(settings.SignatureImageBytes).FitArea();
+                        .AlignRight()
+                        .PaddingRight(Math.Max(0f, settings.SignatureOffsetRightMm), Unit.Millimetre)
+                        .PaddingBottom(Math.Max(0f, settings.SignatureOffsetBottomMm), Unit.Millimetre)
+                        .Width(sigW, Unit.Millimetre)
+                        .Height(sigH, Unit.Millimetre)
+                        .Image(settings.SignatureImageBytes)
+                        .FitArea();
                 }
             });
         }
@@ -2641,8 +2688,6 @@ if (hasLogo)
                             });
                         });
 
-                        if (!HasStampOrSignature(settings))
-                        {
                         page.Footer().AlignRight().Text(x =>
                         {
                             x.Span("Page ");
@@ -2650,7 +2695,6 @@ if (hasLogo)
                             x.Span(" of ");
                             x.TotalPages();
                         });
-                        }
                     });
                 });
                 return await Task.FromResult(document.GeneratePdf());
@@ -2747,7 +2791,11 @@ if (hasLogo)
                                 {
                                     c.Item().Text("First Party:").Bold();
                                     c.Item().Text(agreement.FirstPartyName).FontSize(8);
-                                    c.Item().PaddingTop(40).Text("________________________");
+                                    // Stamp/sign drawn via foreground overlay; keep space so text doesn't collide
+                                    if (settings != null && HasStampOrSignature(settings))
+                                        c.Item().PaddingTop(8).Height(56);
+                                    else
+                                        c.Item().PaddingTop(40).Text("________________________");
                                 });
                                 row.RelativeItem().Column(c =>
                                 {
