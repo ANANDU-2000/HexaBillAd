@@ -341,7 +341,7 @@ namespace HexaBill.Api.Modules.Billing
 
         [HttpGet("{id}/pdf")]
         [Authorize(Roles = "Admin,Owner,Staff")]  // CRITICAL: Require auth - unauthenticated users must not download invoices
-        public async Task<ActionResult> GetInvoicePdf(int id, [FromQuery] string? format = "A4")
+        public async Task<ActionResult> GetInvoicePdf(int id, [FromQuery] string? format = "A4", [FromQuery] string? layout = null)
         {
             try
             {
@@ -351,7 +351,13 @@ namespace HexaBill.Api.Modules.Billing
                 if (!new[] { "A4", "A5", "80mm", "58mm" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
                     formatNormalized = "A4";
 
-                _logger.LogWarning($"\n📄 PDF Request: Getting invoice {id}, format={formatNormalized}");
+                // layout=body → print on pre-printed letterhead (when Feature_LetterheadOnlyPrint ON)
+                // layout=full → digital download/share with header+footer
+                var layoutNormalized = string.IsNullOrWhiteSpace(layout) ? null : layout.Trim().ToLowerInvariant();
+                if (layoutNormalized != null && layoutNormalized != "body" && layoutNormalized != "full")
+                    layoutNormalized = null;
+
+                _logger.LogWarning($"\n📄 PDF Request: Getting invoice {id}, format={formatNormalized}, layout={layoutNormalized ?? "(default)"}");
                 
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
                 // Validate sale exists first
@@ -366,8 +372,8 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
 
-                _logger.LogWarning($"✅ PDF Request: Invoice {id} found, generating PDF ({formatNormalized})...");
-                var pdfBytes = await _saleService.GenerateInvoicePdfAsync(id, tenantId, formatNormalized);
+                _logger.LogWarning($"✅ PDF Request: Invoice {id} found, generating PDF ({formatNormalized}, layout={layoutNormalized ?? "default"})...");
+                var pdfBytes = await _saleService.GenerateInvoicePdfAsync(id, tenantId, formatNormalized, layoutNormalized);
                 
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
@@ -824,7 +830,7 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
 
-                var pdfBytes = await _saleService.GenerateInvoicePdfAsync(id, tenantId);
+                var pdfBytes = await _saleService.GenerateInvoicePdfAsync(id, tenantId, "A4", "full");
                 var subject = $"Invoice {sale.InvoiceNo} - HexaBill";
                 var body = $@"<html><body>
 <p>Dear Customer,</p>

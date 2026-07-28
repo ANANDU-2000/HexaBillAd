@@ -442,7 +442,7 @@ const PaymentsPage = () => {
       // IMPROVEMENT: One-click receipt download from payments list
       if (payment.saleId) {
         // If payment has an invoice, download invoice PDF
-        const response = await salesAPI.getInvoicePdf(payment.saleId)
+        const response = await salesAPI.getInvoicePdf(payment.saleId, { layout: 'full' })
         const blob = response instanceof Blob ? response : new Blob([response], { type: 'application/pdf' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')

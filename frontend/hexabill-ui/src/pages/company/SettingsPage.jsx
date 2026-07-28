@@ -1084,9 +1084,14 @@ const SettingsPage = () => {
               </p>
 
               <div className="space-y-4">
-                <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
-                  <input type="checkbox" className="rounded border-neutral-300" {...register('letterheadOnlyPrint')} />
-                  Letterhead-only print (body only — hide digital header/footer)
+                <label className="flex items-start gap-2 text-sm font-medium text-neutral-800">
+                  <input type="checkbox" className="rounded border-neutral-300 mt-0.5" {...register('letterheadOnlyPrint')} />
+                  <span>
+                    Pre-printed letterhead paper
+                    <span className="block text-xs font-normal text-neutral-500 mt-0.5">
+                      Print = body only (no digital header/footer). Download &amp; Share = full header + footer + body.
+                    </span>
+                  </span>
                 </label>
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
                   <input type="checkbox" className="rounded border-neutral-300" {...register('documentStampSignatureEnabled')} />

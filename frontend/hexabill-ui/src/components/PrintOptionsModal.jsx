@@ -36,7 +36,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     printHandledRef.current = false
     setPrinting(true)
     try {
-      const pdfOptions = { format }
+      const pdfOptions = { format, layout: 'body' }
       const blob = await salesAPI.getInvoicePdf(saleId, pdfOptions)
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         printWindow.close()

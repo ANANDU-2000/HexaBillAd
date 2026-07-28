@@ -220,6 +220,8 @@ export const salesAPI = {
       const params = {}
       if (options.format) params.format = options.format
       if (options.width) params.width = options.width
+      // layout=body → print on pre-printed letterhead; layout=full → download/share with header+footer
+      if (options.layout === 'body' || options.layout === 'full') params.layout = options.layout
       const response = await api.get(`/sales/${id}/pdf`, {
         responseType: 'blob',
         timeout: 120000,

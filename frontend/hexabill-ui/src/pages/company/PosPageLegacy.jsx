@@ -980,7 +980,7 @@ const PosPage = () => {
 
   const handleDownloadPdf = async (saleId, invoiceNo) => {
     try {
-      const response = await salesAPI.getInvoicePdf(saleId)
+      const response = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
       const blob = response instanceof Blob ? response : new Blob([response], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -1006,7 +1006,7 @@ const PosPage = () => {
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
-      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format })
+      const blob = await salesAPI.getInvoicePdf(lastCreatedInvoice.id, { format, layout: 'body' })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       const printWindow = window.open(blobUrl, '_blank', 'noopener,noreferrer')
       if (printWindow) {
@@ -1067,7 +1067,7 @@ const PosPage = () => {
       // Get the PDF blob - ensure it's a proper PDF file, not a link
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId)
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'body' })
       } catch (apiError) {
         console.error('PDF API Error:', apiError)
         toast.dismiss('print-toast')
@@ -1262,7 +1262,7 @@ const PosPage = () => {
 
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId)
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
       } catch (apiError) {
         console.error('PDF API Error:', apiError)
         toast.dismiss('whatsapp-share')

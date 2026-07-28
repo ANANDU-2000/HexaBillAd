@@ -2561,7 +2561,7 @@ const CustomerLedgerPage = () => {
                       }}
                       onViewPDF={async (invoiceId) => {
                         try {
-                          const pdfBlob = await salesAPI.getInvoicePdf(invoiceId)
+                          const pdfBlob = await salesAPI.getInvoicePdf(invoiceId, { layout: 'full' })
                           const url = window.URL.createObjectURL(pdfBlob)
                           window.open(url, '_blank')
                           setTimeout(() => window.URL.revokeObjectURL(url), 100)
@@ -2817,7 +2817,7 @@ const CustomerLedgerPage = () => {
           }}
           onPrint={async () => {
             try {
-              const pdfBlob = await salesAPI.getInvoicePdf(selectedInvoiceForView)
+              const pdfBlob = await salesAPI.getInvoicePdf(selectedInvoiceForView, { layout: 'body' })
               const url = window.URL.createObjectURL(pdfBlob)
               const printWindow = window.open(url, '_blank')
               if (printWindow) {

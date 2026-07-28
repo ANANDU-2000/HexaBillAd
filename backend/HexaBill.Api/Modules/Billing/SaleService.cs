@@ -30,7 +30,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<SaleDto> UpdateSaleAsync(int saleId, CreateSaleRequest request, int userId, int tenantId, string? editReason = null, byte[]? expectedRowVersion = null);
         Task<bool> DeleteSaleAsync(int saleId, int userId, int tenantId);
         Task<string> GenerateInvoiceNumberAsync(int tenantId);
-        Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4");
+        Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4", string? layout = null);
         Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4");
         Task<bool> CanEditInvoiceAsync(int saleId, int userId, string userRole, int tenantId);
         Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId);
@@ -2515,7 +2515,7 @@ namespace HexaBill.Api.Modules.Billing
             });
         }
 
-        public async Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4")
+        public async Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4", string? layout = null)
         {
             var formatNormalized = string.IsNullOrWhiteSpace(format) ? "A4" : format.Trim();
             if (!new[] { "A4", "A5", "80mm", "58mm" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
@@ -2523,7 +2523,7 @@ namespace HexaBill.Api.Modules.Billing
 
             try
             {
-                _logger.LogInformation("PDF generation starting for sale {SaleId} tenant {TenantId} format {Format}", saleId, tenantId, formatNormalized);
+                _logger.LogInformation("PDF generation starting for sale {SaleId} tenant {TenantId} format {Format} layout {Layout}", saleId, tenantId, formatNormalized, layout ?? "(default)");
                 
                 // CRITICAL: Build query - super admin (tenantId=0) can access any sale
                 IQueryable<Sale> query = _context.Sales.Where(s => s.Id == saleId);
@@ -2576,8 +2576,8 @@ namespace HexaBill.Api.Modules.Billing
                     }).ToList() ?? new List<SaleItemDto>()
                 };
 
-                _logger.LogInformation("PDF generation: calling PdfService format {Format}", formatNormalized);
-                var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(saleDto, formatNormalized);
+                _logger.LogInformation("PDF generation: calling PdfService format {Format} layout {Layout}", formatNormalized, layout ?? "(default)");
+                var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(saleDto, formatNormalized, layout);
                 
                 _logger.LogInformation("PDF generation succeeded for sale {SaleId} size {Bytes} bytes", saleId, pdfBytes?.Length ?? 0);
                 return pdfBytes ?? Array.Empty<byte>();

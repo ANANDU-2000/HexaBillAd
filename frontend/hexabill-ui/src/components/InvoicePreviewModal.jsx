@@ -57,7 +57,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
       setLoading(true)
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId)
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
       } catch (apiError) {
         console.error('API Error:', apiError)
         if (!apiError?._handledByInterceptor) toast.error(apiError.message || 'Failed to generate PDF')
@@ -122,7 +122,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
       // Generate PDF blob first - ensure it's a PDF file, not a link
       let pdfBlob
       try {
-        pdfBlob = await salesAPI.getInvoicePdf(saleId)
+        pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
       } catch (apiError) {
         console.error('PDF API Error:', apiError)
         if (!apiError?._handledByInterceptor) toast.error(apiError.message || 'Failed to generate PDF')
@@ -208,7 +208,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
           // Fallback: Download PDF and use mailto link
           let pdfBlob
           try {
-            pdfBlob = await salesAPI.getInvoicePdf(saleId)
+            pdfBlob = await salesAPI.getInvoicePdf(saleId, { layout: 'full' })
           } catch (apiError) {
             console.error('API Error:', apiError)
             if (!apiError?._handledByInterceptor) toast.error(apiError.message || 'Failed to generate PDF')

@@ -65,7 +65,7 @@ namespace HexaBill.Api.Modules.Billing
             #endif
         }
 
-        public async Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4")
+        public async Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4", string? layout = null)
         {
             var formatNormalized = (format ?? "A4").Trim();
             if (string.IsNullOrEmpty(formatNormalized) || !new[] { "A4", "A5", "80mm", "58mm" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
@@ -73,7 +73,7 @@ namespace HexaBill.Api.Modules.Billing
 
             try
             {
-                _logger.LogDebug("Generating PDF for sale {SaleId}, Invoice {InvoiceNo}, format {Format}, Items count: {Count}", sale.Id, sale.InvoiceNo, formatNormalized, sale.Items?.Count ?? 0);
+                _logger.LogDebug("Generating PDF for sale {SaleId}, Invoice {InvoiceNo}, format {Format}, layout {Layout}, Items count: {Count}", sale.Id, sale.InvoiceNo, formatNormalized, layout ?? "(default)", sale.Items?.Count ?? 0);
                 
                 if (sale.Items == null || !sale.Items.Any())
                 {
@@ -81,10 +81,11 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 
                 var settings = await GetCompanySettingsAsync(sale.OwnerId); // Use OwnerId from SaleDto
+                ApplyInvoiceLayoutOverride(settings, layout);
                 
                 // CRITICAL: Get customer's pending balance for invoice footer acknowledgment (A4 only)
                 var customerPendingInfo = await GetCustomerPendingBalanceInfoAsync(sale.CustomerId, sale.OwnerId);
-                _logger.LogDebug("Company: {CompanyName}", settings.CompanyNameEn);
+                _logger.LogDebug("Company: {CompanyName}, LetterheadOnly={LetterheadOnly}", settings.CompanyNameEn, settings.LetterheadOnlyPrint);
                 
                 var customerTrn = await GetCustomerTrnAsync(sale.CustomerId, sale.OwnerId);
                 var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
@@ -1438,6 +1439,24 @@ if (hasLogo)
                 _logger.LogWarning(ex, "PDF asset base64 fallback failed for tenant {TenantId}, key={Key}", tenantId, base64SettingKey);
             }
             return null;
+        }
+
+        /// <summary>
+        /// Zayoga / pre-printed letterhead: Feature_LetterheadOnlyPrint ON + layout=body → body only (print).
+        /// layout=full or missing → full digital header/footer. Feature OFF → always full.
+        /// </summary>
+        private static void ApplyInvoiceLayoutOverride(InvoiceTemplateService.CompanySettings settings, string? layout)
+        {
+            var featureOn = settings.LetterheadOnlyPrint;
+            var layoutNorm = (layout ?? string.Empty).Trim().ToLowerInvariant();
+            var effectiveBodyOnly = featureOn && layoutNorm == "body";
+            settings.LetterheadOnlyPrint = effectiveBodyOnly;
+            if (!effectiveBodyOnly)
+            {
+                // Digital / full branding: normal tight margins (not letterhead paper clearance)
+                settings.PrintMarginTopMm = 5f;
+                settings.PrintMarginBottomMm = 5f;
+            }
         }
 
         private static void ApplyDocumentPageMargins(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, float fallbackMm = 5f)

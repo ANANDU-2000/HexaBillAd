@@ -689,7 +689,7 @@ const SalesLedgerPage = () => {
           phone = cust?.phone ?? null
         } catch (_) { /* ignore */ }
       }
-      const blob = await salesAPI.getInvoicePdf(entry.saleId)
+      const blob = await salesAPI.getInvoicePdf(entry.saleId, { layout: 'full' })
       if (blob) {
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
