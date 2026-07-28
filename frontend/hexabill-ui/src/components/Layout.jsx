@@ -36,7 +36,8 @@ import {
   Archive,
   History,
   ClipboardList,
-  MoreHorizontal
+  MoreHorizontal,
+  BadgeDollarSign
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import Logo from './Logo'
@@ -218,6 +219,7 @@ const Layout = () => {
       ] : []),
     { name: 'Quotations', href: '/quotations', icon: FileText },
     { name: 'Agreements', href: '/agreements', icon: FileText },
+    { name: 'Salary Certificates', href: '/salary-certificates', icon: BadgeDollarSign },
     { name: 'Delivery Notes', href: '/delivery-notes', icon: Package },
     { name: 'Expenses', href: '/expenses', icon: Receipt },
     ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
@@ -240,6 +242,7 @@ const Layout = () => {
     if (href === '/suppliers' && location.pathname.startsWith('/suppliers/')) return true
     if (href === '/quotations' && location.pathname.startsWith('/quotations')) return true
     if (href === '/agreements' && location.pathname.startsWith('/agreements')) return true
+    if (href === '/salary-certificates' && location.pathname.startsWith('/salary-certificates')) return true
     if (href === '/delivery-notes' && location.pathname.startsWith('/delivery-notes')) return true
     if (href === '/more' && location.pathname === '/more') return true
     return false
@@ -272,6 +275,7 @@ const Layout = () => {
     location.pathname.startsWith('/suppliers/') ||
     location.pathname.startsWith('/quotations') ||
     location.pathname.startsWith('/agreements') ||
+    location.pathname.startsWith('/salary-certificates') ||
     location.pathname.startsWith('/delivery-notes')
 
   return (

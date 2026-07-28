@@ -82,6 +82,7 @@ namespace HexaBill.Api.Data
         public DbSet<Quotation> Quotations { get; set; }
         public DbSet<QuotationItem> QuotationItems { get; set; }
         public DbSet<Agreement> Agreements { get; set; }
+        public DbSet<SalaryCertificate> SalaryCertificates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -923,6 +924,20 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.TemplateVersion).HasMaxLength(20);
                 entity.Property(e => e.IsDeleted).HasDefaultValue(false);
                 entity.HasIndex(e => new { e.TenantId, e.AgreementNo })
+                    .IsUnique()
+                    .HasFilter("\"IsDeleted\" = false");
+                entity.HasIndex(e => e.TenantId);
+            });
+
+            // Salary Certificates (additive Documents module — Zayoga)
+            modelBuilder.Entity<SalaryCertificate>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CertificateNo).IsRequired().HasMaxLength(50);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.MonthlySalary).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.IsDeleted).HasDefaultValue(false);
+                entity.HasIndex(e => new { e.TenantId, e.CertificateNo })
                     .IsUnique()
                     .HasFilter("\"IsDeleted\" = false");
                 entity.HasIndex(e => e.TenantId);

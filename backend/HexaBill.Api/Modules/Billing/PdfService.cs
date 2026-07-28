@@ -2845,6 +2845,134 @@ if (hasLogo)
             }
         }
 
+        public async Task<byte[]> GenerateSalaryCertificatePdfAsync(SalaryCertificateDto certificate, int tenantId, string format = "A4")
+        {
+            var fmt = NormalizePageFormat(format);
+            InvoiceTemplateService.CompanySettings? settings = null;
+            try { settings = await GetCompanySettingsAsync(tenantId); } catch { /* logo optional */ }
+            try
+            {
+                var blank = "________________";
+                string Blank(string? v) => string.IsNullOrWhiteSpace(v) ? blank : v.Trim();
+                var employeeName = Blank(certificate.EmployeeName);
+                var nationality = Blank(certificate.EmployeeNationality);
+                var passport = Blank(certificate.PassportNumber);
+                var joining = certificate.JoiningDate.HasValue
+                    ? certificate.JoiningDate.Value.ToString("dd-MM-yyyy")
+                    : blank;
+                var designation = Blank(certificate.Designation);
+                var salaryNum = certificate.MonthlySalary.HasValue
+                    ? certificate.MonthlySalary.Value.ToString("0")
+                    : blank;
+                var salaryWords = Blank(certificate.MonthlySalaryWords);
+                var recipient = Blank(certificate.Recipient);
+                var body = string.IsNullOrWhiteSpace(certificate.BodyText)
+                    ? $"This is to certify that {employeeName} {nationality} nationality holding passport number {passport} " +
+                      $"is working with us since {joining} as {designation} And drawing a monthly salary " +
+                      $"{salaryNum}{{{salaryWords}}} inclusive of all allowances. Please note that this letter is only " +
+                      "issued upon the request of the above-mentioned employee and does not in no way and under no " +
+                      "circumstances constitute any financial responsibility guarantee and/or liability towards the " +
+                      "payment of any loan amount(S) to you from our part."
+                    : certificate.BodyText;
+                var companyName = string.IsNullOrWhiteSpace(certificate.CompanyName)
+                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.CompanyName
+                    : certificate.CompanyName;
+                var signatoryName = string.IsNullOrWhiteSpace(certificate.SignatoryName)
+                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryName
+                    : certificate.SignatoryName;
+                var signatoryTitle = string.IsNullOrWhiteSpace(certificate.SignatoryTitle)
+                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.DefaultSignatoryTitle
+                    : certificate.SignatoryTitle;
+                var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                var letterheadOnly = settings?.LetterheadOnlyPrint == true;
+                var subject = string.IsNullOrWhiteSpace(certificate.SubjectLine)
+                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.SubjectLine
+                    : certificate.SubjectLine;
+
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
+                        if (letterheadOnly && settings != null)
+                            ApplyDocumentPageMargins(page, settings, 5f);
+                        else
+                            page.Margin(fmt == "A5" ? 28 : 40);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 9 : 10));
+
+                        if (settings != null)
+                            RenderStampSignatureFooter(page, settings);
+
+                        page.Header().Column(col =>
+                        {
+                            if (!letterheadOnly)
+                            {
+                                col.Item().Row(row =>
+                                {
+                                    if (hasLogo)
+                                        row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
+                                    else
+                                        row.ConstantItem(8);
+                                    row.RelativeItem().AlignMiddle().Column(c =>
+                                    {
+                                        c.Item().Text(companyName.ToUpperInvariant()).Bold()
+                                            .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 9 : 11);
+                                    });
+                                    row.ConstantItem(120).AlignRight().Column(c =>
+                                    {
+                                        c.Item().Text(certificate.CompanyPhone ?? "").FontSize(7);
+                                        c.Item().Text(certificate.CompanyEmail ?? "").FontSize(7);
+                                        c.Item().Text(certificate.CompanyWebsite ?? "").FontSize(7);
+                                    });
+                                });
+                                col.Item().PaddingTop(6).LineHorizontal(1f).LineColor(Color.FromHex("#E67E22"));
+                            }
+                        });
+
+                        page.Content().PaddingTop(letterheadOnly ? 8 : 18).Column(col =>
+                        {
+                            col.Item().AlignCenter().Text(subject).Bold().FontSize(fmt == "A5" ? 11 : 12);
+                            col.Item().PaddingTop(16).Text($"DATE:{certificate.CertificateDate:dd/MM/yyyy}").FontSize(10);
+                            col.Item().PaddingTop(6).Text($"To; {recipient}").FontSize(10);
+                            col.Item().PaddingTop(14).Text("Dear Sir/Madam").FontSize(10);
+                            col.Item().PaddingTop(12).Text(body).FontSize(fmt == "A5" ? 8 : 9).LineHeight(1.35f);
+
+                            // Left-aligned stamp & sign block (matches sample)
+                            col.Item().PaddingTop(36).AlignLeft().Column(c =>
+                            {
+                                c.Item().Text("Yours faithfully").FontSize(10);
+                                c.Item().PaddingTop(28).Text(signatoryName).Bold().FontSize(10);
+                                c.Item().Text(signatoryTitle).FontSize(10);
+                                if (settings != null && HasStampOrSignature(settings))
+                                    c.Item().Height(28);
+                                else
+                                    c.Item().PaddingTop(8).Text("________________________").FontSize(9);
+                            });
+                        });
+
+                        if (!letterheadOnly)
+                        {
+                            page.Footer().Column(col =>
+                            {
+                                col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
+                                col.Item().PaddingTop(6).AlignCenter().Text(companyName).Bold().FontSize(7);
+                                var footerAddr = string.IsNullOrWhiteSpace(certificate.FooterAddress)
+                                    ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.FooterAddress
+                                    : certificate.FooterAddress;
+                                col.Item().AlignCenter().Text(footerAddr).FontSize(7);
+                            });
+                        }
+                    });
+                });
+                return await Task.FromResult(document.GeneratePdf());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating salary certificate PDF {No}", certificate.CertificateNo);
+                throw;
+            }
+        }
+
         private static string NormalizePageFormat(string? format)
         {
             var f = (format ?? "A4").Trim().ToUpperInvariant();

@@ -2211,4 +2211,4 @@ export const demoRequestAPI = {
   }
 }
 
-export { quotationsAPI, agreementsAPI } from './documentsApi'
+export { quotationsAPI, agreementsAPI, salaryCertificatesAPI } from './documentsApi'

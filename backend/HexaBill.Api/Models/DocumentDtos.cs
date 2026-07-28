@@ -140,4 +140,64 @@ namespace HexaBill.Api.Models
     }
 
     public class UpdateAgreementRequest : CreateAgreementRequest { }
+
+    public class SalaryCertificateDto
+    {
+        public int Id { get; set; }
+        public string CertificateNo { get; set; } = string.Empty;
+        public DateTime CertificateDate { get; set; }
+        public string? Recipient { get; set; }
+        public string? EmployeeName { get; set; }
+        public string? PassportNumber { get; set; }
+        public string? EmployeeNationality { get; set; }
+        public DateTime? JoiningDate { get; set; }
+        public string? Designation { get; set; }
+        public decimal? MonthlySalary { get; set; }
+        public string? MonthlySalaryWords { get; set; }
+        public string? EmployeePhone { get; set; }
+        public string SignatoryName { get; set; } = "Sudheesh Thampi";
+        public string SignatoryTitle { get; set; } = "Manager";
+        public string Status { get; set; } = "Draft";
+        public string? Notes { get; set; }
+        public DateTime CreatedAt { get; set; }
+
+        // Fixed company block for preview/PDF (Zayoga template)
+        public string CompanyName { get; set; } = string.Empty;
+        public string CompanyPhone { get; set; } = string.Empty;
+        public string CompanyEmail { get; set; } = string.Empty;
+        public string CompanyWebsite { get; set; } = string.Empty;
+        public string FooterAddress { get; set; } = string.Empty;
+        public string SubjectLine { get; set; } = "Sub: SALARY CERTIFICATE";
+        public string BodyText { get; set; } = string.Empty;
+    }
+
+    public class CreateSalaryCertificateRequest
+    {
+        public DateTime? CertificateDate { get; set; }
+        [MaxLength(200)]
+        public string? Recipient { get; set; }
+        [MaxLength(200)]
+        public string? EmployeeName { get; set; }
+        [MaxLength(50)]
+        public string? PassportNumber { get; set; }
+        [MaxLength(100)]
+        public string? EmployeeNationality { get; set; }
+        public DateTime? JoiningDate { get; set; }
+        [MaxLength(200)]
+        public string? Designation { get; set; }
+        public decimal? MonthlySalary { get; set; }
+        [MaxLength(200)]
+        public string? MonthlySalaryWords { get; set; }
+        [MaxLength(50)]
+        public string? EmployeePhone { get; set; }
+        [MaxLength(200)]
+        public string? SignatoryName { get; set; }
+        [MaxLength(100)]
+        public string? SignatoryTitle { get; set; }
+        [MaxLength(20)]
+        public string Status { get; set; } = "Draft";
+        public string? Notes { get; set; }
+    }
+
+    public class UpdateSalaryCertificateRequest : CreateSalaryCertificateRequest { }
 }

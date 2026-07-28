@@ -22,5 +22,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4");
         /// <summary>Business Development Agreement PDF (A4 or A5). tenantId used for optional Settings logo.</summary>
         Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, int tenantId, string format = "A4");
+        /// <summary>Salary Certificate PDF (A4 or A5). Body-only when letterhead print is enabled.</summary>
+        Task<byte[]> GenerateSalaryCertificatePdfAsync(SalaryCertificateDto certificate, int tenantId, string format = "A4");
     }
 }

@@ -317,6 +317,7 @@ builder.Services.AddScoped<IPdfService, PdfService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Documents.IQuoteNumberService, HexaBill.Api.Modules.Documents.QuoteNumberService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Documents.IQuotationService, HexaBill.Api.Modules.Documents.QuotationService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Documents.IAgreementService, HexaBill.Api.Modules.Documents.AgreementService>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Documents.ISalaryCertificateService, HexaBill.Api.Modules.Documents.SalaryCertificateService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<IComprehensiveBackupService, ComprehensiveBackupService>();
 builder.Services.AddScoped<ICurrencyService, CurrencyService>();

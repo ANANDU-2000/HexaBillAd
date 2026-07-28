@@ -47,6 +47,8 @@ import QuotationsPage from './pages/company/QuotationsPage'
 import QuotationEditorPage from './pages/company/QuotationEditorPage'
 import AgreementsPage from './pages/company/AgreementsPage'
 import AgreementEditorPage from './pages/company/AgreementEditorPage'
+import SalaryCertificatesPage from './pages/company/SalaryCertificatesPage'
+import SalaryCertificateEditorPage from './pages/company/SalaryCertificateEditorPage'
 import DeliveryNotesPage from './pages/company/DeliveryNotesPage'
 import DeliveryNoteViewPage from './pages/company/DeliveryNoteViewPage'
 import StockAdjustmentsHistoryPage from './pages/company/StockAdjustmentsHistoryPage'
@@ -226,6 +228,9 @@ function App() {
               <Route path="/agreements" element={<AgreementsPage />} />
               <Route path="/agreements/new" element={<AgreementEditorPage />} />
               <Route path="/agreements/:id" element={<AgreementEditorPage />} />
+              <Route path="/salary-certificates" element={<SalaryCertificatesPage />} />
+              <Route path="/salary-certificates/new" element={<SalaryCertificateEditorPage />} />
+              <Route path="/salary-certificates/:id" element={<SalaryCertificateEditorPage />} />
               <Route path="/delivery-notes" element={<DeliveryNotesPage />} />
               <Route path="/delivery-notes/:saleId" element={<DeliveryNoteViewPage />} />
               <Route path="/reports" element={<ReportsPage />} />
