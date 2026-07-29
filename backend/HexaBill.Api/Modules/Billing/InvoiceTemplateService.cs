@@ -387,6 +387,8 @@ namespace HexaBill.Api.Modules.Billing
             public string CompanyAddress { get; set; } = "";
             public string CompanyPhone { get; set; } = "";
             public string CompanyTrn { get; set; } = "";
+            public string CompanyEmail { get; set; } = "";
+            public string CompanyWebsite { get; set; } = "";
             public string Currency { get; set; } = "AED";
             public decimal VatPercent { get; set; } = 5.0m;
             public string InvoicePrefix { get; set; } = "INV";

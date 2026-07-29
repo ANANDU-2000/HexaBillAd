@@ -30,9 +30,9 @@ export const quotationsAPI = {
     const response = await api.delete(`/quotations/${id}`)
     return response.data
   },
-  getPdf: async (id, format = 'A4') => {
+  getPdf: async (id, format = 'A4', layout = 'full') => {
     const response = await api.get(`/quotations/${id}/pdf`, {
-      params: { format },
+      params: { format, layout },
       responseType: 'blob',
       _bypassCache: true,
     })

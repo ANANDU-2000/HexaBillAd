@@ -172,7 +172,7 @@ namespace HexaBill.Api.Modules.Documents
         }
 
         [HttpGet("{id:int}/pdf")]
-        public async Task<IActionResult> Pdf(int id, [FromQuery] string format = "A4")
+        public async Task<IActionResult> Pdf(int id, [FromQuery] string format = "A4", [FromQuery] string? layout = null)
         {
             try
             {
@@ -181,7 +181,9 @@ namespace HexaBill.Api.Modules.Documents
                 if (blocked != null) return blocked;
                 var quote = await _service.GetByIdAsync(id, tenantId);
                 if (quote == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Not found" });
-                var bytes = await _pdf.GenerateQuotationPdfAsync(quote, tenantId, format);
+                var layoutNorm = string.IsNullOrWhiteSpace(layout) ? "full" : layout.Trim().ToLowerInvariant();
+                if (layoutNorm != "body" && layoutNorm != "full") layoutNorm = "full";
+                var bytes = await _pdf.GenerateQuotationPdfAsync(quote, tenantId, format, layoutNorm);
                 var fmt = (format ?? "A4").Trim().ToUpperInvariant();
                 return File(bytes, "application/pdf", $"{quote.QuoteNo}_{fmt}.pdf");
             }

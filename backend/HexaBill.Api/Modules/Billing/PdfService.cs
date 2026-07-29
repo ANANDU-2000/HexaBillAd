@@ -168,7 +168,11 @@ namespace HexaBill.Api.Modules.Billing
                             .FontFamily(_arabicFont)
                         );
 
-                        RenderStampSignatureFooter(page, settings);
+                        var useOrangeLetterhead = !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
+                        RenderFullPageLetterheadChrome(page, settings);
+                        // Body print: overlay stamp on letterhead paper. Full Zayoga: stamp near sign-off (avoids blank page).
+                        if (!useOrangeLetterhead)
+                            RenderStampSignatureFooter(page, settings);
 
                         page.Content().Column(column =>
                         {
@@ -178,12 +182,11 @@ namespace HexaBill.Api.Modules.Billing
                             {
                                 innerColumn.Spacing(0);
 
-                                // Invoice header: one clear block — logo (left) | company name + address (center) | date (right)
-                                // Letterhead-only: skip digital branding (pre-printed paper supplies it).
-                                var hasLogo = !settings.LetterheadOnlyPrint && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                // Invoice header: orange letterhead is page chrome; generic tenants keep content branding.
+                                var hasLogo = !settings.LetterheadOnlyPrint && !useOrangeLetterhead && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
 
-                                if (!settings.LetterheadOnlyPrint)
+                                if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
                                 // Row 1: Logo | Company block (name EN, AR, address) | Date
                                 innerColumn.Item().Row(headerRow =>
@@ -293,10 +296,11 @@ namespace HexaBill.Api.Modules.Billing
                                     });
 
                                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
-                                    
-                                    // RESTORED: Full page table height - 15 rows to fill page properly
-                                    int minRowsForHeight = 15;
-                                    float rowHeight = 25f; // Original height for full page
+
+                                    // Light table fill only — the old 15×25 spacer forced short invoices onto a blank page 2
+                                    // (especially with orange letterhead header/footer and stamp clearance).
+                                    int minRowsForHeight = useOrangeLetterhead ? 5 : 7;
+                                    float rowHeight = 18f;
                                     float totalItemsHeight = itemCount * rowHeight;
                                     float minTableHeight = minRowsForHeight * rowHeight;
                                     
@@ -323,13 +327,12 @@ namespace HexaBill.Api.Modules.Billing
                                         }
                                     }
                                     
-                                    // Add spacer row to maintain table height if needed
+                                    // Add spacer row to maintain table height if needed (capped so it cannot force a second page)
                                     if (itemCount < minRowsForHeight)
                                     {
-                                        float spacerHeight = minTableHeight - totalItemsHeight - (3 * rowHeight); // 3 summary rows
+                                        float spacerHeight = Math.Min(90f, minTableHeight - totalItemsHeight - (3 * rowHeight));
                                         if (spacerHeight > 0)
                                         {
-                                            // Add spacer cells with vertical borders for each column (8 columns total)
                                             for (int col = 0; col < 8; col++)
                                             {
                                                 table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(spacerHeight).Text("");
@@ -402,10 +405,15 @@ namespace HexaBill.Api.Modules.Billing
                                         
                                         // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
                                         sigRow.RelativeItem().Column(rightCol => {
-                                            if (!settings.LetterheadOnlyPrint)
+                                            if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
                                                 rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
                                                 rightCol.Item().AlignRight().Text(new string('.', 35)).FontSize(8);
+                                            }
+                                            else if (useOrangeLetterhead)
+                                            {
+                                                rightCol.Item().AlignRight().Height(8);
+                                                RenderStampNearSignatory(rightCol, settings);
                                             }
                                             else
                                             {
@@ -560,18 +568,21 @@ namespace HexaBill.Api.Modules.Billing
                             page.DefaultTextStyle(x => x.FontSize(10f).FontFamily(_arabicFont));
                         }
                         page.PageColor(Colors.White);
-                        RenderStampSignatureFooter(page, settings);
+                        var useOrangeLetterhead = !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
+                        RenderFullPageLetterheadChrome(page, settings, compact: isA5);
+                        if (!useOrangeLetterhead)
+                            RenderStampSignatureFooter(page, settings);
 
                         page.Content().Column(column =>
                         {
                             column.Item().Padding(3).Column(innerColumn =>
                             {
-                                var hasLogo = !settings.LetterheadOnlyPrint && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                var hasLogo = !settings.LetterheadOnlyPrint && !useOrangeLetterhead && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
                                 var titleSize = isA5 ? 10f : 12f;
                                 var bodySize = isA5 ? 8f : 9f;
 
-                                if (!settings.LetterheadOnlyPrint)
+                                if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
                                 innerColumn.Item().Row(headerRow =>
                                 {
@@ -671,10 +682,15 @@ namespace HexaBill.Api.Modules.Billing
                                         });
                                         sigRow.RelativeItem().Column(rightCol =>
                                         {
-                                            if (!settings.LetterheadOnlyPrint)
+                                            if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
                                                 rightCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(bodySize);
                                                 rightCol.Item().AlignRight().Text(new string('.', 30)).FontSize(bodySize);
+                                            }
+                                            else if (useOrangeLetterhead)
+                                            {
+                                                rightCol.Item().AlignRight().Height(6);
+                                                RenderStampNearSignatory(rightCol, settings);
                                             }
                                             else
                                             {
@@ -702,6 +718,7 @@ namespace HexaBill.Api.Modules.Billing
         {
             var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
             var letterheadOnly = settings.LetterheadOnlyPrint;
+            var useOrangeLetterhead = !letterheadOnly && IsZayogaBrand(settings);
             var document = Document.Create(container =>
             {
                 container.Page(page =>
@@ -711,7 +728,9 @@ namespace HexaBill.Api.Modules.Billing
                     page.PageColor(Colors.White);
                     page.DefaultTextStyle(x => x.FontSize(8f).FontFamily(_arabicFont));
 
-                    RenderStampSignatureFooter(page, settings);
+                    RenderFullPageLetterheadChrome(page, settings, compact: true);
+                    if (!useOrangeLetterhead)
+                        RenderStampSignatureFooter(page, settings);
 
                     page.Content().Column(column =>
                     {
@@ -719,7 +738,7 @@ namespace HexaBill.Api.Modules.Billing
                         column.Item().PaddingVertical(2).Column(inner =>
                         {
                             inner.Spacing(0);
-                            if (!letterheadOnly)
+                            if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().AlignCenter().Column(c =>
                                 {
@@ -786,7 +805,9 @@ namespace HexaBill.Api.Modules.Billing
                                 table.Cell().ColumnSpan(4).Border(0.5f).Padding(2).AlignRight().Text("Total (" + (settings.Currency ?? "AED") + ")").FontSize(7).Bold();
                                 table.Cell().Border(0.5f).Padding(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(7).Bold();
                             });
-                            if (!letterheadOnly)
+                            if (useOrangeLetterhead)
+                                RenderStampNearSignatory(inner, settings);
+                            else if (!letterheadOnly)
                                 inner.Item().PaddingTop(2).AlignCenter().Text("Thank you").FontSize(6);
                             else if (HasStampOrSignature(settings))
                                 inner.Item().Height(28);
@@ -1324,6 +1345,16 @@ if (hasLogo)
                 SignatureOffsetRightMm = companySettings.SignatureOffsetRightMm,
                 SignatureOffsetBottomMm = companySettings.SignatureOffsetBottomMm,
             };
+            try { dto.CompanyEmail = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_EMAIL") ?? ""; } catch { /* optional */ }
+            try { dto.CompanyWebsite = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_WEBSITE") ?? ""; } catch { /* optional */ }
+            if (string.IsNullOrWhiteSpace(dto.CompanyWebsite) && !string.IsNullOrWhiteSpace(dto.CompanyEmail)
+                && dto.CompanyEmail.Contains('@', StringComparison.Ordinal))
+            {
+                // Letterhead sample often shows web as domain; fall back to email host
+                var at = dto.CompanyEmail.IndexOf('@');
+                if (at > 0 && at < dto.CompanyEmail.Length - 1)
+                    dto.CompanyWebsite = "www." + dto.CompanyEmail[(at + 1)..];
+            }
             // Logo: read from storage using key stored in Settings (uploaded in Settings page). Per-tenant isolation via tenantId.
             if (!string.IsNullOrWhiteSpace(companySettings.LogoStorageKey))
             {
@@ -1472,22 +1503,24 @@ if (hasLogo)
 
         private static void ApplyDocumentPageMargins(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, float fallbackMm = 5f)
         {
+            // Full digital: tight margins only — never apply letterhead 42/52mm top.
+            // Body/letterhead: reserve stamp clearance so overlay does not collide with content.
             var top = settings.LetterheadOnlyPrint ? Math.Max(settings.PrintMarginTopMm, 5f) : fallbackMm;
             float stampClearance = 0f;
-            if (HasStampOrSignature(settings))
+            if (settings.LetterheadOnlyPrint && HasStampOrSignature(settings))
             {
                 var stampH = settings.StampImageBytes != null && settings.StampImageBytes.Length > 0
-                    ? Math.Max(settings.StampWidthMm, 8f) : 0f;
+                    ? CapStampMm(settings.StampWidthMm) : 0f;
                 var sigH = settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0
-                    ? Math.Max(settings.SignatureWidthMm * 0.55f, 10f) : 0f;
+                    ? Math.Max(CapStampMm(settings.SignatureWidthMm) * 0.55f, 10f) : 0f;
                 stampClearance = Math.Max(
-                    stampH + Math.Max(0f, settings.StampOffsetBottomMm),
-                    sigH + Math.Max(0f, settings.SignatureOffsetBottomMm)) + 4f;
-                stampClearance = Math.Max(stampClearance, 28f);
+                    stampH + Math.Min(Math.Max(0f, settings.StampOffsetBottomMm), 18f),
+                    sigH + Math.Min(Math.Max(0f, settings.SignatureOffsetBottomMm), 14f)) + 4f;
+                stampClearance = Math.Min(Math.Max(stampClearance, 22f), 40f);
             }
             var bottom = settings.LetterheadOnlyPrint
                 ? Math.Max(settings.PrintMarginBottomMm, stampClearance > 0 ? stampClearance : 5f)
-                : (stampClearance > 0 ? Math.Max(fallbackMm, stampClearance) : fallbackMm);
+                : fallbackMm;
             page.MarginTop(top, Unit.Millimetre);
             page.MarginBottom(bottom, Unit.Millimetre);
             page.MarginLeft(fallbackMm, Unit.Millimetre);
@@ -1499,6 +1532,118 @@ if (hasLogo)
             ((settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
              || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
 
+        /// <summary>Cap digital stamp size so 50mm settings do not crush A4 content / force blank page 2.</summary>
+        private static float CapStampMm(float mm) => Math.Min(Math.Max(mm, 8f), 36f);
+
+        private static bool IsZayogaBrand(InvoiceTemplateService.CompanySettings? settings) =>
+            settings != null &&
+            (settings.CompanyNameEn ?? "").Contains("ZAYOGA", StringComparison.OrdinalIgnoreCase);
+
+        private static (string Title, string Subtitle) SplitCompanyNameLines(string? name)
+        {
+            var n = (name ?? "").Trim();
+            if (string.IsNullOrEmpty(n)) return ("", "");
+            var soleIdx = n.IndexOf("SOLE", StringComparison.OrdinalIgnoreCase);
+            if (soleIdx > 0)
+                return (n[..soleIdx].Trim(), n[soleIdx..].Trim());
+            var gtIdx = n.IndexOf("GENERAL TRADING", StringComparison.OrdinalIgnoreCase);
+            if (gtIdx >= 0)
+            {
+                var end = gtIdx + "GENERAL TRADING".Length;
+                return (n[..end].Trim(), n[end..].Trim());
+            }
+            return (n, "");
+        }
+
+        /// <summary>Zayoga orange bilingual letterhead header (full PDF only). Matches client stationery spirit.</summary>
+        private void RenderOrangeLetterheadHeader(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings, bool compact = false)
+        {
+            var orange = Color.FromHex("#E67E22");
+            var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
+            if (string.IsNullOrWhiteSpace(title))
+                title = settings.CompanyNameEn ?? "ZAYOGA";
+            var titleSize = compact ? 8.5f : 10.5f;
+            var subSize = compact ? 6.5f : 7.5f;
+            var contactSize = compact ? 6f : 7f;
+            var logoW = compact ? 52f : 70f;
+            var logoH = compact ? 36f : 48f;
+            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+
+            col.Item().Row(row =>
+            {
+                row.RelativeItem().Column(c =>
+                {
+                    c.Item().Text(title.ToUpperInvariant()).Bold().FontColor(orange).FontSize(titleSize);
+                    if (!string.IsNullOrWhiteSpace(subtitle))
+                        c.Item().Text(subtitle.ToUpperInvariant()).FontColor(orange).FontSize(subSize);
+                    c.Item().PaddingTop(2).LineHorizontal(0.8f).LineColor(orange);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                        c.Item().PaddingTop(3).Text($"Mob.: {settings.CompanyPhone}").FontColor(orange).FontSize(contactSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                        c.Item().Text(settings.CompanyAddress).FontColor(orange).FontSize(contactSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyWebsite))
+                        c.Item().Text($"Web: {settings.CompanyWebsite}").FontColor(orange).FontSize(contactSize);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
+                        c.Item().Text($"Email: {settings.CompanyEmail}").FontColor(orange).FontSize(contactSize);
+                });
+
+                row.ConstantItem(compact ? 70 : 90).AlignCenter().Column(c =>
+                {
+                    if (hasLogo)
+                        c.Item().AlignCenter().Width(logoW).Height(logoH).Image(settings.LogoImageBytes!).FitArea();
+                    else
+                        c.Item().Height(compact ? 8 : 12);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyTrn))
+                        c.Item().PaddingTop(2).AlignCenter().Text($"TRN: {settings.CompanyTrn}")
+                            .FontColor(orange).FontSize(contactSize);
+                });
+
+                row.RelativeItem().AlignRight().Column(c =>
+                {
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
+                    {
+                        c.Item().AlignRight().Text(settings.CompanyNameAr).Bold().FontColor(orange)
+                            .FontSize(compact ? 8.5f : 10f).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    }
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                    {
+                        c.Item().PaddingTop(2).AlignRight().Text(settings.CompanyPhone).FontColor(orange)
+                            .FontSize(contactSize).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    }
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                    {
+                        c.Item().AlignRight().Text(settings.CompanyAddress).FontColor(orange)
+                            .FontSize(contactSize).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    }
+                });
+            });
+            col.Item().PaddingTop(compact ? 2 : 4).LineHorizontal(1f).LineColor(orange);
+        }
+
+        /// <summary>Orange “For ZAYOGA” footer block for full digital PDFs.</summary>
+        private static void RenderOrangeLetterheadFooter(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings)
+        {
+            var orange = Color.FromHex("#E67E22");
+            var (_, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
+            var line2 = string.IsNullOrWhiteSpace(subtitle)
+                ? "GENERAL TRADING SOLE PROPRIETORSHIP L.L.C"
+                : subtitle.ToUpperInvariant();
+            col.Item().LineHorizontal(1f).LineColor(orange);
+            col.Item().PaddingTop(3).AlignRight().Column(c =>
+            {
+                c.Item().AlignRight().Text("For ZAYOGA").Bold().FontColor(orange).FontSize(10);
+                c.Item().AlignRight().Text(line2).FontColor(orange).FontSize(7);
+            });
+        }
+
+        /// <summary>Page header/footer chrome for full layout. Zayoga → orange stationery; others unchanged (content branding).</summary>
+        private void RenderFullPageLetterheadChrome(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, bool compact = false)
+        {
+            if (settings.LetterheadOnlyPrint || !IsZayogaBrand(settings)) return;
+            page.Header().Column(col => RenderOrangeLetterheadHeader(col, settings, compact));
+            page.Footer().Column(col => RenderOrangeLetterheadFooter(col, settings));
+        }
+
         /// <summary>Stamp/signature under signatory (avoids huge empty gap from page-bottom overlay).</summary>
         private static void RenderStampNearSignatory(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings)
         {
@@ -1507,7 +1652,7 @@ if (hasLogo)
             {
                 if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
                 {
-                    var stampW = Math.Max(settings.StampWidthMm, 28f);
+                    var stampW = CapStampMm(settings.StampWidthMm);
                     row.ConstantItem(stampW + 4, Unit.Millimetre)
                         .Width(stampW, Unit.Millimetre)
                         .Height(stampW, Unit.Millimetre)
@@ -1516,7 +1661,7 @@ if (hasLogo)
                 }
                 if (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0)
                 {
-                    var sigW = Math.Max(settings.SignatureWidthMm, 28f);
+                    var sigW = CapStampMm(settings.SignatureWidthMm);
                     row.ConstantItem(sigW + 4, Unit.Millimetre)
                         .AlignMiddle()
                         .Width(sigW, Unit.Millimetre)
@@ -1529,13 +1674,15 @@ if (hasLogo)
 
         /// <summary>
         /// Full-page foreground overlay: stamp + signature at bottom with independent mm offsets.
-        /// Align left (First Party) or right (For-company). Horizontal offset is inset from that edge; bottom from page bottom.
+        /// Stamp width capped at 36mm. Prefer RenderStampNearSignatory for agreements/salary to avoid blank page 2.
         /// </summary>
         private static void RenderStampSignatureFooter(PageDescriptor page, InvoiceTemplateService.CompanySettings settings)
         {
             if (!HasStampOrSignature(settings)) return;
 
             var alignLeft = settings.StampAlignLeft;
+            var stampBottom = Math.Min(Math.Max(0f, settings.StampOffsetBottomMm), 18f);
+            var sigBottom = Math.Min(Math.Max(0f, settings.SignatureOffsetBottomMm), 14f);
 
             page.Foreground().Layers(layers =>
             {
@@ -1543,7 +1690,7 @@ if (hasLogo)
 
                 if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
                 {
-                    var stampW = Math.Max(settings.StampWidthMm, 8f);
+                    var stampW = CapStampMm(settings.StampWidthMm);
                     var layer = layers.Layer().AlignBottom();
                     layer = alignLeft ? layer.AlignLeft() : layer.AlignRight();
                     if (alignLeft)
@@ -1551,7 +1698,7 @@ if (hasLogo)
                     else
                         layer = layer.PaddingRight(Math.Max(0f, settings.StampOffsetRightMm), Unit.Millimetre);
                     layer
-                        .PaddingBottom(Math.Max(0f, settings.StampOffsetBottomMm), Unit.Millimetre)
+                        .PaddingBottom(stampBottom, Unit.Millimetre)
                         .Width(stampW, Unit.Millimetre)
                         .Height(stampW, Unit.Millimetre)
                         .Image(settings.StampImageBytes)
@@ -1560,7 +1707,7 @@ if (hasLogo)
 
                 if (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0)
                 {
-                    var sigW = Math.Max(settings.SignatureWidthMm, 8f);
+                    var sigW = CapStampMm(settings.SignatureWidthMm);
                     var sigH = Math.Max(sigW * 0.55f, 10f);
                     var layer = layers.Layer().AlignBottom();
                     layer = alignLeft ? layer.AlignLeft() : layer.AlignRight();
@@ -1569,7 +1716,7 @@ if (hasLogo)
                     else
                         layer = layer.PaddingRight(Math.Max(0f, settings.SignatureOffsetRightMm), Unit.Millimetre);
                     layer
-                        .PaddingBottom(Math.Max(0f, settings.SignatureOffsetBottomMm), Unit.Millimetre)
+                        .PaddingBottom(sigBottom, Unit.Millimetre)
                         .Width(sigW, Unit.Millimetre)
                         .Height(sigH, Unit.Millimetre)
                         .Image(settings.SignatureImageBytes)
@@ -2509,15 +2656,24 @@ if (hasLogo)
             }
         }
 
-        public async Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4")
+        public async Task<byte[]> GenerateQuotationPdfAsync(QuotationDto quotation, int tenantId, string format = "A4", string? layout = null)
         {
             var fmt = NormalizePageFormat(format);
             var settings = await GetCompanySettingsAsync(tenantId);
-            string? companyEmail = null;
-            try { companyEmail = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_EMAIL"); } catch { /* optional */ }
+            ApplyPrintLayout(settings, layout);
+            if (string.IsNullOrWhiteSpace(settings.CompanyEmail))
+            {
+                try
+                {
+                    settings.CompanyEmail = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_EMAIL") ?? "";
+                }
+                catch { /* optional */ }
+            }
             var salutation = string.IsNullOrWhiteSpace(quotation.Salutation) ? QuotationDefaults.Salutation : quotation.Salutation;
             var intro = string.IsNullOrWhiteSpace(quotation.IntroLine) ? QuotationDefaults.IntroLine : quotation.IntroLine;
             var closing = string.IsNullOrWhiteSpace(quotation.ClosingLine) ? QuotationDefaults.ClosingLine : quotation.ClosingLine;
+            var letterheadOnly = settings.LetterheadOnlyPrint;
+            var useOrangeLetterhead = !letterheadOnly && IsZayogaBrand(settings);
             try
             {
                 var document = Document.Create(container =>
@@ -2525,49 +2681,42 @@ if (hasLogo)
                     container.Page(page =>
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
-                        var fallbackMargin = fmt == "A5" ? 24f : 36f;
-                        if (settings.LetterheadOnlyPrint)
-                            ApplyDocumentPageMargins(page, settings, 5f);
-                        else
-                            page.Margin(fallbackMargin);
+                        ApplyDocumentPageMargins(page, settings, fmt == "A5" ? 6f : 8f);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
 
-                        RenderStampSignatureFooter(page, settings);
-
-                        if (!settings.LetterheadOnlyPrint)
+                        if (useOrangeLetterhead)
+                            RenderFullPageLetterheadChrome(page, settings, compact: fmt == "A5");
+                        else if (!letterheadOnly)
                         {
-                        page.Header().Row(row =>
-                        {
-                            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
-                            if (hasLogo)
-                                row.ConstantItem(70).AlignMiddle().Width(64).Height(48).Image(settings.LogoImageBytes!).FitArea();
-                            else
-                                row.ConstantItem(16);
-
-                            row.RelativeItem().Column(col =>
+                            page.Header().Row(row =>
                             {
-                                col.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").Bold()
-                                    .FontSize(fmt == "A5" ? 10 : 12);
-                                if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                                    col.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(7);
-                                var contactBits = new[] { settings.CompanyPhone, companyEmail, string.IsNullOrWhiteSpace(settings.CompanyTrn) ? null : settings.CompanyTrn }
-                                    .Where(s => !string.IsNullOrWhiteSpace(s));
-                                if (contactBits.Any())
-                                    col.Item().AlignCenter().Text(string.Join("  |  ", contactBits!)).FontSize(7);
+                                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                                if (hasLogo)
+                                    row.ConstantItem(70).AlignMiddle().Width(64).Height(48).Image(settings.LogoImageBytes!).FitArea();
+                                else
+                                    row.ConstantItem(16);
+
+                                row.RelativeItem().Column(col =>
+                                {
+                                    col.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").Bold()
+                                        .FontSize(fmt == "A5" ? 10 : 12);
+                                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                                        col.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(7);
+                                    var contactBits = new[] { settings.CompanyPhone, settings.CompanyEmail, string.IsNullOrWhiteSpace(settings.CompanyTrn) ? null : settings.CompanyTrn }
+                                        .Where(s => !string.IsNullOrWhiteSpace(s));
+                                    if (contactBits.Any())
+                                        col.Item().AlignCenter().Text(string.Join("  |  ", contactBits!)).FontSize(7);
+                                });
+
+                                row.ConstantItem(16);
                             });
-
-                            row.ConstantItem(90).AlignRight().AlignMiddle()
-                                .Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
-                        });
-                        }
-                        else
-                        {
-                            page.Header().AlignRight().Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
                         }
 
-                        page.Content().PaddingTop(12).Column(col =>
+                        page.Content().PaddingTop(8).Column(col =>
                         {
-                            col.Item().Row(row =>
+                            col.Item().AlignRight().Text("Quotation").Bold().FontSize(fmt == "A5" ? 14 : 18);
+
+                            col.Item().PaddingTop(10).Row(row =>
                             {
                                 row.RelativeItem().Column(c =>
                                 {
@@ -2667,7 +2816,7 @@ if (hasLogo)
 
                             col.Item().PaddingTop(28).AlignRight().Width(160).Column(sig =>
                             {
-                                if (!settings.LetterheadOnlyPrint)
+                                if (!letterheadOnly && !useOrangeLetterhead)
                                 {
                                     var hasLogoSig = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                     if (hasLogoSig)
@@ -2680,18 +2829,23 @@ if (hasLogo)
                                 }
                                 else
                                 {
-                                    sig.Item().Height(48);
+                                    sig.Item().Height(20);
+                                    sig.Item().AlignCenter().Text("AUTHORIZED SIGNATURE").Bold().FontSize(8);
                                 }
+                                RenderStampNearSignatory(sig, settings);
                             });
                         });
 
-                        page.Footer().AlignRight().Text(x =>
+                        if (!useOrangeLetterhead)
                         {
-                            x.Span("Page ");
-                            x.CurrentPageNumber();
-                            x.Span(" of ");
-                            x.TotalPages();
-                        });
+                            page.Footer().AlignRight().Text(x =>
+                            {
+                                x.Span("Page ");
+                                x.CurrentPageNumber();
+                                x.Span(" of ");
+                                x.TotalPages();
+                            });
+                        }
                     });
                 });
                 return await Task.FromResult(document.GeneratePdf());
@@ -2726,6 +2880,7 @@ if (hasLogo)
                     : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses().ToList();
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                 var letterheadOnly = settings?.LetterheadOnlyPrint == true;
+                var useOrangeLetterhead = settings != null && !letterheadOnly && IsZayogaBrand(settings);
                 var bodyFont = fmt == "A5" ? 8.5f : 9.5f;
                 var clauseFont = fmt == "A5" ? 8f : 9f;
 
@@ -2736,44 +2891,42 @@ if (hasLogo)
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
                         if (letterheadOnly && settings != null)
                         {
-                            // Letterhead clearances only — stamp is content-relative (no huge bottom gap)
                             page.MarginTop(Math.Max(settings.PrintMarginTopMm, 42f), Unit.Millimetre);
                             page.MarginBottom(Math.Max(settings.PrintMarginBottomMm, 22f), Unit.Millimetre);
                             page.MarginLeft(12f, Unit.Millimetre);
                             page.MarginRight(12f, Unit.Millimetre);
                         }
+                        else if (settings != null)
+                            ApplyDocumentPageMargins(page, settings, fmt == "A5" ? 6f : 8f);
                         else
                             page.Margin(fmt == "A5" ? 28 : 48);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(bodyFont).LineHeight(1.5f));
 
-                        // Full digital: page-bottom stamp. Body/letterhead: stamp near First Party sign-off.
-                        if (settings != null && !letterheadOnly)
-                            RenderStampSignatureFooter(page, settings);
-
-                        page.Header().Column(col =>
+                        if (settings != null && useOrangeLetterhead)
+                            RenderFullPageLetterheadChrome(page, settings, compact: fmt == "A5");
+                        else if (settings != null && !letterheadOnly && hasLogo)
                         {
-                            if (!letterheadOnly)
+                            page.Header().Column(col =>
                             {
                                 col.Item().Row(row =>
                                 {
-                                    if (hasLogo)
-                                        row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
-                                    else
-                                        row.ConstantItem(8);
+                                    row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
                                     row.RelativeItem().AlignMiddle().AlignCenter()
                                         .Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
-                                        .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12);
+                                        .FontSize(fmt == "A5" ? 10 : 12);
                                 });
-                            }
-                            col.Item().PaddingTop(letterheadOnly ? 4 : 10).AlignCenter()
+                            });
+                        }
+
+                        page.Content().PaddingTop(letterheadOnly ? 10 : 12).Column(col =>
+                        {
+                            // Title + date in content (not page.Header) so they do not repeat on page 2
+                            col.Item().AlignCenter()
                                 .Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
                                 .Bold().FontSize(fmt == "A5" ? 11 : 13).Underline();
-                            col.Item().PaddingTop(8).AlignCenter()
+                            col.Item().PaddingTop(8).PaddingBottom(12).AlignCenter()
                                 .Text($"DATE-{agreement.AgreementDate:dd/MM/yyyy}").FontSize(10).Underline();
-                        });
 
-                        page.Content().PaddingTop(letterheadOnly ? 10 : 18).Column(col =>
-                        {
                             col.Item().PaddingBottom(3).Text("First party:").Bold().FontSize(bodyFont);
                             col.Item().PaddingBottom(2).Text(agreement.FirstPartyName).LineHeight(1.5f);
                             col.Item().PaddingBottom(2).Text($"License number: {agreement.FirstPartyLicense}").LineHeight(1.5f);
@@ -2798,28 +2951,26 @@ if (hasLogo)
                                     .FontSize(clauseFont).LineHeight(1.5f);
                             }
 
-                            col.Item().PaddingTop(36).Row(row =>
+                            col.Item().PaddingTop(28).Row(row =>
                             {
                                 row.RelativeItem().PaddingRight(16).Column(c =>
                                 {
                                     c.Item().Text("First Party:").Bold();
                                     c.Item().PaddingTop(4).Text(agreement.FirstPartyName).FontSize(8).LineHeight(1.45f);
-                                    c.Item().PaddingTop(36).Text("________________________");
-                                    if (settings != null && letterheadOnly)
+                                    c.Item().PaddingTop(28).Text("________________________");
+                                    if (settings != null)
                                         RenderStampNearSignatory(c, settings);
-                                    else if (settings != null && HasStampOrSignature(settings))
-                                        c.Item().Height(24);
                                 });
                                 row.RelativeItem().Column(c =>
                                 {
                                     c.Item().Text("Second Party").Bold();
                                     c.Item().PaddingTop(4).Text(secondName).FontSize(8).LineHeight(1.45f);
-                                    c.Item().PaddingTop(36).Text("________________________");
+                                    c.Item().PaddingTop(28).Text("________________________");
                                 });
                             });
                         });
 
-                        if (!letterheadOnly)
+                        if (!letterheadOnly && !useOrangeLetterhead)
                         {
                             page.Footer().Column(col =>
                             {
@@ -2891,6 +3042,7 @@ if (hasLogo)
                     : certificate.SignatoryTitle;
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                 var letterheadOnly = settings?.LetterheadOnlyPrint == true;
+                var useOrangeLetterhead = settings != null && !letterheadOnly && IsZayogaBrand(settings);
                 var subject = string.IsNullOrWhiteSpace(certificate.SubjectLine)
                     ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.SubjectLine
                     : certificate.SubjectLine;
@@ -2909,16 +3061,17 @@ if (hasLogo)
                             page.MarginLeft(14f, Unit.Millimetre);
                             page.MarginRight(14f, Unit.Millimetre);
                         }
+                        else if (settings != null)
+                            ApplyDocumentPageMargins(page, settings, fmt == "A5" ? 6f : 8f);
                         else
                             page.Margin(fmt == "A5" ? 28 : 48);
                         page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(metaFont).LineHeight(1.5f));
 
-                        if (settings != null && !letterheadOnly)
-                            RenderStampSignatureFooter(page, settings);
-
-                        page.Header().Column(col =>
+                        if (settings != null && useOrangeLetterhead)
+                            RenderFullPageLetterheadChrome(page, settings, compact: fmt == "A5");
+                        else if (settings != null && !letterheadOnly)
                         {
-                            if (!letterheadOnly)
+                            page.Header().Column(col =>
                             {
                                 col.Item().Row(row =>
                                 {
@@ -2929,7 +3082,7 @@ if (hasLogo)
                                     row.RelativeItem().AlignMiddle().Column(c =>
                                     {
                                         c.Item().Text(companyName.ToUpperInvariant()).Bold()
-                                            .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 9 : 11);
+                                            .FontSize(fmt == "A5" ? 9 : 11);
                                     });
                                     row.ConstantItem(120).AlignRight().Column(c =>
                                     {
@@ -2938,11 +3091,11 @@ if (hasLogo)
                                         c.Item().Text(certificate.CompanyWebsite ?? "").FontSize(7).LineHeight(1.4f);
                                     });
                                 });
-                                col.Item().PaddingTop(8).LineHorizontal(1f).LineColor(Color.FromHex("#E67E22"));
-                            }
-                        });
+                                col.Item().PaddingTop(8).LineHorizontal(1f).LineColor(Colors.Grey.Medium);
+                            });
+                        }
 
-                        page.Content().PaddingTop(letterheadOnly ? 10 : 22).Column(col =>
+                        page.Content().PaddingTop(letterheadOnly ? 10 : 14).Column(col =>
                         {
                             col.Item().AlignCenter().PaddingBottom(14)
                                 .Text(subject).Bold().FontSize(fmt == "A5" ? 11 : 13);
@@ -2960,16 +3113,14 @@ if (hasLogo)
                                 c.Item().Text("Yours faithfully").FontSize(metaFont).LineHeight(1.5f);
                                 c.Item().PaddingTop(28).Text(signatoryName).Bold().FontSize(metaFont).LineHeight(1.5f);
                                 c.Item().PaddingTop(6).Text(signatoryTitle).FontSize(metaFont).LineHeight(1.5f);
-                                if (settings != null && letterheadOnly)
+                                if (settings != null)
                                     RenderStampNearSignatory(c, settings);
-                                else if (settings != null && HasStampOrSignature(settings))
-                                    c.Item().Height(28);
                                 else
                                     c.Item().PaddingTop(12).Text("________________________").FontSize(9);
                             });
                         });
 
-                        if (!letterheadOnly)
+                        if (!letterheadOnly && !useOrangeLetterhead)
                         {
                             page.Footer().Column(col =>
                             {

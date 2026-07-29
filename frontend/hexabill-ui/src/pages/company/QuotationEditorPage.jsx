@@ -415,7 +415,7 @@ export default function QuotationEditorPage() {
     }
   }
 
-  const handlePdf = async (format, mode) => {
+  const handlePdf = async (format, mode, layout = 'full') => {
     setError('')
     setSaving(true)
     try {
@@ -423,7 +423,7 @@ export default function QuotationEditorPage() {
       if (!qid || isDirty) {
         qid = await persist()
       }
-      const blob = await quotationsAPI.getPdf(qid, format)
+      const blob = await quotationsAPI.getPdf(qid, format, layout)
       const name = `${quoteNo || 'Quote'}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
@@ -510,13 +510,16 @@ export default function QuotationEditorPage() {
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'download')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
+          <button type="button" onClick={() => handlePdf('A4', 'download', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
             <Download className="w-4 h-4" /> Download
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'print')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
-            <Printer className="w-4 h-4" /> Print A4
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'body')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Print on letterhead paper">
+            <Printer className="w-4 h-4" /> Print Letterhead
           </button>
-          <button type="button" onClick={() => handlePdf('A5', 'print')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Print full with digital header">
+            <Printer className="w-4 h-4" /> Print Full
+          </button>
+          <button type="button" onClick={() => handlePdf('A5', 'print', 'body')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
             <Printer className="w-4 h-4" /> Print A5
           </button>
         </div>
