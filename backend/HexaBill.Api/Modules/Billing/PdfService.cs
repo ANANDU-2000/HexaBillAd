@@ -297,13 +297,6 @@ namespace HexaBill.Api.Modules.Billing
 
                                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
 
-                                    // Light table fill only — the old 15×25 spacer forced short invoices onto a blank page 2
-                                    // (especially with orange letterhead header/footer and stamp clearance).
-                                    int minRowsForHeight = useOrangeLetterhead ? 5 : 7;
-                                    float rowHeight = 18f;
-                                    float totalItemsHeight = itemCount * rowHeight;
-                                    float minTableHeight = minRowsForHeight * rowHeight;
-                                    
                                     if (itemCount > 0 && sale.Items != null)
                                     {
                                         for (int i = 0; i < itemCount; i++)
@@ -326,16 +319,24 @@ namespace HexaBill.Api.Modules.Billing
                                             table.Cell().BorderLeft(0.5f).BorderRight(0.5f).PaddingVertical(3).PaddingHorizontal(1).AlignRight().Text(item.LineTotal.ToString("0.00")).FontSize(9);
                                         }
                                     }
-                                    
-                                    // Add spacer row to maintain table height if needed (capped so it cannot force a second page)
-                                    if (itemCount < minRowsForHeight)
+
+                                    // Cosmetic table fill for full/download only — never in body/print (letterhead margins
+                                    // already reserve space; filler + stamp clearance was forcing a blank page 2).
+                                    if (!settings.LetterheadOnlyPrint)
                                     {
-                                        float spacerHeight = Math.Min(90f, minTableHeight - totalItemsHeight - (3 * rowHeight));
-                                        if (spacerHeight > 0)
+                                        int minRowsForHeight = useOrangeLetterhead ? 5 : 7;
+                                        float rowHeight = 18f;
+                                        float totalItemsHeight = itemCount * rowHeight;
+                                        float minTableHeight = minRowsForHeight * rowHeight;
+                                        if (itemCount < minRowsForHeight)
                                         {
-                                            for (int col = 0; col < 8; col++)
+                                            float spacerHeight = Math.Min(90f, minTableHeight - totalItemsHeight - (3 * rowHeight));
+                                            if (spacerHeight > 0)
                                             {
-                                                table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(spacerHeight).Text("");
+                                                for (int col = 0; col < 8; col++)
+                                                {
+                                                    table.Cell().BorderLeft(0.5f).BorderRight(0.5f).Height(spacerHeight).Text("");
+                                                }
                                             }
                                         }
                                     }
@@ -1516,7 +1517,8 @@ if (hasLogo)
                 stampClearance = Math.Max(
                     stampH + Math.Min(Math.Max(0f, settings.StampOffsetBottomMm), 18f),
                     sigH + Math.Min(Math.Max(0f, settings.SignatureOffsetBottomMm), 14f)) + 4f;
-                stampClearance = Math.Min(Math.Max(stampClearance, 22f), 40f);
+                // Ceiling matches CapStampMm (44) + modest offset so larger stamp is not clipped.
+                stampClearance = Math.Min(Math.Max(stampClearance, 22f), 48f);
             }
             var bottom = settings.LetterheadOnlyPrint
                 ? Math.Max(settings.PrintMarginBottomMm, stampClearance > 0 ? stampClearance : 5f)
@@ -1532,8 +1534,8 @@ if (hasLogo)
             ((settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
              || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
 
-        /// <summary>Cap digital stamp size so 50mm settings do not crush A4 content / force blank page 2.</summary>
-        private static float CapStampMm(float mm) => Math.Min(Math.Max(mm, 8f), 36f);
+        /// <summary>Cap digital stamp size — allow readable ~44mm without crushing A4 or forcing blank page 2.</summary>
+        private static float CapStampMm(float mm) => Math.Min(Math.Max(mm, 8f), 44f);
 
         private static bool IsZayogaBrand(InvoiceTemplateService.CompanySettings? settings) =>
             settings != null &&
@@ -1648,7 +1650,7 @@ if (hasLogo)
         private static void RenderStampNearSignatory(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings)
         {
             if (!HasStampOrSignature(settings)) return;
-            col.Item().PaddingTop(10).Row(row =>
+            col.Item().PaddingTop(6).Row(row =>
             {
                 if (settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
                 {
@@ -1674,7 +1676,7 @@ if (hasLogo)
 
         /// <summary>
         /// Full-page foreground overlay: stamp + signature at bottom with independent mm offsets.
-        /// Stamp width capped at 36mm. Prefer RenderStampNearSignatory for agreements/salary to avoid blank page 2.
+        /// Stamp width capped via CapStampMm. Prefer RenderStampNearSignatory for agreements/salary to avoid blank page 2.
         /// </summary>
         private static void RenderStampSignatureFooter(PageDescriptor page, InvoiceTemplateService.CompanySettings settings)
         {
