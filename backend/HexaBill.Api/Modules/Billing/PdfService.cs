@@ -2738,13 +2738,29 @@ if (hasLogo)
             }
         }
 
-        public async Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, int tenantId, string format = "A4")
+        public async Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, int tenantId, string format = "A4", string? layout = null)
         {
             var fmt = NormalizePageFormat(format);
             InvoiceTemplateService.CompanySettings? settings = null;
             try { settings = await GetCompanySettingsAsync(tenantId); } catch { /* logo optional */ }
             try
             {
+                if (settings != null)
+                {
+                    var layoutNorm = (layout ?? "full").Trim().ToLowerInvariant();
+                    if (layoutNorm == "body")
+                    {
+                        // Explicit letterhead print: body only + keep/ensure top/bottom clearances for pre-printed paper
+                        settings.LetterheadOnlyPrint = true;
+                        settings.PrintMarginTopMm = Math.Max(settings.PrintMarginTopMm, 42f);
+                        settings.PrintMarginBottomMm = Math.Max(settings.PrintMarginBottomMm, 22f);
+                    }
+                    else
+                    {
+                        ApplyInvoiceLayoutOverride(settings, "full");
+                    }
+                }
+
                 var blank = "________________";
                 var secondName = string.IsNullOrWhiteSpace(agreement.SecondPartyName) ? blank : agreement.SecondPartyName!.Trim();
                 var secondLicense = string.IsNullOrWhiteSpace(agreement.SecondPartyLicense) ? blank : agreement.SecondPartyLicense!.Trim();
@@ -2758,6 +2774,8 @@ if (hasLogo)
                     : HexaBill.Api.Modules.Documents.AgreementTemplate.BuildClauses().ToList();
                 var hasLogo = settings?.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                 var letterheadOnly = settings?.LetterheadOnlyPrint == true;
+                var bodyFont = fmt == "A5" ? 8.5f : 9.5f;
+                var clauseFont = fmt == "A5" ? 8f : 9f;
 
                 var document = Document.Create(container =>
                 {
@@ -2765,10 +2783,10 @@ if (hasLogo)
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
                         if (letterheadOnly && settings != null)
-                            ApplyDocumentPageMargins(page, settings, 5f);
+                            ApplyDocumentPageMargins(page, settings, 12f);
                         else
-                            page.Margin(fmt == "A5" ? 28 : 40);
-                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 8 : 9));
+                            page.Margin(fmt == "A5" ? 28 : 48);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(bodyFont).LineHeight(1.4f));
 
                         if (settings != null)
                             RenderStampSignatureFooter(page, settings);
@@ -2777,62 +2795,65 @@ if (hasLogo)
                         {
                             if (!letterheadOnly)
                             {
-                            col.Item().Row(row =>
-                            {
-                                if (hasLogo)
-                                    row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
-                                else
-                                    row.ConstantItem(8);
-                                row.RelativeItem().AlignMiddle().AlignCenter()
-                                    .Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
-                                    .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12);
-                            });
+                                col.Item().Row(row =>
+                                {
+                                    if (hasLogo)
+                                        row.ConstantItem(56).AlignMiddle().Width(48).Height(40).Image(settings!.LogoImageBytes!).FitArea();
+                                    else
+                                        row.ConstantItem(8);
+                                    row.RelativeItem().AlignMiddle().AlignCenter()
+                                        .Text(agreement.FirstPartyName.ToUpperInvariant()).Bold()
+                                        .FontColor(Color.FromHex("#E67E22")).FontSize(fmt == "A5" ? 10 : 12);
+                                });
                             }
-                            col.Item().PaddingTop(8).AlignCenter().Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
+                            col.Item().PaddingTop(letterheadOnly ? 4 : 10).AlignCenter()
+                                .Text(HexaBill.Api.Modules.Documents.AgreementTemplate.Title)
                                 .Bold().FontSize(fmt == "A5" ? 11 : 13).Underline();
-                            col.Item().PaddingTop(4).AlignCenter().Text($"DATE-{agreement.AgreementDate:dd/MM/yyyy}").FontSize(9).Underline();
+                            col.Item().PaddingTop(8).AlignCenter()
+                                .Text($"DATE-{agreement.AgreementDate:dd/MM/yyyy}").FontSize(10).Underline();
                         });
 
-                        page.Content().PaddingTop(14).Column(col =>
+                        page.Content().PaddingTop(18).Column(col =>
                         {
-                            col.Item().Text("First party:").Bold();
-                            col.Item().Text(agreement.FirstPartyName);
-                            col.Item().Text($"License number: {agreement.FirstPartyLicense}");
-                            col.Item().Text(agreement.FirstPartyAddress);
-                            col.Item().Text($"Mob: {agreement.FirstPartyMobile}");
+                            col.Item().PaddingBottom(3).Text("First party:").Bold().FontSize(bodyFont);
+                            col.Item().PaddingBottom(2).Text(agreement.FirstPartyName).LineHeight(1.45f);
+                            col.Item().PaddingBottom(2).Text($"License number: {agreement.FirstPartyLicense}").LineHeight(1.45f);
+                            col.Item().PaddingBottom(2).Text(agreement.FirstPartyAddress).LineHeight(1.45f);
+                            col.Item().PaddingBottom(10).Text($"Mob: {agreement.FirstPartyMobile}").LineHeight(1.45f);
 
-                            col.Item().PaddingTop(12).Text("Second Party").Bold();
-                            col.Item().Text($"Name: {secondName}");
-                            col.Item().Text($"License number: {secondLicense}");
-                            col.Item().Text(secondAddress);
-                            col.Item().Text($"Mob: {secondMobile}");
+                            col.Item().PaddingTop(6).PaddingBottom(3).Text("Second Party").Bold().FontSize(bodyFont);
+                            col.Item().PaddingBottom(2).Text($"Name: {secondName}").LineHeight(1.45f);
+                            col.Item().PaddingBottom(2).Text($"License number: {secondLicense}").LineHeight(1.45f);
+                            col.Item().PaddingBottom(2).Text(secondAddress).LineHeight(1.45f);
+                            col.Item().PaddingBottom(12).Text($"Mob: {secondMobile}").LineHeight(1.45f);
 
-                            col.Item().PaddingTop(14).Text(whereas).FontSize(8);
+                            col.Item().PaddingTop(8).PaddingBottom(10)
+                                .Text(whereas).FontSize(clauseFont).LineHeight(1.5f);
 
                             for (var n = 0; n < clauses.Count; n++)
                             {
                                 var clause = clauses[n];
                                 var isSub = n >= 2;
-                                col.Item().PaddingTop(isSub ? 3 : 6).PaddingLeft(isSub ? 14 : 0)
-                                    .Text(isSub ? $"❖ {clause}" : $"• {clause}").FontSize(8);
+                                col.Item().PaddingTop(isSub ? 5 : 8).PaddingBottom(4).PaddingLeft(isSub ? 14 : 0)
+                                    .Text(isSub ? $"❖ {clause}" : $"• {clause}")
+                                    .FontSize(clauseFont).LineHeight(1.45f);
                             }
 
-                            col.Item().PaddingTop(32).Row(row =>
+                            col.Item().PaddingTop(40).Row(row =>
                             {
-                                row.RelativeItem().Column(c =>
+                                row.RelativeItem().PaddingRight(16).Column(c =>
                                 {
                                     c.Item().Text("First Party:").Bold();
-                                    c.Item().Text(agreement.FirstPartyName).FontSize(8);
-                                    // Always show signature line (matches Second Party); stamp overlays nearby via Foreground
-                                    c.Item().PaddingTop(40).Text("________________________");
+                                    c.Item().PaddingTop(4).Text(agreement.FirstPartyName).FontSize(8).LineHeight(1.4f);
+                                    c.Item().PaddingTop(48).Text("________________________");
                                     if (settings != null && HasStampOrSignature(settings))
                                         c.Item().Height(24);
                                 });
                                 row.RelativeItem().Column(c =>
                                 {
                                     c.Item().Text("Second Party").Bold();
-                                    c.Item().Text(secondName).FontSize(8);
-                                    c.Item().PaddingTop(40).Text("________________________");
+                                    c.Item().PaddingTop(4).Text(secondName).FontSize(8).LineHeight(1.4f);
+                                    c.Item().PaddingTop(48).Text("________________________");
                                 });
                             });
                         });
@@ -2844,13 +2865,13 @@ if (hasLogo)
                                 col.Item().LineHorizontal(0.5f).LineColor(Colors.Grey.Medium);
                                 col.Item().PaddingTop(6).AlignCenter().Text(agreement.FirstPartyName).Bold().FontSize(7);
                                 if (!string.IsNullOrWhiteSpace(agreement.FooterAddress))
-                                    col.Item().AlignCenter().Text(agreement.FooterAddress).FontSize(7);
+                                    col.Item().PaddingTop(2).AlignCenter().Text(agreement.FooterAddress).FontSize(7);
                                 if (!string.IsNullOrWhiteSpace(agreement.FirstPartyPhones))
-                                    col.Item().AlignCenter().Text(agreement.FirstPartyPhones).FontSize(7);
+                                    col.Item().PaddingTop(2).AlignCenter().Text(agreement.FirstPartyPhones).FontSize(7);
                                 var mailWeb = string.Join("  |  ", new[] { agreement.FirstPartyEmail, agreement.FirstPartyWebsite }
                                     .Where(s => !string.IsNullOrWhiteSpace(s)));
                                 if (!string.IsNullOrWhiteSpace(mailWeb))
-                                    col.Item().AlignCenter().Text(mailWeb).FontSize(7);
+                                    col.Item().PaddingTop(2).AlignCenter().Text(mailWeb).FontSize(7);
                             });
                         }
                     });
@@ -2864,13 +2885,29 @@ if (hasLogo)
             }
         }
 
-        public async Task<byte[]> GenerateSalaryCertificatePdfAsync(SalaryCertificateDto certificate, int tenantId, string format = "A4")
+        public async Task<byte[]> GenerateSalaryCertificatePdfAsync(SalaryCertificateDto certificate, int tenantId, string format = "A4", string? layout = null)
         {
             var fmt = NormalizePageFormat(format);
             InvoiceTemplateService.CompanySettings? settings = null;
             try { settings = await GetCompanySettingsAsync(tenantId); } catch { /* logo optional */ }
             try
             {
+                if (settings != null)
+                {
+                    var layoutNorm = (layout ?? "full").Trim().ToLowerInvariant();
+                    if (layoutNorm == "body")
+                    {
+                        // Explicit letterhead print: body only + keep/ensure top/bottom clearances for pre-printed paper
+                        settings.LetterheadOnlyPrint = true;
+                        settings.PrintMarginTopMm = Math.Max(settings.PrintMarginTopMm, 42f);
+                        settings.PrintMarginBottomMm = Math.Max(settings.PrintMarginBottomMm, 22f);
+                    }
+                    else
+                    {
+                        ApplyInvoiceLayoutOverride(settings, "full");
+                    }
+                }
+
                 var blank = "________________";
                 string Blank(string? v) => string.IsNullOrWhiteSpace(v) ? blank : v.Trim();
                 var employeeName = Blank(certificate.EmployeeName);
@@ -2907,6 +2944,8 @@ if (hasLogo)
                 var subject = string.IsNullOrWhiteSpace(certificate.SubjectLine)
                     ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.SubjectLine
                     : certificate.SubjectLine;
+                var metaFont = fmt == "A5" ? 9.5f : 10.5f;
+                var bodyFont = fmt == "A5" ? 9f : 10f;
 
                 var document = Document.Create(container =>
                 {
@@ -2914,10 +2953,10 @@ if (hasLogo)
                     {
                         page.Size(fmt == "A5" ? PageSizes.A5 : PageSizes.A4);
                         if (letterheadOnly && settings != null)
-                            ApplyDocumentPageMargins(page, settings, 5f);
+                            ApplyDocumentPageMargins(page, settings, 14f);
                         else
-                            page.Margin(fmt == "A5" ? 28 : 40);
-                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(fmt == "A5" ? 9 : 10));
+                            page.Margin(fmt == "A5" ? 28 : 48);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(metaFont).LineHeight(1.45f));
 
                         if (settings != null)
                             RenderStampSignatureFooter(page, settings);
@@ -2939,33 +2978,37 @@ if (hasLogo)
                                     });
                                     row.ConstantItem(120).AlignRight().Column(c =>
                                     {
-                                        c.Item().Text(certificate.CompanyPhone ?? "").FontSize(7);
-                                        c.Item().Text(certificate.CompanyEmail ?? "").FontSize(7);
-                                        c.Item().Text(certificate.CompanyWebsite ?? "").FontSize(7);
+                                        c.Item().Text(certificate.CompanyPhone ?? "").FontSize(7).LineHeight(1.35f);
+                                        c.Item().Text(certificate.CompanyEmail ?? "").FontSize(7).LineHeight(1.35f);
+                                        c.Item().Text(certificate.CompanyWebsite ?? "").FontSize(7).LineHeight(1.35f);
                                     });
                                 });
-                                col.Item().PaddingTop(6).LineHorizontal(1f).LineColor(Color.FromHex("#E67E22"));
+                                col.Item().PaddingTop(8).LineHorizontal(1f).LineColor(Color.FromHex("#E67E22"));
                             }
                         });
 
-                        page.Content().PaddingTop(letterheadOnly ? 8 : 18).Column(col =>
+                        page.Content().PaddingTop(letterheadOnly ? 12 : 22).Column(col =>
                         {
-                            col.Item().AlignCenter().Text(subject).Bold().FontSize(fmt == "A5" ? 11 : 12);
-                            col.Item().PaddingTop(16).Text($"DATE:{certificate.CertificateDate:dd/MM/yyyy}").FontSize(10);
-                            col.Item().PaddingTop(6).Text($"To; {recipient}").FontSize(10);
-                            col.Item().PaddingTop(14).Text("Dear Sir/Madam").FontSize(10);
-                            col.Item().PaddingTop(12).Text(body).FontSize(fmt == "A5" ? 8 : 9).LineHeight(1.35f);
+                            col.Item().AlignCenter().PaddingBottom(12)
+                                .Text(subject).Bold().FontSize(fmt == "A5" ? 11 : 13);
+                            col.Item().PaddingBottom(8)
+                                .Text($"DATE:{certificate.CertificateDate:dd/MM/yyyy}").FontSize(metaFont).LineHeight(1.5f);
+                            col.Item().PaddingBottom(12)
+                                .Text($"To; {recipient}").FontSize(metaFont).LineHeight(1.5f);
+                            col.Item().PaddingBottom(14)
+                                .Text("Dear Sir/Madam").FontSize(metaFont).LineHeight(1.5f);
+                            col.Item().PaddingBottom(8)
+                                .Text(body).FontSize(bodyFont).LineHeight(1.55f);
 
-                            // Left-aligned stamp & sign block (matches sample)
-                            col.Item().PaddingTop(36).AlignLeft().Column(c =>
+                            col.Item().PaddingTop(40).AlignLeft().Column(c =>
                             {
-                                c.Item().Text("Yours faithfully").FontSize(10);
-                                c.Item().PaddingTop(28).Text(signatoryName).Bold().FontSize(10);
-                                c.Item().Text(signatoryTitle).FontSize(10);
+                                c.Item().Text("Yours faithfully").FontSize(metaFont).LineHeight(1.5f);
+                                c.Item().PaddingTop(36).Text(signatoryName).Bold().FontSize(metaFont).LineHeight(1.45f);
+                                c.Item().PaddingTop(4).Text(signatoryTitle).FontSize(metaFont).LineHeight(1.45f);
                                 if (settings != null && HasStampOrSignature(settings))
-                                    c.Item().Height(28);
+                                    c.Item().Height(32);
                                 else
-                                    c.Item().PaddingTop(8).Text("________________________").FontSize(9);
+                                    c.Item().PaddingTop(12).Text("________________________").FontSize(9);
                             });
                         });
 
@@ -2978,7 +3021,7 @@ if (hasLogo)
                                 var footerAddr = string.IsNullOrWhiteSpace(certificate.FooterAddress)
                                     ? HexaBill.Api.Modules.Documents.SalaryCertificateTemplate.FooterAddress
                                     : certificate.FooterAddress;
-                                col.Item().AlignCenter().Text(footerAddr).FontSize(7);
+                                col.Item().PaddingTop(2).AlignCenter().Text(footerAddr).FontSize(7);
                             });
                         }
                     });

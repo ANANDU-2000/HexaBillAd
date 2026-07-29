@@ -60,11 +60,11 @@ export default function AgreementsPage() {
     }
   }
 
-  const handlePdf = async (row, format, mode) => {
+  const handlePdf = async (row, format, mode, layout = 'full') => {
     setBusyId(row.id)
     setError('')
     try {
-      const blob = await agreementsAPI.getPdf(row.id, format)
+      const blob = await agreementsAPI.getPdf(row.id, format, layout)
       if (mode === 'download') downloadBlob(blob, `${row.agreementNo}_${format}.pdf`)
       else openPdfBlob(blob)
     } catch (e) {
@@ -138,18 +138,27 @@ export default function AgreementsPage() {
                       </button>
                       <button
                         type="button"
-                        title="Reprint A4"
+                        title="Print on letterhead paper (body only)"
                         disabled={busyId === r.id}
-                        onClick={() => handlePdf(r, 'A4', 'print')}
+                        onClick={() => handlePdf(r, 'A4', 'print', 'body')}
                         className="inline-flex items-center gap-0.5 px-2 py-1 text-xs border rounded hover:bg-slate-100 disabled:opacity-50"
                       >
-                        <Printer className="w-3.5 h-3.5" /> Reprint
+                        <Printer className="w-3.5 h-3.5" /> Print
                       </button>
                       <button
                         type="button"
-                        title="Download PDF"
+                        title="Print full document (with header/footer)"
                         disabled={busyId === r.id}
-                        onClick={() => handlePdf(r, 'A4', 'download')}
+                        onClick={() => handlePdf(r, 'A4', 'print', 'full')}
+                        className="inline-flex items-center gap-0.5 px-2 py-1 text-xs border rounded hover:bg-slate-100 disabled:opacity-50"
+                      >
+                        <Printer className="w-3.5 h-3.5" /> Full
+                      </button>
+                      <button
+                        type="button"
+                        title="Download full PDF"
+                        disabled={busyId === r.id}
+                        onClick={() => handlePdf(r, 'A4', 'download', 'full')}
                         className="inline-flex items-center gap-0.5 px-2 py-1 text-xs border rounded hover:bg-slate-100 disabled:opacity-50"
                       >
                         <Download className="w-3.5 h-3.5" /> PDF

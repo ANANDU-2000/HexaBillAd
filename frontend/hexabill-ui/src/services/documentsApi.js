@@ -70,9 +70,9 @@ export const agreementsAPI = {
     const response = await api.delete(`/agreements/${id}`)
     return response.data
   },
-  getPdf: async (id, format = 'A4') => {
+  getPdf: async (id, format = 'A4', layout = 'full') => {
     const response = await api.get(`/agreements/${id}/pdf`, {
-      params: { format },
+      params: { format, layout },
       responseType: 'blob',
       _bypassCache: true,
     })
@@ -110,9 +110,9 @@ export const salaryCertificatesAPI = {
     const response = await api.delete(`/salary-certificates/${id}`)
     return response.data
   },
-  getPdf: async (id, format = 'A4') => {
+  getPdf: async (id, format = 'A4', layout = 'full') => {
     const response = await api.get(`/salary-certificates/${id}/pdf`, {
-      params: { format },
+      params: { format, layout },
       responseType: 'blob',
       _bypassCache: true,
     })

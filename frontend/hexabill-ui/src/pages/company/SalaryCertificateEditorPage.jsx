@@ -325,7 +325,7 @@ export default function SalaryCertificateEditorPage() {
     }
   }
 
-  const handlePdf = async (format, mode) => {
+  const handlePdf = async (format, mode, layout = 'full') => {
     setError('')
     setSaving(true)
     try {
@@ -333,7 +333,7 @@ export default function SalaryCertificateEditorPage() {
       if (!aid || isDirty) {
         aid = await persist()
       }
-      const blob = await salaryCertificatesAPI.getPdf(aid, format)
+      const blob = await salaryCertificatesAPI.getPdf(aid, format, layout)
       const name = `${certificateNo || 'SC'}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
@@ -396,27 +396,29 @@ export default function SalaryCertificateEditorPage() {
           </button>
           <button
             type="button"
-            onClick={() => handlePdf('A4', 'download')}
+            onClick={() => handlePdf('A4', 'download', 'full')}
             disabled={saving}
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50"
           >
-            <Download className="w-4 h-4" /> Download
+            <Download className="w-4 h-4" /> Download PDF
           </button>
           <button
             type="button"
-            onClick={() => handlePdf('A4', 'print')}
+            onClick={() => handlePdf('A4', 'print', 'body')}
             disabled={saving}
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50"
+            title="Body only — for pre-printed letterhead paper"
           >
-            <Printer className="w-4 h-4" /> Print A4
+            <Printer className="w-4 h-4" /> Print Letterhead
           </button>
           <button
             type="button"
-            onClick={() => handlePdf('A5', 'print')}
+            onClick={() => handlePdf('A4', 'print', 'full')}
             disabled={saving}
             className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50"
+            title="Full document with header and footer"
           >
-            <Printer className="w-4 h-4" /> Print A5
+            <Printer className="w-4 h-4" /> Print Full
           </button>
         </div>
       </div>
@@ -566,9 +568,9 @@ export default function SalaryCertificateEditorPage() {
           </div>
         </div>
 
-        <div className="border rounded-lg bg-white p-3">
+        <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
           {!letterheadOnly ? (
-            <div className="flex items-start gap-2 mb-2 pb-2 border-b border-orange-400">
+            <div className="flex items-start gap-3 mb-5 pb-3 border-b border-orange-400">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -579,39 +581,41 @@ export default function SalaryCertificateEditorPage() {
                   }}
                 />
               ) : null}
-              <div className="flex-1 text-[#E67E22] font-bold text-xs uppercase tracking-wide leading-snug">
+              <div className="flex-1 text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
                 {company.companyName}
               </div>
-              <div className="text-[10px] text-right text-text-secondary space-y-0.5 shrink-0">
+              <div className="text-xs text-right text-text-secondary space-y-1 shrink-0 leading-relaxed">
                 <div>{company.companyPhone}</div>
                 <div>{company.companyEmail}</div>
                 <div>{company.companyWebsite}</div>
               </div>
             </div>
           ) : (
-            <div className="text-[10px] text-text-secondary italic mb-2">Letterhead paper (body only — no header/footer)</div>
+            <div className="text-[10px] text-text-secondary italic mb-6 pt-8">
+              Letterhead paper (body only — no header/footer)
+            </div>
           )}
 
-          <div className="text-center font-bold text-sm mb-4">Sub: SALARY CERTIFICATE</div>
-          <div className="text-xs space-y-1 mb-3">
+          <div className="text-center font-bold text-base mb-6 tracking-wide">Sub: SALARY CERTIFICATE</div>
+          <div className="text-sm leading-relaxed space-y-2 mb-5">
             <div>DATE:{formatDisplayDate(certificateDate)}</div>
             <div>To; {display(recipient)}</div>
           </div>
-          <div className="text-xs mb-3">Dear Sir/Madam</div>
-          <p className="text-xs leading-relaxed mb-8 whitespace-pre-wrap">{bodyPreview}</p>
+          <div className="text-sm leading-relaxed mb-5">Dear Sir/Madam</div>
+          <p className="text-sm leading-loose mb-10 whitespace-pre-wrap">{bodyPreview}</p>
 
-          <div className="text-xs space-y-1 max-w-[220px]">
+          <div className="text-sm leading-relaxed space-y-2 max-w-[240px]">
             <div>Yours faithfully</div>
-            <div className="pt-8 font-semibold">{signatoryName || 'Sudheesh Thampi'}</div>
+            <div className="pt-10 font-semibold">{signatoryName || 'Sudheesh Thampi'}</div>
             <div>{signatoryTitle || 'Manager'}</div>
-            <div className="border-t border-black pt-1 mt-6 text-[10px] text-text-secondary">Stamp / signature (left)</div>
+            <div className="border-t border-black pt-1 mt-8 text-xs text-text-secondary">Stamp / signature (left)</div>
             {employeePhone?.trim() ? (
-              <div className="pt-2 text-[10px] text-text-secondary">Phone: {employeePhone}</div>
+              <div className="pt-3 text-xs text-text-secondary">Phone: {employeePhone}</div>
             ) : null}
           </div>
 
           {!letterheadOnly ? (
-            <div className="mt-6 pt-3 border-t text-[10px] text-center text-text-secondary space-y-0.5">
+            <div className="mt-12 pt-4 border-t text-xs text-center text-text-secondary space-y-1.5 leading-relaxed">
               <div className="font-semibold text-text-primary">{company.companyName}</div>
               <div>{company.footerAddress}</div>
             </div>

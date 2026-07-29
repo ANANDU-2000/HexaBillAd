@@ -252,7 +252,7 @@ export default function AgreementEditorPage() {
     }
   }
 
-  const handlePdf = async (format, mode) => {
+  const handlePdf = async (format, mode, layout = 'full') => {
     setError('')
     setSaving(true)
     try {
@@ -260,7 +260,7 @@ export default function AgreementEditorPage() {
       if (!aid || isDirty) {
         aid = await persist()
       }
-      const blob = await agreementsAPI.getPdf(aid, format)
+      const blob = await agreementsAPI.getPdf(aid, format, layout)
       const name = `${agreementNo || 'AGR'}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
@@ -296,14 +296,14 @@ export default function AgreementEditorPage() {
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'download')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
-            <Download className="w-4 h-4" /> Download
+          <button type="button" onClick={() => handlePdf('A4', 'download', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
+            <Download className="w-4 h-4" /> Download PDF
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'print')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
-            <Printer className="w-4 h-4" /> Print A4
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'body')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Body only — for pre-printed letterhead paper">
+            <Printer className="w-4 h-4" /> Print Letterhead
           </button>
-          <button type="button" onClick={() => handlePdf('A5', 'print')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
-            <Printer className="w-4 h-4" /> Print A5
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Full document with header and footer">
+            <Printer className="w-4 h-4" /> Print Full
           </button>
         </div>
       </div>
@@ -374,66 +374,66 @@ export default function AgreementEditorPage() {
           </div>
         </div>
 
-        <div className="border rounded-lg bg-white p-3">
+        <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
           {!letterheadOnly ? (
-            <div className="flex items-start gap-2 mb-1">
+            <div className="flex items-start gap-2 mb-4 pb-3">
               {logoUrl ? (
                 <img src={logoUrl} alt="" className="h-10 w-10 object-contain shrink-0" onError={(e) => { e.currentTarget.style.display = 'none' }} />
               ) : null}
-              <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide">
+              <div className="flex-1 text-center text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
                 {first.firstPartyName || 'First Party'}
               </div>
             </div>
           ) : (
-            <div className="text-[10px] text-text-secondary italic mb-2">Letterhead paper (body only)</div>
+            <div className="text-[10px] text-text-secondary italic mb-6 pt-8">Letterhead paper (body only — header/footer reserved)</div>
           )}
-          <div className="text-center font-bold underline text-sm mb-1">BUSINESS DEVELOPMENT AGREEMENT</div>
-          <div className="text-center text-xs mb-4 underline">DATE-{agreementDate ? agreementDate.split('-').reverse().join('/') : ''}</div>
+          <div className="text-center font-bold underline text-base mb-2 tracking-wide">BUSINESS DEVELOPMENT AGREEMENT</div>
+          <div className="text-center text-sm mb-6 underline">DATE-{agreementDate ? agreementDate.split('-').reverse().join('/') : ''}</div>
 
-          <div className="text-xs space-y-1 mb-3">
+          <div className="text-sm leading-relaxed space-y-1.5 mb-5">
             <div className="font-semibold">First party:</div>
             <div>{first.firstPartyName}</div>
             <div>License number: {first.firstPartyLicense}</div>
             <div>{first.firstPartyAddress}</div>
             <div>Mob: {first.firstPartyMobile}</div>
           </div>
-          <div className="text-xs space-y-1 mb-3">
+          <div className="text-sm leading-relaxed space-y-1.5 mb-5">
             <div className="font-semibold">Second Party</div>
             <div>Name: {display(secondPartyName)}</div>
             <div>License number: {display(secondPartyLicense)}</div>
             <div>{display(secondPartyAddress)}</div>
             <div>Mob: {display(secondPartyMobile)}</div>
           </div>
-          <p className="text-xs mb-3">{whereasText}</p>
-          <ul className="text-xs space-y-1.5 mb-8 list-none pl-0">
+          <p className="text-sm leading-loose mb-5">{whereasText}</p>
+          <ul className="text-sm leading-relaxed space-y-3 mb-10 list-none pl-0">
             {clauses.map((c, idx) => (
-              <li key={idx} className={idx >= 2 ? 'pl-3' : ''}>
+              <li key={idx} className={idx >= 2 ? 'pl-4' : ''}>
                 {idx >= 2 ? '❖ ' : '• '}
                 {c}
               </li>
             ))}
           </ul>
-          <div className="grid grid-cols-2 gap-6 text-xs pt-4">
+          <div className="grid grid-cols-2 gap-8 text-sm pt-6">
             <div>
               <div className="font-semibold">First Party:</div>
-              <div className="text-[10px] mt-1">{first.firstPartyName}</div>
-              <div className="border-t border-black pt-1 mt-10" />
+              <div className="text-xs mt-2 leading-relaxed">{first.firstPartyName}</div>
+              <div className="border-t border-black pt-1 mt-14" />
             </div>
             <div>
               <div className="font-semibold">Second Party</div>
-              <div className="text-[10px] mt-1">{display(secondPartyName)}</div>
-              <div className="border-t border-black pt-1 mt-10" />
+              <div className="text-xs mt-2 leading-relaxed">{display(secondPartyName)}</div>
+              <div className="border-t border-black pt-1 mt-14" />
             </div>
           </div>
           {!letterheadOnly ? (
-            <div className="mt-6 pt-3 border-t text-[10px] text-center text-text-secondary space-y-0.5">
+            <div className="mt-10 pt-4 border-t text-xs text-center text-text-secondary space-y-1.5 leading-relaxed">
               <div className="font-semibold text-text-primary">{first.firstPartyName}</div>
               <div>{first.footerAddress}</div>
               <div>{first.firstPartyPhones}</div>
               <div>{[first.firstPartyEmail, first.firstPartyWebsite].filter(Boolean).join('  |  ')}</div>
             </div>
           ) : (
-            <div className="mt-8 text-[10px] text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
+            <div className="mt-16 text-[10px] text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
           )}
         </div>
       </div>
