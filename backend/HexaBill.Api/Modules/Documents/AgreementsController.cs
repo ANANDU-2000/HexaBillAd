@@ -177,7 +177,9 @@ namespace HexaBill.Api.Modules.Documents
                 if (blocked != null) return blocked;
                 var agreement = await _service.GetByIdAsync(id, tenantId);
                 if (agreement == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Not found" });
-                var bytes = await _pdf.GenerateAgreementPdfAsync(agreement, tenantId, format, layout);
+                var layoutNorm = string.IsNullOrWhiteSpace(layout) ? "full" : layout.Trim().ToLowerInvariant();
+                if (layoutNorm != "body" && layoutNorm != "full") layoutNorm = "full";
+                var bytes = await _pdf.GenerateAgreementPdfAsync(agreement, tenantId, format, layoutNorm);
                 var fmt = (format ?? "A4").Trim().ToUpperInvariant();
                 return File(bytes, "application/pdf", $"{agreement.AgreementNo}_{fmt}.pdf");
             }

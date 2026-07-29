@@ -31,7 +31,7 @@ namespace HexaBill.Api.Modules.Billing
         Task<bool> DeleteSaleAsync(int saleId, int userId, int tenantId);
         Task<string> GenerateInvoiceNumberAsync(int tenantId);
         Task<byte[]> GenerateInvoicePdfAsync(int saleId, int tenantId, string? format = "A4", string? layout = null);
-        Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4");
+        Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4", string? layout = null);
         Task<bool> CanEditInvoiceAsync(int saleId, int userId, string userRole, int tenantId);
         Task<bool> UnlockInvoiceAsync(int saleId, int userId, string unlockReason, int tenantId);
         Task<List<InvoiceVersion>> GetInvoiceVersionsAsync(int saleId, int tenantId);
@@ -2589,7 +2589,7 @@ namespace HexaBill.Api.Modules.Billing
             }
         }
 
-        public async Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4")
+        public async Task<byte[]> GenerateDeliveryNotePdfAsync(int saleId, int tenantId, string? format = "A4", string? layout = null)
         {
             var formatNormalized = string.IsNullOrWhiteSpace(format) ? "A4" : format.Trim();
             if (!new[] { "A4", "A5" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
@@ -2597,7 +2597,8 @@ namespace HexaBill.Api.Modules.Billing
 
             try
             {
-                _logger.LogInformation("Delivery note PDF starting for sale {SaleId} tenant {TenantId} format {Format}", saleId, tenantId, formatNormalized);
+                _logger.LogInformation("Delivery note PDF starting for sale {SaleId} tenant {TenantId} format {Format} layout {Layout}",
+                    saleId, tenantId, formatNormalized, layout ?? "full");
 
                 IQueryable<Sale> query = _context.Sales.Where(s => s.Id == saleId);
                 if (tenantId > 0)
@@ -2630,7 +2631,7 @@ namespace HexaBill.Api.Modules.Billing
                     }).ToList() ?? new List<SaleItemDto>()
                 };
 
-                return await _pdfService.GenerateDeliveryNotePdfAsync(saleDto, formatNormalized);
+                return await _pdfService.GenerateDeliveryNotePdfAsync(saleDto, formatNormalized, layout);
             }
             catch (Exception ex)
             {

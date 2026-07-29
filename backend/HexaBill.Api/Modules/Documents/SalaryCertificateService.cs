@@ -3,6 +3,7 @@ Purpose: Salary Certificate CRUD — fixed Zayoga body template; dynamic employe
 */
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
+using HexaBill.Api.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -92,7 +93,7 @@ namespace HexaBill.Api.Modules.Documents
                     JoiningDate = request.JoiningDate.HasValue ? ToUtcDate(request.JoiningDate) : null,
                     Designation = request.Designation?.Trim(),
                     MonthlySalary = request.MonthlySalary,
-                    MonthlySalaryWords = request.MonthlySalaryWords?.Trim(),
+                    MonthlySalaryWords = ResolveSalaryWords(request.MonthlySalary, request.MonthlySalaryWords),
                     EmployeePhone = request.EmployeePhone?.Trim(),
                     SignatoryName = string.IsNullOrWhiteSpace(request.SignatoryName)
                         ? SalaryCertificateTemplate.DefaultSignatoryName
@@ -134,7 +135,7 @@ namespace HexaBill.Api.Modules.Documents
                 entity.JoiningDate = request.JoiningDate.HasValue ? ToUtcDate(request.JoiningDate) : null;
                 entity.Designation = request.Designation?.Trim();
                 entity.MonthlySalary = request.MonthlySalary;
-                entity.MonthlySalaryWords = request.MonthlySalaryWords?.Trim();
+                entity.MonthlySalaryWords = ResolveSalaryWords(request.MonthlySalary, request.MonthlySalaryWords);
                 entity.EmployeePhone = request.EmployeePhone?.Trim();
                 entity.SignatoryName = string.IsNullOrWhiteSpace(request.SignatoryName)
                     ? SalaryCertificateTemplate.DefaultSignatoryName
@@ -193,6 +194,17 @@ namespace HexaBill.Api.Modules.Documents
 
         private static string NormalizeStatus(string? status)
             => string.Equals(status, "Final", StringComparison.OrdinalIgnoreCase) ? "Final" : "Draft";
+
+        /// <summary>Auto-fill Gulf uppercase words from salary when words blank.</summary>
+        internal static string? ResolveSalaryWords(decimal? salary, string? words)
+        {
+            var trimmed = words?.Trim();
+            if (!string.IsNullOrWhiteSpace(trimmed) && trimmed != "________________")
+                return trimmed;
+            if (!salary.HasValue || salary.Value < 0)
+                return trimmed;
+            return AmountToWords.IntegerUpper(salary.Value);
+        }
 
         private static DateTime ToUtcDate(DateTime? value)
         {
@@ -258,7 +270,9 @@ namespace HexaBill.Api.Modules.Documents
             var joining = a.JoiningDate.HasValue ? a.JoiningDate.Value.ToString("dd-MM-yyyy") : Blank;
             var designation = BlankIfEmpty(a.Designation);
             var salaryNum = a.MonthlySalary.HasValue ? a.MonthlySalary.Value.ToString("0") : Blank;
-            var salaryWords = BlankIfEmpty(a.MonthlySalaryWords);
+            var salaryWords = SalaryCertificateService.ResolveSalaryWords(a.MonthlySalary, a.MonthlySalaryWords)
+                ?? Blank;
+            if (string.IsNullOrWhiteSpace(salaryWords)) salaryWords = Blank;
 
             return
                 $"This is to certify that {name} {nationality} nationality holding passport number {passport} " +

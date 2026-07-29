@@ -83,7 +83,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing delivery note…</p>')
     setPrinting(true)
     try {
-      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format: format === 'A5' ? 'A5' : 'A4' })
+      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format: format === 'A5' ? 'A5' : 'A4', layout: 'body' })
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
         printWindow.close()
         toast.error('Delivery note could not be generated')

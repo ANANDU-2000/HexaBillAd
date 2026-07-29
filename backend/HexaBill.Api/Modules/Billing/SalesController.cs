@@ -437,7 +437,7 @@ namespace HexaBill.Api.Modules.Billing
 
         [HttpGet("{id}/delivery-note-pdf")]
         [Authorize(Roles = "Admin,Owner,Staff")]
-        public async Task<ActionResult> GetDeliveryNotePdf(int id, [FromQuery] string? format = "A4")
+        public async Task<ActionResult> GetDeliveryNotePdf(int id, [FromQuery] string? format = "A4", [FromQuery] string? layout = null)
         {
             try
             {
@@ -445,6 +445,10 @@ namespace HexaBill.Api.Modules.Billing
                 if (string.IsNullOrEmpty(formatNormalized)) formatNormalized = "A4";
                 if (!new[] { "A4", "A5" }.Contains(formatNormalized, StringComparer.OrdinalIgnoreCase))
                     formatNormalized = "A4";
+
+                var layoutNormalized = string.IsNullOrWhiteSpace(layout) ? "full" : layout.Trim().ToLowerInvariant();
+                if (layoutNormalized != "body" && layoutNormalized != "full")
+                    layoutNormalized = "full";
 
                 var tenantId = CurrentTenantId;
                 var sale = await _saleService.GetSaleByIdAsync(id, tenantId);
@@ -457,7 +461,7 @@ namespace HexaBill.Api.Modules.Billing
                     });
                 }
 
-                var pdfBytes = await _saleService.GenerateDeliveryNotePdfAsync(id, tenantId, formatNormalized);
+                var pdfBytes = await _saleService.GenerateDeliveryNotePdfAsync(id, tenantId, formatNormalized, layoutNormalized);
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
                     return StatusCode(500, new ApiResponse<object>

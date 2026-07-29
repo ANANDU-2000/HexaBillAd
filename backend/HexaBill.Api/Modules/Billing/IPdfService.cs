@@ -7,7 +7,7 @@ namespace HexaBill.Api.Modules.Billing
     {
         Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4", string? layout = null);
         /// <summary>Packing-list delivery note from sale (no prices/VAT/totals).</summary>
-        Task<byte[]> GenerateDeliveryNotePdfAsync(SaleDto sale, string format = "A4");
+        Task<byte[]> GenerateDeliveryNotePdfAsync(SaleDto sale, string format = "A4", string? layout = null);
         Task<byte[]> GenerateCombinedInvoicePdfAsync(List<SaleDto> sales);
         Task<byte[]> GenerateSalesLedgerPdfAsync(SalesLedgerReportDto ledgerReport, DateTime fromDate, DateTime toDate, int tenantId);
         Task<byte[]> GeneratePendingBillsPdfAsync(List<PendingBillDto> pendingBills, DateTime fromDate, DateTime toDate, int tenantId);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Eye, Package, Printer, RefreshCw, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Eye, Package, Printer, RefreshCw, Search, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { salesAPI } from '../../services'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
@@ -74,7 +74,8 @@ export default function DeliveryNotesPage() {
     setBusyId(sale.id)
     setError('')
     try {
-      const blob = await salesAPI.getDeliveryNotePdf(sale.id, { format })
+      const layout = mode === 'download' ? 'full' : 'body'
+      const blob = await salesAPI.getDeliveryNotePdf(sale.id, { format, layout })
       const name = `DN-${sale.invoiceNo || sale.id}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
@@ -93,7 +94,7 @@ export default function DeliveryNotesPage() {
         <div className="min-w-0">
           <h1 className="text-lg md:text-xl font-bold text-text-primary leading-tight">Delivery Notes</h1>
           <p className="text-xs text-text-secondary truncate">
-            From invoices — print A4/A5 body on letterhead
+            From invoices — Print = letterhead body; Download = full header/footer
           </p>
         </div>
         <button
@@ -180,9 +181,18 @@ export default function DeliveryNotesPage() {
                           <button
                             type="button"
                             disabled={busy}
+                            onClick={() => handlePdf(r, 'A4', 'download')}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
+                            title="Download full PDF"
+                          >
+                            <Download className="w-3.5 h-3.5" /> PDF
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
                             onClick={() => handlePdf(r, 'A4', 'print')}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
-                            title="Print A4"
+                            title="Print A4 on letterhead"
                           >
                             <Printer className="w-3.5 h-3.5" /> A4
                           </button>
@@ -191,7 +201,7 @@ export default function DeliveryNotesPage() {
                             disabled={busy}
                             onClick={() => handlePdf(r, 'A5', 'print')}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
-                            title="Print A5"
+                            title="Print A5 on letterhead"
                           >
                             <Printer className="w-3.5 h-3.5" /> A5
                           </button>

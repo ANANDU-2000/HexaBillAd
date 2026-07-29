@@ -376,82 +376,8 @@ namespace HexaBill.Api.Modules.Billing
             return customer ?? "";
         }
 
-        // Helper method to convert numbers to words for invoice
-        private string ConvertToWords(decimal amount)
-        {
-            try
-            {
-                if (amount == 0) return "Zero Dirhams Only";
-                
-                var integerPart = (long)Math.Floor(amount);
-                var decimalPart = (int)Math.Round((amount - integerPart) * 100);
-                
-                string words = ConvertIntegerToWords(integerPart);
-                
-                if (decimalPart > 0)
-                {
-                    words += $" and {ConvertIntegerToWords(decimalPart)} Fils";
-                }
-                
-                words += " Dirhams Only";
-                return words;
-            }
-            catch
-            {
-                return amount.ToString("0.00") + " AED";
-            }
-        }
-        
-        private string ConvertIntegerToWords(long number)
-        {
-            if (number == 0) return "Zero";
-            
-            if (number < 0)
-                return "Minus " + ConvertIntegerToWords(Math.Abs(number));
-            
-            string words = "";
-            
-            if ((number / 1000000000) > 0)
-            {
-                words += ConvertIntegerToWords(number / 1000000000) + " Billion ";
-                number %= 1000000000;
-            }
-            
-            if ((number / 1000000) > 0)
-            {
-                words += ConvertIntegerToWords(number / 1000000) + " Million ";
-                number %= 1000000;
-            }
-            
-            if ((number / 1000) > 0)
-            {
-                words += ConvertIntegerToWords(number / 1000) + " Thousand ";
-                number %= 1000;
-            }
-            
-            if ((number / 100) > 0)
-            {
-                words += ConvertIntegerToWords(number / 100) + " Hundred ";
-                number %= 100;
-            }
-            
-            if (number > 0)
-            {
-                var units = new[] { "Zero", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
-                var tens = new[] { "Zero", "Ten", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
-                
-                if (number < 20)
-                    words += units[number];
-                else
-                {
-                    words += tens[number / 10];
-                    if ((number % 10) > 0)
-                        words += " " + units[number % 10];
-                }
-            }
-            
-            return words.Trim();
-        }
+        // Gulf AED amount-in-words — shared helper
+        private static string ConvertToWords(decimal amount) => HexaBill.Api.Shared.AmountToWords.Dirhams(amount);
 
         // Nested class for company settings
         public class CompanySettings

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Save, Download, Printer } from 'lucide-react'
 import { salaryCertificatesAPI } from '../../services/documentsApi'
-import { getSetting, getSettingBool } from '../../utils/settingsKeys'
+import { getSetting } from '../../utils/settingsKeys'
+import { amountToWordsUpper } from '../../utils/amountToWords'
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)
@@ -69,8 +70,9 @@ export default function SalaryCertificateEditorPage() {
   const [error, setError] = useState('')
   const [baseline, setBaseline] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
-  const [letterheadOnly, setLetterheadOnly] = useState(false)
   const [autoSaveStatus, setAutoSaveStatus] = useState('')
+  /** Track if user manually edited words so we don't overwrite their custom text */
+  const wordsTouchedRef = useRef(false)
   const autoSaveTimer = useRef(null)
   const persistRef = useRef(null)
   const isDirtyRef = useRef(false)
@@ -194,6 +196,7 @@ export default function SalaryCertificateEditorPage() {
     setDesignation(next.designation)
     setMonthlySalary(next.monthlySalary)
     setMonthlySalaryWords(next.monthlySalaryWords)
+    wordsTouchedRef.current = Boolean(next.monthlySalaryWords?.trim())
     setEmployeePhone(next.employeePhone)
     setSignatoryName(next.signatoryName)
     setSignatoryTitle(next.signatoryTitle)
@@ -269,7 +272,6 @@ export default function SalaryCertificateEditorPage() {
               getSetting(dict, 'COMPANY_LOGO') ||
               ''
           )
-          setLetterheadOnly(getSettingBool(dict, 'Feature_LetterheadOnlyPrint'))
         }
       } catch {
         /* optional */
@@ -346,11 +348,11 @@ export default function SalaryCertificateEditorPage() {
 
   const bodyPreview = useMemo(() => {
     const salaryNum = monthlySalary?.toString().trim() ? monthlySalary : '________________'
-    const salaryWords = display(monthlySalaryWords)
+    const wordsAuto = monthlySalaryWords?.trim() || amountToWordsUpper(monthlySalary) || '________________'
     return (
       `This is to certify that ${display(employeeName)} ${display(employeeNationality)} nationality holding passport number ${display(passportNumber)} ` +
       `is working with us since ${formatJoiningDisplay(joiningDate)} as ${display(designation)} And drawing a monthly salary ` +
-      `${salaryNum}{${salaryWords}} inclusive of all allowances. Please note that this letter is only ` +
+      `${salaryNum}{${wordsAuto}} inclusive of all allowances. Please note that this letter is only ` +
       `issued upon the request of the above-mentioned employee and does not in no way and under no ` +
       `circumstances constitute any financial responsibility guarantee and/or liability towards the ` +
       `payment of any loan amount(S) to you from our part.`
@@ -522,19 +524,34 @@ export default function SalaryCertificateEditorPage() {
                 step="1"
                 className="w-full border rounded px-2 py-1.5 text-sm"
                 value={monthlySalary}
-                onChange={(e) => setMonthlySalary(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setMonthlySalary(v)
+                  if (!wordsTouchedRef.current) {
+                    setMonthlySalaryWords(amountToWordsUpper(v))
+                  }
+                }}
                 onKeyDown={(e) => onFieldKeyDown(e, '[data-sc-field="words"]')}
               />
             </label>
             <label className="text-xs space-y-1">
-              <span className="text-text-secondary">Salary in words</span>
+              <span className="text-text-secondary">Salary in words (auto)</span>
               <input
                 data-sc-field="words"
                 className="w-full border rounded px-2 py-1.5 text-sm"
                 value={monthlySalaryWords}
-                onChange={(e) => setMonthlySalaryWords(e.target.value)}
+                onChange={(e) => {
+                  wordsTouchedRef.current = true
+                  setMonthlySalaryWords(e.target.value)
+                }}
+                onBlur={() => {
+                  if (!monthlySalaryWords?.trim() && monthlySalary !== '') {
+                    wordsTouchedRef.current = false
+                    setMonthlySalaryWords(amountToWordsUpper(monthlySalary))
+                  }
+                }}
                 onKeyDown={(e) => onFieldKeyDown(e, '[data-sc-field="phone"]')}
-                placeholder="e.g. TENTHOUSAND"
+                placeholder="Auto from salary number"
               />
             </label>
           </div>
@@ -569,32 +586,26 @@ export default function SalaryCertificateEditorPage() {
         </div>
 
         <div className="border rounded-lg bg-white p-5 md:p-6 max-w-[210mm] mx-auto xl:mx-0 shadow-sm">
-          {!letterheadOnly ? (
-            <div className="flex items-start gap-3 mb-5 pb-3 border-b border-orange-400">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt=""
-                  className="h-10 w-10 object-contain shrink-0"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none'
-                  }}
-                />
-              ) : null}
-              <div className="flex-1 text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
-                {company.companyName}
-              </div>
-              <div className="text-xs text-right text-text-secondary space-y-1 shrink-0 leading-relaxed">
-                <div>{company.companyPhone}</div>
-                <div>{company.companyEmail}</div>
-                <div>{company.companyWebsite}</div>
-              </div>
+          <div className="flex items-start gap-3 mb-5 pb-3 border-b border-orange-400">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-10 w-10 object-contain shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            ) : null}
+            <div className="flex-1 text-[#E67E22] font-bold text-sm uppercase tracking-wide leading-relaxed">
+              {company.companyName}
             </div>
-          ) : (
-            <div className="text-[10px] text-text-secondary italic mb-6 pt-8">
-              Letterhead paper (body only — no header/footer)
+            <div className="text-xs text-right text-text-secondary space-y-1 shrink-0 leading-relaxed">
+              <div>{company.companyPhone}</div>
+              <div>{company.companyEmail}</div>
+              <div>{company.companyWebsite}</div>
             </div>
-          )}
+          </div>
 
           <div className="text-center font-bold text-base mb-6 tracking-wide">Sub: SALARY CERTIFICATE</div>
           <div className="text-sm leading-relaxed space-y-2 mb-5">
@@ -614,12 +625,10 @@ export default function SalaryCertificateEditorPage() {
             ) : null}
           </div>
 
-          {!letterheadOnly ? (
-            <div className="mt-12 pt-4 border-t text-xs text-center text-text-secondary space-y-1.5 leading-relaxed">
-              <div className="font-semibold text-text-primary">{company.companyName}</div>
-              <div>{company.footerAddress}</div>
-            </div>
-          ) : null}
+          <div className="mt-12 pt-4 border-t text-xs text-center text-text-secondary space-y-1.5 leading-relaxed">
+            <div className="font-semibold text-text-primary">{company.companyName}</div>
+            <div>{company.footerAddress}</div>
+          </div>
         </div>
       </div>
     </div>

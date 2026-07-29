@@ -161,28 +161,6 @@ namespace HexaBill.Api.Modules.Payments
             return prefix + (maxNum + 1).ToString("D4");
         }
 
-        private static string AmountToWords(decimal amount)
-        {
-            var whole = (int)Math.Floor(amount);
-            var frac = (int)Math.Round((amount - whole) * 100);
-            if (whole == 0 && frac == 0) return "Zero Dirhams Only";
-            var words = WholeToWords(whole);
-            if (frac > 0) words += " and " + frac + "/100";
-            return words + " Dirhams Only";
-        }
-
-        private static string WholeToWords(int n)
-        {
-            if (n == 0) return "Zero";
-            var units = new[] { "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine" };
-            var teens = new[] { "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen" };
-            var tens = new[] { "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety" };
-            if (n < 10) return units[n];
-            if (n < 20) return teens[n - 10];
-            if (n < 100) return tens[n / 10] + (n % 10 > 0 ? " " + units[n % 10] : "");
-            if (n < 1000) return units[n / 100] + " Hundred" + (n % 100 > 0 ? " " + WholeToWords(n % 100) : "");
-            if (n < 1000000) return WholeToWords(n / 1000) + " Thousand" + (n % 1000 > 0 ? " " + WholeToWords(n % 1000) : "");
-            return WholeToWords(n / 1000000) + " Million" + (n % 1000000 > 0 ? " " + WholeToWords(n % 1000000) : "");
-        }
+        private static string AmountToWords(decimal amount) => HexaBill.Api.Shared.AmountToWords.Dirhams(amount);
     }
 }

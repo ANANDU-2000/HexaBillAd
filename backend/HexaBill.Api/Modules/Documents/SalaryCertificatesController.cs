@@ -177,7 +177,9 @@ namespace HexaBill.Api.Modules.Documents
                 if (blocked != null) return blocked;
                 var cert = await _service.GetByIdAsync(id, tenantId);
                 if (cert == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Not found" });
-                var bytes = await _pdf.GenerateSalaryCertificatePdfAsync(cert, tenantId, format, layout);
+                var layoutNorm = string.IsNullOrWhiteSpace(layout) ? "full" : layout.Trim().ToLowerInvariant();
+                if (layoutNorm != "body" && layoutNorm != "full") layoutNorm = "full";
+                var bytes = await _pdf.GenerateSalaryCertificatePdfAsync(cert, tenantId, format, layoutNorm);
                 var fmt = (format ?? "A4").Trim().ToUpperInvariant();
                 return File(bytes, "application/pdf", $"{cert.CertificateNo}_{fmt}.pdf");
             }

@@ -1084,7 +1084,7 @@ const PosEnterprisePage = () => {
     const toastId = 'delivery-note-print'
     try {
       toast.loading('Preparing delivery note...', { id: toastId })
-      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format })
+      const blob = await salesAPI.getDeliveryNotePdf(saleId, { format, layout: 'body' })
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       printWindow.location.href = blobUrl
       printWindow.onload = () => {

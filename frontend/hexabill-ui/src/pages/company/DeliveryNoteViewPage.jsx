@@ -58,7 +58,8 @@ export default function DeliveryNoteViewPage() {
     if (!sale?.id) return
     setBusy(true)
     try {
-      const blob = await salesAPI.getDeliveryNotePdf(sale.id, { format })
+      const layout = mode === 'download' ? 'full' : 'body'
+      const blob = await salesAPI.getDeliveryNotePdf(sale.id, { format, layout })
       const name = `DN-${sale.invoiceNo || sale.id}_${format}.pdf`
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)

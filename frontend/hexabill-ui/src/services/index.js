@@ -297,6 +297,9 @@ export const salesAPI = {
     try {
       const params = {}
       if (options.format) params.format = options.format
+      // layout=body → print on letterhead; layout=full → download/view with header+footer
+      if (options.layout === 'body' || options.layout === 'full') params.layout = options.layout
+      else params.layout = 'full'
       const response = await api.get(`/sales/${id}/delivery-note-pdf`, {
         responseType: 'blob',
         timeout: 120000,
