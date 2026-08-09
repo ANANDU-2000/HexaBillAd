@@ -53,7 +53,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
         const detail = payload?.detail ?? (payload?.receiptNumber ? payload : null)
         if (res?.success && detail) {
           setData({ ...payload, detail })
-          onSuccess?.()
+          // Do not call onSuccess here — that reloads the ledger on every open and caused flash/refresh storms.
         } else {
           setError(res?.message || 'Receipt could not be loaded. Please try again or contact support.')
         }
@@ -68,7 +68,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
     }
     fetchReceipt()
     return () => { cancelled = true }
-  }, [isOpen, paymentIds, onSuccess])
+  }, [isOpen, paymentIds])
 
   const handlePrint = () => {
     if (!printRef.current) return

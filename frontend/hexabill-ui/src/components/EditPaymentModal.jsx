@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import toast from 'react-hot-toast'
 import Modal from './Modal'
-import { paymentsAPI, customersAPI, reportsAPI } from '../services'
+import { paymentsAPI, customersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 
 const MODES = ['CASH', 'CHEQUE', 'ONLINE', 'CREDIT']
@@ -20,58 +20,49 @@ function normalizeMode (raw) {
   return 'CASH'
 }
 
-function normalizeInvoiceList (outstandingInvoices = [], allInvoices = [], currentSaleId, currentInvoiceNo) {
-  const invoiceMap = new Map()
-
-  outstandingInvoices.forEach((inv) => {
-    if (inv?.id == null) return
-    invoiceMap.set(inv.id, {
-      ...inv,
-      isOutstanding: true,
-      balanceAmount: Number(inv.balanceAmount) || 0,
-      grandTotal: Number(inv.grandTotal ?? inv.total) || 0,
-      invoiceNo: inv.invoiceNo || `INV-${inv.id}`
-    })
-  })
-
-  allInvoices.forEach((inv) => {
-    if (inv?.id == null || invoiceMap.has(inv.id)) return
-    const paidAmount = Number(inv.paidAmount) || 0
-    const grandTotal = Number(inv.grandTotal ?? inv.total) || 0
-    const balanceAmount = grandTotal - paidAmount
-    invoiceMap.set(inv.id, {
+function buildInvoiceOptions (outstandingInvoices = [], allInvoices = [], currentSaleId, currentInvoiceNo) {
+  const map = new Map()
+  for (const inv of outstandingInvoices) {
+    if (inv?.id == null) continue
+    map.set(inv.id, {
       id: inv.id,
       invoiceNo: inv.invoiceNo || `INV-${inv.id}`,
-      invoiceDate: inv.invoiceDate || inv.date,
-      grandTotal,
-      paidAmount,
-      balanceAmount,
-      isOutstanding: balanceAmount > 0.005,
-      paymentStatus: inv.paymentStatus || (balanceAmount > 0.005 ? 'Pending' : 'Paid')
+      grandTotal: Number(inv.grandTotal ?? inv.total) || 0,
+      balanceAmount: Number(inv.balanceAmount) || 0,
+      isOutstanding: true
     })
-  })
-
-  // Ensure current linked invoice appears even if missing from lists
-  if (currentSaleId && !invoiceMap.has(currentSaleId)) {
-    invoiceMap.set(currentSaleId, {
+  }
+  for (const inv of allInvoices) {
+    if (inv?.id == null || map.has(inv.id)) continue
+    const grandTotal = Number(inv.grandTotal ?? inv.total) || 0
+    const paidAmount = Number(inv.paidAmount) || 0
+    const balanceAmount = grandTotal - paidAmount
+    map.set(inv.id, {
+      id: inv.id,
+      invoiceNo: inv.invoiceNo || `INV-${inv.id}`,
+      grandTotal,
+      balanceAmount,
+      isOutstanding: balanceAmount > 0.005
+    })
+  }
+  if (currentSaleId && !map.has(currentSaleId)) {
+    map.set(currentSaleId, {
       id: currentSaleId,
       invoiceNo: currentInvoiceNo || `INV-${currentSaleId}`,
       grandTotal: 0,
       balanceAmount: 0,
-      isOutstanding: false,
-      paymentStatus: 'Linked'
+      isOutstanding: false
     })
   }
-
-  return Array.from(invoiceMap.values()).sort((a, b) => {
+  return Array.from(map.values()).sort((a, b) => {
     if (a.isOutstanding !== b.isOutstanding) return a.isOutstanding ? -1 : 1
-    return new Date(b.invoiceDate || 0) - new Date(a.invoiceDate || 0)
+    return String(b.invoiceNo).localeCompare(String(a.invoiceNo))
   })
 }
 
 /**
- * Full-field customer payment edit. Save always PUTs updatePayment (never create).
- * Invoice can be reassigned like Add Payment (pending list + typed invoice lookup).
+ * Compact edit payment modal — same field layout as Add Payment.
+ * Save always PUTs updatePayment (never create / never auto-print).
  */
 export default function EditPaymentModal ({
   isOpen,
@@ -82,9 +73,7 @@ export default function EditPaymentModal ({
   allInvoices = []
 }) {
   const [saving, setSaving] = useState(false)
-  const [invoiceFilter, setInvoiceFilter] = useState('')
   const [fetchedOutstanding, setFetchedOutstanding] = useState([])
-  const [fetchedAll, setFetchedAll] = useState([])
   const [form, setForm] = useState({
     amount: '',
     paymentDate: '',
@@ -98,63 +87,27 @@ export default function EditPaymentModal ({
   const customerId = payment?.customerId || payment?.customer?.id || null
 
   const effectiveOutstanding = outstandingInvoices?.length ? outstandingInvoices : fetchedOutstanding
-  const effectiveAll = allInvoices?.length ? allInvoices : fetchedAll
-
-  useEffect(() => {
-    if (!isOpen || !customerId) {
-      setFetchedOutstanding([])
-      setFetchedAll([])
-      return
-    }
-    if (outstandingInvoices?.length && allInvoices?.length) return
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        const [outRes, salesRes] = await Promise.all([
-          customersAPI.getOutstandingInvoices(customerId).catch(() => null),
-          reportsAPI.getSalesReport({ customerId, page: 1, pageSize: 500 }).catch(() => null)
-        ])
-        if (cancelled) return
-        if (!outstandingInvoices?.length) {
-          setFetchedOutstanding(outRes?.success ? (outRes.data || []) : [])
-        }
-        if (!allInvoices?.length) {
-          const items = salesRes?.success
-            ? (salesRes.data?.items || salesRes.data || [])
-            : []
-          const list = Array.isArray(items) ? items : []
-          setFetchedAll(list.filter((s) =>
-            !customerId || s.customerId === customerId || parseInt(s.customerId, 10) === parseInt(customerId, 10)
-          ))
-        }
-      } catch (_) {
-        if (!cancelled) {
-          setFetchedOutstanding([])
-          setFetchedAll([])
-        }
-      }
-    })()
-    return () => { cancelled = true }
-  }, [isOpen, customerId, outstandingInvoices?.length, allInvoices?.length])
-
-  const availableInvoices = useMemo(
-    () => normalizeInvoiceList(effectiveOutstanding, effectiveAll, currentSaleId, currentInvoiceNo),
-    [effectiveOutstanding, effectiveAll, currentSaleId, currentInvoiceNo]
+  const invoices = useMemo(
+    () => buildInvoiceOptions(effectiveOutstanding, allInvoices, currentSaleId, currentInvoiceNo),
+    [effectiveOutstanding, allInvoices, currentSaleId, currentInvoiceNo]
   )
 
-  const filteredInvoices = useMemo(() => {
-    const q = invoiceFilter.trim().toLowerCase()
-    if (!q) return availableInvoices
-    return availableInvoices.filter((inv) =>
-      String(inv.invoiceNo || '').toLowerCase().includes(q) ||
-      String(inv.id).includes(q)
-    )
-  }, [availableInvoices, invoiceFilter])
+  useEffect(() => {
+    if (!isOpen || !customerId || outstandingInvoices?.length) {
+      if (!isOpen) setFetchedOutstanding([])
+      return
+    }
+    let cancelled = false
+    customersAPI.getOutstandingInvoices(customerId)
+      .then((res) => {
+        if (!cancelled) setFetchedOutstanding(res?.success ? (res.data || []) : [])
+      })
+      .catch(() => { if (!cancelled) setFetchedOutstanding([]) })
+    return () => { cancelled = true }
+  }, [isOpen, customerId, outstandingInvoices?.length])
 
   useEffect(() => {
     if (!isOpen || !payment) return
-    setInvoiceFilter('')
     setForm({
       amount: String(payment.amount ?? ''),
       paymentDate: toDateInputValue(payment.paymentDate),
@@ -164,27 +117,7 @@ export default function EditPaymentModal ({
     })
   }, [isOpen, payment, currentSaleId])
 
-  // Typed invoice no. → select matching sale when unique exact / suffix match
-  useEffect(() => {
-    if (!isOpen) return
-    const q = invoiceFilter.trim()
-    if (!q) return
-    const exact = availableInvoices.filter((inv) =>
-      String(inv.invoiceNo || '').toLowerCase() === q.toLowerCase()
-    )
-    if (exact.length === 1) {
-      setForm((f) => (f.saleId === String(exact[0].id) ? f : { ...f, saleId: String(exact[0].id) }))
-      return
-    }
-    const endsWith = availableInvoices.filter((inv) =>
-      String(inv.invoiceNo || '').toLowerCase().endsWith(q.toLowerCase())
-    )
-    if (endsWith.length === 1) {
-      setForm((f) => (f.saleId === String(endsWith[0].id) ? f : { ...f, saleId: String(endsWith[0].id) }))
-    }
-  }, [invoiceFilter, availableInvoices, isOpen])
-
-  const selectedInv = availableInvoices.find((inv) => String(inv.id) === String(form.saleId))
+  const selectedInv = invoices.find((inv) => String(inv.id) === String(form.saleId))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -211,32 +144,32 @@ export default function EditPaymentModal ({
       return
     }
 
+    const prevSaleId = currentSaleId != null ? Number(currentSaleId) : null
+    const saleChanged = (prevSaleId || null) !== (nextSaleId || null)
+
     setSaving(true)
     try {
       toast.loading('Updating payment...', { id: 'edit-payment' })
-      const response = await paymentsAPI.updatePayment(payment.id, {
+      const payload = {
         amount: amountValue,
         mode: modeUpper,
         reference: form.reference?.trim() || null,
-        paymentDate: form.paymentDate,
-        reassignSale: true,
-        saleId: nextSaleId
-      })
+        paymentDate: form.paymentDate
+      }
+      if (saleChanged) {
+        payload.reassignSale = true
+        payload.saleId = nextSaleId
+      }
+      const response = await paymentsAPI.updatePayment(payment.id, payload)
       if (response?.success) {
         toast.success('Payment updated successfully', { id: 'edit-payment' })
-        try {
-          window.dispatchEvent(new CustomEvent('dataUpdated'))
-          window.dispatchEvent(new CustomEvent('paymentUpdated', {
-            detail: { customerId: payment.customerId, paymentId: payment.id }
-          }))
-        } catch (_) { /* ignore */ }
+        // Parent onSaved reloads once — do not fire dataUpdated/paymentCreated (refresh storms).
         onSaved?.(response?.data || response)
         onClose?.()
       } else {
         toast.error(response?.message || 'Failed to update payment', { id: 'edit-payment' })
       }
     } catch (error) {
-      console.error('Error updating payment:', error)
       const errorMsg = error?.response?.data?.message || error?.message || 'Failed to update payment'
       if (!error?._handledByInterceptor) toast.error(errorMsg, { id: 'edit-payment' })
     } finally {
@@ -246,132 +179,101 @@ export default function EditPaymentModal ({
 
   if (!payment) return null
 
-  const customerLabel = payment.customerName || payment.customer?.name || '—'
-  const statusLabel = payment.status || payment.paymentStatus || '—'
-  const selectOptions = filteredInvoices.length > 0 ? filteredInvoices : availableInvoices
-
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => { if (!saving) onClose?.() }}
-      title="Edit Payment / Receipt"
-      size="md"
+      title={`Edit Payment – ${payment.customerName || payment.customer?.name || 'Customer'}`}
+      size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2 text-sm text-neutral-700 space-y-1">
-          <p><span className="font-medium text-neutral-500">Customer:</span> {customerLabel}</p>
-          <p><span className="font-medium text-neutral-500">Status:</span> {statusLabel}</p>
-          <p className="text-xs text-neutral-500">Current amount: {formatCurrency(payment.amount)}</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Date *</label>
+            <input
+              type="date"
+              required
+              max={new Date().toISOString().split('T')[0]}
+              value={form.paymentDate}
+              onChange={(e) => setForm((f) => ({ ...f, paymentDate: e.target.value }))}
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              disabled={saving}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Invoice Number (Optional)</label>
+            <select
+              value={form.saleId}
+              onChange={(e) => setForm((f) => ({ ...f, saleId: e.target.value }))}
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              disabled={saving}
+            >
+              <option value="">-- No Invoice (General Payment) --</option>
+              {invoices.map((inv) => (
+                <option key={inv.id} value={String(inv.id)}>
+                  {inv.invoiceNo} - {formatCurrency(inv.grandTotal)} - {inv.balanceAmount > 0.005 ? `Balance: ${formatCurrency(inv.balanceAmount)}` : 'Paid'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Amount *</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              required
+              value={form.amount}
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              disabled={saving}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Mode *</label>
+            <select
+              value={form.mode}
+              onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              disabled={saving}
+            >
+              {MODES.map((m) => (
+                <option key={m} value={m}>{m === 'ONLINE' ? 'Online Transfer' : m.charAt(0) + m.slice(1).toLowerCase()}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-span-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Reference / Remarks</label>
+            <input
+              type="text"
+              value={form.reference}
+              onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
+              placeholder="Cheque number, transaction reference, notes..."
+              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              disabled={saving}
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Find invoice no.</label>
-          <input
-            type="text"
-            value={invoiceFilter}
-            onChange={(e) => setInvoiceFilter(e.target.value)}
-            placeholder="Type invoice number to filter / select"
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-            autoComplete="off"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Invoice Number</label>
-          <select
-            value={form.saleId}
-            onChange={(e) => {
-              setForm((f) => ({ ...f, saleId: e.target.value }))
-              setInvoiceFilter('')
-            }}
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-          >
-            <option value="">-- No Invoice (On account) --</option>
-            {selectOptions.map((inv) => (
-              <option key={inv.id} value={String(inv.id)}>
-                {inv.invoiceNo} - {formatCurrency(inv.grandTotal)} - {inv.balanceAmount > 0.005 ? `Balance: ${formatCurrency(inv.balanceAmount)}` : 'Paid'}
-              </option>
-            ))}
-            {/* Keep current selection visible if filtered out */}
-            {form.saleId && !selectOptions.some((i) => String(i.id) === String(form.saleId)) && selectedInv && (
-              <option value={String(selectedInv.id)}>
-                {selectedInv.invoiceNo} - {formatCurrency(selectedInv.grandTotal)} (current)
-              </option>
-            )}
-          </select>
-          <p className="mt-1 text-xs text-neutral-500">Pending bills listed first — same as Add Payment.</p>
-        </div>
-
-        {selectedInv && (
+        {selectedInv ? (
           <div className={`border rounded-lg p-3 text-sm ${selectedInv.isOutstanding ? 'bg-blue-50 border-blue-200' : 'bg-neutral-50 border-neutral-200'}`}>
-            <p className="font-medium text-neutral-800">{selectedInv.invoiceNo}</p>
-            <p className="text-neutral-600 mt-1">
+            <p className="font-medium">{selectedInv.invoiceNo}</p>
+            <p className="text-neutral-600 mt-0.5">
               Total {formatCurrency(selectedInv.grandTotal)}
-              {selectedInv.balanceAmount > 0.005
-                ? ` · Outstanding ${formatCurrency(selectedInv.balanceAmount)}`
-                : ' · Paid'}
+              {selectedInv.balanceAmount > 0.005 ? ` · Balance ${formatCurrency(selectedInv.balanceAmount)}` : ' · Paid'}
             </p>
-            <p className="text-xs text-neutral-500 mt-1">Amount is not auto-changed when you switch invoice.</p>
+          </div>
+        ) : (
+          <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-sm text-amber-900">
+            General payment — not linked to a specific invoice (same as Add Payment).
           </div>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Amount (AED) *</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            required
-            value={form.amount}
-            onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Date *</label>
-          <input
-            type="date"
-            required
-            max={new Date().toISOString().split('T')[0]}
-            value={form.paymentDate}
-            onChange={(e) => setForm((f) => ({ ...f, paymentDate: e.target.value }))}
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Mode *</label>
-          <select
-            value={form.mode}
-            onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-          >
-            {MODES.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-neutral-500">CASH/ONLINE clear immediately; CHEQUE/CREDIT stay pending until cleared.</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-neutral-700 mb-1">Reference</label>
-          <input
-            type="text"
-            value={form.reference}
-            onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
-            placeholder="Cheque no / transaction ID (optional)"
-            className="w-full border border-neutral-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            disabled={saving}
-          />
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-end pt-2">
+        <div className="flex flex-wrap gap-2 justify-end pt-1">
           <button
             type="button"
             onClick={() => { if (!saving) onClose?.() }}
@@ -385,7 +287,7 @@ export default function EditPaymentModal ({
             disabled={saving}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
           >
-            {saving ? 'Saving...' : 'Save / Update'}
+            {saving ? 'Saving...' : 'Save Payment'}
           </button>
         </div>
       </form>

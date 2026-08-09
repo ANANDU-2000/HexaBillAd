@@ -651,30 +651,37 @@ namespace HexaBill.Api.Modules.Payments
                 }
             }
 
-            // Create audit log
-            var auditLog = new AuditLog
+            // Create audit log only when UserId is a valid FK (avoids 500 on save for some admin sessions)
+            var userExists = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == userId);
+            if (userExists)
             {
-                OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                TenantId = tenantId, // CRITICAL: Set new TenantId
-                UserId = userId,
-                Action = "Payment Updated",
-                Details = System.Text.Json.JsonSerializer.Serialize(new
+                var auditLog = new AuditLog
                 {
-                    PaymentId = paymentId,
-                    OldAmount = oldAmount,
-                    NewAmount = newAmount,
-                    OldStatus = oldStatus.ToString(),
-                    NewStatus = newStatus.ToString(),
-                    ReassignSale = request.ReassignSale,
-                    OldSaleId = oldSaleId,
-                    NewSaleId = payment.SaleId,
-                    OldInvoiceNo = oldInvoiceNo,
-                    NewInvoiceNo = newInvoiceNo
-                }),
-                CreatedAt = DateTime.UtcNow
-            };
-
+                    OwnerId = tenantId,
+                    TenantId = tenantId,
+                    UserId = userId,
+                    Action = "Payment Updated",
+                    Details = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        PaymentId = paymentId,
+                        OldAmount = oldAmount,
+                        NewAmount = newAmount,
+                        OldStatus = oldStatus.ToString(),
+                        NewStatus = newStatus.ToString(),
+                        ReassignSale = request.ReassignSale,
+                        OldSaleId = oldSaleId,
+                        NewSaleId = payment.SaleId,
+                        OldInvoiceNo = oldInvoiceNo,
+                        NewInvoiceNo = newInvoiceNo
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                };
                 _context.AuditLogs.Add(auditLog);
+            }
+            else
+            {
+                _logger.LogWarning("UpdatePayment: skip AuditLog — UserId {UserId} not found", userId);
+            }
 
                 // CRITICAL FIX: Recalculate customer balance BEFORE SaveChangesAsync
                 // This ensures balance is always accurate after payment update
@@ -776,26 +783,32 @@ namespace HexaBill.Api.Modules.Payments
             // Delete payment
             _context.Payments.Remove(payment);
 
-            // Create audit log
-            var auditLog = new AuditLog
+            var userExists = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == userId);
+            if (userExists)
             {
-                OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                TenantId = tenantId, // CRITICAL: Set new TenantId
-                UserId = userId,
-                Action = "Payment Deleted",
-                Details = System.Text.Json.JsonSerializer.Serialize(new
+                var auditLog = new AuditLog
                 {
-                    PaymentId = paymentId,
-                    Amount = payment.Amount,
-                    Mode = payment.Mode.ToString(),
-                    Status = payment.Status.ToString(),
-                    SaleId = payment.SaleId,
-                    CustomerId = payment.CustomerId
-                }),
-                CreatedAt = DateTime.UtcNow
-            };
-
+                    OwnerId = tenantId,
+                    TenantId = tenantId,
+                    UserId = userId,
+                    Action = "Payment Deleted",
+                    Details = System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        PaymentId = paymentId,
+                        Amount = payment.Amount,
+                        Mode = payment.Mode.ToString(),
+                        Status = payment.Status.ToString(),
+                        SaleId = payment.SaleId,
+                        CustomerId = payment.CustomerId
+                    }),
+                    CreatedAt = DateTime.UtcNow
+                };
                 _context.AuditLogs.Add(auditLog);
+            }
+            else
+            {
+                _logger.LogWarning("DeletePayment: skip AuditLog — UserId {UserId} not found", userId);
+            }
 
                 // CRITICAL FIX: Recalculate customer balance BEFORE SaveChangesAsync
                 // This ensures balance is always accurate after payment deletion

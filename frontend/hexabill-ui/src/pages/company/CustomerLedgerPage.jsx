@@ -502,26 +502,31 @@ const CustomerLedgerPage = () => {
     return () => { cancelled = true }
   }, [selectedCustomer?.id, availableBranches, availableRoutes])
 
-  // Refresh data when window regains focus or when data is updated (e.g., returning from POS edit, payment made)
+  // Soft refresh on payment/data events only — NEVER on window focus (that caused minimize→restore refresh loops).
   useEffect(() => {
-    const handleRefresh = () => {
-      if (selectedCustomer) {
-        ledgerLoadInProgressRef.current = null
-        loadCustomerData(selectedCustomer.id)
-        fetchCustomers()
-      }
+    const customerId = selectedCustomer?.id
+    if (!customerId) return
+
+    let timer = null
+    const scheduleRefresh = () => {
+      if (editingPayment || showPaymentModal || showReceiptPreviewModal) return
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (ledgerLoadInProgressRef.current) return
+        loadCustomerData(customerId)
+      }, 400)
     }
-    window.addEventListener('focus', handleRefresh)
-    window.addEventListener('dataUpdated', handleRefresh)
-    window.addEventListener('paymentCreated', handleRefresh)
-    window.addEventListener('paymentUpdated', handleRefresh)
+
+    window.addEventListener('dataUpdated', scheduleRefresh)
+    window.addEventListener('paymentCreated', scheduleRefresh)
+    window.addEventListener('paymentUpdated', scheduleRefresh)
     return () => {
-      window.removeEventListener('focus', handleRefresh)
-      window.removeEventListener('dataUpdated', handleRefresh)
-      window.removeEventListener('paymentCreated', handleRefresh)
-      window.removeEventListener('paymentUpdated', handleRefresh)
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('dataUpdated', scheduleRefresh)
+      window.removeEventListener('paymentCreated', scheduleRefresh)
+      window.removeEventListener('paymentUpdated', scheduleRefresh)
     }
-  }, [selectedCustomer])
+  }, [selectedCustomer?.id, editingPayment, showPaymentModal, showReceiptPreviewModal])
 
   // Server-side search for customer dropdown (debounced)
   const fetchCustomerSearch = useCallback(async (query, page = 1, append = false) => {

@@ -364,7 +364,7 @@ namespace HexaBill.Api.Modules.Payments
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Owner,Manager")]
+        [Authorize(Roles = "Admin,Owner,Manager,SystemAdmin")]
         public async Task<ActionResult<ApiResponse<PaymentDto>>> UpdatePayment(int id, [FromBody] UpdatePaymentRequest request)
         {
             try
@@ -414,14 +414,14 @@ namespace HexaBill.Api.Modules.Payments
                 return StatusCode(500, new ApiResponse<PaymentDto>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = string.IsNullOrWhiteSpace(ex.Message) ? "Failed to update payment" : ex.Message,
                     Errors = new List<string> { ex.Message }
                 });
             }
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Owner,Manager")]
+        [Authorize(Roles = "Admin,Owner,Manager,SystemAdmin")]
         public async Task<ActionResult<ApiResponse<object>>> DeletePayment(int id)
         {
             try
@@ -461,7 +461,7 @@ namespace HexaBill.Api.Modules.Payments
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = "An error occurred",
+                    Message = string.IsNullOrWhiteSpace(ex.Message) ? "Failed to delete payment" : ex.Message,
                     Errors = new List<string> { ex.Message }
                 });
             }
