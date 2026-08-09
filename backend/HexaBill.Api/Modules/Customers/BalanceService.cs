@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Notifications;
+using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Customers
 {
@@ -135,7 +136,7 @@ namespace HexaBill.Api.Modules.Customers
                         .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
                         .OrderByDescending(p => p.PaymentDate)
                         .FirstOrDefaultAsync();
-                    customer.LastPaymentDate = lastPayment?.PaymentDate;
+                    customer.LastPaymentDate = lastPayment != null ? lastPayment.PaymentDate.ToUtcKind() : null;
                 }
                 catch (Exception ex)
                 {

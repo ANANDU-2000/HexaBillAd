@@ -411,11 +411,12 @@ namespace HexaBill.Api.Modules.Payments
             }
             catch (Exception ex)
             {
+                var detail = ex.InnerException?.Message ?? ex.Message;
                 return StatusCode(500, new ApiResponse<PaymentDto>
                 {
                     Success = false,
-                    Message = string.IsNullOrWhiteSpace(ex.Message) ? "Failed to update payment" : ex.Message,
-                    Errors = new List<string> { ex.Message }
+                    Message = string.IsNullOrWhiteSpace(detail) ? "Failed to update payment" : detail,
+                    Errors = new List<string> { detail }
                 });
             }
         }
@@ -458,11 +459,12 @@ namespace HexaBill.Api.Modules.Payments
             }
             catch (Exception ex)
             {
+                var detail = ex.InnerException?.Message ?? ex.Message;
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
-                    Message = string.IsNullOrWhiteSpace(ex.Message) ? "Failed to delete payment" : ex.Message,
-                    Errors = new List<string> { ex.Message }
+                    Message = string.IsNullOrWhiteSpace(detail) ? "Failed to delete payment" : detail,
+                    Errors = new List<string> { detail }
                 });
             }
         }

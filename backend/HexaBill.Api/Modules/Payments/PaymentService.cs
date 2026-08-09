@@ -559,7 +559,7 @@ namespace HexaBill.Api.Modules.Payments
                     payment.Reference = request.Reference;
 
             if (request.PaymentDate.HasValue)
-                    payment.PaymentDate = request.PaymentDate.Value;
+                    payment.PaymentDate = request.PaymentDate.Value.ToUtcKind();
 
             payment.UpdatedAt = DateTime.UtcNow;
 
@@ -610,11 +610,12 @@ namespace HexaBill.Api.Modules.Payments
                         .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
                         .SumAsync(p => p.Amount);
                     oldSale.PaidAmount = oldPaid;
-                    oldSale.LastPaymentDate = await _context.Payments
+                    var oldLastPay = await _context.Payments
                         .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status != PaymentStatus.VOID && p.Id != paymentId)
                         .OrderByDescending(p => p.PaymentDate)
                         .Select(p => (DateTime?)p.PaymentDate)
                         .FirstOrDefaultAsync();
+                    oldSale.LastPaymentDate = oldLastPay.HasValue ? oldLastPay.Value.ToUtcKind() : null;
                     oldSale.PaymentStatus = oldSale.PaidAmount >= oldSale.GrandTotal ? SalePaymentStatus.Paid
                         : oldSale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
                     _logger.LogInformation("UpdatePayment: Old sale {InvoiceNo} PaidAmount now {PaidAmount}", oldSale.InvoiceNo, oldSale.PaidAmount);
@@ -638,7 +639,7 @@ namespace HexaBill.Api.Modules.Payments
                             $"Payment would overpay invoice {sale.InvoiceNo}. Invoice total: {sale.GrandTotal:F2}, other cleared payments: {otherCleared:F2}, this payment: {newAmount:F2}. Maximum allowed for this payment: {Math.Max(0, sale.GrandTotal - otherCleared):F2}.");
                     }
                     sale.PaidAmount = proposedPaid;
-                    sale.LastPaymentDate = payment.PaymentDate;
+                    sale.LastPaymentDate = payment.PaymentDate.ToUtcKind();
                     sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
                         : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
                     _logger.LogInformation("UpdatePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount}", sale.InvoiceNo, sale.PaidAmount);
@@ -755,11 +756,12 @@ namespace HexaBill.Api.Modules.Payments
                         .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
                         .SumAsync(p => p.Amount);
                     sale.PaidAmount = newPaidAmount;
-                    sale.LastPaymentDate = await _context.Payments
+                    var delLastPay = await _context.Payments
                         .Where(p => p.SaleId == sale.Id && p.Status != PaymentStatus.VOID && p.Id != paymentId)
                         .OrderByDescending(p => p.PaymentDate)
-                        .Select(p => p.PaymentDate)
+                        .Select(p => (DateTime?)p.PaymentDate)
                         .FirstOrDefaultAsync();
+                    sale.LastPaymentDate = delLastPay.HasValue ? delLastPay.Value.ToUtcKind() : null;
                     sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
                         : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
                     _logger.LogInformation("DeletePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount} Status {Status}", sale.InvoiceNo, sale.PaidAmount, sale.PaymentStatus);
