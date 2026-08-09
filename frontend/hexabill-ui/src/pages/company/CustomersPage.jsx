@@ -317,6 +317,7 @@ const CustomersPage = () => {
     setValue('email', customer.email)
     setValue('trn', customer.trn)
     setValue('address', customer.address)
+    setValue('location', customer.location || '')
     setValue('creditLimit', customer.creditLimit)
     setValue('customerType', customer.customerType || 'Credit')
     setValue('branchId', customer.branchId || '')
@@ -328,13 +329,14 @@ const CustomersPage = () => {
   const handleExportCustomers = () => {
     try {
       // Create CSV content
-      const headers = ['Name', 'Phone', 'Email', 'TRN', 'Address', 'Customer Type', 'Credit Limit', 'Payment Terms', 'Balance', 'Branch', 'Route']
+      const headers = ['Name', 'Phone', 'Email', 'TRN', 'Address', 'Location', 'Customer Type', 'Credit Limit', 'Payment Terms', 'Balance', 'Branch', 'Route']
       const rows = customers.map(c => [
         c.name || '',
         c.phone || '',
         c.email || '',
         c.trn || '',
         c.address || '',
+        c.location || '',
         c.customerType || 'Credit',
         (c.creditLimit || 0).toString(),
         c.paymentTerms || '',
@@ -406,6 +408,7 @@ const CustomersPage = () => {
           email: values[emailIndex] || '',
           trn: headers.includes('TRN') ? values[headers.findIndex(h => h.toLowerCase() === 'trn')] || '' : '',
           address: headers.includes('Address') ? values[headers.findIndex(h => h.toLowerCase() === 'address')] || '' : '',
+          location: headers.includes('Location') ? values[headers.findIndex(h => h.toLowerCase() === 'location')] || '' : '',
           customerType: headers.includes('Customer Type') ? values[headers.findIndex(h => h.toLowerCase().includes('type'))] || 'Credit' : 'Credit',
           creditLimit: headers.includes('Credit Limit') ? parseFloat(values[headers.findIndex(h => h.toLowerCase().includes('limit'))] || '0') : 0,
           paymentTerms: headers.includes('Payment Terms') ? values[headers.findIndex(h => h.toLowerCase().includes('terms'))] || '' : '',
@@ -634,7 +637,7 @@ const CustomersPage = () => {
             </button>
             <button
               onClick={() => {
-                reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '' })
+                reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '', location: '' })
                 setShowAddModal(true)
               }}
               className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 min-h-[44px]"
@@ -760,7 +763,7 @@ const CustomersPage = () => {
                       <p className="text-gray-500 text-xs mt-1">Try adjusting your search or filters. Add customers to start creating invoices from POS or Sales Ledger.</p>
                       <button
                         onClick={() => {
-                        reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '' })
+                        reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '', location: '' })
                         setShowAddModal(true)
                       }}
                         className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
@@ -1159,6 +1162,15 @@ const CustomersPage = () => {
                 {...register('address')}
               />
             </div>
+
+            <div className="md:col-span-2">
+              <Input
+                label="Location (optional)"
+                placeholder="Area / landmark (e.g. Mussafah, ICAD)"
+                error={errors.location?.message}
+                {...register('location')}
+              />
+            </div>
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -1284,6 +1296,15 @@ const CustomersPage = () => {
                 rows={3}
                 error={errors.address?.message}
                 {...register('address')}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <Input
+                label="Location (optional)"
+                placeholder="Area / landmark (e.g. Mussafah, ICAD)"
+                error={errors.location?.message}
+                {...register('location')}
               />
             </div>
 

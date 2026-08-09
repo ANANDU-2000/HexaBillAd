@@ -216,6 +216,10 @@ const CustomerDetailPage = () => {
             </div>
           </div>
           <div>
+            <label className="text-sm font-medium text-gray-500">Location</label>
+            <div className="mt-1 text-sm text-gray-900">{customer.location || 'N/A'}</div>
+          </div>
+          <div>
             <label className="text-sm font-medium text-gray-500">Customer Type</label>
             <div className="mt-1 text-sm text-gray-900">{customer.customerType || 'Credit'}</div>
           </div>

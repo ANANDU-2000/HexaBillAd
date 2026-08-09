@@ -369,7 +369,9 @@ namespace HexaBill.Api.Modules.Customers
                 query = query.Where(c => (c.Name != null && c.Name.ToLower().Contains(searchLower)) || 
                                         (c.Phone != null && c.Phone.Contains(search)) ||
                                         (c.Email != null && c.Email.ToLower().Contains(searchLower)) ||
-                                        (c.Trn != null && c.Trn.Contains(search)));
+                                        (c.Trn != null && c.Trn.Contains(search)) ||
+                                        (c.Location != null && c.Location.ToLower().Contains(searchLower)) ||
+                                        (c.Address != null && c.Address.ToLower().Contains(searchLower)));
             }
 
             var totalCount = await query.CountAsync();
@@ -395,6 +397,7 @@ namespace HexaBill.Api.Modules.Customers
                     Email = c.Email,
                     Trn = c.Trn,
                     Address = c.Address,
+                    Location = c.Location,
                     CreditLimit = c.CreditLimit,
                     PaymentTerms = c.PaymentTerms,
                     Balance = c.Balance,
@@ -437,6 +440,7 @@ namespace HexaBill.Api.Modules.Customers
                 Email = customer.Email,
                 Trn = customer.Trn,
                 Address = customer.Address,
+                Location = customer.Location,
                 CreditLimit = customer.CreditLimit,
                 PaymentTerms = customer.PaymentTerms,
                 Balance = customer.Balance,
@@ -548,6 +552,7 @@ namespace HexaBill.Api.Modules.Customers
                     Email = request.Email?.Trim(),
                     Trn = request.Trn?.Trim(),
                     Address = request.Address?.Trim(),
+                    Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim(),
                     CreditLimit = creditLimit, // Explicitly set - must never be NULL
                     PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms.Trim(),
                     Balance = 0m, // Explicitly set to 0 decimal - must never be NULL
@@ -613,6 +618,7 @@ namespace HexaBill.Api.Modules.Customers
                     Email = customer.Email,
                     Trn = customer.Trn,
                     Address = customer.Address,
+                    Location = customer.Location,
                     CreditLimit = customer.CreditLimit,
                     PaymentTerms = customer.PaymentTerms,
                     Balance = customer.Balance,
@@ -698,6 +704,7 @@ namespace HexaBill.Api.Modules.Customers
             customer.Email = request.Email;
             customer.Trn = request.Trn;
             customer.Address = request.Address;
+            customer.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
             customer.CreditLimit = request.CreditLimit;
             customer.PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms.Trim();
             customer.CustomerType = newCustomerType;
@@ -751,6 +758,7 @@ namespace HexaBill.Api.Modules.Customers
                 Email = customer.Email,
                 Trn = customer.Trn,
                 Address = customer.Address,
+                Location = customer.Location,
                 CreditLimit = customer.CreditLimit,
                 PaymentTerms = customer.PaymentTerms,
                 Balance = customer.Balance,
@@ -2556,7 +2564,8 @@ namespace HexaBill.Api.Modules.Customers
                            (c.Name.ToLower().Contains(searchTerm) || 
                            (c.Phone != null && c.Phone.Contains(searchTerm)) ||
                            (c.Email != null && c.Email.ToLower().Contains(searchTerm)) ||
-                           (c.Trn != null && c.Trn.Contains(searchTerm))))
+                           (c.Trn != null && c.Trn.Contains(searchTerm)) ||
+                           (c.Location != null && c.Location.ToLower().Contains(searchTerm))))
                 .OrderBy(c => c.Name)
                 .Take(limit)
                 .ToListAsync();
@@ -2569,6 +2578,7 @@ namespace HexaBill.Api.Modules.Customers
                     Email = c.Email,
                     Trn = c.Trn,
                     Address = c.Address,
+                    Location = c.Location,
                     CreditLimit = c.CreditLimit,
                     Balance = c.Balance,
                     CustomerType = c.CustomerType.ToString(),

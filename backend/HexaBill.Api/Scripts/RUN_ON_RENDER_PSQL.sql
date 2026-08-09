@@ -276,3 +276,8 @@ BEGIN
         ALTER TABLE "RecurringInvoices" ALTER COLUMN "IsActive" SET DEFAULT true;
     END IF;
 END $$;
+
+-- =============================================================================
+-- Customer optional Location (area/landmark) — additive, nullable
+-- =============================================================================
+ALTER TABLE "Customers" ADD COLUMN IF NOT EXISTS "Location" character varying(200) NULL;

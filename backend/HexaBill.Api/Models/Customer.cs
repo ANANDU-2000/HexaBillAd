@@ -48,6 +48,13 @@ namespace HexaBill.Api.Models
         public string? Trn { get; set; }
         [MaxLength(500)]
         public string? Address { get; set; }
+
+        /// <summary>
+        /// Optional location/area label (e.g. Mussafah, ICAD) — independent of Branch/Route assignment.
+        /// </summary>
+        [MaxLength(200)]
+        public string? Location { get; set; }
+
         public decimal CreditLimit { get; set; }
 
         /// <summary>

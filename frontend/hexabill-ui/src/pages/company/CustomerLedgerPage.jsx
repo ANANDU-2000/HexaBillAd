@@ -1348,6 +1348,7 @@ const CustomerLedgerPage = () => {
         email: data.email?.trim() || null,
         trn: data.trn?.trim() || null,
         address: data.address?.trim() || null,
+        location: data.location?.trim() || null,
         creditLimit: data.creditLimit ? parseFloat(data.creditLimit) : 0,
         paymentTerms: data.paymentTerms?.trim() || null,
         branchId: data.branchId ? parseInt(data.branchId, 10) : null,
@@ -1415,6 +1416,7 @@ const CustomerLedgerPage = () => {
         email: data.email?.trim() || null,
         trn: data.trn?.trim() || null,
         address: data.address?.trim() || null,
+        location: data.location?.trim() || null,
         creditLimit: data.creditLimit ? parseFloat(data.creditLimit) : 0,
         paymentTerms: data.paymentTerms?.trim() || null,
         branchId: data.branchId ? parseInt(data.branchId, 10) : null,
@@ -2291,6 +2293,7 @@ const CustomerLedgerPage = () => {
                       <div className="flex items-center gap-2 text-[11px] sm:text-xs text-neutral-600 flex-wrap">
                         {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
+                        {selectedCustomer.id !== 'cash' && selectedCustomer.location && <span>{selectedCustomer.location}</span>}
                         {selectedCustomer.id === 'cash' && <span className="text-primary-600 font-medium">Cash sales</span>}
                       </div>
                     </div>
@@ -2318,6 +2321,7 @@ const CustomerLedgerPage = () => {
                             customerForm.setValue('email', selectedCustomer.email || '')
                             customerForm.setValue('trn', selectedCustomer.trn || '')
                             customerForm.setValue('address', selectedCustomer.address || '')
+                            customerForm.setValue('location', selectedCustomer.location || '')
                             customerForm.setValue('creditLimit', selectedCustomer.creditLimit || 0)
                             customerForm.setValue('paymentTerms', selectedCustomer.paymentTerms || '')
                             customerForm.setValue('branchId', selectedCustomer.branchId || '')
@@ -3053,6 +3057,19 @@ const CustomerLedgerPage = () => {
               />
             </div>
 
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Area / landmark (e.g. Mussafah, ICAD)"
+                maxLength={200}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                {...customerRegister('location')}
+              />
+            </div>
+
             {branches.length > 0 && (
               <>
                 <div>
@@ -3282,6 +3299,19 @@ const CustomerLedgerPage = () => {
                 placeholder="Full address"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 {...customerRegister('address')}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Area / landmark (e.g. Mussafah, ICAD)"
+                maxLength={200}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                {...customerRegister('location')}
               />
             </div>
 

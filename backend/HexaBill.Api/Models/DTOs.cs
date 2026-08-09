@@ -536,6 +536,7 @@ namespace HexaBill.Api.Models
         public string? Email { get; set; }
         public string? Trn { get; set; }
         public string? Address { get; set; }
+        public string? Location { get; set; }
         public decimal CreditLimit { get; set; }
         public string? PaymentTerms { get; set; }
         public decimal Balance { get; set; }
@@ -570,6 +571,8 @@ namespace HexaBill.Api.Models
         public string? Trn { get; set; }
         [MaxLength(500)]
         public string? Address { get; set; }
+        [MaxLength(200)]
+        public string? Location { get; set; }
         [Range(0, 99999999.99, ErrorMessage = "CreditLimit must be non-negative")]
         public decimal CreditLimit { get; set; }
         [MaxLength(100)]
