@@ -1146,8 +1146,12 @@ export const settingsAPI = {
     const response = await api.post('/settings/clear-data')
     return response.data
   },
-  getAuditLogs: async (page = 1, pageSize = 20) => {
-    const response = await api.get('/settings/audit-logs', { params: { page, pageSize } })
+  getAuditLogs: async (page = 1, pageSize = 20, filters = {}) => {
+    const params = { page, pageSize }
+    if (filters?.action) params.action = filters.action
+    if (filters?.fromDate) params.fromDate = filters.fromDate
+    if (filters?.toDate) params.toDate = filters.toDate
+    const response = await api.get('/settings/audit-logs', { params })
     return response.data
   }
 }

@@ -264,7 +264,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [Authorize(Roles = "Admin,Owner,SystemAdmin")]
         public async Task<ActionResult<ApiResponse<PagedResponse<TenantAuditLogDto>>>> GetAuditLogs(
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 20)
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? action = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null)
         {
             try
             {
@@ -272,10 +275,32 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (tenantId <= 0 && !IsSystemAdmin)
                     return Forbid();
 
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 20;
+                if (pageSize > 100) pageSize = 100;
+
                 var query = _context.AuditLogs
                     .Include(a => a.User)
                     .AsQueryable();
                 query = query.Where(a => (a.TenantId != null && a.TenantId == tenantId) || (a.TenantId == null && a.OwnerId == tenantId));
+
+                if (!string.IsNullOrWhiteSpace(action))
+                {
+                    var actionFilter = action.Trim();
+                    query = query.Where(a => a.Action != null && a.Action.Contains(actionFilter));
+                }
+
+                if (fromDate.HasValue)
+                {
+                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+                    query = query.Where(a => a.CreatedAt >= fromUtc);
+                }
+
+                if (toDate.HasValue)
+                {
+                    var toExclusive = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+                    query = query.Where(a => a.CreatedAt < toExclusive);
+                }
 
                 var totalCount = await query.CountAsync();
                 var logs = await query
