@@ -528,7 +528,8 @@ namespace HexaBill.Api.Modules.Payments
             var oldAmount = payment.Amount;
             var oldStatus = payment.Status;
             var wasCleared = oldStatus == PaymentStatus.CLEARED;
-            var wasNonVoid = oldStatus != PaymentStatus.VOID;
+            var oldSaleId = payment.SaleId;
+            var oldInvoiceNo = payment.Sale?.InvoiceNo;
 
             // Reverse Customer.Balance only if old status was CLEARED (balance uses CLEARED only)
             if (wasCleared && payment.CustomerId.HasValue)
@@ -566,11 +567,56 @@ namespace HexaBill.Api.Modules.Payments
                         payment.Status = PaymentStatus.CLEARED;
             }
 
+            // Optional invoice reassignment (entire payment moves to new sale or on-account)
+            string? newInvoiceNo = oldInvoiceNo;
+            if (request.ReassignSale)
+            {
+                if (request.SaleId.HasValue)
+                {
+                    var newSale = await _context.Sales
+                        .FirstOrDefaultAsync(s => s.Id == request.SaleId.Value && s.TenantId == tenantId);
+                    if (newSale == null)
+                        throw new ArgumentException("Target invoice not found.");
+                    if (payment.CustomerId.HasValue && newSale.CustomerId != payment.CustomerId.Value)
+                        throw new ArgumentException("Invoice belongs to a different customer.");
+                    payment.SaleId = newSale.Id;
+                    newInvoiceNo = newSale.InvoiceNo;
+                }
+                else
+                {
+                    payment.SaleId = null;
+                    newInvoiceNo = null;
+                }
+            }
+
             var newAmount = payment.Amount;
             var newStatus = payment.Status;
             var isNowCleared = newStatus == PaymentStatus.CLEARED;
+            const decimal overpayEpsilon = 0.05m;
 
-            // Recalc Sale.PaidAmount from CLEARED only: other CLEARED payments + this one if now CLEARED (we've updated entity in memory)
+            // If invoice changed, recalc old sale without this payment
+            if (oldSaleId.HasValue && oldSaleId != payment.SaleId)
+            {
+                var oldSale = await _context.Sales
+                    .FirstOrDefaultAsync(s => s.Id == oldSaleId.Value && s.TenantId == tenantId);
+                if (oldSale != null)
+                {
+                    var oldPaid = await _context.Payments
+                        .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
+                        .SumAsync(p => p.Amount);
+                    oldSale.PaidAmount = oldPaid;
+                    oldSale.LastPaymentDate = await _context.Payments
+                        .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status != PaymentStatus.VOID && p.Id != paymentId)
+                        .OrderByDescending(p => p.PaymentDate)
+                        .Select(p => (DateTime?)p.PaymentDate)
+                        .FirstOrDefaultAsync();
+                    oldSale.PaymentStatus = oldSale.PaidAmount >= oldSale.GrandTotal ? SalePaymentStatus.Paid
+                        : oldSale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
+                    _logger.LogInformation("UpdatePayment: Old sale {InvoiceNo} PaidAmount now {PaidAmount}", oldSale.InvoiceNo, oldSale.PaidAmount);
+                }
+            }
+
+            // Recalc target/current sale PaidAmount from CLEARED only
             if (payment.SaleId.HasValue)
             {
                 var sale = await _context.Sales
@@ -581,7 +627,6 @@ namespace HexaBill.Api.Modules.Payments
                         .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
                         .SumAsync(p => p.Amount);
                     var proposedPaid = otherCleared + (isNowCleared ? newAmount : 0);
-                    const decimal overpayEpsilon = 0.05m;
                     if (isNowCleared && proposedPaid > sale.GrandTotal + overpayEpsilon)
                     {
                         throw new ArgumentException(
@@ -619,7 +664,12 @@ namespace HexaBill.Api.Modules.Payments
                     OldAmount = oldAmount,
                     NewAmount = newAmount,
                     OldStatus = oldStatus.ToString(),
-                    NewStatus = newStatus.ToString()
+                    NewStatus = newStatus.ToString(),
+                    ReassignSale = request.ReassignSale,
+                    OldSaleId = oldSaleId,
+                    NewSaleId = payment.SaleId,
+                    OldInvoiceNo = oldInvoiceNo,
+                    NewInvoiceNo = newInvoiceNo
                 }),
                 CreatedAt = DateTime.UtcNow
             };
@@ -1080,6 +1130,9 @@ namespace HexaBill.Api.Modules.Payments
         public string? Mode { get; set; } // CASH, CHEQUE, ONLINE, CREDIT
         public string? Reference { get; set; }
         public DateTime? PaymentDate { get; set; }
+        /// <summary>When true, set payment.SaleId to SaleId (null = on-account). When false, leave SaleId unchanged.</summary>
+        public bool ReassignSale { get; set; }
+        public int? SaleId { get; set; }
     }
 
     public class CreatePaymentResponse

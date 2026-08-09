@@ -714,6 +714,7 @@ const PaymentsPage = () => {
                       <div className="flex items-center space-x-2">
                         {canEditPayments && (
                           <button
+                            type="button"
                             onClick={() => handleEdit(payment)}
                             className="text-indigo-600 hover:text-indigo-900"
                             title="Edit Payment"
@@ -723,6 +724,7 @@ const PaymentsPage = () => {
                         )}
                         {canEditPayments && (
                           <button
+                            type="button"
                             onClick={() => handleDeletePayment(payment)}
                             className="text-red-600 hover:text-red-900"
                             title="Delete Payment"
@@ -731,6 +733,7 @@ const PaymentsPage = () => {
                           </button>
                         )}
                         <button
+                          type="button"
                           onClick={() => openReceiptPreview([payment.id])}
                           className="text-indigo-600 hover:text-indigo-900"
                           title="Print payment receipt"
@@ -853,6 +856,7 @@ const PaymentsPage = () => {
                 <div className="flex items-center gap-2">
                   {canEditPayments && (
                     <button
+                      type="button"
                       onClick={() => handleEdit(payment)}
                       className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
                       title="Edit"
@@ -862,6 +866,7 @@ const PaymentsPage = () => {
                   )}
                   {canEditPayments && (
                     <button
+                      type="button"
                       onClick={() => handleDeletePayment(payment)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                       title="Delete"
@@ -870,6 +875,7 @@ const PaymentsPage = () => {
                     </button>
                   )}
                   <button
+                    type="button"
                     onClick={() => openReceiptPreview([payment.id])}
                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
                     title="Print payment receipt"
@@ -1194,10 +1200,17 @@ const PaymentsPage = () => {
         </form>
       </Modal>
 
-      {/* Edit Payment Modal — always PUT updatePayment (never create) */}
+      {/* Edit Payment Modal — always PUT updatePayment (never create); invoices loaded by customerId */}
       <EditPaymentModal
         isOpen={!!editingPayment}
         payment={editingPayment}
+        outstandingInvoices={
+          editingPayment?.customerId &&
+          String(editingPayment.customerId) === String(selectedCustomerId)
+            ? outstandingInvoices
+            : []
+        }
+        allInvoices={[]}
         onClose={() => setEditingPayment(null)}
         onSaved={async () => {
           setEditingPayment(null)

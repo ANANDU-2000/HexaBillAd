@@ -95,10 +95,35 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
     `)
     win.document.close()
     win.focus()
+
+    let closed = false
+    const closePrintWindow = () => {
+      if (closed) return
+      closed = true
+      try {
+        win.removeEventListener('afterprint', closePrintWindow)
+      } catch (_) { /* ignore */ }
+      try {
+        if (!win.closed) win.close()
+      } catch (_) { /* ignore */ }
+    }
+
+    try {
+      win.addEventListener('afterprint', closePrintWindow)
+    } catch (_) { /* ignore */ }
+
+    // Give the new document a moment to layout, then open the system print dialog.
+    // Do NOT close immediately — that caused the open/close flash. afterprint closes;
+    // long fallback only if afterprint never fires (some browsers).
     setTimeout(() => {
-      win.print()
-      win.close()
-    }, 300)
+      try {
+        win.print()
+      } catch (_) {
+        closePrintWindow()
+        return
+      }
+      setTimeout(closePrintWindow, 60000)
+    }, 250)
   }
 
   const detail = data?.detail

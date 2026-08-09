@@ -514,10 +514,12 @@ const CustomerLedgerPage = () => {
     window.addEventListener('focus', handleRefresh)
     window.addEventListener('dataUpdated', handleRefresh)
     window.addEventListener('paymentCreated', handleRefresh)
+    window.addEventListener('paymentUpdated', handleRefresh)
     return () => {
       window.removeEventListener('focus', handleRefresh)
       window.removeEventListener('dataUpdated', handleRefresh)
       window.removeEventListener('paymentCreated', handleRefresh)
+      window.removeEventListener('paymentUpdated', handleRefresh)
     }
   }, [selectedCustomer])
 
@@ -2823,6 +2825,8 @@ const CustomerLedgerPage = () => {
       <EditPaymentModal
         isOpen={!!editingPayment}
         payment={editingPayment}
+        outstandingInvoices={outstandingInvoices}
+        allInvoices={customerInvoices}
         onClose={() => setEditingPayment(null)}
         onSaved={async () => {
           setEditingPayment(null)
@@ -4392,6 +4396,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          type="button"
                           onClick={() => onViewReceipt(payment.id)}
                           className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
                           title="Print receipt (optional – when customer asks)"
@@ -4400,6 +4405,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                         </button>
                         {canEditDelete && onEditPayment && (
                           <button
+                            type="button"
                             onClick={() => onEditPayment(payment)}
                             className="text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 p-1 rounded transition-colors"
                             title="Edit Payment"
@@ -4409,6 +4415,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                         )}
                         {canEditDelete && onDeletePayment && (
                           <button
+                            type="button"
                             onClick={() => onDeletePayment(payment)}
                             className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1 rounded transition-colors"
                             title="Delete Payment"
