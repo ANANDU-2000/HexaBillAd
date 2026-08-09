@@ -39,6 +39,7 @@ import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI }
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
+import EditPaymentModal from '../../components/EditPaymentModal'
 import { mobileFormFieldClass, mobileFormSelectClass, mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
 import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
@@ -113,6 +114,7 @@ const CustomerLedgerPage = () => {
   const [showSendStatementModal, setShowSendStatementModal] = useState(false)
   const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
   const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
+  const [editingPayment, setEditingPayment] = useState(null)
   const [payAllOutstandingMode, setPayAllOutstandingMode] = useState(false)
   const [dateRange, setDateRange] = useState(() => {
     const fromParam = searchParams.get('from')
@@ -180,14 +182,24 @@ const CustomerLedgerPage = () => {
   const selectedSaleId = watchPayment('saleId')
   const selectedCustomerId = watchPayment('customerId')
 
-  // Sync key filters to URL so they survive navigation and browser back
+  // Sync key filters to URL so they survive navigation and browser back.
+  // CRITICAL: merge into existing params — never wipe deep-link customerId/recordPayment while customer is still resolving.
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (selectedCustomer?.id) params.set('customerId', String(selectedCustomer.id))
-    if (dateRange.from) params.set('from', dateRange.from)
-    if (dateRange.to) params.set('to', dateRange.to)
-    setSearchParams(params, { replace: true })
-  }, [selectedCustomer?.id, dateRange.from, dateRange.to])
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (selectedCustomer?.id) {
+        params.set('customerId', String(selectedCustomer.id))
+      } else if (!params.get('customerId')) {
+        params.delete('customerId')
+      }
+      // When selectedCustomer is null but customerId is in URL, keep it (deep-link hydrate in progress).
+      if (dateRange.from) params.set('from', dateRange.from)
+      else params.delete('from')
+      if (dateRange.to) params.set('to', dateRange.to)
+      else params.delete('to')
+      return params
+    }, { replace: true })
+  }, [selectedCustomer?.id, dateRange.from, dateRange.to, setSearchParams])
 
   // ========== ALL HANDLER FUNCTIONS - DEFINED FIRST ==========
   // Excel Export Handler
@@ -355,23 +367,26 @@ const CustomerLedgerPage = () => {
   // Load customer from URL parameter
   useEffect(() => {
     const customerIdParam = searchParams.get('customerId')
-    if (customerIdParam) {
-      const customerId = parseInt(customerIdParam)
-      if (!isNaN(customerId)) {
-        const customer = customers.find(c => c.id === customerId)
-        if (customer) {
-          setSelectedCustomer(customer)
-        } else if (customers.length > 0) {
-          // Customer not found in list, try to fetch it
-          customersAPI.getCustomer(customerId).then(response => {
-            if (response?.success && response?.data) {
-              setSelectedCustomer(response.data)
-            }
-          }).catch(err => console.error('Failed to load customer from URL:', err))
-        }
-      }
+    if (!customerIdParam) return
+    const customerId = parseInt(customerIdParam, 10)
+    if (isNaN(customerId)) return
+    if (selectedCustomer?.id === customerId) return
+
+    const customer = customers.find(c => c.id === customerId)
+    if (customer) {
+      setSelectedCustomer(customer)
+      return
     }
-  }, [searchParams, customers])
+
+    let cancelled = false
+    customersAPI.getCustomer(customerId).then(response => {
+      if (cancelled) return
+      if (response?.success && response?.data) {
+        setSelectedCustomer(response.data)
+      }
+    }).catch(err => console.error('Failed to load customer from URL:', err))
+    return () => { cancelled = true }
+  }, [searchParams, customers, selectedCustomer?.id])
 
   const recordPaymentParam = searchParams.get('recordPayment')
   useEffect(() => {
@@ -1933,12 +1948,27 @@ const CustomerLedgerPage = () => {
                   setOutstandingInvoices([])
                   setCustomerSummary(null)
                   ledgerLoadInProgressRef.current = null
+                  setSearchParams((prev) => {
+                    const next = new URLSearchParams(prev)
+                    next.delete('customerId')
+                    next.delete('recordPayment')
+                    return next
+                  }, { replace: true })
+                  return
+                }
+                const returnTo = location.state?.returnTo
+                if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
+                  navigate(returnTo)
+                  return
+                }
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  navigate(-1)
                   return
                 }
                 navigate('/customers')
               }}
               className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
-              title={selectedCustomer ? 'Back to customer list' : 'Back to Customers'}
+              title={selectedCustomer ? 'Back to customer list' : (location.state?.returnTo ? 'Back' : 'Back to Customers')}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -2546,6 +2576,10 @@ const CustomerLedgerPage = () => {
                             return updated
                           })
                         }}
+                        onViewReceipt={(paymentId) => {
+                          setReceiptPreviewPaymentIds([paymentId])
+                          setShowReceiptPreviewModal(true)
+                        }}
                       />
                     )
                   )}
@@ -2648,70 +2682,11 @@ const CustomerLedgerPage = () => {
                         setReceiptPreviewPaymentIds(paymentIds)
                         setShowReceiptPreviewModal(true)
                       }}
-                      onEditPayment={async (payment) => {
-                        // Handle edit payment
-                        setDangerModal({
-                          isOpen: true,
-                          title: 'Edit Payment Amount',
-                          message: `Current amount: ${formatCurrency(payment.amount)}`,
-                          confirmLabel: 'Next',
-                          showInput: true,
-                          inputType: 'number',
-                          defaultValue: payment.amount,
-                          inputPlaceholder: 'New amount',
-                          onConfirm: (newAmount) => {
-                            const amountValue = parseFloat(newAmount)
-                            if (!newAmount || isNaN(amountValue) || amountValue <= 0) {
-                              toast.error('Invalid amount. Please enter a valid positive number.')
-                              return
-                            }
-
-                            const currentMode = payment.method || payment.mode || 'CASH'
-                            // Open second modal for mode
-                            setDangerModal({
-                              isOpen: true,
-                              title: 'Edit Payment Mode',
-                              message: `Current mode: ${currentMode}\nOptions: CASH, CHEQUE, ONLINE, CREDIT`,
-                              confirmLabel: 'Update Payment',
-                              showInput: true,
-                              defaultValue: currentMode,
-                              inputPlaceholder: 'CASH, CHEQUE, ONLINE, or CREDIT',
-                              onConfirm: async (newMode) => {
-                                const modeUpper = newMode?.trim().toUpperCase()
-                                if (!modeUpper || !['CASH', 'CHEQUE', 'ONLINE', 'CREDIT'].includes(modeUpper)) {
-                                  toast.error('Invalid payment mode. Please select: CASH, CHEQUE, ONLINE, or CREDIT')
-                                  return
-                                }
-
-                                try {
-                                  toast.loading('Updating payment...', { id: 'update-payment' })
-
-                                  const response = await paymentsAPI.updatePayment(payment.id, {
-                                    amount: amountValue,
-                                    mode: modeUpper,
-                                    reference: payment.ref || payment.reference || null,
-                                    paymentDate: payment.paymentDate
-                                  })
-
-                                  if (response?.success) {
-                                    toast.success('Payment updated successfully', { id: 'update-payment' })
-                                    // Refresh customer data
-                                    if (selectedCustomer) {
-                                      await loadCustomerData(selectedCustomer.id)
-                                      await fetchCustomers()
-                                      window.dispatchEvent(new CustomEvent('dataUpdated'))
-                                    }
-                                  } else {
-                                    toast.error(response?.message || 'Failed to update payment', { id: 'update-payment' })
-                                  }
-                                } catch (error) {
-                                  console.error('Error updating payment:', error)
-                                  const errorMsg = error?.response?.data?.message || error?.message || 'Failed to update payment'
-                                  if (!error?._handledByInterceptor) toast.error(errorMsg, { id: 'update-payment' })
-                                }
-                              }
-                            })
-                          }
+                      onEditPayment={(payment) => {
+                        setEditingPayment({
+                          ...payment,
+                          customerId: selectedCustomer?.id,
+                          customerName: selectedCustomer?.name
                         })
                       }}
                       onDeletePayment={(payment) => {
@@ -2720,14 +2695,13 @@ const CustomerLedgerPage = () => {
                           title: 'DELETE PAYMENT',
                           message: `Amount: ${formatCurrency(payment.amount)}\nMode: ${payment.method || payment.mode || 'N/A'}\nDate: ${new Date(payment.paymentDate).toLocaleDateString('en-GB')}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`,
                           confirmLabel: 'Delete Payment',
-                          requireTypedText: 'DELETE', // As this is destructive and critical
+                          requireTypedText: 'DELETE',
                           onConfirm: async () => {
                             try {
                               toast.loading('Deleting payment...', { id: 'delete-payment' })
                               const response = await paymentsAPI.deletePayment(payment.id)
                               if (response?.success) {
                                 toast.success('Payment deleted successfully', { id: 'delete-payment' })
-                                // Refresh customer data
                                 if (selectedCustomer) {
                                   await loadCustomerData(selectedCustomer.id)
                                   await fetchCustomers()
@@ -2843,6 +2817,19 @@ const CustomerLedgerPage = () => {
         }}
         onSuccess={async () => {
           if (selectedCustomer?.id) await loadCustomerData(selectedCustomer.id)
+        }}
+      />
+
+      <EditPaymentModal
+        isOpen={!!editingPayment}
+        payment={editingPayment}
+        onClose={() => setEditingPayment(null)}
+        onSaved={async () => {
+          setEditingPayment(null)
+          if (selectedCustomer?.id) {
+            await loadCustomerData(selectedCustomer.id)
+            await fetchCustomers()
+          }
         }}
       />
 
@@ -3512,7 +3499,7 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 
 // Constants already defined at top of file - do not redefine here
 
-const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, onSettleCredit, filters, onFilterChange }) => {
+const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, onSettleCredit, onViewReceipt, filters, onFilterChange }) => {
   const navigate = useNavigate()
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
   // Use constant property name to prevent minifier from creating 'st' from filters.status
@@ -3724,6 +3711,16 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                           >
                             <RotateCcw className="h-4 w-4" />
                           </button>
+                        ) : entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (
+                          <button
+                            type="button"
+                            onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
+                            className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
+                            title="Print payment receipt"
+                            aria-label="Print payment receipt"
+                          >
+                            <Printer className="h-4 w-4" />
+                          </button>
                         ) : entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
                           <div className="inline-flex items-center gap-1">
                             <button
@@ -3882,6 +3879,17 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       >
                         <RotateCcw className="h-3 w-3" />
                         Return
+                      </button>
+                    )}
+                    {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt && (
+                      <button
+                        type="button"
+                        onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                        title="Print payment receipt"
+                      >
+                        <Printer className="h-3 w-3" />
+                        Receipt
                       </button>
                     )}
                     {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) && (
@@ -4302,7 +4310,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
 const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePayment, onGenerateReceiptBatch }) => {
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
   const userRole = user?.role?.toLowerCase()
-  const canEditDelete = userRole === 'admin' || userRole === 'owner'
+  const canEditDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'manager'
 
   const togglePaymentSelection = (id) => {
     setSelectedPaymentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])

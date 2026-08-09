@@ -857,6 +857,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Status).HasConversion<string>().HasDefaultValue(VisitStatus.NotVisited);
                 entity.Property(e => e.Notes).HasMaxLength(500);
                 entity.Property(e => e.PaymentCollected).HasColumnType("decimal(18,2)");
+                entity.Ignore(e => e.AmountCollected);
                 entity.HasOne(e => e.Route).WithMany().HasForeignKey(e => e.RouteId);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasOne(e => e.Tenant).WithMany().HasForeignKey(e => e.TenantId);

@@ -12,9 +12,8 @@ import {
   CreditCard,
   DollarSign,
   Calendar,
-  Eye,
   Edit,
-  Download,
+  Trash2,
   FileText,
   User,
   Phone,
@@ -26,12 +25,18 @@ import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../uti
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
+import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
+import EditPaymentModal from '../../components/EditPaymentModal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { paymentsAPI, customersAPI, salesAPI } from '../../services'
 import { useDebounce } from '../../hooks/useDebounce'
+import { canManagePayments } from '../../utils/roles'
+import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
-import { showToast } from '../../utils/toast'
 
 const PaymentsPage = () => {
+  const { user } = useAuth()
+  const canEditPayments = canManagePayments(user)
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false) // Separate state for form submission
@@ -41,13 +46,12 @@ const PaymentsPage = () => {
   const [filterMethod, setFilterMethod] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
-  const [showEditModal, setShowEditModal] = useState(false)
+  const [editingPayment, setEditingPayment] = useState(null)
   const [selectedPayment, setSelectedPayment] = useState(null)
+  const [paymentToDelete, setPaymentToDelete] = useState(null)
   const [customers, setCustomers] = useState([])
   const [sales, setSales] = useState([])
   const [selectedCustomerDetails, setSelectedCustomerDetails] = useState(null)
-  const [showReceiptModal, setShowReceiptModal] = useState(false)
-  const [receiptPayment, setReceiptPayment] = useState(null)
   const [outstandingInvoices, setOutstandingInvoices] = useState([])
   const [loadingInvoices, setLoadingInvoices] = useState(false)
   const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
@@ -352,7 +356,7 @@ const PaymentsPage = () => {
       const response = await paymentsAPI.createPayment(paymentData)
       
       if (response.success) {
-        toast.success(selectedPayment ? 'Payment updated successfully!' : 'Payment added successfully!')
+        toast.success('Payment added successfully!')
         // Reload data by calling the API directly (fetchData is now inline in useEffect)
         try {
           setLoading(true)
@@ -377,7 +381,6 @@ const PaymentsPage = () => {
         }
         reset()
         setShowAddModal(false)
-        setShowEditModal(false)
         setSelectedPayment(null)
         // Trigger global update event
         window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
@@ -394,21 +397,32 @@ const PaymentsPage = () => {
   }
 
   const handleEdit = (payment) => {
-    setSelectedPayment(payment)
-    setValue('saleId', payment.saleId)
-    setValue('customerId', payment.customerId)
-    setValue('amount', payment.amount)
-    setValue('method', payment.method)
-    setValue('ref', payment.ref)
-    // Format payment date for date input (YYYY-MM-DD)
-    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
-    setValue('paymentDate', paymentDate)
-    setShowEditModal(true)
+    setEditingPayment(payment)
   }
 
-  const handleViewReceipt = (payment) => {
-    setReceiptPayment(payment)
-    setShowReceiptModal(true)
+  const handleDeletePayment = (payment) => {
+    setPaymentToDelete(payment)
+  }
+
+  const confirmDeletePayment = async () => {
+    if (!paymentToDelete?.id) return
+    try {
+      toast.loading('Deleting payment...', { id: 'delete-payment' })
+      const response = await paymentsAPI.deletePayment(paymentToDelete.id)
+      if (response?.success) {
+        toast.success('Payment deleted successfully', { id: 'delete-payment' })
+        setPaymentToDelete(null)
+        await fetchData()
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+      } else {
+        toast.error(response?.message || 'Failed to delete payment', { id: 'delete-payment' })
+      }
+    } catch (error) {
+      console.error('Failed to delete payment:', error)
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to delete payment', { id: 'delete-payment' })
+      }
+    }
   }
 
   const openReceiptPreview = (ids) => {
@@ -436,34 +450,6 @@ const PaymentsPage = () => {
   const selectedTotal = filteredPayments
     .filter(p => selectedPaymentIds.includes(p.id))
     .reduce((sum, p) => sum + (p.amount || 0), 0)
-
-  const handleDownloadReceipt = async (payment) => {
-    try {
-      // IMPROVEMENT: One-click receipt download from payments list
-      if (payment.saleId) {
-        // If payment has an invoice, download invoice PDF
-        const response = await salesAPI.getInvoicePdf(payment.saleId, { layout: 'full' })
-        const blob = response instanceof Blob ? response : new Blob([response], { type: 'application/pdf' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `payment_receipt_${payment.invoiceNo || payment.id}_${new Date().toISOString().split('T')[0]}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        toast.success('Receipt downloaded successfully')
-      } else {
-        // For payments without invoices, show receipt modal instead
-        showToast.info('Opening receipt preview...')
-        setReceiptPayment(payment)
-        setShowReceiptModal(true)
-      }
-    } catch (error) {
-      console.error('Failed to download receipt:', error)
-      toast.error(error?.response?.data?.message || 'Failed to download receipt')
-    }
-  }
 
   const handleChequeStatusUpdate = async (paymentId, status) => {
     try {
@@ -726,33 +712,30 @@ const PaymentsPage = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => handleEdit(payment)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Edit Payment"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                        {canEditPayments && (
+                          <button
+                            onClick={() => handleEdit(payment)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit Payment"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canEditPayments && (
+                          <button
+                            onClick={() => handleDeletePayment(payment)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Payment"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => openReceiptPreview([payment.id])}
                           className="text-indigo-600 hover:text-indigo-900"
-                          title="Generate Payment Receipt"
+                          title="Print payment receipt"
                         >
                           <Printer className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleViewReceipt(payment)}
-                          className="text-blue-600 hover:text-blue-900"
-                          title="View Receipt"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDownloadReceipt(payment)}
-                          className="text-green-600 hover:text-green-900"
-                          title="Download Receipt"
-                        >
-                          <Download className="h-4 w-4" />
                         </button>
                         {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Pending' && (
                           <div className="inline-flex space-x-1 ml-2">
@@ -868,33 +851,30 @@ const PaymentsPage = () => {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleEdit(payment)}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                    title="Edit"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
+                  {canEditPayments && (
+                    <button
+                      onClick={() => handleEdit(payment)}
+                      className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                      title="Edit"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  )}
+                  {canEditPayments && (
+                    <button
+                      onClick={() => handleDeletePayment(payment)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
                     onClick={() => openReceiptPreview([payment.id])}
                     className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                    title="Payment Receipt"
+                    title="Print payment receipt"
                   >
                     <Printer className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleViewReceipt(payment)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
-                    title="Receipt"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDownloadReceipt(payment)}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg"
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
                   </button>
                   {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Pending' && (
                     <>
@@ -1214,152 +1194,28 @@ const PaymentsPage = () => {
         </form>
       </Modal>
 
-      {/* Edit Payment Modal */}
-      <Modal
-        isOpen={showEditModal}
-        onClose={() => {
-          setShowEditModal(false)
-          setSelectedPayment(null)
-          reset()
+      {/* Edit Payment Modal — always PUT updatePayment (never create) */}
+      <EditPaymentModal
+        isOpen={!!editingPayment}
+        payment={editingPayment}
+        onClose={() => setEditingPayment(null)}
+        onSaved={async () => {
+          setEditingPayment(null)
+          await fetchData()
         }}
-        title="Edit Payment"
-        size="lg"
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Select
-              label="Customer (Optional - if not selecting invoice)"
-              options={[
-                { value: '', label: 'Select Customer' },
-                ...customers.map(customer => ({
-                  value: customer.id,
-                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${formatBalance(customer.balance || 0)}`
-                }))
-              ]}
-              error={errors.customerId?.message}
-              {...register('customerId', { 
-                validate: (value) => {
-                  if (!value && !selectedSaleId) {
-                    return 'Please select either a customer or an invoice'
-                  }
-                  return true
-                }
-              })}
-            />
+      />
 
-            <Select
-              label="Invoice/Sale (Optional - if not selecting customer)"
-              options={[
-                { value: '', label: 'Select Invoice' },
-                // PERFORMANCE FIX: Only show outstanding invoices (loads dynamically when customer selected)
-                ...(selectedCustomerId && outstandingInvoices.length > 0
-                  ? outstandingInvoices.map(inv => ({
-                      value: inv.id,
-                      label: `${inv.invoiceNo} - Balance: ${formatCurrency(inv.balanceAmount)} ${inv.daysOverdue > 0 ? `(${inv.daysOverdue} days overdue)` : ''}`
-                    }))
-                  : [])
-              ]}
-              error={errors.saleId?.message}
-              disabled={selectedCustomerId && loadingInvoices}
-              {...register('saleId', { 
-                validate: (value) => {
-                  if (!value && !selectedCustomerId) {
-                    return 'Please select either an invoice or a customer'
-                  }
-                  return true
-                }
-              })}
-            />
-
-            <Select
-              label="Payment Method"
-              options={[
-                { value: 'Cash', label: 'Cash' },
-                { value: 'Cheque', label: 'Cheque' },
-                { value: 'Online', label: 'Online Transfer' },
-                { value: 'Pending', label: 'Pending/Credit' }
-              ]}
-              required
-              error={errors.method?.message}
-              {...register('method', { required: 'Payment method is required' })}
-            />
-
-            <Input
-              label="Amount"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              required
-              error={errors.amount?.message}
-              {...register('amount', { 
-                required: 'Amount is required',
-                min: { value: 0.01, message: 'Amount must be greater than 0' }
-              })}
-            />
-
-            <Input
-              label="Payment Date"
-              type="date"
-              required
-              error={errors.paymentDate?.message}
-              {...register('paymentDate', { required: 'Payment date is required' })}
-            />
-
-            {paymentMethod === 'Cheque' && (
-              <>
-                <Input
-                  label="Cheque Number"
-                  placeholder="CHQ001"
-                  error={errors.ref?.message}
-                  {...register('ref')}
-                />
-                <Input
-                  label="Bank Name"
-                  placeholder="Emirates NBD"
-                  error={errors.bankName?.message}
-                  {...register('bankName')}
-                />
-              </>
-            )}
-
-            {paymentMethod === 'Online' && (
-              <Input
-                label="Transaction Reference"
-                placeholder="TXN123456"
-                error={errors.ref?.message}
-                {...register('ref')}
-              />
-            )}
-
-            <div className="md:col-span-2">
-              <Input
-                label="Notes"
-                placeholder="Additional payment notes..."
-                error={errors.notes?.message}
-                {...register('notes')}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={() => {
-                setShowEditModal(false)
-                setSelectedPayment(null)
-                reset()
-              }}
-              disabled={submitting}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Cancel
-            </button>
-            <LoadingButton type="submit" loading={submitting}>
-              {submitting ? 'Updating...' : 'Update Payment'}
-            </LoadingButton>
-          </div>
-        </form>
-      </Modal>
+      <ConfirmDangerModal
+        isOpen={!!paymentToDelete}
+        title="DELETE PAYMENT"
+        message={paymentToDelete
+          ? `Amount: ${formatCurrency(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
+          : ''}
+        confirmLabel="Delete Payment"
+        requireTypedText="DELETE"
+        onConfirm={confirmDeletePayment}
+        onClose={() => setPaymentToDelete(null)}
+      />
 
       {/* Bulk Payment Modal */}
       <Modal
@@ -1528,103 +1384,6 @@ const PaymentsPage = () => {
             </div>
           </div>
         </div>
-      </Modal>
-
-      {/* Payment Receipt/Invoice Modal */}
-      <Modal
-        isOpen={showReceiptModal}
-        onClose={() => {
-          setShowReceiptModal(false)
-          setReceiptPayment(null)
-        }}
-        title="Payment Receipt / Tax Invoice"
-        size="lg"
-      >
-        {receiptPayment && (
-          <div className="space-y-6">
-            {/* Receipt Header */}
-            <div className="border-b pb-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">PAYMENT RECEIPT</h3>
-                  <p className="text-sm text-gray-500 mt-1">Payment ID: #{receiptPayment.id}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="text-sm font-medium text-gray-900">{formatDate(receiptPayment.paymentDate)}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Information */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                Customer Information
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs text-gray-500">Customer Name</p>
-                  <p className="text-sm font-medium text-gray-900">{receiptPayment.customerName || 'Cash Customer'}</p>
-                </div>
-                {receiptPayment.invoiceNo && (
-                  <div>
-                    <p className="text-xs text-gray-500">Invoice Number</p>
-                    <p className="text-sm font-medium text-gray-900">{receiptPayment.invoiceNo}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Payment Details */}
-            <div className="border rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-4 py-3 text-sm text-gray-900">
-                      Payment received via {getPaymentMethod(receiptPayment)}
-                      {(receiptPayment.ref || receiptPayment.reference) && <span className="text-gray-500"> - Ref: {receiptPayment.ref || receiptPayment.reference}</span>}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
-                      {formatCurrency(receiptPayment.amount)}
-                    </td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900">Total Amount</td>
-                    <td className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
-                      {formatCurrency(receiptPayment.amount)}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* Payment Status */}
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-              <div>
-                <p className="text-xs text-gray-500">Payment Status</p>
-                <p className="text-sm font-medium text-gray-900">
-                  {getPaymentMethod(receiptPayment) === 'Cheque' ? getChequeStatus(receiptPayment) : 'Completed'}
-                </p>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleDownloadReceipt(receiptPayment)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Receipt
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   )

@@ -1,0 +1,2 @@
+# Pre-merge customer snapshot saved via MCP 2026-08-09
+# See AUDIT_TENANT_6.md for full analysis. HOUSE BOAT dry-run predicted 414.77.

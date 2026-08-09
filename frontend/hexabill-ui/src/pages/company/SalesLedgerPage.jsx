@@ -8,7 +8,9 @@ import {
   Pencil,
   ChevronDown,
   ChevronUp,
-  Banknote
+  Banknote,
+  Printer,
+  Trash2
 } from 'lucide-react'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -16,11 +18,15 @@ import { mobileFormFieldClass, mobilePageShellClass, mobileFilterGridClass } fro
 import { mobilePageTitleClass, MobileActionStrip, mobileActionBtnClass } from '../../components/mobilePageUi'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
-import { reportsAPI, adminAPI, salesAPI, customersAPI } from '../../services'
+import PaymentModal from '../../components/PaymentModal'
+import EditPaymentModal from '../../components/EditPaymentModal'
+import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { reportsAPI, adminAPI, salesAPI, customersAPI, paymentsAPI } from '../../services'
 import { getWhatsAppShareUrl } from '../../utils/whatsapp'
 import { getApiBaseUrl } from '../../services/apiConfig'
 import { useAuth } from '../../hooks/useAuth'
-import { isAdminOrOwner } from '../../utils/roles'
+import { isAdminOrOwner, canManagePayments } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
@@ -196,6 +202,7 @@ const SalesLedgerPage = () => {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
+  const canEditPayments = canManagePayments(user)
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const getDefaultDateRange = () => {
@@ -212,20 +219,20 @@ const SalesLedgerPage = () => {
     if (fromParam && toParam) return { from: fromParam, to: toParam }
     return getDefaultDateRange()
   })
-  const [filters, setFilters] = useState({
-    date: '',
-    name: '',
-    type: '',
-    status: '',
-    invoiceNo: '',
-    branchId: '',
-    routeId: '',
-    staffId: '',
-    realPendingMin: '',
-    realPendingMax: '',
-    realGotPaymentMin: '',
-    realGotPaymentMax: ''
-  })
+  const [filters, setFilters] = useState(() => ({
+    date: searchParams.get('date') || '',
+    name: searchParams.get('name') || '',
+    type: searchParams.get('type') || '',
+    status: searchParams.get('status') || '',
+    invoiceNo: searchParams.get('invoiceNo') || '',
+    branchId: searchParams.get('branchId') || '',
+    routeId: searchParams.get('routeId') || '',
+    staffId: searchParams.get('staffId') || '',
+    realPendingMin: searchParams.get('realPendingMin') || '',
+    realPendingMax: searchParams.get('realPendingMax') || '',
+    realGotPaymentMin: searchParams.get('realGotPaymentMin') || '',
+    realGotPaymentMax: searchParams.get('realGotPaymentMax') || ''
+  }))
   const [reportData, setReportData] = useState({
     salesLedger: [],
     salesLedgerSummary: null
@@ -245,6 +252,8 @@ const SalesLedgerPage = () => {
     } catch { return true }
   })
   const [sortOrder, setSortOrder] = useState(() => {
+    const fromUrl = searchParams.get('sort')
+    if (fromUrl === 'oldest' || fromUrl === 'newest') return fromUrl
     try {
       const v = localStorage.getItem(SORT_ORDER_KEY)
       if (v === 'oldest' || v === 'newest') return v
@@ -253,16 +262,32 @@ const SalesLedgerPage = () => {
   })
   const [sharingSaleId, setSharingSaleId] = useState(null)
   const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1')
+  const [paymentModal, setPaymentModal] = useState({ open: false, saleId: null, customerId: null })
+  const [editingPayment, setEditingPayment] = useState(null)
+  const [paymentToDelete, setPaymentToDelete] = useState(null)
+  const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
+  const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
   const fetchSalesLedgerRef = useRef(null)
 
-  // Sync date range + overdue chip to URL
+  // Sync date range, filters, sort, overdue to URL (replace so history does not balloon)
   useEffect(() => {
     const params = new URLSearchParams()
     if (dateRange.from) params.set('from', dateRange.from)
     if (dateRange.to) params.set('to', dateRange.to)
     if (overdueOnly) params.set('overdue', '1')
+    if (sortOrder && sortOrder !== 'newest') params.set('sort', sortOrder)
+    else if (sortOrder === 'newest') params.set('sort', 'newest')
+    const filterKeys = [
+      'date', 'name', 'type', 'status', 'invoiceNo',
+      'branchId', 'routeId', 'staffId',
+      'realPendingMin', 'realPendingMax', 'realGotPaymentMin', 'realGotPaymentMax'
+    ]
+    for (const key of filterKeys) {
+      const v = filters[key]
+      if (v !== undefined && v !== null && String(v).trim() !== '') params.set(key, String(v))
+    }
     setSearchParams(params, { replace: true })
-  }, [dateRange.from, dateRange.to, overdueOnly])
+  }, [dateRange.from, dateRange.to, overdueOnly, sortOrder, filters, setSearchParams])
 
   // Load staff users only (branches/routes from shared context)
   useEffect(() => {
@@ -674,7 +699,59 @@ const SalesLedgerPage = () => {
       toast.error('Record payment needs a linked customer. Use Customer Ledger or POS for this invoice.')
       return
     }
-    navigate(`/ledger?customerId=${cid}&recordPayment=${entry.saleId}`)
+    // Stay on Sales Ledger — open payment modal in-place (avoids Customer Ledger search / back stack)
+    setPaymentModal({ open: true, saleId: entry.saleId, customerId: cid })
+  }
+
+  const openPaymentReceipt = (paymentId) => {
+    if (!paymentId) return
+    setReceiptPreviewPaymentIds([paymentId])
+    setShowReceiptPreviewModal(true)
+  }
+
+  const paymentFromLedgerEntry = (entry) => ({
+    id: entry.paymentId,
+    amount: entry.realGotPayment ?? entry.amount,
+    paymentDate: entry.date,
+    method: entry.paymentMode,
+    mode: entry.paymentMode,
+    reference: entry.reference || entry.remarks,
+    ref: entry.reference || entry.remarks,
+    invoiceNo: entry.invoiceNo,
+    customerId: entry.customerId,
+    customerName: entry.customerName,
+    saleId: entry.saleId,
+    status: entry.status
+  })
+
+  const handleEditLedgerPayment = (entry) => {
+    if (!entry?.paymentId) return
+    setEditingPayment(paymentFromLedgerEntry(entry))
+  }
+
+  const handleDeleteLedgerPayment = (entry) => {
+    if (!entry?.paymentId) return
+    setPaymentToDelete(paymentFromLedgerEntry(entry))
+  }
+
+  const confirmDeleteLedgerPayment = async () => {
+    if (!paymentToDelete?.id) return
+    try {
+      toast.loading('Deleting payment...', { id: 'sl-delete-payment' })
+      const response = await paymentsAPI.deletePayment(paymentToDelete.id)
+      if (response?.success) {
+        toast.success('Payment deleted successfully', { id: 'sl-delete-payment' })
+        setPaymentToDelete(null)
+        fetchSalesLedgerRef.current?.()
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+      } else {
+        toast.error(response?.message || 'Failed to delete payment', { id: 'sl-delete-payment' })
+      }
+    } catch (error) {
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to delete payment', { id: 'sl-delete-payment' })
+      }
+    }
   }
 
   const handleShareInvoiceWhatsApp = async (entry) => {
@@ -717,16 +794,27 @@ const SalesLedgerPage = () => {
       toast.loading('Generating PDF...')
       const API_BASE_URL = getApiBaseUrl()
 
-      // Build query params with filters
+      // Mirror on-screen filters + sort (same parity as Excel / displayLedgerSorted)
       const params = new URLSearchParams({
         fromDate: dateRange.from,
-        toDate: dateRange.to
+        toDate: dateRange.to,
+        sortOrder: sortOrder || 'newest'
       })
-
-      // Add type filter if selected
       if (filters.type) {
         params.append('type', filters.type)
+        params.append('entryType', filters.type)
       }
+      if (filters.status) params.append('status', filters.status)
+      if (filters.name) params.append('name', filters.name)
+      if (filters.invoiceNo) params.append('invoiceNo', filters.invoiceNo)
+      if (filters.branchId) params.append('branchId', filters.branchId)
+      if (filters.routeId) params.append('routeId', filters.routeId)
+      if (filters.staffId) params.append('staffId', filters.staffId)
+      if (filters.realPendingMin) params.append('realPendingMin', filters.realPendingMin)
+      if (filters.realPendingMax) params.append('realPendingMax', filters.realPendingMax)
+      if (filters.realGotPaymentMin) params.append('realGotPaymentMin', filters.realGotPaymentMin)
+      if (filters.realGotPaymentMax) params.append('realGotPaymentMax', filters.realGotPaymentMax)
+      if (overdueOnly) params.append('overdue', '1')
 
       const response = await fetch(
         `${API_BASE_URL}/reports/sales-ledger/export/pdf?${params.toString()}`,
@@ -1436,6 +1524,37 @@ const SalesLedgerPage = () => {
                                 </button>
                               ) : null}
                             </div>
+                          ) : entry.type === 'Payment' && entry.paymentId ? (
+                            <div className="inline-flex items-center justify-center gap-0.5">
+                              <button
+                                type="button"
+                                onClick={() => openPaymentReceipt(entry.paymentId)}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50"
+                                title="Print payment receipt"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </button>
+                              {canEditPayments && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleEditLedgerPayment(entry)}
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-indigo-600 hover:bg-indigo-50"
+                                  title="Edit payment"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              )}
+                              {canEditPayments && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteLedgerPayment(entry)}
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-red-600 hover:bg-red-50"
+                                  title="Delete payment"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
@@ -1668,6 +1787,37 @@ const SalesLedgerPage = () => {
                             <MessageCircle className="w-4 h-4" />
                           </button>
                         </div>
+                      ) : entry.type === 'Payment' && entry.paymentId ? (
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <button
+                            type="button"
+                            onClick={() => openPaymentReceipt(entry.paymentId)}
+                            className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
+                            title="Print receipt"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          {canEditPayments && (
+                            <button
+                              type="button"
+                              onClick={() => handleEditLedgerPayment(entry)}
+                              className="p-2 rounded-md text-indigo-600 hover:bg-indigo-50"
+                              title="Edit payment"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canEditPayments && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLedgerPayment(entry)}
+                              className="p-2 rounded-md text-red-600 hover:bg-red-50"
+                              title="Delete payment"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       ) : null}
                     </div>
 
@@ -1795,6 +1945,52 @@ const SalesLedgerPage = () => {
           </div>
         </div>
       )}
+
+      <PaymentModal
+        isOpen={paymentModal.open}
+        invoiceId={paymentModal.saleId}
+        customerId={paymentModal.customerId}
+        onClose={() => setPaymentModal({ open: false, saleId: null, customerId: null })}
+        onPaymentSuccess={() => {
+          setPaymentModal({ open: false, saleId: null, customerId: null })
+          fetchSalesLedgerRef.current?.()
+          try {
+            window.dispatchEvent(new CustomEvent('paymentCreated'))
+          } catch (_) { /* ignore */ }
+        }}
+      />
+
+      <EditPaymentModal
+        isOpen={!!editingPayment}
+        payment={editingPayment}
+        onClose={() => setEditingPayment(null)}
+        onSaved={() => {
+          setEditingPayment(null)
+          fetchSalesLedgerRef.current?.()
+        }}
+      />
+
+      <ReceiptPreviewModal
+        paymentIds={receiptPreviewPaymentIds}
+        isOpen={showReceiptPreviewModal}
+        onClose={() => {
+          setShowReceiptPreviewModal(false)
+          setReceiptPreviewPaymentIds([])
+        }}
+        onSuccess={() => fetchSalesLedgerRef.current?.()}
+      />
+
+      <ConfirmDangerModal
+        isOpen={!!paymentToDelete}
+        title="DELETE PAYMENT"
+        message={paymentToDelete
+          ? `Amount: ${formatCurrency(paymentToDelete.amount)}\nMode: ${paymentToDelete.method || paymentToDelete.mode || 'N/A'}\nInvoice: ${paymentToDelete.invoiceNo || '—'}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
+          : ''}
+        confirmLabel="Delete Payment"
+        requireTypedText="DELETE"
+        onConfirm={confirmDeleteLedgerPayment}
+        onClose={() => setPaymentToDelete(null)}
+      />
     </div>
   )
 }

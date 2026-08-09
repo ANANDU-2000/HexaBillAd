@@ -2024,11 +2024,14 @@ if (hasLogo)
             }
         }
 
-        public async Task<byte[]> GenerateSalesLedgerPdfAsync(SalesLedgerReportDto ledgerReport, DateTime fromDate, DateTime toDate, int tenantId)
+        public async Task<byte[]> GenerateSalesLedgerPdfAsync(SalesLedgerReportDto ledgerReport, DateTime fromDate, DateTime toDate, int tenantId, string? filterNote = null)
         {
             try
             {
                 var settings = await GetCompanySettingsAsync(tenantId);
+                var headerSubtitle = $"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}";
+                if (!string.IsNullOrWhiteSpace(filterNote))
+                    headerSubtitle = $"{headerSubtitle} | {filterNote}";
                 
                 var document = Document.Create(container =>
                 {
@@ -2042,7 +2045,7 @@ if (hasLogo)
                         // Header
                         page.Header().Column(headerCol =>
                         {
-                            RenderCompanyHeader(headerCol, settings, "SALES LEDGER REPORT", $"Period: {fromDate:dd-MM-yyyy} to {toDate:dd-MM-yyyy}");
+                            RenderCompanyHeader(headerCol, settings, "SALES LEDGER REPORT", headerSubtitle);
                             headerCol.Item().Height(5);
                         });
 

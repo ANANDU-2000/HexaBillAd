@@ -19,7 +19,7 @@ namespace HexaBill.Api.Modules.Payments
     public interface IPaymentService
     {
         Task<bool> CheckDuplicatePaymentAsync(int tenantId, int customerId, decimal amount, DateTime paymentDate);
-        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10);
+        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null);
         Task<PaymentDto?> GetPaymentByIdAsync(int id, int tenantId);
         Task<CreatePaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null);
         Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId);
@@ -66,7 +66,7 @@ namespace HexaBill.Api.Modules.Payments
             return exists;
         }
 
-        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10)
+        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null)
         {
             var query = _context.Payments
                 .Where(p => p.TenantId == tenantId) // CRITICAL: Multi-tenant filter
@@ -74,6 +74,9 @@ namespace HexaBill.Api.Modules.Payments
                 .Include(p => p.Customer)
                 .Include(p => p.CreatedByUser)
                 .AsQueryable();
+
+            if (saleId.HasValue)
+                query = query.Where(p => p.SaleId == saleId.Value);
 
             var totalCount = await query.CountAsync();
             var payments = await query
@@ -577,7 +580,14 @@ namespace HexaBill.Api.Modules.Payments
                     var otherCleared = await _context.Payments
                         .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
                         .SumAsync(p => p.Amount);
-                    sale.PaidAmount = otherCleared + (isNowCleared ? newAmount : 0);
+                    var proposedPaid = otherCleared + (isNowCleared ? newAmount : 0);
+                    const decimal overpayEpsilon = 0.05m;
+                    if (isNowCleared && proposedPaid > sale.GrandTotal + overpayEpsilon)
+                    {
+                        throw new ArgumentException(
+                            $"Payment would overpay invoice {sale.InvoiceNo}. Invoice total: {sale.GrandTotal:F2}, other cleared payments: {otherCleared:F2}, this payment: {newAmount:F2}. Maximum allowed for this payment: {Math.Max(0, sale.GrandTotal - otherCleared):F2}.");
+                    }
+                    sale.PaidAmount = proposedPaid;
                     sale.LastPaymentDate = payment.PaymentDate;
                     sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
                         : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
@@ -634,6 +644,11 @@ namespace HexaBill.Api.Modules.Payments
                 await transaction.CommitAsync();
 
                 return await GetPaymentByIdAsync(paymentId, tenantId);
+            }
+            catch (ArgumentException)
+            {
+                try { await transaction.RollbackAsync(); } catch { }
+                throw;
             }
             catch (Exception ex)
             {

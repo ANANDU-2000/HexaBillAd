@@ -17,6 +17,15 @@ export const isAdminOrOwner = (user) => {
 }
 
 /**
+ * Admin / Owner / Manager — payment edit/delete and related ledger actions.
+ */
+export const canManagePayments = (user) => {
+  if (!user?.role) return false
+  const role = user.role.toLowerCase()
+  return role === 'admin' || role === 'owner' || role === 'manager' || role === 'systemadmin'
+}
+
+/**
  * Check if user is specifically Owner role or SystemAdmin
  * @param {object} user - User object with role property
  * @returns {boolean} - True if user is Owner or SystemAdmin

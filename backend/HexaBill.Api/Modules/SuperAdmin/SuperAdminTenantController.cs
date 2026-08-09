@@ -1002,6 +1002,66 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
+        /// <summary>
+        /// Merge duplicate customers into a survivor (reassign Sales/Payments/etc., recalc balance, delete losers).
+        /// SystemAdmin only. Requires FeatureFlags:CustomerMerge=true to execute (dryRun always allowed when flag on or off for preview if enabled for dry-run).
+        /// </summary>
+        [HttpPost("{id}/customers/merge")]
+        public async Task<ActionResult<ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult>>> MergeCustomers(
+            int id,
+            [FromBody] HexaBill.Api.Modules.Customers.CustomerMergeRequest request,
+            [FromServices] HexaBill.Api.Modules.Customers.ICustomerMergeService mergeService)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            if (request == null)
+                return BadRequest(new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult> { Success = false, Message = "Request body required" });
+
+            var dryRun = request.DryRun;
+            if (!dryRun)
+            {
+                if (!mergeService.IsMergeEnabled())
+                    return BadRequest(new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult>
+                    {
+                        Success = false,
+                        Message = "Customer merge is disabled. Set FeatureFlags:CustomerMerge=true to execute."
+                    });
+                if (!string.Equals(request.ConfirmToken, HexaBill.Api.Modules.Customers.CustomerMergeService.ConfirmTokenValue, StringComparison.Ordinal))
+                    return BadRequest(new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult>
+                    {
+                        Success = false,
+                        Message = "confirmToken must be MERGE when dryRun is false."
+                    });
+            }
+
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("UserId")?.Value
+                    ?? User.FindFirst("sub")?.Value;
+                int.TryParse(userIdClaim, out var userId);
+                if (userId <= 0) userId = 0;
+
+                var result = await mergeService.MergeAsync(id, request.SurvivorId, request.LoserIds ?? new List<int>(), dryRun, userId);
+                if (!result.Success && result.Errors.Count > 0)
+                    return BadRequest(new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult> { Success = false, Message = result.Message, Data = result });
+
+                if (!dryRun)
+                    await WriteSuperAdminAuditAsync("CustomerMerge", id, result.Message);
+
+                return Ok(new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult>
+                {
+                    Success = result.Success,
+                    Message = result.Message,
+                    Data = result
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "MergeCustomers failed for tenant {TenantId}", id);
+                return StatusCode(500, new ApiResponse<HexaBill.Api.Modules.Customers.CustomerMergeResult> { Success = false, Message = ex.Message });
+            }
+        }
+
         /// <summary>Get tenant's enabled features (feature flags). SystemAdmin only.</summary>
         [HttpGet("{id}/features")]
         public async Task<ActionResult<ApiResponse<object>>> GetTenantFeatures(int id)

@@ -1483,55 +1483,89 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<ActionResult> ExportSalesLedgerPdf(
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null,
-            [FromQuery] string? type = null)
+            [FromQuery] string? type = null,
+            [FromQuery] string? entryType = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? name = null,
+            [FromQuery] string? invoiceNo = null,
+            [FromQuery] int? branchId = null,
+            [FromQuery] int? routeId = null,
+            [FromQuery] int? staffId = null,
+            [FromQuery] string? sortOrder = null,
+            [FromQuery] string? overdue = null,
+            [FromQuery] decimal? realPendingMin = null,
+            [FromQuery] decimal? realPendingMax = null,
+            [FromQuery] decimal? realGotPaymentMin = null,
+            [FromQuery] decimal? realGotPaymentMax = null)
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
-                
-                var ledgerReport = await _reportService.GetComprehensiveSalesLedgerAsync(tenantId, from, to);
-                
-                // Filter by type if provided
-                if (!string.IsNullOrWhiteSpace(type) && (type.Equals("Sale", StringComparison.OrdinalIgnoreCase) || type.Equals("Payment", StringComparison.OrdinalIgnoreCase)))
+                var typeFilter = !string.IsNullOrWhiteSpace(entryType) ? entryType : type;
+                var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
+                var role = User.FindFirst(ClaimTypes.Role)?.Value;
+
+                var ledgerReport = await _reportService.GetComprehensiveSalesLedgerAsync(
+                    tenantId, from, to, branchId, routeId, staffId, userId, role, typeFilter);
+
+                var entries = ApplySalesLedgerClientParityFilters(
+                    ledgerReport.Entries ?? new List<SalesLedgerEntryDto>(),
+                    status, name, invoiceNo, overdue,
+                    realPendingMin, realPendingMax, realGotPaymentMin, realGotPaymentMax);
+
+                var order = string.Equals(sortOrder, "oldest", StringComparison.OrdinalIgnoreCase) ? "oldest" : "newest";
+                entries = SortSalesLedgerForPdf(entries, order, typeFilter);
+
+                var totalSales = entries.Where(e => e.Type.Equals("Sale", StringComparison.OrdinalIgnoreCase)).Sum(e => e.GrandTotal);
+                var totalPayments = entries.Where(e => e.Type.Equals("Payment", StringComparison.OrdinalIgnoreCase)).Sum(e => e.RealGotPayment);
+                var totalReturns = entries.Where(e => e.Type.Equals("Return", StringComparison.OrdinalIgnoreCase)).Sum(e => e.GrandTotal);
+                var totalRealPending = entries.Where(e => e.Type.Equals("Sale", StringComparison.OrdinalIgnoreCase)).Sum(e => e.RealPending);
+                var totalRealGotPayment = entries.Sum(e => e.RealGotPayment);
+                var totalSalesVat = entries.Where(e => e.Type.Equals("Sale", StringComparison.OrdinalIgnoreCase)).Sum(e => e.VatTotal);
+                var totalReturnsVat = entries.Where(e => e.Type.Equals("Return", StringComparison.OrdinalIgnoreCase)).Sum(e => e.VatTotal);
+
+                ledgerReport = new SalesLedgerReportDto
                 {
-                    var filteredEntries = ledgerReport.Entries
-                        .Where(e => e.Type.Equals(type, StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                    
-                    // Recalculate summary for filtered entries
-                    var totalRealPending = filteredEntries.Sum(e => e.RealPending);
-                    var totalRealGotPayment = filteredEntries.Sum(e => e.RealGotPayment);
-                    var totalSales = filteredEntries.Where(e => e.Type == "Sale").Sum(e => e.RealPending);
-                    var totalPayments = filteredEntries.Where(e => e.Type == "Payment").Sum(e => e.RealGotPayment);
-                    
-                    ledgerReport = new SalesLedgerReportDto
+                    Entries = entries,
+                    Summary = new SalesLedgerSummary
                     {
-                        Entries = filteredEntries,
-                        Summary = new SalesLedgerSummary
-                        {
-                            TotalDebit = totalRealPending,
-                            TotalCredit = totalRealGotPayment,
-                            OutstandingBalance = 0, // Not used anymore
-                            TotalSales = totalSales,
-                            TotalPayments = totalPayments
-                        }
-                    };
-                }
-                
+                        TotalDebit = totalRealPending,
+                        TotalCredit = totalRealGotPayment,
+                        OutstandingBalance = 0,
+                        TotalSales = totalSales,
+                        TotalPayments = totalPayments,
+                        TotalReturns = totalReturns,
+                        NetSales = totalSales - totalReturns,
+                        TotalSalesVat = totalSalesVat,
+                        TotalReturnsVat = totalReturnsVat,
+                        TotalVat = totalSalesVat - totalReturnsVat
+                    }
+                };
+
+                var noteParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(typeFilter)) noteParts.Add($"Type: {typeFilter}");
+                if (!string.IsNullOrWhiteSpace(status)) noteParts.Add($"Status: {status}");
+                if (string.Equals(overdue, "1", StringComparison.OrdinalIgnoreCase) || string.Equals(overdue, "true", StringComparison.OrdinalIgnoreCase))
+                    noteParts.Add("Overdue");
+                noteParts.Add($"Sort: {(order == "oldest" ? "Oldest" : "Newest")}");
+                var filterNote = string.Join(" | ", noteParts);
+
                 var pdfService = HttpContext.RequestServices.GetRequiredService<IPdfService>();
-                var pdfBytes = await pdfService.GenerateSalesLedgerPdfAsync(ledgerReport, from, to, tenantId);
-                
-                var fileName = !string.IsNullOrWhiteSpace(type)
-                    ? $"sales_ledger_{type.ToLower()}_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf"
+                var pdfBytes = await pdfService.GenerateSalesLedgerPdfAsync(ledgerReport, from, to, tenantId, filterNote);
+
+                var fileName = !string.IsNullOrWhiteSpace(typeFilter)
+                    ? $"sales_ledger_{typeFilter.ToLowerInvariant()}_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf"
                     : $"sales_ledger_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf";
-                
+
                 return File(pdfBytes, "application/pdf", fileName);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"Error exporting sales ledger PDF: {ex.Message}");
+                _logger.LogWarning(ex, "Error exporting sales ledger PDF: {Message}", ex.Message);
                 return StatusCode(500, new ApiResponse<object>
                 {
                     Success = false,
@@ -1539,6 +1573,149 @@ namespace HexaBill.Api.Modules.Reports
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        /// <summary>Normalize status labels to match Sales Ledger UI filters.</summary>
+        private static string NormalizeSalesLedgerStatus(string? status, string? entryType)
+        {
+            if (string.IsNullOrWhiteSpace(status) || status == "-") return "Unpaid";
+            var u = status.Trim().ToUpperInvariant();
+            if (u is "PAID" or "CLEARED") return "Paid";
+            if (u == "PARTIAL") return "Partial";
+            if (string.Equals(entryType, "Payment", StringComparison.OrdinalIgnoreCase) && u == "PENDING") return "Pending";
+            if (u is "UNPAID" or "PENDING" or "DUE") return "Unpaid";
+            return status.Trim();
+        }
+
+        private static List<SalesLedgerEntryDto> ApplySalesLedgerClientParityFilters(
+            List<SalesLedgerEntryDto> entries,
+            string? status,
+            string? name,
+            string? invoiceNo,
+            string? overdue,
+            decimal? realPendingMin,
+            decimal? realPendingMax,
+            decimal? realGotPaymentMin,
+            decimal? realGotPaymentMax)
+        {
+            IEnumerable<SalesLedgerEntryDto> q = entries;
+
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                var n = name.Trim();
+                q = q.Where(e => (e.CustomerName ?? "").Contains(n, StringComparison.OrdinalIgnoreCase));
+            }
+            if (!string.IsNullOrWhiteSpace(invoiceNo))
+            {
+                var inv = invoiceNo.Trim();
+                q = q.Where(e => (e.InvoiceNo ?? "").Contains(inv, StringComparison.OrdinalIgnoreCase));
+            }
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var want = NormalizeSalesLedgerStatus(status, null);
+                q = q.Where(e => NormalizeSalesLedgerStatus(e.Status, e.Type) == want);
+            }
+            if (realPendingMin.HasValue)
+                q = q.Where(e => e.RealPending >= realPendingMin.Value);
+            if (realPendingMax.HasValue)
+                q = q.Where(e => e.RealPending <= realPendingMax.Value);
+            if (realGotPaymentMin.HasValue)
+                q = q.Where(e => e.RealGotPayment >= realGotPaymentMin.Value);
+            if (realGotPaymentMax.HasValue)
+                q = q.Where(e => e.RealGotPayment <= realGotPaymentMax.Value);
+
+            var overdueOn = string.Equals(overdue, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(overdue, "true", StringComparison.OrdinalIgnoreCase);
+            if (overdueOn)
+            {
+                var today = DateTime.UtcNow.Date;
+                q = q.Where(e =>
+                {
+                    if (!e.Type.Equals("Sale", StringComparison.OrdinalIgnoreCase)) return false;
+                    if (e.RealPending <= 0.05m) return false;
+                    var days = (today - e.Date.Date).Days;
+                    return days >= 1;
+                });
+            }
+
+            return q.ToList();
+        }
+
+        private static int PrimarySortId(SalesLedgerEntryDto e)
+        {
+            if (e.Type.Equals("Sale", StringComparison.OrdinalIgnoreCase)) return e.SaleId ?? 0;
+            if (e.Type.Equals("Payment", StringComparison.OrdinalIgnoreCase)) return e.PaymentId ?? 0;
+            if (e.Type.Equals("Return", StringComparison.OrdinalIgnoreCase)) return e.ReturnId ?? 0;
+            return Math.Max(e.SaleId ?? 0, Math.Max(e.PaymentId ?? 0, e.ReturnId ?? 0));
+        }
+
+        private static int TypeRank(string? type)
+        {
+            if (string.Equals(type, "Sale", StringComparison.OrdinalIgnoreCase)) return 0;
+            if (string.Equals(type, "Return", StringComparison.OrdinalIgnoreCase)) return 1;
+            return 2;
+        }
+
+        /// <summary>
+        /// Match Sales Ledger UI: Type=Sale → flat global timeline; otherwise group by customer (latest activity first).
+        /// </summary>
+        private static List<SalesLedgerEntryDto> SortSalesLedgerForPdf(
+            List<SalesLedgerEntryDto> entries,
+            string order,
+            string? typeFilter)
+        {
+            if (entries.Count == 0) return entries;
+            var newest = !string.Equals(order, "oldest", StringComparison.OrdinalIgnoreCase);
+            var mult = newest ? -1 : 1;
+
+            if (string.Equals(typeFilter, "Sale", StringComparison.OrdinalIgnoreCase))
+            {
+                return entries
+                    .OrderBy(e => mult * e.Date.Ticks)
+                    .ThenBy(e => mult * (e.SaleId ?? 0))
+                    .ThenBy(e => mult * string.Compare(e.InvoiceNo ?? "", "", StringComparison.OrdinalIgnoreCase))
+                    .ThenBy(e => mult * string.Compare(e.CustomerName ?? "", "", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            // Group by customer; order blocks by max/min date; lines newest/oldest within block
+            var byCustomer = entries
+                .GroupBy(e => string.IsNullOrWhiteSpace(e.CustomerName) ? "Cash Customer" : e.CustomerName!)
+                .ToList();
+
+            int CompareLines(SalesLedgerEntryDto a, SalesLedgerEntryDto b)
+            {
+                var dateCmp = a.Date.CompareTo(b.Date);
+                if (dateCmp != 0) return mult * dateCmp;
+                var tr = TypeRank(a.Type).CompareTo(TypeRank(b.Type));
+                if (tr != 0) return mult * tr;
+                var inv = string.Compare(a.InvoiceNo ?? "", b.InvoiceNo ?? "", StringComparison.OrdinalIgnoreCase);
+                if (inv != 0) return mult * inv;
+                return mult * PrimarySortId(a).CompareTo(PrimarySortId(b));
+            }
+
+            IOrderedEnumerable<IGrouping<string, SalesLedgerEntryDto>> orderedGroups;
+            if (newest)
+            {
+                orderedGroups = byCustomer
+                    .OrderByDescending(g => g.Max(e => e.Date))
+                    .ThenByDescending(g => g.Max(PrimarySortId))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+            }
+            else
+            {
+                orderedGroups = byCustomer
+                    .OrderBy(g => g.Min(e => e.Date))
+                    .ThenBy(g => g.Min(PrimarySortId))
+                    .ThenBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+            }
+
+            var flat = new List<SalesLedgerEntryDto>(entries.Count);
+            foreach (var g in orderedGroups)
+            {
+                flat.AddRange(g.OrderBy(e => e, Comparer<SalesLedgerEntryDto>.Create(CompareLines)));
+            }
+            return flat;
         }
 
         [HttpGet("pending-bills/export/pdf")]

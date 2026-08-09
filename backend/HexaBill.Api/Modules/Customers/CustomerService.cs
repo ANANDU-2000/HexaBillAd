@@ -508,6 +508,24 @@ namespace HexaBill.Api.Modules.Customers
                     throw new InvalidOperationException($"Customer with name '{request.Name}' already exists. Please use a different name.");
                 }
 
+                // Near-dupe guard: block … CUSTOMER / CUSTOMER NAME clones of an existing root name
+                var rootName = CustomerMergeService.NormalizeRootName(request.Name);
+                if (!string.IsNullOrEmpty(rootName))
+                {
+                    var nearDupes = await _context.Customers
+                        .Where(c => c.TenantId == tenantId)
+                        .Select(c => new { c.Id, c.Name })
+                        .ToListAsync();
+                    var match = nearDupes.FirstOrDefault(c =>
+                        CustomerMergeService.NormalizeRootName(c.Name) == rootName);
+                    if (match != null)
+                    {
+                        throw new InvalidOperationException(
+                            $"A similar customer already exists: '{match.Name}' (Id {match.Id}). " +
+                            "Open that customer instead of creating a CUSTOMER / CUSTOMER NAME duplicate.");
+                    }
+                }
+
                 // Check for duplicate phone number if provided (within tenant scope)
                 if (!string.IsNullOrWhiteSpace(request.Phone))
                 {

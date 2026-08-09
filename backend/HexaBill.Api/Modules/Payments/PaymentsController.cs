@@ -65,12 +65,13 @@ namespace HexaBill.Api.Modules.Payments
         [HttpGet]
         public async Task<ActionResult<ApiResponse<PagedResponse<PaymentDto>>>> GetPayments(
             [FromQuery] int page = 1,
-            [FromQuery] int pageSize = 10)
+            [FromQuery] int pageSize = 10,
+            [FromQuery] int? saleId = null)
         {
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize);
+                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize, saleId);
                 return Ok(new ApiResponse<PagedResponse<PaymentDto>>
                 {
                     Success = true,
@@ -363,7 +364,7 @@ namespace HexaBill.Api.Modules.Payments
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<PaymentDto>>> UpdatePayment(int id, [FromBody] UpdatePaymentRequest request)
         {
             try
@@ -399,6 +400,15 @@ namespace HexaBill.Api.Modules.Payments
                     Data = result
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<PaymentDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<PaymentDto>
@@ -411,7 +421,7 @@ namespace HexaBill.Api.Modules.Payments
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,Owner")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<object>>> DeletePayment(int id)
         {
             try
