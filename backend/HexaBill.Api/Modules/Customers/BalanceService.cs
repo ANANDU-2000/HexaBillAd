@@ -49,18 +49,39 @@ namespace HexaBill.Api.Modules.Customers
         public async Task RecalculateCustomerBalanceAsync(int customerId)
         {
             // Avoid nested transactions: PaymentService / other callers may already hold BeginTransactionAsync.
+            // When we own the txn, wrap with CreateExecutionStrategy (Npgsql retry policy).
             var ownsTransaction = _context.Database.CurrentTransaction == null;
             Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? txn = null;
             if (ownsTransaction)
-                txn = await _context.Database.BeginTransactionAsync();
+            {
+                await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+                {
+                    await using var localTxn = await _context.Database.BeginTransactionAsync();
+                    try
+                    {
+                        await RecalculateCustomerBalanceCoreAsync(customerId);
+                        await localTxn.CommitAsync();
+                    }
+                    catch
+                    {
+                        try { await localTxn.RollbackAsync(); } catch { }
+                        throw;
+                    }
+                });
+                return;
+            }
+
+            await RecalculateCustomerBalanceCoreAsync(customerId);
+        }
+
+        private async Task RecalculateCustomerBalanceCoreAsync(int customerId)
+        {
             try
             {
                 var customer = await _context.Customers.FindAsync(customerId);
                 if (customer == null)
                 {
                     _logger.LogWarning("Customer {CustomerId} not found for balance recalculation", customerId);
-                    if (txn != null)
-                        await txn.RollbackAsync();
                     return;
                 }
 
@@ -126,8 +147,6 @@ namespace HexaBill.Api.Modules.Customers
                 try
                 {
                     await _context.SaveChangesAsync();
-                    if (txn != null)
-                        await txn.CommitAsync();
                 }
                 catch (Exception ex)
                 {
@@ -142,18 +161,9 @@ namespace HexaBill.Api.Modules.Customers
             }
             catch (Exception ex)
             {
-                if (txn != null)
-                {
-                    try { await txn.RollbackAsync(); } catch { /* ignore */ }
-                }
                 _logger.LogError(ex, "Failed to recalculate balance for customer {CustomerId}. Inner: {InnerMessage}, InnerInner: {InnerInnerMessage}",
                     customerId, ex.InnerException?.Message, ex.InnerException?.InnerException?.Message);
                 throw;
-            }
-            finally
-            {
-                if (txn != null)
-                    await txn.DisposeAsync();
             }
         }
 

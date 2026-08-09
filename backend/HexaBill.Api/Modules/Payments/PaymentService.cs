@@ -371,7 +371,9 @@ namespace HexaBill.Api.Modules.Payments
 
         public async Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId)
         {
-            // CRITICAL FIX: Wrap in transaction to ensure atomicity of payment, sale, and customer updates
+            // NpgsqlRetryingExecutionStrategy requires transactions inside CreateExecutionStrategy
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -504,11 +506,14 @@ namespace HexaBill.Api.Modules.Payments
                 _logger.LogError(ex, "Error updating payment status");
                 throw;
             }
+            });
         }
 
         public async Task<PaymentDto?> UpdatePaymentAsync(int paymentId, UpdatePaymentRequest request, int userId, int tenantId)
         {
-            // CRITICAL FIX: Wrap in transaction to ensure atomicity of payment, sale, and customer updates
+            // NpgsqlRetryingExecutionStrategy requires transactions inside CreateExecutionStrategy
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -713,11 +718,14 @@ namespace HexaBill.Api.Modules.Payments
                 _logger.LogError(ex, "Error updating payment");
                 throw;
             }
+            });
         }
 
         public async Task<bool> DeletePaymentAsync(int paymentId, int userId, int tenantId)
         {
-            // CRITICAL FIX: Wrap in transaction to ensure atomicity of payment deletion and sale/customer updates
+            // NpgsqlRetryingExecutionStrategy requires transactions inside CreateExecutionStrategy
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -834,6 +842,7 @@ namespace HexaBill.Api.Modules.Payments
                 _logger.LogError(ex, "Error deleting payment");
                 throw;
             }
+            });
         }
 
         public async Task<List<Models.OutstandingInvoiceDto>> GetOutstandingInvoicesAsync(int customerId, int tenantId)
@@ -923,6 +932,8 @@ namespace HexaBill.Api.Modules.Payments
                 }
             }
 
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -1107,6 +1118,7 @@ namespace HexaBill.Api.Modules.Payments
                 _logger.LogError(ex, "Error allocating payment");
                 throw;
             }
+            });
         }
     }
 
