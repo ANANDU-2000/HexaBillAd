@@ -69,6 +69,9 @@ const CustomerLedgerPage = () => {
   const customerLoadingRef = useRef(false)
   const recalculateInProgress = useRef(new Set()) // Track recalculate calls to prevent flooding
   const ledgerLoadInProgressRef = useRef(null) // RISK-2: Only one ledger load at a time per customer (prevents race)
+  const selectedCustomerIdRef = useRef(null) // current selection id (normalized); used for race-safe async guards
+  const ledgerLoadSeqRef = useRef(0) // monotonic; discard superseded loadCustomerData responses
+  const searchSeqRef = useRef(0) // monotonic; discard out-of-order search responses
   const [balanceRefreshSkeleton, setBalanceRefreshSkeleton] = useState(false) // "Refreshing balance…" after payment
   const [customers, setCustomers] = useState([])
   const [filteredCustomers, setFilteredCustomers] = useState([]) // Kept for backwards compat; search uses searchDropdownResults
@@ -80,6 +83,7 @@ const CustomerLedgerPage = () => {
   const CUSTOMER_SEARCH_PAGE_SIZE = 20
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
+  const [loadedForCustomerId, setLoadedForCustomerId] = useState(null) // normalized id whose ledger data is committed
 
   // Customer data
   const [customerLedger, setCustomerLedger] = useState([])
@@ -87,6 +91,13 @@ const CustomerLedgerPage = () => {
   const [customerPayments, setCustomerPayments] = useState([])
   const [outstandingInvoices, setOutstandingInvoices] = useState([])
   const [customerSummary, setCustomerSummary] = useState(null)
+
+  const normalizeLedgerCustomerId = (id) => {
+    if (id == null || id === '') return null
+    if (id === 'cash' || id === 0 || id === '0') return 'cash'
+    const n = typeof id === 'number' ? id : parseInt(id, 10)
+    return Number.isNaN(n) ? id : n
+  }
 
   // UI State
   const [activeTab, setActiveTab] = useState('ledger') // ledger, invoices, payments, reports
@@ -182,6 +193,11 @@ const CustomerLedgerPage = () => {
   const selectedSaleId = watchPayment('saleId')
   const selectedCustomerId = watchPayment('customerId')
 
+  // Keep ref in sync for race-safe async checks (and set eagerly in select/clear helpers)
+  useEffect(() => {
+    selectedCustomerIdRef.current = normalizeLedgerCustomerId(selectedCustomer?.id)
+  }, [selectedCustomer?.id])
+
   // Sync key filters to URL so they survive navigation and browser back.
   // CRITICAL: merge into existing params — never wipe deep-link customerId/recordPayment while customer is still resolving.
   useEffect(() => {
@@ -200,6 +216,31 @@ const CustomerLedgerPage = () => {
       return params
     }, { replace: true })
   }, [selectedCustomer?.id, dateRange.from, dateRange.to, setSearchParams])
+
+  /** Leave customer ledger view; invalidate in-flight loads. Shared by Back + search. */
+  const clearSelectedCustomer = useCallback((options = {}) => {
+    if (selectedCustomerIdRef.current == null) {
+      if (!options.keepSearch) setSearchTerm('')
+      return
+    }
+    ledgerLoadSeqRef.current += 1
+    ledgerLoadInProgressRef.current = null
+    selectedCustomerIdRef.current = null
+    setSelectedCustomer(null)
+    setCustomerLedger([])
+    setCustomerInvoices([])
+    setCustomerPayments([])
+    setOutstandingInvoices([])
+    setCustomerSummary(null)
+    setLoadedForCustomerId(null)
+    if (!options.keepSearch) setSearchTerm('')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('customerId')
+      next.delete('recordPayment')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
 
   // ========== ALL HANDLER FUNCTIONS - DEFINED FIRST ==========
   // Excel Export Handler
@@ -405,8 +446,6 @@ const CustomerLedgerPage = () => {
   // Load customer data when selected or date range changes (debounced to prevent excessive calls)
   useEffect(() => {
     if (selectedCustomer) {
-      // Reset in-progress guard so date/customer changes always trigger a fresh load
-      ledgerLoadInProgressRef.current = null
       const timeoutId = setTimeout(() => {
         loadCustomerData(selectedCustomer.id)
       }, 300) // 300ms debounce
@@ -530,6 +569,7 @@ const CustomerLedgerPage = () => {
 
   // Server-side search for customer dropdown (debounced)
   const fetchCustomerSearch = useCallback(async (query, page = 1, append = false) => {
+    const seq = ++searchSeqRef.current
     setSearchDropdownLoading(true)
     try {
       const params = {
@@ -540,16 +580,20 @@ const CustomerLedgerPage = () => {
       }
       if (query && query.trim()) params.search = query.trim()
       const res = await customersAPI.getCustomers(params)
+      if (seq !== searchSeqRef.current) return
       const items = res?.data?.items ?? res?.items ?? []
       const total = res?.data?.totalCount ?? res?.totalCount ?? items.length
       setSearchDropdownTotal(total)
       setSearchDropdownPage(page)
       setSearchDropdownResults(append ? prev => [...prev, ...items] : items)
     } catch (err) {
+      if (seq !== searchSeqRef.current) return
       if (!err?._handledByInterceptor) toast.error('Failed to search customers')
       setSearchDropdownResults(append ? prev => prev : [])
     } finally {
-      setSearchDropdownLoading(false)
+      if (seq === searchSeqRef.current) {
+        setSearchDropdownLoading(false)
+      }
     }
   }, [filterDraft.branchId, filterDraft.routeId])
 
@@ -860,23 +904,31 @@ const CustomerLedgerPage = () => {
   const loadCustomerData = async (customerId) => {
     // Handle cash customer (customerId is null or special flag)
     const isCashCustomer = !customerId || customerId === 'cash' || customerId === 0
+    const normalizedId = normalizeLedgerCustomerId(isCashCustomer ? 'cash' : customerId)
 
     // RISK-2 FIX: Block load when payment is in progress — prevents race where older load overwrites newer balance
     if (!isCashCustomer && paymentLoadingRef.current) {
       return
     }
 
-    // RISK-2: Serialize ledger loads — prevent concurrent loads for same customer (older response overwriting newer)
-    const loadKey = isCashCustomer ? 'cash' : String(customerId)
-    if (ledgerLoadInProgressRef.current === loadKey) {
+    if (!isCashCustomer && (!customerId || customerId <= 0)) {
+      console.error('Invalid customer ID:', customerId)
       return
     }
+
+    // New load always wins: bump seq so older in-flight responses are discarded
+    const seq = ++ledgerLoadSeqRef.current
+    const loadKey = String(normalizedId)
     ledgerLoadInProgressRef.current = loadKey
+
+    const isStale = () =>
+      seq !== ledgerLoadSeqRef.current || selectedCustomerIdRef.current !== normalizedId
 
     if (isCashCustomer) {
       // Load cash customer ledger, invoices, and payments
       try {
         setLoading(true)
+        setLoadedForCustomerId(null)
         setCustomerLedger([])
         setCustomerInvoices([])
         setCustomerPayments([])
@@ -891,12 +943,16 @@ const CustomerLedgerPage = () => {
           console.log('Cash customer recalculate skipped:', recalcError?.message)
         }
 
+        if (isStale()) return
+
         // Load ledger, sales, and payments in parallel
         const [ledgerRes, salesRes, paymentsRes] = await Promise.all([
           customersAPI.getCashCustomerLedger(),
           salesAPI.getSales({ page: 1, pageSize: 1000 }),
           paymentsAPI.getPayments({ page: 1, pageSize: 1000 }) // Get all payments
         ])
+
+        if (isStale()) return
 
         if (ledgerRes.success && ledgerRes.data) {
           const ledgerData = (Array.isArray(ledgerRes.data) ? ledgerRes.data : []).map(entry => ({
@@ -939,7 +995,6 @@ const CustomerLedgerPage = () => {
             return paymentDate >= fromDate && paymentDate <= toDate
           })
           setCustomerPayments(cashPayments)
-          console.log(`Loaded ${cashPayments.length} cash customer payments`)
         }
 
         setCustomerSummary({
@@ -947,32 +1002,24 @@ const CustomerLedgerPage = () => {
           totalCredit: ledgerRes.data?.reduce((sum, e) => sum + (e.credit || 0), 0) || 0,
           balance: 0 // Cash customers always have 0 balance
         })
+        setLoadedForCustomerId('cash')
       } catch (error) {
-        console.error('Failed to load cash customer data:', error)
-        if (!error?._handledByInterceptor) toast.error('Failed to load cash customer ledger')
+        if (!isStale()) {
+          console.error('Failed to load cash customer data:', error)
+          if (!error?._handledByInterceptor) toast.error('Failed to load cash customer ledger')
+        }
       } finally {
-        ledgerLoadInProgressRef.current = null
-        setLoading(false)
+        if (seq === ledgerLoadSeqRef.current) {
+          ledgerLoadInProgressRef.current = null
+          setLoading(false)
+        }
       }
-      return
-    }
-
-    // CRITICAL: Validate customerId matches selected customer to prevent data mismatches
-    if (!customerId || customerId <= 0) {
-      console.error('Invalid customer ID:', customerId)
-      ledgerLoadInProgressRef.current = null
-      return
-    }
-
-    // Double-check that we're still loading for the same customer
-    if (selectedCustomer && selectedCustomer.id !== customerId) {
-      console.warn('Customer changed during load, aborting data load for customer:', customerId)
-      ledgerLoadInProgressRef.current = null
       return
     }
 
     try {
       setLoading(true)
+      setLoadedForCustomerId(null)
 
       // Clear data first to prevent showing stale data
       setCustomerLedger([])
@@ -1004,12 +1051,7 @@ const CustomerLedgerPage = () => {
         customersAPI.getCustomer(customerId)
       ])
 
-      // CRITICAL: Verify we're still loading for the same customer after API calls
-      if (selectedCustomer && selectedCustomer.id !== customerId) {
-        console.warn('Customer changed after API calls, discarding data for customer:', customerId)
-        ledgerLoadInProgressRef.current = null
-        return
-      }
+      if (isStale()) return
 
       let ledgerData = []
       let invoicesData = []
@@ -1085,20 +1127,17 @@ const CustomerLedgerPage = () => {
           customer
         })
         // RISK-2: Update selectedCustomer with fresh balance so UI shows correct value
-        if (selectedCustomer && selectedCustomer.id === customerId) {
-          setSelectedCustomer(prev => prev ? { ...prev, balance: customerBalance } : prev)
-        }
+        setSelectedCustomer(prev =>
+          prev && normalizeLedgerCustomerId(prev.id) === normalizedId
+            ? { ...prev, balance: customerBalance }
+            : prev
+        )
       }
 
       // Load payments separately
       const paymentsRes = await paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId })
 
-      // CRITICAL: Verify we're still loading for the same customer after payment API call
-      if (selectedCustomer && selectedCustomer.id !== customerId) {
-        console.warn('Customer changed after payment API call, discarding data for customer:', customerId)
-        ledgerLoadInProgressRef.current = null
-        return
-      }
+      if (isStale()) return
 
       if (paymentsRes.success && paymentsRes.data) {
         const allPayments = paymentsRes.data.items || []
@@ -1130,6 +1169,8 @@ const CustomerLedgerPage = () => {
           customerRes.success ? customerRes.data : null
         )
 
+        if (isStale()) return
+
         // ONLY log validation errors to console - don't show toasts on every load
         if (!validationReport.isValid && validationReport.errors.length > 0) {
           console.error('DATA VALIDATION ERRORS:', validationReport.errors)
@@ -1148,7 +1189,13 @@ const CustomerLedgerPage = () => {
           // User can manually reconcile if needed using the Reconcile button
         }
       }
+
+      if (!isStale()) {
+        setLoadedForCustomerId(normalizedId)
+      }
     } catch (error) {
+      if (isStale()) return
+
       // CRITICAL: Prevent error flooding - only show error once
       if (!error._logged) {
         console.error('Failed to load customer data:', error)
@@ -1175,7 +1222,7 @@ const CustomerLedgerPage = () => {
           await recalculateCustomerBalance(customerId)
           // Retry after delay, but only once and only if still same customer
           setTimeout(() => {
-            if (selectedCustomer && selectedCustomer.id === customerId && ledgerLoadInProgressRef.current !== loadKey) {
+            if (selectedCustomerIdRef.current === normalizedId) {
               loadCustomerData(customerId)
             }
           }, 5000) // 5 second delay before retry (increased to prevent flooding)
@@ -1188,20 +1235,37 @@ const CustomerLedgerPage = () => {
         }
       }
     } finally {
-      ledgerLoadInProgressRef.current = null
-      setLoading(false)
+      if (seq === ledgerLoadSeqRef.current) {
+        ledgerLoadInProgressRef.current = null
+        setLoading(false)
+      }
     }
   }
 
   const handleSelectCustomer = (customer) => {
-    // CRITICAL: Clear all customer data when switching customers to prevent data mismatches
+    // Invalidate in-flight loads and clear UI before switching
+    ledgerLoadSeqRef.current += 1
+    ledgerLoadInProgressRef.current = null
+    const normalizedId = normalizeLedgerCustomerId(customer?.id)
+    selectedCustomerIdRef.current = normalizedId
     setCustomerLedger([])
     setCustomerInvoices([])
     setCustomerPayments([])
     setOutstandingInvoices([])
     setCustomerSummary(null)
+    setLoadedForCustomerId(null)
     setSelectedCustomer(customer)
     setSearchTerm('')
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (normalizedId && normalizedId !== 'cash') {
+        next.set('customerId', String(normalizedId))
+      } else {
+        next.delete('customerId')
+      }
+      next.delete('recordPayment')
+      return next
+    }, { replace: true })
   }
 
   const doCreateCustomer = async (customerData) => {
@@ -1214,17 +1278,12 @@ const CustomerLedgerPage = () => {
         setShowAddCustomerModal(false)
         setDuplicateCheckModal({ isOpen: false, message: '', customerData: null })
         resetCustomerForm()
-        await Promise.all([
-          fetchCustomers(),
-          response?.data ? loadCustomerData(response.data.id) : Promise.resolve()
-        ])
+        await fetchCustomers()
         if (response?.data) {
-          setSelectedCustomer(response.data)
-          setSearchTerm('')
+          handleSelectCustomer(response.data)
         }
         window.dispatchEvent(new CustomEvent('customerCreated', { detail: response.data }))
         window.dispatchEvent(new CustomEvent('dataUpdated'))
-        if (response?.data?.id) setSearchParams({ customerId: response.data.id })
       } else {
         toast.error(response?.message || 'Failed to create customer', { id: 'customer-add-error' })
       }
@@ -1938,6 +1997,11 @@ const CustomerLedgerPage = () => {
     return <LoadingCard message="Loading customers..." />
   }
 
+  const selectedNormalizedId = normalizeLedgerCustomerId(selectedCustomer?.id)
+  const ledgerDataReady =
+    selectedNormalizedId != null && loadedForCustomerId === selectedNormalizedId
+  const showLedgerLoading = Boolean(selectedCustomer) && (loading || !ledgerDataReady)
+
   return (
     <div className={`h-full min-h-0 flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full ${mobilePageShellClass}`}>
       {/* TOP BAR — compact on mobile */}
@@ -1948,19 +2012,7 @@ const CustomerLedgerPage = () => {
             <button
               onClick={() => {
                 if (selectedCustomer) {
-                  setSelectedCustomer(null)
-                  setCustomerLedger([])
-                  setCustomerInvoices([])
-                  setCustomerPayments([])
-                  setOutstandingInvoices([])
-                  setCustomerSummary(null)
-                  ledgerLoadInProgressRef.current = null
-                  setSearchParams((prev) => {
-                    const next = new URLSearchParams(prev)
-                    next.delete('customerId')
-                    next.delete('recordPayment')
-                    return next
-                  }, { replace: true })
+                  clearSelectedCustomer({ keepSearch: false })
                   return
                 }
                 const returnTo = location.state?.returnTo
@@ -2097,7 +2149,18 @@ const CustomerLedgerPage = () => {
               type="text"
               placeholder="Search customer (F2)"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onFocus={() => {
+                if (selectedCustomerIdRef.current != null) {
+                  clearSelectedCustomer({ keepSearch: true })
+                }
+              }}
+              onChange={(e) => {
+                const v = e.target.value
+                setSearchTerm(v)
+                if (v.trim() && selectedCustomerIdRef.current != null) {
+                  clearSelectedCustomer({ keepSearch: true })
+                }
+              }}
               className={`w-full pl-9 pr-3 !min-h-9 !py-1.5 !text-sm ${mobileFormFieldClass}`}
             />
           </div>
@@ -2131,8 +2194,7 @@ const CustomerLedgerPage = () => {
               {/* Cash Customer Option */}
               <button
                 onClick={() => {
-                  setSelectedCustomer({ id: 'cash', name: 'Cash Customer', balance: 0 })
-                  loadCustomerData('cash')
+                  handleSelectCustomer({ id: 'cash', name: 'Cash Customer', balance: 0 })
                 }}
                 className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border border-transparent ${selectedCustomer?.id === 'cash'
                   ? 'bg-primary-600 text-white'
@@ -2186,7 +2248,10 @@ const CustomerLedgerPage = () => {
         )}
 
         {/* MAIN LEDGER VIEW */}
-        <div className={`flex flex-col overflow-hidden min-h-0 ${selectedCustomer ? 'flex-1' : 'hidden'}`}>
+        <div
+          key={selectedCustomer?.id ?? 'none'}
+          className={`flex flex-col overflow-hidden min-h-0 ${selectedCustomer ? 'flex-1' : 'hidden'}`}
+        >
           {selectedCustomer && (
             <>
               {/* Compact customer + balance + actions */}
@@ -2498,7 +2563,7 @@ const CustomerLedgerPage = () => {
                 {/* TAB CONTENT — primary scroll region */}
                 <div className="flex-1 min-h-0 overflow-auto w-full pb-24 lg:pb-2">
                   {activeTab === 'ledger' && (
-                    loading ? (
+                    showLedgerLoading ? (
                       <div className="flex items-center justify-center h-full p-8">
                         <LoadingCard message="Loading ledger data..." />
                       </div>
@@ -2592,6 +2657,11 @@ const CustomerLedgerPage = () => {
                   )}
 
                   {activeTab === 'invoices' && (
+                    showLedgerLoading ? (
+                      <div className="flex items-center justify-center h-full min-h-[12rem] p-8">
+                        <LoadingCard message="Loading ledger data..." />
+                      </div>
+                    ) : (
                     <InvoicesTab
                       invoices={customerInvoices}
                       outstandingInvoices={outstandingInvoices}
@@ -2675,9 +2745,15 @@ const CustomerLedgerPage = () => {
                       }}
                       onReturnInvoice={(invoiceId) => navigate(`/returns/create?saleId=${invoiceId}`, { state: { returnTo: location.pathname + location.search } })}
                     />
+                    )
                   )}
 
                   {activeTab === 'payments' && (
+                    showLedgerLoading ? (
+                      <div className="flex items-center justify-center h-full min-h-[12rem] p-8">
+                        <LoadingCard message="Loading ledger data..." />
+                      </div>
+                    ) : (
                     <PaymentsTab
                       payments={customerPayments}
                       user={user}
@@ -2726,9 +2802,15 @@ const CustomerLedgerPage = () => {
                         })
                       }}
                     />
+                    )
                   )}
 
                   {activeTab === 'reports' && (
+                    showLedgerLoading ? (
+                      <div className="flex items-center justify-center h-full min-h-[12rem] p-8">
+                        <LoadingCard message="Loading ledger data..." />
+                      </div>
+                    ) : (
                     <ReportsTab
                       customer={selectedCustomer}
                       summary={customerSummary}
@@ -2736,6 +2818,7 @@ const CustomerLedgerPage = () => {
                       payments={customerPayments}
                       outstandingInvoices={outstandingInvoices}
                     />
+                    )
                   )}
                 </div>
               </div>
