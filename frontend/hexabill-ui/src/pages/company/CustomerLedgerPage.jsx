@@ -59,6 +59,8 @@ const CustomerLedgerPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
+  // Keep URL customerId only until initial deep-link hydrate finishes — never resurrect after user clears/searches
+  const preserveUrlCustomerIdRef = useRef(Boolean(searchParams.get('customerId')))
   const [loading, setLoading] = useState(true)
   const [paymentLoading, setPaymentLoading] = useState(false) // Separate loading state for payment submission
   const [customerLoading, setCustomerLoading] = useState(false) // Separate loading state for customer creation
@@ -199,16 +201,20 @@ const CustomerLedgerPage = () => {
   }, [selectedCustomer?.id])
 
   // Sync key filters to URL so they survive navigation and browser back.
-  // CRITICAL: merge into existing params — never wipe deep-link customerId/recordPayment while customer is still resolving.
+  // When selection is cleared, always drop customerId — otherwise hydrate re-selects the previous customer.
   useEffect(() => {
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev)
-      if (selectedCustomer?.id) {
-        params.set('customerId', String(selectedCustomer.id))
-      } else if (!params.get('customerId')) {
+      const id = selectedCustomer?.id
+      const isRealCustomer = id != null && id !== 'cash' && id !== 0 && id !== '0'
+      if (isRealCustomer) {
+        params.set('customerId', String(id))
+        preserveUrlCustomerIdRef.current = false
+      } else if (preserveUrlCustomerIdRef.current && !selectedCustomer) {
+        // Initial deep-link only: keep customerId until hydrate selects a customer
+      } else {
         params.delete('customerId')
       }
-      // When selectedCustomer is null but customerId is in URL, keep it (deep-link hydrate in progress).
       if (dateRange.from) params.set('from', dateRange.from)
       else params.delete('from')
       if (dateRange.to) params.set('to', dateRange.to)
@@ -223,6 +229,7 @@ const CustomerLedgerPage = () => {
       if (!options.keepSearch) setSearchTerm('')
       return
     }
+    preserveUrlCustomerIdRef.current = false
     ledgerLoadSeqRef.current += 1
     ledgerLoadInProgressRef.current = null
     selectedCustomerIdRef.current = null
@@ -405,17 +412,33 @@ const CustomerLedgerPage = () => {
     }
   }, [user, filterDraft.branchId, filterDraft.routeId, ledgerBranchId, ledgerRouteId, availableBranches, availableRoutes, staffHasNoAssignments, branchesRoutesLoading])
 
-  // Load customer from URL parameter
+  // Load customer from URL parameter (deep-link). Do not overwrite a newer intentional selection.
   useEffect(() => {
     const customerIdParam = searchParams.get('customerId')
-    if (!customerIdParam) return
+    if (!customerIdParam) {
+      preserveUrlCustomerIdRef.current = false
+      return
+    }
     const customerId = parseInt(customerIdParam, 10)
     if (isNaN(customerId)) return
-    if (selectedCustomer?.id === customerId) return
+
+    const currentId = selectedCustomerIdRef.current
+    if (currentId === customerId) return
+    // User already selected someone else (ref set eagerly) — ignore stale URL id
+    if (currentId != null && currentId !== customerId) return
+
+    const applyFromUrl = (customer) => {
+      if (!customer?.id) return
+      if (selectedCustomerIdRef.current != null && selectedCustomerIdRef.current !== customer.id) return
+      preserveUrlCustomerIdRef.current = false
+      selectedCustomerIdRef.current = normalizeLedgerCustomerId(customer.id)
+      setLoadedForCustomerId(null)
+      setSelectedCustomer(customer)
+    }
 
     const customer = customers.find(c => c.id === customerId)
     if (customer) {
-      setSelectedCustomer(customer)
+      applyFromUrl(customer)
       return
     }
 
@@ -423,7 +446,7 @@ const CustomerLedgerPage = () => {
     customersAPI.getCustomer(customerId).then(response => {
       if (cancelled) return
       if (response?.success && response?.data) {
-        setSelectedCustomer(response.data)
+        applyFromUrl(response.data)
       }
     }).catch(err => console.error('Failed to load customer from URL:', err))
     return () => { cancelled = true }
@@ -1244,6 +1267,7 @@ const CustomerLedgerPage = () => {
 
   const handleSelectCustomer = (customer) => {
     // Invalidate in-flight loads and clear UI before switching
+    preserveUrlCustomerIdRef.current = false
     ledgerLoadSeqRef.current += 1
     ledgerLoadInProgressRef.current = null
     const normalizedId = normalizeLedgerCustomerId(customer?.id)
@@ -2193,6 +2217,8 @@ const CustomerLedgerPage = () => {
             <div className="p-1 space-y-0.5">
               {/* Cash Customer Option */}
               <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   handleSelectCustomer({ id: 'cash', name: 'Cash Customer', balance: 0 })
                 }}
@@ -2214,7 +2240,9 @@ const CustomerLedgerPage = () => {
               )}
               {searchDropdownResults.map((customer) => (
                 <button
+                  type="button"
                   key={customer.id}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelectCustomer(customer)}
                   className={`w-full text-left px-2.5 py-1.5 rounded-md transition-colors text-sm border ${selectedCustomer?.id === customer.id
                     ? 'bg-primary-600 text-white border-primary-600'
