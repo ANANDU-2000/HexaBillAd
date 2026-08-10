@@ -55,6 +55,16 @@ namespace HexaBill.Api.Models
         [MaxLength(200)]
         public string? Location { get; set; }
 
+        /// <summary>Saved delivery pin (WGS84). Single source of truth — not on RouteCustomer.</summary>
+        public decimal? MainLatitude { get; set; }
+
+        /// <summary>Saved delivery pin (WGS84).</summary>
+        public decimal? MainLongitude { get; set; }
+
+        public DateTime? LocationUpdatedAt { get; set; }
+
+        public int? LocationUpdatedBy { get; set; }
+
         public decimal CreditLimit { get; set; }
 
         /// <summary>

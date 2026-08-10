@@ -218,6 +218,11 @@ const CustomerDetailPage = () => {
           <div>
             <label className="text-sm font-medium text-gray-500">Location</label>
             <div className="mt-1 text-sm text-gray-900">{customer.location || 'N/A'}</div>
+            {(customer.mainLatitude != null && customer.mainLongitude != null) && (
+              <div className="mt-2 text-sm text-gray-700">
+                GPS: {Number(customer.mainLatitude).toFixed(6)}, {Number(customer.mainLongitude).toFixed(6)}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-sm font-medium text-gray-500">Customer Type</label>

@@ -97,6 +97,10 @@ const PosEnterprisePage = () => {
   // Track if customer was intentionally changed by user during edit mode
   const [customerChangedDuringEdit, setCustomerChangedDuringEdit] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+  /** Map productId -> last exclusive unit price for selected customer */
+  const [customerItemPrices, setCustomerItemPrices] = useState({})
+  const customerItemPricesRef = useRef({})
+  customerItemPricesRef.current = customerItemPrices
   const [customerSearchTerm, setCustomerSearchTerm] = useState('')
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [showQuickCustomerDropdown, setShowQuickCustomerDropdown] = useState(false)
@@ -286,6 +290,41 @@ const PosEnterprisePage = () => {
       .catch(() => {})
     return () => { cancelled = true }
   }, [selectedCustomer?.id])
+
+  // Load customer–item last prices when customer changes (batch; POS prefill memory)
+  useEffect(() => {
+    const cid = selectedCustomer?.id
+    if (!cid || cid === 'cash') {
+      setCustomerItemPrices({})
+      return
+    }
+    let cancelled = false
+    customersAPI.getCustomerItemPrices(cid)
+      .then((res) => {
+        if (cancelled) return
+        const map = {}
+        const rows = res?.data || res || []
+        if (Array.isArray(rows)) {
+          for (const row of rows) {
+            if (row?.productId != null && row.lastUnitPrice != null) {
+              map[row.productId] = Number(row.lastUnitPrice)
+            }
+          }
+        }
+        setCustomerItemPrices(map)
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerItemPrices({})
+      })
+    return () => { cancelled = true }
+  }, [selectedCustomer?.id])
+
+  const getLastUnitPrice = useCallback((productId) => {
+    if (productId == null) return null
+    const map = customerItemPricesRef.current
+    if (!Object.prototype.hasOwnProperty.call(map, productId)) return null
+    return map[productId]
+  }, [])
 
   // Fetch VAT percentage from company settings (no hardcoded business rule)
   useEffect(() => {
@@ -668,8 +707,9 @@ const PosEnterprisePage = () => {
   }
 
   const addToCart = (product, rowIndex = null) => {
-    // CRITICAL FIX: Ensure price is populated - use sellPrice or costPrice as fallback
-    const unitPrice = product.sellPrice || product.costPrice || 0
+    const last = getLastUnitPrice(product.id)
+    const hasLast = last != null && Number(last) >= 0
+    const unitPrice = hasLast ? Number(last) : (product.sellPrice || product.costPrice || 0)
 
     // OPTIMISTIC UI: Instant update - React state updates are already synchronous and instant
     const qty = 1
@@ -677,6 +717,7 @@ const PosEnterprisePage = () => {
     const rowTotal = (qty * unitPrice) - itemDiscount
     const vatAmount = Math.round((rowTotal * (vatPercent / 100)) * 100) / 100
     const lineTotal = rowTotal + vatAmount
+    const priceSource = hasLast ? 'last' : 'catalog'
 
     // If rowIndex is provided, replace that specific row
     if (rowIndex !== null && rowIndex >= 0 && rowIndex < cart.length) {
@@ -689,10 +730,11 @@ const PosEnterprisePage = () => {
         sku: product.sku,
         unitType: product.unitType || 'CRTN', // Fallback to CRTN if null
         qty: qty,
-        unitPrice: unitPrice, // FIXED: Use calculated unitPrice
-        discount: itemDiscount, // Per-item discount
+        unitPrice: unitPrice,
+        discount: itemDiscount,
         vatAmount: vatAmount,
-        lineTotal: lineTotal
+        lineTotal: lineTotal,
+        priceSource,
       }
       setCart(newCart)
 
@@ -732,10 +774,11 @@ const PosEnterprisePage = () => {
           sku: product.sku,
           unitType: product.unitType || 'CRTN', // Fallback to CRTN if null
           qty: qty,
-          unitPrice: unitPrice, // FIXED: Use calculated unitPrice
-          discount: itemDiscount, // Per-item discount
+          unitPrice: unitPrice,
+          discount: itemDiscount,
           vatAmount: vatAmount,
-          lineTotal: lineTotal
+          lineTotal: lineTotal,
+          priceSource,
         }]))
         // Silent - cart update is visual feedback
       }
@@ -928,6 +971,7 @@ const PosEnterprisePage = () => {
     // Handle empty string for number fields
     const numValue = value === '' ? '' : (field === 'qty' || field === 'unitPrice' ? Number(value) : value)
     newCart[index] = { ...newCart[index], [field]: numValue }
+    if (field === 'unitPrice') newCart[index].priceSource = 'manual'
 
     // Calculate: Total = (Qty × Price) - Discount, VAT = Total × vatPercent%, Amount = Total + VAT
     const qty = typeof newCart[index].qty === 'number' ? newCart[index].qty : 0
@@ -2107,6 +2151,7 @@ const PosEnterprisePage = () => {
       setProductHighlight(delta > 0 ? 0 : Math.max(0, PRODUCT_PICKER_PAGE_SIZE - 1))
     },
     onRecordProductBilled: recordProductBilled,
+    getLastUnitPrice,
     onFocusCustomer: () => setShowCustomerSearch(true),
     onFocusPayment: () => { setPaymentPanelOpen(true); setShowPaymentSheet(true) },
     onOpenDiscountPopup: () => { if (!isZeroInvoice) setShowDiscountPopup(true) },
@@ -2845,19 +2890,24 @@ const PosEnterprisePage = () => {
                             )}
                           </td>
                           <td className="px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-32">
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              ref={(el) => { if (item.rowId) unitPriceInputRefsByRowId.current[item.rowId] = el }}
-                              data-pos-control="unitPrice"
-                              data-pos-row-id={item.rowId || ''}
-                              disabled={isFormDisabled}
-                              className="w-full min-w-[5.5rem] px-2 py-0.5 border border-gray-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
-                              value={item.unitPrice === '' ? '' : item.unitPrice}
-                              onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
-                              onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
-                            />
+                            <div className="flex flex-col gap-0.5">
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                ref={(el) => { if (item.rowId) unitPriceInputRefsByRowId.current[item.rowId] = el }}
+                                data-pos-control="unitPrice"
+                                data-pos-row-id={item.rowId || ''}
+                                disabled={isFormDisabled}
+                                className="w-full min-w-[5.5rem] px-2 py-0.5 border border-gray-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                value={item.unitPrice === '' ? '' : item.unitPrice}
+                                onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
+                                onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
+                              />
+                              {item.priceSource === 'last' && (
+                                <span className="text-[10px] text-blue-600 font-medium leading-none">Last price</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-gray-200 font-semibold text-xs align-middle w-20">
                             {(() => {

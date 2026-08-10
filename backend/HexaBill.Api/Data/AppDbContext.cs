@@ -43,6 +43,7 @@ namespace HexaBill.Api.Data
         public DbSet<Sale> Sales { get; set; }
         public DbSet<SaleItem> SaleItems { get; set; }
         public DbSet<Customer> Customers { get; set; }
+        public DbSet<CustomerItemPrice> CustomerItemPrices { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
@@ -371,6 +372,9 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Email).HasMaxLength(100);
                 entity.Property(e => e.Trn).HasMaxLength(50);
                 entity.Property(e => e.Address).HasMaxLength(500);
+                entity.Property(e => e.Location).HasMaxLength(200);
+                entity.Property(e => e.MainLatitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.MainLongitude).HasColumnType("decimal(9,6)");
                 
                 // CRITICAL: All decimal fields must have defaults and cannot be NULL
                 entity.Property(e => e.CreditLimit)
@@ -405,6 +409,16 @@ namespace HexaBill.Api.Data
                     .HasColumnType(Database.IsNpgsql() ? "bytea" : "BLOB")
                     .HasDefaultValue(new byte[] { 0 })
                     .IsRequired(false);
+            });
+
+            modelBuilder.Entity<CustomerItemPrice>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.LastUnitPrice).HasColumnType("decimal(18,2)");
+                entity.HasIndex(e => new { e.TenantId, e.CustomerId, e.ProductId }).IsUnique();
+                entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.LastSale).WithMany().HasForeignKey(e => e.LastSaleId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
             });
 
             // Payment configuration
@@ -857,6 +871,8 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Status).HasConversion<string>().HasDefaultValue(VisitStatus.NotVisited);
                 entity.Property(e => e.Notes).HasMaxLength(500);
                 entity.Property(e => e.PaymentCollected).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Latitude).HasColumnType("decimal(9,6)");
+                entity.Property(e => e.Longitude).HasColumnType("decimal(9,6)");
                 entity.Ignore(e => e.AmountCollected);
                 entity.HasOne(e => e.Route).WithMany().HasForeignKey(e => e.RouteId);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);

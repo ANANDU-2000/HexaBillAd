@@ -23,8 +23,8 @@ namespace HexaBill.Api.Modules.Customers
         // MULTI-TENANT: All methods now require tenantId for data isolation
         Task<PagedResponse<CustomerDto>> GetCustomersAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, int? branchId = null, int? routeId = null, IReadOnlyList<int>? restrictToBranchIds = null, IReadOnlyList<int>? restrictToRouteIds = null, string? sortBy = null);
         Task<CustomerDto?> GetCustomerByIdAsync(int id, int tenantId);
-        Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId);
-        Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId);
+        Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId, int? actingUserId = null);
+        Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId, int? actingUserId = null);
         Task<(bool Success, string Message)> DeleteCustomerAsync(int id, int tenantId);
         Task<(bool Success, string Message, DeleteCustomerSummary? Summary)> ForceDeleteCustomerWithAllDataAsync(int customerId, int userId, int tenantId);
         Task<List<CustomerLedgerEntry>> GetCustomerLedgerAsync(int customerId, int tenantId, int? branchId = null, int? routeId = null, int? staffId = null, DateTime? fromDate = null, DateTime? toDate = null);
@@ -389,27 +389,7 @@ namespace HexaBill.Api.Modules.Customers
                 .Take(pageSize)
                 .ToListAsync();
 
-            var customers = customersList.Select(c => new CustomerDto
-                {
-                    Id = c.Id,
-                Name = c.Name ?? string.Empty,
-                    Phone = c.Phone,
-                    Email = c.Email,
-                    Trn = c.Trn,
-                    Address = c.Address,
-                    Location = c.Location,
-                    CreditLimit = c.CreditLimit,
-                    PaymentTerms = c.PaymentTerms,
-                    Balance = c.Balance,
-                    CustomerType = c.CustomerType.ToString(),
-                    TotalSales = c.TotalSales,
-                    TotalPayments = c.TotalPayments,
-                    PendingBalance = c.PendingBalance,
-                    LastPaymentDate = c.LastPaymentDate,
-                    LastActivity = c.LastActivity,
-                    BranchId = c.BranchId,
-                    RouteId = c.RouteId
-            }).ToList();
+            var customers = customersList.Select(ToCustomerDto).ToList();
 
             return new PagedResponse<CustomerDto>
             {
@@ -432,30 +412,10 @@ namespace HexaBill.Api.Modules.Customers
                 .FirstOrDefaultAsync();
             if (customer == null) return null;
 
-            return new CustomerDto
-            {
-                Id = customer.Id,
-                Name = customer.Name ?? string.Empty,
-                Phone = customer.Phone,
-                Email = customer.Email,
-                Trn = customer.Trn,
-                Address = customer.Address,
-                Location = customer.Location,
-                CreditLimit = customer.CreditLimit,
-                PaymentTerms = customer.PaymentTerms,
-                Balance = customer.Balance,
-                CustomerType = customer.CustomerType.ToString(),
-                TotalSales = customer.TotalSales,
-                TotalPayments = customer.TotalPayments,
-                PendingBalance = customer.PendingBalance,
-                LastPaymentDate = customer.LastPaymentDate,
-                LastActivity = customer.LastActivity,
-                BranchId = customer.BranchId,
-                RouteId = customer.RouteId
-            };
+            return ToCustomerDto(customer);
         }
 
-        public async Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId)
+        public async Task<CustomerDto> CreateCustomerAsync(CreateCustomerRequest request, int tenantId, int? actingUserId = null)
         {
             // Validate input first
             if (string.IsNullOrWhiteSpace(request.Name))
@@ -563,6 +523,7 @@ namespace HexaBill.Api.Modules.Customers
                     BranchId = request.BranchId,
                     RouteId = request.RouteId
                 };
+                ApplyMainLocation(customer, request, actingUserId);
                 
                 // Double-check before adding to context
                 if (customer.CreditLimit < 0)
@@ -610,26 +571,7 @@ namespace HexaBill.Api.Modules.Customers
                 // No need to fetch fresh - this avoids transaction scope issues
                 _logger.LogInformation("Customer created successfully: {Name} (Id {CustomerId})", customer.Name, customer.Id);
 
-                return new CustomerDto
-                {
-                    Id = customer.Id,
-                    Name = customer.Name ?? string.Empty,
-                    Phone = customer.Phone,
-                    Email = customer.Email,
-                    Trn = customer.Trn,
-                    Address = customer.Address,
-                    Location = customer.Location,
-                    CreditLimit = customer.CreditLimit,
-                    PaymentTerms = customer.PaymentTerms,
-                    Balance = customer.Balance,
-                    CustomerType = customer.CustomerType.ToString(),
-                    TotalSales = customer.TotalSales,
-                    TotalPayments = customer.TotalPayments,
-                    PendingBalance = customer.PendingBalance,
-                    LastPaymentDate = customer.LastPaymentDate,
-                    BranchId = customer.BranchId,
-                    RouteId = customer.RouteId
-                };
+                return ToCustomerDto(customer);
             }
             catch (OperationCanceledException)
             {
@@ -649,7 +591,7 @@ namespace HexaBill.Api.Modules.Customers
             }
         }
 
-        public async Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId)
+        public async Task<CustomerDto?> UpdateCustomerAsync(int id, CreateCustomerRequest request, int tenantId, int? actingUserId = null)
         {
             // CRITICAL: Filter by both id and tenantId
             var customer = await _context.Customers
@@ -705,6 +647,7 @@ namespace HexaBill.Api.Modules.Customers
             customer.Trn = request.Trn;
             customer.Address = request.Address;
             customer.Location = string.IsNullOrWhiteSpace(request.Location) ? null : request.Location.Trim();
+            ApplyMainLocation(customer, request, actingUserId);
             customer.CreditLimit = request.CreditLimit;
             customer.PaymentTerms = string.IsNullOrWhiteSpace(request.PaymentTerms) ? null : request.PaymentTerms.Trim();
             customer.CustomerType = newCustomerType;
@@ -750,26 +693,56 @@ namespace HexaBill.Api.Modules.Customers
 
             await _context.SaveChangesAsync();
 
-            return new CustomerDto
+            return ToCustomerDto(customer);
+        }
+
+        /// <summary>
+        /// Map entity to DTO including GPS main pin fields.
+        /// </summary>
+        private static CustomerDto ToCustomerDto(Customer customer) => new()
+        {
+            Id = customer.Id,
+            Name = customer.Name ?? string.Empty,
+            Phone = customer.Phone,
+            Email = customer.Email,
+            Trn = customer.Trn,
+            Address = customer.Address,
+            Location = customer.Location,
+            MainLatitude = customer.MainLatitude,
+            MainLongitude = customer.MainLongitude,
+            LocationUpdatedAt = customer.LocationUpdatedAt,
+            LocationUpdatedBy = customer.LocationUpdatedBy,
+            CreditLimit = customer.CreditLimit,
+            PaymentTerms = customer.PaymentTerms,
+            Balance = customer.Balance,
+            CustomerType = customer.CustomerType.ToString(),
+            TotalSales = customer.TotalSales,
+            TotalPayments = customer.TotalPayments,
+            PendingBalance = customer.PendingBalance,
+            LastPaymentDate = customer.LastPaymentDate,
+            LastActivity = customer.LastActivity,
+            BranchId = customer.BranchId,
+            RouteId = customer.RouteId
+        };
+
+        private static void ApplyMainLocation(Customer customer, CreateCustomerRequest request, int? actingUserId)
+        {
+            if (request.ClearMainLocation == true)
             {
-                Id = customer.Id,
-                Name = customer.Name ?? string.Empty,
-                Phone = customer.Phone,
-                Email = customer.Email,
-                Trn = customer.Trn,
-                Address = customer.Address,
-                Location = customer.Location,
-                CreditLimit = customer.CreditLimit,
-                PaymentTerms = customer.PaymentTerms,
-                Balance = customer.Balance,
-                CustomerType = customer.CustomerType.ToString(),
-                TotalSales = customer.TotalSales,
-                TotalPayments = customer.TotalPayments,
-                PendingBalance = customer.PendingBalance,
-                LastPaymentDate = customer.LastPaymentDate,
-                BranchId = customer.BranchId,
-                RouteId = customer.RouteId
-            };
+                customer.MainLatitude = null;
+                customer.MainLongitude = null;
+                customer.LocationUpdatedAt = DateTime.UtcNow;
+                customer.LocationUpdatedBy = actingUserId;
+                return;
+            }
+
+            if (request.MainLatitude.HasValue && request.MainLongitude.HasValue)
+            {
+                customer.MainLatitude = request.MainLatitude;
+                customer.MainLongitude = request.MainLongitude;
+                customer.LocationUpdatedAt = DateTime.UtcNow;
+                customer.LocationUpdatedBy = actingUserId;
+            }
         }
 
         /// <summary>
@@ -2570,23 +2543,7 @@ namespace HexaBill.Api.Modules.Customers
                 .Take(limit)
                 .ToListAsync();
 
-            var customers = customersList.Select(c => new CustomerDto
-                {
-                    Id = c.Id,
-                Name = c.Name ?? string.Empty,
-                    Phone = c.Phone,
-                    Email = c.Email,
-                    Trn = c.Trn,
-                    Address = c.Address,
-                    Location = c.Location,
-                    CreditLimit = c.CreditLimit,
-                    Balance = c.Balance,
-                    CustomerType = c.CustomerType.ToString(),
-                    TotalSales = c.TotalSales,
-                    TotalPayments = c.TotalPayments,
-                    PendingBalance = c.PendingBalance,
-                    LastPaymentDate = c.LastPaymentDate
-            }).ToList();
+            var customers = customersList.Select(ToCustomerDto).ToList();
 
             return customers;
         }

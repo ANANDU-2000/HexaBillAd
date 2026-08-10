@@ -32,6 +32,7 @@ export function usePosInteraction({
   onSave,
   onNewInvoice,
   onUndo,
+  getLastUnitPrice,
 }) {
   const drawerOpen = usePosInteractionStore((s) => s.drawerOpen)
   const drawerOwnerRowId = usePosInteractionStore((s) => s.drawerOwnerRowId)
@@ -92,11 +93,13 @@ export function usePosInteraction({
     getProductHighlight: () => productHighlight,
     setProductHighlight,
     bumpPickerPage,
+    getLastUnitPrice,
   }), [
     vatPercent, isFormDisabled, rowElRefs, qtyInputRefsByRowId, unitPriceInputRefsByRowId,
     discountInputRefsByRowId, drawerSearchRef, onRecordProductBilled, onFocusCustomer,
     onFocusPayment, onOpenDiscountPopup, onHold, onSave, onNewInvoice, onUndo,
     getPickerPageItems, productHighlight, setProductHighlight, bumpPickerPage, setCart,
+    getLastUnitPrice,
   ])
 
   const dispatcherRef = useRef(null)

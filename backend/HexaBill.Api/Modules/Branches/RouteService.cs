@@ -2,6 +2,7 @@
  * Route service: CRUD routes, assign customers/staff, route expenses, route summary.
  */
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
@@ -30,19 +31,38 @@ namespace HexaBill.Api.Modules.Branches
         Task<RouteCollectionSheetDto?> GetRouteCollectionSheetAsync(int routeId, int tenantId, DateTime date);
         Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId);
         Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date);
+        Task<List<RouteStopMapDto>?> GetRouteStopsMapAsync(int routeId, int tenantId, DateTime date);
+        bool IsStopLocationEnabled();
     }
 
     public class RouteService : IRouteService
     {
+        public const string StopLocationFeatureFlagKey = "FeatureFlags:CustomerStopLocation";
+
         private readonly AppDbContext _context;
         private readonly ISalesSchemaService _salesSchema;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<RouteService> _logger;
 
-        public RouteService(AppDbContext context, ISalesSchemaService salesSchema, ILogger<RouteService> logger)
+        public RouteService(
+            AppDbContext context,
+            ISalesSchemaService salesSchema,
+            IConfiguration configuration,
+            ILogger<RouteService> logger)
         {
             _context = context;
             _salesSchema = salesSchema;
+            _configuration = configuration;
             _logger = logger;
+        }
+
+        public bool IsStopLocationEnabled()
+        {
+            var env = Environment.GetEnvironmentVariable("FEATURE_FLAGS__CUSTOMER_STOP_LOCATION")
+                ?? Environment.GetEnvironmentVariable("FeatureFlags__CustomerStopLocation");
+            if (!string.IsNullOrWhiteSpace(env) && bool.TryParse(env, out var fromEnv))
+                return fromEnv;
+            return _configuration.GetValue<bool>(StopLocationFeatureFlagKey, false);
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42P01 undefined_table. Handles wrapped exceptions and message-based detection.</summary>
@@ -632,27 +652,39 @@ namespace HexaBill.Api.Modules.Branches
 
         public async Task<CustomerVisitDto?> UpdateCustomerVisitAsync(int routeId, int customerId, UpdateCustomerVisitRequest request, int userId, int tenantId)
         {
-            // Verify route exists and belongs to tenant
             var route = await _context.Routes
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
             if (route == null) return null;
 
-            // Verify customer exists and belongs to tenant
             var customer = await _context.Customers
                 .FirstOrDefaultAsync(c => c.Id == customerId && (tenantId <= 0 || c.TenantId == tenantId));
             if (customer == null) return null;
 
-            var visitDate = request.VisitDate.Date;
+            if (!Enum.TryParse<VisitStatus>(request.Status, true, out var visitStatus))
+                throw new ArgumentException($"Invalid status: {request.Status}");
 
-            CustomerVisit? visit;
+            var visitDate = request.VisitDate.Date;
+            var locationEnabled = IsStopLocationEnabled();
+            var hasCoords = request.Latitude.HasValue && request.Longitude.HasValue
+                && Math.Abs(request.Latitude.Value) <= 90 && Math.Abs(request.Longitude.Value) <= 180;
+
+            await using var tx = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Find or create visit record
-                visit = await _context.CustomerVisits
-                    .FirstOrDefaultAsync(v => v.RouteId == routeId &&
-                                             v.CustomerId == customerId &&
-                                             v.VisitDate.Date == visitDate &&
-                                             (tenantId <= 0 || v.TenantId == tenantId));
+                CustomerVisit? visit;
+                try
+                {
+                    visit = await _context.CustomerVisits
+                        .FirstOrDefaultAsync(v => v.RouteId == routeId &&
+                                                 v.CustomerId == customerId &&
+                                                 v.VisitDate.Date == visitDate &&
+                                                 (tenantId <= 0 || v.TenantId == tenantId));
+                }
+                catch (Exception ex) when (IsRelationMissing42P01(ex))
+                {
+                    await tx.RollbackAsync();
+                    return null;
+                }
 
                 if (visit == null)
                 {
@@ -663,7 +695,7 @@ namespace HexaBill.Api.Modules.Branches
                         TenantId = tenantId,
                         StaffId = userId,
                         VisitDate = visitDate,
-                        Status = Enum.Parse<VisitStatus>(request.Status),
+                        Status = visitStatus,
                         Notes = request.Notes,
                         PaymentCollected = request.PaymentCollected,
                         CreatedAt = DateTime.UtcNow
@@ -672,34 +704,64 @@ namespace HexaBill.Api.Modules.Branches
                 }
                 else
                 {
-                    visit.Status = Enum.Parse<VisitStatus>(request.Status);
+                    visit.Status = visitStatus;
                     visit.Notes = request.Notes;
                     visit.PaymentCollected = request.PaymentCollected;
                     visit.StaffId = userId;
                     visit.UpdatedAt = DateTime.UtcNow;
                 }
 
+                if (locationEnabled && hasCoords)
+                {
+                    visit.Latitude = request.Latitude;
+                    visit.Longitude = request.Longitude;
+                    visit.ReachedAt = request.ReachedAt ?? DateTime.UtcNow;
+
+                    var shouldWriteMain = request.UpdateSavedLocation
+                        || customer.MainLatitude == null
+                        || customer.MainLongitude == null;
+                    if (shouldWriteMain)
+                    {
+                        customer.MainLatitude = request.Latitude;
+                        customer.MainLongitude = request.Longitude;
+                        customer.LocationUpdatedAt = DateTime.UtcNow;
+                        customer.LocationUpdatedBy = userId;
+                        customer.UpdatedAt = DateTime.UtcNow;
+                    }
+                }
+
                 await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return new CustomerVisitDto
+                {
+                    Id = visit.Id,
+                    RouteId = visit.RouteId,
+                    CustomerId = visit.CustomerId,
+                    CustomerName = customer.Name ?? "",
+                    VisitDate = visit.VisitDate,
+                    Status = visit.Status.ToString(),
+                    Notes = visit.Notes,
+                    PaymentCollected = visit.PaymentCollected,
+                    StaffId = visit.StaffId,
+                    CreatedAt = visit.CreatedAt,
+                    Latitude = visit.Latitude,
+                    Longitude = visit.Longitude,
+                    ReachedAt = visit.ReachedAt,
+                    MainLatitude = customer.MainLatitude,
+                    MainLongitude = customer.MainLongitude
+                };
             }
             catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
-                // CustomerVisits table does not exist
+                try { await tx.RollbackAsync(); } catch { /* ignore */ }
                 return null;
             }
-
-            return new CustomerVisitDto
+            catch
             {
-                Id = visit.Id,
-                RouteId = visit.RouteId,
-                CustomerId = visit.CustomerId,
-                CustomerName = customer.Name ?? "",
-                VisitDate = visit.VisitDate,
-                Status = visit.Status.ToString(),
-                Notes = visit.Notes,
-                PaymentCollected = visit.PaymentCollected,
-                StaffId = visit.StaffId,
-                CreatedAt = visit.CreatedAt
-            };
+                try { await tx.RollbackAsync(); } catch { /* ignore */ }
+                throw;
+            }
         }
 
         public async Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date)
@@ -733,13 +795,81 @@ namespace HexaBill.Api.Modules.Branches
                     PaymentCollected = v.PaymentCollected,
                     StaffId = v.StaffId,
                     StaffName = v.Staff?.Name,
-                    CreatedAt = v.CreatedAt
+                    CreatedAt = v.CreatedAt,
+                    Latitude = v.Latitude,
+                    Longitude = v.Longitude,
+                    ReachedAt = v.ReachedAt,
+                    MainLatitude = v.Customer?.MainLatitude,
+                    MainLongitude = v.Customer?.MainLongitude
                 }).ToList();
             }
             catch (Exception ex) when (IsRelationMissing42P01(ex))
             {
                 return new List<CustomerVisitDto>();
             }
+        }
+
+        public async Task<List<RouteStopMapDto>?> GetRouteStopsMapAsync(int routeId, int tenantId, DateTime date)
+        {
+            if (!IsStopLocationEnabled())
+                return null;
+
+            var route = await _context.Routes.AsNoTracking()
+                .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
+            if (route == null) return null;
+
+            var dateStart = date.Date;
+            var dateEnd = dateStart.AddDays(1);
+
+            var stops = await _context.RouteCustomers.AsNoTracking()
+                .Where(rc => rc.RouteId == routeId)
+                .Include(rc => rc.Customer)
+                .OrderBy(rc => rc.SortOrder ?? int.MaxValue)
+                .ThenBy(rc => rc.Customer.Name)
+                .ToListAsync();
+
+            List<CustomerVisit> visits;
+            try
+            {
+                visits = await _context.CustomerVisits.AsNoTracking()
+                    .Where(v => v.RouteId == routeId
+                                && (tenantId <= 0 || v.TenantId == tenantId)
+                                && v.VisitDate >= dateStart && v.VisitDate < dateEnd)
+                    .ToListAsync();
+            }
+            catch (Exception ex) when (IsRelationMissing42P01(ex))
+            {
+                visits = new List<CustomerVisit>();
+            }
+
+            var visitByCustomer = visits
+                .GroupBy(v => v.CustomerId)
+                .ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt).First());
+
+            return stops.Select(rc =>
+            {
+                visitByCustomer.TryGetValue(rc.CustomerId, out var visit);
+                var status = visit?.Status.ToString() ?? VisitStatus.NotVisited.ToString();
+                var mapStatus = visit == null || visit.Status == VisitStatus.NotVisited
+                    ? "not_reached"
+                    : visit.Status is VisitStatus.NotHome or VisitStatus.Rescheduled
+                        ? "skipped"
+                        : "reached";
+
+                return new RouteStopMapDto
+                {
+                    CustomerId = rc.CustomerId,
+                    CustomerName = rc.Customer?.Name ?? "",
+                    SortOrder = rc.SortOrder,
+                    MainLatitude = rc.Customer?.MainLatitude,
+                    MainLongitude = rc.Customer?.MainLongitude,
+                    VisitStatus = status,
+                    VisitLatitude = visit?.Latitude,
+                    VisitLongitude = visit?.Longitude,
+                    ReachedAt = visit?.ReachedAt,
+                    MapStatus = mapStatus
+                };
+            }).ToList();
         }
     }
 }

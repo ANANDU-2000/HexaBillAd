@@ -33,6 +33,12 @@ namespace HexaBill.Api.Models
         public decimal? PaymentCollected { get; set; } // If PaymentCollected status, amount collected
         /// <summary>Alias for PaymentCollected used by route/visit APIs.</summary>
         public decimal? AmountCollected { get => PaymentCollected; set => PaymentCollected = value; }
+
+        /// <summary>GPS captured on this visit (may differ from Customer.MainLatitude).</summary>
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        /// <summary>When staff marked arrived at this stop.</summary>
+        public DateTime? ReachedAt { get; set; }
         
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }

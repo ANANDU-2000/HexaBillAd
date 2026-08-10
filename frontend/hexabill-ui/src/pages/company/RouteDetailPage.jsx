@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar } from 'lucide-react'
+import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar, Navigation } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { routesAPI, salesAPI, expensesAPI, adminAPI, branchesAPI } from '../../services'
@@ -9,9 +9,10 @@ import { Input } from '../../components/Form'
 import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useAuth } from '../../hooks/useAuth'
+import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
-const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance']
+const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
 
 const RouteDetailPage = () => {
   const { id } = useParams()
@@ -69,6 +70,17 @@ const RouteDetailPage = () => {
   const [editRouteForm, setEditRouteForm] = useState({ name: '', branchId: '' })
   const [branches, setBranches] = useState([])
   const [savingRouteEdit, setSavingRouteEdit] = useState(false)
+  const [stopLocationEnabled, setStopLocationEnabled] = useState(false)
+  const [stopsMap, setStopsMap] = useState([])
+  const [stopsMapLoading, setStopsMapLoading] = useState(false)
+  const [pinModal, setPinModal] = useState({
+    open: false,
+    customerId: null,
+    customerName: '',
+    mode: 'reached', // reached | update_saved
+    selected: null,
+    saving: false,
+  })
 
   const canManage = isAdminOrOwner(user)
 
@@ -309,7 +321,7 @@ const RouteDetailPage = () => {
     }
   }
 
-  const handleUpdateVisitStatus = async (customerId, status, notes, paymentCollected) => {
+  const handleUpdateVisitStatus = async (customerId, status, notes, paymentCollected, locationExtras = {}) => {
     if (!id) return
     const key = `${customerId}-${status}`
     setUpdatingVisitStatus(key)
@@ -318,15 +330,16 @@ const RouteDetailPage = () => {
         visitDate: collectionSheetDate,
         status: status,
         notes: notes || undefined,
-        paymentCollected: paymentCollected || undefined
+        paymentCollected: paymentCollected || undefined,
+        ...locationExtras,
       })
       if (res?.success) {
         toast.success(`Status updated to ${status === 'PaymentCollected' ? 'Payment Collected' : status}`, { id: `visit-${customerId}` })
-        // Refresh collection sheet to get updated data
         const refreshRes = await routesAPI.getRouteCollectionSheet(id, collectionSheetDate)
         if (refreshRes?.success && refreshRes?.data) {
           setCollectionSheet(refreshRes.data)
         }
+        if (stopLocationEnabled) loadStopsMap()
       } else {
         toast.error(res?.message || 'Failed to update visit status')
       }
@@ -336,6 +349,72 @@ const RouteDetailPage = () => {
       setUpdatingVisitStatus(null)
     }
   }
+
+  const loadStopsMap = async () => {
+    if (!id || !stopLocationEnabled) return
+    setStopsMapLoading(true)
+    try {
+      const res = await routesAPI.getStopsMap(id, collectionSheetDate)
+      if (res?.success && Array.isArray(res.data)) setStopsMap(res.data)
+      else setStopsMap([])
+    } catch {
+      setStopsMap([])
+    } finally {
+      setStopsMapLoading(false)
+    }
+  }
+
+  const openMarkReached = async (customer, mode = 'reached') => {
+    const gps = await captureDeviceGps()
+    setPinModal({
+      open: true,
+      customerId: customer.customerId,
+      customerName: customer.customerName || customer.name || 'Customer',
+      mode,
+      selected: gps,
+      saving: false,
+    })
+    if (!gps) toast('GPS unavailable — drop a pin on the map', { icon: '📍' })
+  }
+
+  const confirmPinAction = async () => {
+    if (!pinModal.customerId || pinModal.selected?.lat == null || pinModal.selected?.lng == null) {
+      toast.error('Choose a location (GPS or map pin)')
+      return
+    }
+    setPinModal((p) => ({ ...p, saving: true }))
+    try {
+      await handleUpdateVisitStatus(
+        pinModal.customerId,
+        'Visited',
+        undefined,
+        undefined,
+        {
+          latitude: pinModal.selected.lat,
+          longitude: pinModal.selected.lng,
+          reachedAt: new Date().toISOString(),
+          updateSavedLocation: pinModal.mode === 'update_saved',
+          manualPin: true,
+        }
+      )
+      setPinModal({ open: false, customerId: null, customerName: '', mode: 'reached', selected: null, saving: false })
+    } finally {
+      setPinModal((p) => ({ ...p, saving: false }))
+    }
+  }
+
+  useEffect(() => {
+    routesAPI.getStopLocationFeatureFlag()
+      .then((res) => {
+        const enabled = !!(res?.data?.enabled ?? res?.enabled)
+        setStopLocationEnabled(enabled)
+      })
+      .catch(() => setStopLocationEnabled(false))
+  }, [])
+
+  useEffect(() => {
+    if (activeTab === 'stops' && stopLocationEnabled) loadStopsMap()
+  }, [activeTab, stopLocationEnabled, id, collectionSheetDate])
 
   const closeCollectionSheet = () => setCollectionSheet(null)
 
@@ -491,13 +570,13 @@ const RouteDetailPage = () => {
 
       <div className="border-b border-neutral-200 mb-3 overflow-x-auto shrink-0">
         <nav className="-mb-px flex gap-2 min-w-max">
-          {ROUTE_TABS.map(tab => (
+          {(stopLocationEnabled ? ROUTE_TABS : ROUTE_TABS.filter((t) => t !== 'stops')).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap shrink-0 ${activeTab === tab ? 'border-primary-600 text-primary-600' : 'border-transparent text-neutral-500 hover:text-neutral-700'}`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'stops' ? 'Stops map' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
         </nav>
@@ -915,6 +994,81 @@ const RouteDetailPage = () => {
           <p className="mt-4 text-sm text-neutral-500 flex items-center gap-1"><BarChart3 className="h-4 w-4" />Route performance metrics for selected date range.</p>
         </div>
       )}
+
+      {activeTab === 'stops' && stopLocationEnabled && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-neutral-600">Date</label>
+            <input
+              type="date"
+              value={collectionSheetDate}
+              onChange={(e) => setCollectionSheetDate(e.target.value)}
+              className="border border-neutral-300 rounded px-2 py-1 text-sm"
+            />
+            <button
+              type="button"
+              onClick={loadStopsMap}
+              className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-sm"
+            >
+              Refresh map
+            </button>
+          </div>
+          {stopsMapLoading ? (
+            <p className="text-sm text-neutral-500">Loading stops…</p>
+          ) : (
+            <StopLocationMap stops={stopsMap} height={360} />
+          )}
+          <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-neutral-50 border-b">
+                <tr>
+                  <th className="text-left px-3 py-2">Customer</th>
+                  <th className="text-left px-3 py-2">Pin</th>
+                  <th className="text-left px-3 py-2">Status</th>
+                  <th className="text-right px-3 py-2 print:hidden">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(stopsMap || []).map((s) => (
+                  <tr key={s.customerId} className="border-b border-neutral-100">
+                    <td className="px-3 py-2 font-medium">{s.customerName}</td>
+                    <td className="px-3 py-2 text-neutral-600">
+                      {s.mainLatitude != null
+                        ? `${Number(s.mainLatitude).toFixed(5)}, ${Number(s.mainLongitude).toFixed(5)}`
+                        : <span className="text-amber-700">No location yet</span>}
+                    </td>
+                    <td className="px-3 py-2 capitalize">{(s.mapStatus || '').replace('_', ' ')}</td>
+                    <td className="px-3 py-2 text-right space-x-2 print:hidden">
+                      <button
+                        type="button"
+                        onClick={() => openMarkReached(s, 'reached')}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-emerald-600 text-white"
+                      >
+                        <Navigation className="h-3 w-3" /> Mark reached
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMarkReached(s, 'update_saved')}
+                        className="text-xs px-2 py-1 rounded border border-neutral-300"
+                      >
+                        Update saved
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!stopsMapLoading && (!stopsMap || stopsMap.length === 0) && (
+                  <tr><td colSpan={4} className="px-3 py-6 text-center text-neutral-500">No customers on this route.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-3 text-xs text-neutral-600">
+            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600 mr-1" />Reached</span>
+            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 mr-1" />Not reached</span>
+            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-600 mr-1" />Skipped</span>
+          </div>
+        </div>
+      )}
       </div>
 
       {showExpenseModal && (
@@ -1034,23 +1188,34 @@ const RouteDetailPage = () => {
                       <td className="py-2 px-2 print:py-1 print:px-1 text-right font-medium">{formatCurrency(c.outstandingBalance)}</td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-right">{c.todayInvoiceAmount != null ? formatCurrency(c.todayInvoiceAmount) : '—'}</td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center print:hidden">
-                        <select
-                          value={currentStatus}
-                          onChange={(e) => {
-                            const newStatus = e.target.value
-                            const paymentAmount = newStatus === 'PaymentCollected' && c.outstandingBalance > 0 ? c.outstandingBalance : null
-                            handleUpdateVisitStatus(c.customerId, newStatus, c.visitNotes, paymentAmount)
-                          }}
-                          disabled={isUpdating}
-                          className={`text-xs px-2 py-1 rounded border font-medium ${statusColors[currentStatus] || statusColors['NotVisited']} disabled:opacity-50`}
-                        >
-                          <option value="NotVisited">Not Visited</option>
-                          <option value="Visited">Visited</option>
-                          <option value="NotHome">Not Home</option>
-                          <option value="PaymentCollected">Payment Collected</option>
-                          <option value="Rescheduled">Rescheduled</option>
-                        </select>
-                        {isUpdating && <span className="ml-2 text-xs text-neutral-500">Updating...</span>}
+                        <div className="flex flex-col items-center gap-1">
+                          <select
+                            value={currentStatus}
+                            onChange={(e) => {
+                              const newStatus = e.target.value
+                              const paymentAmount = newStatus === 'PaymentCollected' && c.outstandingBalance > 0 ? c.outstandingBalance : null
+                              handleUpdateVisitStatus(c.customerId, newStatus, c.visitNotes, paymentAmount)
+                            }}
+                            disabled={isUpdating}
+                            className={`text-xs px-2 py-1 rounded border font-medium ${statusColors[currentStatus] || statusColors['NotVisited']} disabled:opacity-50`}
+                          >
+                            <option value="NotVisited">Not Visited</option>
+                            <option value="Visited">Visited</option>
+                            <option value="NotHome">Not Home</option>
+                            <option value="PaymentCollected">Payment Collected</option>
+                            <option value="Rescheduled">Rescheduled</option>
+                          </select>
+                          {stopLocationEnabled && (
+                            <button
+                              type="button"
+                              onClick={() => openMarkReached(c, 'reached')}
+                              className="text-[10px] text-emerald-700 underline"
+                            >
+                              Mark reached + pin
+                            </button>
+                          )}
+                          {isUpdating && <span className="text-xs text-neutral-500">Updating...</span>}
+                        </div>
                       </td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center hidden print:table-cell">
                         <div className={`w-6 h-6 border-2 rounded inline-block ${currentStatus === 'PaymentCollected' ? 'bg-emerald-200 border-emerald-400' : currentStatus === 'Visited' ? 'bg-blue-200 border-blue-400' : currentStatus === 'NotHome' ? 'bg-amber-200 border-amber-400' : 'border-neutral-400'}`} title={statusLabels[currentStatus] || currentStatus}></div>
@@ -1084,6 +1249,60 @@ const RouteDetailPage = () => {
               <button type="button" onClick={printCollectionSheet} className="inline-flex items-center gap-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700">
                 <Printer className="h-4 w-4" />
                 Print
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Pin picker for mark reached / update saved location */}
+      {pinModal.open && (
+        <Modal
+          isOpen={true}
+          title={pinModal.mode === 'update_saved' ? `Update saved location — ${pinModal.customerName}` : `Mark reached — ${pinModal.customerName}`}
+          onClose={() => !pinModal.saving && setPinModal((p) => ({ ...p, open: false }))}
+        >
+          <div className="space-y-3">
+            <StopLocationMap
+              pickMode
+              selected={pinModal.selected}
+              onPick={(coords) => setPinModal((p) => ({ ...p, selected: coords }))}
+              height={280}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="px-3 py-1.5 border rounded-lg text-sm"
+                onClick={async () => {
+                  const gps = await captureDeviceGps()
+                  if (gps) setPinModal((p) => ({ ...p, selected: gps }))
+                  else toast.error('Could not read GPS')
+                }}
+              >
+                Use device GPS
+              </button>
+              {pinModal.selected && (
+                <span className="text-xs text-neutral-600 self-center">
+                  {pinModal.selected.lat.toFixed(6)}, {pinModal.selected.lng.toFixed(6)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={pinModal.saving}
+                onClick={() => setPinModal((p) => ({ ...p, open: false }))}
+                className="px-4 py-2 border rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={pinModal.saving}
+                onClick={confirmPinAction}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50"
+              >
+                {pinModal.saving ? 'Saving…' : 'Confirm'}
               </button>
             </div>
           </div>

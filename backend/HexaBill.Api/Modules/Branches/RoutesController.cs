@@ -14,11 +14,16 @@ namespace HexaBill.Api.Modules.Branches
     public class RoutesController : TenantScopedController
     {
         private readonly IRouteService _routeService;
+        private readonly HexaBill.Api.Shared.Services.IRouteScopeService _routeScopeService;
         private readonly ILogger<RoutesController> _logger;
 
-        public RoutesController(IRouteService routeService, ILogger<RoutesController> logger)
+        public RoutesController(
+            IRouteService routeService,
+            HexaBill.Api.Shared.Services.IRouteScopeService routeScopeService,
+            ILogger<RoutesController> logger)
         {
             _routeService = routeService;
+            _routeScopeService = routeScopeService;
             _logger = logger;
         }
 
@@ -41,6 +46,17 @@ namespace HexaBill.Api.Modules.Branches
                 }
                 
                 var list = await _routeService.GetRoutesAsync(tenantId, branchId);
+
+                // Staff: only assigned routes (Owner/Admin unrestricted)
+                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "";
+                if (int.TryParse(userIdClaim, out var userId) && tenantId > 0)
+                {
+                    var restricted = await _routeScopeService.GetRestrictedRouteIdsAsync(userId, tenantId, role);
+                    if (restricted != null)
+                        list = list.Where(r => restricted.Contains(r.Id)).ToList();
+                }
+
                 return Ok(new ApiResponse<List<RouteDto>> { Success = true, Data = list });
             }
             catch (Exception ex)
@@ -214,6 +230,52 @@ namespace HexaBill.Api.Modules.Branches
             if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
             var visits = await _routeService.GetCustomerVisitsAsync(id, tenantId, date);
             return Ok(new ApiResponse<List<CustomerVisitDto>> { Success = true, Data = visits });
+        }
+
+        [HttpGet("{id}/stops-map")]
+        public async Task<ActionResult<ApiResponse<List<RouteStopMapDto>>>> GetRouteStopsMap(int id, [FromQuery] DateTime? date)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (!_routeService.IsStopLocationEnabled())
+                {
+                    return Ok(new ApiResponse<List<RouteStopMapDto>>
+                    {
+                        Success = false,
+                        Message = "Customer stop location feature is disabled.",
+                        Data = new List<RouteStopMapDto>()
+                    });
+                }
+
+                var day = date?.Date ?? DateTime.UtcNow.Date;
+                var stops = await _routeService.GetRouteStopsMapAsync(id, tenantId, day);
+                if (stops == null)
+                    return NotFound(new ApiResponse<List<RouteStopMapDto>> { Success = false, Message = "Route not found." });
+
+                return Ok(new ApiResponse<List<RouteStopMapDto>> { Success = true, Data = stops });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetRouteStopsMap error route={RouteId}", id);
+                return StatusCode(500, new ApiResponse<List<RouteStopMapDto>>
+                {
+                    Success = false,
+                    Message = "Failed to load stops map.",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        [HttpGet("feature-flags/stop-location")]
+        public ActionResult<ApiResponse<object>> GetStopLocationFeatureFlag()
+        {
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Data = new { enabled = _routeService.IsStopLocationEnabled() }
+            });
         }
     }
 }

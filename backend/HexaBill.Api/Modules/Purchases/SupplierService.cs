@@ -228,47 +228,37 @@ namespace HexaBill.Api.Modules.Purchases
 
         public async Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId)
         {
-            var fromPurchases = await _context.Purchases
-                .Where(p => p.TenantId == tenantId)
-                .Select(p => p.SupplierName)
-                .Distinct()
+            // Active directory only — soft-deleted/merged names must not reappear in supplier lists.
+            var activeSuppliers = await _context.Suppliers
+                .AsNoTracking()
+                .Where(s => s.TenantId == tenantId && s.IsActive)
+                .OrderBy(s => s.Name)
                 .ToListAsync();
-            var fromSuppliersTable = await _context.Suppliers
-                .Where(s => s.TenantId == tenantId)
-                .Select(s => s.Name)
-                .ToListAsync();
-            var supplierNames = fromPurchases.Union(fromSuppliersTable, StringComparer.OrdinalIgnoreCase).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             var summaries = new List<SupplierSummaryDto>();
 
-            foreach (var supplierName in supplierNames)
+            foreach (var supplier in activeSuppliers)
             {
-                var balance = await GetSupplierBalanceAsync(tenantId, supplierName);
+                var balance = await GetSupplierBalanceAsync(tenantId, supplier.Name);
 
                 var invoiceCount = await _context.Purchases
-                    .Where(p => p.TenantId == tenantId && p.SupplierName == supplierName)
+                    .Where(p => p.TenantId == tenantId && p.SupplierName == supplier.Name)
                     .CountAsync();
-
-                var nameNorm = (supplierName ?? "").Trim().ToLowerInvariant();
-                var supplier = await _context.Suppliers
-                    .Where(s => s.TenantId == tenantId && s.NormalizedName == nameNorm)
-                    .Select(s => new { s.Id, s.Phone, s.CreditLimit, s.IsActive })
-                    .FirstOrDefaultAsync();
 
                 summaries.Add(new SupplierSummaryDto
                 {
-                    Id = supplier?.Id,
-                    SupplierName = supplierName,
+                    Id = supplier.Id,
+                    SupplierName = supplier.Name,
                     NetPayable = balance.NetPayable,
                     TotalPurchases = balance.TotalPurchases,
                     TotalPaid = balance.TotalPayments,
                     LastPurchaseDate = balance.LastPurchaseDate,
                     LastPaymentDate = balance.LastPaymentDate,
                     InvoiceCount = invoiceCount,
-                    Overdue = 0, // TODO: Add due date to Purchase for overdue calculation
-                    Phone = supplier?.Phone,
-                    CreditLimit = supplier?.CreditLimit ?? 0,
-                    IsActive = supplier?.IsActive ?? true
+                    Overdue = 0,
+                    Phone = supplier.Phone,
+                    CreditLimit = supplier.CreditLimit,
+                    IsActive = true
                 });
             }
 
@@ -402,21 +392,15 @@ namespace HexaBill.Api.Modules.Purchases
 
             var term = query.Trim().ToLower();
 
-            var fromPurchases = await _context.Purchases
-                .Where(p => p.TenantId == tenantId && p.SupplierName.ToLower().Contains(term))
-                .Select(p => p.SupplierName)
-                .Distinct()
-                .Take(limit)
-                .ToListAsync();
-
+            // Active directory only — do not union raw Purchases.SupplierName (reintroduces merged/typo names).
             var fromSuppliers = await _context.Suppliers
-                .Where(s => s.TenantId == tenantId && s.Name.ToLower().Contains(term))
+                .Where(s => s.TenantId == tenantId && s.IsActive && s.Name.ToLower().Contains(term))
+                .OrderBy(s => s.Name)
                 .Select(s => s.Name)
                 .Take(limit)
                 .ToListAsync();
 
-            var merged = fromPurchases.Union(fromSuppliers).Distinct(StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
-            return merged;
+            return fromSuppliers.Distinct(StringComparer.OrdinalIgnoreCase).Take(limit).ToList();
         }
 
         public async Task<SupplierDto> CreateSupplierAsync(int tenantId, CreateSupplierRequest request)

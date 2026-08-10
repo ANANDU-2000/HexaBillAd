@@ -467,9 +467,17 @@ namespace HexaBill.Api.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("Location")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
+                    b.Property<decimal?>("MainLatitude")
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal?>("MainLongitude")
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<DateTime?>("LocationUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LocationUpdatedBy")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("Balance")
                         .ValueGeneratedOnAdd()
@@ -580,6 +588,15 @@ namespace HexaBill.Api.Migrations
 
                     b.Property<decimal?>("PaymentCollected")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasColumnType("numeric(9,6)");
+
+                    b.Property<DateTime?>("ReachedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("RouteId")
                         .HasColumnType("INTEGER");
@@ -2107,6 +2124,9 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("RouteId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("SortOrder")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

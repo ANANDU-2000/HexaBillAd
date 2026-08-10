@@ -14,9 +14,12 @@ function commitCart(setCart, next) {
 
 /**
  * Apply product onto a cart line (VAT math mirrors PosEnterprisePage updateCartItem).
+ * Optional lastUnitPrice (customer memory) wins over catalog sellPrice.
  */
-export function applyProductToLine(line, product, vatPercent) {
-  const unitPrice = product.sellPrice || product.costPrice || 0
+export function applyProductToLine(line, product, vatPercent, lastUnitPrice = null) {
+  const catalog = product.sellPrice || product.costPrice || 0
+  const hasLast = lastUnitPrice != null && Number(lastUnitPrice) >= 0
+  const unitPrice = hasLast ? Number(lastUnitPrice) : catalog
   const qty = 1
   const itemDiscount = 0
   const rowTotal = qty * unitPrice - itemDiscount
@@ -32,6 +35,7 @@ export function applyProductToLine(line, product, vatPercent) {
     discount: itemDiscount,
     vatAmount,
     lineTotal: rowTotal + vatAmount,
+    priceSource: hasLast ? 'last' : 'catalog',
   }
 }
 
@@ -59,6 +63,7 @@ export function createCommandDispatcher(adapters) {
     getProductHighlight,
     setProductHighlight,
     bumpPickerPage,
+    getLastUnitPrice,
   } = adapters
 
   const store = () => usePosInteractionStore.getState()
@@ -132,8 +137,9 @@ export function createCommandDispatcher(adapters) {
     }
 
     const vatPercent = getVatPercent?.() ?? 5
+    const last = typeof getLastUnitPrice === 'function' ? getLastUnitPrice(product.id) : null
     const next = [...cart]
-    next[idx] = applyProductToLine(next[idx], product, vatPercent)
+    next[idx] = applyProductToLine(next[idx], product, vatPercent, last)
     commitCart(setCart, next)
     onRecordProductBilled?.(product.id)
     const tr = transitionPhase(s.rowPhase, RowPhase.PRODUCT_SELECTED)

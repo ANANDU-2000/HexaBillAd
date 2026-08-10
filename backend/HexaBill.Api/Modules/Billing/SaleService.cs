@@ -57,6 +57,7 @@ namespace HexaBill.Api.Modules.Billing
         private readonly ISaleValidationService _saleValidation;
         private readonly IVatReturnValidationService _vatValidation;
         private readonly ISettingsService _settingsService;
+        private readonly ICustomerItemPriceService _customerItemPriceService;
         private readonly ILogger<SaleService> _logger;
 
         public SaleService(
@@ -73,12 +74,14 @@ namespace HexaBill.Api.Modules.Billing
             ISaleValidationService saleValidation,
             IVatReturnValidationService vatValidation,
             ISettingsService settingsService,
+            ICustomerItemPriceService customerItemPriceService,
             ILogger<SaleService> logger)
         {
             _context = context;
             _saleValidation = saleValidation;
             _vatValidation = vatValidation;
             _settingsService = settingsService;
+            _customerItemPriceService = customerItemPriceService;
             _logger = logger;
             _pdfService = pdfService;
             _backupService = backupService;
@@ -1134,6 +1137,18 @@ namespace HexaBill.Api.Modules.Billing
                 };
 
                 _context.AuditLogs.Add(auditLog);
+
+                // Customer item last-price memory (VAT-exclusive UnitPrice). Same txn — sale fail ⇒ no upsert.
+                // Returns/voids intentionally do NOT roll this back.
+                if (request.CustomerId.HasValue && !isZeroInvoice && saleItems.Count > 0)
+                {
+                    await _customerItemPriceService.UpsertFromSaleItemsAsync(
+                        tenantId,
+                        request.CustomerId.Value,
+                        sale.Id,
+                        sale.InvoiceDate,
+                        saleItems.Select(i => (i.ProductId, i.UnitPrice)));
+                }
 
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -2285,6 +2300,17 @@ namespace HexaBill.Api.Modules.Billing
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.AuditLogs.Add(auditLog);
+
+                // Refresh last-price memory from edited lines (exclusive UnitPrice). Returns do not undo this.
+                if (request.CustomerId.HasValue && !isZeroInvoice && newSaleItems.Count > 0)
+                {
+                    await _customerItemPriceService.UpsertFromSaleItemsAsync(
+                        tenantId,
+                        request.CustomerId.Value,
+                        saleId,
+                        saleForUpdate.InvoiceDate,
+                        newSaleItems.Select(i => (i.ProductId, i.UnitPrice)));
+                }
 
                 // Save changes - this will also update RowVersion automatically
                 await _context.SaveChangesAsync();

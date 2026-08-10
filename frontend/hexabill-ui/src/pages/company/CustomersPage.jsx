@@ -30,11 +30,12 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
-import { customersAPI } from '../../services'
+import { customersAPI, routesAPI } from '../../services'
 import { TabNavigation } from '../../components/ui'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 
 /** wa.me URL with digits-only MSISDN; Gulf-oriented defaults for UAE-style local numbers. */
 function buildWhatsAppUrlFromPhone(phone) {
@@ -80,6 +81,8 @@ const CustomersPage = () => {
     onConfirm: () => { }
   })
   const [duplicateConfirm, setDuplicateConfirm] = useState({ isOpen: false, data: null, existingName: '' })
+  const [stopLocationEnabled, setStopLocationEnabled] = useState(false)
+  const [gpsPinModal, setGpsPinModal] = useState({ open: false, selected: null })
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -93,6 +96,14 @@ const CustomersPage = () => {
   } = useForm()
 
   const selectedBranchId = watch('branchId')
+  const watchMainLat = watch('mainLatitude')
+  const watchMainLng = watch('mainLongitude')
+
+  useEffect(() => {
+    routesAPI.getStopLocationFeatureFlag()
+      .then((res) => setStopLocationEnabled(!!(res?.data?.enabled ?? res?.enabled)))
+      .catch(() => setStopLocationEnabled(false))
+  }, [])
 
   // Fetch page 1 on mount and when search or page size changes (PRODUCTION_MASTER_TODO #42: pagination)
   useEffect(() => {
@@ -252,7 +263,10 @@ const CustomersPage = () => {
       const payload = {
         ...data,
         branchId: data.branchId ? parseInt(data.branchId, 10) : null,
-        routeId: data.routeId ? parseInt(data.routeId, 10) : null
+        routeId: data.routeId ? parseInt(data.routeId, 10) : null,
+        mainLatitude: data.mainLatitude !== '' && data.mainLatitude != null ? Number(data.mainLatitude) : null,
+        mainLongitude: data.mainLongitude !== '' && data.mainLongitude != null ? Number(data.mainLongitude) : null,
+        clearMainLocation: !!data.clearMainLocation,
       }
       let response
       if (selectedCustomer) {
@@ -318,6 +332,9 @@ const CustomersPage = () => {
     setValue('trn', customer.trn)
     setValue('address', customer.address)
     setValue('location', customer.location || '')
+    setValue('mainLatitude', customer.mainLatitude ?? '')
+    setValue('mainLongitude', customer.mainLongitude ?? '')
+    setValue('clearMainLocation', false)
     setValue('creditLimit', customer.creditLimit)
     setValue('customerType', customer.customerType || 'Credit')
     setValue('branchId', customer.branchId || '')
@@ -1171,6 +1188,45 @@ const CustomersPage = () => {
                 {...register('location')}
               />
             </div>
+            {stopLocationEnabled && (
+              <div className="md:col-span-2 space-y-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
+                <p className="text-sm font-medium text-neutral-800 flex items-center gap-1">
+                  <MapPin className="h-4 w-4" /> Delivery GPS pin
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Latitude" type="number" step="any" {...register('mainLatitude')} />
+                  <Input label="Longitude" type="number" step="any" {...register('mainLongitude')} />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 border rounded bg-white"
+                    onClick={() => setGpsPinModal({
+                      open: true,
+                      selected: (watchMainLat && watchMainLng)
+                        ? { lat: Number(watchMainLat), lng: Number(watchMainLng) }
+                        : null,
+                    })}
+                  >
+                    Pick on map
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 border rounded bg-white"
+                    onClick={async () => {
+                      const gps = await captureDeviceGps()
+                      if (gps) {
+                        setValue('mainLatitude', gps.lat)
+                        setValue('mainLongitude', gps.lng)
+                        setValue('clearMainLocation', false)
+                      } else toast.error('GPS unavailable')
+                    }}
+                  >
+                    Use device GPS
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end space-x-3">
@@ -1307,6 +1363,50 @@ const CustomersPage = () => {
                 {...register('location')}
               />
             </div>
+
+            {stopLocationEnabled && (
+              <div className="md:col-span-2 space-y-2 border border-neutral-200 rounded-lg p-3 bg-neutral-50">
+                <p className="text-sm font-medium text-neutral-800 flex items-center gap-1">
+                  <MapPin className="h-4 w-4" /> Delivery GPS pin
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Latitude" type="number" step="any" {...register('mainLatitude')} />
+                  <Input label="Longitude" type="number" step="any" {...register('mainLongitude')} />
+                </div>
+                <div className="flex flex-wrap gap-2 items-center">
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 border rounded bg-white"
+                    onClick={() => setGpsPinModal({
+                      open: true,
+                      selected: (watchMainLat && watchMainLng)
+                        ? { lat: Number(watchMainLat), lng: Number(watchMainLng) }
+                        : null,
+                    })}
+                  >
+                    Pick on map
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs px-2 py-1 border rounded bg-white"
+                    onClick={async () => {
+                      const gps = await captureDeviceGps()
+                      if (gps) {
+                        setValue('mainLatitude', gps.lat)
+                        setValue('mainLongitude', gps.lng)
+                        setValue('clearMainLocation', false)
+                      } else toast.error('GPS unavailable')
+                    }}
+                  >
+                    Use device GPS
+                  </button>
+                  <label className="text-xs flex items-center gap-1 ml-auto">
+                    <input type="checkbox" {...register('clearMainLocation')} />
+                    Clear saved pin
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* Branch and Route Assignment */}
             {branches.length > 0 && (
@@ -1530,6 +1630,48 @@ const CustomersPage = () => {
           </div>
         </div>
       </Modal>
+
+      {gpsPinModal.open && (
+        <Modal
+          isOpen
+          title="Pick delivery GPS pin"
+          onClose={() => setGpsPinModal({ open: false, selected: null })}
+        >
+          <div className="space-y-3">
+            <StopLocationMap
+              pickMode
+              selected={gpsPinModal.selected}
+              onPick={(coords) => setGpsPinModal((p) => ({ ...p, selected: coords }))}
+              height={280}
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="px-3 py-2 border rounded-lg"
+                onClick={() => setGpsPinModal({ open: false, selected: null })}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-3 py-2 bg-primary-600 text-white rounded-lg"
+                onClick={() => {
+                  if (!gpsPinModal.selected) {
+                    toast.error('Tap the map to choose a pin')
+                    return
+                  }
+                  setValue('mainLatitude', gpsPinModal.selected.lat)
+                  setValue('mainLongitude', gpsPinModal.selected.lng)
+                  setValue('clearMainLocation', false)
+                  setGpsPinModal({ open: false, selected: null })
+                }}
+              >
+                Use this pin
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <ConfirmDangerModal
         isOpen={dangerModal.isOpen}

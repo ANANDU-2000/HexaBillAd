@@ -72,6 +72,8 @@ const PurchasesPage = () => {
   const [supplierSuggestions, setSupplierSuggestions] = useState([])
   const [showSupplierSuggestions, setShowSupplierSuggestions] = useState(false)
   const [supplierBalance, setSupplierBalance] = useState(null)
+  const [supplierPickedFromList, setSupplierPickedFromList] = useState(false)
+  const supplierPickedRef = useRef(false)
   const [products, setProducts] = useState([])
   const [productSearchTerm, setProductSearchTerm] = useState('')
   const [showProductSearch, setShowProductSearch] = useState(false)
@@ -140,13 +142,13 @@ const PurchasesPage = () => {
     return () => window.removeEventListener('keydown', handler)
   }, [showForm])
 
-  // Supplier autocomplete - search when typing
+  // Supplier autocomplete — require ≥2 chars (match backend), debounce
   useEffect(() => {
     const q = (formData.supplierName || '').trim()
-    if (!q || q.length < 1) {
+    if (!q || q.length < 2) {
       setSupplierSuggestions([])
       setShowSupplierSuggestions(false)
-      setSupplierBalance(null)
+      if (!q) setSupplierBalance(null)
       return
     }
     const t = setTimeout(async () => {
@@ -161,7 +163,7 @@ const PurchasesPage = () => {
       } catch {
         setSupplierSuggestions([])
       }
-    }, 200)
+    }, 300)
     return () => clearTimeout(t)
   }, [formData.supplierName])
 
@@ -1290,8 +1292,28 @@ const PurchasesPage = () => {
                     required
                     className={tallyInputClass}
                     value={formData.supplierName}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, supplierName: e.target.value }))}
-                    onBlur={() => setTimeout(() => setShowSupplierSuggestions(false), 200)}
+                    onChange={(e) => {
+                      supplierPickedRef.current = false
+                      setSupplierPickedFromList(false)
+                      setFormData((prev) => ({ ...prev, supplierName: e.target.value }))
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setShowSupplierSuggestions(false)
+                        // Clear free-text that was not chosen from directory (reduces duplicate glitch)
+                        const typed = (formData.supplierName || '').trim()
+                        if (typed && !supplierPickedRef.current) {
+                          const exact = supplierSuggestions.some((name) => {
+                            const label = typeof name === 'string' ? name : (name?.name || String(name))
+                            return label.trim().toLowerCase() === typed.toLowerCase()
+                          })
+                          if (!exact && supplierSuggestions.length > 0) {
+                            // Keep typed free-text for legacy name-only purchases; only clear if partial match clutter
+                            // Do not wipe — balance lookup still works by exact name.
+                          }
+                        }
+                      }, 200)
+                    }}
                     onFocus={() => supplierSuggestions.length > 0 && setShowSupplierSuggestions(true)}
                   />
                   {showSupplierSuggestions && supplierSuggestions.length > 0 && (
@@ -1301,12 +1323,14 @@ const PurchasesPage = () => {
                         const pickSupplier = (ev) => {
                           ev.preventDefault()
                           ev.stopPropagation()
+                          supplierPickedRef.current = true
+                          setSupplierPickedFromList(true)
                           setFormData((prev) => ({ ...prev, supplierName: label }))
                           setShowSupplierSuggestions(false)
                         }
                         return (
                           <button
-                            key={i}
+                            key={`${label}-${i}`}
                             type="button"
                             className="block w-full text-left px-3 py-2 hover:bg-lime-50 text-sm"
                             onMouseDown={pickSupplier}
@@ -1317,6 +1341,9 @@ const PurchasesPage = () => {
                         )
                       })}
                     </div>
+                  )}
+                  {supplierPickedFromList && formData.supplierName.trim() && (
+                    <p className="text-[10px] text-slate-500 mt-0.5">Selected from supplier directory</p>
                   )}
                 </div>
               </VoucherSection>

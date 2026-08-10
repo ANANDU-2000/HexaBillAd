@@ -537,6 +537,10 @@ namespace HexaBill.Api.Models
         public string? Trn { get; set; }
         public string? Address { get; set; }
         public string? Location { get; set; }
+        public decimal? MainLatitude { get; set; }
+        public decimal? MainLongitude { get; set; }
+        public DateTime? LocationUpdatedAt { get; set; }
+        public int? LocationUpdatedBy { get; set; }
         public decimal CreditLimit { get; set; }
         public string? PaymentTerms { get; set; }
         public decimal Balance { get; set; }
@@ -573,6 +577,10 @@ namespace HexaBill.Api.Models
         public string? Address { get; set; }
         [MaxLength(200)]
         public string? Location { get; set; }
+        public decimal? MainLatitude { get; set; }
+        public decimal? MainLongitude { get; set; }
+        /// <summary>When true with null lat/lng, clears saved main pin.</summary>
+        public bool? ClearMainLocation { get; set; }
         [Range(0, 99999999.99, ErrorMessage = "CreditLimit must be non-negative")]
         public decimal CreditLimit { get; set; }
         [MaxLength(100)]
@@ -1048,6 +1056,11 @@ namespace HexaBill.Api.Models
         public int? StaffId { get; set; }
         public string? StaffName { get; set; }
         public DateTime CreatedAt { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        public DateTime? ReachedAt { get; set; }
+        public decimal? MainLatitude { get; set; }
+        public decimal? MainLongitude { get; set; }
     }
 
     public class UpdateCustomerVisitRequest
@@ -1056,6 +1069,12 @@ namespace HexaBill.Api.Models
         public string Status { get; set; } = "NotVisited";
         public string? Notes { get; set; }
         public decimal? PaymentCollected { get; set; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        public DateTime? ReachedAt { get; set; }
+        /// <summary>When true, overwrite Customer.MainLatitude/Longitude with visit coords.</summary>
+        public bool UpdateSavedLocation { get; set; }
+        public bool ManualPin { get; set; }
     }
 
     public class UpdateVisitStatusRequest
@@ -1066,6 +1085,26 @@ namespace HexaBill.Api.Models
         public string? Notes { get; set; }
         public decimal? PaymentCollected { get; set; }
         public decimal? AmountCollected { get => PaymentCollected; set => PaymentCollected = value; }
+        public decimal? Latitude { get; set; }
+        public decimal? Longitude { get; set; }
+        public DateTime? ReachedAt { get; set; }
+        public bool UpdateSavedLocation { get; set; }
+        public bool ManualPin { get; set; }
+    }
+
+    public class RouteStopMapDto
+    {
+        public int CustomerId { get; set; }
+        public string CustomerName { get; set; } = string.Empty;
+        public int? SortOrder { get; set; }
+        public decimal? MainLatitude { get; set; }
+        public decimal? MainLongitude { get; set; }
+        public string VisitStatus { get; set; } = "NotVisited";
+        public decimal? VisitLatitude { get; set; }
+        public decimal? VisitLongitude { get; set; }
+        public DateTime? ReachedAt { get; set; }
+        /// <summary>reached | not_reached | skipped</summary>
+        public string MapStatus { get; set; } = "not_reached";
     }
 
     public class RouteSummaryDto

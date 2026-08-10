@@ -531,6 +531,13 @@ export const customersAPI = {
     return response.data
   },
 
+  getCustomerItemPrices: async (customerId, productIds = []) => {
+    const params = {}
+    if (productIds?.length) params.productIds = productIds.join(',')
+    const response = await api.get(`/customers/${customerId}/item-prices`, { params })
+    return response.data
+  },
+
   createCustomer: async (customer) => {
     const response = await api.post('/customers', customer)
     return response.data
@@ -2183,6 +2190,15 @@ export const routesAPI = {
   getCustomerVisits: async (routeId, date = null) => {
     const params = date ? { date } : {}
     const response = await api.get(`/routes/${routeId}/visits`, { params })
+    return response.data
+  },
+  getStopsMap: async (routeId, date = null) => {
+    const params = date ? { date } : {}
+    const response = await api.get(`/routes/${routeId}/stops-map`, { params })
+    return response.data
+  },
+  getStopLocationFeatureFlag: async () => {
+    const response = await api.get('/routes/feature-flags/stop-location')
     return response.data
   },
 }

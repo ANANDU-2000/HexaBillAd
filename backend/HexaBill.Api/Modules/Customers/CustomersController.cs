@@ -253,7 +253,9 @@ namespace HexaBill.Api.Modules.Customers
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                var result = await _customerService.CreateCustomerAsync(request, tenantId);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                int? actingUserId = int.TryParse(userIdClaim, out var uid) ? uid : null;
+                var result = await _customerService.CreateCustomerAsync(request, tenantId, actingUserId);
                 return CreatedAtAction(nameof(GetCustomer), new { id = result.Id }, new ApiResponse<CustomerDto>
                 {
                     Success = true,
@@ -290,7 +292,9 @@ namespace HexaBill.Api.Modules.Customers
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                var result = await _customerService.UpdateCustomerAsync(id, request, tenantId);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                int? actingUserId = int.TryParse(userIdClaim, out var uid) ? uid : null;
+                var result = await _customerService.UpdateCustomerAsync(id, request, tenantId, actingUserId);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<CustomerDto>
@@ -612,6 +616,54 @@ namespace HexaBill.Api.Modules.Customers
                     Success = false,
                     Message = userMessage,
                     Errors = new List<string> { ex.Message ?? "" }
+                });
+            }
+        }
+
+        [HttpGet("{id}/item-prices")]
+        public async Task<ActionResult<ApiResponse<List<CustomerItemPriceDto>>>> GetCustomerItemPrices(
+            int id,
+            [FromQuery] string? productIds = null)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                var customer = await _customerService.GetCustomerByIdAsync(id, tenantId);
+                if (customer == null)
+                {
+                    return NotFound(new ApiResponse<object>
+                    {
+                        Success = false,
+                        Message = "Customer not found"
+                    });
+                }
+
+                List<int>? ids = null;
+                if (!string.IsNullOrWhiteSpace(productIds))
+                {
+                    ids = productIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(s => int.TryParse(s, out var n) ? n : 0)
+                        .Where(n => n > 0)
+                        .Distinct()
+                        .ToList();
+                }
+
+                var priceService = HttpContext.RequestServices.GetRequiredService<ICustomerItemPriceService>();
+                var data = await priceService.GetPricesAsync(tenantId, id, ids);
+                return Ok(new ApiResponse<List<CustomerItemPriceDto>>
+                {
+                    Success = true,
+                    Data = data
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetCustomerItemPrices failed for customer {CustomerId}", id);
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Failed to load customer item prices",
+                    Errors = new List<string> { ex.Message }
                 });
             }
         }
