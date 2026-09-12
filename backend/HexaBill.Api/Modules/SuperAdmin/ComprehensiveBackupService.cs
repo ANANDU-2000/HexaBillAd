@@ -17,6 +17,7 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.Billing;
+using HexaBill.Api.Shared.Security;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon;
@@ -27,10 +28,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false, bool includeInvoicePdfs = false);
         Task<bool> RestoreFromBackupAsync(int tenantId, string backupFilePath, string? uploadedFilePath = null);
-        Task<List<BackupInfo>> GetBackupListAsync();
+        Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null);
         /// <summary>Returns a stream and filename for download. Caller must dispose the stream. For S3, stream is a temp-file stream that deletes on dispose.</summary>
-        Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName);
-        Task<bool> DeleteBackupAsync(string fileName);
+        Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null);
+        Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null);
         Task ScheduleDailyBackupAsync();
         Task<ImportPreview> PreviewImportAsync(string backupFilePath, string? uploadedFilePath = null);
         Task<ImportResult> ImportWithResolutionAsync(string backupFilePath, string? uploadedFilePath, Dictionary<int, string> conflictResolutions, int userId);
@@ -1933,7 +1934,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return Task.CompletedTask;
         }
 
-        public async Task<List<BackupInfo>> GetBackupListAsync()
+        public async Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null)
         {
             var backups = new List<BackupInfo>();
 
@@ -1987,7 +1988,10 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 _logger.LogInformation($"⚠️ S3 list backups failed: {ex.Message}");
             }
 
-            return backups.OrderByDescending(b => b.CreatedDate).ToList();
+            var ordered = backups.OrderByDescending(b => b.CreatedDate).ToList();
+            if (tenantId is > 0)
+                ordered = ordered.Where(b => BackupTenantAccess.CanAccess(b.FileName, tenantId)).ToList();
+            return ordered;
         }
 
         private async Task<List<BackupInfo>> ListBackupsFromS3Async()
@@ -2028,9 +2032,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        public async Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName)
+        public async Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null)
         {
+            fileName = BackupTenantAccess.SanitizeFileName(fileName);
             if (string.IsNullOrWhiteSpace(fileName)) return null;
+            if (!BackupTenantAccess.CanAccess(fileName, tenantId)) return null;
 
             var serverPath = Path.Combine(_backupDirectory, fileName);
             var desktopPath = Path.Combine(_desktopPath, fileName);
@@ -2067,10 +2073,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return null;
         }
 
-        public async Task<bool> DeleteBackupAsync(string fileName)
+        public async Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null)
         {
             try
             {
+                fileName = BackupTenantAccess.SanitizeFileName(fileName);
+                if (string.IsNullOrWhiteSpace(fileName) || !BackupTenantAccess.CanAccess(fileName, tenantId))
+                    return false;
+
                 var serverPath = Path.Combine(_backupDirectory, fileName);
                 if (File.Exists(serverPath))
                 {

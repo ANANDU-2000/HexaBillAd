@@ -2,7 +2,27 @@ using System;
 using System.IO;
 using Npgsql;
 
-var connStr = "Host=dpg-d68jhpk9c44c73ft047g-a.singapore-postgres.render.com;Port=5432;Database=hexabill;Username=hexabill_user;Password=KGYtLyUd2AwcKSiC1LW6VsTGn6PIJnxQ;SSL Mode=Require";
+// Never hardcode production credentials. Use DATABASE_URL or HEXABILL_DB.
+var connStr = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? Environment.GetEnvironmentVariable("HEXABILL_DB")
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
+if (string.IsNullOrWhiteSpace(connStr))
+{
+    Console.Error.WriteLine("ERROR: Set DATABASE_URL (or HEXABILL_DB) before running this script.");
+    return 1;
+}
+
+if (connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+    || connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+{
+    var uri = new Uri(connStr);
+    var userInfo = uri.UserInfo.Split(':', 2);
+    var username = Uri.UnescapeDataString(userInfo[0]);
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+    var dbPort = uri.Port > 0 ? uri.Port : 5432;
+    connStr = $"Host={uri.Host};Port={dbPort};Database={uri.AbsolutePath.TrimStart('/')};Username={username};Password={password};SSL Mode=Require";
+}
 
 var baseDir = AppContext.BaseDirectory;
 var sqlPath = Path.Combine(baseDir, "..", "..", "HexaBill.Api", "Scripts", "CREATE_ZAYOGA_TENANT.sql");
@@ -25,7 +45,6 @@ await using var cmd = new NpgsqlCommand(sql, conn);
 conn.Notification += (_, e) => Console.WriteLine(e.Payload);
 await cmd.ExecuteNonQueryAsync();
 
-// Get created tenant and user
 {
     await using var q1 = new NpgsqlCommand(@"SELECT ""Id"", ""Name"", ""Email"", ""VatNumber"" FROM ""Tenants"" WHERE ""Email"" = 'info@zayoga.ae'", conn);
     await using var r1 = await q1.ExecuteReaderAsync();
@@ -48,8 +67,5 @@ await cmd.ExecuteNonQueryAsync();
     }
 }
 
-Console.WriteLine("\n--- LOGIN CREDENTIALS (share with client via WhatsApp/email) ---");
-Console.WriteLine("Email: info@zayoga.ae");
-Console.WriteLine("Password: Zayoga@2026");
-Console.WriteLine("CLIENT MUST CHANGE PASSWORD ON FIRST LOGIN");
+Console.WriteLine("\nOwner credentials are defined in CREATE_ZAYOGA_TENANT.sql. Do not print passwords. Client must change password on first login.");
 return 0;

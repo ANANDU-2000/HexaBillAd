@@ -9,6 +9,9 @@ Date: 2026
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="HexaBill.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- Exclude SQLite backup; only Migrations folder (PostgreSQL) is used -->
@@ -51,7 +54,7 @@ Date: 2026
     <PackageReference Include="EPPlus" Version="7.5.2" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.400" />
     <PackageReference Include="Stripe.net" Version="47.0.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <!-- Serilog for production error tracking -->
     <PackageReference Include="Serilog.AspNetCore" Version="8.0.3" />
     <PackageReference Include="Sentry.AspNetCore" Version="5.0.0" />

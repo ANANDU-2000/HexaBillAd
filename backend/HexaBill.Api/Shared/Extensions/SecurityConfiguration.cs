@@ -30,6 +30,16 @@ namespace HexaBill.Api.Shared.Extensions
                 ?? jwtSettings["SecretKey"]
                 ?? throw new InvalidOperationException("JWT SecretKey not configured. Set JwtSettings:SecretKey in appsettings or JWT_SECRET_KEY environment variable.");
 
+            var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "";
+            var isProduction = string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
+            if (isProduction && (
+                    secretKey.Contains("YourSuperSecretKey", StringComparison.OrdinalIgnoreCase)
+                    || secretKey.Contains("OVERRIDE_WITH_ENVIRONMENT", StringComparison.OrdinalIgnoreCase)
+                    || secretKey.Length < 32))
+            {
+                throw new InvalidOperationException("Production JWT secret is missing or uses the development placeholder. Set JWT_SECRET_KEY or JwtSettings__SecretKey.");
+            }
+
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {

@@ -84,12 +84,6 @@ const WorksheetPage = () => {
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
 
-  if (!user) return null
-  if (!isOwner(user)) {
-    navigate('/dashboard', { replace: true })
-    return null
-  }
-
   const effectiveRange = preset === 'custom'
     ? (fromDate && toDate ? { fromDate: toYYYYMMDD(fromDate), toDate: toYYYYMMDD(toDate) } : null)
     : getPresetRange(preset)
@@ -116,6 +110,12 @@ const WorksheetPage = () => {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    if (user && !isOwner(user)) navigate('/dashboard', { replace: true })
+  }, [user, navigate])
+
+  if (!user || !isOwner(user)) return null
 
   const handleExportPdf = async () => {
     if (!effectiveRange?.fromDate || !effectiveRange?.toDate) {

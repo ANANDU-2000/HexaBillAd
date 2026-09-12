@@ -1033,7 +1033,6 @@ const ReportsPage = () => {
       window.removeEventListener('paymentCreated', handleDataUpdate)
       window.removeEventListener('customerCreated', handleDataUpdate)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only set up listeners once, use ref for fetchReportData
 
   // Load products, customers for filters (branches/routes from shared context)
@@ -1089,7 +1088,6 @@ const ReportsPage = () => {
         initialLoadTimeoutRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
 
   // BUG #2.5 FIX: Apply debounced search filter when it changes
@@ -1137,7 +1135,6 @@ const ReportsPage = () => {
         fetchTimeoutRef.current = null
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateRange, activeTab, appliedFilters]) // Only refresh when these change
 
   // Auto-refresh interval (separate useEffect) - DISABLED to prevent 429 errors
@@ -1145,7 +1142,6 @@ const ReportsPage = () => {
     // DISABLED: Auto-refresh causes too many requests
     // Users can manually refresh if needed
     return () => { }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Empty deps - never runs
 
   const handleExport = async (format) => {

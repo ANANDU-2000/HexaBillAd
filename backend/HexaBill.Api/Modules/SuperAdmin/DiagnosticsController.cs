@@ -53,8 +53,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (canConnect)
                 {
                     // Check tenant count (basic data access test)
-                    var tenantCount = await _db.Tenants.CountAsync();
-                    health.checks["tenants"] = new { count = tenantCount };
+                    health.checks["tenants"] = new { configured = true };
 
                     // Check memory usage
                     var memoryUsed = GC.GetTotalMemory(false);
@@ -259,6 +258,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 limit = Math.Clamp(limit, 1, 500);
                 var query = _db.ErrorLogs.AsQueryable();
+                var tokenTenant = User.GetTenantIdFromToken();
+                if (tokenTenant != 0)
+                    query = query.Where(e => e.TenantId == tokenTenant);
                 if (!includeResolved)
                     query = query.Where(e => e.ResolvedAt == null);
                 var list = await (from e in query
@@ -310,6 +312,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 var entry = await _db.ErrorLogs.FindAsync(id);
                 if (entry == null)
+                    return NotFound(new { success = false, message = "Error log not found." });
+                var tokenTenant = User.GetTenantIdFromToken();
+                if (tokenTenant != 0 && entry.TenantId != tokenTenant)
                     return NotFound(new { success = false, message = "Error log not found." });
                 entry.ResolvedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
@@ -406,6 +411,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         [HttpGet("status")]
+        [Authorize(Roles = "SystemAdmin")]
         public async Task<IActionResult> Status()
         {
             try
@@ -454,7 +460,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 
@@ -534,7 +540,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { success = false, error = ex.Message, stackTrace = ex.StackTrace });
+                return StatusCode(500, new { success = false, error = "An unexpected error occurred." });
             }
         }
 
@@ -566,7 +572,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace, innerException = ex.InnerException?.Message });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 
@@ -617,7 +623,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 
@@ -701,7 +707,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = ex.Message, stackTrace = ex.StackTrace });
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
 

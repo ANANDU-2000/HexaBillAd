@@ -144,7 +144,7 @@ export const BrandingProvider = ({ children }) => {
   useEffect(() => {
     const handleLogoUpdated = (event) => {
       const logoUrl = event?.detail?.logoUrl
-      if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development' && event?.detail) {
+      if (import.meta.env.DEV && event?.detail) {
         console.debug('[Branding] logo-updated', { hasLogoUrl: typeof logoUrl === 'string' && !!logoUrl.trim() })
       }
       if (typeof logoUrl === 'string' && logoUrl.trim()) {

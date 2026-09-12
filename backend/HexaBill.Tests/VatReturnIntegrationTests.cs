@@ -124,12 +124,17 @@ public class VatReturnIntegrationTests
         var logger = NullLogger<VatReturnReportService>.Instance;
         var service = new VatReturnReportService(context, logger);
 
-        // Narrow period to only cover purchases/expenses by zeroing out sales
+        // Remove output VAT without triggering the GrandTotal fallback in VatReturnReportService
         foreach (var sale in context.Sales)
         {
             sale.VatTotal = 0;
             sale.Subtotal = 0;
+            sale.GrandTotal = 0;
+            sale.TotalAmount = 0;
+            sale.IsDeleted = true;
         }
+        foreach (var expense in context.Expenses)
+            expense.Status = ExpenseStatus.Approved;
         await context.SaveChangesAsync();
 
         var from = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);

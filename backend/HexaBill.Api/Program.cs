@@ -1088,24 +1088,19 @@ if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 }
 
-// AUTH GUARD: Require valid JWT for expense/purchase attachments.
-// Logos and product images stay public; sensitive financial docs require auth.
+// AUTH GUARD: Require a valid JWT for expense/purchase attachments.
+// Logos and product images stay public; sensitive financial docs require a real token.
 app.Use(async (context, next) =>
 {
     if (context.Request.Path.StartsWithSegments("/uploads/expenses", StringComparison.OrdinalIgnoreCase)
         || context.Request.Path.StartsWithSegments("/uploads/purchases", StringComparison.OrdinalIgnoreCase)
         || context.Request.Path.StartsWithSegments("/uploads/attachments", StringComparison.OrdinalIgnoreCase))
     {
-        var authHeader = context.Request.Headers.Authorization.ToString();
-        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        if (!HexaBill.Api.Shared.Security.RequestJwtValidator.IsValid(context, app.Configuration))
         {
-            var tokenFromQuery = context.Request.Query["token"].ToString();
-            if (string.IsNullOrEmpty(tokenFromQuery))
-            {
-                context.Response.StatusCode = 401;
-                await context.Response.WriteAsync("Authentication required.");
-                return;
-            }
+            context.Response.StatusCode = 401;
+            await context.Response.WriteAsync("Authentication required.");
+            return;
         }
     }
     await next();
@@ -2175,26 +2170,30 @@ _ = Task.Run(async () =>
                 initLogger.LogInformation("Database connection verified");
             }
 
-            // ALWAYS seed/update default users - critical for deployment
-            // This ensures admin user exists with correct password even if migrations seeded it differently
+            // Default users: Development only. Production never resets passwords to a known value.
             try
             {
-                initLogger.LogInformation("Ensuring default users exist with correct passwords...");
+                initLogger.LogInformation("Checking system admin and development seed users...");
                 var allUsers = await context.Users.ToListAsync();
                 var adminEmail = "admin@hexabill.com".ToLowerInvariant();
                 
                 // Super Admin user - create or update
                 var adminUser = allUsers.FirstOrDefault(u => (u.Email ?? string.Empty).Trim().ToLowerInvariant() == adminEmail);
-                var correctAdminPasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!");
+                var isDevelopment = app.Environment.IsDevelopment();
+                var seedAdminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL");
+                var seedAdminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
+                var correctAdminPasswordHash = isDevelopment
+                    ? BCrypt.Net.BCrypt.HashPassword("Admin123!")
+                    : null;
                 
-                if (adminUser == null)
+                if (adminUser == null && isDevelopment)
                 {
-                    // Create new super admin user
+                    // Create new super admin user (local/dev only)
                     adminUser = new User
                     {
                         Name = "Super Admin",
                         Email = "admin@hexabill.com",
-                        PasswordHash = correctAdminPasswordHash,
+                        PasswordHash = correctAdminPasswordHash!,
                         Role = UserRole.Owner,
                         OwnerId = null, // Super admin has no owner restriction
                         TenantId = null, // CRITICAL: Super admin has no tenant restriction (null = SystemAdmin)
@@ -2202,15 +2201,35 @@ _ = Task.Run(async () =>
                         CreatedAt = DateTime.UtcNow
                     };
                     context.Users.Add(adminUser);
-                    initLogger.LogInformation("Created default super admin user");
+                    initLogger.LogInformation("Created default super admin user (Development)");
                 }
-                else
+                else if (adminUser == null && !string.IsNullOrWhiteSpace(seedAdminEmail) && !string.IsNullOrWhiteSpace(seedAdminPassword)
+                    && !allUsers.Any(u => u.TenantId == null))
+                {
+                    adminUser = new User
+                    {
+                        Name = "Super Admin",
+                        Email = seedAdminEmail.Trim(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(seedAdminPassword),
+                        Role = UserRole.Owner,
+                        OwnerId = null,
+                        TenantId = null,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    context.Users.Add(adminUser);
+                    initLogger.LogInformation("Created SystemAdmin from SEED_ADMIN_EMAIL (password not logged)");
+                }
+                else if (adminUser == null)
+                {
+                    initLogger.LogWarning("No SystemAdmin user found. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD to create one.");
+                }
+                else if (isDevelopment)
                 {
                     // Update existing admin user to ensure it's configured as super admin
                     var testPassword = BCrypt.Net.BCrypt.Verify("Admin123!", adminUser.PasswordHash);
                     if (!testPassword)
                     {
-                        adminUser.PasswordHash = correctAdminPasswordHash;
+                        adminUser.PasswordHash = correctAdminPasswordHash!;
                         initLogger.LogInformation("Updated admin user password to ensure correct hash");
                     }
                     
@@ -2237,27 +2256,23 @@ _ = Task.Run(async () =>
                 // Save all changes
                 await context.SaveChangesAsync();
                 
-                // Verify admin user can login - reload users after save to get updated data
-                var updatedUsers = await context.Users.ToListAsync();
-                var verifyAdmin = updatedUsers.FirstOrDefault(u => 
-                    (u.Email ?? string.Empty).Trim().ToLowerInvariant() == adminEmail);
-                if (verifyAdmin != null)
+                if (isDevelopment)
                 {
-                    var canLogin = BCrypt.Net.BCrypt.Verify("Admin123!", verifyAdmin.PasswordHash);
-                    if (canLogin)
-                    {
-                        initLogger.LogInformation("✅ Admin user verified - login should work with: admin@hexabill.com / Admin123!");
-                    }
-                    else
-                    {
-                        initLogger.LogError("❌ Admin user password verification failed - this is a critical error!");
-                    }
+                    var updatedUsers = await context.Users.ToListAsync();
+                    var verifyAdmin = updatedUsers.FirstOrDefault(u =>
+                        (u.Email ?? string.Empty).Trim().ToLowerInvariant() == adminEmail);
+                    if (verifyAdmin == null)
+                        initLogger.LogWarning("Development admin user was not found after seed.");
+                    else if (!BCrypt.Net.BCrypt.Verify("Admin123!", verifyAdmin.PasswordHash))
+                        initLogger.LogError("Development admin password verification failed.");
+                }
+
+                if (!isDevelopment)
+                {
+                    initLogger.LogInformation("Skipping demo tenant seed outside Development.");
                 }
                 else
                 {
-                    initLogger.LogError("❌ Admin user not found after seeding - this is a critical error!");
-                }
-                
                 // SEED DEMO TENANTS (so tenant users get valid tenant_id in JWT)
                 // TEMPORARY FIX: Handle missing FeaturesJson column until migration runs
                 Tenant? tenant1 = null;
@@ -2479,6 +2494,7 @@ _ = Task.Run(async () =>
                     initLogger.LogWarning(exCat, "Expense category seeding skipped (e.g. TenantId column missing - run app again after DatabaseFixer adds it)");
                 }
             }
+                } // end Development demo-tenant seed
             catch (Exception ex)
             {
                 initLogger.LogError(ex, "❌ CRITICAL: User seeding failed - admin login may not work!");

@@ -157,7 +157,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (downloadToBrowser)
                 {
                     // Stream from local or S3 (S3 may have been used and local file deleted)
-                    var result = await _backupService.GetBackupForDownloadAsync(fileName);
+                    var result = await _backupService.GetBackupForDownloadAsync(fileName, tenantId);
                     if (result == null)
                     {
                         return NotFound(new ApiResponse<object>
@@ -173,7 +173,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     };
                 }
                 
-                var backups = await _backupService.GetBackupListAsync();
+                var backups = await _backupService.GetBackupListAsync(tenantId);
                 var backupInfo = backups.FirstOrDefault(b => b.FileName == fileName);
 
                 return Ok(new ApiResponse<BackupInfo>
@@ -199,7 +199,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var backups = await _backupService.GetBackupListAsync();
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var backups = await _backupService.GetBackupListAsync(tenantFilter);
                 return Ok(new ApiResponse<List<BackupInfo>>
                 {
                     Success = true,
@@ -447,7 +448,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var result = await _backupService.DeleteBackupAsync(fileName);
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var result = await _backupService.DeleteBackupAsync(fileName, tenantFilter);
                 
                 return Ok(new ApiResponse<bool>
                 {
@@ -472,7 +474,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var result = await _backupService.GetBackupForDownloadAsync(fileName);
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var result = await _backupService.GetBackupForDownloadAsync(fileName, tenantFilter);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<object>

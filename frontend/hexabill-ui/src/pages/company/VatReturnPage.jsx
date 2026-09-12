@@ -215,7 +215,7 @@ const VatReturnPage = () => {
       if (success) {
         setVatReturn(dto)
         setLoadError(null)
-        if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
+        if (import.meta.env.DEV) {
           const ins = Array.isArray(dto?.inputLines) ? dto.inputLines : (Array.isArray(dto?.InputLines) ? dto.InputLines : [])
           const outs = Array.isArray(dto?.outputLines) ? dto.outputLines : (Array.isArray(dto?.OutputLines) ? dto.OutputLines : [])
           console.debug('[VAT Return] Loaded', { period: `${fromFinal}–${toFinal}`, inputLines: ins.length, outputLines: outs.length, box1a: dto?.box1a ?? dto?.Box1a, box12: dto?.box12 ?? dto?.Box12 })

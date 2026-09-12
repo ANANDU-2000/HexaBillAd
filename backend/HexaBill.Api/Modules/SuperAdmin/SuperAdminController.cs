@@ -533,8 +533,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 return StatusCode(500, new ApiResponse<string>
                 {
                     Success = false,
-                    Message = $"Backup creation failed: {ex.Message}",
-                    Errors = new List<string> { ex.Message, ex.StackTrace ?? "No stack trace available" }
+                    Message = "Backup creation failed",
+                    Errors = new List<string> { ex.Message }
                 });
             }
         }
@@ -544,7 +544,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var backups = await _comprehensiveBackupService.GetBackupListAsync();
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var backups = await _comprehensiveBackupService.GetBackupListAsync(tenantFilter);
                 var backupDtos = backups.Select(b => new BackupInfoDto
                 {
                     FileName = b.FileName,
@@ -687,7 +688,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var success = await _comprehensiveBackupService.DeleteBackupAsync(fileName);
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var success = await _comprehensiveBackupService.DeleteBackupAsync(fileName, tenantFilter);
                 if (success)
                 {
                     return Ok(new ApiResponse<object>
@@ -721,38 +723,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                // Check server location first
-                var backupPath = Path.Combine(Directory.GetCurrentDirectory(), "backups", fileName);
-                
-                if (!System.IO.File.Exists(backupPath))
+                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
+                var result = await _comprehensiveBackupService.GetBackupForDownloadAsync(fileName, tenantFilter);
+                if (result == null)
                 {
-                    // Check desktop/tmp location (BUG #13 FIX: Use /tmp on Linux)
-                    var basePath = Environment.OSVersion.Platform == PlatformID.Unix || Environment.OSVersion.Platform == PlatformID.MacOSX
-                        ? "/tmp"
-                        : Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    var desktopPath = Path.Combine(basePath, "HexaBill_Backups", fileName);
-                    if (System.IO.File.Exists(desktopPath))
+                    return NotFound(new ApiResponse<object>
                     {
-                        backupPath = desktopPath;
-                    }
-                    else
-                    {
-                        return NotFound(new ApiResponse<object>
-                        {
-                            Success = false,
-                            Message = "Backup file not found"
-                        });
-                    }
+                        Success = false,
+                        Message = "Backup file not found"
+                    });
                 }
 
-                var fileBytes = await System.IO.File.ReadAllBytesAsync(backupPath);
-                
-                // Determine content type
-                string contentType = fileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) 
-                    ? "application/zip" 
-                    : "application/octet-stream";
-                
-                return File(fileBytes, contentType, fileName);
+                var (stream, downloadFileName) = result.Value;
+                return File(stream, "application/zip", downloadFileName);
             }
             catch (Exception ex)
             {
