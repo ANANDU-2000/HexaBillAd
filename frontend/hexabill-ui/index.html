@@ -18,26 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    // Force favicon refresh on page load
-    (function () {
-      const timestamp = Date.now();
-      const updateIcon = (selector, attr) => {
-        const el = document.querySelector(selector);
-        if (el) {
-          const currentHref = el.getAttribute(attr);
-          if (currentHref) {
-            const newHref = currentHref.split('?')[0] + '?v=' + timestamp;
-            el.setAttribute(attr, newHref);
-          }
-        }
-      };
-      // Update all icon links
-      updateIcon('link[rel="icon"]', 'href');
-      updateIcon('link[rel="apple-touch-icon"]', 'href');
-      updateIcon('link[rel="manifest"]', 'href');
-    })();
-  </script>
+  <script src="/favicon-refresh.js"></script>
 </head>
 
 <body>
