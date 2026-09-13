@@ -80,17 +80,17 @@ const ConfirmDangerModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-danger-title">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-100">
-        <div className="flex items-center justify-between p-4 border-b border-red-100 bg-red-50 rounded-t-xl">
-          <div className="flex items-center gap-3">
+      <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-100 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 pr-2 border-b border-red-100 bg-red-50 rounded-t-xl">
+          <div className="flex items-center gap-3 min-w-0">
             <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
-            <h2 id="confirm-danger-title" className="text-lg font-bold text-gray-900">{title}</h2>
+            <h2 id="confirm-danger-title" className="text-lg font-bold text-gray-900 truncate">{title}</h2>
           </div>
-          <button type="button" onClick={handleClose} className="p-1 text-gray-400 hover:text-gray-600 rounded" aria-label="Close">
+          <button type="button" onClick={handleClose} className="p-1 text-gray-400 hover:text-gray-600 rounded min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-y-auto overscroll-contain">
           <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{message}</p>
 
           {showInput && (

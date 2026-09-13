@@ -2214,9 +2214,9 @@ const PosEnterprisePage = () => {
   const posHeader = (
       <>
       {/* Compact cashier header max 56px */}
-      <div className="bg-primary-900 text-white px-2 sm:px-3 h-14 max-h-14 flex items-center justify-between gap-2 flex-shrink-0">
-        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-          <span className="text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
+      <div className="bg-primary-900 text-white px-2 sm:px-3 h-14 max-h-14 flex items-center justify-between gap-2 flex-shrink-0 overflow-x-auto">
+        <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 shrink">
+          <span className="hidden sm:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
           {isEditMode ? (
             <span
               className="font-mono text-xs sm:text-sm truncate text-amber-200 max-w-[6rem] sm:max-w-[8rem]"
@@ -2229,7 +2229,7 @@ const PosEnterprisePage = () => {
               type="text"
               value={customInvoiceNo}
               onChange={(e) => setCustomInvoiceNo(e.target.value)}
-              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-[4.5rem] sm:w-24 text-blue-100 placeholder:text-blue-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-24 text-blue-100 placeholder:text-blue-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
               title="Invoice # (editable before save). Tab to continue · Enter to move to next field."
               placeholder={nextInvoiceNumberPreview || 'Auto'}
               maxLength={32}
@@ -2241,7 +2241,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handlePrintFormat('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Quick print invoice (A4)' : 'Save invoice first to print'}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Quick print invoice' : 'Save invoice first to print'}
           >
             <Printer className="h-4 w-4" />
@@ -2251,7 +2251,7 @@ const PosEnterprisePage = () => {
             onClick={printableSaleId ? () => handleDeliveryNotePrint('A4', printableSaleId) : undefined}
             disabled={!printableSaleId}
             title={printableSaleId ? 'Print delivery note (packing list, no prices)' : 'Save invoice first for delivery note'}
-            className="p-1.5 rounded hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
+            className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 disabled:opacity-40 disabled:cursor-not-allowed text-white"
             aria-label={printableSaleId ? 'Print delivery note' : 'Save invoice first for delivery note'}
           >
             <Package className="h-4 w-4" />
@@ -2261,7 +2261,7 @@ const PosEnterprisePage = () => {
               type="button"
               onClick={() => handleDownloadPdf(printableSaleId, printableInvoiceNo)}
               title="Download invoice PDF"
-              className="p-1.5 rounded hover:bg-white/10 text-white"
+              className="min-h-9 min-w-9 p-1.5 rounded flex items-center justify-center hover:bg-white/10 text-white"
               aria-label="Download invoice PDF"
             >
               <Download className="h-4 w-4" />

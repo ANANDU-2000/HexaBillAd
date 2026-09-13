@@ -248,6 +248,53 @@ const Layout = () => {
     return false
   }
 
+  // Route title shown in the compact mobile header
+  const PAGE_TITLES = {
+    '/dashboard': 'Dashboard',
+    '/products': 'Products',
+    '/stock-adjustments': 'Stock Adjustments',
+    '/pricelist': 'Price List',
+    '/purchases': 'Purchases',
+    '/suppliers': 'Suppliers',
+    '/pos': 'New Bill',
+    '/ledger': 'Customer Ledger',
+    '/expenses': 'Expenses',
+    '/sales-ledger': 'Sales Ledger',
+    '/billing-history': 'Billing History',
+    '/quotations': 'Quotations',
+    '/agreements': 'Agreements',
+    '/salary-certificates': 'Salary Certificates',
+    '/delivery-notes': 'Delivery Notes',
+    '/reports': 'Reports',
+    '/vat-return': 'VAT Return',
+    '/worksheet': 'Worksheet',
+    '/branches': 'Branches & Routes',
+    '/routes': 'Branches & Routes',
+    '/customers': 'Customers',
+    '/more': 'More',
+    '/users': 'Users',
+    '/settings': 'Settings',
+    '/audit': 'Activity Log',
+    '/backup': 'Backup & Restore',
+    '/profile': 'Profile',
+    '/help': 'Help & Support',
+    '/returns/create': 'Create Return',
+  }
+  const getPageTitle = (pathname) => {
+    if (pathname.startsWith('/products/')) return 'Product'
+    if (pathname.startsWith('/suppliers/')) return 'Supplier'
+    if (pathname.startsWith('/branches/')) return 'Branch'
+    if (pathname.startsWith('/routes/')) return 'Route'
+    if (pathname.startsWith('/customers/')) return 'Customer'
+    if (pathname.startsWith('/quotations')) return 'Quotation'
+    if (pathname.startsWith('/agreements')) return 'Agreement'
+    if (pathname.startsWith('/salary-certificates')) return 'Salary Certificate'
+    if (pathname.startsWith('/delivery-notes')) return 'Delivery Note'
+    if (pathname.startsWith('/billing-history/')) return 'Invoice'
+    return PAGE_TITLES[pathname] || ''
+  }
+  const mobilePageTitle = getPageTitle(location.pathname)
+
   const isSalesLedger = location.pathname === '/sales-ledger'
   const isExpensesLedger = location.pathname === '/expenses'
   const isPosRoute = location.pathname === '/pos'
@@ -318,7 +365,7 @@ const Layout = () => {
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1 flex justify-center min-w-0">
-            <span className="text-sm font-semibold truncate">{companyName}</span>
+            <span className="text-sm font-semibold truncate">{mobilePageTitle || companyName}</span>
           </div>
           <button
             type="button"

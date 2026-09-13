@@ -187,7 +187,7 @@ export default function EditPaymentModal ({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Date *</label>
             <input
@@ -196,7 +196,7 @@ export default function EditPaymentModal ({
               max={new Date().toISOString().split('T')[0]}
               value={form.paymentDate}
               onChange={(e) => setForm((f) => ({ ...f, paymentDate: e.target.value }))}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
               disabled={saving}
             />
           </div>
@@ -206,7 +206,7 @@ export default function EditPaymentModal ({
             <select
               value={form.saleId}
               onChange={(e) => setForm((f) => ({ ...f, saleId: e.target.value }))}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
               disabled={saving}
             >
               <option value="">-- No Invoice (General Payment) --</option>
@@ -225,9 +225,10 @@ export default function EditPaymentModal ({
               step="0.01"
               min="0.01"
               required
+              inputMode="decimal"
               value={form.amount}
               onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
               disabled={saving}
             />
           </div>
@@ -237,7 +238,7 @@ export default function EditPaymentModal ({
             <select
               value={form.mode}
               onChange={(e) => setForm((f) => ({ ...f, mode: e.target.value }))}
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
               disabled={saving}
             >
               {MODES.map((m) => (
@@ -246,14 +247,14 @@ export default function EditPaymentModal ({
             </select>
           </div>
 
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-neutral-700 mb-1">Reference / Remarks</label>
             <input
               type="text"
               value={form.reference}
               onChange={(e) => setForm((f) => ({ ...f, reference: e.target.value }))}
               placeholder="Cheque number, transaction reference, notes..."
-              className="w-full border border-neutral-300 rounded-lg px-3 py-2"
+              className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"
               disabled={saving}
             />
           </div>
@@ -277,7 +278,7 @@ export default function EditPaymentModal ({
           <button
             type="button"
             onClick={() => { if (!saving) onClose?.() }}
-            className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 font-medium"
+            className="px-4 min-h-[44px] border border-neutral-300 rounded-lg hover:bg-neutral-50 font-medium"
             disabled={saving}
           >
             Cancel
@@ -285,7 +286,7 @@ export default function EditPaymentModal ({
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
+            className="px-4 min-h-[44px] bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 font-medium"
           >
             {saving ? 'Saving...' : 'Save Payment'}
           </button>

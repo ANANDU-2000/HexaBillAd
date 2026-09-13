@@ -62,7 +62,7 @@ const LimitedToaster = () => {
           },
         },
       }}
-      containerStyle={{ top: 20 }}
+      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
       gutter={8}
     />
   )

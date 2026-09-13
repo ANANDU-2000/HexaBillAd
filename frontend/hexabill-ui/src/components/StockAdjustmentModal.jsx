@@ -6,9 +6,11 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
     changeQty: 0,
     reason: ''
   })
+  const [validationError, setValidationError] = useState('')
 
   const handleChange = (e) => {
     const { name, value, type } = e.target
+    setValidationError('')
     setFormData(prev => ({
       ...prev,
       [name]: type === 'number' ? (value === '' ? '' : Number(value)) : value
@@ -18,7 +20,7 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!formData.reason.trim()) {
-      alert('Please provide a reason for the stock adjustment')
+      setValidationError('Please provide a reason for the stock adjustment')
       return
     }
     onSave(formData)
@@ -29,15 +31,23 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Adjust stock - ${product?.nameEn || 'Product'}`}
+    >
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onCancel} aria-hidden="true" />
+
+      <div className="relative bg-white rounded-lg p-5 sm:p-6 w-full max-w-md my-auto max-h-[90vh] overflow-y-auto overscroll-contain">
+        <div className="flex justify-between items-center mb-5">
+          <h2 className="text-lg font-semibold text-gray-900 pr-2">
             Adjust Stock - {product?.nameEn || 'Product'}
           </h2>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center"
+            aria-label="Close"
           >
             <X className="h-6 w-6" />
           </button>
@@ -60,7 +70,8 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
               name="changeQty"
               required
               step="0.01"
-              className="input"
+              inputMode="decimal"
+              className="input min-h-[44px]"
               value={formData.changeQty}
               onChange={handleChange}
               placeholder="Enter positive or negative value"
@@ -85,17 +96,23 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          {validationError && (
+            <p role="alert" className="text-sm text-error bg-error/10 border border-error/30 rounded-lg px-3 py-2">
+              {validationError}
+            </p>
+          )}
+
+          <div className="flex justify-end gap-2 flex-wrap pt-2">
             <button
               type="button"
               onClick={onCancel}
-              className="btn btn-secondary"
+              className="btn btn-secondary min-h-[44px]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn btn-primary"
+              className="btn btn-primary min-h-[44px]"
             >
               Adjust Stock
             </button>

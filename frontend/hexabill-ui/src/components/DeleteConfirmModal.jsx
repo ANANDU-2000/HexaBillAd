@@ -26,24 +26,25 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-red-50">
-          <div className="flex items-center">
-            <AlertTriangle className="h-6 w-6 text-red-600 mr-3" />
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">{title || 'Confirm Deletion'}</h2>
-              {itemName && <p className="text-sm text-gray-600 mt-1">Item: {itemName}</p>}
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-gray-200 bg-red-50">
+          <div className="flex items-center min-w-0">
+            <AlertTriangle className="h-6 w-6 text-red-600 mr-3 flex-shrink-0" />
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 truncate">{title || 'Confirm Deletion'}</h2>
+              {itemName && <p className="text-sm text-gray-600 mt-1 truncate">Item: {itemName}</p>}
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center text-gray-400 hover:text-gray-600"
+            aria-label="Close"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
-        
-        <div className="p-6">
+
+        <div className="p-6 overflow-y-auto overscroll-contain">
           <p className="text-gray-700 mb-4">{message || 'This action cannot be undone. This will permanently delete the item.'}</p>
           
           <div className="mb-4">

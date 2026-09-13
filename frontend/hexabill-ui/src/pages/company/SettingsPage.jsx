@@ -1795,7 +1795,7 @@ const SettingsPage = () => {
         <div className="space-y-4">
           <p className="text-sm text-gray-600">This is how your company header will appear on printed invoices.</p>
           <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-            <div className="grid grid-cols-[140px_1fr_140px] gap-4 items-center">
+            <div className="grid grid-cols-[120px_1fr_120px] md:grid-cols-[140px_1fr_140px] gap-3 md:gap-4 items-center max-w-full overflow-hidden">
               <div className="flex justify-center">
                 {((typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/'))) && (
                   <img
@@ -1806,10 +1806,10 @@ const SettingsPage = () => {
                   />
                 )}
               </div>
-              <div className="text-center">
-                <h3 className="font-bold text-base uppercase">{settings.companyNameEn || 'Company Name'}</h3>
-                {settings.companyNameAr && <p className="text-sm text-gray-700" dir="rtl">{settings.companyNameAr}</p>}
-                <p className="text-xs text-gray-500 mt-0.5">Mob: {settings.companyPhone || '—'} {settings.companyAddress && `, ${settings.companyAddress}`}</p>
+              <div className="text-center min-w-0">
+                <h3 className="font-bold text-base uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
+                {settings.companyNameAr && <p className="text-sm text-gray-700" dir="rtl" style={{ wordBreak: 'break-word' }}>{settings.companyNameAr}</p>}
+                <p className="text-xs text-gray-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'} {settings.companyAddress && `, ${settings.companyAddress}`}</p>
               </div>
               <div className="text-right text-sm">
                 <p>TRN: No : {settings.companyTrn || '—'}</p>

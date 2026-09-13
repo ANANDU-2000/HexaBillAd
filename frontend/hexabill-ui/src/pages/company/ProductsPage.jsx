@@ -1169,6 +1169,96 @@ const ProductsPage = () => {
         )}
       />
 
+      {/* Mobile product cards (md:hidden) */}
+      {!loading && products.length > 0 && (
+        <div className="md:hidden space-y-2.5">
+          {products.map((product) => {
+            const lowStock = (product.stockQty ?? 0) <= (product.reorderLevel || 0)
+            const outOfStock = (product.stockQty ?? 0) <= 0
+            return (
+              <div
+                key={product.id}
+                onClick={() => navigate(`/products/${product.id}`)}
+                className="bg-white rounded-xl border border-neutral-200 p-3.5 cursor-pointer active:bg-neutral-50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
+                    className="text-left min-w-0 flex-1"
+                  >
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') ? product.imageUrl : `/uploads/${product.imageUrl}`}
+                        alt={product.nameEn}
+                        className="h-9 w-9 object-cover rounded border border-gray-200 mb-1.5"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="h-9 w-9 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mb-1.5">
+                        <ImageIcon className="h-4 w-4 text-gray-400" />
+                      </div>
+                    )}
+                    <span className="font-medium text-gray-900 leading-snug line-clamp-2">{product.nameEn}</span>
+                  </button>
+                  <span className="text-base font-bold text-gray-900 tabular-nums shrink-0">AED {Number(product.sellPrice || 0).toFixed(2)}</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{product.categoryName || 'Uncategorized'}</span>
+                  {product.sku && <span className="text-xs text-gray-500 font-mono">{product.sku}</span>}
+                  {product.isActive === false && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-sm border-t border-neutral-100 pt-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Stock</p>
+                    <p className={`font-medium tabular-nums ${lowStock || outOfStock ? 'text-red-600' : 'text-gray-900'}`}>
+                      {product.stockQty ?? 0} {product.unitType || ''}
+                      {lowStock && <AlertTriangle className="h-3.5 w-3.5 inline ml-1 text-red-500" />}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Qty</p>
+                    <p className="text-gray-900">{product.unitType || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Expiry</p>
+                    {product.expiryDate ? (() => {
+                      const days = Math.ceil((new Date(product.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))
+                      return <p className={days < 0 ? 'text-red-600 font-medium' : days <= 30 ? 'text-orange-600' : 'text-gray-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
+                    })() : <p className="text-gray-500 text-xs">No expiry</p>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
+                    className="inline-flex items-center gap-1.5 bg-neutral-50 text-neutral-700 border border-neutral-300 hover:bg-neutral-100 rounded-lg px-3 min-h-[44px] text-sm font-medium"
+                    aria-label={`View ${product.nameEn}`}
+                  >
+                    <Eye className="h-4 w-4" /> View
+                  </button>
+                  {canManageInventory && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}?edit=1`) }}
+                      className="inline-flex items-center gap-1.5 bg-primary-50 text-primary-600 border border-primary-200 hover:bg-primary-100 rounded-lg px-3 min-h-[44px] text-sm font-medium"
+                      aria-label={`Edit ${product.nameEn}`}
+                    >
+                      <Edit className="h-4 w-4" /> Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Pagination */}
       {
         (totalPages > 1 || totalCount > 10) && (

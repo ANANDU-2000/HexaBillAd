@@ -2577,7 +2577,7 @@ const ReportsPage = () => {
               <p className="text-sm text-gray-600">Profit by branch for the selected date range. Net = Sales − COGS − Expenses.</p>
               {reportData.branchProfit && reportData.branchProfit.length > 0 ? (
                 <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full min-w-[800px] divide-y divide-gray-200 text-sm">
                       <thead className="bg-gray-100">
                         <tr>
@@ -2610,6 +2610,29 @@ const ReportsPage = () => {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile branch-profit summary cards (md:hidden) */}
+                  <div className="md:hidden divide-y divide-gray-100">
+                    {reportData.branchProfit.map((row) => {
+                      const netProfit = row.netProfit ?? 0
+                      return (
+                        <div key={row.branchId} className="px-4 py-3.5">
+                          <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="font-semibold text-gray-900 truncate">{row.branchName}</span>
+                            <span className="shrink-0 text-xs text-gray-500">{row.invoiceCount ?? 0} invoices</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+                            <div className="flex justify-between"><span className="text-gray-500">Sales</span><span className="font-medium text-green-700 tabular-nums">{formatCurrency(row.sales ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">COGS</span><span className="text-red-600 tabular-nums">{formatCurrency(row.costOfGoodsSold ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Gross profit</span><span className="font-medium text-blue-700 tabular-nums">{formatCurrency(row.grossProfit ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Expenses</span><span className="text-red-600 tabular-nums">{formatCurrency(row.expenses ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Net profit</span><span className={`font-bold tabular-nums ${netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(netProfit)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-500">Net margin</span><span className="text-gray-700 tabular-nums">{(row.netProfitMarginPercent ?? 0).toFixed(1)}%</span></div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               ) : (
@@ -2709,8 +2732,9 @@ const ReportsPage = () => {
                 </div>
 
                 {reportData.outstandingBills && reportData.outstandingBills.length > 0 ? (
-                  // CRITICAL FIX: Ensure table doesn't overflow on mobile/tablet - add horizontal scroll wrapper
-                  <div className="overflow-x-auto w-full">
+                  <>
+                  {/* CRITICAL FIX: Ensure table doesn't overflow on mobile/tablet - add horizontal scroll wrapper */}
+                  <div className="hidden md:block overflow-x-auto w-full">
                     <table className="min-w-[1000px] w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50 sticky top-0 z-10">
                         <tr>
@@ -2806,6 +2830,56 @@ const ReportsPage = () => {
                       </tfoot>
                     </table>
                   </div>
+
+                  {/* Mobile outstanding-bills cards (md:hidden) */}
+                  <div className="md:hidden divide-y divide-gray-100">
+                    {reportData.outstandingBills.map((bill) => {
+                      const daysOverdue = bill.daysOverdue ?? 0
+                      return (
+                        <div key={bill.id} className="px-4 py-3.5">
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{bill.invoiceNo}</p>
+                              <p className="text-sm text-gray-600 truncate">{bill.customerName || 'Cash Customer'}</p>
+                            </div>
+                            <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bill.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                              {bill.paymentStatus}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mb-2">{new Date(bill.invoiceDate).toLocaleDateString('en-GB')}
+                            {daysOverdue > 0 && (
+                              <span className={`ml-2 font-medium ${daysOverdue > 90 ? 'text-red-600' : daysOverdue > 60 ? 'text-orange-600' : 'text-yellow-600'}`}>
+                                {daysOverdue} days overdue
+                              </span>
+                            )}
+                          </p>
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div>
+                              <p className="text-xs text-gray-500">Total</p>
+                              <p className="text-gray-900 tabular-nums">{formatCurrency(bill.grandTotal)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Paid</p>
+                              <p className="text-green-600 tabular-nums">{formatCurrency(bill.paidAmount)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Balance</p>
+                              <p className="font-semibold text-red-600 tabular-nums">{formatCurrency(bill.balanceAmount)}</p>
+                            </div>
+                          </div>
+                          {bill.customerId && (
+                            <button
+                              onClick={() => navigate(`/ledger?customerId=${bill.customerId}`)}
+                              className="mt-2.5 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 min-h-[44px] px-1 -ml-1"
+                            >
+                              View Ledger
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                     <DollarSign className="h-12 w-12 mb-2 text-gray-400" />

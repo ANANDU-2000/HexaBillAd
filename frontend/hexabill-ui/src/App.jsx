@@ -1,68 +1,78 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { isSystemAdmin } from './utils/superAdmin'
 import { canAccessPage, isOwner } from './utils/roles'
 import { getApiBaseUrlNoSuffix } from './services/apiConfig'
 import Login from './pages/Login'
-import Dashboard from './pages/company/DashboardTally'
-import ProductsPage from './pages/company/ProductsPage'
-import ProductDetailPage from './pages/company/ProductDetailPage'
-import PriceList from './pages/company/PriceList'
-import PurchasesPage from './pages/company/PurchasesPage'
-import SuppliersPage from './pages/company/SuppliersPage'
-import SupplierDetailPage from './pages/company/SupplierDetailPage'
-import PosPage from './pages/company/PosPage'
-import CustomerLedgerPage from './pages/company/CustomerLedgerPage'
-import ExpensesPage from './pages/company/ExpensesPage'
-import ReportsPage from './pages/company/ReportsPage'
-import VatReturnPage from './pages/company/VatReturnPage'
-import WorksheetPage from './pages/company/WorksheetPage'
-import SalesLedgerPage from './pages/company/SalesLedgerPage'
-import BillingHistoryPage from './pages/company/BillingHistoryPage'
-import SettingsPage from './pages/company/SettingsPage'
-import AuditLogPage from './pages/company/AuditLogPage'
-import UsersPage from './pages/company/UsersPage'
-import BackupPage from './pages/company/BackupPage'
-import ProfilePage from './pages/company/ProfilePage'
-import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard'
-import SuperAdminTenantsPage from './pages/superadmin/SuperAdminTenantsPage'
-import SuperAdminTenantDetailPage from './pages/superadmin/SuperAdminTenantDetailPage'
-import SuperAdminDemoRequestsPage from './pages/superadmin/SuperAdminDemoRequestsPage'
-import SuperAdminHealthPage from './pages/superadmin/SuperAdminHealthPage'
-import SuperAdminErrorLogsPage from './pages/superadmin/SuperAdminErrorLogsPage'
-import SuperAdminAuditLogsPage from './pages/superadmin/SuperAdminAuditLogsPage'
-import SuperAdminSettingsPage from './pages/superadmin/SuperAdminSettingsPage'
-import SuperAdminGlobalSearchPage from './pages/superadmin/SuperAdminGlobalSearchPage'
-import SuperAdminSqlConsolePage from './pages/superadmin/SuperAdminSqlConsolePage'
-import BranchesPage from './pages/company/BranchesPage'
-import BranchDetailPage from './pages/company/BranchDetailPage'
-import RoutesPage from './pages/company/RoutesPage'
-import RouteDetailPage from './pages/company/RouteDetailPage'
-import ReturnCreatePage from './pages/company/ReturnCreatePage'
-import CustomersPage from './pages/company/CustomersPage'
-import CustomerDetailPage from './pages/company/CustomerDetailPage'
-import MorePage from './pages/company/MorePage'
-import QuotationsPage from './pages/company/QuotationsPage'
-import QuotationEditorPage from './pages/company/QuotationEditorPage'
-import AgreementsPage from './pages/company/AgreementsPage'
-import AgreementEditorPage from './pages/company/AgreementEditorPage'
-import SalaryCertificatesPage from './pages/company/SalaryCertificatesPage'
-import SalaryCertificateEditorPage from './pages/company/SalaryCertificateEditorPage'
-import DeliveryNotesPage from './pages/company/DeliveryNotesPage'
-import DeliveryNoteViewPage from './pages/company/DeliveryNoteViewPage'
-import StockAdjustmentsHistoryPage from './pages/company/StockAdjustmentsHistoryPage'
 import SignupPage from './pages/SignupPage'
-import OnboardingWizard from './pages/OnboardingWizard'
-import ErrorPage from './pages/ErrorPage'
-import HelpPage from './pages/HelpPage'
-import FeedbackPage from './pages/FeedbackPage'
 import Layout from './components/Layout'
 import { BranchesRoutesProvider } from './contexts/BranchesRoutesContext'
 import SuperAdminLayout from './components/SuperAdminLayout'
 import ConnectionStatus from './components/ConnectionStatus'
 import ErrorBoundary from './components/ErrorBoundary'
 import { MaintenanceOverlay } from './components/MaintenanceOverlay'
+
+// Route-level code splitting. The initial bundle stays lean; each route chunk
+// loads on first visit. Login/Signup stay eager so the landing screen paints fast.
+const Dashboard = lazy(() => import('./pages/company/DashboardTally'))
+const ProductsPage = lazy(() => import('./pages/company/ProductsPage'))
+const ProductDetailPage = lazy(() => import('./pages/company/ProductDetailPage'))
+const PriceList = lazy(() => import('./pages/company/PriceList'))
+const PurchasesPage = lazy(() => import('./pages/company/PurchasesPage'))
+const SuppliersPage = lazy(() => import('./pages/company/SuppliersPage'))
+const SupplierDetailPage = lazy(() => import('./pages/company/SupplierDetailPage'))
+const PosPage = lazy(() => import('./pages/company/PosPage'))
+const CustomerLedgerPage = lazy(() => import('./pages/company/CustomerLedgerPage'))
+const ExpensesPage = lazy(() => import('./pages/company/ExpensesPage'))
+const ReportsPage = lazy(() => import('./pages/company/ReportsPage'))
+const VatReturnPage = lazy(() => import('./pages/company/VatReturnPage'))
+const WorksheetPage = lazy(() => import('./pages/company/WorksheetPage'))
+const SalesLedgerPage = lazy(() => import('./pages/company/SalesLedgerPage'))
+const BillingHistoryPage = lazy(() => import('./pages/company/BillingHistoryPage'))
+const SettingsPage = lazy(() => import('./pages/company/SettingsPage'))
+const AuditLogPage = lazy(() => import('./pages/company/AuditLogPage'))
+const UsersPage = lazy(() => import('./pages/company/UsersPage'))
+const BackupPage = lazy(() => import('./pages/company/BackupPage'))
+const ProfilePage = lazy(() => import('./pages/company/ProfilePage'))
+const SuperAdminDashboard = lazy(() => import('./pages/superadmin/SuperAdminDashboard'))
+const SuperAdminTenantsPage = lazy(() => import('./pages/superadmin/SuperAdminTenantsPage'))
+const SuperAdminTenantDetailPage = lazy(() => import('./pages/superadmin/SuperAdminTenantDetailPage'))
+const SuperAdminDemoRequestsPage = lazy(() => import('./pages/superadmin/SuperAdminDemoRequestsPage'))
+const SuperAdminHealthPage = lazy(() => import('./pages/superadmin/SuperAdminHealthPage'))
+const SuperAdminErrorLogsPage = lazy(() => import('./pages/superadmin/SuperAdminErrorLogsPage'))
+const SuperAdminAuditLogsPage = lazy(() => import('./pages/superadmin/SuperAdminAuditLogsPage'))
+const SuperAdminSettingsPage = lazy(() => import('./pages/superadmin/SuperAdminSettingsPage'))
+const SuperAdminGlobalSearchPage = lazy(() => import('./pages/superadmin/SuperAdminGlobalSearchPage'))
+const SuperAdminSqlConsolePage = lazy(() => import('./pages/superadmin/SuperAdminSqlConsolePage'))
+const BranchesPage = lazy(() => import('./pages/company/BranchesPage'))
+const BranchDetailPage = lazy(() => import('./pages/company/BranchDetailPage'))
+const RoutesPage = lazy(() => import('./pages/company/RoutesPage'))
+const RouteDetailPage = lazy(() => import('./pages/company/RouteDetailPage'))
+const ReturnCreatePage = lazy(() => import('./pages/company/ReturnCreatePage'))
+const CustomersPage = lazy(() => import('./pages/company/CustomersPage'))
+const CustomerDetailPage = lazy(() => import('./pages/company/CustomerDetailPage'))
+const MorePage = lazy(() => import('./pages/company/MorePage'))
+const QuotationsPage = lazy(() => import('./pages/company/QuotationsPage'))
+const QuotationEditorPage = lazy(() => import('./pages/company/QuotationEditorPage'))
+const AgreementsPage = lazy(() => import('./pages/company/AgreementsPage'))
+const AgreementEditorPage = lazy(() => import('./pages/company/AgreementEditorPage'))
+const SalaryCertificatesPage = lazy(() => import('./pages/company/SalaryCertificatesPage'))
+const SalaryCertificateEditorPage = lazy(() => import('./pages/company/SalaryCertificateEditorPage'))
+const DeliveryNotesPage = lazy(() => import('./pages/company/DeliveryNotesPage'))
+const DeliveryNoteViewPage = lazy(() => import('./pages/company/DeliveryNoteViewPage'))
+const StockAdjustmentsHistoryPage = lazy(() => import('./pages/company/StockAdjustmentsHistoryPage'))
+const OnboardingWizard = lazy(() => import('./pages/OnboardingWizard'))
+const ErrorPage = lazy(() => import('./pages/ErrorPage'))
+const HelpPage = lazy(() => import('./pages/HelpPage'))
+const FeedbackPage = lazy(() => import('./pages/FeedbackPage'))
+
+/** Suspense fallback shown while a lazy route chunk loads. */
+const RouteFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" role="status" aria-label="Loading" />
+  </div>
+)
 
 function App() {
   const { user, loading, impersonatedTenantId } = useAuth()
@@ -179,6 +189,7 @@ function App() {
     <ErrorBoundary>
       <MaintenanceOverlay />
       <ConnectionStatus />
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<Navigate to={getRootPath()} replace />} />
         {/* Onboarding wizard */}
@@ -279,6 +290,7 @@ function App() {
 
         <Route path="*" element={<ErrorPage />} />
       </Routes>
+      </Suspense>
     </ErrorBoundary>
   )
 }

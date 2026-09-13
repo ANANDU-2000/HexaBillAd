@@ -115,11 +115,12 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">Print Options</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
+            aria-label="Close"
           >
             <X className="h-6 w-6" />
           </button>
@@ -224,12 +225,12 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-end p-6 border-t border-gray-200 space-x-3">
+        <div className="flex flex-wrap items-center justify-end p-6 border-t border-gray-200 gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleDeliveryNote}
             disabled={printing}
-            className="inline-flex items-center px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
+            className="inline-flex items-center px-4 min-h-[44px] bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Delivery Note
@@ -237,14 +238,14 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           <button
             onClick={onClose}
             disabled={printing}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+            className="px-4 min-h-[44px] text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center px-4 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
             {printing ? (
               <>

@@ -2113,14 +2113,15 @@ const CustomerLedgerPage = () => {
               </button>
             </div>
           </div>
-          <div className="flex md:hidden items-center gap-0.5 shrink-0">
-            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg" title="Export PDF">
+          <div className="flex md:hidden items-center gap-1 shrink-0">
+            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-11 min-w-11 text-gray-600 hover:bg-gray-100 rounded-lg" title="Export PDF" aria-label="Export PDF">
               <Download className="h-5 w-5" />
             </button>
             <button
               onClick={() => selectedCustomer && loadCustomerData(selectedCustomer.id)}
-              className="p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="p-2 min-h-11 min-w-11 text-gray-600 hover:bg-gray-100 rounded-lg"
               title="Refresh"
+              aria-label="Refresh"
               disabled={!selectedCustomer}
             >
               <RefreshCw className="h-5 w-5" />

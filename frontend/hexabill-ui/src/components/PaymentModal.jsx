@@ -240,8 +240,9 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
             disabled={loading}
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
@@ -284,9 +285,10 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               step="0.01"
               min="0.01"
               max={999999}
+              inputMode="decimal"
               value={formData.amount}
               onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
               disabled={loading}
             />
@@ -310,7 +312,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             <select
               value={formData.mode}
               onChange={(e) => setFormData(prev => ({ ...prev, mode: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
               disabled={loading}
             >
@@ -331,7 +333,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               type="text"
               value={formData.reference}
               onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               placeholder={(formData.mode === 'CHEQUE' || formData.mode === 'ONLINE') ? 'Required for Cheque/Bank Transfer' : 'Optional'}
               maxLength={200}
               disabled={loading}
@@ -362,7 +364,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                   disabled={loading}
                 >
                   Cancel
@@ -370,7 +372,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                 <button
                   type="submit"
                   ref={submitButtonRef}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || formData.amount <= 0 || ((formData.mode === 'CHEQUE' || formData.mode === 'ONLINE') && !formData.reference?.trim())}
                 >
                   {loading ? 'Processing...' : 'Continue'}
@@ -405,7 +407,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   <button
                     type="button"
                     onClick={handleCancelConfirmation}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     disabled={loading}
                   >
                     ← Go Back
@@ -413,7 +415,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   <button
                     type="submit"
                     ref={submitButtonRef}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     disabled={loading}
                   >
                     {loading ? (
