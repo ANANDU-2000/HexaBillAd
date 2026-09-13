@@ -350,7 +350,7 @@ const Layout = () => {
 
       {/* Mobile Header — hidden on /pos for full-viewport cashier mode (use BottomNav) */}
       {!isPosRoute && (
-      <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+      <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center justify-between px-4 py-3">
           <button
             type="button"
@@ -396,7 +396,7 @@ const Layout = () => {
           />
           {/* Sidebar panel */}
           <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] flex flex-col bg-primary-900 text-white border-r border-primary-800 transform transition-transform duration-300 ease-in-out">
-            <div className="flex h-14 items-center justify-between px-4 border-b border-primary-800">
+            <div className="flex h-14 items-center justify-between px-4 border-b border-primary-800 safe-area-top">
               <span className="text-lg font-semibold text-white">Menu</span>
               <button
                 type="button"
@@ -641,7 +641,7 @@ const Layout = () => {
         {/* Page content — POS has no top header padding for full viewport */}
         <main id="main-content" className={`flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-[4.75rem] lg:pb-6 bg-[#F8FAFC] ${userIsSystemAdmin && selectedTenantId
           ? (isPosRoute ? 'pt-10' : 'pt-24 lg:pt-28')
-          : (isPosRoute ? 'pt-0' : 'pt-14 lg:pt-20')
+          : (isPosRoute ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] lg:pt-20')
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>

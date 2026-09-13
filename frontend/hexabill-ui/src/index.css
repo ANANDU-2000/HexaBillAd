@@ -177,12 +177,6 @@
     padding-top: env(safe-area-inset-top, 0);
   }
 
-  /* Minimum touch target (44px) for tap-propagated interactive controls */
-  .tap-target {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
   /* Task 15: Section spacing 32-48px between major sections */
   .section-gap {
     gap: 32px;
