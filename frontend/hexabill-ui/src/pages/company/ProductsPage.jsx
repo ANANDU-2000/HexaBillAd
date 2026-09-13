@@ -6,6 +6,7 @@ import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { TabNavigation, FilterPanel, ModernTable } from '../../components/ui'
+import { MobileFilterSheet, ListSkeleton } from '../../components/mobile'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -42,6 +43,8 @@ const ProductsPage = () => {
     const cat = searchParams.get('category')
     return cat ? { categoryId: cat } : {}
   })
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const activeFilterCount = Object.values(activeFilters).filter((v) => v !== '' && v != null).length
   const [categories, setCategories] = useState([])
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [productToDelete, setProductToDelete] = useState(null)
@@ -908,16 +911,80 @@ const ProductsPage = () => {
           </button>
         </div>
       )}
-      {/* Modern Search & Filters */}
-      <FilterPanel
-        searchPlaceholder="Search products by name, SKU..."
-        onSearchChange={(value) => {
-          setSearchTerm(value)
-          setCurrentPage(1)
-        }}
-        filters={[
+      {/* Modern Search & Filters — desktop/tablet */}
+      <div className="hidden md:block">
+        <FilterPanel
+          searchPlaceholder="Search products by name, SKU..."
+          onSearchChange={(value) => {
+            setSearchTerm(value)
+            setCurrentPage(1)
+          }}
+          filters={[
+            {
+              key: 'unitType', label: 'Qty Type', options: [
+                { value: 'KG', label: 'KG' },
+                { value: 'CRTN', label: 'CRTN' },
+                { value: 'CTN', label: 'CTN' },
+                { value: 'PIECE', label: 'PIECE' },
+                { value: 'PCS', label: 'PCS' },
+                { value: 'BOX', label: 'BOX' },
+                { value: 'PKG', label: 'PKG' },
+                { value: 'BAG', label: 'BAG' },
+                { value: 'PC', label: 'PC' },
+                { value: 'UNIT', label: 'UNIT' }
+              ]
+            },
+            {
+              key: 'categoryId', label: 'Category', options: [
+                { value: '', label: 'All Categories' },
+                ...categories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
+              ]
+            }
+          ]}
+          activeFilters={activeFilters}
+          onFilterChange={setActiveFilters}
+        />
+      </div>
+
+      {/* Mobile search + filter trigger (md:hidden) */}
+      <div className="md:hidden flex items-center gap-2 mb-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+            placeholder="Search products..."
+            aria-label="Search products"
+            className="w-full pl-10 pr-3 min-h-[44px] text-base border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg border border-neutral-300 bg-white text-neutral-700 font-medium text-sm relative"
+          aria-label="Open filters"
+        >
+          <Filter className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile filter sheet (md:hidden) */}
+      <MobileFilterSheet
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        title="Filter products"
+        searchTerm={searchTerm}
+        onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1) }}
+        fields={[
           {
-            key: 'unitType', label: 'Qty Type', options: [
+            key: 'unitType', label: 'Qty Type', placeholder: 'All types', options: [
               { value: 'KG', label: 'KG' },
               { value: 'CRTN', label: 'CRTN' },
               { value: 'CTN', label: 'CTN' },
@@ -931,14 +998,16 @@ const ProductsPage = () => {
             ]
           },
           {
-            key: 'categoryId', label: 'Category', options: [
+            key: 'categoryId', label: 'Category', placeholder: 'All categories', options: [
               { value: '', label: 'All Categories' },
               ...categories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
             ]
           }
         ]}
-        activeFilters={activeFilters}
-        onFilterChange={setActiveFilters}
+        values={activeFilters}
+        onChange={(key, value) => setActiveFilters((prev) => ({ ...prev, [key]: value }))}
+        onReset={() => { setActiveFilters({}); setSearchTerm(''); setCurrentPage(1) }}
+        onApply={() => setMobileFiltersOpen(false)}
       />
 
       {/* Modern Products Table */}
@@ -1170,7 +1239,11 @@ const ProductsPage = () => {
       />
 
       {/* Mobile product cards (md:hidden) */}
-      {!loading && products.length > 0 && (
+      {loading ? (
+        <div className="md:hidden">
+          <ListSkeleton count={4} />
+        </div>
+      ) : products.length > 0 && (
         <div className="md:hidden space-y-2.5">
           {products.map((product) => {
             const lowStock = (product.stockQty ?? 0) <= (product.reorderLevel || 0)

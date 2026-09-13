@@ -1,6 +1,6 @@
 /**
  * ListSkeleton — mobile list loading placeholder: a column of card-shaped
- * pulse blocks, matching the MobileCard look. Use instead of full-screen
+ * pulse blocks, matching the standard mobile card look. Use instead of full-screen
  * spinners while a data list is loading.
  */
 const ListSkeleton = ({ count = 5, className = '' }) => (
