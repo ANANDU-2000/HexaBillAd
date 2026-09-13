@@ -10,8 +10,6 @@ import {
   DollarSign,
   TrendingUp,
   Settings,
-  Menu,
-  X,
   LogOut,
   Bell,
   Search,
@@ -54,7 +52,6 @@ const Layout = () => {
   const { companyName } = useBranding()
   const location = useLocation()
   const navigate = useNavigate()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
@@ -352,18 +349,7 @@ const Layout = () => {
       {!isPosRoute && (
       <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center justify-between px-4 py-3">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setSidebarOpen(true)
-            }}
-            className="p-2 rounded-lg hover:bg-primary-800 active:bg-primary-700 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Open menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <Logo size="small" showText={false} className="flex-shrink-0" />
           <div className="flex-1 flex justify-center min-w-0">
             <span className="text-sm font-semibold truncate">{mobilePageTitle || companyName}</span>
           </div>
@@ -380,76 +366,6 @@ const Layout = () => {
           </button>
         </div>
       </div>
-      )}
-
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-[60] lg:hidden"
-          aria-modal="true"
-        >
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 transition-opacity"
-            onClick={() => setSidebarOpen(false)}
-            onTouchEnd={() => setSidebarOpen(false)}
-          />
-          {/* Sidebar panel */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] flex flex-col bg-primary-900 text-white border-r border-primary-800 transform transition-transform duration-300 ease-in-out">
-            <div className="flex h-14 items-center justify-between px-4 border-b border-primary-800 safe-area-top">
-              <span className="text-lg font-semibold text-white">Menu</span>
-              <button
-                type="button"
-                onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-lg hover:bg-primary-800 touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-hide">
-              {navigation.map((item) => {
-                const Icon = item.icon
-                const active = isActive(item.href)
-                return (
-                  <Link
-                    key={item.name}
-                    to={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3 text-base font-medium rounded-lg touch-manipulation min-h-[44px] ${active
-                      ? 'bg-primary-600 text-white'
-                      : 'text-primary-200 hover:bg-primary-800 hover:text-white'
-                      }`}
-                  >
-                    <Icon className="mr-4 h-5 w-5 flex-shrink-0" />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </nav>
-            <div className="border-t border-primary-800 p-4 space-y-2">
-              <Link
-                to="/profile"
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center px-4 py-3 text-base font-medium rounded-lg text-primary-200 hover:bg-primary-800 hover:text-white touch-manipulation min-h-[44px]"
-              >
-                <User className="mr-4 h-5 w-5 flex-shrink-0" />
-                My Profile
-              </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setSidebarOpen(false)
-                  logout()
-                }}
-                className="flex items-center w-full px-4 py-3 text-base text-error/90 hover:text-white hover:bg-error rounded-lg touch-manipulation min-h-[44px]"
-              >
-                <LogOut className="mr-4 h-5 w-5 flex-shrink-0" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Desktop sidebar - 240px per design system (Task 11) */}

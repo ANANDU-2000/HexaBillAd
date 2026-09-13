@@ -11,4 +11,5 @@
  */
 export { default as MobileSheet } from './MobileSheet'
 export { default as MobileFilterSheet } from './MobileFilterSheet'
+export { default as MoreMenuSheet } from './MoreMenuSheet'
 export { default as ListSkeleton } from './ListSkeleton'

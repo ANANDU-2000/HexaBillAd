@@ -55,7 +55,10 @@ const MobileSheet = ({
         aria-hidden="true"
       />
 
-      <div className="fixed inset-0 flex items-end lg:items-center lg:justify-center">
+      <div
+        className="fixed inset-0 flex items-end lg:items-center lg:justify-center"
+        onClick={closeOnOverlayClick ? (e) => { if (e.target === e.currentTarget) onClose() } : undefined}
+      >
         {/* Panel — mobile: bottom sheet; desktop: centered */}
         <div
           ref={panelRef}
