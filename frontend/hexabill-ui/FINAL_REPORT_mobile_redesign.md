@@ -20,21 +20,33 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 ## §19 Format — Browser-Based Responsive QA
 
 ### BROWSER TESTING
-**Playwright 1.63.0** via `playwright-core` (project deps untouched), Chrome + Edge channels, **286 screenshots** captured.
+**Playwright 1.63.0** via `playwright-core` (project deps untouched), Chrome + Edge channels.
 
-**Viewports tested:**
-- Chrome: 320×568, 360×800, 375×667, 390×844, 414×896, 430×932, 768×1024, 820×1180, 1024×768, 1280×720, 1920×1080
-- Edge: 320×568, 390×844, 768×1024, 1280×720, 1920×1080
+**Navigation redesign QA:** 194 assertions across 5 viewports (320, 390, 768, 1024, 1280) × 2 browsers — **PASS 194 / FAIL 0**.
 
-**Routes tested (12):** /dashboard, /pos, /products, /billing-history, /sales-ledger, /ledger, /customers, /expenses, /purchases, /reports, /settings, /more
+**Viewports tested (navigation QA):**
+- Mobile: 320×568, 390×844, 768×1024
+- Desktop: 1024×768, 1280×720
 
-**Overflow audit results:**
+**Navigation assertions verified:**
+- Tab count (5) and order (Home | History | POS | Ledger | More)
+- `aria-current="page"` on all active tabs including More button
+- More sheet opens/closes, groups render (MAIN/BUSINESS/OPERATIONS/INSIGHTS/SYSTEM/ACCOUNT)
+- Search filtering (query matches, empty state)
+- Backdrop click dismisses sheet
+- Route navigation from sheet items
+- Active route highlighting in sheet
+- Desktop: no bottom nav, sidebar links >10, /more page grouped, POS renders
+- Horizontal overflow check on all viewports
+
+**Previous overflow audit (286 screenshots):**
 - `hOverflow=0` on **every route at every viewport** — zero document-level horizontal overflow
 - `offCanvas=0` on all routes **except** `/customers` where `bg-white -mx-6` full-bleed band was detected (benign: `hOverflow=0`, band is intentionally wider than viewport and clipped by `overflow-x:hidden`)
 
 **Console error classification (both browsers):**
-- All "REAL-ERR" entries traced to rate limiting: `AxiosError`, `"Rate limit exceeded"`, `"Failed to fetch"` — caused by the QA sweep hammering the local API with rapid requests
-- **Zero genuine frontend errors** confirmed via calm pass (25s cooldown, throttled pacing)
+- Pre-existing backend 500 errors from BranchesRoutesContext (not caused by nav changes)
+- Rate-limit errors from rapid QA requests (not genuine frontend errors)
+- **Zero genuine frontend errors** from navigation redesign
 
 **Visual verification of key screenshots:**
 | Route | Viewport | Verdict | Notes |
@@ -98,10 +110,27 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 ## §19 Format — Navigation
 
 ### NAVIGATION
-**Decision: keep existing BottomNav + drawer** (not the spec's §3 nav layout).
-- BottomNav preserved: Home | History | Bill (+) | Ledger | Reports
-- Spec §3 proposed Dashboard/Sales/POS/Products/More — conflict documented, owner decision: keep current
-- Mobile header shows per-route titles via `PAGE_TITLES` map (Layout change)
+**Complete mobile navigation redesign delivered.** 5-tab bottom nav + grouped More sheet, replacing the old hamburger/drawer pattern. Desktop sidebar preserved unchanged.
+
+**Mobile (≤1023px):**
+- **BottomNav**: Home | History | POS (raised center FAB) | Ledger | More — 5 tabs, `aria-current="page"` on all tabs, 44px+ touch targets
+- **More button**: always visible (permanent anchor), highlights when any non-tab route is active, `aria-expanded` + `aria-current="page"` for accessibility
+- **MoreMenuSheet**: grouped bottom sheet (MAIN / BUSINESS / OPERATIONS / INSIGHTS / SYSTEM / ACCOUNT), searchable, active-route highlighting, Android back via `history.pushState` sentinel, Sign out in ACCOUNT group
+- **Mobile header**: slim (Logo + page title + profile icon), hamburger removed
+- **POS**: full-bleed (`pt-0`), bottom nav visible, raised center FAB
+
+**Desktop (≥1024px):**
+- Sidebar completely unchanged (Dashboard, Branches & Routes, Users, Products, Purchases, Suppliers, POS, Customer Ledger, Sales Ledger, Billing History, Quotations, Agreements, Salary Certificates, Logout)
+- `/more` page upgraded: renders same grouped menu from shared `moreMenuConfig.js` (was static links)
+- No `lg:*` classes modified — pixel-identical desktop sidebar preserved
+
+**Shared config:** `src/navigation/moreMenuConfig.js` — single source of truth for both mobile sheet and desktop `/more` page. `visibleMoreMenu(user)` filters by role (`isAdminOrOwner`, `isOwner`, `isSystemAdmin`, `canAccessPage`). `isMoreMenuActive()` handles exact + prefix matching.
+
+**Files changed:**
+- NEW: `src/navigation/moreMenuConfig.js`, `src/components/mobile/MoreMenuSheet.jsx`
+- MODIFIED: `src/components/BottomNav.jsx`, `src/components/Layout.jsx`, `src/components/mobile/MobileSheet.jsx`, `src/components/mobile/index.js`, `src/pages/company/MorePage.jsx`
+
+**QA:** PASS 194 / FAIL 0 across Chrome + Edge, 5 viewports (320, 390, 768, 1024, 1280). Tests verify: tab count/order, aria-current on all tabs, sheet open/close, search filtering, backdrop dismiss, active highlighting, route navigation, desktop sidebar visibility, desktop `/more` grouped rendering.
 
 ---
 
@@ -140,7 +169,7 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 - `ListSkeleton.jsx` — ✅ **ADOPTED** (wired into ProductsPage mobile loading)
 - `index.js` — barrel file (updated to export only adopted components)
 
-**Status**: `MobileActionSheet.jsx`, `PageHeader.jsx`, and `MobileCard.jsx` were removed in a prior session — no dead mobile UI infrastructure remains. The `mobile/` directory contains exactly 4 files: `MobileSheet.jsx`, `MobileFilterSheet.jsx`, `ListSkeleton.jsx`, `index.js`.
+**Status**: `MobileActionSheet.jsx`, `PageHeader.jsx`, and `MobileCard.jsx` were removed in a prior session — no dead mobile UI infrastructure remains. The `mobile/` directory contains 5 files: `MobileSheet.jsx`, `MobileFilterSheet.jsx`, `MoreMenuSheet.jsx`, `ListSkeleton.jsx`, `index.js`.
 
 ---
 
@@ -151,15 +180,18 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 **New files:**
 - `src/components/mobile/MobileSheet.jsx` — bottom sheet / centered dialog primitive
 - `src/components/mobile/MobileFilterSheet.jsx` — search + filter bottom sheet
+- `src/components/mobile/MoreMenuSheet.jsx` — grouped More menu bottom sheet (navigation redesign)
 - `src/components/mobile/ListSkeleton.jsx` — loading placeholder
 - `src/components/mobile/index.js` — barrel
+- `src/navigation/moreMenuConfig.js` — shared More menu config (navigation redesign)
 
 **Modified files:**
 - `src/App.jsx` — route-level code-splitting (React.lazy + Suspense)
-- `src/components/Layout.jsx` — mobile page titles, safe-area padding, POS full-bleed
+- `src/components/Layout.jsx` — mobile page titles, safe-area padding, POS full-bleed, hamburger removed, logo added to mobile header (navigation redesign)
 - `src/main.jsx` — Toaster repositioned for mobile header
 - `index.html` — viewport-fit=cover, theme-color, apple metas
 - `src/index.css` — safe-area utilities, reduced-motion block, tap-target class
+- `src/components/BottomNav.jsx` — 5-tab nav with POS FAB, More button with aria-current, MoreMenuSheet integration (navigation redesign)
 - `src/pages/company/ProductsPage.jsx` — mobile card list, MobileFilterSheet integration, **toolbar wrap fix** (flex-wrap below xl)
 - `src/pages/company/ReportsPage.jsx` — mobile summary cards for branch-P&L + outstanding bills
 - `src/pages/company/CustomerLedgerPage.jsx` — 44px header buttons + aria-labels
@@ -173,6 +205,8 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 - `src/components/modals/StockAdjustmentModal.jsx` — same
 - `src/components/modals/ConfirmDangerModal.jsx` — same
 - `src/components/modals/DeleteConfirmModal.jsx` — same
+- `src/components/mobile/MobileSheet.jsx` — fixed backdrop click forwarding (navigation redesign QA)
+- `src/pages/company/MorePage.jsx` — desktop /more renders grouped menu from shared config (navigation redesign)
 
 ---
 
@@ -180,23 +214,22 @@ Per-route chunks verified: `index` 559KB, recharts 552KB, ReportsPage 171KB, Pro
 
 ### REMAINING ISSUES
 
-1. **BottomNav label conflict** — spec §3 says Dashboard/Sales/POS/Products/More; actual code has Home/History/Bill/Ledger/Reports. Owner decided to keep current. Documented but unresolved against spec.
-2. **~13 ReportsPage tables** still use contained horizontal scroll on mobile (only the two worst offenders were card-ified).
-3. **Shared EmptyState/ErrorState/TableSkeleton** still unused — each page has its own inline empty/error state. Deliberately left to avoid churn.
-4. **POS header action buttons** remain 36px — intentional density for one-handed entry, only sub-44px cluster on a primary screen.
-5. **Superadmin pages** and print/templates surfaces not part of mobile pass.
-6. **COGS backend issue** (outside UI scope): computed from current CostPrice, not cost-at-sale.
+1. **~13 ReportsPage tables** still use contained horizontal scroll on mobile (only the two worst offenders were card-ified).
+2. **Shared EmptyState/ErrorState/TableSkeleton** still unused — each page has its own inline empty/error state. Deliberately left to avoid churn.
+3. **POS header action buttons** remain 36px — intentional density for one-handed entry, only sub-44px cluster on a primary screen.
+4. **Superadmin pages** and print/templates surfaces not part of mobile pass.
+5. **COGS backend issue** (outside UI scope): computed from current CostPrice, not cost-at-sale.
+6. **BranchesRoutesContext 500 errors** — pre-existing backend issue visible as "Failed to load routes" toast on mobile. Not caused by navigation changes.
 
 ---
 
 ## Production Readiness
 
 ### PRODUCTION READINESS
-**CONDITIONAL PASS** — the code is lint/build clean, browser QA passed (286 screenshots, Chrome+Edge, 11 viewports, 12 routes, zero overflow, zero genuine console errors), and design lock is maintained. No dead mobile UI infrastructure. Gate remaining:
+**PASS** — the code is lint/build clean, browser QA passed (194 assertions, 0 failures, Chrome+Edge, 5 viewports: 320/390/768/1024/1280, zero overflow, zero genuine console errors), and design lock is maintained. Navigation redesign complete with shared config, proper accessibility attributes, and no dead mobile UI infrastructure. Gate remaining:
 
-- [ ] Owner decision on BottomNav label set (keep current vs. match spec §3)
 - [ ] Full app-wide aria-label audit (currently targeted only)
 
 ---
 
-*Generated by Claude Code · Browser QA: Playwright 1.63.0 · 286 screenshots · Chrome + Edge · 11 viewports × 12 routes*
+*Generated by Claude Code · Browser QA: Playwright 1.63.0 · 194 assertions PASS / 0 FAIL · Chrome + Edge · 5 viewports (320, 390, 768, 1024, 1280) · Navigation redesign complete*
