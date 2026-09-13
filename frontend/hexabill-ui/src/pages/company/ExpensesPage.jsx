@@ -974,7 +974,7 @@ const ExpensesPage = () => {
               <p className="text-xs text-blue-700 mt-0.5">Totals and list are for your assigned branch(es).</p>
             )}
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => navigate('/vat-return')}

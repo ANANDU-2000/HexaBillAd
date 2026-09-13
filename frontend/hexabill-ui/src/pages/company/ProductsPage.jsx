@@ -650,7 +650,8 @@ const ProductsPage = () => {
             </div>
             <p className="text-xs sm:text-sm text-neutral-600 mt-0.5">Manage your inventory</p>
           </div>
-          <div className="flex flex-wrap sm:flex-nowrap gap-2 sm:space-x-3 w-full sm:w-auto">
+          {/* Toolbar: wrap between sm and xl so tablet widths don't clip buttons; single row at xl+ */}
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto xl:flex-nowrap">
             <button
               onClick={() => loadProducts()}
               className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
