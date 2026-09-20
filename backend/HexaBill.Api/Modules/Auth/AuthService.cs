@@ -11,6 +11,8 @@ using System.Security.Claims;
 using System.Text;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Shared.Hosting;
+using HexaBill.Api.Shared.Middleware;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
 
@@ -54,11 +56,13 @@ namespace HexaBill.Api.Modules.Auth
         private readonly AppDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor? _httpContextAccessor;
+        private readonly ITenantHostResolver _tenantHostResolver;
 
-        public AuthService(AppDbContext context, IConfiguration configuration, IHttpContextAccessor? httpContextAccessor = null)
+        public AuthService(AppDbContext context, IConfiguration configuration, ITenantHostResolver tenantHostResolver, IHttpContextAccessor? httpContextAccessor = null)
         {
             _context = context;
             _configuration = configuration;
+            _tenantHostResolver = tenantHostResolver;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -84,27 +88,41 @@ namespace HexaBill.Api.Modules.Auth
                 return null;
             }
 
+            if (!user.IsActive)
+                return null;
+
+            var httpContext = _httpContextAccessor?.HttpContext;
+            var hostResolution = httpContext?.Items[TenantHostMiddleware.ResolutionItemKey] as TenantHostResolution
+                ?? (httpContext is null ? TenantHostResolution.Unknown() : await _tenantHostResolver.ResolveAsync(httpContext));
+
+            if (hostResolution.Kind == TenantHostKind.Platform)
+            {
+                if (!user.IsPlatformAdmin || user.TenantId.HasValue)
+                    return null;
+            }
+            else if (hostResolution.Kind == TenantHostKind.Tenant)
+            {
+                if (user.IsPlatformAdmin || user.TenantId != hostResolution.TenantId)
+                    return null;
+            }
+            else
+            {
+                return null;
+            }
+
             // Block login if tenant is suspended (optional: load tenant; skip if tenant not found)
             try
             {
-                var tenantId = user.TenantId ?? 0;
-                if (tenantId > 0)
+                if (user.TenantId is int tenantId)
                 {
                     var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
-                    if (tenant != null && tenant.Status == TenantStatus.Suspended)
+                    if (tenant == null || tenant.Status is TenantStatus.Suspended or TenantStatus.Expired)
                     {
-                        return null; // or throw with "Account suspended" - frontend will show invalid credentials
+                        return null;
                     }
                 }
             }
             catch { /* non-fatal */ }
-
-            // Fix legacy users: if they have OwnerId but no TenantId, set TenantId = OwnerId so JWT and frontend get correct tenant
-            if (!user.TenantId.HasValue && user.OwnerId.HasValue && user.OwnerId.Value > 0)
-            {
-                user.TenantId = user.OwnerId.Value;
-                await _context.SaveChangesAsync();
-            }
 
             // Verify password - with better error handling (use trimmed password)
             try
@@ -152,9 +170,9 @@ namespace HexaBill.Api.Modules.Auth
             }
             catch { /* session recording is optional */ }
 
-            // Determine token expiry: 30 days if RememberMe, otherwise 8 hours.
-            var expiryHours = request.RememberMe ? 24 * 30 : 8;
-            var token = GenerateJwtToken(user, expiryHours);
+            // Session lifetime is fixed at 12 hours. RememberMe no longer extends security credentials.
+            const int expiryHours = 12;
+            var token = GenerateJwtToken(user, expiryHours, hostResolution);
 
             string companyName = "HexaBill";
             List<int> assignedBranchIds = new List<int>();
@@ -177,7 +195,7 @@ namespace HexaBill.Api.Modules.Auth
                 DashboardPermissions = user.DashboardPermissions,
                 PageAccess = user.PageAccess,
                 ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
-                TenantId = user.TenantId ?? 0,
+                TenantId = user.TenantId,
                 AssignedBranchIds = assignedBranchIds,
                 AssignedRouteIds = assignedRouteIds
             };
@@ -403,7 +421,7 @@ namespace HexaBill.Api.Modules.Auth
             return (branchIds, routeIds);
         }
 
-        private string GenerateJwtToken(User user, int? customExpiryHours = null)
+        private string GenerateJwtToken(User user, int? customExpiryHours, TenantHostResolution hostResolution)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(GetJwtSecretKey());
@@ -420,12 +438,20 @@ namespace HexaBill.Api.Modules.Auth
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, roleValue),
                 new Claim(ClaimTypes.Name, user.Name),
-                new Claim("owner_id", user.TenantId?.ToString() ?? "0"),
-                new Claim("tenant_id", user.TenantId?.ToString() ?? "0"),
-                new Claim("session_version", user.SessionVersion.ToString())
+                new Claim("sv", user.SessionVersion.ToString()),
+                new Claim("plat", user.IsPlatformAdmin ? "true" : "false")
             };
-            if (!user.TenantId.HasValue)
+            if (user.TenantId is int tenantId)
+            {
+                claims.Add(new Claim("tid", tenantId.ToString()));
+                claims.Add(new Claim("tenant_id", tenantId.ToString()));
+                if (!string.IsNullOrWhiteSpace(hostResolution.Slug))
+                    claims.Add(new Claim("tslug", hostResolution.Slug));
+            }
+            else if (user.IsPlatformAdmin)
+            {
                 claims.Add(new Claim(ClaimTypes.Role, "SystemAdmin"));
+            }
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
@@ -457,4 +483,3 @@ namespace HexaBill.Api.Modules.Auth
         }
     }
 }
-

@@ -50,18 +50,23 @@ namespace HexaBill.Api.Shared.Middleware
             try
             {
                 // Extract tenant_id from JWT claim - check multiple claim type formats (JWT serialization may vary)
-                var tenantIdClaim = context.User.FindFirst("tenant_id")?.Value
-                    ?? context.User.FindFirst("owner_id")?.Value
-                    ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("tenant_id", StringComparison.OrdinalIgnoreCase))?.Value
-                    ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("owner_id", StringComparison.OrdinalIgnoreCase))?.Value;
+                var isPlatformAdmin = string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase);
+                var tenantIdClaim = context.User.FindFirst("tid")?.Value
+                    ?? context.User.FindFirst("tenant_id")?.Value;
 
                 if (string.IsNullOrEmpty(tenantIdClaim))
                 {
-                    _logger.LogWarning("No tenant_id or owner_id claim found in token for user {UserId}",
+                    _logger.LogWarning("No tid claim found in token for user {UserId}",
                         context.User.FindFirst("id")?.Value);
                     
-                    // SystemAdmin may not have tenant_id - allow to proceed
-                    context.Items["TenantId"] = 0; // 0 = SystemAdmin
+                    if (!isPlatformAdmin)
+                    {
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsync("Invalid tenant context");
+                        return;
+                    }
+
+                    context.Items["TenantId"] = 0;
                     await _next(context);
                     return;
                 }

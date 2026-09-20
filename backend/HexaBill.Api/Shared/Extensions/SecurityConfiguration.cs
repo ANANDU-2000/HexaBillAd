@@ -63,19 +63,25 @@ namespace HexaBill.Api.Shared.Extensions
                         OnTokenValidated = async context =>
                         {
                             var principal = context.Principal;
-                            var sessionVersionClaim = principal?.FindFirst("session_version")?.Value;
-                            if (string.IsNullOrEmpty(sessionVersionClaim)) return; // Old tokens without claim allowed
-                            if (!int.TryParse(sessionVersionClaim, out var tokenVer)) return;
+                            var sessionVersionClaim = principal?.FindFirst("sv")?.Value;
+                            if (string.IsNullOrEmpty(sessionVersionClaim) || !int.TryParse(sessionVersionClaim, out var tokenVer))
+                            {
+                                context.Fail("Missing or invalid session version");
+                                return;
+                            }
 
                             var userIdClaim = principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                                 ?? principal?.FindFirst("id")?.Value
                                 ?? principal?.FindFirst("sub")?.Value;
                             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                            {
+                                context.Fail("Missing user identity");
                                 return;
+                            }
 
                             var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
                             var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-                            if (user != null && user.SessionVersion != tokenVer)
+                            if (user == null || !user.IsActive || user.SessionVersion != tokenVer)
                             {
                                 context.Response.Headers["X-Auth-Failure"] = "Session-Expired";
                                 context.Fail(new UnauthorizedAccessException("Session expired. Please login again."));
