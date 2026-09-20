@@ -19,6 +19,7 @@ using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Shared.Middleware;
+using HexaBill.Api.Shared.Hosting;
 using HexaBill.Api.Modules.Subscription;
 using HexaBill.Api.Shared.Security;
 using HexaBill.Api.Shared.Services;
@@ -280,6 +281,10 @@ builder.Services.AddSecurityServices(builder.Configuration);
 
 // MULTI-TENANT: Register CompanySettings from configuration
 builder.Services.Configure<CompanySettings>(builder.Configuration.GetSection("CompanySettings"));
+
+// Tenant host resolution foundation. Enforcement is added with the identity work item.
+builder.Services.Configure<HostingOptions>(builder.Configuration.GetSection("Hosting"));
+builder.Services.AddScoped<ITenantHostResolver, TenantHostResolver>();
 
 // Tenant Context Service (CRITICAL: Must be scoped)
 builder.Services.AddHttpContextAccessor(); // Required for TenantContextService
@@ -1200,6 +1205,9 @@ app.UseSlowQueryLogging();
 app.UseSecurityMiddleware(app.Environment);
 
 app.UseAuthentication();
+
+// Resolve the tenant or platform host before tenant and authorization middleware.
+app.UseMiddleware<TenantHostMiddleware>();
 
 // CRITICAL: Tenant Context Middleware - MUST be after authentication, before authorization
 app.UseTenantContext();
