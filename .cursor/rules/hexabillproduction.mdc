@@ -1,0 +1,213 @@
+---
+alwaysApply: true
+---
+
+
+---
+description: HexaBill production engineering rules
+alwaysApply: true
+---
+
+# HEXABILL ENGINEERING RULES
+
+HexaBill is a multi-tenant ERP SaaS.
+
+Architecture:
+
+Vercel
+→ React frontend
+
+Render
+→ ASP.NET Core API
+
+Render PostgreSQL
+→ shared multi-tenant database
+
+## CORE SECURITY
+
+TenantId is the canonical tenant isolation key.
+
+A tenant must NEVER access another tenant's:
+
+- customers
+- users
+- products
+- sales
+- payments
+- purchases
+- expenses
+- ledgers
+- receipts
+- PDFs
+- files
+- reports
+- backups
+- routes
+- locations
+- AI context
+
+Never trust tenant identity from:
+
+- request body
+- query string
+- localStorage
+- React state
+- X-Tenant-Id
+- Origin
+- Referer
+
+Normal tenant identity must be established server-side.
+
+Platform/SuperAdmin access must be explicitly authorized.
+
+Never infer platform access from Origin.
+
+## DATA SAFETY
+
+Never perform destructive database operations without explicit approval.
+
+Never mass-delete production data.
+
+Never remove OwnerId/TenantId columns without an approved migration plan.
+
+Never change financial history silently.
+
+Financial operations must preserve:
+
+invoice
+payment
+receipt
+ledger
+outstanding
+inventory
+
+consistency.
+
+## DEVELOPMENT WORKFLOW
+
+Before editing:
+
+1. inspect git status
+2. inspect current branch
+3. inspect relevant existing code
+4. identify the smallest safe change
+
+Do not rewrite unrelated code.
+
+Do not create unnecessary files.
+
+Do not create documentation unless requested.
+
+Do not generate duplicate services/components/utilities.
+
+Prefer modifying existing architecture over introducing parallel architecture.
+
+## TOKEN / CONTEXT CONTROL
+
+Do not read the entire repository unless necessary.
+
+Search first.
+
+Read only relevant files.
+
+Do not repeat full file contents in responses.
+
+Do not generate long explanations.
+
+Do not create README/MD/REPORT files unless explicitly requested.
+
+Use concise summaries.
+
+Avoid repeated re-analysis of unchanged code.
+
+Reuse existing tests and utilities.
+
+Prefer small focused changes.
+
+## IMPLEMENTATION
+
+For each task:
+
+PLAN internally
+→ IMPLEMENT
+→ TEST
+→ REVIEW DIFF
+→ FIX FAILURES
+→ FINAL VERIFY
+
+Do not stop after the first error if it can safely be fixed.
+
+Do not ask the user unnecessary questions.
+
+Do not deploy production unless explicitly instructed.
+
+## GIT
+
+Never modify main directly for risky work.
+
+Use a feature branch.
+
+Keep commits focused.
+
+Do not create dozens of tiny commits.
+
+Do not commit generated artifacts, logs, secrets, local databases, node_modules or temporary files.
+
+## INFRASTRUCTURE
+
+Production:
+
+Frontend:
+Vercel
+
+Backend:
+Render
+
+Database:
+Render PostgreSQL
+
+Never hardcode:
+
+API keys
+JWT secrets
+database passwords
+AI provider keys
+
+Use environment variables/secrets.
+
+## CURRENT PRODUCT PRIORITY
+
+1. Tenant isolation
+2. SuperAdmin/platform security
+3. Subdomains
+4. Authentication
+5. Roles/permissions
+6. Financial correctness
+7. Backup/recovery
+8. Day-end cash reconciliation
+9. Performance
+10. Mobile UX
+11. Driver/maps
+12. AI
+13. WhatsApp
+
+Do not add later features while a P0/P1 security or financial problem remains.
+
+## UI
+
+Mobile and desktop must both work.
+
+Do not redesign unrelated screens during backend work.
+
+## FINAL RESPONSE
+
+After completing a task report only:
+
+STATUS
+CHANGED
+TESTS
+BUILD
+RISKS
+NEXT TASK
+
+Keep the response concise.
