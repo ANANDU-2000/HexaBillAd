@@ -17,3 +17,9 @@ services:
         sync: false
       - key: JwtSettings__SecretKey
         generateValue: true
+      - key: Hosting__BaseDomain
+        value: hexabill.company
+      - key: Hosting__PlatformHost
+        value: admin.hexabill.company
+      - key: Hosting__EnforcementMode
+        value: LogOnly

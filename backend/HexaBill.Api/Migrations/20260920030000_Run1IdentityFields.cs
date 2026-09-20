@@ -1,9 +1,13 @@
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using HexaBill.Api.Data;
 
 #nullable disable
 
 namespace HexaBill.Api.Migrations;
 
+[DbContext(typeof(AppDbContext))]
+[Migration("20260920030000_Run1IdentityFields")]
 public partial class Run1IdentityFields : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

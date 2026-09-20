@@ -3076,6 +3076,16 @@ namespace HexaBill.Api.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("IsPlatformAdmin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -3093,7 +3103,9 @@ namespace HexaBill.Api.Migrations
 
                     b.HasIndex("TenantId");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", t => t.HasCheckConstraint(
+                        "CK_Users_PlatformTenantIdentity",
+                        "(\"IsPlatformAdmin\" = TRUE AND \"TenantId\" IS NULL) OR (\"IsPlatformAdmin\" = FALSE AND \"TenantId\" IS NOT NULL)"));
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.UserSession", b =>
