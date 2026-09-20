@@ -3,6 +3,29 @@ import { authAPI } from '../services'
 
 const AuthContext = createContext()
 
+const decodeJwtPayload = (token) => {
+  try {
+    const base64Url = token.split('.')[1]
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`).join('')))
+  } catch {
+    return null
+  }
+}
+
+const userFromToken = (token) => {
+  const decoded = decodeJwtPayload(token)
+  if (!decoded) return null
+  return {
+    id: Number(decoded.sub || decoded.UserId || 0),
+    role: decoded.role || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'Owner',
+    name: decoded.name || 'Support session',
+    tenantId: decoded.tid ? Number(decoded.tid) : null,
+    supportSession: decoded.support_session ? Number(decoded.support_session) : null,
+    supportReadOnly: decoded.support_readonly === 'true'
+  }
+}
+
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
@@ -25,8 +48,18 @@ export const AuthProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    const userData = localStorage.getItem('user')
+    let token = localStorage.getItem('token')
+    let userData = localStorage.getItem('user')
+    const supportToken = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.hash.replace(/^#/, '')).get('support')
+      : null
+    if (supportToken) {
+      token = supportToken
+      userData = JSON.stringify(userFromToken(supportToken))
+      localStorage.setItem('token', supportToken)
+      localStorage.setItem('user', userData)
+      window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
+    }
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
 
     if (token && userData) {
@@ -53,7 +86,10 @@ export const AuthProvider = ({ children }) => {
                 pageAccess: response.data.pageAccess ?? response.data.PageAccess ?? parsedUser.pageAccess,
                 companyName: parsedUser.companyName,
                 assignedBranchIds: response.data.assignedBranchIds || response.data.AssignedBranchIds || parsedUser.assignedBranchIds || [],
-                assignedRouteIds: response.data.assignedRouteIds || response.data.AssignedRouteIds || parsedUser.assignedRouteIds || []
+                assignedRouteIds: response.data.assignedRouteIds || response.data.AssignedRouteIds || parsedUser.assignedRouteIds || [],
+                mustChangePassword: response.data.mustChangePassword ?? parsedUser.mustChangePassword ?? false,
+                supportSession: parsedUser.supportSession ?? null,
+                supportReadOnly: parsedUser.supportReadOnly ?? false
               }
               setUser(updatedUser)
               localStorage.setItem('user', JSON.stringify(updatedUser))
@@ -96,7 +132,7 @@ export const AuthProvider = ({ children }) => {
               return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
             }).join(''))
             const decoded = JSON.parse(jsonPayload)
-            const tenantIdStr = decoded.tenant_id || decoded.owner_id
+            const tenantIdStr = decoded.tid || decoded.tenant_id
             tenantId = tenantIdStr ? parseInt(tenantIdStr, 10) : null
           } catch (e) {
             console.warn('Failed to decode tenantId from token:', e)
@@ -112,7 +148,8 @@ export const AuthProvider = ({ children }) => {
           pageAccess: response.data.pageAccess ?? response.data.PageAccess ?? null,
           tenantId: tenantId,
           assignedBranchIds: response.data.assignedBranchIds || [],
-          assignedRouteIds: response.data.assignedRouteIds || []
+          assignedRouteIds: response.data.assignedRouteIds || [],
+          mustChangePassword: response.data.mustChangePassword ?? false
         }
 
         localStorage.setItem('token', token)

@@ -24,7 +24,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         Task<PlatformDashboardDto> GetPlatformDashboardAsync();
         Task<PagedResponse<TenantDto>> GetTenantsAsync(int page = 1, int pageSize = 20, string? search = null, TenantStatus? status = null);
         Task<TenantDetailDto?> GetTenantByIdAsync(int tenantId);
-        Task<(TenantDto Tenant, string GeneratedPassword)> CreateTenantAsync(CreateTenantRequest request);
+        Task<(TenantDto Tenant, string GeneratedPassword, string InviteUrl)> CreateTenantAsync(CreateTenantRequest request, int createdByUserId);
         Task<TenantDto> UpdateTenantAsync(int tenantId, UpdateTenantRequest request);
         Task<bool> SuspendTenantAsync(int tenantId, string reason);
         Task<bool> ActivateTenantAsync(int tenantId);
@@ -959,11 +959,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
             };
         }
 
-        public async Task<(TenantDto Tenant, string GeneratedPassword)> CreateTenantAsync(CreateTenantRequest request)
+        public async Task<(TenantDto Tenant, string GeneratedPassword, string InviteUrl)> CreateTenantAsync(CreateTenantRequest request, int createdByUserId)
         {
             var subdomain = TenantSlugValidator.Normalize(request.Subdomain);
             if (subdomain is null)
                 throw new InvalidOperationException("A valid subdomain is required. Use lowercase letters, numbers, and hyphens only.");
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+                throw new InvalidOperationException("Owner email is required so the client can receive an invite.");
 
             if (await _context.Tenants.AnyAsync(t => t.Subdomain.ToLower() == subdomain))
                 throw new InvalidOperationException($"The subdomain '{subdomain}' is already in use.");
@@ -979,7 +982,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
 
             // Check for duplicate email if provided
-            string? normalizedEmail = null;
+            string normalizedEmail = request.Email.Trim().ToLowerInvariant();
             if (!string.IsNullOrWhiteSpace(request.Email))
             {
                 normalizedEmail = request.Email.Trim().ToLowerInvariant();
@@ -1047,34 +1050,38 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 _context.Tenants.Add(tenant);
                 await _context.SaveChangesAsync();
 
-                // Generate secure random password for owner user (security: never hardcode passwords)
-                string generatedPassword = GenerateDefaultPassword();
-                
-                // Create Owner User if email is provided
-                if (!string.IsNullOrEmpty(normalizedEmail))
+                // Create an owner with a random unusable password. The owner can
+                // authenticate only after completing the single-use invite.
+                var ownerUser = new User
                 {
-                    var passwordHash = BCrypt.Net.BCrypt.HashPassword(generatedPassword);
-                    var ownerUser = new User
-                    {
-                        Name = "Admin", // Default name
-                        Email = normalizedEmail,
-                        PasswordHash = passwordHash,
-                        Role = UserRole.Owner,
-                        Phone = request.Phone,
-                        TenantId = tenant.Id,
-                        OwnerId = tenant.Id, // So JWT and legacy code get correct tenant
-                        CreatedAt = DateTime.UtcNow
-                    };
+                    Name = string.IsNullOrWhiteSpace(request.OwnerName) ? "Owner" : request.OwnerName.Trim(),
+                    Email = normalizedEmail,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword(Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))),
+                    Role = UserRole.Owner,
+                    Phone = request.Phone,
+                    TenantId = tenant.Id,
+                    OwnerId = tenant.Id,
+                    MustChangePassword = true,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-                    _context.Users.Add(ownerUser);
-                    await _context.SaveChangesAsync();
-                }
+                _context.Users.Add(ownerUser);
+                await _context.SaveChangesAsync();
 
-                // Return empty password if no email (no user created)
-                if (string.IsNullOrEmpty(normalizedEmail))
+                var inviteToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+                    .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+                var inviteHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(inviteToken)));
+                _context.TenantInvites.Add(new TenantInvite
                 {
-                    generatedPassword = string.Empty;
-                }
+                    TenantId = tenant.Id,
+                    UserId = ownerUser.Id,
+                    TokenHash = inviteHash,
+                    HostSubdomain = tenant.Subdomain,
+                    CreatedByUserId = createdByUserId,
+                    CreatedAt = DateTime.UtcNow,
+                    ExpiresAt = DateTime.UtcNow.AddHours(48)
+                });
+                await _context.SaveChangesAsync();
 
                 // Create Default Subscription
                 // Get default plan (Basic plan - ID 1, or create if doesn't exist)
@@ -1144,7 +1151,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     VatNumber = tenant.VatNumber
                 };
 
-                    return (tenantDto, generatedPassword);
+                    var inviteUrl = $"{BuildLoginUrl(tenant.Subdomain)}?invite={Uri.EscapeDataString(inviteToken)}";
+                    return (tenantDto, string.Empty, inviteUrl);
                 }
                 catch (Exception)
                 {
@@ -2225,6 +2233,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
     public class CreateTenantRequest
     {
         public string Name { get; set; } = string.Empty;
+        public string? OwnerName { get; set; }
         public string Subdomain { get; set; } = string.Empty;
         public string? CompanyNameEn { get; set; }
         public string? CompanyNameAr { get; set; }

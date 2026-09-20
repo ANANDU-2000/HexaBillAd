@@ -39,13 +39,6 @@ export const getTenantIdFromToken = (token) => {
     return isNaN(parsed) ? null : parsed
   }
   
-  // Fallback to owner_id claim (legacy)
-  const ownerId = decoded.owner_id || decoded.ownerId
-  if (ownerId !== undefined) {
-    const parsed = parseInt(ownerId, 10)
-    return isNaN(parsed) ? null : parsed
-  }
-  
   return null
 }
 

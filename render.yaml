@@ -21,5 +21,7 @@ services:
         value: hexabill.company
       - key: Hosting__PlatformHost
         value: admin.hexabill.company
+      - key: Hosting__ApiHost
+        value: api.hexabill.company
       - key: Hosting__EnforcementMode
-        value: Enforce
+        value: LogOnly

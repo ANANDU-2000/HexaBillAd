@@ -8,10 +8,16 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Modules.Auth;
 using HexaBill.Api.Models;
+using HexaBill.Api.Data;
 using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Shared.Security;
+using HexaBill.Api.Shared.Middleware;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.Auth
 {
@@ -23,13 +29,53 @@ namespace HexaBill.Api.Modules.Auth
         private readonly ILoginLockoutService _lockout;
         private readonly IFileUploadService _fileUploadService;
         private readonly ILogger<AuthController> _logger;
+        private readonly AppDbContext _context;
+        private readonly HostingOptions _hosting;
 
-        public AuthController(IAuthService authService, ILoginLockoutService lockout, IFileUploadService fileUploadService, ILogger<AuthController> logger)
+        public AuthController(IAuthService authService, ILoginLockoutService lockout, IFileUploadService fileUploadService, ILogger<AuthController> logger, AppDbContext context, IOptions<HostingOptions> hosting)
         {
             _authService = authService;
             _lockout = lockout;
             _fileUploadService = fileUploadService;
             _logger = logger;
+            _context = context;
+            _hosting = hosting.Value;
+        }
+
+        [HttpPost("invite/accept")]
+        [AllowAnonymous]
+        public async Task<ActionResult<ApiResponse<object>>> AcceptInvite([FromBody] AcceptInviteRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Invite token and a password of at least 8 characters are required." });
+
+            var resolution = HttpContext.Items[TenantHostMiddleware.ResolutionItemKey] as TenantHostResolution;
+            if (resolution?.Kind != TenantHostKind.Tenant || !resolution.TenantId.HasValue)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Invite links must be opened on the tenant address." });
+
+            var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(request.Token.Trim())));
+            var invite = await _context.TenantInvites.FirstOrDefaultAsync(i =>
+                i.TokenHash == tokenHash && i.HostSubdomain == resolution.Slug &&
+                i.UsedAt == null && i.RevokedAt == null && i.ExpiresAt > DateTime.UtcNow);
+            if (invite == null)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Invite is invalid, expired, already used, or belongs to another address." });
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == invite.UserId && u.TenantId == resolution.TenantId && u.IsActive);
+            if (user == null)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Invite owner is no longer active." });
+
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword.Trim());
+            user.MustChangePassword = false;
+            user.SessionVersion++;
+            invite.UsedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Password set. You can now sign in on your tenant address.",
+                Data = new { loginUrl = $"https://{resolution.Slug}.{_hosting.BaseDomain}/login" }
+            });
         }
 
         [HttpPost("login")]
@@ -126,6 +172,10 @@ namespace HexaBill.Api.Modules.Auth
         [AllowAnonymous]
         public async Task<ActionResult<ApiResponse<SignupResponse>>> Signup([FromBody] SignupRequest request)
         {
+            var signupEnabled = HttpContext.RequestServices.GetRequiredService<IConfiguration>().GetValue("TenantSignup:Enabled", false);
+            if (!signupEnabled)
+                return NotFound(new ApiResponse<SignupResponse> { Success = false, Message = "Public signup is disabled. Contact HexaBill support." });
+
             try
             {
                 var signupService = HttpContext.RequestServices.GetRequiredService<ISignupService>();
@@ -543,5 +593,10 @@ namespace HexaBill.Api.Modules.Auth
         public string CurrentPassword { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
     }
-}
 
+    public class AcceptInviteRequest
+    {
+        public string Token { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+    }
+}

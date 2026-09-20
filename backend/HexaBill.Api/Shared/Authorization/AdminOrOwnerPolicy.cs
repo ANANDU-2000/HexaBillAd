@@ -23,11 +23,7 @@ namespace HexaBill.Api.Shared.Authorization
                 return Task.CompletedTask;
             }
 
-            // SystemAdmin: tenant_id=0 or owner_id=0
-            var tenantClaim = context.User.FindFirst("tenant_id")?.Value
-                ?? context.User.FindFirst("owner_id")?.Value
-                ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("tenant_id", StringComparison.OrdinalIgnoreCase))?.Value;
-            if (tenantClaim != null && int.TryParse(tenantClaim, out var tid) && tid == 0)
+            if (string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
             {
                 context.Succeed(requirement);
                 return Task.CompletedTask;
@@ -64,8 +60,7 @@ namespace HexaBill.Api.Shared.Authorization
             if (context.User?.Identity?.IsAuthenticated != true)
                 return Task.CompletedTask;
 
-            var tenantClaim = context.User.FindFirst("tenant_id")?.Value ?? context.User.FindFirst("owner_id")?.Value;
-            if (tenantClaim != null && int.TryParse(tenantClaim, out var tid) && tid == 0)
+            if (string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
             {
                 context.Succeed(requirement);
                 return Task.CompletedTask;

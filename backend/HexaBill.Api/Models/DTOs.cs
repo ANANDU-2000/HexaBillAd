@@ -32,6 +32,7 @@ namespace HexaBill.Api.Models
         public DateTime ExpiresAt { get; set; }
         /// <summary>Tenant ID (0 = Super Admin, >0 = tenant user). Used by frontend for access control.</summary>
         public int? TenantId { get; set; }
+        public bool MustChangePassword { get; set; }
         public List<int> AssignedBranchIds { get; set; } = new();
         public List<int> AssignedRouteIds { get; set; } = new();
     }

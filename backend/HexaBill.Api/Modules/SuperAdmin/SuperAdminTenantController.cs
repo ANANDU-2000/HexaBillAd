@@ -393,8 +393,20 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         Message = "Tenant subdomain is required"
                     });
                 }
+                if (string.IsNullOrWhiteSpace(request.Email))
+                {
+                    return BadRequest(new ApiResponse<CreateTenantResponseDto>
+                    {
+                        Success = false,
+                        Message = "Owner email is required for the invite flow"
+                    });
+                }
 
-                var (tenant, generatedPassword) = await _tenantService.CreateTenantAsync(request);
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out var createdByUserId))
+                    return Unauthorized(new ApiResponse<CreateTenantResponseDto> { Success = false, Message = "Invalid platform session" });
+
+                var (tenant, generatedPassword, inviteUrl) = await _tenantService.CreateTenantAsync(request, createdByUserId);
                 await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Subdomain: {tenant.Subdomain}, Email: {tenant.Email ?? request.Email ?? "N/A"}");
 
                 var clientAppLink = tenant.LoginUrl;
@@ -407,16 +419,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     {
                         ClientAppLink = clientAppLink,
                         LoginUrl = tenant.LoginUrl,
+                        InviteUrl = inviteUrl,
                         TenantId = tenant.Id,
                         Email = clientEmail,
-                        Password = generatedPassword // Randomly generated password - shown once, never stored
+                        Password = generatedPassword
                     }
                 };
 
                 return CreatedAtAction(nameof(GetTenant), new { id = tenant.Id }, new ApiResponse<CreateTenantResponseDto>
                 {
                     Success = true,
-                    Message = "Tenant created successfully. Give the client the link, email, and password below.",
+                    Message = "Tenant created successfully. Give the client the tenant login and single-use invite link.",
                     Data = response
                 });
             }
@@ -1155,6 +1168,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         public string ClientAppLink { get; set; } = string.Empty;
         public string LoginUrl { get; set; } = string.Empty;
+        public string InviteUrl { get; set; } = string.Empty;
         public int TenantId { get; set; }
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;

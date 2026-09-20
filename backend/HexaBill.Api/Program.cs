@@ -1222,6 +1222,9 @@ app.UseMiddleware<TenantHostMiddleware>();
 // CRITICAL: Tenant Context Middleware - MUST be after authentication, before authorization
 app.UseTenantContext();
 
+// Server-issued Super Admin support sessions are short-lived and read-only.
+app.UseMiddleware<SupportSessionMiddleware>();
+
 // Tenant Activity - Record API calls per tenant for SuperAdmin Live Activity (must be after TenantContext)
 app.UseTenantActivity();
 
@@ -1258,9 +1261,24 @@ app.MapGet("/api/cors-check", (HttpContext context) =>
     };
 }).AllowAnonymous();
 
-// Health check endpoints for Render and frontend (must return quickly)
-// NOTE: /api/health is handled by DiagnosticsController.Health - removed duplicate to prevent ambiguous route
-app.MapGet("/health", () => Results.Ok(new { status = "ok", timestamp = DateTime.UtcNow })).AllowAnonymous();
+// Health check endpoints for Render and frontend. Report unhealthy when the API
+// cannot reach its database so Render does not route traffic to a broken instance.
+app.MapGet("/health", async () =>
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var connected = await db.Database.CanConnectAsync();
+        return connected
+            ? Results.Ok(new { status = "ok", database = "Connected", timestamp = DateTime.UtcNow })
+            : Results.Json(new { status = "Unhealthy", database = "Disconnected", timestamp = DateTime.UtcNow }, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message, timestamp = DateTime.UtcNow }, statusCode: 503);
+    }
+}).AllowAnonymous();
 
 // PROD-1: Readiness check with DB (for k8s/Render advanced checks)
 app.MapGet("/health/ready", async (HttpContext ctx) =>

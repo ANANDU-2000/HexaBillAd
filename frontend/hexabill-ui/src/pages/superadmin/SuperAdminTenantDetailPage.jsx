@@ -288,13 +288,20 @@ const SuperAdminTenantDetailPage = () => {
   const handleEnterWorkspace = async () => {
     if (!tenant) return
     try {
-      await superAdminAPI.impersonateEnter(tenant.id)
-    } catch (_) { /* Audit logging failure should not block */ }
-    if (!tenant.loginUrl) {
-      toast.error('This tenant has no login URL yet.')
+      const reason = window.prompt('Reason for read-only support access:')
+      if (!reason?.trim()) return
+      const response = await superAdminAPI.startSupportSession(tenant.id, reason.trim())
+      const token = response?.data?.token
+      if (!token) throw new Error('Support token was not returned')
+      if (!tenant.loginUrl) {
+        toast.error('This tenant has no login URL yet.')
+        return
+      }
+      window.open(`${tenant.loginUrl}#support=${encodeURIComponent(token)}`, '_blank', 'noopener,noreferrer')
+      toast.success('Read-only support session opened for 30 minutes')
       return
-    }
-    window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
+    } catch (_) { /* Audit logging failure should not block */ }
+    toast.error('Unable to start support session')
   }
 
   const handleExportData = async () => {
@@ -1399,9 +1406,13 @@ const SuperAdminTenantDetailPage = () => {
                   key={report.path}
                   onClick={async () => {
                     try {
-                      await superAdminAPI.impersonateEnter(tenant.id)
+                      const reason = window.prompt('Reason for read-only support access:')
+                      if (!reason?.trim()) return
+                      const support = await superAdminAPI.startSupportSession(tenant.id, reason.trim())
+                      const token = support?.data?.token
+                      if (!token || !tenant.loginUrl) throw new Error('Support session could not be started')
+                      window.open(`${tenant.loginUrl}#support=${encodeURIComponent(token)}`, '_blank', 'noopener,noreferrer')
                     } catch (_) { /* audit failure should not block */ }
-                    if (tenant.loginUrl) window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
                   }}
                   className={`flex items-center p-4 rounded-xl border border-transparent hover:border-blue-300 transition-all duration-200 group ${report.color}`}
                 >

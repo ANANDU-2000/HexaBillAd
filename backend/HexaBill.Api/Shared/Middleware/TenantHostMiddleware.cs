@@ -2,6 +2,7 @@ namespace HexaBill.Api.Shared.Middleware;
 
 using HexaBill.Api.Shared.Hosting;
 using HexaBill.Api.Models;
+using HexaBill.Api.Data;
 using Microsoft.Extensions.Options;
 
 public sealed class TenantHostMiddleware
@@ -25,6 +26,16 @@ public sealed class TenantHostMiddleware
         var resolution = await _resolver.ResolveAsync(context, context.RequestAborted);
         context.Items[ResolutionItemKey] = resolution;
 
+        // Establish the database query scope from the verified host before the
+        // authentication service queries Users. Client headers are never used.
+        var dbContext = context.RequestServices.GetRequiredService<AppDbContext>();
+        if (resolution.Kind == TenantHostKind.Platform)
+            dbContext.SetRequestTenantScope(null, isPlatformScope: true);
+        else if (resolution.Kind == TenantHostKind.Tenant && resolution.TenantId.HasValue)
+            dbContext.SetRequestTenantScope(resolution.TenantId.Value, isPlatformScope: false);
+        else
+            dbContext.SetRequestTenantScope(null, isPlatformScope: false);
+
         if (resolution.HeaderMismatch)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -43,7 +54,8 @@ public sealed class TenantHostMiddleware
                 ? isPlatformToken
                 : resolution.Kind == TenantHostKind.Tenant && !isPlatformToken && hasMatchingTenant;
 
-            if (!validHost && !string.Equals(_options.EnforcementMode, "Off", StringComparison.OrdinalIgnoreCase))
+            var hardInvalidHost = resolution.Kind is TenantHostKind.Unknown or TenantHostKind.Marketing;
+            if (!validHost && (hardInvalidHost || !string.Equals(_options.EnforcementMode, "Off", StringComparison.OrdinalIgnoreCase)))
             {
                 _logger.LogWarning("Tenant host mismatch for user {UserId}: host kind {HostKind}, host tenant {HostTenantId}, token tenant {TokenTenantId}, mode {Mode}",
                     context.User.FindFirst("sub")?.Value, resolution.Kind, resolution.TenantId, tidClaim, _options.EnforcementMode);

@@ -33,6 +33,9 @@ namespace HexaBill.Api.Models
 
         /// <summary>Inactive users cannot authenticate or use existing sessions.</summary>
         public bool IsActive { get; set; } = true;
+
+        /// <summary>Newly invited owners must set a permanent password before using the workspace.</summary>
+        public bool MustChangePassword { get; set; }
         
         [MaxLength(20)]
         public string? Phone { get; set; }

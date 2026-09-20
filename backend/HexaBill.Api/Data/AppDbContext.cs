@@ -6,13 +6,60 @@ Date: 2024
 using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using HexaBill.Api.Models;
+using System.Linq.Expressions;
 
 namespace HexaBill.Api.Data
 {
     public class AppDbContext : DbContext
     {
+        /// <summary>
+        /// Request scope used by global tenant filters. It is set by host resolution
+        /// before authentication queries run and may never be populated from client input.
+        /// </summary>
+        public int? RequestTenantId { get; private set; }
+        public bool RequestIsPlatformScope { get; private set; }
+        public bool RequestScopeEstablished { get; private set; }
+
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
+        }
+
+        public void SetRequestTenantScope(int? tenantId, bool isPlatformScope)
+        {
+            RequestTenantId = tenantId;
+            RequestIsPlatformScope = isPlatformScope;
+            RequestScopeEstablished = true;
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            ValidateTenantWrites();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            ValidateTenantWrites();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void ValidateTenantWrites()
+        {
+            if (!RequestScopeEstablished || RequestIsPlatformScope || !RequestTenantId.HasValue)
+                return;
+
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                var property = entry.Metadata.FindProperty("TenantId");
+                if (property == null || entry.State == EntityState.Unchanged || entry.State == EntityState.Detached)
+                    continue;
+
+                var value = entry.Property("TenantId").CurrentValue;
+                if (value is int tenantId && tenantId != RequestTenantId.Value)
+                    throw new UnauthorizedAccessException("Tenant write rejected: entity tenant does not match the verified request host.");
+                if (value is null && entry.State == EntityState.Added)
+                    throw new UnauthorizedAccessException("Tenant write rejected: tenant-owned entity is missing TenantId.");
+            }
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -29,6 +76,8 @@ namespace HexaBill.Api.Data
 
         public DbSet<Tenant> Tenants { get; set; }
         public DbSet<User> Users { get; set; }
+        public DbSet<TenantInvite> TenantInvites { get; set; }
+        public DbSet<SupportSession> SupportSessions { get; set; }
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
         public DbSet<Subscription> Subscriptions { get; set; }
         public DbSet<Product> Products { get; set; }
@@ -112,10 +161,11 @@ namespace HexaBill.Api.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-                entity.HasIndex(e => e.Email).IsUnique();
+                entity.HasIndex(e => new { e.TenantId, e.Email }).IsUnique();
                 entity.Property(e => e.Role).HasConversion<string>();
                 entity.Property(e => e.IsPlatformAdmin).IsRequired().HasDefaultValue(false);
                 entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+                entity.Property(e => e.MustChangePassword).IsRequired().HasDefaultValue(false);
                 entity.HasCheckConstraint(
                     "CK_Users_PlatformTenantIdentity",
                     "(\"IsPlatformAdmin\" = TRUE AND \"TenantId\" IS NULL) OR (\"IsPlatformAdmin\" = FALSE AND \"TenantId\" IS NOT NULL)");
@@ -965,6 +1015,56 @@ namespace HexaBill.Api.Data
                     .HasFilter("\"IsDeleted\" = false");
                 entity.HasIndex(e => e.TenantId);
             });
+
+            modelBuilder.Entity<TenantInvite>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(128);
+                entity.Property(e => e.HostSubdomain).IsRequired().HasMaxLength(30);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => new { e.TenantId, e.UserId, e.ExpiresAt });
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SupportSession>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+                entity.HasIndex(e => new { e.TenantId, e.PlatformUserId, e.ExpiresAt });
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<User>().WithMany().HasForeignKey(e => e.PlatformUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // Defense-in-depth: every entity that exposes TenantId is automatically
+            // restricted to the verified request tenant. Platform scope is only set
+            // by host middleware for an authenticated platform host; a missing scope
+            // returns no tenant rows instead of accidentally returning all tenants.
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                var tenantProperty = entityType.FindProperty("TenantId");
+                if (tenantProperty == null || (tenantProperty.ClrType != typeof(int) && tenantProperty.ClrType != typeof(int?)))
+                    continue;
+
+                var parameter = Expression.Parameter(entityType.ClrType, "entity");
+                Expression tenantValue = Expression.Property(parameter, "TenantId");
+                if (tenantValue.Type == typeof(int))
+                    tenantValue = Expression.Convert(tenantValue, typeof(int?));
+
+                var context = Expression.Constant(this);
+                var requestTenant = Expression.Property(context, nameof(RequestTenantId));
+                var platformScope = Expression.Property(context, nameof(RequestIsPlatformScope));
+                var tenantMatch = Expression.Equal(tenantValue, requestTenant);
+                // A platform request is intentionally handled by explicit platform
+                // services; regular tenant requests always require a tenant match.
+                var body = Expression.OrElse(
+                    platformScope,
+                    Expression.AndAlso(
+                        Expression.NotEqual(requestTenant, Expression.Constant(null, typeof(int?))),
+                        tenantMatch));
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(Expression.Lambda(body, parameter));
+            }
 
             // Seed data
             // DISABLED: Seed data moved to Program.cs startup to avoid PostgreSQL migration issues

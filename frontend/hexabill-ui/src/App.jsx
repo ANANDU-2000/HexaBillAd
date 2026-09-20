@@ -208,6 +208,11 @@ function App() {
     <ErrorBoundary>
       <MaintenanceOverlay />
       <ConnectionStatus />
+      {user?.supportReadOnly && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-amber-600 text-white text-center text-sm font-medium py-2 shadow-md">
+          Read-only Super Admin support session. Changes are disabled and this session expires automatically.
+        </div>
+      )}
       <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<Navigate to={getRootPath()} replace />} />

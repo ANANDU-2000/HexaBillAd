@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -9,15 +9,42 @@ import { LoadingButton } from '../components/Loading'
 import { showToast } from '../utils/toast'
 import Logo from '../components/Logo'
 import { isSystemAdmin } from '../utils/superAdmin'
+import { authAPI } from '../services'
 
 const Login = ({ isSuperAdminLogin = false }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [invitePassword, setInvitePassword] = useState('')
+  const [inviteConfirm, setInviteConfirm] = useState('')
+  const [inviteError, setInviteError] = useState('')
   const { login, logout } = useAuth()
   const { companyName } = useBranding()
   const navigate = useNavigate()
+  const location = useLocation()
   const emailInputRef = useRef(null)
+  const inviteToken = new URLSearchParams(location.search).get('invite')
+
+  const acceptInvite = async (event) => {
+    event.preventDefault()
+    setInviteError('')
+    if (invitePassword.length < 8) return setInviteError('Password must be at least 8 characters.')
+    if (invitePassword !== inviteConfirm) return setInviteError('Passwords do not match.')
+    setLoading(true)
+    try {
+      const result = await authAPI.acceptInvite(inviteToken, invitePassword)
+      if (result?.success) {
+        showToast.success('Password set. Sign in with your owner email.')
+        navigate('/login', { replace: true })
+      } else {
+        setInviteError(result?.message || 'Invite could not be accepted.')
+      }
+    } catch (error) {
+      setInviteError(error.response?.data?.message || 'Invite could not be accepted.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const {
     register,
@@ -74,7 +101,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
             showToast.error('Use the Admin Portal to sign in as Super Admin, or sign in here with a company account (e.g. owner1@hexabill.com).')
           } else {
             showToast.success('Login successful!')
-            navigate('/dashboard')
+            navigate(result.data?.mustChangePassword ? '/profile?forcePassword=1' : '/dashboard')
           }
         }
 
@@ -114,6 +141,21 @@ const Login = ({ isSuperAdminLogin = false }) => {
   const isRtl = lang === 'ar'
   const dir = isRtl ? 'rtl' : 'ltr'
   const textAlign = isRtl ? 'text-right' : 'text-left'
+
+  if (inviteToken && !isSuperAdminLogin) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6" dir={dir} lang={lang}>
+        <form onSubmit={acceptInvite} className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 space-y-5">
+          <Logo size="large" showText={true} />
+          <div><h1 className="text-2xl font-bold text-neutral-900">Set your owner password</h1><p className="text-sm text-neutral-600 mt-2">This invite works only on your company address and can be used once.</p></div>
+          {inviteError && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{inviteError}</div>}
+          <Input label="New password" type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required minLength={8} />
+          <Input label="Confirm password" type="password" value={inviteConfirm} onChange={e => setInviteConfirm(e.target.value)} required minLength={8} />
+          <LoadingButton type="submit" loading={loading} className="w-full">Set password</LoadingButton>
+        </form>
+      </div>
+    )
+  }
 
   return (
     <div className="h-screen bg-neutral-50 flex overflow-hidden" dir={dir} lang={lang}>

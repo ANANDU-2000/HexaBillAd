@@ -4,6 +4,7 @@ public sealed class HostingOptions
 {
     public string BaseDomain { get; set; } = "hexabill.company";
     public string PlatformHost { get; set; } = "admin.hexabill.company";
+    public string ApiHost { get; set; } = "api.hexabill.company";
     public string EnforcementMode { get; set; } = "LogOnly";
 }
 

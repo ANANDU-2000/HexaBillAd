@@ -2080,6 +2080,21 @@ export const superAdminAPI = {
   impersonateExit: async (tenantId, tenantName) => {
     const response = await api.post('/superadmin/tenant/impersonate/exit', { tenantId, tenantName })
     return response.data
+  },
+
+  acceptInvite: async (token, newPassword) => {
+    const response = await api.post('/auth/invite/accept', { token, newPassword })
+    return response.data
+  },
+
+  startSupportSession: async (tenantId, reason) => {
+    const response = await api.post('/superadmin/support-sessions', { tenantId, reason })
+    return response.data
+  },
+
+  endSupportSession: async (sessionId) => {
+    const response = await api.delete(`/superadmin/support-sessions/${sessionId}`)
+    return response.data
   }
 }
 

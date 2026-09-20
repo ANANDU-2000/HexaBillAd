@@ -196,6 +196,7 @@ namespace HexaBill.Api.Modules.Auth
                 PageAccess = user.PageAccess,
                 ExpiresAt = DateTime.UtcNow.AddHours(expiryHours),
                 TenantId = user.TenantId,
+                MustChangePassword = user.MustChangePassword,
                 AssignedBranchIds = assignedBranchIds,
                 AssignedRouteIds = assignedRouteIds
             };
@@ -401,6 +402,8 @@ namespace HexaBill.Api.Modules.Auth
 
             // Hash and update new password
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = false;
+            user.SessionVersion++;
             await _context.SaveChangesAsync();
 
             return true;

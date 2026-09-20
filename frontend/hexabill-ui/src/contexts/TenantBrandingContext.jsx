@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { adminAPI } from '../services'
 import { clearAllCache } from '../services/api'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
+import { getTenantHost } from '../utils/tenantHost'
 import { useAuth } from '../hooks/useAuth'
 
 const BrandingContext = createContext()
@@ -52,6 +53,21 @@ export const BrandingProvider = ({ children }) => {
   const loadBranding = useCallback(async () => {
     // Skip API on login page to avoid ERR_CONNECTION_REFUSED flood when backend is down
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
+    if (path === '/login' && getTenantHost().mode === 'tenant') {
+      try {
+        const apiBase = getApiBaseUrlNoSuffix()
+        const response = await fetch(`${apiBase}/public/tenant-context`, { headers: { Accept: 'application/json' } })
+        const payload = await response.json()
+        const data = payload?.data
+        if (response.ok && data) {
+          setBranding(prev => ({ ...prev, companyName: data.tenantName || 'HexaBill', companyLogo: data.logoUrl || null, loading: false }))
+          document.title = data.tenantName || 'HexaBill'
+          return
+        }
+      } catch (_) { /* fallback to generic branding */ }
+      setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
+      return
+    }
     if (path === '/login' || path === '/Admin26') {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
       return

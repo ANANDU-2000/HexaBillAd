@@ -296,10 +296,15 @@ const SuperAdminDashboard = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (!window.confirm(`Impersonate ${t.tenantName || 'this tenant'}? You will see their dashboard and data.`)) return
+                        const reason = window.prompt(`Reason for read-only support access to ${t.tenantName || 'this tenant'}:`)
+                        if (!reason?.trim()) return
                         try {
-                          await superAdminAPI.impersonateEnter(t.tenantId)
-                          navigate('/dashboard')
+                          const support = await superAdminAPI.startSupportSession(t.tenantId, reason.trim())
+                          const token = support?.data?.token
+                          const tenant = (await superAdminAPI.getTenant(t.tenantId))?.data
+                          if (!token || !tenant?.loginUrl) throw new Error('Support session could not be started')
+                          window.open(`${tenant.loginUrl}#support=${encodeURIComponent(token)}`, '_blank', 'noopener,noreferrer')
+                          toast.success('Read-only support session opened for 30 minutes')
                         } catch (err) {
                           if (!err?._handledByInterceptor) toast.error(err?.response?.data?.message || 'Impersonation failed')
                         }

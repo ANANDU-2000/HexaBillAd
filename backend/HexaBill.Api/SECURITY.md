@@ -2,7 +2,7 @@
 
 ## Data isolation (multi-tenant)
 
-- **Tenant ID source:** Tenant scope is taken **only** from the validated JWT (`tenant_id` / `owner_id` claims). It is **never** taken from request body, query, or route for tenant-scoped data access.
+- **Tenant ID source:** Tenant scope is taken **only** from the verified request host and the server-issued JWT `tid` claim. It is **never** taken from request body, query, route, headers, browser storage, or legacy `owner_id` claims.
 - **Controllers:** Tenant-scoped controllers inherit `TenantScopedController` and use `CurrentTenantId` from the validated JWT and host context. Client-provided tenant headers are never used for tenant selection.
 - **SystemAdmin:** Only users with `TenantId = 0` (SystemAdmin) may:
   - Use explicit Super Admin tenant-management endpoints; tenant selection is by audited route/body IDs inside those endpoints.

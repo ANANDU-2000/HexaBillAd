@@ -42,24 +42,16 @@ namespace HexaBill.Api.Shared.Middleware
                 return;
             }
 
-            // Get current user's OwnerId/TenantId from claims
-            var ownerIdClaim = context.User.FindFirst("owner_id")?.Value 
-                ?? context.User.FindFirst("tenant_id")?.Value
-                ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("owner_id", StringComparison.OrdinalIgnoreCase))?.Value
-                ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("tenant_id", StringComparison.OrdinalIgnoreCase))?.Value;
-            int? currentOwnerId = null;
-            if (!string.IsNullOrEmpty(ownerIdClaim) && int.TryParse(ownerIdClaim, out int ownerId))
-            {
-                currentOwnerId = ownerId;
-            }
-            
-            // CRITICAL: Validate OwnerId/TenantId is set for non-SystemAdmin users (data isolation)
+            // Tenant scope comes only from the verified host and server-issued tid claim.
+            var tenantIdClaim = context.User.FindFirst("tid")?.Value
+                ?? context.User.FindFirst("tenant_id")?.Value;
+            var isSystemAdmin = string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase);
+
+            // CRITICAL: Validate tenant context is set for non-platform users.
             var userRole = context.User.FindFirst("role")?.Value ?? context.User.FindFirst(ClaimTypes.Role)?.Value ?? "";
-            var isSystemAdmin = string.Equals(userRole, "SystemAdmin", StringComparison.OrdinalIgnoreCase);
-            
-            if (!isSystemAdmin && currentOwnerId == null)
+            if (!isSystemAdmin && (string.IsNullOrWhiteSpace(tenantIdClaim) || !int.TryParse(tenantIdClaim, out var tenantId) || tenantId <= 0))
             {
-                _logger.LogWarning("User {UserId} (role {Role}) has no owner_id/tenant_id claim - blocking for data isolation", 
+                _logger.LogWarning("User {UserId} (role {Role}) has no valid tenant claim - blocking for data isolation",
                     context.User.FindFirst("user_id")?.Value ?? context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value, userRole);
                 context.Response.StatusCode = 403;
                 await context.Response.WriteAsJsonAsync(new

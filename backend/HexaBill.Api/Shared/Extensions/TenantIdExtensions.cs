@@ -30,11 +30,12 @@ namespace HexaBill.Api.Shared.Extensions
         /// <exception cref="UnauthorizedAccessException">If tenant_id is missing or invalid</exception>
         public static int GetTenantIdFromToken(this ClaimsPrincipal user)
         {
-            // Try tenant_id first (new), fallback to owner_id - support both short and full claim types (JWT mapping)
-            var tenantIdClaim = user.FindFirst("tenant_id")?.Value
-                ?? user.FindFirst("owner_id")?.Value
-                ?? user.Claims.FirstOrDefault(c => c.Type.EndsWith("tenant_id", StringComparison.OrdinalIgnoreCase))?.Value
-                ?? user.Claims.FirstOrDefault(c => c.Type.EndsWith("owner_id", StringComparison.OrdinalIgnoreCase))?.Value;
+            if (string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
+                return 0;
+
+            var tenantIdClaim = user.FindFirst("tid")?.Value
+                ?? user.FindFirst("tenant_id")?.Value
+                ?? user.Claims.FirstOrDefault(c => c.Type.EndsWith("tenant_id", StringComparison.OrdinalIgnoreCase))?.Value;
             
             if (tenantIdClaim == null)
             {
@@ -55,8 +56,11 @@ namespace HexaBill.Api.Shared.Extensions
         /// </summary>
         public static int? GetTenantIdOrNullForSystemAdmin(this ClaimsPrincipal user)
         {
-            var tenantIdClaim = user.FindFirst("tenant_id")?.Value
-                ?? user.FindFirst("owner_id")?.Value;
+            if (string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var tenantIdClaim = user.FindFirst("tid")?.Value
+                ?? user.FindFirst("tenant_id")?.Value;
             
             if (tenantIdClaim == null)
             {
@@ -77,8 +81,11 @@ namespace HexaBill.Api.Shared.Extensions
         /// </summary>
         public static bool IsSystemAdmin(this ClaimsPrincipal user)
         {
-            var tenantIdClaim = user.FindFirst("tenant_id")?.Value
-                ?? user.FindFirst("owner_id")?.Value;
+            if (string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            var tenantIdClaim = user.FindFirst("tid")?.Value
+                ?? user.FindFirst("tenant_id")?.Value;
             
             if (tenantIdClaim == null)
             {

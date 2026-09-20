@@ -25,6 +25,7 @@ public class VatReturnIntegrationTests
     {
         var options = CreateInMemoryOptions();
         var context = new AppDbContext(options);
+        context.SetRequestTenantScope(1, isPlatformScope: false);
         await context.Database.EnsureCreatedAsync();
 
         var tenantId = 1;
@@ -153,6 +154,7 @@ public class VatReturnIntegrationTests
     {
         var options = CreateInMemoryOptions();
         await using var context = new AppDbContext(options);
+        context.SetRequestTenantScope(1, isPlatformScope: false);
         await context.Database.EnsureCreatedAsync();
 
         var fromDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);

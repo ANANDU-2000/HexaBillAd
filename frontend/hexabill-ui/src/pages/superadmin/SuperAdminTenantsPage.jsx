@@ -1033,15 +1033,16 @@ const SuperAdminTenantsPage = () => {
               <p className="font-mono text-sm bg-gray-100 p-3 rounded border">{credentialsData?.email || '—'}</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">Temporary Password</label>
-              <p className="font-mono text-sm bg-gray-100 p-3 rounded border">{credentialsData?.password || '—'}</p>
+              <label className="block text-xs font-medium text-gray-500 uppercase mb-1">One-time Invite Link</label>
+              <p className="font-mono text-sm bg-gray-100 p-3 rounded border break-all">{credentialsData?.inviteUrl || '—'}</p>
+              <p className="text-xs text-gray-500 mt-1">The owner opens this link on the tenant address and sets a permanent password. It expires after 48 hours and can only be used once.</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
               onClick={() => {
-                const text = `Login URL: ${credentialsData?.clientAppLink || ''}\nEmail: ${credentialsData?.email || ''}\nPassword: ${credentialsData?.password || ''}`
+                const text = `Login URL: ${credentialsData?.clientAppLink || ''}\nOwner Email: ${credentialsData?.email || ''}\nInvite Link: ${credentialsData?.inviteUrl || ''}\n\nOpen the invite link, set your password, and sign in at your own address.`
                 navigator.clipboard.writeText(text).then(() => toast.success('Credentials copied to clipboard', { id: 'credentials-copy' })).catch(() => toast.error('Failed to copy to clipboard'))
               }}
               className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
@@ -1051,7 +1052,7 @@ const SuperAdminTenantsPage = () => {
             </button>
             <a
               href={`mailto:${credentialsData?.email || ''}?subject=${encodeURIComponent('Your HexaBill Company Login Credentials')}&body=${encodeURIComponent(
-                `Your HexaBill company account has been created.\n\nLogin URL: ${credentialsData?.clientAppLink || ''}\nEmail: ${credentialsData?.email || ''}\nPassword: ${credentialsData?.password || ''}\n\nPlease save these credentials securely.`
+                `Your HexaBill company account has been created.\n\nOpen this invite link, set your password, and sign in at your own address:\n${credentialsData?.inviteUrl || ''}\n\nTenant login URL: ${credentialsData?.clientAppLink || ''}\nOwner email: ${credentialsData?.email || ''}\n\nThis invite expires after 48 hours and can only be used once.`
               )}`}
               className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-medium no-underline"
             >

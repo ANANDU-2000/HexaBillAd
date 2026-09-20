@@ -52,8 +52,7 @@ namespace HexaBill.Api.Shared.Middleware
             // Bypass: Authenticated SystemAdmin
             if (context.User?.Identity?.IsAuthenticated == true)
             {
-                var tenantIdClaim = context.User.FindFirst("tenant_id")?.Value ?? context.User.FindFirst("owner_id")?.Value;
-                if (!string.IsNullOrEmpty(tenantIdClaim) && int.TryParse(tenantIdClaim, out int tid) && tid == 0)
+                if (string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
                 {
                     await _next(context);
                     return;
