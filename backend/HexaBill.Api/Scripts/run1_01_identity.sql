@@ -39,6 +39,16 @@ ALTER TABLE "Users"
     CHECK (("IsPlatformAdmin" = true AND "TenantId" IS NULL)
         OR ("IsPlatformAdmin" = false AND "TenantId" IS NOT NULL));
 
+-- Tenant subdomains are the only tenant-host authority.
+ALTER TABLE "Tenants"
+    ADD COLUMN IF NOT EXISTS "Subdomain" varchar(30);
+UPDATE "Tenants"
+SET "Subdomain" = 'tenant-' || "Id"
+WHERE "Subdomain" IS NULL OR btrim("Subdomain") = '';
+ALTER TABLE "Tenants" ALTER COLUMN "Subdomain" SET NOT NULL;
+DROP INDEX IF EXISTS "IX_Tenants_Subdomain";
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_Tenants_Subdomain" ON "Tenants" ("Subdomain");
+
 -- Rollback note:
 -- Restore the database backup, or drop the constraint and columns only after
 -- stopping the Run 1 application version and validating the prior schema.

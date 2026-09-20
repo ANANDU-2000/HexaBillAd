@@ -88,8 +88,8 @@ const getRequestKey = (config) => {
   const method = config.method != null && config.method !== '' ? String(config.method).toUpperCase() : 'GET'
   const url = config.url != null ? String(config.url) : ''
   const params = config.params || {}
-  const tenantId = config.headers?.['X-Tenant-Id'] ?? (typeof localStorage !== 'undefined' ? localStorage.getItem('selected_tenant_id') : null) ?? 'default'
-  return `${method}_${url}_${JSON.stringify(params)}_tenant:${tenantId}`
+  const host = typeof window !== 'undefined' ? window.location.hostname : 'server'
+  return `${method}_${url}_${JSON.stringify(params)}_host:${host}`
 }
 
 /** Human-readable message from non-standard API / ProblemDetails / HTML error bodies (avoids generic "An error occurred"). */
@@ -543,13 +543,6 @@ api.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {}
       config.headers.Authorization = `Bearer ${token}`
-    }
-
-    // MULTI-TENANT IMPERSONATION: Add impersonation header for Super Admin
-    const selectedTenantId = localStorage.getItem('selected_tenant_id')
-    if (selectedTenantId) {
-      config.headers = config.headers || {}
-      config.headers['X-Tenant-Id'] = selectedTenantId
     }
 
     // Add retry configuration (1 retry = 2 total attempts - reduces console spam when backend is failing)

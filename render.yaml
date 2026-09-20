@@ -14,7 +14,7 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: https://hexabill.company,https://www.hexabill.company,https://admin.hexabill.company
       - key: JwtSettings__SecretKey
         generateValue: true
       - key: Hosting__BaseDomain
@@ -22,4 +22,4 @@ services:
       - key: Hosting__PlatformHost
         value: admin.hexabill.company
       - key: Hosting__EnforcementMode
-        value: LogOnly
+        value: Enforce

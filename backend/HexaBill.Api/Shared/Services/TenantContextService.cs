@@ -48,15 +48,6 @@ namespace HexaBill.Api.Shared.Services
                 return tenantId == 0 ? null : tenantId;
             }
 
-            // Fallback: Try to get from JWT claim (for backward compatibility during migration)
-            var tenantIdClaim = httpContext.User?.FindFirst("tenant_id")?.Value 
-                ?? httpContext.User?.FindFirst("owner_id")?.Value; // Migration fallback
-
-            if (!string.IsNullOrEmpty(tenantIdClaim) && int.TryParse(tenantIdClaim, out int claimTenantId))
-            {
-                return claimTenantId == 0 ? null : claimTenantId;
-            }
-
             return null;
         }
 

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
+using HexaBill.Api.Shared.Hosting;
 using Npgsql;
 
 namespace HexaBill.Api.Modules.Auth
@@ -81,10 +82,12 @@ namespace HexaBill.Api.Modules.Auth
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                var subdomain = await CreateUniqueSubdomainAsync(request.CompanyName);
                 // Step 1: Create Tenant
                 var tenant = new Tenant
                 {
                     Name = request.CompanyName.Trim(),
+                    Subdomain = subdomain,
                     CompanyNameEn = request.CompanyName.Trim(),
                     Country = request.Country ?? "AE",
                     Currency = request.Currency ?? "AED",
@@ -294,9 +297,11 @@ namespace HexaBill.Api.Modules.Auth
             try
             {
                 var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+                var subdomain = await CreateUniqueSubdomainAsync(request.CompanyName);
                 var tenant = new Tenant
                 {
                     Name = request.CompanyName.Trim(),
+                    Subdomain = subdomain,
                     CompanyNameEn = request.CompanyName.Trim(),
                     Country = request.Country,
                     Currency = "AED",
@@ -336,6 +341,19 @@ namespace HexaBill.Api.Modules.Auth
                 await transaction.RollbackAsync();
                 throw;
             }
+        }
+
+        private async Task<string> CreateUniqueSubdomainAsync(string companyName)
+        {
+            var baseSlug = TenantSlugValidator.Suggest(companyName);
+            var candidate = baseSlug;
+            var suffix = 2;
+            while (await _context.Tenants.AnyAsync(t => t.Subdomain.ToLower() == candidate))
+            {
+                var suffixText = $"-{suffix++}";
+                candidate = baseSlug[..Math.Min(baseSlug.Length, 30 - suffixText.Length)] + suffixText;
+            }
+            return candidate;
         }
     }
 

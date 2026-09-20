@@ -1,11 +1,11 @@
 /**
  * Single source of truth for API base URL.
- * - Production (hostname !== localhost): never use localhost; use VITE_API_BASE_URL or default Render URL.
+ * - Production (hostname !== localhost): never use localhost; use VITE_API_BASE_URL or the canonical API host.
  * - Local (opened from localhost/127.0.0.1): use http://localhost:5000/api.
  * For production deploy: set VITE_API_BASE_URL in your build env (e.g. Vercel/Netlify) to your backend URL.
  */
 
-const PRODUCTION_API = 'https://hexabill.onrender.com/api'
+const PRODUCTION_API = 'https://api.hexabill.company/api'
 const LOCALHOST_API = 'http://localhost:5000/api'
 
 function getApiBaseUrl() {

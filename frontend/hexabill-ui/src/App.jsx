@@ -4,6 +4,7 @@ import { useAuth } from './hooks/useAuth'
 import { isSystemAdmin } from './utils/superAdmin'
 import { canAccessPage, isOwner } from './utils/roles'
 import { getApiBaseUrlNoSuffix } from './services/apiConfig'
+import { getTenantHost } from './utils/tenantHost'
 import Login from './pages/Login'
 import SignupPage from './pages/SignupPage'
 import Layout from './components/Layout'
@@ -77,6 +78,8 @@ const RouteFallback = () => (
 function App() {
   const { user, loading, impersonatedTenantId } = useAuth()
   const location = useLocation()
+  const tenantHost = getTenantHost()
+  const isLocalHost = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname)
 
   // BUG #3 FIX: Keep-alive ping every 9 minutes to prevent Render cold starts
   // Render Starter plan sleeps after 15 minutes, so ping at 9 minutes keeps it awake
@@ -117,6 +120,15 @@ function App() {
   const publicRoutes = ['/signup', '/login', '/Admin26']
   const isPublicRoute = publicRoutes.includes(location.pathname)
 
+  if (isPublicRoute && !isLocalHost) {
+    if (location.pathname === '/Admin26' && tenantHost.mode === 'tenant') {
+      return <Navigate to="/login" replace />
+    }
+    if (location.pathname === '/login' && tenantHost.mode === 'platform') {
+      return <Navigate to="/Admin26" replace />
+    }
+  }
+
   // Show signup/login pages for public routes
   if (isPublicRoute) {
     return (
@@ -141,6 +153,13 @@ function App() {
 
   // CRITICAL: Check if user is SuperAdmin
   const userIsSystemAdmin = isSystemAdmin(user)
+
+  if (!isLocalHost && tenantHost.mode === 'platform' && !userIsSystemAdmin) {
+    return <Navigate to="/login" replace />
+  }
+  if (!isLocalHost && tenantHost.mode === 'tenant' && userIsSystemAdmin) {
+    return <Navigate to="/Admin26" replace />
+  }
 
   // CRITICAL: Redirect root based on role
   const getRootPath = () => {

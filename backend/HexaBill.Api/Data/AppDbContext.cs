@@ -102,7 +102,8 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Currency).IsRequired().HasMaxLength(10).HasDefaultValue("AED");
                 entity.Property(e => e.Status).HasConversion<string>().HasDefaultValue(TenantStatus.Active);
                 entity.Property(e => e.CreatedAt).IsRequired();
-                entity.HasIndex(e => e.Subdomain).IsUnique().HasFilter("\"Subdomain\" IS NOT NULL");
+                entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(30);
+                entity.HasIndex(e => e.Subdomain).IsUnique();
                 entity.HasIndex(e => e.Domain).IsUnique().HasFilter("\"Domain\" IS NOT NULL");
             });
 

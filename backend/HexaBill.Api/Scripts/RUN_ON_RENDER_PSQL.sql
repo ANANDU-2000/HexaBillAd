@@ -4,6 +4,15 @@
 -- Run once, then restart your HexaBill API on Render.
 -- =============================================================================
 
+-- Tenant host identity: backfill deterministic slugs before enforcing uniqueness.
+ALTER TABLE "Tenants" ADD COLUMN IF NOT EXISTS "Subdomain" varchar(30);
+UPDATE "Tenants"
+SET "Subdomain" = 'tenant-' || "Id"
+WHERE "Subdomain" IS NULL OR btrim("Subdomain") = '';
+ALTER TABLE "Tenants" ALTER COLUMN "Subdomain" SET NOT NULL;
+DROP INDEX IF EXISTS "IX_Tenants_Subdomain";
+CREATE UNIQUE INDEX IF NOT EXISTS "IX_Tenants_Subdomain" ON "Tenants" ("Subdomain");
+
 -- ErrorLogs: create if missing (so /api/error-logs and SaveChanges don't throw). Add ResolvedAt when table exists.
 CREATE TABLE IF NOT EXISTS "ErrorLogs" (
   "Id" SERIAL PRIMARY KEY,

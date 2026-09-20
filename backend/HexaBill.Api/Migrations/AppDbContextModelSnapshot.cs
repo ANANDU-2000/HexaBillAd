@@ -2995,7 +2995,8 @@ namespace HexaBill.Api.Migrations
                         .HasDefaultValue("Active");
 
                     b.Property<string>("Subdomain")
-                        .HasMaxLength(100)
+                        .IsRequired()
+                        .HasMaxLength(30)
                         .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("SuspendedAt")
@@ -3019,8 +3020,7 @@ namespace HexaBill.Api.Migrations
                         .HasFilter("\"Domain\" IS NOT NULL");
 
                     b.HasIndex("Subdomain")
-                        .IsUnique()
-                        .HasFilter("\"Subdomain\" IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Tenants");
                 });

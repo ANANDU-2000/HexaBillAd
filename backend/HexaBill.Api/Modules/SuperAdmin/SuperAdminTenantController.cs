@@ -385,21 +385,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         Message = "Tenant name is required"
                     });
                 }
+                if (string.IsNullOrWhiteSpace(request.Subdomain))
+                {
+                    return BadRequest(new ApiResponse<CreateTenantResponseDto>
+                    {
+                        Success = false,
+                        Message = "Tenant subdomain is required"
+                    });
+                }
 
                 var (tenant, generatedPassword) = await _tenantService.CreateTenantAsync(request);
-                await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Email: {tenant.Email ?? request.Email ?? "N/A"}");
+                await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Subdomain: {tenant.Subdomain}, Email: {tenant.Email ?? request.Email ?? "N/A"}");
 
-                // Login URL for credentials modal: prefer frontend-supplied origin, then server env (FRONTEND_URL / ClientApp__BaseUrl), else localhost in dev
-                var clientAppLink = request.ClientAppBaseUrl?.Trim()
-                    ?? (_configuration["ClientApp:BaseUrl"] ?? Environment.GetEnvironmentVariable("FRONTEND_URL") ?? Environment.GetEnvironmentVariable("ClientApp__BaseUrl"))?.Trim();
-                if (string.IsNullOrWhiteSpace(clientAppLink))
-                {
-                    var isProd = string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Production", StringComparison.OrdinalIgnoreCase);
-                    clientAppLink = isProd
-                        ? "(Set FRONTEND_URL or ClientApp__BaseUrl on server, or ensure frontend sends ClientAppBaseUrl)"
-                        : "http://localhost:5176";
-                }
-                clientAppLink = clientAppLink.TrimEnd('/');
+                var clientAppLink = tenant.LoginUrl;
                 var clientEmail = tenant.Email ?? request.Email ?? "";
 
                 var response = new CreateTenantResponseDto
@@ -408,6 +406,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     ClientCredentials = new ClientCredentialsDto
                     {
                         ClientAppLink = clientAppLink,
+                        LoginUrl = tenant.LoginUrl,
                         TenantId = tenant.Id,
                         Email = clientEmail,
                         Password = generatedPassword // Randomly generated password - shown once, never stored
@@ -1155,6 +1154,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
     public class ClientCredentialsDto
     {
         public string ClientAppLink { get; set; } = string.Empty;
+        public string LoginUrl { get; set; } = string.Empty;
         public int TenantId { get; set; }
         public string Email { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;

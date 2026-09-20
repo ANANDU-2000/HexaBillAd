@@ -187,9 +187,10 @@ namespace HexaBill.Api.Shared.Extensions
             {
                 options.AddPolicy("Production", policy =>
                 {
-                    policy.WithOrigins(allowedOrigins)
+                    policy.SetIsOriginAllowed(origin =>
+                          IsAllowedProductionOrigin(origin, configuration))
                           .AllowAnyMethod()
-                          .AllowAnyHeader()
+                          .WithHeaders("Content-Type", "Authorization", "Idempotency-Key")
                           .AllowCredentials();
                 });
 
@@ -258,6 +259,24 @@ namespace HexaBill.Api.Shared.Extensions
             });
 
             return services;
+        }
+
+        private static bool IsAllowedProductionOrigin(string origin, IConfiguration configuration)
+        {
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+                return false;
+
+            var baseDomain = (configuration["Hosting:BaseDomain"] ?? "hexabill.company").Trim('.').ToLowerInvariant();
+            var platformHost = (configuration["Hosting:PlatformHost"] ?? $"admin.{baseDomain}").Trim('.').ToLowerInvariant();
+            var host = uri.Host.TrimEnd('.').ToLowerInvariant();
+            if (host == baseDomain || host == "www." + baseDomain || host == platformHost)
+                return true;
+
+            var suffix = "." + baseDomain;
+            var subdomain = host.EndsWith(suffix, StringComparison.Ordinal)
+                ? host[..^suffix.Length]
+                : null;
+            return subdomain != null && HexaBill.Api.Shared.Hosting.TenantSlugValidator.IsValid(subdomain);
         }
 
         public static IApplicationBuilder UseSecurityMiddleware(this IApplicationBuilder app, IWebHostEnvironment environment)

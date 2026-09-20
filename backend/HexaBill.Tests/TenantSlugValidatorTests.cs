@@ -32,4 +32,19 @@ public class TenantSlugValidatorTests
     {
         Assert.Equal("client1", TenantSlugValidator.Normalize("  CLIENT1 "));
     }
+
+    [Theory]
+    [InlineData("ABC Traders", "abc-traders")]
+    [InlineData("Acme / Retail", "acme-retail")]
+    public void SuggestCreatesSafeSlugs(string companyName, string expected)
+    {
+        Assert.Equal(expected, TenantSlugValidator.Suggest(companyName));
+    }
+
+    [Fact]
+    public void SuggestUsesSafeFallbackForReservedOrEmptyValues()
+    {
+        Assert.Equal("tenant", TenantSlugValidator.Suggest("admin"));
+        Assert.Equal("tenant", TenantSlugValidator.Suggest(""));
+    }
 }

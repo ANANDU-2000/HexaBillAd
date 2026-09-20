@@ -20,7 +20,6 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    localStorage.removeItem('selected_tenant_id') // Clear impersonation on logout
     setUser(null)
     setImpersonatedTenantId(null)
   }
@@ -28,12 +27,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem('token')
     const userData = localStorage.getItem('user')
-    const savedTenantId = localStorage.getItem('selected_tenant_id')
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
-
-    if (savedTenantId) {
-      setImpersonatedTenantId(parseInt(savedTenantId, 10))
-    }
 
     if (token && userData) {
       try {
@@ -125,14 +119,8 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(userData))
         setUser(userData)
 
-        // Phase 4: Set tenant context for API/branding (normal users only; System Admin has tenantId 0 and should not set)
-        if (tenantId != null && tenantId !== undefined && tenantId !== 0) {
-          localStorage.setItem('selected_tenant_id', String(tenantId))
-          setImpersonatedTenantId(parseInt(tenantId, 10))
-        } else {
-          localStorage.removeItem('selected_tenant_id')
-          setImpersonatedTenantId(null)
-        }
+        // Tenant context is established by the verified host and JWT. Never mirror it into browser storage.
+        setImpersonatedTenantId(null)
 
         return { success: true, data: response.data }
       } else {
@@ -153,13 +141,11 @@ export const AuthProvider = ({ children }) => {
   }
 
   const impersonateTenant = (tenantId) => {
-    if (!tenantId) return
-    localStorage.setItem('selected_tenant_id', tenantId.toString())
-    setImpersonatedTenantId(parseInt(tenantId, 10))
+    // Deliberately disabled: a client-side tenant ID must never select tenant data.
+    return false
   }
 
   const stopImpersonation = () => {
-    localStorage.removeItem('selected_tenant_id')
     setImpersonatedTenantId(null)
   }
 

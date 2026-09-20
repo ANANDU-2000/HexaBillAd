@@ -13,6 +13,16 @@ export function isValidTenantSlug(slug) {
     && !RESERVED_SLUGS.has(slug)
 }
 
+export function suggestTenantSlug(value) {
+  const slug = String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30)
+    .replace(/-+$/g, '')
+  return isValidTenantSlug(slug) ? slug : 'tenant'
+}
+
 export function getTenantHost() {
   const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : ''
   const baseDomain = (import.meta.env.VITE_BASE_DOMAIN || 'hexabill.company').toLowerCase().replace(/\.$/, '')

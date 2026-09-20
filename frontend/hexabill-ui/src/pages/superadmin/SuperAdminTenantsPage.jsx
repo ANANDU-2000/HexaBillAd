@@ -21,6 +21,7 @@ import {
 import { superAdminAPI } from '../../services'
 import { getApiBaseUrlNoSuffix } from '../../services/apiConfig'
 import { formatCurrency } from '../../utils/currency'
+import { isValidTenantSlug, suggestTenantSlug } from '../../utils/tenantHost'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
@@ -29,7 +30,6 @@ import toast from 'react-hot-toast'
 
 const SuperAdminTenantsPage = () => {
   const navigate = useNavigate()
-  const { impersonateTenant } = useAuth()
   const [loading, setLoading] = useState(true)
   const [tenants, setTenants] = useState([])
   const [totalCount, setTotalCount] = useState(0)
@@ -45,6 +45,7 @@ const SuperAdminTenantsPage = () => {
   const [suspendReason, setSuspendReason] = useState('')
   const [createFormData, setCreateFormData] = useState({
     name: '',
+    subdomain: '',
     companyNameEn: '',
     companyNameAr: '',
     email: '',
@@ -342,10 +343,11 @@ const SuperAdminTenantsPage = () => {
       <div className="flex items-center space-x-2">
         <button
           onClick={() => {
-            impersonateTenant(tenant.id)
-            localStorage.setItem('selected_tenant_name', tenant.name)
-            toast.success(`Entering ${tenant.name}'s workspace...`)
-            window.location.href = '/dashboard'
+            if (!tenant.loginUrl) {
+              toast.error('This tenant has no login URL yet.')
+              return
+            }
+            window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
           }}
           className="p-1 text-indigo-600 hover:bg-indigo-50 rounded"
           title="Enter Workspace"
@@ -677,6 +679,7 @@ const SuperAdminTenantsPage = () => {
           setShowCreateModal(false)
           setCreateFormData({
             name: '',
+            subdomain: '',
             companyNameEn: '',
             companyNameAr: '',
             email: '',
@@ -700,11 +703,16 @@ const SuperAdminTenantsPage = () => {
             toast.error('Company name is required')
             return
           }
+          if (!isValidTenantSlug(createFormData.subdomain.trim().toLowerCase())) {
+            toast.error('Enter a valid subdomain using lowercase letters, numbers, and hyphens.')
+            return
+          }
           try {
             setCreateLoading(true)
             const response = await superAdminAPI.createTenant({
               ...createFormData,
               name: createFormData.name.trim(),
+              subdomain: createFormData.subdomain.trim().toLowerCase(),
               companyNameEn: createFormData.companyNameEn?.trim() || undefined,
               companyNameAr: createFormData.companyNameAr?.trim() || undefined,
               email: createFormData.email?.trim() || undefined,
@@ -724,6 +732,7 @@ const SuperAdminTenantsPage = () => {
               setShowCreateModal(false)
               setCreateFormData({
                 name: '',
+                subdomain: '',
                 companyNameEn: '',
                 companyNameAr: '',
                 email: '',
@@ -743,6 +752,7 @@ const SuperAdminTenantsPage = () => {
               setShowCreateModal(false)
               setCreateFormData({
                 name: '',
+                subdomain: '',
                 companyNameEn: '',
                 companyNameAr: '',
                 email: '',
@@ -794,6 +804,24 @@ const SuperAdminTenantsPage = () => {
                 onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
                 className="bg-white"
               />
+              <div className="md:col-span-2">
+                <Input
+                  label="Client Subdomain"
+                  placeholder="e.g. abc-traders"
+                  required
+                  value={createFormData.subdomain}
+                  onChange={(e) => setCreateFormData({ ...createFormData, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
+                  onBlur={() => {
+                    if (!createFormData.subdomain && createFormData.name) {
+                      setCreateFormData({ ...createFormData, subdomain: suggestTenantSlug(createFormData.name) })
+                    }
+                  }}
+                  className="bg-white"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Login URL: https://{createFormData.subdomain || 'your-company'}.hexabill.company/login
+                </p>
+              </div>
               <div className="md:col-span-2">
                 <Input
                   label="Contact Phone"
@@ -914,6 +942,7 @@ const SuperAdminTenantsPage = () => {
                 setShowCreateModal(false)
                 setCreateFormData({
                   name: '',
+                  subdomain: '',
                   companyNameEn: '',
                   companyNameAr: '',
                   email: '',
@@ -1067,4 +1096,3 @@ const SuperAdminTenantsPage = () => {
 }
 
 export default SuperAdminTenantsPage
-

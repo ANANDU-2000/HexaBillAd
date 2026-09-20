@@ -112,15 +112,6 @@ namespace HexaBill.Api.Shared.Extensions
             {
                 var idFromToken = User.GetTenantIdFromToken();
                 
-                // MULTI-TENANT IMPERSONATION: Allow Super Admin to access specific company data
-                if (idFromToken == 0 && HttpContext.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantIdHeader))
-                {
-                    if (int.TryParse(tenantIdHeader, out var impersonatedId))
-                    {
-                        return impersonatedId;
-                    }
-                }
-                
                 return idFromToken;
             }
         }
@@ -134,15 +125,6 @@ namespace HexaBill.Api.Shared.Extensions
             get
             {
                 var idFromToken = User.GetTenantIdOrNullForSystemAdmin();
-                
-                // MULTI-TENANT IMPERSONATION: Allow Super Admin to access specific company data
-                if (idFromToken == null && HttpContext.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantIdHeader))
-                {
-                    if (int.TryParse(tenantIdHeader, out var impersonatedId))
-                    {
-                        return impersonatedId;
-                    }
-                }
                 
                 return idFromToken;
             }

@@ -3,9 +3,9 @@
 ## Data isolation (multi-tenant)
 
 - **Tenant ID source:** Tenant scope is taken **only** from the validated JWT (`tenant_id` / `owner_id` claims). It is **never** taken from request body, query, or route for tenant-scoped data access.
-- **Controllers:** Tenant-scoped controllers inherit `TenantScopedController` and use `CurrentTenantId` (from JWT or, for SystemAdmin, `X-Tenant-Id` impersonation header).
+- **Controllers:** Tenant-scoped controllers inherit `TenantScopedController` and use `CurrentTenantId` from the validated JWT and host context. Client-provided tenant headers are never used for tenant selection.
 - **SystemAdmin:** Only users with `TenantId = 0` (SystemAdmin) may:
-  - Impersonate a tenant via `X-Tenant-Id`.
+  - Use explicit Super Admin tenant-management endpoints; tenant selection is by audited route/body IDs inside those endpoints.
   - Call Super Admin endpoints that accept `tenantId` in body/query (e.g. backup another tenant, delete tenant).
 - **Backup / Restore:** Non–SystemAdmin users can only create backup or restore for their own tenant. SystemAdmin can target any tenant.
 

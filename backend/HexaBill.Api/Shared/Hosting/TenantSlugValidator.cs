@@ -28,4 +28,13 @@ public static partial class TenantSlugValidator
         var normalized = slug?.Trim().ToLowerInvariant();
         return IsValid(normalized) ? normalized : null;
     }
+
+    public static string Suggest(string? value)
+    {
+        var source = (value ?? string.Empty).Trim().ToLowerInvariant();
+        var slug = Regex.Replace(source, "[^a-z0-9]+", "-").Trim('-');
+        if (slug.Length > 30) slug = slug[..30].TrimEnd('-');
+        if (slug.Length < 2 || !IsValid(slug)) slug = "tenant";
+        return slug;
+    }
 }

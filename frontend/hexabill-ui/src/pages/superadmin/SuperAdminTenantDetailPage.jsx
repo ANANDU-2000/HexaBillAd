@@ -52,11 +52,11 @@ import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 import { Input, Select } from '../../components/Form'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { isValidTenantSlug } from '../../utils/tenantHost'
 
 const SuperAdminTenantDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { impersonateTenant } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [tenant, setTenant] = useState(null)
@@ -248,6 +248,10 @@ const SuperAdminTenantDetailPage = () => {
 
   const handleUpdateTenant = async (e) => {
     e.preventDefault()
+    if (!isValidTenantSlug(editFormData.subdomain?.trim().toLowerCase())) {
+      toast.error('Enter a valid subdomain using lowercase letters, numbers, and hyphens.')
+      return
+    }
     try {
       setLoadingAction(true)
       const response = await superAdminAPI.updateTenant(tenant.id, editFormData)
@@ -286,10 +290,11 @@ const SuperAdminTenantDetailPage = () => {
     try {
       await superAdminAPI.impersonateEnter(tenant.id)
     } catch (_) { /* Audit logging failure should not block */ }
-    impersonateTenant(tenant.id)
-    localStorage.setItem('selected_tenant_name', tenant.name)
-    toast.success(`Entering ${tenant.name}'s workspace`)
-    window.location.href = '/dashboard'
+    if (!tenant.loginUrl) {
+      toast.error('This tenant has no login URL yet.')
+      return
+    }
+    window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
   }
 
   const handleExportData = async () => {
@@ -677,6 +682,7 @@ const SuperAdminTenantDetailPage = () => {
               onClick={() => {
                 setEditFormData({
                   name: tenant.name,
+                  subdomain: tenant.subdomain || '',
                   companyNameEn: tenant.companyNameEn || '',
                   companyNameAr: tenant.companyNameAr || '',
                   email: tenant.email || '',
@@ -1395,10 +1401,7 @@ const SuperAdminTenantDetailPage = () => {
                     try {
                       await superAdminAPI.impersonateEnter(tenant.id)
                     } catch (_) { /* audit failure should not block */ }
-                    impersonateTenant(tenant.id)
-                    localStorage.setItem('selected_tenant_name', tenant.name)
-                    toast.success(`Opening ${report.label} for ${tenant.name}...`)
-                    navigate(report.path)
+                    if (tenant.loginUrl) window.open(tenant.loginUrl, '_blank', 'noopener,noreferrer')
                   }}
                   className={`flex items-center p-4 rounded-xl border border-transparent hover:border-blue-300 transition-all duration-200 group ${report.color}`}
                 >
@@ -1630,6 +1633,12 @@ const SuperAdminTenantDetailPage = () => {
               label="Company Display Name"
               value={editFormData.name}
               onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Client Subdomain"
+              value={editFormData.subdomain || ''}
+              onChange={(e) => setEditFormData({ ...editFormData, subdomain: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
               required
             />
             <Input
@@ -2318,4 +2327,3 @@ const TenantFeaturesTab = ({ tenantId }) => {
 }
 
 export default SuperAdminTenantDetailPage
-

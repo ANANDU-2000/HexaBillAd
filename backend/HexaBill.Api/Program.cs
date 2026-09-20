@@ -1042,14 +1042,24 @@ app.Use(async (context, next) =>
     {
         var origin = context.Request.Headers.Origin.ToString();
         var isLocalhost = origin.StartsWith("http://localhost:", StringComparison.OrdinalIgnoreCase) || origin.StartsWith("http://127.0.0.1:", StringComparison.OrdinalIgnoreCase);
-        var isVercel = !string.IsNullOrEmpty(origin) && origin.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
-        var isHexaBillCompany = !string.IsNullOrEmpty(origin) && (origin.Contains("hexabill.company", StringComparison.OrdinalIgnoreCase));
-        if (!string.IsNullOrEmpty(origin) && (isLocalhost || isVercel || isHexaBillCompany))
+        var isAllowedHexaBillOrigin = false;
+        if (Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+        {
+            var host = originUri.Host.TrimEnd('.').ToLowerInvariant();
+            var baseDomain = (builder.Configuration["Hosting:BaseDomain"] ?? "hexabill.company").Trim('.').ToLowerInvariant();
+            var platformHost = (builder.Configuration["Hosting:PlatformHost"] ?? $"admin.{baseDomain}").Trim('.').ToLowerInvariant();
+            var suffix = "." + baseDomain;
+            var subdomain = host.EndsWith(suffix, StringComparison.Ordinal) ? host[..^suffix.Length] : null;
+            isAllowedHexaBillOrigin = (originUri.Scheme == Uri.UriSchemeHttps)
+                && (host == baseDomain || host == "www." + baseDomain || host == platformHost
+                    || (subdomain != null && HexaBill.Api.Shared.Hosting.TenantSlugValidator.IsValid(subdomain)));
+        }
+        if (!string.IsNullOrEmpty(origin) && ((!app.Environment.IsProduction() && isLocalhost) || (!app.Environment.IsProduction() && origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase)) || isAllowedHexaBillOrigin))
         {
             context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
             context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
             context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
-            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Tenant-Id, Idempotency-Key");
+            context.Response.Headers.Append("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key");
         }
     }
     if (context.Request.Method == "OPTIONS")
@@ -2311,7 +2321,7 @@ _ = Task.Run(async () =>
                             if (await reader1.ReadAsync())
                             {
                                 var id = reader1.GetInt32(0);
-                                tenant1 = new Tenant { Id = id, Name = "Demo Company 1", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow, FeaturesJson = null };
+                                tenant1 = new Tenant { Id = id, Name = "Demo Company 1", Subdomain = "demo-company-1", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow, FeaturesJson = null };
                             }
                             reader1.Close();
                             
@@ -2321,7 +2331,7 @@ _ = Task.Run(async () =>
                             if (await reader2.ReadAsync())
                             {
                                 var id = reader2.GetInt32(0);
-                                tenant2 = new Tenant { Id = id, Name = "Demo Company 2", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow, FeaturesJson = null };
+                                tenant2 = new Tenant { Id = id, Name = "Demo Company 2", Subdomain = "demo-company-2", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow, FeaturesJson = null };
                             }
                         }
                         finally
@@ -2338,14 +2348,14 @@ _ = Task.Run(async () =>
                 
                 if (tenant1 == null)
                 {
-                    tenant1 = new Tenant { Name = "Demo Company 1", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow };
+                    tenant1 = new Tenant { Name = "Demo Company 1", Subdomain = "demo-company-1", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow };
                     context.Tenants.Add(tenant1);
                     await context.SaveChangesAsync();
                     initLogger.LogInformation("Created demo tenant 1 (Demo Company 1)");
                 }
                 if (tenant2 == null)
                 {
-                    tenant2 = new Tenant { Name = "Demo Company 2", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow };
+                    tenant2 = new Tenant { Name = "Demo Company 2", Subdomain = "demo-company-2", Country = "AE", Currency = "AED", Status = TenantStatus.Active, CreatedAt = DateTime.UtcNow };
                     context.Tenants.Add(tenant2);
                     await context.SaveChangesAsync();
                     initLogger.LogInformation("Created demo tenant 2 (Demo Company 2)");

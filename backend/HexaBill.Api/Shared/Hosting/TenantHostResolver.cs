@@ -25,23 +25,14 @@ public sealed class TenantHostResolver : ITenantHostResolver
     public async Task<TenantHostResolution> ResolveAsync(HttpContext context, CancellationToken cancellationToken = default)
     {
         var originHost = GetOriginHost(context.Request.Headers.Origin.ToString());
-        var rawHeader = context.Request.Headers["X-Tenant-Slug"].ToString().Trim();
-        var headerSlug = TenantSlugValidator.Normalize(rawHeader);
-
-        if (!string.IsNullOrEmpty(rawHeader) && headerSlug is null)
-            return TenantHostResolution.Unknown();
-
-        if (originHost is null && headerSlug is null)
+        // The browser Origin may identify the frontend tenant host for the separate API host.
+        // Client-controlled tenant headers are deliberately ignored; they are not an authority.
+        if (originHost is null)
             return ResolveHost(context.Request.Host.Host);
 
         var hostResolution = originHost is not null
             ? ResolveHost(originHost)
-            : ResolveHost($"{headerSlug}.{_options.BaseDomain}");
-
-        if (originHost is not null && headerSlug is not null
-            && hostResolution.Slug is not null
-            && !string.Equals(hostResolution.Slug, headerSlug, StringComparison.Ordinal))
-            return hostResolution with { HeaderMismatch = true };
+            : ResolveHost(context.Request.Host.Host);
 
         if (hostResolution.Kind != TenantHostKind.Tenant || hostResolution.Slug is null)
             return hostResolution;
@@ -51,7 +42,7 @@ public sealed class TenantHostResolver : ITenantHostResolver
             return cached;
 
         var tenant = await _db.Tenants.AsNoTracking()
-            .Where(t => t.Subdomain != null && t.Subdomain.ToLower() == hostResolution.Slug)
+            .Where(t => t.Subdomain.ToLower() == hostResolution.Slug)
             .Select(t => new { t.Id, t.Subdomain, t.Status })
             .SingleOrDefaultAsync(cancellationToken);
 

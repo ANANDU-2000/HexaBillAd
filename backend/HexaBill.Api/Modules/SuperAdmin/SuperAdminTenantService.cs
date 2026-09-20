@@ -9,9 +9,11 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Shared.Extensions;
+using HexaBill.Api.Shared.Hosting;
 using HexaBill.Api.Modules.Subscription;
 using Npgsql;
 
@@ -154,6 +156,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         private readonly AppDbContext _context;
         private readonly ISubscriptionService _subscriptionService;
+        private readonly HostingOptions _hostingOptions;
+        private readonly ITenantHostResolver _tenantHostResolver;
 
         /// <summary>
         /// Ensures FeaturesJson column exists in Tenants table (SQLite only).
@@ -208,10 +212,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        public SuperAdminTenantService(AppDbContext context, ISubscriptionService subscriptionService)
+        public SuperAdminTenantService(
+            AppDbContext context,
+            ISubscriptionService subscriptionService,
+            IOptions<HostingOptions> hostingOptions,
+            ITenantHostResolver tenantHostResolver)
         {
             _context = context;
             _subscriptionService = subscriptionService;
+            _hostingOptions = hostingOptions.Value;
+            _tenantHostResolver = tenantHostResolver;
         }
 
         public async Task<PlatformDashboardDto> GetPlatformDashboardAsync()
@@ -773,6 +783,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 {
                     Id = t.Id,
                     Name = t.Name,
+                    Subdomain = t.Subdomain,
+                    LoginUrl = BuildLoginUrl(t.Subdomain),
                     CompanyNameEn = t.CompanyNameEn,
                     CompanyNameAr = t.CompanyNameAr,
                     Country = t.Country,
@@ -925,6 +937,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 Id = tenant.Id,
                 Name = tenant.Name,
+                Subdomain = tenant.Subdomain,
+                LoginUrl = BuildLoginUrl(tenant.Subdomain),
                 CompanyNameEn = tenant.CompanyNameEn,
                 CompanyNameAr = tenant.CompanyNameAr,
                 Country = tenant.Country,
@@ -947,6 +961,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         public async Task<(TenantDto Tenant, string GeneratedPassword)> CreateTenantAsync(CreateTenantRequest request)
         {
+            var subdomain = TenantSlugValidator.Normalize(request.Subdomain);
+            if (subdomain is null)
+                throw new InvalidOperationException("A valid subdomain is required. Use lowercase letters, numbers, and hyphens only.");
+
+            if (await _context.Tenants.AnyAsync(t => t.Subdomain.ToLower() == subdomain))
+                throw new InvalidOperationException($"The subdomain '{subdomain}' is already in use.");
+
             // Check for duplicate tenant name
             var normalizedName = request.Name.Trim();
             var existingTenantByName = await _context.Tenants
@@ -1009,6 +1030,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var tenant = new Tenant
                 {
                     Name = normalizedName,
+                    Subdomain = subdomain,
                     CompanyNameEn = request.CompanyNameEn ?? normalizedName,
                     CompanyNameAr = request.CompanyNameAr,
                     Country = request.Country ?? "AE",
@@ -1108,6 +1130,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 {
                     Id = tenant.Id,
                     Name = tenant.Name,
+                    Subdomain = tenant.Subdomain,
+                    LoginUrl = BuildLoginUrl(tenant.Subdomain),
                     CompanyNameEn = tenant.CompanyNameEn,
                     CompanyNameAr = tenant.CompanyNameAr,
                     Country = tenant.Country,
@@ -1148,6 +1172,29 @@ namespace HexaBill.Api.Modules.SuperAdmin
             // Update properties
             if (!string.IsNullOrEmpty(request.Name))
                 tenant.Name = request.Name;
+            if (request.Subdomain != null)
+            {
+                var oldSubdomain = tenant.Subdomain;
+                var subdomain = TenantSlugValidator.Normalize(request.Subdomain);
+                if (subdomain is null)
+                    throw new InvalidOperationException("A valid subdomain is required. Use lowercase letters, numbers, and hyphens only.");
+                if (!string.Equals(oldSubdomain, subdomain, StringComparison.Ordinal)
+                    && await _context.Tenants.AnyAsync(t => t.Id != tenantId && t.Subdomain.ToLower() == subdomain))
+                    throw new InvalidOperationException($"The subdomain '{subdomain}' is already in use.");
+                tenant.Subdomain = subdomain;
+                if (!string.Equals(oldSubdomain, subdomain, StringComparison.Ordinal))
+                {
+                    _tenantHostResolver.Invalidate(oldSubdomain);
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        TenantId = tenantId,
+                        OwnerId = tenantId,
+                        Action = "TENANT_SUBDOMAIN_CHANGED",
+                        Details = $"Subdomain changed from '{oldSubdomain}' to '{subdomain}'.",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
             if (!string.IsNullOrEmpty(request.CompanyNameEn))
                 tenant.CompanyNameEn = request.CompanyNameEn;
             if (!string.IsNullOrEmpty(request.CompanyNameAr))
@@ -1219,6 +1266,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 Id = tenant.Id,
                 Name = tenant.Name,
+                Subdomain = tenant.Subdomain,
+                LoginUrl = BuildLoginUrl(tenant.Subdomain),
                 CompanyNameEn = tenant.CompanyNameEn,
                 CompanyNameAr = tenant.CompanyNameAr,
                 Country = tenant.Country,
@@ -1227,6 +1276,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 CreatedAt = tenant.CreatedAt,
                 TrialEndDate = tenant.TrialEndDate
             };
+        }
+
+        private string BuildLoginUrl(string subdomain)
+        {
+            var baseDomain = _hostingOptions.BaseDomain.Trim().TrimEnd('/');
+            return $"https://{subdomain}.{baseDomain}/login";
         }
 
         public async Task<bool> SuspendTenantAsync(int tenantId, string reason)
@@ -2086,6 +2141,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string Subdomain { get; set; } = string.Empty;
+        public string LoginUrl { get; set; } = string.Empty;
         public string? CompanyNameEn { get; set; }
         public string? CompanyNameAr { get; set; }
         public string Country { get; set; } = string.Empty;
@@ -2168,6 +2225,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
     public class CreateTenantRequest
     {
         public string Name { get; set; } = string.Empty;
+        public string Subdomain { get; set; } = string.Empty;
         public string? CompanyNameEn { get; set; }
         public string? CompanyNameAr { get; set; }
         public string? Country { get; set; }
@@ -2185,6 +2243,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
     public class UpdateTenantRequest
     {
+        public string? Subdomain { get; set; }
         public string? Name { get; set; }
         public string? CompanyNameEn { get; set; }
         public string? CompanyNameAr { get; set; }

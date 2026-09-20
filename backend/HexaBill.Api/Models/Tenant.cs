@@ -15,8 +15,9 @@ namespace HexaBill.Api.Models
         [MaxLength(200)]
         public string Name { get; set; } = string.Empty;
         
-        [MaxLength(100)]
-        public string? Subdomain { get; set; } // For future: tenant1.app.com
+        [Required]
+        [MaxLength(30)]
+        public string Subdomain { get; set; } = string.Empty;
         
         [MaxLength(200)]
         public string? Domain { get; set; } // For future: tenant1.com
