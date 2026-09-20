@@ -1015,6 +1015,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions unless run inside ExecuteAsync
             var strategy = _context.Database.CreateExecutionStrategy();
+            try
+            {
             return await strategy.ExecuteAsync(async () =>
             {
                 using var transaction = await _context.Database.BeginTransactionAsync();
@@ -1160,6 +1162,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     throw;
                 }
             });
+            }
+            catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+            {
+                throw new InvalidOperationException($"The subdomain '{subdomain}' is already in use.");
+            }
         }
 
         /// <summary>Generate a secure random default password (no hardcoded passwords).</summary>
@@ -1313,6 +1320,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
 
             await _context.SaveChangesAsync();
+            _tenantHostResolver.Invalidate(tenant.Subdomain);
             return true;
         }
 
@@ -1342,6 +1350,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
 
             await _context.SaveChangesAsync();
+            _tenantHostResolver.Invalidate(tenant.Subdomain);
             return true;
         }
 

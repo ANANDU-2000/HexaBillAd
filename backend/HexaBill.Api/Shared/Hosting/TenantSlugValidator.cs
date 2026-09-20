@@ -6,8 +6,9 @@ public static partial class TenantSlugValidator
 {
     private static readonly HashSet<string> Reserved = new(StringComparer.OrdinalIgnoreCase)
     {
-        "www", "admin", "api", "app", "mail", "support", "status", "static",
-        "cdn", "docs", "help", "billing", "login", "demo", "test", "hexabill"
+        "www", "admin", "api", "app", "mail", "ftp", "localhost", "staging",
+        "support", "status", "static", "cdn", "docs", "help", "billing", "login",
+        "demo", "test", "hexabill", "ns", "smtp", "pop", "imap", "webmail"
     };
 
     [GeneratedRegex("^[a-z0-9](?:[a-z0-9-]{1,28}[a-z0-9])$")]

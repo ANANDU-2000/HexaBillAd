@@ -819,7 +819,7 @@ const SuperAdminTenantsPage = () => {
                   className="bg-white"
                 />
                 <p className="mt-1 text-xs text-slate-500">
-                  Login URL: https://{createFormData.subdomain || 'your-company'}.hexabill.company/login
+                  Login URL: https://{createFormData.subdomain || 'your-company'}.{(import.meta.env.VITE_BASE_DOMAIN || 'hexabill.company').replace(/^\./, '')}/login
                 </p>
               </div>
               <div className="md:col-span-2">

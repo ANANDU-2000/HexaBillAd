@@ -62,6 +62,18 @@ window.$RefreshSig$ = () => (type) => type;`
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq, req) => {
+            const browserHost = (req.headers.host || '').split(':')[0].toLowerCase()
+            if (browserHost) {
+              proxyReq.setHeader('X-HexaBill-Original-Host', browserHost)
+              proxyReq.setHeader(
+                'X-HexaBill-Edge-Secret',
+                process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
+              )
+            }
+          })
+        },
       },
     },
   },

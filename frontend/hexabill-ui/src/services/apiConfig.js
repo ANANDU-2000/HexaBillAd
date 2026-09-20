@@ -1,26 +1,24 @@
 /**
  * Single source of truth for API base URL.
- * - Production (hostname !== localhost): never use localhost; use VITE_API_BASE_URL or the canonical API host.
- * - Local (opened from localhost/127.0.0.1): use http://localhost:5000/api.
- * For production deploy: set VITE_API_BASE_URL in your build env (e.g. Vercel/Netlify) to your backend URL.
+ * Default: same-origin /api (Vercel edge proxy in prod, Vite dev proxy locally).
+ * Optional VITE_API_BASE_URL=http(s)://... for direct backend debugging only.
  */
 
-const PRODUCTION_API = 'https://api.hexabill.company/api'
-const LOCALHOST_API = 'http://localhost:5000/api'
+const SAME_ORIGIN_API = '/api'
 
 function getApiBaseUrl() {
   const envApi = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '')
   if (envApi && envApi.startsWith('http'))
     return envApi.endsWith('/api') ? envApi : envApi + '/api'
-  const host = typeof window !== 'undefined' ? window.location?.hostname : ''
-  if (host === 'localhost' || host === '127.0.0.1') return LOCALHOST_API
-  return PRODUCTION_API
+  return SAME_ORIGIN_API
 }
 
 /** Base URL without /api suffix (for uploads, PDF links). */
 function getApiBaseUrlNoSuffix() {
   const base = getApiBaseUrl()
+  if (base === SAME_ORIGIN_API)
+    return typeof window !== 'undefined' ? window.location.origin : ''
   return base.endsWith('/api') ? base.replace(/\/api$/, '') : base
 }
 
-export { getApiBaseUrl, getApiBaseUrlNoSuffix, PRODUCTION_API, LOCALHOST_API }
+export { getApiBaseUrl, getApiBaseUrlNoSuffix, SAME_ORIGIN_API }

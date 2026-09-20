@@ -24,16 +24,10 @@ public sealed class TenantHostResolver : ITenantHostResolver
 
     public async Task<TenantHostResolution> ResolveAsync(HttpContext context, CancellationToken cancellationToken = default)
     {
-        var requestHost = context.Request.Host.Host.TrimEnd('.').ToLowerInvariant();
-        var originHost = GetOriginHost(context.Request.Headers.Origin.ToString());
-        var apiHost = _options.ApiHost.TrimEnd('.').ToLowerInvariant();
-        // The browser Origin may identify the frontend tenant host only when the
-        // request arrived at the configured API hostname. Direct Render hosts,
-        // arbitrary hosts, and client headers are never tenant authorities.
-        var effectiveHost = requestHost == apiHost && originHost is not null
-            ? originHost
-            : requestHost;
-        var hostResolution = ResolveHost(effectiveHost);
+        // Authoritative host: direct tenant/platform hostname, or edge-proxy
+        // original host when the trusted edge secret matches.
+        var authorityHost = RequestHostAuthority.ResolveAuthorityHost(context, _options);
+        var hostResolution = ResolveHost(authorityHost);
 
         if (hostResolution.Kind != TenantHostKind.Tenant || hostResolution.Slug is null)
             return hostResolution;
@@ -98,10 +92,4 @@ public sealed class TenantHostResolver : ITenantHostResolver
         return TenantHostResolution.Unknown();
     }
 
-    private static string? GetOriginHost(string? origin)
-    {
-        if (string.IsNullOrWhiteSpace(origin))
-            return null;
-        return Uri.TryCreate(origin, UriKind.Absolute, out var uri) ? uri.Host : null;
-    }
 }

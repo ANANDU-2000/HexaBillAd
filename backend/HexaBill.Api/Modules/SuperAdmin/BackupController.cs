@@ -41,6 +41,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [HttpGet("schedule")]
         public async Task<ActionResult<ApiResponse<BackupScheduleDto>>> GetSchedule()
         {
+            if (!IsSystemAdmin)
+                return Forbid();
+
             try
             {
                 var settings = await _context.Settings
@@ -79,6 +82,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [HttpPost("schedule")]
         public async Task<ActionResult<ApiResponse<BackupScheduleDto>>> SaveSchedule([FromBody] BackupScheduleDto dto)
         {
+            if (!IsSystemAdmin)
+                return Forbid();
+
             try
             {
                 if (dto == null) dto = new BackupScheduleDto();
@@ -199,8 +205,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var backups = await _backupService.GetBackupListAsync(tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var backups = await _backupService.GetBackupListAsync(tenantFilter, isPlatform);
                 return Ok(new ApiResponse<List<BackupInfo>>
                 {
                     Success = true,
@@ -234,9 +241,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     });
                 }
                 
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                {
+                    return Forbid();
+                }
+
                 var preview = await _backupService.PreviewImportAsync(
-                    request.FileName ?? string.Empty, 
-                    request.UploadedFilePath);
+                    request.FileName ?? string.Empty,
+                    request.UploadedFilePath,
+                    tenantId > 0 ? tenantId : null,
+                    IsSystemAdmin);
                 return Ok(new ApiResponse<ImportPreview>
                 {
                     Success = true,
@@ -282,11 +297,19 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     });
                 }
 
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                {
+                    return Forbid();
+                }
+
                 var result = await _backupService.ImportWithResolutionAsync(
-                    request.FileName ?? string.Empty, 
-                    request.UploadedFilePath, 
+                    request.FileName ?? string.Empty,
+                    request.UploadedFilePath,
                     request.ConflictResolutions ?? new Dictionary<int, string>(),
-                    userId);
+                    userId,
+                    tenantId > 0 ? tenantId : 0,
+                    IsSystemAdmin);
 
                 return Ok(new ApiResponse<ImportResult>
                 {
@@ -448,8 +471,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var result = await _backupService.DeleteBackupAsync(fileName, tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var result = await _backupService.DeleteBackupAsync(fileName, tenantFilter, isPlatform);
                 
                 return Ok(new ApiResponse<bool>
                 {
@@ -474,8 +498,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var result = await _backupService.GetBackupForDownloadAsync(fileName, tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var result = await _backupService.GetBackupForDownloadAsync(fileName, tenantFilter, isPlatform);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<object>

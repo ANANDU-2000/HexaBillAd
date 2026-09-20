@@ -92,23 +92,11 @@ namespace HexaBill.Api.Shared.Extensions
         }
         
         /// <summary>
-        /// Check if current user is super admin (owner_id = 0 or null)
+        /// Platform SuperAdmin is identified only by plat=true.
         /// </summary>
         public static bool IsSystemAdmin(this ClaimsPrincipal user)
         {
-            var ownerIdClaim = user.FindFirst("owner_id");
-            
-            if (ownerIdClaim == null)
-            {
-                return false;
-            }
-            
-            if (!int.TryParse(ownerIdClaim.Value, out int ownerId))
-            {
-                return false;
-            }
-            
-            return ownerId == 0;
+            return string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase);
         }
     }
     

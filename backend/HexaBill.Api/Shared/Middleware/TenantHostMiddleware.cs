@@ -23,6 +23,17 @@ public sealed class TenantHostMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        if (context.Request.Headers.ContainsKey("X-Tenant-Id") || context.Request.Headers.ContainsKey("X-Tenant"))
+        {
+            _logger.LogWarning("Rejected client-supplied tenant header on {Path}", context.Request.Path);
+            if (!string.Equals(_options.EnforcementMode, "Off", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new { error = "TENANT_HEADER_FORBIDDEN" }, context.RequestAborted);
+                return;
+            }
+        }
+
         var resolution = await _resolver.ResolveAsync(context, context.RequestAborted);
         context.Items[ResolutionItemKey] = resolution;
 

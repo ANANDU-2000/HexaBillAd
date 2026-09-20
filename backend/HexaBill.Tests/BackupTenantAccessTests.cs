@@ -24,14 +24,16 @@ public class BackupTenantAccessTests
         const string otherTenant = "HexaBill_Backup_Tenant2_20260810_120000.zip";
         Assert.False(BackupTenantAccess.CanAccess(otherTenant, 1));
         Assert.True(BackupTenantAccess.CanAccess(otherTenant, 2));
-        Assert.True(BackupTenantAccess.CanAccess(otherTenant, 0));
-        Assert.True(BackupTenantAccess.CanAccess(otherTenant, null));
+        Assert.False(BackupTenantAccess.CanAccess(otherTenant, 0));
+        Assert.False(BackupTenantAccess.CanAccess(otherTenant, null));
+        Assert.True(BackupTenantAccess.CanAccess(otherTenant, null, isPlatformAdmin: true));
     }
 
     [Fact]
     public void CanAccess_UnknownFilenameDeniedToTenantUser()
     {
         Assert.False(BackupTenantAccess.CanAccess("manual-export.zip", 1));
-        Assert.True(BackupTenantAccess.CanAccess("manual-export.zip", 0));
+        Assert.False(BackupTenantAccess.CanAccess("manual-export.zip", 0));
+        Assert.True(BackupTenantAccess.CanAccess("manual-export.zip", null, isPlatformAdmin: true));
     }
 }

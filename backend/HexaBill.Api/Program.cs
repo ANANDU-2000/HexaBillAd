@@ -1103,21 +1103,22 @@ if (!Directory.Exists(uploadsPath))
     Directory.CreateDirectory(uploadsPath);
 }
 
-// AUTH GUARD: Require a valid JWT for expense/purchase attachments.
-// Logos and product images stay public; sensitive financial docs require a real token.
+// AUTH GUARD: All legacy /uploads require JWT + tenant path ownership (or platform admin).
 app.Use(async (context, next) =>
 {
-    if (context.Request.Path.StartsWithSegments("/uploads/expenses", StringComparison.OrdinalIgnoreCase)
-        || context.Request.Path.StartsWithSegments("/uploads/purchases", StringComparison.OrdinalIgnoreCase)
-        || context.Request.Path.StartsWithSegments("/uploads/attachments", StringComparison.OrdinalIgnoreCase))
+    if (!context.Request.Path.StartsWithSegments("/uploads", StringComparison.OrdinalIgnoreCase))
     {
-        if (!HexaBill.Api.Shared.Security.RequestJwtValidator.IsValid(context, app.Configuration))
-        {
-            context.Response.StatusCode = 401;
-            await context.Response.WriteAsync("Authentication required.");
-            return;
-        }
+        await next();
+        return;
     }
+
+    if (!HexaBill.Api.Shared.Security.LegacyUploadsAccess.CanAccess(context, app.Configuration))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        await context.Response.WriteAsync("Forbidden.");
+        return;
+    }
+
     await next();
 });
 
@@ -1215,6 +1216,9 @@ app.UseSlowQueryLogging();
 app.UseSecurityMiddleware(app.Environment);
 
 app.UseAuthentication();
+
+// Block direct upstream /api access without trusted edge proxy headers.
+app.UseUpstreamApiGuard();
 
 // Resolve the tenant or platform host before tenant and authorization middleware.
 app.UseMiddleware<TenantHostMiddleware>();

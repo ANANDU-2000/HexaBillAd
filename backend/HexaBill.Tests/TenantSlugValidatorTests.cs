@@ -20,6 +20,8 @@ public class TenantSlugValidatorTests
     [InlineData("-client")]
     [InlineData("client-")]
     [InlineData("admin")]
+    [InlineData("ftp")]
+    [InlineData("localhost")]
     [InlineData("client_1")]
     [InlineData("cℓient")]
     public void RejectsUnsafeOrReservedSlugs(string slug)

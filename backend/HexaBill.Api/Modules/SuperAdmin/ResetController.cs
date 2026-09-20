@@ -26,6 +26,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [HttpGet("summary")]
         public async Task<ActionResult<ApiResponse<SystemSummary>>> GetSystemSummary()
         {
+            if (!IsSystemAdmin)
+                return Forbid();
+
             try
             {
                 var summary = await _resetService.GetSystemSummaryAsync();
@@ -51,6 +54,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public async Task<ActionResult<ApiResponse<ResetResult>>> ExecuteReset(
             [FromBody] ResetRequest request)
         {
+            if (!IsSystemAdmin)
+                return Forbid();
+
             // PRODUCTION SAFETY: Disable reset in production
             var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             if (environment == "Production")

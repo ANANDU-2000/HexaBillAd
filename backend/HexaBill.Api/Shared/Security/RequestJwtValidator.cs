@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
 
@@ -11,14 +12,12 @@ namespace HexaBill.Api.Shared.Security;
 public static class RequestJwtValidator
 {
     public static bool IsValid(HttpContext context, IConfiguration configuration)
+        => TryValidate(context, configuration, out _);
+
+    public static bool TryValidate(HttpContext context, IConfiguration configuration, out ClaimsPrincipal? principal)
     {
-        string? token = null;
-        var header = context.Request.Headers.Authorization.ToString();
-        if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-            token = header["Bearer ".Length..].Trim();
-        if (string.IsNullOrWhiteSpace(token))
-            token = context.Request.Query["token"].ToString();
-        if (string.IsNullOrWhiteSpace(token) || token.Length < 20)
+        principal = null;
+        if (!TryReadToken(context, out var token))
             return false;
 
         var secret = Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
@@ -28,8 +27,8 @@ public static class RequestJwtValidator
 
         try
         {
-            var handler = new JwtSecurityTokenHandler();
-            handler.ValidateToken(token, new TokenValidationParameters
+            var handler = new JwtSecurityTokenHandler { MapInboundClaims = false };
+            principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
@@ -44,7 +43,19 @@ public static class RequestJwtValidator
         }
         catch
         {
+            principal = null;
             return false;
         }
+    }
+
+    private static bool TryReadToken(HttpContext context, out string token)
+    {
+        token = string.Empty;
+        var header = context.Request.Headers.Authorization.ToString();
+        if (header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            token = header["Bearer ".Length..].Trim();
+        if (string.IsNullOrWhiteSpace(token))
+            token = context.Request.Query["token"].ToString();
+        return !string.IsNullOrWhiteSpace(token) && token.Length >= 20;
     }
 }

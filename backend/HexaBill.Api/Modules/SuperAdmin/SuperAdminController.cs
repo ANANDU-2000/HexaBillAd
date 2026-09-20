@@ -544,8 +544,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var backups = await _comprehensiveBackupService.GetBackupListAsync(tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var backups = await _comprehensiveBackupService.GetBackupListAsync(tenantFilter, isPlatform);
                 var backupDtos = backups.Select(b => new BackupInfoDto
                 {
                     FileName = b.FileName,
@@ -688,8 +689,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var success = await _comprehensiveBackupService.DeleteBackupAsync(fileName, tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var success = await _comprehensiveBackupService.DeleteBackupAsync(fileName, tenantFilter, isPlatform);
                 if (success)
                 {
                     return Ok(new ApiResponse<object>
@@ -723,8 +725,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             try
             {
-                var tenantFilter = IsSystemAdmin && CurrentTenantId <= 0 ? (int?)null : CurrentTenantId;
-                var result = await _comprehensiveBackupService.GetBackupForDownloadAsync(fileName, tenantFilter);
+                var isPlatform = IsSystemAdmin;
+                var tenantFilter = isPlatform ? (int?)null : CurrentTenantId;
+                var result = await _comprehensiveBackupService.GetBackupForDownloadAsync(fileName, tenantFilter, isPlatform);
                 if (result == null)
                 {
                     return NotFound(new ApiResponse<object>

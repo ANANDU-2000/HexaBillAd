@@ -79,9 +79,18 @@ namespace HexaBill.Api.Shared.Middleware
                     return;
                 }
 
-                // SystemAdmin has TenantId = 0 (or null in database)
+                // tid=0 without plat=true is never valid platform scope.
                 if (tenantId == 0)
                 {
+                    if (!isPlatformAdmin)
+                    {
+                        _logger.LogWarning("Rejected tid=0 token without plat=true for user {UserId}",
+                            context.User.FindFirst("id")?.Value);
+                        context.Response.StatusCode = 401;
+                        await context.Response.WriteAsync("Invalid tenant context");
+                        return;
+                    }
+
                     context.Items["TenantId"] = 0;
                     await _next(context);
                     return;

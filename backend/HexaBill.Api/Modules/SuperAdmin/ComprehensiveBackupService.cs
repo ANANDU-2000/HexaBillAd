@@ -28,13 +28,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
     {
         Task<string> CreateFullBackupAsync(int tenantId, bool exportToDesktop = false, bool uploadToGoogleDrive = false, bool sendEmail = false, bool includeInvoicePdfs = false);
         Task<bool> RestoreFromBackupAsync(int tenantId, string backupFilePath, string? uploadedFilePath = null);
-        Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null);
+        Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null, bool isPlatformAdmin = false);
         /// <summary>Returns a stream and filename for download. Caller must dispose the stream. For S3, stream is a temp-file stream that deletes on dispose.</summary>
-        Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null);
-        Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null);
+        Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null, bool isPlatformAdmin = false);
+        Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null, bool isPlatformAdmin = false);
         Task ScheduleDailyBackupAsync();
-        Task<ImportPreview> PreviewImportAsync(string backupFilePath, string? uploadedFilePath = null);
-        Task<ImportResult> ImportWithResolutionAsync(string backupFilePath, string? uploadedFilePath, Dictionary<int, string> conflictResolutions, int userId);
+        Task<ImportPreview> PreviewImportAsync(string backupFilePath, string? uploadedFilePath = null, int? tenantId = null, bool isPlatformAdmin = false);
+        Task<ImportResult> ImportWithResolutionAsync(string backupFilePath, string? uploadedFilePath, Dictionary<int, string> conflictResolutions, int userId, int tenantId, bool isPlatformAdmin = false);
     }
 
     public class ComprehensiveBackupService : IComprehensiveBackupService
@@ -1046,7 +1046,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
 
-        public async Task<ImportPreview> PreviewImportAsync(string backupFilePath, string? uploadedFilePath = null)
+        public async Task<ImportPreview> PreviewImportAsync(string backupFilePath, string? uploadedFilePath = null, int? tenantId = null, bool isPlatformAdmin = false)
         {
             var preview = new ImportPreview
             {
@@ -1054,6 +1054,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 Conflicts = new List<ImportConflict>(),
                 ImportCounts = new Dictionary<string, int>()
             };
+
+            if (!string.IsNullOrWhiteSpace(backupFilePath) && !BackupTenantAccess.CanAccess(backupFilePath, tenantId, isPlatformAdmin))
+            {
+                preview.CompatibilityMessage = "Access denied: backup does not belong to your tenant.";
+                return preview;
+            }
 
             try
             {
@@ -1137,7 +1143,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        public async Task<ImportResult> ImportWithResolutionAsync(string backupFilePath, string? uploadedFilePath, Dictionary<int, string> conflictResolutions, int userId)
+        public async Task<ImportResult> ImportWithResolutionAsync(string backupFilePath, string? uploadedFilePath, Dictionary<int, string> conflictResolutions, int userId, int tenantId, bool isPlatformAdmin = false)
         {
             var result = new ImportResult
             {
@@ -1145,6 +1151,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 IdMappings = new Dictionary<int, int>(),
                 ErrorMessages = new List<string>()
             };
+
+            if (!isPlatformAdmin && tenantId <= 0)
+            {
+                result.ErrorMessages.Add("Tenant ID is required for import.");
+                return result;
+            }
+
+            if (!string.IsNullOrWhiteSpace(backupFilePath) && !BackupTenantAccess.CanAccess(backupFilePath, tenantId, isPlatformAdmin))
+            {
+                result.ErrorMessages.Add("Access denied: backup does not belong to your tenant.");
+                return result;
+            }
 
             using var transaction = await _context.Database.BeginTransactionAsync();
             string? sourcePath = null;
@@ -1934,7 +1952,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return Task.CompletedTask;
         }
 
-        public async Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null)
+        public async Task<List<BackupInfo>> GetBackupListAsync(int? tenantId = null, bool isPlatformAdmin = false)
         {
             var backups = new List<BackupInfo>();
 
@@ -1989,9 +2007,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
 
             var ordered = backups.OrderByDescending(b => b.CreatedDate).ToList();
+            if (isPlatformAdmin)
+                return ordered;
             if (tenantId is > 0)
-                ordered = ordered.Where(b => BackupTenantAccess.CanAccess(b.FileName, tenantId)).ToList();
-            return ordered;
+                return ordered.Where(b => BackupTenantAccess.CanAccess(b.FileName, tenantId, false)).ToList();
+            return new List<BackupInfo>();
         }
 
         private async Task<List<BackupInfo>> ListBackupsFromS3Async()
@@ -2032,11 +2052,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
         }
 
-        public async Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null)
+        public async Task<(Stream stream, string fileName)?> GetBackupForDownloadAsync(string fileName, int? tenantId = null, bool isPlatformAdmin = false)
         {
             fileName = BackupTenantAccess.SanitizeFileName(fileName);
             if (string.IsNullOrWhiteSpace(fileName)) return null;
-            if (!BackupTenantAccess.CanAccess(fileName, tenantId)) return null;
+            if (!BackupTenantAccess.CanAccess(fileName, tenantId, isPlatformAdmin)) return null;
 
             var serverPath = Path.Combine(_backupDirectory, fileName);
             var desktopPath = Path.Combine(_desktopPath, fileName);
@@ -2073,12 +2093,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return null;
         }
 
-        public async Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null)
+        public async Task<bool> DeleteBackupAsync(string fileName, int? tenantId = null, bool isPlatformAdmin = false)
         {
             try
             {
                 fileName = BackupTenantAccess.SanitizeFileName(fileName);
-                if (string.IsNullOrWhiteSpace(fileName) || !BackupTenantAccess.CanAccess(fileName, tenantId))
+                if (string.IsNullOrWhiteSpace(fileName) || !BackupTenantAccess.CanAccess(fileName, tenantId, isPlatformAdmin))
                     return false;
 
                 var serverPath = Path.Combine(_backupDirectory, fileName);

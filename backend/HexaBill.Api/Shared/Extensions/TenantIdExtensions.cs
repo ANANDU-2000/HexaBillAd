@@ -10,6 +10,7 @@
  * 3. Throw exception if missing or invalid (except SystemAdmin)
  */
 using System.Security.Claims;
+using HexaBill.Api.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace HexaBill.Api.Shared.Extensions
@@ -62,42 +63,28 @@ namespace HexaBill.Api.Shared.Extensions
             var tenantIdClaim = user.FindFirst("tid")?.Value
                 ?? user.FindFirst("tenant_id")?.Value;
             
-            if (tenantIdClaim == null)
-            {
-                return null; // SystemAdmin
-            }
-            
-            if (!int.TryParse(tenantIdClaim, out int tenantId))
+            if (tenantIdClaim == null || !int.TryParse(tenantIdClaim, out int tenantId) || tenantId <= 0)
             {
                 return null;
             }
-            
-            // SystemAdmin returns null to indicate all tenants
-            return tenantId == 0 ? null : tenantId;
+
+            return tenantId;
         }
         
         /// <summary>
-        /// Check if current user is SystemAdmin (tenant_id = 0 or null)
+        /// Platform SuperAdmin is identified only by plat=true. tid=0 alone is not platform scope.
         /// </summary>
         public static bool IsSystemAdmin(this ClaimsPrincipal user)
         {
-            if (string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
-                return true;
+            return string.Equals(user.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase);
+        }
 
-            var tenantIdClaim = user.FindFirst("tid")?.Value
-                ?? user.FindFirst("tenant_id")?.Value;
-            
-            if (tenantIdClaim == null)
-            {
-                return false;
-            }
-            
-            if (!int.TryParse(tenantIdClaim, out int tenantId))
-            {
-                return false;
-            }
-            
-            return tenantId == 0;
+        /// <summary>
+        /// True when the verified host is the platform host and the token carries plat=true.
+        /// </summary>
+        public static bool IsPlatformScope(this ClaimsPrincipal user, TenantHostResolution? hostResolution)
+        {
+            return hostResolution?.Kind == TenantHostKind.Platform && IsSystemAdmin(user);
         }
     }
     
@@ -109,9 +96,8 @@ namespace HexaBill.Api.Shared.Extensions
     public class TenantScopedController : ControllerBase
     {
         /// <summary>
-        /// CRITICAL: Gets current tenant ID from JWT token or impersonation header
-        /// Use this in ALL business logic to filter data
-        /// Returns 0 for SystemAdmin if no impersonation header is present
+        /// CRITICAL: Gets current tenant ID from JWT token only (never headers/body).
+        /// Returns 0 for platform SuperAdmin (plat=true).
         /// </summary>
         protected int CurrentTenantId
         {

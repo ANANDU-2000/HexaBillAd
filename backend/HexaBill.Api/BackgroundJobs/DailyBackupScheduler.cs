@@ -152,7 +152,7 @@ namespace HexaBill.Api.BackgroundJobs
             try
             {
                 var backupService = serviceProvider.GetRequiredService<IComprehensiveBackupService>();
-                var backups = await backupService.GetBackupListAsync();
+                var backups = await backupService.GetBackupListAsync(null, isPlatformAdmin: true);
                 var cutoffDate = DateTime.Now.AddDays(-retentionDays);
 
                 foreach (var backup in backups)
@@ -160,7 +160,7 @@ namespace HexaBill.Api.BackgroundJobs
                     var created = backup.CreatedDate;
                     if (created < cutoffDate)
                     {
-                        await backupService.DeleteBackupAsync(backup.FileName);
+                        await backupService.DeleteBackupAsync(backup.FileName, null, isPlatformAdmin: true);
                         _logger.LogInformation("🗑️ Deleted old backup: {FileName}", backup.FileName);
                     }
                 }

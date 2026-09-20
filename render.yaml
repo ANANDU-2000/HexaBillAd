@@ -13,8 +13,10 @@ services:
         value: Production
       - key: DATABASE_URL
         sync: false
+      # Same-origin tenant subdomains are allowed dynamically via IsAllowedProductionOrigin.
+      # Keep legacy api.hexabill.company until existing clients finish migration.
       - key: ALLOWED_ORIGINS
-        value: https://hexabill.company,https://www.hexabill.company,https://admin.hexabill.company
+        value: https://hexabill.company,https://www.hexabill.company,https://admin.hexabill.company,https://api.hexabill.company
       - key: JwtSettings__SecretKey
         generateValue: true
       - key: Hosting__BaseDomain
@@ -24,4 +26,6 @@ services:
       - key: Hosting__ApiHost
         value: api.hexabill.company
       - key: Hosting__EnforcementMode
-        value: LogOnly
+        value: Enforce
+      - key: Hosting__EdgeProxySecret
+        sync: false

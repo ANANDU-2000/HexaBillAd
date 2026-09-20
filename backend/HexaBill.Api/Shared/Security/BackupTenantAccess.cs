@@ -30,16 +30,18 @@ public static class BackupTenantAccess
     }
 
     /// <summary>
-    /// SystemAdmin / platform jobs pass null or 0 and may access any backup.
+    /// Platform SuperAdmin (plat=true) may access any backup.
     /// Tenant users may only access files that encode their TenantId.
     /// Unknown filename formats are denied to tenant users.
     /// </summary>
-    public static bool CanAccess(string fileName, int? requestTenantId)
+    public static bool CanAccess(string fileName, int? requestTenantId, bool isPlatformAdmin = false)
     {
         if (string.IsNullOrWhiteSpace(fileName))
             return false;
-        if (requestTenantId is null or <= 0)
+        if (isPlatformAdmin)
             return true;
+        if (requestTenantId is null or <= 0)
+            return false;
         if (!TryGetTenantId(fileName, out var fileTenantId))
             return false;
         return fileTenantId == requestTenantId.Value;
