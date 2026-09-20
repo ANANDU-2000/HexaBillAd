@@ -113,6 +113,11 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
                 entity.HasIndex(e => e.Email).IsUnique();
                 entity.Property(e => e.Role).HasConversion<string>();
+                entity.Property(e => e.IsPlatformAdmin).IsRequired().HasDefaultValue(false);
+                entity.Property(e => e.IsActive).IsRequired().HasDefaultValue(true);
+                entity.HasCheckConstraint(
+                    "CK_Users_PlatformTenantIdentity",
+                    "(\"IsPlatformAdmin\" = TRUE AND \"TenantId\" IS NULL) OR (\"IsPlatformAdmin\" = FALSE AND \"TenantId\" IS NOT NULL)");
             });
 
             // Product configuration - SKU unique per tenant (multi-tenant), not globally

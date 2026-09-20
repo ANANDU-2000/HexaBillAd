@@ -27,6 +27,12 @@ namespace HexaBill.Api.Models
         // MULTI-TENANT: Tenant identification (new, replaces OwnerId)
         // NULL = SystemAdmin (sees all tenants), NOT NULL = Tenant user (sees only their tenant data)
         public int? TenantId { get; set; }
+
+        /// <summary>Explicit platform identity. This must not be inferred from TenantId.</summary>
+        public bool IsPlatformAdmin { get; set; }
+
+        /// <summary>Inactive users cannot authenticate or use existing sessions.</summary>
+        public bool IsActive { get; set; } = true;
         
         [MaxLength(20)]
         public string? Phone { get; set; }
@@ -56,4 +62,3 @@ namespace HexaBill.Api.Models
         Staff   // Staff access within their company (OwnerId scoped)
     }
 }
-
