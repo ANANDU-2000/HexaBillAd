@@ -169,7 +169,7 @@ namespace HexaBill.Api.Modules.Sales
                 }
 
                 var result = await _saleService.CreateSaleAsync(request, userId, tenantId);
-                return CreatedAtAction(nameof(GetSale), new { id = result.Id }, new ApiResponse<SaleDto>
+                return StatusCode(201, new ApiResponse<SaleDto>
                 {
                     Success = true,
                     Message = "Sale created successfully",
@@ -243,7 +243,7 @@ namespace HexaBill.Api.Modules.Sales
 
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
                 var result = await _saleService.CreateSaleWithOverrideAsync(request.SaleRequest, request.Reason, userId, tenantId);
-                return CreatedAtAction(nameof(GetSale), new { id = result.Id }, new ApiResponse<SaleDto>
+                return StatusCode(201, new ApiResponse<SaleDto>
                 {
                     Success = true,
                     Message = "Sale created successfully with admin override",
