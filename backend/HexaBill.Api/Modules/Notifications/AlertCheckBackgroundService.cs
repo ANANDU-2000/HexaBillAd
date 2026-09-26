@@ -3,6 +3,9 @@ Purpose: Background service to check and create alerts periodically
 Author: AI Assistant
 Date: 2025
 */
+using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Data;
+using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Notifications;
 
 namespace HexaBill.Api.Modules.Notifications
@@ -32,9 +35,22 @@ namespace HexaBill.Api.Modules.Notifications
                 {
                     try
                     {
-                        using (var scope = _serviceProvider.CreateScope())
+                        List<int> tenantIds;
+                        using (var listScope = _serviceProvider.CreateScope())
                         {
-                            var alertService = scope.ServiceProvider.GetRequiredService<IAlertService>();
+                            var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            tenantIds = await listContext.Tenants
+                                .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                                .Select(t => t.Id)
+                                .ToListAsync(stoppingToken);
+                        }
+
+                        foreach (var tenantId in tenantIds)
+                        {
+                            using var tenantScope = _serviceProvider.CreateScope();
+                            var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            context.SetRequestTenantScope(tenantId, false);
+                            var alertService = tenantScope.ServiceProvider.GetRequiredService<IAlertService>();
                             await alertService.CheckAndCreateAlertsAsync();
                         }
 

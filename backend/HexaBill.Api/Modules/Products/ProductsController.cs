@@ -60,73 +60,10 @@ namespace HexaBill.Api.Modules.Products
         {
             try
             {
-                // CRITICAL: Get tenantId from JWT token
-                // Super Admin (owner_id = 0) - for now, return empty list since they should use dedicated admin endpoints
                 var tenantId = CurrentTenantId;
-                
-                // Super Admin handling - if owner_id is 0, show all products (for system overview)
-                if (IsSystemAdmin)
-                {
-                    // For Super Admin, we need to query all products or show message
-                    // For now, show all products (no owner filter)
-                    var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
-                    var query = context.Products.AsQueryable();
-                    
-                    if (!string.IsNullOrEmpty(search))
-                    {
-                        query = query.Where(p => p.NameEn.Contains(search) || 
-                                               p.NameAr!.Contains(search) || 
-                                               p.Sku.Contains(search));
-                    }
-                    if (lowStock)
-                    {
-                        query = query.Where(p => p.StockQty <= p.ReorderLevel);
-                    }
-                    if (!string.IsNullOrEmpty(unitType))
-                    {
-                        query = query.Where(p => p.UnitType == unitType);
-                    }
-                    
-                    var totalCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(query);
-                    var products = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
-                        query.OrderBy(p => p.NameEn)
-                            .Skip((page - 1) * pageSize)
-                            .Take(pageSize)
-                            .Select(p => new ProductDto
-                            {
-                                Id = p.Id,
-                                Sku = p.Sku,
-                                NameEn = p.NameEn,
-                                NameAr = p.NameAr,
-                                UnitType = p.UnitType,
-                                ConversionToBase = p.ConversionToBase,
-                                CostPrice = p.CostPrice,
-                                SellPrice = p.SellPrice,
-                                StockQty = p.StockQty,
-                                ReorderLevel = p.ReorderLevel,
-                                ExpiryDate = p.ExpiryDate,
-                                DescriptionEn = p.DescriptionEn,
-                                DescriptionAr = p.DescriptionAr
-                            }));
-                    
-                    Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
-                    Response.Headers["Pragma"] = "no-cache";
-                    Response.Headers["Expires"] = "0";
-                    return Ok(new ApiResponse<PagedResponse<ProductDto>>
-                    {
-                        Success = true,
-                        Message = $"SUPER ADMIN VIEW: {totalCount} products from ALL owners",
-                        Data = new PagedResponse<ProductDto>
-                        {
-                            Items = products,
-                            TotalCount = totalCount,
-                            Page = page,
-                            PageSize = pageSize,
-                            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-                        }
-                    });
-                }
-                
+                if (tenantId <= 0)
+                    return Forbid();
+
                 var globalThreshold = await GetGlobalLowStockThresholdAsync();
                 var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold, missingBarcode);
                 // Phase 1.2: Prevent browser/axios caching so stock updates are visible immediately

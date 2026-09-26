@@ -43,32 +43,38 @@ namespace HexaBill.Api.Core.Infrastructure
                         continue;
                     }
 
-                    var subscriptionService = scope.ServiceProvider.GetRequiredService<ISubscriptionService>();
-                    var automation = scope.ServiceProvider.GetRequiredService<IAutomationProvider>();
+                    var tenantIds = await db.Tenants
+                        .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                        .Select(t => t.Id)
+                        .ToListAsync(stoppingToken);
 
                     var now = DateTime.UtcNow;
                     var in3Days = now.AddDays(3);
-
-                    var expiringTrials = await db.Subscriptions
-                        .Where(s => s.Status == SubscriptionStatus.Trial && s.TrialEndDate.HasValue &&
-                                   s.TrialEndDate.Value >= now && s.TrialEndDate.Value <= in3Days)
-                        .Select(s => new { s.TenantId, s.TrialEndDate })
-                        .ToListAsync(stoppingToken);
-                    foreach (var t in expiringTrials)
-                        await automation.NotifyAsync(AutomationEvents.TrialEnding, t.TenantId, new { trialEndDate = t.TrialEndDate }, stoppingToken);
-
-                    var tenantIds = await db.Subscriptions.Select(s => s.TenantId).Distinct().ToListAsync(stoppingToken);
                     foreach (var tid in tenantIds)
+                    {
+                        using var tenantScope = _sp.CreateScope();
+                        var tenantDb = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        tenantDb.SetRequestTenantScope(tid, false);
+                        var subscriptionService = tenantScope.ServiceProvider.GetRequiredService<ISubscriptionService>();
+                        var automation = tenantScope.ServiceProvider.GetRequiredService<IAutomationProvider>();
+
+                        var expiringTrials = await tenantDb.Subscriptions
+                            .Where(s => s.Status == SubscriptionStatus.Trial && s.TrialEndDate.HasValue &&
+                                       s.TrialEndDate.Value >= now && s.TrialEndDate.Value <= in3Days)
+                            .Select(s => s.TrialEndDate)
+                            .ToListAsync(stoppingToken);
+                        foreach (var trialEndDate in expiringTrials)
+                            await automation.NotifyAsync(AutomationEvents.TrialEnding, tid, new { trialEndDate }, stoppingToken);
+
                         await subscriptionService.CheckSubscriptionStatusAsync(tid);
 
-                    var overdue = await db.Sales
-                        .Where(s => s.TenantId != null && !s.IsDeleted && s.DueDate.HasValue && s.DueDate < now &&
-                                   (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
-                        .GroupBy(s => s.TenantId!.Value)
-                        .Select(g => new { TenantId = g.Key, Count = g.Count() })
-                        .ToListAsync(stoppingToken);
-                    foreach (var o in overdue)
-                        await automation.NotifyAsync(AutomationEvents.PaymentOverdue, o.TenantId, new { overdueCount = o.Count }, stoppingToken);
+                        var overdueCount = await tenantDb.Sales
+                            .Where(s => !s.IsDeleted && s.DueDate.HasValue && s.DueDate < now &&
+                                       (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
+                            .CountAsync(stoppingToken);
+                        if (overdueCount > 0)
+                            await automation.NotifyAsync(AutomationEvents.PaymentOverdue, tid, new { overdueCount }, stoppingToken);
+                    }
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex) { _logger.LogError(ex, "TrialExpiryCheckJob error"); }

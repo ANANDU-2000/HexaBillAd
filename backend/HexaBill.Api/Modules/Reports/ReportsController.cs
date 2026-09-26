@@ -57,7 +57,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 DateTime fromDate;
                 DateTime toDate;
                 if (from.HasValue && to.HasValue)
@@ -152,7 +152,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 var (from, to, label) = await _vatReturnReportService.GetSuggestedPeriodAsync(tenantId);
                 return Ok(new ApiResponse<object>
                 {
@@ -211,7 +211,7 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<ActionResult<ApiResponse<List<VatReturnPeriodDto>>>> GetVatReturnPeriods()
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             var list = await _context.VatReturnPeriods
                 .Where(p => p.TenantId == tenantId)
                 .OrderByDescending(p => p.PeriodEnd)
@@ -244,7 +244,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 if (request?.From == null || request.To == null)
                     return BadRequest(new ApiResponse<VatReturn201Dto> { Success = false, Message = "From and To dates are required." });
                 // Enforce VAT period shape for custom ranges as well.
@@ -393,7 +393,7 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<ActionResult<ApiResponse<object>>> LockVatReturnPeriod(int id)
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
             if (string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
@@ -418,7 +418,7 @@ namespace HexaBill.Api.Modules.Reports
         public async Task<ActionResult<ApiResponse<object>>> SubmitVatReturnPeriod(int id)
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
             if (!string.Equals(period.Status, "Locked", StringComparison.OrdinalIgnoreCase))
@@ -439,7 +439,7 @@ namespace HexaBill.Api.Modules.Reports
             [FromQuery] int? periodId)
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             DateTime fromDate, toDate;
             if (periodId.HasValue)
             {
@@ -513,7 +513,7 @@ namespace HexaBill.Api.Modules.Reports
             [FromQuery] int? periodId)
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             DateTime fromDate, toDate;
             string label;
             if (periodId.HasValue)
@@ -564,7 +564,7 @@ namespace HexaBill.Api.Modules.Reports
             [FromQuery] int? periodId)
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
             DateTime fromDate, toDate;
             string label;
             if (periodId.HasValue)
@@ -608,7 +608,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 if (quarter < 1 || quarter > 4 || year < 2020 || year > 2030)
                     return BadRequest("Invalid quarter (1-4) or year");
                 var data = await _vatReturnReportService.GetVatReturnAsync(tenantId, quarter, year);
@@ -651,6 +651,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = fromDate ?? DateTime.UtcNow.Date.AddDays(-30);
                 var to = toDate ?? DateTime.UtcNow.Date;
                 // FIX: Pass routeId filter to service (if provided, filter by route)
@@ -681,7 +682,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
 
                 var gstNow = _timeZoneService.GetCurrentDate();
                 var to = (toDate ?? gstNow).ToUtcKind();
@@ -782,6 +783,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
                 var role = User.FindFirst(ClaimTypes.Role)?.Value;
                 var result = await _reportService.GetSummaryReportAsync(tenantId, fromDate, toDate, branchId, routeId, userId, role, skipCache: refresh);
@@ -822,7 +824,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 var gst = _timeZoneService.GetCurrentDate();
                 var from = (fromDate ?? gst).ToUtcKind();
                 var to = (toDate ?? gst).ToUtcKind();
@@ -855,7 +857,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
-                if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+                if (tenantId <= 0) return Forbid();
                 var gst = _timeZoneService.GetCurrentDate();
                 var from = (fromDate ?? gst).ToUtcKind();
                 var to = (toDate ?? gst).ToUtcKind();
@@ -891,6 +893,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var gstNow = _timeZoneService.GetCurrentDate();
                 var from = (fromDate ?? gstNow.AddDays(-30)).ToUtcKind();
                 var to = ((toDate ?? gstNow).AddDays(1)).ToUtcKind();
@@ -931,7 +934,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 // CRITICAL FIX: Always add 1 day to toDate for inclusive range
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = ((toDate ?? _timeZoneService.GetCurrentDate()).AddDays(1)).ToUtcKind();
@@ -982,7 +986,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 // AUDIT-6 FIX: Add pagination support
                 var result = await _reportService.GetOutstandingCustomersAsync(tenantId, page, pageSize, days);
                 return Ok(new ApiResponse<PagedResponse<CustomerDto>>
@@ -1010,7 +1015,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 // AUDIT-6 FIX: Add pagination support
                 var result = await _reportService.GetChequeReportAsync(tenantId, page, pageSize);
                 return Ok(new ApiResponse<PagedResponse<PaymentDto>>
@@ -1037,7 +1043,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var result = await _reportService.GetAISuggestionsAsync(tenantId, periodDays);
 
                 // SECURITY: Hide profit-sensitive suggestions from Staff
@@ -1079,7 +1086,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 // CRITICAL: Only apply date filter when BOTH from and to are explicitly provided.
                 // When omitted, show ALL pending/overdue bills (no date filter) so overdue is visible.
                 DateTime? fromDate = (from.HasValue && to.HasValue) ? from.Value.ToUtcKind() : null;
@@ -1122,7 +1130,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetExpensesByCategoryAsync(tenantId, from, to, branchId);
@@ -1153,7 +1162,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetSalesVsExpensesAsync(tenantId, from, to, groupBy);
@@ -1231,7 +1241,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
 
@@ -1271,7 +1282,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetEnhancedSalesReportAsync(tenantId, from, to, granularity, productId, customerId, status, page, pageSize);
@@ -1303,7 +1315,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetEnhancedProductSalesReportAsync(tenantId, from, to, productId, unitType, lowStockOnly);
@@ -1333,7 +1346,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetCustomerReportAsync(tenantId, from, to, minOutstanding);
@@ -1362,7 +1376,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var asOf = (asOfDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetAgingReportAsync(tenantId, asOf, customerId);
                 return Ok(new ApiResponse<AgingReportDto>
@@ -1390,6 +1405,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var asOf = (asOfDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 var result = await _reportService.GetApAgingReportAsync(tenantId, asOf);
                 return Ok(new ApiResponse<ApAgingReportDto>
@@ -1416,7 +1432,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var result = await _reportService.GetStockReportAsync(tenantId, lowOnly);
                 return Ok(new ApiResponse<StockReportDto>
                 {
@@ -1448,6 +1465,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
                 var role = User.FindFirst(ClaimTypes.Role)?.Value;
                 var result = await _reportService.GetComprehensiveSalesLedgerAsync(tenantId, fromDate, toDate, branchId, routeId, staffId, userId, role, entryType);
@@ -1724,7 +1742,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
                 var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
                 
@@ -1768,7 +1787,8 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
                 var from = fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30);
                 var to = toDate ?? _timeZoneService.GetCurrentDate();
                 

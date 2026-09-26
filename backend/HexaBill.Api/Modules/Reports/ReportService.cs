@@ -103,7 +103,9 @@ namespace HexaBill.Api.Modules.Reports
         {
             try
             {
-                // P5: Use tenant timezone (e.g. Asia/Dubai) for "today" so dashboard metrics match tenant day
+                if (tenantId <= 0)
+                    throw new UnauthorizedAccessException("A tenant is required for this report.");
+
                 var today = _timeZoneService.GetCurrentDate();
                 DateTime startDate;
                 DateTime endDate;
@@ -322,7 +324,7 @@ namespace HexaBill.Api.Modules.Reports
                                             join s in _context.Sales on si.SaleId equals s.Id
                                             where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
                                             select new { si.SaleId, si.Qty, si.ProductId, s.TenantId, s.BranchId, s.RouteId };
-                        if (tenantId > 0) saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
+                        saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
                         if (branchId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.BranchId == branchId.Value);
                         if (routeId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.RouteId == routeId.Value);
                         if (tenantId > 0 && userIdForStaff.HasValue && string.Equals(roleForStaff, "Staff", StringComparison.OrdinalIgnoreCase))
@@ -342,7 +344,7 @@ namespace HexaBill.Api.Modules.Reports
                                             join s in _context.Sales on si.SaleId equals s.Id
                                             where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
                                             select new { si.SaleId, si.Qty, si.ProductId, s.TenantId };
-                        if (tenantId > 0) saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
+                        saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
                         var data = await saleItemsQuery.ToListAsync();
                         saleItemsData = data.Select(x => (x.SaleId, x.Qty, x.ProductId)).ToList();
                     }
@@ -546,23 +548,18 @@ namespace HexaBill.Api.Modules.Reports
                     overdueAmountTotal = 0m;
                 }
 
-                // Calculate invoice counts
-                // CRITICAL: Super admin (TenantId = 0) sees ALL owners
                 var invoicesTodayQuery = _context.Sales
-                    .Where(s => !s.IsDeleted && s.InvoiceDate >= today && s.InvoiceDate < today.AddDays(1));
-                if (tenantId > 0) invoicesTodayQuery = invoicesTodayQuery.Where(s => s.TenantId == tenantId);
+                    .Where(s => !s.IsDeleted && s.InvoiceDate >= today && s.InvoiceDate < today.AddDays(1) && s.TenantId == tenantId);
                 var invoicesToday = await invoicesTodayQuery.CountAsync();
                 
                 var startOfWeek = today.AddDays(-(int)today.DayOfWeek);
                 var invoicesWeeklyQuery = _context.Sales
-                    .Where(s => !s.IsDeleted && s.InvoiceDate >= startOfWeek && s.InvoiceDate < today.AddDays(1));
-                if (tenantId > 0) invoicesWeeklyQuery = invoicesWeeklyQuery.Where(s => s.TenantId == tenantId);
+                    .Where(s => !s.IsDeleted && s.InvoiceDate >= startOfWeek && s.InvoiceDate < today.AddDays(1) && s.TenantId == tenantId);
                 var invoicesWeekly = await invoicesWeeklyQuery.CountAsync();
                 
                 var startOfMonth = new DateTime(today.Year, today.Month, 1, 0, 0, 0, DateTimeKind.Utc);
                 var invoicesMonthlyQuery = _context.Sales
-                    .Where(s => !s.IsDeleted && s.InvoiceDate >= startOfMonth && s.InvoiceDate < today.AddDays(1));
-                if (tenantId > 0) invoicesMonthlyQuery = invoicesMonthlyQuery.Where(s => s.TenantId == tenantId);
+                    .Where(s => !s.IsDeleted && s.InvoiceDate >= startOfMonth && s.InvoiceDate < today.AddDays(1) && s.TenantId == tenantId);
                 var invoicesMonthly = await invoicesMonthlyQuery.CountAsync();
 
                 // Calculate branch breakdown (only if no specific branchId/routeId filter is applied and Sales has BranchId/RouteId)

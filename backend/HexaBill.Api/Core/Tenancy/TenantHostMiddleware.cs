@@ -8,19 +8,17 @@ public sealed class TenantHostMiddleware
 {
     public const string ResolutionItemKey = "TenantHostResolution";
     private readonly RequestDelegate _next;
-    private readonly ITenantHostResolver _resolver;
     private readonly HostingOptions _options;
     private readonly ILogger<TenantHostMiddleware> _logger;
 
-    public TenantHostMiddleware(RequestDelegate next, ITenantHostResolver resolver, IOptions<HostingOptions> options, ILogger<TenantHostMiddleware> logger)
+    public TenantHostMiddleware(RequestDelegate next, IOptions<HostingOptions> options, ILogger<TenantHostMiddleware> logger)
     {
         _next = next;
-        _resolver = resolver;
         _options = options.Value;
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ITenantHostResolver resolver)
     {
         if (context.Request.Headers.ContainsKey("X-Tenant-Id") || context.Request.Headers.ContainsKey("X-Tenant"))
         {
@@ -33,7 +31,7 @@ public sealed class TenantHostMiddleware
             }
         }
 
-        var resolution = await _resolver.ResolveAsync(context, context.RequestAborted);
+        var resolution = await resolver.ResolveAsync(context, context.RequestAborted);
         context.Items[ResolutionItemKey] = resolution;
 
         // Establish the database query scope from the verified host before the

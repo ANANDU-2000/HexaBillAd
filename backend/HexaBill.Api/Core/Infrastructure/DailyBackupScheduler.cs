@@ -56,31 +56,36 @@ namespace HexaBill.Api.Core.Infrastructure
                     }
                     try
                     {
-                        using (var scope = _serviceProvider.CreateScope())
+                        List<int> activeTenantIds;
+                        using (var listScope = _serviceProvider.CreateScope())
                         {
-                            var backupService = scope.ServiceProvider.GetRequiredService<IComprehensiveBackupService>();
-                            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-                            
-                            // AUDIT-8 FIX: Backup all active tenants (system-wide scheduled backup)
-                            var activeTenantIds = await context.Tenants
+                            var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                            activeTenantIds = await listContext.Tenants
                                 .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
                                 .Select(t => t.Id)
                                 .ToListAsync(stoppingToken);
-                            
-                            foreach (var tenantId in activeTenantIds)
+                        }
+
+                        foreach (var tenantId in activeTenantIds)
+                        {
+                            try
                             {
-                                try
-                                {
-                                    var fileName = await backupService.CreateFullBackupAsync(tenantId, exportToDesktop: false, uploadToGoogleDrive: false, sendEmail: false);
-                                    _logger.LogInformation("✅ Scheduled backup completed for tenant {TenantId}: {FileName}", tenantId, fileName);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogError(ex, "❌ Failed to backup tenant {TenantId}", tenantId);
-                                }
+                                using var tenantScope = _serviceProvider.CreateScope();
+                                var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                                context.SetRequestTenantScope(tenantId, false);
+                                var backupService = tenantScope.ServiceProvider.GetRequiredService<IComprehensiveBackupService>();
+                                var fileName = await backupService.CreateFullBackupAsync(tenantId, exportToDesktop: false, uploadToGoogleDrive: false, sendEmail: false);
+                                _logger.LogInformation("Scheduled backup completed for tenant {TenantId}: {FileName}", tenantId, fileName);
                             }
-                            
-                            await CleanupOldBackupsAsync(scope.ServiceProvider, retentionDays);
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "Failed to backup tenant {TenantId}", tenantId);
+                            }
+                        }
+
+                        using (var cleanupScope = _serviceProvider.CreateScope())
+                        {
+                            await CleanupOldBackupsAsync(cleanupScope.ServiceProvider, retentionDays);
                         }
                     }
                     finally

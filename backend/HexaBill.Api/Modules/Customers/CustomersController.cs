@@ -45,61 +45,10 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                
-                // Super Admin handling - show all customers from all owners
-                if (IsSystemAdmin)
-                {
-                    var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
-                    var query = context.Customers.AsQueryable();
-                    
-                    if (!string.IsNullOrEmpty(search))
-                    {
-                        var sl = search.Trim().ToLowerInvariant();
-                        query = query.Where(c => (c.Name != null && c.Name.ToLower().Contains(sl)) || 
-                                               (c.Phone != null && c.Phone.Contains(search)) || 
-                                               (c.Email != null && c.Email.ToLower().Contains(sl)));
-                    }
-                    
-                    var totalCount = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.CountAsync(query);
-                    var sortKey = (sortBy ?? "").Trim().ToLowerInvariant();
-                    var orderedQuery = sortKey switch
-                    {
-                        "balancedesc" => query.OrderByDescending(c => c.PendingBalance).ThenBy(c => c.Name),
-                        "activitydesc" => query.OrderByDescending(c => c.LastActivity ?? c.CreatedAt).ThenBy(c => c.Name),
-                        _ => query.OrderBy(c => c.Name)
-                    };
-                    var customers = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
-                        orderedQuery
-                            .Skip((page - 1) * pageSize)
-                            .Take(pageSize)
-                            .Select(c => new CustomerDto
-                            {
-                                Id = c.Id,
-                                Name = c.Name,
-                                Phone = c.Phone,
-                                Email = c.Email,
-                                Address = c.Address,
-                                Trn = c.Trn,
-                                CreditLimit = c.CreditLimit,
-                                Balance = c.Balance
-                            }));
-                    
-                    return Ok(new ApiResponse<PagedResponse<CustomerDto>>
-                    {
-                        Success = true,
-                        Message = $"SUPER ADMIN VIEW: {totalCount} customers from ALL owners",
-                        Data = new PagedResponse<CustomerDto>
-                        {
-                            Items = customers,
-                            TotalCount = totalCount,
-                            Page = page,
-                            PageSize = pageSize,
-                            TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
-                        }
-                    });
-                }
-                
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+
                 // Staff with no branch/route filter: restrict to assigned branches and routes
                 IReadOnlyList<int>? restrictToBranchIds = null;
                 IReadOnlyList<int>? restrictToRouteIds = null;
@@ -179,42 +128,10 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                
-                // SUPER ADMIN: Can access any customer
-                if (IsSystemAdmin)
-                {
-                    var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
-                    var customer = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
-                        context.Customers.Where(c => c.Id == id));
-                    
-                    if (customer == null)
-                    {
-                        return NotFound(new ApiResponse<CustomerDto>
-                        {
-                            Success = false,
-                            Message = "Customer not found"
-                        });
-                    }
-                    
-                    return Ok(new ApiResponse<CustomerDto>
-                    {
-                        Success = true,
-                        Message = "SUPER ADMIN: Customer retrieved successfully",
-                        Data = new CustomerDto
-                        {
-                            Id = customer.Id,
-                            Name = customer.Name,
-                            Phone = customer.Phone,
-                            Email = customer.Email,
-                            Address = customer.Address,
-                            Trn = customer.Trn,
-                            CreditLimit = customer.CreditLimit,
-                            Balance = customer.Balance
-                        }
-                    });
-                }
-                
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+
                 var result = await _customerService.GetCustomerByIdAsync(id, tenantId);
                 if (result == null)
                 {
@@ -488,29 +405,16 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
-                
-                // SUPER ADMIN: Can access any customer - use owner 0 to bypass filter in service
-                if (IsSystemAdmin)
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 || !await TenantEntityAccess.CustomerBelongsToTenantAsync(_context, id, tenantId))
                 {
-                    // Find the customer's actual owner first
-                    var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
-                    var customer = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
-                        context.Customers.Where(c => c.Id == id));
-                    
-                    if (customer == null)
+                    return NotFound(new ApiResponse<CustomerDto>
                     {
-                        return NotFound(new ApiResponse<CustomerDto>
-                        {
-                            Success = false,
-                            Message = "Customer not found"
-                        });
-                    }
-                    
-                    // Use the customer's actual owner ID for recalculation
-                    tenantId = customer.TenantId ?? tenantId;
+                        Success = false,
+                        Message = "Customer not found"
+                    });
                 }
-                
+
                 await _customerService.RecalculateCustomerBalanceAsync(id, tenantId);
                 
                 // CRITICAL: Also recalculate invoice payment statuses to fix stale PaidAmount

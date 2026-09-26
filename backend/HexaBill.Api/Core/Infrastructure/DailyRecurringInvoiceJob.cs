@@ -3,7 +3,10 @@ Purpose: Daily job to process recurring invoices due for today
 Author: HexaBill
 Date: 2025
 */
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
+using HexaBill.Api.Data;
+using HexaBill.Api.Models;
 
 namespace HexaBill.Api.Core.Infrastructure
 {
@@ -31,9 +34,24 @@ namespace HexaBill.Api.Core.Infrastructure
                     _logger.LogInformation("Recurring invoice job next run: {NextRun}", nextRun);
                     await Task.Delay(delay, stoppingToken);
 
-                    using var scope = _serviceProvider.CreateScope();
-                    var service = scope.ServiceProvider.GetRequiredService<IRecurringInvoiceService>();
-                    await service.ProcessDueRecurringInvoicesAsync(stoppingToken);
+                    List<int> tenantIds;
+                    using (var listScope = _serviceProvider.CreateScope())
+                    {
+                        var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        tenantIds = await listContext.Tenants
+                            .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                            .Select(t => t.Id)
+                            .ToListAsync(stoppingToken);
+                    }
+
+                    foreach (var tenantId in tenantIds)
+                    {
+                        using var tenantScope = _serviceProvider.CreateScope();
+                        var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                        context.SetRequestTenantScope(tenantId, false);
+                        var service = tenantScope.ServiceProvider.GetRequiredService<IRecurringInvoiceService>();
+                        await service.ProcessDueRecurringInvoicesAsync(stoppingToken);
+                    }
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex)

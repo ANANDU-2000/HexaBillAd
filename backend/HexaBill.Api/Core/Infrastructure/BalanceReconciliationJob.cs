@@ -6,6 +6,7 @@ Schedule: Configurable via Settings (BALANCE_RECONCILIATION_ENABLED, BALANCE_REC
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
+using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
 
 namespace HexaBill.Api.Core.Infrastructure
@@ -99,40 +100,51 @@ namespace HexaBill.Api.Core.Infrastructure
 
         private async Task ReconcileAllBalancesAsync(CancellationToken stoppingToken)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
+            List<int> tenantIds;
+            using (var listScope = _serviceProvider.CreateScope())
+            {
+                var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                tenantIds = await listContext.Tenants
+                    .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                    .Select(t => t.Id)
+                    .ToListAsync(stoppingToken);
+            }
 
-            var customerIds = await context.Customers
-                .Where(c => c.TenantId != null)
-                .Select(c => c.Id)
-                .ToListAsync(stoppingToken);
-
-            var total = customerIds.Count;
             var processed = 0;
             var errors = 0;
-
-            foreach (var batch in customerIds.Chunk(BatchSize))
+            foreach (var tenantId in tenantIds)
             {
-                foreach (var customerId in batch)
-                {
-                    if (stoppingToken.IsCancellationRequested) return;
+                if (stoppingToken.IsCancellationRequested) return;
+                using var tenantScope = _serviceProvider.CreateScope();
+                var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                context.SetRequestTenantScope(tenantId, false);
+                var balanceService = tenantScope.ServiceProvider.GetRequiredService<IBalanceService>();
 
-                    try
+                var customerIds = await context.Customers
+                    .Select(c => c.Id)
+                    .ToListAsync(stoppingToken);
+
+                foreach (var batch in customerIds.Chunk(BatchSize))
+                {
+                    foreach (var customerId in batch)
                     {
-                        await balanceService.RecalculateCustomerBalanceAsync(customerId);
-                        processed++;
-                    }
-                    catch (Exception ex)
-                    {
-                        errors++;
-                        _logger.LogWarning(ex, "Failed to reconcile balance for customer {CustomerId}", customerId);
+                        if (stoppingToken.IsCancellationRequested) return;
+                        try
+                        {
+                            await balanceService.RecalculateCustomerBalanceAsync(customerId);
+                            processed++;
+                        }
+                        catch (Exception ex)
+                        {
+                            errors++;
+                            _logger.LogWarning(ex, "Failed to reconcile balance for customer {CustomerId}", customerId);
+                        }
                     }
                 }
 
                 _logger.LogInformation(
-                    "Balance reconciliation progress: {Processed}/{Total} customers, {Errors} errors",
-                    processed, total, errors);
+                    "Balance reconciliation tenant {TenantId}: {Count} customers",
+                    tenantId, customerIds.Count);
             }
 
             _logger.LogInformation(

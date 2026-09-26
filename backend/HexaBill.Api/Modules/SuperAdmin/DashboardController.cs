@@ -44,7 +44,9 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
         // CRITICAL: Get owner_id from JWT for data isolation
         // Super Admin (owner_id = 0) sees all data
         var tenantId = CurrentTenantId;
-        var isSystemAdmin = IsSystemAdmin;
+        if (tenantId <= 0)
+            return Forbid();
+        var isSystemAdmin = false;
         
         // Get user role from token
         var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Staff";
@@ -113,7 +115,7 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
 
         // Low Stock Alerts (products with stock less than 100)
         var lowStockQuery = _context.Products.Where(p => p.StockQty < 100);
-        if (!IsSystemAdmin) lowStockQuery = lowStockQuery.Where(p => p.TenantId == tenantId);
+        lowStockQuery = lowStockQuery.Where(p => p.TenantId == tenantId);
         var lowStockProducts = await lowStockQuery
             .Select(p => new LowStockProduct
             {
@@ -152,7 +154,7 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
         try
         {
             var tenantId = CurrentTenantId;
-            if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+            if (tenantId <= 0) return Forbid();
 
             var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
@@ -237,7 +239,9 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
     {
         // CRITICAL: Get owner_id from JWT for data isolation
         var tenantId = CurrentTenantId;
-        var isSystemAdmin = IsSystemAdmin;
+        if (tenantId <= 0)
+            return Forbid();
+        var isSystemAdmin = false;
         
         var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "Staff";
         var isAdmin = role == "Admin";
@@ -295,7 +299,7 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
     public async Task<ActionResult<ApiResponse<SetupStatusDto>>> GetSetupStatus()
     {
         var tenantId = CurrentTenantId;
-        if (tenantId <= 0 && !IsSystemAdmin) return Forbid();
+        if (tenantId <= 0) return Forbid();
 
         var hasBranch = await _context.Branches.AnyAsync(b => b.TenantId == tenantId);
         var hasRoute = await _context.Routes.AnyAsync(r => r.TenantId == tenantId);

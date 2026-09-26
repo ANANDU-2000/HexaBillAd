@@ -88,6 +88,8 @@ namespace HexaBill.Api.Modules.Sales
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
                 var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
                 var role = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
                 HashSet<int>? allowedRouteIds = null;

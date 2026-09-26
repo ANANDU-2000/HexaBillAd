@@ -31,14 +31,9 @@ namespace HexaBill.Api.Core.Infrastructure
             _logger = logger;
         }
 
-        /// <summary>Ensure customer belongs to current tenant (or user is Super Admin).</summary>
-        private async Task<bool> CanAccessCustomerAsync(int customerId)
-        {
-            if (IsSystemAdmin) return true;
-            return await _context.Customers
-                .Where(c => c.Id == customerId && c.TenantId == CurrentTenantId)
-                .AnyAsync();
-        }
+        /// <summary>Ensure the customer belongs to the token tenant.</summary>
+        private Task<bool> CanAccessCustomerAsync(int customerId)
+            => TenantEntityAccess.CustomerBelongsToTenantAsync(_context, customerId, CurrentTenantId);
 
         /// <summary>
         /// Validate balance for specific customer

@@ -342,8 +342,7 @@ namespace HexaBill.Api.Modules.Sales
         {
             IQueryable<Sale> baseQuery = _context.Sales
                 .AsNoTracking()
-                .Where(s => s.Id == id && !s.IsDeleted);
-            if (tenantId > 0) baseQuery = baseQuery.Where(s => s.TenantId == tenantId);
+                .Where(s => s.Id == id && !s.IsDeleted && tenantId > 0 && s.TenantId == tenantId);
 
             var sale = await baseQuery
                 .Include(s => s.Customer)
@@ -363,7 +362,7 @@ namespace HexaBill.Api.Modules.Sales
         private async Task AttachPaymentsToSaleDtoAsync(SaleDto dto, int saleId, int tenantId)
         {
             var rows = await _context.Payments.AsNoTracking()
-                .Where(p => p.SaleId == saleId && (tenantId <= 0 || p.TenantId == tenantId) && p.Status != PaymentStatus.VOID)
+                .Where(p => p.SaleId == saleId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
                 .OrderBy(p => p.Id)
                 .ToListAsync();
             dto.Payments = rows.Select(p => new SalePaymentLineDto
@@ -435,8 +434,8 @@ namespace HexaBill.Api.Modules.Sales
 
         private async Task<SaleDto?> GetSaleByIdProjectionAsync(int id, int tenantId)
         {
-            var baseQuery = _context.Sales.AsNoTracking().Where(s => s.Id == id && !s.IsDeleted);
-            if (tenantId > 0) baseQuery = baseQuery.Where(s => s.TenantId == tenantId);
+            var baseQuery = _context.Sales.AsNoTracking()
+                .Where(s => s.Id == id && !s.IsDeleted && tenantId > 0 && s.TenantId == tenantId);
 
             var header = await baseQuery
                 .Select(s => new
