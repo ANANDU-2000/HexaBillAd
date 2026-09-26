@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.SuperAdmin;
 using System.Diagnostics;
 
@@ -734,28 +733,6 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     return true;
             }
             return false;
-        }
-
-        /// <summary>Temporary one-tenant balance check. Remove after verification.</summary>
-        [HttpPost("admin/reconcile-one-tenant-balances")]
-        [Authorize(Roles = "SystemAdmin")]
-        public async Task<IActionResult> ReconcileOneTenantBalances(CancellationToken ct)
-        {
-            if (!string.Equals(User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase))
-                return Forbid();
-
-            const int tenantId = 20;
-            using var scope = HttpContext.RequestServices.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            context.SetRequestTenantScope(tenantId, false);
-            var balanceService = scope.ServiceProvider.GetRequiredService<IBalanceService>();
-            var customerIds = await context.Customers.Select(c => c.Id).ToListAsync(ct);
-            foreach (var customerId in customerIds)
-                await balanceService.RecalculateCustomerBalanceAsync(customerId);
-
-            var logger = scope.ServiceProvider.GetRequiredService<ILogger<BalanceReconciliationJob>>();
-            logger.LogInformation("Balance reconciliation scoped to tenant {TenantId}, customers {Count}", tenantId, customerIds.Count);
-            return Ok(new { tenantId, processed = customerIds.Count });
         }
     }
 
