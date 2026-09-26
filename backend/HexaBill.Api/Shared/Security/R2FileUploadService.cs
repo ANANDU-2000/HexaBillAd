@@ -119,6 +119,8 @@ namespace HexaBill.Api.Shared.Security
                         Key = s3Key,
                         InputStream = stream,
                         ContentType = file.ContentType,
+                        DisablePayloadSigning = true,
+                        UseChunkEncoding = false,
                         CannedACL = S3CannedACL.PublicRead // Make files publicly readable
                     };
 
@@ -202,6 +204,8 @@ namespace HexaBill.Api.Shared.Security
                         Key = s3Key,
                         InputStream = stream,
                         ContentType = file.ContentType,
+                        DisablePayloadSigning = true,
+                        UseChunkEncoding = false,
                         CannedACL = S3CannedACL.PublicRead
                     };
 
@@ -247,6 +251,8 @@ namespace HexaBill.Api.Shared.Security
                         Key = s3Key,
                         InputStream = stream,
                         ContentType = file.ContentType,
+                        DisablePayloadSigning = true,
+                        UseChunkEncoding = false,
                         CannedACL = S3CannedACL.PublicRead
                     };
 
@@ -292,6 +298,8 @@ namespace HexaBill.Api.Shared.Security
                         Key = s3Key,
                         InputStream = stream,
                         ContentType = file.ContentType,
+                        DisablePayloadSigning = true,
+                        UseChunkEncoding = false,
                         CannedACL = S3CannedACL.PublicRead
                     };
 

@@ -56,7 +56,9 @@ public class R2StorageService : IStorageService
             BucketName = _bucketName,
             Key = s3Key,
             InputStream = stream,
-            ContentType = contentType ?? "image/png"
+            ContentType = contentType ?? "image/png",
+            DisablePayloadSigning = true,
+            UseChunkEncoding = false
         };
         await _s3Client.PutObjectAsync(putRequest);
         _logger.LogDebug("R2Storage: Uploaded key {Key}, size {Size} bytes.", s3Key, data.Length);
