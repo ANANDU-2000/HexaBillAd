@@ -38,7 +38,8 @@ namespace HexaBill.Api.Modules.Documents
                     .Where(a => a.TenantId == tenantId && !a.IsDeleted)
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
-                return rows.Select(Map).ToList();
+                var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
+                return rows.Select(a => Map(a, identity)).ToList();
             }
             catch (Exception ex)
             {
@@ -53,7 +54,7 @@ namespace HexaBill.Api.Modules.Documents
             {
                 var a = await _context.SalaryCertificates.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId && !x.IsDeleted);
-                return a == null ? null : Map(a);
+                return a == null ? null : Map(a, await TenantLetterIdentityLoader.LoadAsync(_context, tenantId));
             }
             catch (Exception ex)
             {
@@ -62,17 +63,17 @@ namespace HexaBill.Api.Modules.Documents
             }
         }
 
-        public Task<SalaryCertificateDto> GetBlankPreviewAsync(int tenantId)
+        public async Task<SalaryCertificateDto> GetBlankPreviewAsync(int tenantId)
         {
-            _ = tenantId;
-            return Task.FromResult(Map(new SalaryCertificate
+            var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
+            return Map(new SalaryCertificate
             {
                 CertificateNo = "(preview)",
                 CertificateDate = ToUtcDate(null),
                 Status = "Draft",
-                SignatoryName = SalaryCertificateTemplate.DefaultSignatoryName,
-                SignatoryTitle = SalaryCertificateTemplate.DefaultSignatoryTitle
-            }));
+                SignatoryName = identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryName : "",
+                SignatoryTitle = identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryTitle : ""
+            }, identity);
         }
 
         public async Task<SalaryCertificateDto> CreateAsync(CreateSalaryCertificateRequest request, int userId, int tenantId)
@@ -80,6 +81,7 @@ namespace HexaBill.Api.Modules.Documents
             try
             {
                 var certificateNo = await GenerateCertificateNoAsync(tenantId);
+                var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
                 var entity = new SalaryCertificate
                 {
                     OwnerId = tenantId,
@@ -96,10 +98,10 @@ namespace HexaBill.Api.Modules.Documents
                     MonthlySalaryWords = ResolveSalaryWords(request.MonthlySalary, request.MonthlySalaryWords),
                     EmployeePhone = request.EmployeePhone?.Trim(),
                     SignatoryName = string.IsNullOrWhiteSpace(request.SignatoryName)
-                        ? SalaryCertificateTemplate.DefaultSignatoryName
+                        ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryName : "")
                         : request.SignatoryName.Trim(),
                     SignatoryTitle = string.IsNullOrWhiteSpace(request.SignatoryTitle)
-                        ? SalaryCertificateTemplate.DefaultSignatoryTitle
+                        ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryTitle : "")
                         : request.SignatoryTitle.Trim(),
                     Status = NormalizeStatus(request.Status),
                     Notes = request.Notes,
@@ -108,7 +110,7 @@ namespace HexaBill.Api.Modules.Documents
                 };
                 _context.SalaryCertificates.Add(entity);
                 await _context.SaveChangesAsync();
-                return Map(entity);
+                return Map(entity, identity);
             }
             catch (Exception ex)
             {
@@ -135,20 +137,21 @@ namespace HexaBill.Api.Modules.Documents
                 entity.JoiningDate = request.JoiningDate.HasValue ? ToUtcDate(request.JoiningDate) : null;
                 entity.Designation = request.Designation?.Trim();
                 entity.MonthlySalary = request.MonthlySalary;
+                var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
                 entity.MonthlySalaryWords = ResolveSalaryWords(request.MonthlySalary, request.MonthlySalaryWords);
                 entity.EmployeePhone = request.EmployeePhone?.Trim();
                 entity.SignatoryName = string.IsNullOrWhiteSpace(request.SignatoryName)
-                    ? SalaryCertificateTemplate.DefaultSignatoryName
+                    ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryName : "")
                     : request.SignatoryName.Trim();
                 entity.SignatoryTitle = string.IsNullOrWhiteSpace(request.SignatoryTitle)
-                    ? SalaryCertificateTemplate.DefaultSignatoryTitle
+                    ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryTitle : "")
                     : request.SignatoryTitle.Trim();
                 entity.Status = NormalizeStatus(request.Status);
                 entity.Notes = request.Notes;
                 entity.LastModifiedBy = userId;
                 entity.LastModifiedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
-                return Map(entity);
+                return Map(entity, identity);
             }
             catch (Exception ex)
             {
@@ -212,8 +215,12 @@ namespace HexaBill.Api.Modules.Documents
             return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
         }
 
-        private static SalaryCertificateDto Map(SalaryCertificate a)
+        private static SalaryCertificateDto Map(SalaryCertificate a, TenantLetterIdentity identity)
         {
+            var companyName = identity.UseZayogaStationery ? SalaryCertificateTemplate.CompanyName : identity.CompanyName;
+            var companyPhone = identity.UseZayogaStationery ? SalaryCertificateTemplate.CompanyPhone : identity.Phone;
+            var companyEmail = identity.UseZayogaStationery ? SalaryCertificateTemplate.Email : identity.Email;
+            var footer = identity.UseZayogaStationery ? SalaryCertificateTemplate.FooterAddress : identity.Address;
             return new SalaryCertificateDto
             {
                 Id = a.Id,
@@ -229,19 +236,19 @@ namespace HexaBill.Api.Modules.Documents
                 MonthlySalaryWords = a.MonthlySalaryWords,
                 EmployeePhone = a.EmployeePhone,
                 SignatoryName = string.IsNullOrWhiteSpace(a.SignatoryName)
-                    ? SalaryCertificateTemplate.DefaultSignatoryName
+                    ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryName : "")
                     : a.SignatoryName,
                 SignatoryTitle = string.IsNullOrWhiteSpace(a.SignatoryTitle)
-                    ? SalaryCertificateTemplate.DefaultSignatoryTitle
+                    ? (identity.UseZayogaStationery ? SalaryCertificateTemplate.DefaultSignatoryTitle : "")
                     : a.SignatoryTitle,
                 Status = a.Status,
                 Notes = a.Notes,
                 CreatedAt = a.CreatedAt,
-                CompanyName = SalaryCertificateTemplate.CompanyName,
-                CompanyPhone = SalaryCertificateTemplate.CompanyPhone,
-                CompanyEmail = SalaryCertificateTemplate.Email,
-                CompanyWebsite = SalaryCertificateTemplate.Website,
-                FooterAddress = SalaryCertificateTemplate.FooterAddress,
+                CompanyName = companyName,
+                CompanyPhone = companyPhone,
+                CompanyEmail = companyEmail,
+                CompanyWebsite = identity.UseZayogaStationery ? SalaryCertificateTemplate.Website : "",
+                FooterAddress = footer,
                 SubjectLine = SalaryCertificateTemplate.SubjectLine,
                 BodyText = SalaryCertificateTemplate.BuildBody(a)
             };

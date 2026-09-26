@@ -100,7 +100,7 @@ export default function SalaryCertificatesPage() {
       <div className="shrink-0 flex flex-wrap items-center justify-between mb-2 gap-2">
         <div className="min-w-0">
           <h1 className="text-lg md:text-xl font-bold text-text-primary leading-tight">Salary Certificates</h1>
-          <p className="text-xs text-text-secondary truncate">Create, edit, reprint, delete — Zayoga body template</p>
+          <p className="text-xs text-text-secondary truncate">Create, edit, reprint, delete — your company letter template</p>
         </div>
         <Link
           to="/salary-certificates/new"

@@ -1099,7 +1099,7 @@ const SettingsPage = () => {
                 </label>
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
                   <input type="checkbox" className="rounded border-neutral-300" {...register('stampAlignLeft')} />
-                  Place stamp on left (First Party style — Zayoga agreement look)
+                  Place stamp on the left
                 </label>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

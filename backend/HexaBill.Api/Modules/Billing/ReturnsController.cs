@@ -41,7 +41,10 @@ namespace HexaBill.Api.Modules.Billing
             }
             catch (Exception ex)
             {
-                return Ok(new ApiResponse<SaleReturnDto>
+                var status = ex is InvalidOperationException or ArgumentException
+                    ? StatusCodes.Status400BadRequest
+                    : StatusCodes.Status500InternalServerError;
+                return StatusCode(status, new ApiResponse<SaleReturnDto>
                 {
                     Success = false,
                     Message = ex.Message ?? "Failed to create sale return",

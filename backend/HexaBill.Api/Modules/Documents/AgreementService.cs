@@ -34,7 +34,8 @@ namespace HexaBill.Api.Modules.Documents
                     .Where(a => a.TenantId == tenantId && !a.IsDeleted)
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
-                return rows.Select(Map).ToList();
+                var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
+                return rows.Select(a => Map(a, identity)).ToList();
             }
             catch (Exception ex)
             {
@@ -49,7 +50,7 @@ namespace HexaBill.Api.Modules.Documents
             {
                 var a = await _context.Agreements.AsNoTracking()
                     .FirstOrDefaultAsync(x => x.Id == id && x.TenantId == tenantId && !x.IsDeleted);
-                return a == null ? null : Map(a);
+                return a == null ? null : Map(a, await TenantLetterIdentityLoader.LoadAsync(_context, tenantId));
             }
             catch (Exception ex)
             {
@@ -58,16 +59,16 @@ namespace HexaBill.Api.Modules.Documents
             }
         }
 
-        public Task<AgreementDto> GetBlankPreviewAsync(int tenantId)
+        public async Task<AgreementDto> GetBlankPreviewAsync(int tenantId)
         {
-            _ = tenantId;
-            return Task.FromResult(Map(new Agreement
+            var identity = await TenantLetterIdentityLoader.LoadAsync(_context, tenantId);
+            return Map(new Agreement
             {
                 AgreementNo = "(preview)",
                 AgreementDate = ToUtcDate(null),
                 Status = "Draft",
                 TemplateVersion = AgreementTemplate.Version
-            }));
+            }, identity);
         }
 
         public async Task<AgreementDto> CreateAsync(CreateAgreementRequest request, int userId, int tenantId)
@@ -93,7 +94,7 @@ namespace HexaBill.Api.Modules.Documents
                 };
                 _context.Agreements.Add(entity);
                 await _context.SaveChangesAsync();
-                return Map(entity);
+                return Map(entity, await TenantLetterIdentityLoader.LoadAsync(_context, tenantId));
             }
             catch (Exception ex)
             {
@@ -122,7 +123,7 @@ namespace HexaBill.Api.Modules.Documents
                 entity.LastModifiedBy = userId;
                 entity.LastModifiedAt = DateTime.UtcNow;
                 await _context.SaveChangesAsync();
-                return Map(entity);
+                return Map(entity, await TenantLetterIdentityLoader.LoadAsync(_context, tenantId));
             }
             catch (Exception ex)
             {
@@ -176,9 +177,10 @@ namespace HexaBill.Api.Modules.Documents
             return new DateTime(d.Year, d.Month, d.Day, 0, 0, 0, DateTimeKind.Utc);
         }
 
-        private static AgreementDto Map(Agreement a)
+        private static AgreementDto Map(Agreement a, TenantLetterIdentity identity)
         {
             var secondDisplay = string.IsNullOrWhiteSpace(a.SecondPartyName) ? "________________" : a.SecondPartyName.Trim();
+            var partyName = identity.UseZayogaStationery ? AgreementTemplate.FirstPartyName : identity.CompanyName;
             return new AgreementDto
             {
                 Id = a.Id,
@@ -192,16 +194,16 @@ namespace HexaBill.Api.Modules.Documents
                 Status = a.Status,
                 Notes = a.Notes,
                 CreatedAt = a.CreatedAt,
-                FirstPartyName = AgreementTemplate.FirstPartyName,
-                FirstPartyLicense = AgreementTemplate.FirstPartyLicense,
-                FirstPartyAddress = AgreementTemplate.FirstPartyAddress,
-                FirstPartyMobile = AgreementTemplate.FirstPartyMobile,
-                FirstPartyEmail = AgreementTemplate.Email,
-                FirstPartyWebsite = AgreementTemplate.Website,
-                FirstPartyPhones = AgreementTemplate.FooterPhones,
-                FooterAddress = AgreementTemplate.FooterAddress,
-                WhereasText = AgreementTemplate.Whereas(secondDisplay),
-                Clauses = AgreementTemplate.BuildClauses().ToList()
+                FirstPartyName = identity.UseZayogaStationery ? AgreementTemplate.FirstPartyName : identity.CompanyName,
+                FirstPartyLicense = identity.UseZayogaStationery ? AgreementTemplate.FirstPartyLicense : identity.License,
+                FirstPartyAddress = identity.UseZayogaStationery ? AgreementTemplate.FirstPartyAddress : identity.Address,
+                FirstPartyMobile = identity.UseZayogaStationery ? AgreementTemplate.FirstPartyMobile : identity.Phone,
+                FirstPartyEmail = identity.UseZayogaStationery ? AgreementTemplate.Email : identity.Email,
+                FirstPartyWebsite = identity.UseZayogaStationery ? AgreementTemplate.Website : "",
+                FirstPartyPhones = identity.UseZayogaStationery ? AgreementTemplate.FooterPhones : identity.Phone,
+                FooterAddress = identity.UseZayogaStationery ? AgreementTemplate.FooterAddress : identity.Address,
+                WhereasText = AgreementTemplate.Whereas(secondDisplay, partyName),
+                Clauses = AgreementTemplate.BuildClauses(partyName).ToList()
             };
         }
     }
@@ -221,18 +223,25 @@ namespace HexaBill.Api.Modules.Documents
         public const string FooterAddress = "OFFICE M14,AL SAWARI TOWER B,KHALIDIYA ABUDHABI UAE";
         public const string FooterPhones = "TEL- 022450340, 0564525130,0547595982";
 
-        public static string Whereas(string secondPartyDisplayName) =>
-            $"Whereas, {FirstPartyName} is a licensed Ice popsicles and Sip up Distributors based in UAE an {secondPartyDisplayName} is Licensed trader selling products directly to the customers, both parties agreed on the following points:";
-
-        public static IReadOnlyList<string> BuildClauses() => new[]
+        public static string Whereas(string secondPartyDisplayName, string? firstPartyName = null)
         {
-            $"{FirstPartyName} will provide frozen items that meets all applicable food safety and quality standards.",
-            "will purchase these items based on the following terms and conditions: -",
-            "Second party to sell popsicles in outlet.",
-            "Display Support: The First party will provide freezer to the second party and they agreed to provide space in outlet to generate a good business for both parties.",
-            "Return Policy: there is no return policy for the items once items delivered unless there is no damage and in case of nonmoving, items should return with good condition which is able to sell at least two months before expiry.",
-            "The first party retains the ownership of the freezer and may request the return of the same, second party shall comply with such request."
-        };
+            var party = string.IsNullOrWhiteSpace(firstPartyName) ? FirstPartyName : firstPartyName.Trim();
+            return $"Whereas, {party} is a licensed Ice popsicles and Sip up Distributors based in UAE an {secondPartyDisplayName} is Licensed trader selling products directly to the customers, both parties agreed on the following points:";
+        }
+
+        public static IReadOnlyList<string> BuildClauses(string? firstPartyName = null)
+        {
+            var party = string.IsNullOrWhiteSpace(firstPartyName) ? FirstPartyName : firstPartyName.Trim();
+            return new[]
+            {
+                $"{party} will provide frozen items that meets all applicable food safety and quality standards.",
+                "will purchase these items based on the following terms and conditions: -",
+                "Second party to sell popsicles in outlet.",
+                "Display Support: The First party will provide freezer to the second party and they agreed to provide space in outlet to generate a good business for both parties.",
+                "Return Policy: there is no return policy for the items once items delivered unless there is no damage and in case of nonmoving, items should return with good condition which is able to sell at least two months before expiry.",
+                "The first party retains the ownership of the freezer and may request the return of the same, second party shall comply with such request."
+            };
+        }
 
         /// <summary>Legacy alias used by older call sites.</summary>
         public static IReadOnlyList<string> Clauses => BuildClauses();

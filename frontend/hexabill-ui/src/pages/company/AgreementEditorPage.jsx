@@ -309,7 +309,7 @@ export default function AgreementEditorPage() {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
-          <p className="text-xs text-text-secondary">Second Party fields start blank. First Party + clauses are fixed Zayoga template text.</p>
+          <p className="text-xs text-text-secondary">Second Party fields start blank. First Party uses this company&apos;s letter template.</p>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Date</span>

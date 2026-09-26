@@ -56,14 +56,14 @@ export default function SalaryCertificateEditorPage() {
   const [monthlySalary, setMonthlySalary] = useState('')
   const [monthlySalaryWords, setMonthlySalaryWords] = useState('')
   const [employeePhone, setEmployeePhone] = useState('')
-  const [signatoryName, setSignatoryName] = useState('Sudheesh Thampi')
-  const [signatoryTitle, setSignatoryTitle] = useState('Manager')
+  const [signatoryName, setSignatoryName] = useState('')
+  const [signatoryTitle, setSignatoryTitle] = useState('')
   const [company, setCompany] = useState({
-    companyName: 'ZAYOGA GENERAL TRADING SOLE PROPRIETORSHIP LLC',
-    companyPhone: '+971 56 452 5130',
-    companyEmail: 'info@zayoga.ae',
-    companyWebsite: 'www.zayoga.ae',
-    footerAddress: 'ROOM2102 FLOOR21 ADCP TOWER A ELECTRA STREET',
+    companyName: '',
+    companyPhone: '',
+    companyEmail: '',
+    companyWebsite: '',
+    footerAddress: '',
   })
   const [savedId, setSavedId] = useState(id ? Number(id) : null)
   const [saving, setSaving] = useState(false)
@@ -182,8 +182,8 @@ export default function SalaryCertificateEditorPage() {
       monthlySalary: a.monthlySalary != null && a.monthlySalary !== '' ? String(a.monthlySalary) : '',
       monthlySalaryWords: a.monthlySalaryWords || '',
       employeePhone: a.employeePhone || '',
-      signatoryName: a.signatoryName || 'Sudheesh Thampi',
-      signatoryTitle: a.signatoryTitle || 'Manager',
+      signatoryName: a.signatoryName || '',
+      signatoryTitle: a.signatoryTitle || '',
     }
     setCertificateNo(a.certificateNo || '')
     setCertificateDate(next.certificateDate)
@@ -202,11 +202,11 @@ export default function SalaryCertificateEditorPage() {
     setSignatoryTitle(next.signatoryTitle)
     setSavedId(a.id || null)
     setCompany({
-      companyName: a.companyName || 'ZAYOGA GENERAL TRADING SOLE PROPRIETORSHIP LLC',
-      companyPhone: a.companyPhone || '+971 56 452 5130',
-      companyEmail: a.companyEmail || 'info@zayoga.ae',
-      companyWebsite: a.companyWebsite || 'www.zayoga.ae',
-      footerAddress: a.footerAddress || 'ROOM2102 FLOOR21 ADCP TOWER A ELECTRA STREET',
+      companyName: a.companyName || '',
+      companyPhone: a.companyPhone || '',
+      companyEmail: a.companyEmail || '',
+      companyWebsite: a.companyWebsite || '',
+      footerAddress: a.footerAddress || '',
     })
     if (setClean) {
       setBaseline(serializeForm(next))
@@ -429,7 +429,7 @@ export default function SalaryCertificateEditorPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
           <p className="text-xs text-text-secondary">
-            Only employee / recipient fields change. Body wording is fixed Zayoga template. Stamp &amp; sign on the left.
+            Only employee / recipient fields change. Body wording is a fixed letter template. Stamp &amp; sign on the left.
           </p>
           <div className="grid grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
@@ -617,7 +617,7 @@ export default function SalaryCertificateEditorPage() {
 
           <div className="text-sm leading-relaxed space-y-2 max-w-[240px]">
             <div>Yours faithfully</div>
-            <div className="pt-10 font-semibold">{signatoryName || 'Sudheesh Thampi'}</div>
+            <div className="pt-10 font-semibold">{signatoryName || 'Signatory'}</div>
             <div>{signatoryTitle || 'Manager'}</div>
             <div className="border-t border-black pt-1 mt-8 text-xs text-text-secondary">Stamp / signature (left)</div>
             {employeePhone?.trim() ? (
