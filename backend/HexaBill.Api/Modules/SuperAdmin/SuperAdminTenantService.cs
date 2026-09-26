@@ -1072,6 +1072,35 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 _context.Users.Add(ownerUser);
                 await _context.SaveChangesAsync();
 
+                var now = DateTime.UtcNow;
+                var branding = new Dictionary<string, string>
+                {
+                    ["COMPANY_NAME_EN"] = tenant.CompanyNameEn ?? tenant.Name,
+                    ["COMPANY_NAME_AR"] = request.CompanyNameAr ?? "",
+                    ["COMPANY_TRN"] = request.VatNumber ?? "",
+                    ["COMPANY_ADDRESS"] = request.Address ?? "",
+                    ["COMPANY_PHONE"] = request.Phone ?? "",
+                    ["COMPANY_EMAIL"] = normalizedEmail,
+                    ["CURRENCY"] = string.IsNullOrWhiteSpace(request.Currency) ? "AED" : request.Currency.Trim(),
+                    ["INVOICE_PREFIX"] = "INV",
+                    ["VAT_PERCENT"] = "5",
+                    ["LOGO_PATH"] = "",
+                    ["COMPANY_LICENSE"] = ""
+                };
+                foreach (var item in branding)
+                {
+                    _context.Settings.Add(new Setting
+                    {
+                        Key = item.Key,
+                        Value = item.Value,
+                        OwnerId = tenant.Id,
+                        TenantId = tenant.Id,
+                        CreatedAt = now,
+                        UpdatedAt = now
+                    });
+                }
+                await _context.SaveChangesAsync();
+
                 var inviteToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
                     .Replace("+", "-").Replace("/", "_").TrimEnd('=');
                 var inviteHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(inviteToken)));

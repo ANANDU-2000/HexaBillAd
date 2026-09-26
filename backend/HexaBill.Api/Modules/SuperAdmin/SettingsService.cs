@@ -436,24 +436,23 @@ namespace HexaBill.Api.Modules.SuperAdmin
         {
             return new Dictionary<string, string>
             {
-                { "COMPANY_NAME_EN", "HexaBill" },
-                { "COMPANY_NAME_AR", "فروزن ماجيك لتجارة العامة - ذ.م.م - ش.ش.و" },
-                { "COMPANY_TRN", "105274438800003" },
-                { "COMPANY_ADDRESS", "Abu Dhabi, United Arab Emirates" },
-                { "COMPANY_PHONE", "+971 56 955 22 52" },
+                { "COMPANY_NAME_EN", "" },
+                { "COMPANY_NAME_AR", "" },
+                { "COMPANY_TRN", "" },
+                { "COMPANY_ADDRESS", "" },
+                { "COMPANY_PHONE", "" },
                 { "VAT_PERCENT", "5" },
                 { "CURRENCY", "AED" },
-                { "INVOICE_PREFIX", "FM" },
+                { "INVOICE_PREFIX", "INV" },
                 { "VAT_EFFECTIVE_DATE", "01-01-2026" },
                 { "VAT_LEGAL_TEXT", "VAT registered under Federal Decree-Law No. 8 of 2017, UAE" },
-                { "LOGO_PATH", "/uploads/logo.png" },
-                { "LOW_STOCK_GLOBAL_THRESHOLD", "" }, // Optional: alert when stock <= this for products with ReorderLevel 0 (#55)
+                { "LOGO_PATH", "" },
+                { "LOW_STOCK_GLOBAL_THRESHOLD", "" },
                 { "ALLOW_NEGATIVE_STOCK", "true" },
-                // Documents module. Explicit false disables. Missing = enabled (greenfield opt-out).
                 { "Feature_QuotesAgreements", "true" },
                 { "Feature_LetterheadOnlyPrint", "false" },
                 { "Feature_DocumentStampSignature", "false" },
-                { "COMPANY_LICENSE", "CN-4937175" }
+                { "COMPANY_LICENSE", "" }
             };
         }
     }
