@@ -57,7 +57,9 @@ public sealed class SupportSessionsController : TenantScopedController
         });
         await _db.SaveChangesAsync();
 
-        var token = CreateSupportToken(platformUserId, tenant.Id, tenant.Subdomain, session);
+        var platformUser = await _db.Users.IgnoreQueryFilters().AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == platformUserId);
+        var token = CreateSupportToken(platformUserId, tenant.Id, tenant.Subdomain, session, platformUser?.SessionVersion ?? 0);
         return Ok(new
         {
             success = true,
@@ -90,7 +92,7 @@ public sealed class SupportSessionsController : TenantScopedController
         return Ok(new { success = true });
     }
 
-    private string CreateSupportToken(int platformUserId, int tenantId, string subdomain, SupportSession session)
+    private string CreateSupportToken(int platformUserId, int tenantId, string subdomain, SupportSession session, int sessionVersion)
     {
         var jwt = _configuration.GetSection("JwtSettings");
         var secret = jwt["SecretKey"] ?? throw new InvalidOperationException("JWT secret is not configured");
@@ -99,6 +101,7 @@ public sealed class SupportSessionsController : TenantScopedController
             new Claim(ClaimTypes.NameIdentifier, platformUserId.ToString()),
             new Claim("UserId", platformUserId.ToString()),
             new Claim(ClaimTypes.Role, "Owner"),
+            new Claim("sv", sessionVersion.ToString()),
             new Claim("plat", "false"),
             new Claim("tid", tenantId.ToString()),
             new Claim("tenant_id", tenantId.ToString()),

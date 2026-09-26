@@ -784,7 +784,6 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     Id = t.Id,
                     Name = t.Name,
                     Subdomain = t.Subdomain,
-                    LoginUrl = BuildLoginUrl(t.Subdomain),
                     CompanyNameEn = t.CompanyNameEn,
                     CompanyNameAr = t.CompanyNameAr,
                     Country = t.Country,
@@ -800,6 +799,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     LogoPath = t.LogoPath
                 })
                 .ToListAsync();
+
+            foreach (var tenant in tenants)
+                tenant.LoginUrl = BuildLoginUrl(tenant.Subdomain);
 
             // BUG #2.1 FIX: Replace N+1 queries with batch GROUP BY queries (600 queries → 6 queries)
             var tenantIds = tenants.Select(t => t.Id).ToList();
