@@ -57,7 +57,9 @@ public sealed class TenantHostMiddleware
         if (context.User.Identity?.IsAuthenticated == true)
         {
             var isPlatformToken = string.Equals(context.User.FindFirst("plat")?.Value, "true", StringComparison.OrdinalIgnoreCase);
-            var tidClaim = context.User.FindFirst("tid")?.Value;
+            var tidClaim = context.User.FindFirst("tid")?.Value
+                ?? context.User.FindFirst("tenant_id")?.Value
+                ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("/tenantid", StringComparison.OrdinalIgnoreCase))?.Value;
             var hasMatchingTenant = resolution.Kind == TenantHostKind.Tenant
                 && int.TryParse(tidClaim, out var tokenTenantId)
                 && tokenTenantId == resolution.TenantId;

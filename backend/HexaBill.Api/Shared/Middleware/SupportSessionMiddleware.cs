@@ -32,7 +32,10 @@ public sealed class SupportSessionMiddleware
 
         var session = await db.SupportSessions.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(s =>
             s.Id == sessionId && s.EndedAt == null && s.ExpiresAt > DateTime.UtcNow);
-        var tokenTenant = context.User.FindFirst("tid")?.Value;
+        // "tid" is remapped by the JWT handler to the Azure tenantid claim type.
+        var tokenTenant = context.User.FindFirst("tid")?.Value
+            ?? context.User.FindFirst("tenant_id")?.Value
+            ?? context.User.Claims.FirstOrDefault(c => c.Type.EndsWith("/tenantid", StringComparison.OrdinalIgnoreCase))?.Value;
         if (session == null || !int.TryParse(tokenTenant, out var tenantId) || tenantId != session.TenantId)
         {
             _logger.LogWarning("Rejected inactive support session {SessionId}", sessionId);
