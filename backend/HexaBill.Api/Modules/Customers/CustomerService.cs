@@ -820,7 +820,7 @@ namespace HexaBill.Api.Modules.Customers
                 };
 
                 // 1. Get all sales for this customer
-                var sales = await _context.Sales
+                var sales = await _context.Sales.IgnoreQueryFilters()
                     .Include(s => s.Items)
                     .ThenInclude(i => i.Product)
                     .Where(s => s.CustomerId == customerId && s.TenantId == tenantId)
@@ -869,33 +869,22 @@ namespace HexaBill.Api.Modules.Customers
                 }
 
                 var inventoryLogs = _context.ChangeTracker.Entries<InventoryTransaction>()
+                    .Where(e => e.State == EntityState.Added)
                     .Select(e => e.Entity)
                     .ToList();
 
-                // 3. Hard-delete payments, then sale items, then sales (including soft-deleted).
-                summary.SalesDeleted = sales.Count;
-                _context.ChangeTracker.Clear();
-                summary.PaymentsDeleted = await _context.Payments.IgnoreQueryFilters()
+                // Hard-delete payments before sales so FK_Sales_Customers is not hit while payments remain.
+                var payments = await _context.Payments.IgnoreQueryFilters()
                     .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
-                    .ExecuteDeleteAsync();
-                if (sales.Count > 0)
-                {
-                    var saleIds = sales.Select(s => s.Id).ToList();
-                    await _context.SaleItems.IgnoreQueryFilters()
-                        .Where(i => saleIds.Contains(i.SaleId))
-                        .ExecuteDeleteAsync();
-                    await _context.Sales.IgnoreQueryFilters()
-                        .Where(s => saleIds.Contains(s.Id) && s.TenantId == tenantId)
-                        .ExecuteDeleteAsync();
-                }
-                if (inventoryLogs.Count > 0)
+                    .ToListAsync();
+                summary.SalesDeleted = sales.Count;
+                summary.PaymentsDeleted = payments.Count;
+                _context.Payments.RemoveRange(payments);
+                foreach (var sale in sales)
+                    _context.SaleItems.RemoveRange(sale.Items);
+                _context.Sales.RemoveRange(sales);
+                if (inventoryLogs.Count > 0 && !_context.ChangeTracker.Entries<InventoryTransaction>().Any())
                     _context.InventoryTransactions.AddRange(inventoryLogs);
-
-                customer = await _context.Customers
-                    .Where(c => c.Id == customerId && c.TenantId == tenantId)
-                    .FirstOrDefaultAsync();
-                if (customer == null)
-                    return (false, "Customer not found", null);
 
                 // 5. Delete all sale returns
                 var saleReturns = await _context.SaleReturns
