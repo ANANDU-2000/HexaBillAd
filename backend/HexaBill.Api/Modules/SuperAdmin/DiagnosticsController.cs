@@ -73,7 +73,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         try
                         {
                             var connectionCount = await _db.Database.SqlQueryRaw<int>(
-                                "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                                "SELECT count(*)::int AS \"Value\" FROM pg_stat_activity WHERE datname = current_database()"
                             ).FirstOrDefaultAsync();
                             
                             // Default PostgreSQL max connections (can be configured)

@@ -1215,12 +1215,17 @@ app.UseSlowQueryLogging();
 // Security middleware (includes rate limiting and security headers)
 app.UseSecurityMiddleware(app.Environment);
 
-app.UseAuthentication();
-
 // Block direct upstream /api access without trusted edge proxy headers.
 app.UseUpstreamApiGuard();
 
-// Resolve the tenant or platform host before tenant and authorization middleware.
+// Host scope must exist before JWT validation. OnTokenValidated loads the user
+// through the tenant filter; if the scope is still empty, every user is hidden
+// and a successful login is immediately reported as "Session expired".
+app.UseMiddleware<TenantHostMiddleware>();
+
+app.UseAuthentication();
+
+// Re-run after authentication so the host and JWT tenant are compared.
 app.UseMiddleware<TenantHostMiddleware>();
 
 // CRITICAL: Tenant Context Middleware - MUST be after authentication, before authorization
