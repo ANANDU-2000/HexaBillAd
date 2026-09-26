@@ -773,15 +773,19 @@ namespace HexaBill.Api.Modules.Customers
                 .FirstOrDefaultAsync();
             if (customer == null) return (false, "Customer not found");
 
-            // Check for related sales
-            var hasSales = await _context.Sales.AnyAsync(s => s.CustomerId == id && s.TenantId == tenantId && !s.IsDeleted);
-            var hasPayments = await _context.Payments.AnyAsync(p => p.CustomerId == id && p.TenantId == tenantId);
+            // Include soft-deleted sales. A deleted invoice still references the customer, so a
+            // plain delete would hit FK_Sales_Customers_CustomerId and return 500.
+            var hasSales = await _context.Sales.IgnoreQueryFilters()
+                .AnyAsync(s => s.CustomerId == id && s.TenantId == tenantId);
+            var hasPayments = await _context.Payments.IgnoreQueryFilters()
+                .AnyAsync(p => p.CustomerId == id && p.TenantId == tenantId);
             
             if (hasSales || hasPayments)
             {
-                // Option 1: Prevent deletion if customer has transactions
-                var salesCount = await _context.Sales.CountAsync(s => s.CustomerId == id && s.TenantId == tenantId && !s.IsDeleted);
-                var paymentsCount = await _context.Payments.CountAsync(p => p.CustomerId == id && p.TenantId == tenantId);
+                var salesCount = await _context.Sales.IgnoreQueryFilters()
+                    .CountAsync(s => s.CustomerId == id && s.TenantId == tenantId);
+                var paymentsCount = await _context.Payments.IgnoreQueryFilters()
+                    .CountAsync(p => p.CustomerId == id && p.TenantId == tenantId);
                 return (false, $"Cannot delete customer. Customer has {salesCount} sale(s) and {paymentsCount} payment(s). Please delete related transactions first or use force delete with all data.");
             }
 
@@ -864,16 +868,34 @@ namespace HexaBill.Api.Modules.Customers
                     summary.StockRestored = true;
                 }
 
-                // 3. Delete all sales (hard delete)
-                summary.SalesDeleted = sales.Count;
-                _context.Sales.RemoveRange(sales);
+                var inventoryLogs = _context.ChangeTracker.Entries<InventoryTransaction>()
+                    .Select(e => e.Entity)
+                    .ToList();
 
-                // 4. Delete all payments
-                var payments = await _context.Payments
+                // 3. Hard-delete payments, then sale items, then sales (including soft-deleted).
+                summary.SalesDeleted = sales.Count;
+                _context.ChangeTracker.Clear();
+                summary.PaymentsDeleted = await _context.Payments.IgnoreQueryFilters()
                     .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
-                    .ToListAsync();
-                summary.PaymentsDeleted = payments.Count;
-                _context.Payments.RemoveRange(payments);
+                    .ExecuteDeleteAsync();
+                if (sales.Count > 0)
+                {
+                    var saleIds = sales.Select(s => s.Id).ToList();
+                    await _context.SaleItems.IgnoreQueryFilters()
+                        .Where(i => saleIds.Contains(i.SaleId))
+                        .ExecuteDeleteAsync();
+                    await _context.Sales.IgnoreQueryFilters()
+                        .Where(s => saleIds.Contains(s.Id) && s.TenantId == tenantId)
+                        .ExecuteDeleteAsync();
+                }
+                if (inventoryLogs.Count > 0)
+                    _context.InventoryTransactions.AddRange(inventoryLogs);
+
+                customer = await _context.Customers
+                    .Where(c => c.Id == customerId && c.TenantId == tenantId)
+                    .FirstOrDefaultAsync();
+                if (customer == null)
+                    return (false, "Customer not found", null);
 
                 // 5. Delete all sale returns
                 var saleReturns = await _context.SaleReturns
