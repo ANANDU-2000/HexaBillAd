@@ -38,7 +38,7 @@ public sealed class TenantContextController : ControllerBase
             success = true,
             data = new
             {
-                tenantName = tenant.CompanyNameEn ?? tenant.Name,
+                tenantName = tenant.Name ?? tenant.CompanyNameEn,
                 subdomain = tenant.Subdomain,
                 loginUrl = $"https://{tenant.Subdomain}.{_hosting.BaseDomain}/login",
                 logoUrl = tenant.LogoPath,

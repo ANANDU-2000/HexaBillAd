@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useLocation } from 'react-router-dom'
 import { adminAPI } from '../services'
 import { clearAllCache } from '../services/api'
-import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
+import { getApiBaseUrl, getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from '../utils/tenantHost'
 import { useAuth } from '../hooks/useAuth'
 
@@ -55,8 +55,7 @@ export const BrandingProvider = ({ children }) => {
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
     if (path === '/login' && getTenantHost().mode === 'tenant') {
       try {
-        const apiBase = getApiBaseUrlNoSuffix()
-        const response = await fetch(`${apiBase}/public/tenant-context`, { headers: { Accept: 'application/json' } })
+        const response = await fetch(`${getApiBaseUrl()}/public/tenant-context`, { headers: { Accept: 'application/json' } })
         const payload = await response.json()
         const data = payload?.data
         if (response.ok && data) {

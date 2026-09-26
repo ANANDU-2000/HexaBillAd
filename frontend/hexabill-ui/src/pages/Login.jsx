@@ -9,6 +9,7 @@ import { LoadingButton } from '../components/Loading'
 import { showToast } from '../utils/toast'
 import Logo from '../components/Logo'
 import { isSystemAdmin } from '../utils/superAdmin'
+import { getTenantHost } from '../utils/tenantHost'
 import { authAPI } from '../services'
 
 const Login = ({ isSuperAdminLogin = false }) => {
@@ -141,13 +142,15 @@ const Login = ({ isSuperAdminLogin = false }) => {
   const isRtl = lang === 'ar'
   const dir = isRtl ? 'rtl' : 'ltr'
   const textAlign = isRtl ? 'text-right' : 'text-left'
+  const tenantLogin = !isSuperAdminLogin && getTenantHost().mode === 'tenant'
+  const displayName = companyName && companyName !== 'HexaBill' ? companyName : ''
 
   if (inviteToken && !isSuperAdminLogin) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6" dir={dir} lang={lang}>
         <form onSubmit={acceptInvite} className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 space-y-5">
-          <Logo size="large" showText={true} />
-          <div><h1 className="text-2xl font-bold text-neutral-900">Set your owner password</h1><p className="text-sm text-neutral-600 mt-2">This invite works only on your company address and can be used once.</p></div>
+          {displayName ? <h1 className="text-2xl font-bold text-neutral-900">{displayName}</h1> : <Logo size="large" showText={true} />}
+          <div><h2 className="text-xl font-bold text-neutral-900">Set your owner password</h2><p className="text-sm text-neutral-600 mt-2">This invite works only on your company address and can be used once.</p></div>
           {inviteError && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{inviteError}</div>}
           <Input label="New password" type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required minLength={8} />
           <Input label="Confirm password" type="password" value={inviteConfirm} onChange={e => setInviteConfirm(e.target.value)} required minLength={8} />
@@ -160,6 +163,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
   return (
     <div className="h-screen bg-neutral-50 flex overflow-hidden" dir={dir} lang={lang}>
       {/* Split screen: left brand (desktop), right form — works LTR/RTL */}
+      {!tenantLogin && (
       <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-start lg:justify-start lg:bg-gradient-to-br lg:from-primary-50 lg:via-primary-100 lg:to-primary-50 lg:border-r lg:border-primary-200 lg:px-10 lg:py-8 overflow-y-auto">
         <div className={`max-w-lg w-full ${isRtl ? 'text-right' : 'text-left'}`}>
           <Logo size="large" showText={true} />
@@ -277,20 +281,27 @@ const Login = ({ isSuperAdminLogin = false }) => {
           </div>
         </div>
       </div>
+      )}
       <div className="flex-1 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto">
         <div className={`max-w-md w-full space-y-6 ${textAlign}`}>
           <div className={isRtl ? 'text-right' : 'text-center'}>
+            {tenantLogin ? (
+              <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{displayName || 'Sign in'}</h1>
+            ) : (
             <div className={`mb-4 lg:hidden ${isRtl ? 'flex justify-end' : 'mx-auto flex justify-center'}`}>
               <Logo size="large" showText={true} />
             </div>
+            )}
+            {!tenantLogin && (
             <h1 className="mt-2 text-2xl font-semibold tracking-tight text-neutral-900" style={{ fontFamily: "'Inter', sans-serif" }}>
               {isSuperAdminLogin ? 'Admin Portal' : 'Sign in'}
             </h1>
+            )}
             <p className="mt-1 text-sm text-neutral-500" style={{ fontFamily: "'Inter', sans-serif" }}>
-              {isSuperAdminLogin 
-                ? 'Manage the platform' 
-                : (companyName && companyName !== 'HexaBill') 
-                  ? `Sign in to ${companyName} — Admins, Staff & Owners` 
+              {isSuperAdminLogin
+                ? 'Manage the platform'
+                : tenantLogin
+                  ? (displayName ? `Sign in to ${displayName}` : 'Sign in')
                   : 'Sign in with your company account'}
             </p>
           </div>
