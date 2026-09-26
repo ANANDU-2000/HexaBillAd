@@ -3,7 +3,6 @@ Purpose: Salary Certificate CRUD — fixed Zayoga body template; dynamic employe
 */
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

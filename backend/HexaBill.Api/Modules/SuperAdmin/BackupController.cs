@@ -14,8 +14,6 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Services;
-using HexaBill.Api.Shared.Extensions;
 using System.Collections.Generic;
 
 namespace HexaBill.Api.Modules.SuperAdmin

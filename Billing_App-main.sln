@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "backend", "backend", "{1AE8
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexaBill.Api", "backend\HexaBill.Api\HexaBill.Api.csproj", "{339EA0EC-56B3-A1AB-00A1-F7E3E8D617B0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexaBill.Tests", "backend\HexaBill.Tests\HexaBill.Tests.csproj", "{205F4E7D-6217-410C-A058-945D89AC36B7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HexaBill.Tests", "tests\HexaBill.Tests\HexaBill.Tests.csproj", "{205F4E7D-6217-410C-A058-945D89AC36B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

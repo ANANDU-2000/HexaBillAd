@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
-using HexaBill.Api.Shared.Hosting;
 using Npgsql;
 
 namespace HexaBill.Api.Modules.Auth

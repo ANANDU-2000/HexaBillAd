@@ -7,8 +7,6 @@
 
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Validation;
 
 namespace HexaBill.Api.Modules.SuperAdmin
 {

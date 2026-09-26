@@ -1,7 +1,7 @@
 import React from 'react'
 import { MessageCircle, Mail, Sparkles, ArrowRight, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useBranding } from '../../contexts/TenantBrandingContext'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const SUPPORT_WHATSAPP = import.meta.env.VITE_SUPPORT_WHATSAPP || ''
 const SUPPORT_EMAIL = import.meta.env.VITE_SUPPORT_EMAIL || 'support@hexabill.com'

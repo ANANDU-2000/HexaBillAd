@@ -16,8 +16,6 @@ using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
-using HexaBill.Api.Modules.Billing;
-using HexaBill.Api.Shared.Security;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon;
@@ -859,7 +857,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             catch (Exception ex)
             {
                 _logger.LogInformation($"⚠️ Monthly sales ledger generation failed: {ex.Message}");
-                // 42703 (missing TenantId) or other DB errors: run FIX_PRODUCTION_MIGRATIONS.sql sections 6b, 7, 8
+                // 42703 (missing TenantId) or other DB errors: schema is the versioned EF migrations.
             }
         }
 

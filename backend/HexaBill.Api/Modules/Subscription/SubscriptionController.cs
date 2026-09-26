@@ -7,7 +7,6 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 using Stripe;
 
 namespace HexaBill.Api.Modules.Subscription

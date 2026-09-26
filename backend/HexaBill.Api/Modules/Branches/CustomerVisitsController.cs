@@ -5,7 +5,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches

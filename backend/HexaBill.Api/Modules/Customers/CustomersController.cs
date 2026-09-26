@@ -10,11 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions; // MULTI-TENANT
 using HexaBill.Api.Modules.SuperAdmin;
-using HexaBill.Api.Shared.Validation;
-using HexaBill.Api.Modules.Billing;
-using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Customers
 {

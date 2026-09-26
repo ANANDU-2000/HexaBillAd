@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Models;
 
 namespace HexaBill.Api.Modules.SuperAdmin;

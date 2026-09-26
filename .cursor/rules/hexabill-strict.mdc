@@ -1,0 +1,339 @@
+---
+description: HexaBill strict coding rules — minimal context, minimal output, no unnecessary files
+alwaysApply: true
+---
+
+# HEXABILL STRICT RULES
+
+## 1. READ ONLY WHAT IS NEEDED
+
+DO NOT scan, open, summarize, or reread the entire repository.
+
+Before reading a file:
+1. Identify the exact task.
+2. Identify the smallest relevant file set.
+3. Search symbols/imports/routes first.
+4. Read only the required files and surrounding code.
+
+DO NOT read:
+- unrelated modules
+- old documentation
+- archived files
+- screenshots
+- generated files
+- backups
+- ZIP files
+- old audit reports
+- tenant data
+- unrelated frontend pages
+- unrelated backend modules
+
+unless the current task specifically requires them.
+
+If a file is not relevant to the current change, DO NOT OPEN IT.
+
+## 2. NO TOKEN WASTE
+
+Do not repeatedly explain what you are doing.
+
+Do not produce long reasoning in chat.
+
+Use short status messages only:
+
+- Inspecting X
+- Found Y
+- Fixing Z
+- Testing
+- Done
+
+Never repeat the same finding.
+
+Do not paste large source files into responses.
+
+Do not paste logs unless the relevant error is required.
+
+## 3. NO UNNECESSARY MARKDOWN/DOCUMENTATION
+
+DO NOT create:
+- README files
+- audit.md
+- report.md
+- summary.md
+- implementation.md
+- architecture.md
+- progress.md
+- changelog files
+- planning documents
+- task documents
+
+unless the user explicitly requests one.
+
+Do not create documentation to explain a code change.
+
+The code, tests, and concise final response are sufficient.
+
+## 4. NO UNNECESSARY FILES
+
+Before creating a new file:
+
+SEARCH for an existing file that already performs the required responsibility.
+
+Prefer:
+- modify existing file
+- reuse existing service
+- reuse existing component
+- reuse existing helper
+
+over creating another implementation.
+
+Do not create duplicate:
+- services
+- controllers
+- hooks
+- components
+- pages
+- utilities
+- API clients
+- storage services
+- PDF services
+
+## 5. NO MASS REFACTOR
+
+Never reorganize the entire repository for a small task.
+
+Never rename/move hundreds of files because a different structure looks cleaner.
+
+For cleanup:
+1. identify dependency
+2. prove unused
+3. remove/move
+4. build
+5. test
+
+UNKNOWN = KEEP.
+
+Never delete a file only because it looks old.
+
+## 6. NO BLIND DELETION
+
+Before deleting code:
+
+Search:
+- imports
+- references
+- routes
+- registrations
+- DI
+- configuration
+- dynamic references
+- tests
+
+Only delete when usage is proven absent.
+
+For migrations:
+NEVER delete or rewrite migrations merely because they appear old.
+
+## 7. TENANT SAFETY
+
+HexaBill is multi-tenant.
+
+Never introduce tenant authority from:
+- request body tenantId
+- query tenantId
+- X-Tenant-Id
+- Origin
+- X-Forwarded-Host
+- frontend state
+
+Tenant authority comes from the verified host/security context.
+
+Never hardcode:
+- Surag
+- ZAYOGA
+- any tenant ID
+- any customer name
+
+Tenant data must remain isolated.
+
+## 8. CLIENT DATA IS NOT SOURCE CODE
+
+Never create source folders such as:
+
+clients/surag
+clients/zayoga
+clients/client1
+
+Business data belongs in:
+- PostgreSQL with TenantId
+- R2 with tenant-scoped object keys
+
+Source code is shared.
+
+## 9. R2
+
+Production file storage uses Cloudflare R2.
+
+Do not introduce local-disk production storage.
+
+Do not put R2 credentials in frontend code.
+
+Do not expose secrets in logs.
+
+Use tenant-scoped object paths.
+
+Do not redesign working R2 code unless the task requires it.
+
+## 10. API CHANGES
+
+For API changes:
+
+1. find existing endpoint
+2. find existing service
+3. find authorization
+4. modify the smallest required area
+5. test GET/POST/PUT/DELETE as applicable
+
+Do not create a second endpoint for the same operation.
+
+Do not duplicate business logic between controllers.
+
+## 11. FRONTEND
+
+Before creating a page/component:
+
+SEARCH for an existing implementation.
+
+Do not create:
+- Page2
+- NewPage
+- LegacyNewPage
+- ComponentNew
+- duplicate API service
+
+Reuse existing architecture.
+
+Do not redesign unrelated UI.
+
+## 12. DATABASE
+
+Do not change database schema unless explicitly required.
+
+Never run production migrations automatically.
+
+Never modify production data during code cleanup.
+
+Never create tenant-specific production data in source code.
+
+## 13. TESTING
+
+Run only relevant tests first.
+
+Order:
+
+1. targeted test
+2. affected module tests
+3. build
+4. broader tests only if required
+
+Do not run the entire test suite repeatedly after every tiny edit.
+
+Fix the actual failure.
+
+Do not hide failures.
+
+## 14. MCP
+
+Use MCP only when the task requires live infrastructure verification.
+
+Do not repeatedly query the same service.
+
+Do not dump entire environments/logs.
+
+Never print secrets.
+
+For Render/Vercel/Cloudflare:
+- inspect only required service/project
+- inspect only relevant deployment/logs
+- change only required settings
+- verify after change
+
+## 15. AGENTS
+
+Agents must minimize context.
+
+Each agent should receive only the files relevant to its responsibility.
+
+Do not make multiple write agents modify the same files simultaneously.
+
+Preferred flow:
+
+REVIEW
+→ FIX
+→ TEST
+→ REVIEW
+
+Not:
+
+AGENT1 + AGENT2 + AGENT3 all editing simultaneously.
+
+## 16. CODE QUALITY
+
+Prefer:
+- simple code
+- existing abstractions
+- small functions
+- clear names
+- low duplication
+- minimal dependencies
+- existing patterns
+
+Avoid:
+- unnecessary abstractions
+- speculative architecture
+- over-engineering
+- wrapper around wrapper
+- duplicate validation
+- duplicate API clients
+- unnecessary helper files
+
+## 17. OUTPUT
+
+Final response must be SHORT.
+
+Use:
+
+DONE
+- changed: X
+- fixed: Y
+- tests: Z
+- remaining: W
+
+Do not provide a long explanation unless explicitly requested.
+
+## 18. STOP CONDITIONS
+
+STOP and ask only when:
+- required information is genuinely unavailable
+- the change could destroy production data
+- credentials are required
+- architecture has two materially different valid interpretations
+- destructive deletion cannot be proven safe
+
+Otherwise solve the task yourself.
+
+## 19. IMPORTANT
+
+The objective is:
+
+LESS CODE
+LESS FILES
+LESS DUPLICATION
+LESS CONTEXT
+LESS TOKEN USAGE
+MORE REUSE
+MORE TESTING
+MORE SECURITY
+
+Do not optimize for producing more files or more text.
+
+DO THE SMALLEST SAFE CHANGE THAT COMPLETES THE TASK.

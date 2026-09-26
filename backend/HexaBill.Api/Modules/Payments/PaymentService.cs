@@ -8,11 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions; // CRITICAL: For ToUtcKind() extension
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
-using HexaBill.Api.Modules.Billing;
-using HexaBill.Api.Shared.Validation;
 
 namespace HexaBill.Api.Modules.Payments
 {

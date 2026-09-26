@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Seed
 {

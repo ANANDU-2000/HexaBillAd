@@ -122,7 +122,12 @@ TestResults/
 **/publish-test/
 **/publish/
 
-# Local export/data folders (invoices, PDFs, CSVs - do not commit)
-/ZAYOGA GENERAL TRADING-SOLE PROPERIETORSHIP LLC/
+# Runtime uploads and tenant export dumps
+**/wwwroot/uploads/
+backend/data/*.json
+
+# Local client exports (barcodes, invoices, PDFs). Never commit.
+/clients/
 **/exports/
 **/Export*/
+.vercel

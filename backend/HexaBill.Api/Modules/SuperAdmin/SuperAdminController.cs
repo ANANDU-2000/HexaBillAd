@@ -11,10 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions; // MULTI-TENANT
-using HexaBill.Api.Shared.Services;
 using System.IO;
-using HexaBill.Api.Shared.Security;
 using Npgsql;
 
 namespace HexaBill.Api.Modules.SuperAdmin

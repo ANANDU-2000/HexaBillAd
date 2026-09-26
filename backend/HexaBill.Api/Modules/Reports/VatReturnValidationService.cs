@@ -11,8 +11,6 @@ Date: 2026
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Reports
 {

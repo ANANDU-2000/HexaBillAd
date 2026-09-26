@@ -1,6 +1,5 @@
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Middleware;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

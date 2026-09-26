@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Branches
 {

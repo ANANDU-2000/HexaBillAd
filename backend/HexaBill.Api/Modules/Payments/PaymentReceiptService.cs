@@ -246,6 +246,6 @@ namespace HexaBill.Api.Modules.Payments
             return prefix + (maxNum + 1).ToString("D4");
         }
 
-        private static string AmountToWords(decimal amount) => HexaBill.Api.Shared.AmountToWords.Dirhams(amount);
+        private static string AmountToWords(decimal amount) => HexaBill.Api.Core.Infrastructure.AmountToWords.Dirhams(amount);
     }
 }

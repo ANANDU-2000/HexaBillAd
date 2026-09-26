@@ -6,13 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Modules.Payments;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.Branches;
-using HexaBill.Api.Shared.Validation;
 using Npgsql;
 using OfficeOpenXml;
 

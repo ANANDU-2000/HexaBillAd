@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Modules.Payments;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Modules.Customers;
 
 namespace HexaBill.Api.Modules.Payments

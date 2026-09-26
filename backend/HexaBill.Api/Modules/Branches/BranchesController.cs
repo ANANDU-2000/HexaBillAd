@@ -4,7 +4,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Branches
 {

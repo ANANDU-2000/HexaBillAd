@@ -1,5 +1,5 @@
 import React from 'react'
-import { useBranding } from '../contexts/TenantBrandingContext'
+import { useBranding } from '../tenant/TenantBrandingContext'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import api from '../services/api'
 

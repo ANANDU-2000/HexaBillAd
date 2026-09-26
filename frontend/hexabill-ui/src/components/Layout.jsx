@@ -45,7 +45,7 @@ import { SubscriptionGraceBanner } from './SubscriptionGraceBanner'
 import { connectionManager } from '../services/connectionManager'
 import { isAdminOrOwner, isOwner, isStaff } from '../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
-import { useBranding } from '../contexts/TenantBrandingContext'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 const Layout = () => {
   const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()

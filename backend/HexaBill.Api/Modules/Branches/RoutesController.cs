@@ -4,7 +4,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Branches
 {
@@ -14,12 +13,12 @@ namespace HexaBill.Api.Modules.Branches
     public class RoutesController : TenantScopedController
     {
         private readonly IRouteService _routeService;
-        private readonly HexaBill.Api.Shared.Services.IRouteScopeService _routeScopeService;
+        private readonly HexaBill.Api.Core.Infrastructure.IRouteScopeService _routeScopeService;
         private readonly ILogger<RoutesController> _logger;
 
         public RoutesController(
             IRouteService routeService,
-            HexaBill.Api.Shared.Services.IRouteScopeService routeScopeService,
+            HexaBill.Api.Core.Infrastructure.IRouteScopeService routeScopeService,
             ILogger<RoutesController> logger)
         {
             _routeService = routeService;

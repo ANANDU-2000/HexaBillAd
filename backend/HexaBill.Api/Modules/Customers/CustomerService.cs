@@ -8,8 +8,6 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Modules.Billing;
-using HexaBill.Api.Shared.Extensions;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;

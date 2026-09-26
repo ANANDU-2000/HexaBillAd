@@ -4,9 +4,9 @@ import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
-import { BrandingProvider } from './contexts/TenantBrandingContext'
+import { BrandingProvider } from './tenant/TenantBrandingContext'
 import toast, { Toaster, useToasterStore } from 'react-hot-toast'
-import App from './App.jsx'
+import App from './app/App.jsx'
 import './index.css'
 
 const TOAST_LIMIT = 3

@@ -13,7 +13,7 @@ namespace HexaBill.Api.Modules.VendorDiscounts
     [ApiController]
     [Route("api/suppliers/{supplierId:int}/vendor-discounts")]
     [Authorize(Roles = "Owner,Admin")]
-    public class VendorDiscountsController : HexaBill.Api.Shared.Extensions.TenantScopedController
+    public class VendorDiscountsController : HexaBill.Api.Core.Tenancy.TenantScopedController
     {
         private readonly IVendorDiscountService _service;
 

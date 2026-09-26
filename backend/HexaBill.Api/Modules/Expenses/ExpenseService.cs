@@ -8,9 +8,6 @@ using Microsoft.Extensions.Logging;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
-using HexaBill.Api.Shared.Exceptions;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Services;
 
 namespace HexaBill.Api.Modules.Expenses
 {

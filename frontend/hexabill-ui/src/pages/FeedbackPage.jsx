@@ -6,7 +6,7 @@ import { Input } from '../components/Form'
 import { LoadingButton } from '../components/Loading'
 import { showToast } from '../utils/toast'
 import { useAuth } from '../hooks/useAuth'
-import { useBranding } from '../contexts/TenantBrandingContext'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 const FeedbackPage = () => {
   const { user } = useAuth()
@@ -59,7 +59,7 @@ const FeedbackPage = () => {
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Share Your Feedback</h1>
+          <h1 className="text-xl font-semibold text-neutral-900 mb-2">Share Your Feedback</h1>
           <p className="text-gray-600">
             Your feedback helps us improve {companyName}. We value your input and suggestions.
           </p>

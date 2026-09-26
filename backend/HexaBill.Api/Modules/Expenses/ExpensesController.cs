@@ -5,12 +5,9 @@ Date: 2024
 */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.Expenses;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;

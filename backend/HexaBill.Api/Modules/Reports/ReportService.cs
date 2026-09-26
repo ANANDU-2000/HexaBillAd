@@ -8,13 +8,9 @@ using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Modules.Payments;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.Inventory;
-using HexaBill.Api.Shared.Services;
-using HexaBill.Api.Shared.Validation;
 
 namespace HexaBill.Api.Modules.Reports
 {

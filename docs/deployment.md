@@ -7,8 +7,8 @@ Use this to verify and fix production. Backend = Render, Frontend = Vercel.
 ## Before pushing
 
 1. **Database**
-   - If you see ErrorLogs 42703: In Render → Postgres → Connect → PSQL, run the ErrorLogs snippet below or full `backend/HexaBill.Api/Scripts/RUN_ON_RENDER_PSQL.sql`.
-   - If GET `/api/expenses/categories` returns 500: Ensure `ExpenseCategories` has a `TenantId` column. Run the block in `backend/HexaBill.Api/Scripts/FIX_PRODUCTION_MIGRATIONS.sql` for ExpenseCategories (add column, backfill, index), or apply migration `20260225130000_AddExpenseCategoryTenantId`.
+   - If you see ErrorLogs 42703: In Render → Postgres → Connect → PSQL, run the ErrorLogs snippet below.
+   - If GET `/api/expenses/categories` returns 500: Ensure `ExpenseCategories` has a `TenantId` column. Apply migration `20260225130000_AddExpenseCategoryTenantId`.
    ```sql
    ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
    CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
@@ -28,7 +28,7 @@ Use this to verify and fix production. Backend = Render, Frontend = Vercel.
 | **Dockerfile** | `backend/HexaBill.Api/Dockerfile` (path from repo root). |
 | **Env vars** | `DATABASE_URL` (from linked PostgreSQL or paste internal URL), `JwtSettings__SecretKey` (or generate), `ALLOWED_ORIGINS` (optional; CORS allows `*.vercel.app` by default). |
 | **Health** | After deploy: `GET https://hexabill.onrender.com/health` → `{"status":"ok"}`. |
-| **DB migration** | If expenses/error-logs fail: run `backend/HexaBill.Api/Scripts/RUN_ON_RENDER_PSQL.sql` in Render PSQL once, then restart API. Or: `cd backend/HexaBill.Api/MigrationFixer`, set `DATABASE_URL`, `dotnet run`. |
+| **DB migration** | Schema is `backend/HexaBill.Api/Migrations`. Production startup does not run migrations. Apply a new migration outside process startup, then restart the API. |
 
 ---
 
@@ -67,14 +67,18 @@ If auto-deploy is on, the API and/or static site will deploy from `main`. Otherw
 
 - **"HexaBill.Api.csproj not found"** → Set Root Directory to **empty** (repo root), save, redeploy.
 - **Build timeout** → Render free tier may sleep; first request can be slow. Use health check URL to wake.
-- See [DEPLOY-TROUBLESHOOTING.md](migrations/DEPLOY-TROUBLESHOOTING.md) for detailed troubleshooting.
+- See `docs/RUN_LOCALLY.md` for local setup.
 
 ---
 
 ## 6. If expenses or error-logs fail (42703 / errorMissingColumn)
 
 1. Render Dashboard → PostgreSQL → **Connect** → **PSQL**.
-2. Paste and run entire `backend/HexaBill.Api/Scripts/RUN_ON_RENDER_PSQL.sql`.
+2. Add the missing column from the versioned EF migration. For `ErrorLogs.ResolvedAt`:
+   ```sql
+   ALTER TABLE "ErrorLogs" ADD COLUMN IF NOT EXISTS "ResolvedAt" timestamp with time zone NULL;
+   CREATE INDEX IF NOT EXISTS "IX_ErrorLogs_ResolvedAt" ON "ErrorLogs" ("ResolvedAt");
+   ```
 3. Restart the API on Render.
 
 ---
@@ -83,10 +87,3 @@ If auto-deploy is on, the API and/or static site will deploy from `main`. Otherw
 
 - Log in → Dashboard → select **Today** → click **Refresh**. Cards and chart should update.
 - If you're SystemAdmin: open Error Logs / alert summary; they should load (or show empty if ResolvedAt wasn't added yet).
-
----
-
-## Migration docs
-
-- [MIGRATION_INSTRUCTIONS.md](migrations/MIGRATION_INSTRUCTIONS.md)
-- [RENDER_RUN_MIGRATION_NOW.md](migrations/RENDER_RUN_MIGRATION_NOW.md)

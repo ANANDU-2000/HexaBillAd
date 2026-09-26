@@ -13,11 +13,10 @@ HexaBill/
 ├── backend/
 │   └── HexaBill.Api/              # ASP.NET Core 9 API (SaaS Backend)
 │       ├── Modules/            # Feature modules
-│       ├── Shared/             # Shared components
+│       ├── Core/               # Tenancy, storage, auth, infrastructure
 │       ├── Data/               # Database context
 │       ├── Models/             # Entity models
-│       └── Scripts/
-│           └── 01_COMPLETE_DATABASE_SETUP.sql  # ⭐ Single SQL file
+│       └── Migrations/         # Versioned EF schema
 │
 ├── frontend/
 │   └── hexabill-ui/            # React SaaS App (app.hexabill.com)
@@ -30,11 +29,9 @@ HexaBill/
 │   └── .gitkeep                # Placeholder for separate marketing site
 │
 └── docs/
-    ├── HEXABILL_GOAL_AND_PROMPT.md
-    ├── HEXABILL_UX_UI_MASTER_PROMPT.md  # Master UX/UI design system (all pages)
-    ├── UI_UX_DESIGN_LOCK.md              # 🔒 UI/UX lock — always think & update from this
-    ├── FOLDER_STRUCTURE.md               # Detailed structure guide
-    └── ARCHITECTURE_LOCK.md
+    ├── RUN_LOCALLY.md
+    ├── database-schema.md
+    └── deployment.md
 ```
 
 **Key Separation:**
@@ -54,11 +51,7 @@ dotnet run
 ```
 **Database Setup:**
 ```bash
-# 1. EF Core migrations (automatic)
 dotnet ef database update
-
-# 2. Enterprise tables (manual SQL)
-psql -d hexabill_db -f backend/HexaBill.Api/Scripts/01_COMPLETE_DATABASE_SETUP.sql
 ```
 
 ### Frontend
@@ -107,7 +100,7 @@ Frontend deploys via Vercel (`vercel.json` → `frontend/hexabill-ui`). Backend 
 ## Testing
 
 ```bash
-dotnet test backend/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release
+dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release
 cd frontend/hexabill-ui && npm run lint && npm run build
 ```
 
@@ -128,20 +121,6 @@ cd frontend/hexabill-ui && npm run lint && npm run build
 - PostgreSQL RLS support
 - JWT-based authentication
 - Role-based access control
-
----
-
-**Enterprise roadmap:** See PLAN.txt (metrics, risk score, cost estimation, automation).
-
----
-
-## Production: Branch & Route Data
-
-If Branch/Route pages or Reports tabs show zeros or "No data found":
-
-1. Run `FIX_PRODUCTION_MIGRATIONS.sql` **sections 5 and 5b** on production (adds `Sales.BranchId`/`RouteId`, backfills data)
-2. Run: `node backend/Scripts/ensure-zayoga-branch-route.js`
-3. Restart the API or wait ~5 minutes for the schema cache to refresh
 
 ---
 

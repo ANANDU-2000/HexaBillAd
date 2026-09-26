@@ -1,0 +1,9 @@
+global using HexaBill.Api.Core.Tenancy;
+global using HexaBill.Api.Core.Storage;
+global using HexaBill.Api.Core.Identity;
+global using HexaBill.Api.Core.Authorization;
+global using HexaBill.Api.Core.Infrastructure;
+global using HexaBill.Api.Modules.Sales;
+global using HexaBill.Api.Modules.Returns;
+global using HexaBill.Api.Modules.Products;
+global using HexaBill.Api.Modules.Tenants;

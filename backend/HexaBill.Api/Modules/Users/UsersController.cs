@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Modules.Users;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions; // CRITICAL: Required for TenantScopedController
 using HexaBill.Api.Modules.Auth;
 
 namespace HexaBill.Api.Modules.Users

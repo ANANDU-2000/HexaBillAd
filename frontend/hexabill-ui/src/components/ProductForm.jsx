@@ -3,8 +3,8 @@ import { X, Plus, Upload, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } fr
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from './ConfirmDangerModal'
-import { useCameraBarcodeScanner } from '../pages/company/pos/barcode/useCameraBarcodeScanner'
-import { playScanSuccessBeep } from '../pages/company/pos/barcode/scanBeep'
+import { useCameraBarcodeScanner } from '../features/sales/pos/barcode/useCameraBarcodeScanner'
+import { playScanSuccessBeep } from '../features/sales/pos/barcode/scanBeep'
 import { downloadOrShareBarcodePdf } from '../utils/barcodePdf'
 
 const SCAN_STATUS_LABEL = {

@@ -9,7 +9,8 @@ const Modal = ({
   size = 'md',
   showCloseButton = true,
   closeOnOverlayClick = true,
-  allowFullscreen = false
+  allowFullscreen = false,
+  footer = null
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const modalRef = useRef(null)
@@ -113,7 +114,7 @@ const Modal = ({
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`relative bg-white rounded-lg border border-neutral-200 shadow-lg w-full ${isFullscreen ? 'max-w-full h-full m-0' : sizeClasses[size]} transform transition-all ${isFullscreen ? 'rounded-none' : ''}`}
+          className={`relative bg-white rounded-xl border border-neutral-200 shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} max-h-[calc(100dvh-2rem)]`}`}
           onKeyDown={handleKeyDown}
           role="dialog"
           aria-modal="true"
@@ -121,7 +122,7 @@ const Modal = ({
         >
           {/* Header */}
           {(title || showCloseButton || allowFullscreen) && (
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 shrink-0">
               {title && (
                 <h3 id="modal-title" className="text-lg font-semibold text-gray-900">
                   {title}
@@ -151,9 +152,14 @@ const Modal = ({
           )}
 
           {/* Content */}
-          <div className={`p-6 ${isFullscreen ? 'overflow-auto h-full' : ''}`}>
+          <div className="p-4 overflow-y-auto min-h-0 flex-1">
             {children}
           </div>
+          {footer && (
+            <div className="px-4 py-3 border-t border-neutral-200 shrink-0 bg-white">
+              {footer}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -218,7 +218,7 @@ const BackupPage = () => {
     <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-6">
       <div className="w-full">
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">My Data Export</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-xl font-semibold text-neutral-900">My Data Export</h1>
           <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Export your company&apos;s data (CSV, database, optional invoice PDFs). Use this to download a backup of your tenant data only. Restore from a previous export if needed.</p>
         </div>
 

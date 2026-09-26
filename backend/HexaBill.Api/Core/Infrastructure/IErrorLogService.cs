@@ -1,0 +1,6 @@
+namespace HexaBill.Api.Core.Infrastructure;
+
+public interface IErrorLogService
+{
+    Task LogAsync(string traceId, string errorCode, string message, string? stackTrace, string? path, string? method, int? tenantId, int? userId, CancellationToken ct = default);
+}

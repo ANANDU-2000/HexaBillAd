@@ -21,13 +21,13 @@ jobs:
       - name: Restore
         run: |
           dotnet restore backend/HexaBill.Api/HexaBill.Api.csproj
-          dotnet restore backend/HexaBill.Tests/HexaBill.Tests.csproj
+          dotnet restore tests/HexaBill.Tests/HexaBill.Tests.csproj
 
       - name: Build
         run: dotnet build backend/HexaBill.Api/HexaBill.Api.csproj --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test backend/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-restore --verbosity normal
+        run: dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-restore --verbosity normal
 
   frontend:
     name: Frontend install / lint / build

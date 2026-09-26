@@ -8,8 +8,6 @@ using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
-using HexaBill.Api.Shared.Exceptions;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Purchases
 {

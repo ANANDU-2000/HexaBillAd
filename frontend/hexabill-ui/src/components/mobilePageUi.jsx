@@ -2,12 +2,12 @@
  * Shared mobile layout: compact headers, icon tab bars (no vertical tab scroll), ledger cards.
  */
 
-export const mobilePageTitleClass = 'text-base font-bold text-neutral-900 leading-tight'
+export const mobilePageTitleClass = 'text-xl font-semibold text-neutral-900 leading-tight'
 export const mobilePageSubtitleClass = 'text-xs text-neutral-500 hidden sm:block'
 export const mobileLedgerCardClass =
-  'rounded-xl border border-neutral-200 bg-white p-3.5 shadow-sm text-sm leading-snug'
-export const mobileLedgerAmountClass = 'text-base font-bold tabular-nums'
-export const mobileLedgerLabelClass = 'text-[11px] font-medium text-neutral-500 uppercase tracking-wide'
+  'rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-snug'
+export const mobileLedgerAmountClass = 'text-sm font-semibold tabular-nums'
+export const mobileLedgerLabelClass = 'text-xs font-medium text-neutral-500 uppercase tracking-wide'
 
 /** 4–5 equal tabs: icon on top, short label — fits one row on phone */
 export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) => (
@@ -26,7 +26,7 @@ export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) =
           role="tab"
           aria-selected={active}
           onClick={() => onChange(tab.id)}
-          className={`flex flex-col items-center justify-center gap-0.5 min-h-[52px] px-1 py-2 border-b-2 transition-colors ${
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] px-1 py-1.5 border-b-2 transition-colors ${
             active
               ? 'border-primary-600 text-primary-700 bg-primary-50/80'
               : 'border-transparent text-neutral-600 hover:bg-neutral-50'

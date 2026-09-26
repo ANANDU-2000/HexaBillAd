@@ -111,8 +111,10 @@
   --input-radius: 6px;
   --btn-padding: 12px 24px;
   --btn-radius: 6px;
-  --btn-height: 40px;
-  --btn-height-mobile: 48px;
+  --btn-height-compact: 32px;
+  --btn-height: 36px;
+  --btn-height-touch: 44px;
+  --control-height: 36px;
 
   --radius-sm: 0.375rem;
   --radius-md: 0.5rem;

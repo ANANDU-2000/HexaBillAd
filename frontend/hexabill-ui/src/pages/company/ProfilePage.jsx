@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
-import { useBranding } from '../../contexts/TenantBrandingContext'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 import Modal from '../../components/Modal'
 import { LoadingCard } from '../../components/Loading'
 import { authAPI } from '../../services'
@@ -186,7 +186,7 @@ const ProfilePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
       <div className="p-4 sm:p-6 w-full">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl sm:text-xl font-semibold text-neutral-900 flex items-center gap-2">
             <User className="h-6 w-6 text-blue-600" />
             My Profile
           </h1>

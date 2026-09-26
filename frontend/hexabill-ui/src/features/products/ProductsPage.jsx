@@ -1,0 +1,1763 @@
+import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye, ScanBarcode, Printer, Share2, Wand2 } from 'lucide-react'
+import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
+import ProductForm from '../../components/ProductForm'
+import StockAdjustmentModal from '../../components/StockAdjustmentModal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { TabNavigation, FilterPanel, ModernTable } from '../../components/ui/index'
+import { MobileFilterSheet, ListSkeleton } from '../../components/mobile/index'
+import { useDebounce } from '../../hooks/useDebounce'
+import { useAuth } from '../../hooks/useAuth'
+import { isAdminOrOwner } from '../../utils/roles'
+import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
+import toast from 'react-hot-toast'
+
+const ProductsPage = () => {
+  const navigate = useNavigate()
+  const { user } = useAuth()
+  const canManageInventory = isAdminOrOwner(user)
+  const canAdjustStock = !!user
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
+  const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
+  const [showForm, setShowForm] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [prefillBarcode] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('barcode') || ''
+    } catch {
+      return ''
+    }
+  })
+  const [showStockModal, setShowStockModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'all')
+  const [activeFilters, setActiveFilters] = useState(() => {
+    const cat = searchParams.get('category')
+    return cat ? { categoryId: cat } : {}
+  })
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const activeFilterCount = Object.values(activeFilters).filter((v) => v !== '' && v != null).length
+  const [categories, setCategories] = useState([])
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [productToDelete, setProductToDelete] = useState(null)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [importFile, setImportFile] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [editingCategory, setEditingCategory] = useState(null)
+  const [categoryToDelete, setCategoryToDelete] = useState(null)
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', description: '', colorCode: '#3B82F6' })
+  const [dangerModal, setDangerModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmLabel: 'Confirm',
+    requireTypedText: null,
+    onConfirm: () => { }
+  })
+
+  // Stock Movement tab state
+  const [movements, setMovements] = useState([])
+  const [movementsLoading, setMovementsLoading] = useState(false)
+  const [movementsPage, setMovementsPage] = useState(1)
+  const [movementsTotalPages, setMovementsTotalPages] = useState(1)
+  const [movementsTotalCount, setMovementsTotalCount] = useState(0)
+  const [movementsFilter, setMovementsFilter] = useState({ fromDate: '', toDate: '', transactionType: '' })
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+
+  // Open create form when arriving from POS "Add as new product" (?barcode=)
+  useEffect(() => {
+    if (!prefillBarcode) return
+    setEditingProduct(null)
+    setShowForm(true)
+  }, [prefillBarcode])
+
+  // Sync filter state to URL so filters survive navigation and browser back
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (searchTerm) params.set('search', searchTerm)
+    if (activeTab && activeTab !== 'all') params.set('tab', activeTab)
+    if (currentPage > 1) params.set('page', String(currentPage))
+    if (activeFilters.categoryId) params.set('category', activeFilters.categoryId)
+    setSearchParams(params, { replace: true })
+  }, [searchTerm, activeTab, currentPage, activeFilters.categoryId])
+
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = {
+        page: currentPage,
+        pageSize: pageSize,
+        search: debouncedSearchTerm || undefined,
+        lowStock: activeTab === 'lowStock',
+        missingBarcode: activeTab === 'missingBarcode',
+        unitType: activeFilters.unitType || undefined,
+        categoryId: activeFilters.categoryId ? parseInt(activeFilters.categoryId) : undefined,
+        includeInactive: activeTab === 'inactive' // Include inactive products when on inactive tab
+      }
+      
+      // Filter inactive products client-side when on inactive tab
+      // (Backend returns all products when includeInactive=true, we filter to only inactive)
+
+      const response = await productsAPI.getProducts(params)
+      if (response?.success && response?.data) {
+        let items = response.data.items || []
+        // Filter to only inactive products when on inactive tab
+        if (activeTab === 'inactive') {
+          items = items.filter(p => !p.isActive)
+        }
+        setProducts(items)
+        setTotalPages(response.data.totalPages || 1)
+        setTotalCount(response.data.totalCount || 0)
+      } else {
+        setProducts([])
+        setTotalPages(1)
+      }
+    } catch (error) {
+      console.error('Error loading products:', error)
+      // Only show error if it's not a network error (handled by interceptor)
+      if (!error?._handledByInterceptor && (error.response || (!error.code || error.code !== 'ERR_NETWORK'))) {
+        toast.error(error?.response?.data?.message || 'Failed to load products')
+      }
+      setProducts([])
+      setTotalPages(1)
+    } finally {
+      setLoading(false)
+    }
+  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters])
+
+  const loadStockMovements = useCallback(async () => {
+    try {
+      setMovementsLoading(true)
+      const params = { page: movementsPage, pageSize: 20 }
+      if (movementsFilter.fromDate) params.fromDate = movementsFilter.fromDate
+      if (movementsFilter.toDate) params.toDate = movementsFilter.toDate
+      if (movementsFilter.transactionType) params.transactionType = movementsFilter.transactionType
+      const response = await productsAPI.getStockMovements(params)
+      if (response?.success && response?.data) {
+        setMovements(response.data.items || [])
+        setMovementsTotalPages(response.data.totalPages || 1)
+        setMovementsTotalCount(response.data.totalCount || 0)
+      }
+    } catch (error) {
+      console.error('Error loading stock movements:', error)
+      if (!error?._handledByInterceptor) toast.error('Failed to load stock movements')
+    } finally {
+      setMovementsLoading(false)
+    }
+  }, [movementsPage, movementsFilter])
+
+  useEffect(() => {
+    if (activeTab === 'movements') {
+      loadStockMovements()
+    }
+  }, [activeTab, loadStockMovements])
+
+  useEffect(() => {
+    loadProducts()
+    // Auto-refresh products every 60 seconds (reduced frequency for better performance)
+    // Only refresh if page is visible and not in edit mode
+    const refreshInterval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !showForm && !showStockModal) {
+        loadProducts()
+      }
+    }, 60000) // 60 seconds - reduced from 20
+
+    return () => clearInterval(refreshInterval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters]) // Only refresh when filters change
+
+  /** After create: toast with optional Print barcode action (no need to re-open Edit). */
+  const offerCreateSuccessWithPrint = (created) => {
+    const id = created?.id
+    const barcode = created?.barcode
+    const msg = barcode ? `Product created (barcode: ${barcode})` : 'Product created successfully'
+    if (!id || !barcode) {
+      toast.success(msg)
+      return
+    }
+    toast.success(
+      (t) => (
+        <div className="flex flex-col gap-1.5 text-sm max-w-xs">
+          <span>{msg}</span>
+          <button
+            type="button"
+            className="self-start font-semibold text-blue-700 underline hover:text-blue-900"
+            onClick={async () => {
+              toast.dismiss(t.id)
+              try {
+                const blob = await productsAPI.downloadBarcodeLabelsPdf({ productIds: [id] })
+                await downloadOrShareBarcodePdf(blob, {
+                  fileName: `barcode-${barcode || id}.pdf`,
+                  share: false,
+                })
+                toast.success('Barcode PDF downloaded')
+              } catch (error) {
+                console.error(error)
+                if (!error?._handledByInterceptor) {
+                  let errMsg = error?.message || 'Failed to print barcode'
+                  try {
+                    const data = error?.response?.data
+                    if (data instanceof Blob) {
+                      const text = await data.text()
+                      const parsed = JSON.parse(text)
+                      errMsg = parsed.message || errMsg
+                    } else if (data?.message) {
+                      errMsg = data.message
+                    }
+                  } catch { /* ignore */ }
+                  toast.error(errMsg)
+                }
+              }
+            }}
+          >
+            Print barcode
+          </button>
+        </div>
+      ),
+      { duration: 10000 }
+    )
+  }
+
+  const handleCreateProduct = async (productData, imageFile) => {
+    // Prevent multiple clicks
+    if (saving) {
+      toast.error('Please wait, operation in progress...')
+      return
+    }
+
+    // Validate input
+    if (!productData.nameEn || productData.nameEn.trim().length === 0) {
+      toast.error('Product name is required')
+      return
+    }
+    if (productData.sellPrice < 0 || productData.costPrice < 0) {
+      toast.error('Prices cannot be negative')
+      return
+    }
+    if (productData.sellPrice > 1000000 || productData.costPrice > 1000000) {
+      toast.error('Prices are too high. Maximum is 1,000,000')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
+      const response = await productsAPI.createProduct(payload)
+      if (response?.success) {
+        // Upload image if provided (for new products, upload after creation)
+        if (imageFile && response.data?.id) {
+          try {
+            const uploadResponse = await productsAPI.uploadProductImage(response.data.id, imageFile)
+            if (!uploadResponse?.success) {
+              toast.error('Product created, but image upload failed')
+            }
+          } catch (uploadError) {
+            console.error('Error uploading image:', uploadError)
+            toast.error('Product created, but image upload failed')
+          }
+        }
+        offerCreateSuccessWithPrint(response.data)
+        setShowForm(false)
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to create product')
+      }
+    } catch (error) {
+      console.error('Error creating product:', error)
+      if (!error?._handledByInterceptor) {
+        const data = error?.response?.data
+        const status = error?.response?.status
+        if (status === 409) {
+          const msg = data?.message || 'This SKU already exists for your company.'
+          toast.error(`${msg} Use a different SKU or edit the existing product.`, { duration: 6000 })
+          loadProducts()
+        } else {
+          const msg = data?.message || error?.message || 'Failed to create product'
+          const errors = data?.errors
+          const fullMsg = errors?.length ? `${msg} (${errors.join(', ')})` : msg
+          toast.error(fullMsg, { duration: 6000 })
+        }
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdateProduct = async (id, productData, imageFile = null) => {
+    // Prevent multiple clicks
+    if (saving) {
+      toast.error('Please wait, operation in progress...')
+      return
+    }
+
+    if (!id) {
+      toast.error('Invalid product ID')
+      return
+    }
+
+    // Validate input
+    if (!productData.nameEn || productData.nameEn.trim().length === 0) {
+      toast.error('Product name is required')
+      return
+    }
+    if (productData.sellPrice < 0 || productData.costPrice < 0) {
+      toast.error('Prices cannot be negative')
+      return
+    }
+    if (productData.sellPrice > 1000000 || productData.costPrice > 1000000) {
+      toast.error('Prices are too high. Maximum is 1,000,000')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
+      const response = await productsAPI.updateProduct(id, payload)
+      if (response?.success) {
+        if (imageFile) {
+          try {
+            const uploadResponse = await productsAPI.uploadProductImage(id, imageFile)
+            if (uploadResponse?.success) {
+              toast.success('Product updated and image uploaded successfully')
+            } else {
+              toast.success('Product updated successfully, but image upload failed')
+            }
+          } catch (uploadError) {
+            console.error('Error uploading image:', uploadError)
+            toast.success('Product updated successfully, but image upload failed')
+          }
+        } else {
+          toast.success('Product updated successfully')
+        }
+        setShowForm(false)
+        setEditingProduct(null)
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to update product')
+      }
+    } catch (error) {
+      console.error('Error updating product:', error)
+
+      // Handle 409 Conflict (concurrency issue)
+      if (error?.response?.status === 409) {
+        const errorMsg = error?.response?.data?.message || 'Product was modified by another user. Please refresh and try again.'
+        toast.error(errorMsg, { duration: 5000 })
+        // Refresh products list to get latest data
+        loadProducts()
+      } else {
+        toast.error(error?.response?.data?.message || 'Failed to update product')
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteClick = (product) => {
+    setDangerModal({
+      isOpen: true,
+      title: 'Deactivate Product',
+      message: `This will deactivate ${product.nameEn || product.sku}. The product will be hidden from POS but will still appear in old invoices. You can reactivate it later.`,
+      confirmLabel: 'Deactivate Product',
+      requireTypedText: 'DEACTIVATE',
+      onConfirm: () => handleDeleteProduct(product.id)
+    })
+  }
+
+  const handleDeleteProduct = async (productId) => {
+    if (!productId) {
+      toast.error('Invalid product ID')
+      return
+    }
+
+    try {
+      const response = await productsAPI.deleteProduct(productId)
+      if (response?.success) {
+        toast.success('Product deactivated successfully')
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to deactivate product')
+      }
+    } catch (error) {
+      console.error('Error deactivating product:', error)
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to deactivate product')
+    }
+  }
+
+  const handleActivateProduct = async (productId) => {
+    if (!productId) {
+      toast.error('Invalid product ID')
+      return
+    }
+
+    try {
+      const response = await productsAPI.activateProduct(productId)
+      if (response?.success) {
+        toast.success('Product activated successfully')
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to activate product')
+      }
+    } catch (error) {
+      console.error('Error activating product:', error)
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to activate product')
+    }
+  }
+
+  const handleStockAdjustment = (product) => {
+    setSelectedProduct(product)
+    setShowStockModal(true)
+  }
+
+  const handleStockAdjustmentSubmit = async (adjustmentData) => {
+    try {
+      if (!selectedProduct?.id) {
+        toast.error('Invalid product selected')
+        return
+      }
+      let response
+      try {
+        response = await productsAPI.adjustStock(selectedProduct.id, {
+          changeQty: Number(adjustmentData.changeQty),
+          reason: adjustmentData.reason || ''
+        })
+      } catch (err) {
+        if (err?.response?.status === 404) {
+          const currentStock = Number(selectedProduct.stockQty) || 0
+          const changeQty = Number(adjustmentData.changeQty) || 0
+          response = await stockAdjustmentsAPI.createAdjustment({
+            productId: selectedProduct.id,
+            newStock: currentStock + changeQty,
+            reason: adjustmentData.reason || 'Manual adjustment'
+          })
+        } else {
+          throw err
+        }
+      }
+      if (response?.success) {
+        toast.success('Stock adjusted successfully')
+        setShowStockModal(false)
+        setSelectedProduct(null)
+        await loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to adjust stock')
+      }
+    } catch (error) {
+      console.error('Error adjusting stock:', error)
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to adjust stock')
+    }
+  }
+
+  const handleImportExcel = async () => {
+    if (!importFile) {
+      toast.error('Please select a file')
+      return
+    }
+
+    try {
+      setImporting(true)
+      const response = await productsAPI.importExcel(importFile)
+      if (response?.success) {
+        setImportResult(response.data)
+        toast.success(`Import completed: ${response.data.imported} new, ${response.data.updated} updated`)
+      } else {
+        toast.error(response?.message || 'Import failed')
+      }
+    } catch (error) {
+      console.error('Error importing Excel:', error)
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to import Excel file')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleResetAllStock = () => {
+    setDangerModal({
+      isOpen: true,
+      title: 'DANGER: Reset ALL Product Stock?',
+      message: `This will set stock to 0 for ALL ${totalCount} products!
+        This action:
+        • Sets all product stock quantities to zero
+        • Creates inventory adjustment records
+        • Keeps all product names and details
+        
+        CANNOT BE UNDONE!`,
+      confirmLabel: 'Reset All Stock Now',
+      requireTypedText: 'RESET ALL STOCK',
+      onConfirm: async () => {
+        try {
+          const response = await productsAPI.resetAllStock()
+          if (response?.success) {
+            const updatedCount = response.data?.productsUpdated || 0
+            toast.success(`Stock reset complete! ${updatedCount} products set to zero stock.`, { duration: 5000 })
+            await loadProducts() // Refresh to show updated stock
+          } else {
+            toast.error(response?.message || 'Failed to reset stock')
+          }
+        } catch (error) {
+          console.error('Reset stock error:', error)
+          if (!error?._handledByInterceptor) {
+            const errorMsg = error?.response?.data?.message || error?.message || 'Failed to reset stock'
+            toast.error(`Reset failed: ${errorMsg}`)
+          }
+        }
+      }
+    })
+  }
+
+  const tabs = [
+    { id: 'all', label: 'All Products', icon: Package },
+    { id: 'lowStock', label: 'Low Stock', icon: AlertTriangle, badge: products.filter(p => p.stockQty <= (p.reorderLevel || 0)).length },
+    { id: 'missingBarcode', label: 'Missing Barcode', icon: ScanBarcode, badge: activeTab === 'missingBarcode' ? totalCount : null },
+    { id: 'inactive', label: 'Inactive', icon: Trash2, badge: products.filter(p => !p.isActive).length },
+    { id: 'movements', label: 'Stock Movement', icon: History, badge: movementsTotalCount || null }
+  ]
+
+  const handleAutoFillMissingBarcodes = async () => {
+    if (!canManageInventory) return
+    try {
+      const response = await productsAPI.autoFillMissingBarcodes()
+      if (response?.success) {
+        toast.success(response.message || 'Barcodes assigned')
+        loadProducts()
+      } else {
+        toast.error(response?.message || 'Failed to auto-fill barcodes')
+      }
+    } catch (error) {
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to auto-fill barcodes')
+      }
+    }
+  }
+
+  const handleBarcodePdfForProducts = async (productIds, { share = false } = {}) => {
+    const ids = (productIds || []).filter(Boolean)
+    if (ids.length === 0) {
+      toast.error('No products selected')
+      return
+    }
+    try {
+      const blob = await productsAPI.downloadBarcodeLabelsPdf({ productIds: ids })
+      const result = await downloadOrShareBarcodePdf(blob, {
+        fileName: ids.length === 1 ? `barcode-${ids[0]}.pdf` : 'barcode-labels.pdf',
+        share,
+      })
+      toast.success(result === 'shared' ? 'Shared barcode PDF' : 'Barcode PDF downloaded')
+    } catch (error) {
+      console.error(error)
+      if (error?._handledByInterceptor) return
+      let msg = error?.message || 'Failed to generate barcode PDF'
+      try {
+        const data = error?.response?.data
+        if (data instanceof Blob) {
+          const text = await data.text()
+          const parsed = JSON.parse(text)
+          msg = parsed.message || msg
+        } else if (data?.message) {
+          msg = data.message
+        }
+      } catch { /* ignore */ }
+      toast.error(msg)
+    }
+  }
+
+  const handlePrintMissingBarcodes = async ({ share = false } = {}) => {
+    // Print labels for products currently listed that already have barcodes after auto-fill;
+    // if still missing, ask to auto-fill first.
+    const withBc = products.filter((p) => p.barcode).map((p) => p.id)
+    if (withBc.length === 0) {
+      toast.error('No barcodes to print. Use Auto-fill missing first, or edit each product.')
+      return
+    }
+    await handleBarcodePdfForProducts(withBc, { share })
+  }
+
+  const handleCreateCategory = async () => {
+    if (!categoryFormData.name || !categoryFormData.name.trim()) {
+      toast.error('Category name is required')
+      return
+    }
+
+    try {
+      const response = editingCategory
+        ? await productCategoriesAPI.updateCategory(editingCategory.id, categoryFormData)
+        : await productCategoriesAPI.createCategory(categoryFormData)
+      
+      if (response?.success) {
+        toast.success(editingCategory ? 'Category updated successfully' : 'Category created successfully')
+        setShowCategoryModal(false)
+        setEditingCategory(null)
+        setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
+        // Reload categories
+        const catResponse = await productCategoriesAPI.getCategories()
+        if (catResponse?.success && catResponse?.data) {
+          setCategories(catResponse.data)
+        }
+      } else {
+        toast.error(response?.message || 'Failed to save category')
+      }
+    } catch (error) {
+      console.error('Error saving category:', error)
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to save category')
+      }
+    }
+  }
+
+  const handleDeleteCategory = async (categoryId) => {
+    try {
+      const response = await productCategoriesAPI.deleteCategory(categoryId)
+      if (response?.success) {
+        toast.success('Category deleted successfully')
+        // Reload categories
+        const catResponse = await productCategoriesAPI.getCategories()
+        if (catResponse?.success && catResponse?.data) {
+          setCategories(catResponse.data)
+        }
+      } else {
+        toast.error(response?.message || 'Failed to delete category')
+      }
+    } catch (error) {
+      console.error('Error deleting category:', error)
+      if (!error?._handledByInterceptor) {
+        toast.error(error?.response?.data?.message || 'Failed to delete category')
+      }
+    }
+  }
+
+  return (
+    <div className="w-full space-y-3 h-full min-h-0 flex flex-col">
+      {/* Header — title left, actions right; full width */}
+      <div className="bg-white border border-neutral-200 rounded-lg px-3 sm:px-4 py-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg sm:text-xl lg:text-xl font-semibold text-neutral-900">Products</h1>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700">
+                {totalCount} Total
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-neutral-600 mt-0.5">Manage your inventory</p>
+          </div>
+          {/* Toolbar: wrap between sm and xl so tablet widths don't clip buttons; single row at xl+ */}
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto xl:flex-nowrap">
+            <button
+              onClick={() => loadProducts()}
+              className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
+            >
+              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            {canManageInventory && (
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await productsAPI.recomputeStock()
+                    if (res?.success) {
+                      const n = res?.data?.productsUpdated ?? 0
+                      toast.success(`Stock recomputed from inventory movements (${n} products).`)
+                      await loadProducts()
+                    } else toast.error(res?.message || 'Recompute failed')
+                  } catch (e) {
+                    toast.error(e?.response?.data?.message || 'Recompute failed')
+                  }
+                }}
+                className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-primary-300 rounded-lg text-xs sm:text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
+                title="Recompute stock from purchase/sale movements (fix drift)"
+              >
+                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Recompute Stock</span>
+                <span className="sm:hidden">Recompute</span>
+              </button>
+            )}
+            {canManageInventory && (
+              <button
+                onClick={handleResetAllStock}
+                className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-error/30 rounded-lg text-xs sm:text-sm font-medium text-error bg-error/10 hover:bg-error/20 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
+                title="Reset all product stock to zero (Admin/Owner only)"
+              >
+                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Reset Stock</span>
+                <span className="sm:hidden">Reset</span>
+              </button>
+            )}
+            {canManageInventory && (
+              <>
+                <button
+                  onClick={() => {
+                    setEditingCategory(null)
+                    setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
+                    setShowCategoryModal(true)
+                  }}
+                  className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
+                  title="Manage Categories"
+                >
+                  <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Categories</span>
+                  <span className="sm:hidden">Cats</span>
+                </button>
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px] sm:min-h-0"
+                >
+                  <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Import Excel</span>
+                  <span className="sm:hidden">Import</span>
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setShowForm(true)}
+              className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors flex-1 sm:flex-none min-h-[44px]"
+            >
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Product</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Banner: any products with 0 stock after purchases → run Recompute Stock */}
+        {products.length > 0 && (() => {
+          const zeroCount = products.filter(p => (p.stockQty ?? 0) === 0).length
+          const showBanner = zeroCount > 0 && canManageInventory
+          if (!showBanner) return null
+          return (
+            <div className="mt-4 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-amber-900">
+                <AlertTriangle className="inline h-4 w-4 mr-1.5 align-middle text-amber-600" />
+                <strong>Stocks showing zero after purchases?</strong> Click <strong>Recompute Stock</strong> below to sync from purchase and sales movements ({zeroCount} product{zeroCount !== 1 ? 's' : ''} with 0 stock).
+              </p>
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    const res = await productsAPI.recomputeStock()
+                    if (res?.success) {
+                      const n = res?.data?.productsUpdated ?? res?.data?.ProductsUpdated ?? 0
+                      toast.success(res?.message || `Stock recomputed (${n} products).`)
+                      await loadProducts()
+                    } else toast.error(res?.message || 'Recompute failed')
+                  } catch (e) {
+                    toast.error(e?.response?.data?.message || 'Recompute failed')
+                  }
+                }}
+                className="shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-200 text-amber-900 hover:bg-amber-300"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Recompute Stock
+              </button>
+            </div>
+          )
+        })()}
+
+        {/* Modern Tabs */}
+        <div className="mt-4">
+          <TabNavigation
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={(tab) => {
+              setActiveTab(tab)
+              setCurrentPage(1)
+            }}
+          />
+        </div>
+      </div>
+
+      {activeTab === 'movements' ? (
+        /* Stock Movement Tab Content */
+        <div className="space-y-4">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+                <input type="date" value={movementsFilter.fromDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, fromDate: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+                <input type="date" value={movementsFilter.toDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, toDate: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                <select value={movementsFilter.transactionType} onChange={(e) => { setMovementsFilter(f => ({ ...f, transactionType: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                  <option value="">All Types</option>
+                  <option value="Sale">Sale</option>
+                  <option value="Purchase">Purchase</option>
+                  <option value="Adjustment">Adjustment</option>
+                  <option value="Return">Return</option>
+                  <option value="PurchaseReturn">Purchase Return</option>
+                </select>
+              </div>
+              <div className="flex items-end">
+                <button onClick={() => { setMovementsFilter({ fromDate: '', toDate: '', transactionType: '' }); setMovementsPage(1) }} className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-gray-700 font-medium mt-4">
+                  Clear
+                </button>
+              </div>
+              <div className="ml-auto text-sm text-gray-500">
+                {movementsTotalCount} movement{movementsTotalCount !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {movementsLoading ? (
+              <div className="flex justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-primary-600" />
+              </div>
+            ) : movements.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <History className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                <p className="font-medium">No stock movements found</p>
+                <p className="text-sm mt-1">Stock movements are recorded when sales, purchases, adjustments, or returns occur.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Date</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Product</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">SKU</th>
+                      <th className="px-3 py-2.5 text-center font-semibold text-gray-700">Type</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-gray-700">Qty Change</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Reason</th>
+                      <th className="px-3 py-2.5 text-center font-semibold text-gray-700">Ref</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movements.map((m) => (
+                      <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap">{new Date(m.createdAt).toLocaleDateString('en-GB')} {new Date(m.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="px-3 py-2.5 font-medium text-gray-900">{m.productName}</td>
+                        <td className="px-3 py-2.5 text-gray-500">{m.productSku || '—'}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            m.transactionType === 'Sale' ? 'bg-red-100 text-red-700' :
+                            m.transactionType === 'Purchase' ? 'bg-green-100 text-green-700' :
+                            m.transactionType === 'Adjustment' ? 'bg-blue-100 text-blue-700' :
+                            m.transactionType === 'Return' ? 'bg-amber-100 text-amber-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {m.transactionType}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-mono font-semibold">
+                          <span className={`inline-flex items-center gap-1 ${m.changeQty > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {m.changeQty > 0 ? <ArrowUpCircle className="h-3.5 w-3.5" /> : <ArrowDownCircle className="h-3.5 w-3.5" />}
+                            {m.changeQty > 0 ? '+' : ''}{m.changeQty}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-600 max-w-xs truncate">{m.reason || '—'}</td>
+                        <td className="px-3 py-2.5 text-center text-gray-400">{m.refId || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {movementsTotalPages > 1 && (
+              <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-gray-100">
+                <button onClick={() => setMovementsPage(p => Math.max(1, p - 1))} disabled={movementsPage === 1} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">Page {movementsPage} of {movementsTotalPages}</span>
+                <button onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))} disabled={movementsPage === movementsTotalPages} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+      <>
+      {activeTab === 'missingBarcode' && canManageInventory && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <ScanBarcode className="h-4 w-4 text-amber-800 shrink-0" />
+          <p className="text-sm text-amber-900 flex-1 min-w-[12rem]">
+            Products without a barcode ({totalCount}). Auto-fill uses SKU when unique, otherwise HB(tenant)-id. Then print or share labels.
+          </p>
+          <button
+            type="button"
+            onClick={handleAutoFillMissingBarcodes}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+          >
+            <Wand2 className="h-4 w-4" />
+            Auto-fill missing
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrintMissingBarcodes({ share: false })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          >
+            <Printer className="h-4 w-4" />
+            Print PDF
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrintMissingBarcodes({ share: true })}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-amber-300 bg-white text-amber-900 hover:bg-amber-100"
+          >
+            <Share2 className="h-4 w-4" />
+            Share PDF
+          </button>
+        </div>
+      )}
+      {/* Modern Search & Filters — desktop/tablet */}
+      <div className="hidden md:block">
+        <FilterPanel
+          searchPlaceholder="Search products by name, SKU..."
+          onSearchChange={(value) => {
+            setSearchTerm(value)
+            setCurrentPage(1)
+          }}
+          filters={[
+            {
+              key: 'unitType', label: 'Qty Type', options: [
+                { value: 'KG', label: 'KG' },
+                { value: 'CRTN', label: 'CRTN' },
+                { value: 'CTN', label: 'CTN' },
+                { value: 'PIECE', label: 'PIECE' },
+                { value: 'PCS', label: 'PCS' },
+                { value: 'BOX', label: 'BOX' },
+                { value: 'PKG', label: 'PKG' },
+                { value: 'BAG', label: 'BAG' },
+                { value: 'PC', label: 'PC' },
+                { value: 'UNIT', label: 'UNIT' }
+              ]
+            },
+            {
+              key: 'categoryId', label: 'Category', options: [
+                { value: '', label: 'All Categories' },
+                ...categories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
+              ]
+            }
+          ]}
+          activeFilters={activeFilters}
+          onFilterChange={setActiveFilters}
+        />
+      </div>
+
+      {/* Mobile search + filter trigger (md:hidden) */}
+      <div className="md:hidden flex items-center gap-2 mb-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+            placeholder="Search products..."
+            aria-label="Search products"
+            className="w-full pl-10 pr-3 min-h-[44px] text-base border border-neutral-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileFiltersOpen(true)}
+          className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 rounded-lg border border-neutral-300 bg-white text-neutral-700 font-medium text-sm relative"
+          aria-label="Open filters"
+        >
+          <Filter className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">Filters</span>
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Mobile filter sheet (md:hidden) */}
+      <MobileFilterSheet
+        open={mobileFiltersOpen}
+        onClose={() => setMobileFiltersOpen(false)}
+        title="Filter products"
+        searchTerm={searchTerm}
+        onSearchChange={(value) => { setSearchTerm(value); setCurrentPage(1) }}
+        fields={[
+          {
+            key: 'unitType', label: 'Qty Type', placeholder: 'All types', options: [
+              { value: 'KG', label: 'KG' },
+              { value: 'CRTN', label: 'CRTN' },
+              { value: 'CTN', label: 'CTN' },
+              { value: 'PIECE', label: 'PIECE' },
+              { value: 'PCS', label: 'PCS' },
+              { value: 'BOX', label: 'BOX' },
+              { value: 'PKG', label: 'PKG' },
+              { value: 'BAG', label: 'BAG' },
+              { value: 'PC', label: 'PC' },
+              { value: 'UNIT', label: 'UNIT' }
+            ]
+          },
+          {
+            key: 'categoryId', label: 'Category', placeholder: 'All categories', options: [
+              { value: '', label: 'All Categories' },
+              ...categories.map(cat => ({ value: cat.id.toString(), label: cat.name }))
+            ]
+          }
+        ]}
+        values={activeFilters}
+        onChange={(key, value) => setActiveFilters((prev) => ({ ...prev, [key]: value }))}
+        onReset={() => { setActiveFilters({}); setSearchTerm(''); setCurrentPage(1) }}
+        onApply={() => setMobileFiltersOpen(false)}
+      />
+
+      {/* Modern Products Table */}
+      <ModernTable
+        data={products}
+        loading={loading}
+        onRowClick={(product) => navigate(`/products/${product.id}`)}
+        columns={[
+          {
+            key: 'imageUrl',
+            label: 'Image',
+            sortable: false,
+            render: (product) => {
+              if (product.imageUrl) {
+                return (
+                  <div className="relative">
+                    <img 
+                      src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') 
+                        ? product.imageUrl 
+                        : `/uploads/${product.imageUrl}`}
+                      alt={product.nameEn}
+                      className="h-8 w-8 object-cover rounded border border-gray-200"
+                      onError={(e) => {
+                        e.target.style.display = 'none'
+                        const placeholder = e.target.parentElement.querySelector('.image-placeholder')
+                        if (placeholder) placeholder.style.display = 'flex'
+                      }}
+                    />
+                    <div className="image-placeholder h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center" style={{ display: 'none' }}>
+                      <ImageIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <div className="h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
+                  <ImageIcon className="h-4 w-4 text-gray-400" />
+                </div>
+              )
+            }
+          },
+          { key: 'sku', label: 'SKU', sortable: true },
+          { 
+            key: 'nameEn', 
+            label: 'Name (EN)', 
+            sortable: true,
+            render: (product) => (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    navigate(`/products/${product.id}`)
+                  }}
+                  className="text-left text-primary-700 hover:text-primary-900 hover:underline font-medium"
+                >
+                  {product.nameEn}
+                </button>
+                {product.isActive === false && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                    Inactive
+                  </span>
+                )}
+              </div>
+            )
+          },
+          {
+            key: 'barcode',
+            label: 'Barcode',
+            sortable: true,
+            render: (product) => (
+              product.barcode ? (
+                <span className="font-mono text-xs text-gray-600">{product.barcode}</span>
+              ) : (
+                <span className="text-gray-400 text-xs">—</span>
+              )
+            )
+          },
+          {
+            key: 'categoryName',
+            label: 'Category',
+            sortable: true,
+            render: (product) => (
+              product.categoryName ? (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                  {product.categoryName}
+                </span>
+              ) : (
+                <span className="text-gray-400 text-xs">—</span>
+              )
+            )
+          },
+          { key: 'unitType', label: 'Qty', sortable: true },
+          {
+            key: 'stockQty',
+            label: 'Stock',
+            sortable: true,
+            render: (product) => (
+              <div className="flex items-center">
+                <span className={product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600 font-medium' : ''}>
+                  {product.stockQty ?? 0}
+                </span>
+                {product.stockQty <= (product.reorderLevel || 0) && (
+                  <AlertTriangle className="h-4 w-4 text-red-500 ml-1" />
+                )}
+              </div>
+            )
+          },
+          { key: 'sellPrice', label: 'Price', sortable: true, render: (p) => `AED ${Number(p.sellPrice || 0).toFixed(2)}` },
+          {
+            key: 'expiryDate',
+            label: 'Expiry',
+            sortable: true,
+            render: (product) => {
+              if (!product.expiryDate) return <span className="text-gray-500 text-xs">No expiry</span>;
+              const expiryDate = new Date(product.expiryDate);
+              const today = new Date();
+              const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+
+              if (daysUntilExpiry < 0) {
+                return <span className="text-red-600 font-medium text-xs">Expired</span>;
+              } else if (daysUntilExpiry <= 30) {
+                return <span className="text-orange-600 font-medium text-xs">{daysUntilExpiry}d left</span>;
+              } else {
+                return <span className="text-gray-600 text-xs">{expiryDate.toLocaleDateString()}</span>;
+              }
+            }
+          }
+        ]}
+        actions={(product) => (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/products/${product.id}`)
+              }}
+              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+              title="View product"
+              aria-label="View product"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline text-xs font-medium">View</span>
+            </button>
+            {canManageInventory && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  navigate(`/products/${product.id}?edit=1`)
+                }}
+                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                title="Edit Product"
+                aria-label="Edit Product"
+              >
+                <Edit className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Edit</span>
+              </button>
+            )}
+            {product.barcode && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleBarcodePdfForProducts([product.id], { share: false })
+                }}
+                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                title="Print barcode PDF"
+                aria-label="Print barcode"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Barcode</span>
+              </button>
+            )}
+            {canAdjustStock && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleStockAdjustment(product)
+                }}
+                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                title="Adjust Stock"
+                aria-label="Adjust Stock"
+              >
+                <Package className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">Stock</span>
+              </button>
+            )}
+            {canAdjustStock && (
+              <Link
+                to={`/stock-adjustments?productId=${product.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                title="Stock adjustment history for this product"
+                aria-label="Stock adjustment history"
+              >
+                <History className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline text-xs font-medium">History</span>
+              </Link>
+            )}
+            {canManageInventory && (
+              product.isActive === false ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleActivateProduct(product.id)
+                  }}
+                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                  title="Activate Product"
+                  aria-label="Activate Product"
+                >
+                  <RotateCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline text-xs font-medium">Activate</span>
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleDeleteClick(product)
+                  }}
+                  className="bg-error/10 text-error hover:text-white hover:bg-error border border-error/30 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                  title="Deactivate Product"
+                  aria-label="Deactivate Product"
+                >
+                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline text-xs font-medium">Deactivate</span>
+                </button>
+              )
+            )}
+          </div>
+        )}
+      />
+
+      {/* Mobile product cards (md:hidden) */}
+      {loading ? (
+        <div className="md:hidden">
+          <ListSkeleton count={4} />
+        </div>
+      ) : products.length > 0 && (
+        <div className="md:hidden space-y-2.5">
+          {products.map((product) => {
+            const lowStock = (product.stockQty ?? 0) <= (product.reorderLevel || 0)
+            const outOfStock = (product.stockQty ?? 0) <= 0
+            return (
+              <div
+                key={product.id}
+                onClick={() => navigate(`/products/${product.id}`)}
+                className="bg-white rounded-xl border border-neutral-200 p-3.5 cursor-pointer active:bg-neutral-50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
+                    className="text-left min-w-0 flex-1"
+                  >
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') ? product.imageUrl : `/uploads/${product.imageUrl}`}
+                        alt={product.nameEn}
+                        className="h-9 w-9 object-cover rounded border border-gray-200 mb-1.5"
+                        onError={(e) => { e.target.style.display = 'none' }}
+                      />
+                    ) : (
+                      <div className="h-9 w-9 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mb-1.5">
+                        <ImageIcon className="h-4 w-4 text-gray-400" />
+                      </div>
+                    )}
+                    <span className="font-medium text-gray-900 leading-snug line-clamp-2">{product.nameEn}</span>
+                  </button>
+                  <span className="text-base font-bold text-gray-900 tabular-nums shrink-0">AED {Number(product.sellPrice || 0).toFixed(2)}</span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{product.categoryName || 'Uncategorized'}</span>
+                  {product.sku && <span className="text-xs text-gray-500 font-mono">{product.sku}</span>}
+                  {product.isActive === false && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-sm border-t border-neutral-100 pt-2">
+                  <div>
+                    <p className="text-xs text-gray-500">Stock</p>
+                    <p className={`font-medium tabular-nums ${lowStock || outOfStock ? 'text-red-600' : 'text-gray-900'}`}>
+                      {product.stockQty ?? 0} {product.unitType || ''}
+                      {lowStock && <AlertTriangle className="h-3.5 w-3.5 inline ml-1 text-red-500" />}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Qty</p>
+                    <p className="text-gray-900">{product.unitType || '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Expiry</p>
+                    {product.expiryDate ? (() => {
+                      const days = Math.ceil((new Date(product.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))
+                      return <p className={days < 0 ? 'text-red-600 font-medium' : days <= 30 ? 'text-orange-600' : 'text-gray-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
+                    })() : <p className="text-gray-500 text-xs">No expiry</p>}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
+                    className="inline-flex items-center gap-1.5 bg-neutral-50 text-neutral-700 border border-neutral-300 hover:bg-neutral-100 rounded-lg px-3 min-h-[44px] text-sm font-medium"
+                    aria-label={`View ${product.nameEn}`}
+                  >
+                    <Eye className="h-4 w-4" /> View
+                  </button>
+                  {canManageInventory && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}?edit=1`) }}
+                      className="inline-flex items-center gap-1.5 bg-primary-50 text-primary-600 border border-primary-200 hover:bg-primary-100 rounded-lg px-3 min-h-[44px] text-sm font-medium"
+                      aria-label={`Edit ${product.nameEn}`}
+                    >
+                      <Edit className="h-4 w-4" /> Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {
+        (totalPages > 1 || totalCount > 10) && (
+          <div className="flex flex-wrap justify-center items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-neutral-600">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value))
+                  setCurrentPage(1)
+                }}
+                className="border border-neutral-300 rounded px-2 py-1 text-sm"
+              >
+                {[10, 20, 50, 100].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50"
+              >
+                Previous
+              </button>
+              <span className="flex items-center px-4 text-sm text-neutral-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )
+      }
+      </>)}
+
+      {/* Product Form Modal */}
+      {
+        showForm && (
+          <ProductForm
+            product={editingProduct}
+            initialBarcode={!editingProduct ? prefillBarcode : ''}
+            saving={saving}
+            onSave={(data, imageFile) => editingProduct ? handleUpdateProduct(editingProduct.id, data, imageFile) : handleCreateProduct(data, imageFile)}
+            onCancel={() => {
+              setShowForm(false)
+              setEditingProduct(null)
+              setSaving(false)
+            }}
+          />
+        )
+      }
+
+      {/* Stock Adjustment Modal */}
+      {
+        showStockModal && selectedProduct && (
+          <StockAdjustmentModal
+            product={selectedProduct}
+            onSave={handleStockAdjustmentSubmit}
+            onCancel={() => {
+              setShowStockModal(false)
+              setSelectedProduct(null)
+            }}
+          />
+        )
+      }
+
+      {/* Excel Import Modal */}
+      {
+        showImportModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-neutral-900">Import Products from Excel</h2>
+                  <button
+                    onClick={() => {
+                      setShowImportModal(false)
+                      setImportFile(null)
+                      setImportResult(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {!importResult ? (
+                  <div className="space-y-4">
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-sm text-gray-600 mb-2">
+                        Upload Excel file (.xlsx or .xls)
+                      </p>
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        id="excel-file-input"
+                      />
+                      <label
+                        htmlFor="excel-file-input"
+                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700"
+                      >
+                        Choose File
+                      </label>
+                      {importFile && (
+                        <p className="mt-2 text-sm text-gray-700">
+                          Selected: {importFile.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-800 mb-2">
+                        <strong>How to Import Products:</strong>
+                      </p>
+                      <ol className="text-sm text-blue-800 list-decimal list-inside space-y-1 mb-3">
+                        <li>Prepare your Excel file (.xlsx or .xls)</li>
+                        <li>Include columns: Product Name, SKU, Price, Cost Price, Category, Brand, Unit</li>
+                        <li>Click "Choose File" and select your Excel file</li>
+                        <li>Click "Import" to automatically create products</li>
+                      </ol>
+                      <p className="text-sm text-blue-800">
+                        <strong>Auto-Detection:</strong> The system automatically detects columns even if headers differ:
+                        <br />• Product Name / Item Name / Description
+                        <br />• SKU / Code / Barcode
+                        <br />• Price / Rate / MRP / Sale Price
+                        <br />• Cost Price / Purchase Price
+                        <br />• Category / Brand
+                        <br />• Unit / Size / Weight
+                        <br />• Tax / GST / VAT percentage
+                      </p>
+                      <p className="text-xs text-blue-700 mt-2 italic">
+                        Tip: Existing products with same SKU will be updated, new products will be created automatically.
+                      </p>
+                    </div>
+
+                    <div className="flex justify-end space-x-3">
+                      <button
+                        onClick={() => {
+                          setShowImportModal(false)
+                          setImportFile(null)
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleImportExcel}
+                        disabled={!importFile || importing}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {importing ? 'Importing...' : 'Import'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-lg ${importResult.errors > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                      <h3 className="font-semibold mb-3 text-lg">Import Completed Successfully!</h3>
+                      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                        <div className="bg-white p-2 rounded">
+                          <div className="text-gray-600">Total Rows Processed</div>
+                          <div className="text-xl font-semibold text-neutral-900">{importResult.totalRows}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded">
+                          <div className="text-green-600">New Products Created</div>
+                          <div className="text-xl font-bold text-green-600">{importResult.imported}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded">
+                          <div className="text-blue-600">Existing Products Updated</div>
+                          <div className="text-xl font-bold text-blue-600">{importResult.updated}</div>
+                        </div>
+                        <div className="bg-white p-2 rounded">
+                          <div className="text-gray-600">Skipped (Duplicates)</div>
+                          <div className="text-xl font-bold text-gray-600">{importResult.skipped}</div>
+                        </div>
+                        {importResult.errors > 0 && (
+                          <div className="bg-white p-2 rounded col-span-2 border-2 border-red-300">
+                            <div className="text-red-600 font-semibold">Errors Found</div>
+                            <div className="text-xl font-bold text-red-600">{importResult.errors}</div>
+                          </div>
+                        )}
+                      </div>
+                      {importResult.createdCategories && importResult.createdCategories.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-xs text-gray-600 mb-1">Auto-created categories:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {importResult.createdCategories.slice(0, 10).map((cat, idx) => (
+                              <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                                {cat}
+                              </span>
+                            ))}
+                            {importResult.createdCategories.length > 10 && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                                +{importResult.createdCategories.length - 10} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {importResult.createdBrands && importResult.createdBrands.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-600 mb-1">Auto-created brands:</p>
+                          <div className="flex flex-wrap gap-1">
+                            {importResult.createdBrands.slice(0, 10).map((brand, idx) => (
+                              <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                                {brand}
+                              </span>
+                            ))}
+                            {importResult.createdBrands.length > 10 && (
+                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                                +{importResult.createdBrands.length - 10} more
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {importResult.errorMessages && importResult.errorMessages.length > 0 && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                        <h4 className="font-semibold text-red-800 mb-2">Errors:</h4>
+                        <ul className="text-sm text-red-700 space-y-1">
+                          {importResult.errorMessages.slice(0, 10).map((msg, idx) => (
+                            <li key={idx}>• {msg}</li>
+                          ))}
+                          {importResult.errorMessages.length > 10 && (
+                            <li>... and {importResult.errorMessages.length - 10} more</li>
+                          )}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => {
+                          setShowImportModal(false)
+                          setImportFile(null)
+                          setImportResult(null)
+                          loadProducts()
+                        }}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <ConfirmDangerModal
+        isOpen={dangerModal.isOpen}
+        title={dangerModal.title}
+        message={dangerModal.message}
+        confirmLabel={dangerModal.confirmLabel}
+        requireTypedText={dangerModal.requireTypedText}
+        onConfirm={dangerModal.onConfirm}
+        onClose={() => setDangerModal(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Category Management Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingCategory ? 'Edit Category' : 'Manage Categories'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setEditingCategory(null)
+                  setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Create/Edit Category Form */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">
+                {editingCategory ? 'Edit Category' : 'Create New Category'}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryFormData.name}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                    className="input"
+                    placeholder="e.g., Dairy, Beverages, Snacks"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    value={categoryFormData.description}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, description: e.target.value })}
+                    className="input"
+                    rows="2"
+                    placeholder="Category description"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Color
+                  </label>
+                  <input
+                    type="color"
+                    value={categoryFormData.colorCode}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, colorCode: e.target.value })}
+                    className="h-10 w-20 rounded border border-gray-300"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateCategory}
+                    disabled={!categoryFormData.name.trim()}
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {editingCategory ? 'Update Category' : 'Create Category'}
+                  </button>
+                  {editingCategory && (
+                    <button
+                      onClick={() => {
+                        setEditingCategory(null)
+                        setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
+                      }}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Categories List */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Existing Categories</h3>
+              {categories.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">No categories created yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {categories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-4 h-4 rounded"
+                          style={{ backgroundColor: cat.colorCode || '#3B82F6' }}
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">{cat.name}</div>
+                          {cat.description && (
+                            <div className="text-xs text-gray-500">{cat.description}</div>
+                          )}
+                          <div className="text-xs text-gray-400">{cat.productCount || 0} products</div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingCategory(cat)
+                            setCategoryFormData({
+                              name: cat.name,
+                              description: cat.description || '',
+                              colorCode: cat.colorCode || '#3B82F6'
+                            })
+                          }}
+                          className="px-3 py-1 text-sm bg-primary-50 text-primary-600 rounded hover:bg-primary-100 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => setCategoryToDelete(cat)}
+                          className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      <ConfirmDangerModal
+        isOpen={!!categoryToDelete}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={() => {
+          if (categoryToDelete) {
+            handleDeleteCategory(categoryToDelete.id)
+            setCategoryToDelete(null)
+          }
+        }}
+        title="Delete category"
+        message={categoryToDelete ? `Delete category "${categoryToDelete.name}"? Products in this category will be unassigned.` : ''}
+        confirmLabel="Delete"
+      />
+    </div >
+  )
+}
+
+export default ProductsPage
+

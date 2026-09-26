@@ -8,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Notifications;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Customers
 {

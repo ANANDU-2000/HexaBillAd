@@ -16,18 +16,6 @@ Date: 2026
   <ItemGroup>
     <!-- Exclude SQLite backup; only Migrations folder (PostgreSQL) is used -->
     <Compile Remove="MigrationsSqliteBackup\**\*.cs" />
-    <!-- Exclude MigrationFixer - it has its own Program.cs with top-level statements -->
-    <Compile Remove="MigrationFixer\**\*.cs" />
-    <!-- Exclude RunSql: standalone tool with top-level statements; run via dotnet run -p Scripts/RunSql -->
-    <Compile Remove="Scripts\RunSql\**\*.cs" />
-    <!-- Exclude MergeCustomers: standalone merge CLI -->
-    <Compile Remove="Scripts\MergeCustomers\**\*.cs" />
-    <!-- Exclude MergeSuppliers: standalone supplier merge CLI -->
-    <Compile Remove="Scripts\MergeSuppliers\**\*.cs" />
-    <!-- Exclude BackfillCustomerItemPrices: standalone backfill CLI -->
-    <Compile Remove="Scripts\BackfillCustomerItemPrices\**\*.cs" />
-    <!-- Exclude ZayogaMigration: standalone tool with top-level statements; run via dotnet run -p Scripts/ZayogaMigration -->
-    <Compile Remove="Scripts\ZayogaMigration\**\*.cs" />
     <!-- OneDrive/PC sync duplicates (Foo-AnanduPC.cs) collide with real sources -->
     <Compile Remove="**\*-AnanduPC.cs" />
   </ItemGroup>

@@ -6,7 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Services;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches

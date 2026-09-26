@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Modules.Purchases;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.Purchases

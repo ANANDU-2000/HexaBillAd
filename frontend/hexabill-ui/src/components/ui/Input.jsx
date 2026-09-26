@@ -1,56 +1,61 @@
 import { forwardRef } from 'react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, CheckCircle2 } from 'lucide-react'
 
-/**
- * Design system Input: border-neutral-300, focus:ring-primary-500.
- * Use for consistent forms across the app.
- */
 const Input = forwardRef(({
   label,
   error,
+  success,
   helperText,
   className = '',
   required = false,
   labelClassName = '',
+  icon = null,
+  size = 'md',
   ...props
 }, ref) => {
-  const inputId = props.id || props.name ? `input-${props.name || props.id}` : undefined
+  const inputId = props.id || (props.name ? `input-${props.name}` : undefined)
+  const height = size === 'sm' ? 'min-h-[32px]' : 'min-h-[36px]'
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       {label && (
         <label
           htmlFor={inputId}
-          className={`block text-sm font-medium text-neutral-700 mb-1.5 ${labelClassName}`}
+          className={`block text-xs font-medium text-neutral-700 ${labelClassName}`}
         >
           {label}
           {required && <span className="text-error ml-1">*</span>}
         </label>
       )}
       <div className="relative">
+        {icon && (
+          <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-neutral-400" aria-hidden>
+            {icon}
+          </span>
+        )}
         <input
           ref={ref}
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
-          className={`block w-full px-3 py-2.5 min-h-11 bg-white border rounded-md text-sm text-neutral-900 placeholder:text-neutral-400
+          className={`block w-full ${icon ? 'pl-9' : 'px-3'} pr-8 ${height} bg-white border rounded-md text-sm text-neutral-900 placeholder:text-neutral-400
             focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-            disabled:bg-neutral-50 disabled:text-neutral-500
-            ${error
-              ? 'border-error focus:ring-error focus:border-error'
-              : 'border-neutral-300'
-            } ${className}`}
+            disabled:bg-neutral-50 disabled:text-neutral-500 read-only:bg-neutral-50
+            ${error ? 'border-error focus:ring-error focus:border-error' : success ? 'border-success' : 'border-neutral-300'} ${className}`}
           {...props}
         />
         {error && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none" aria-hidden>
+          <span className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none" aria-hidden>
             <AlertCircle className="h-4 w-4 text-error" />
-          </div>
+          </span>
+        )}
+        {success && !error && (
+          <span className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none" aria-hidden>
+            <CheckCircle2 className="h-4 w-4 text-success" />
+          </span>
         )}
       </div>
       {error && (
-        <p id={inputId && `${inputId}-error`} className="text-xs text-error flex items-center gap-1">
-          {error}
-        </p>
+        <p id={inputId && `${inputId}-error`} className="text-xs text-error">{error}</p>
       )}
       {helperText && !error && (
         <p id={inputId && `${inputId}-helper`} className="text-xs text-neutral-500">{helperText}</p>

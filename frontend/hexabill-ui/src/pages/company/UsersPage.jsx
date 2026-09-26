@@ -528,7 +528,7 @@ const UsersPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
           <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Access Denied</h2>
           <p className="text-gray-600">Only administrators and owners can access this page.</p>
         </div>
       </div>
@@ -545,7 +545,7 @@ const UsersPage = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+            <h1 className="text-xl font-semibold text-neutral-900 flex items-center">
               <User className="h-6 w-6 mr-2 text-blue-600" />
               User Management
             </h1>
@@ -915,7 +915,7 @@ const UsersPage = () => {
               <Shield className="h-8 w-8 text-yellow-500 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Admins</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xl font-semibold text-neutral-900">
                   {users.filter(u => u.role?.toLowerCase() === 'admin').length}
                 </p>
               </div>
@@ -926,7 +926,7 @@ const UsersPage = () => {
               <User className="h-8 w-8 text-blue-500 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Staff</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xl font-semibold text-neutral-900">
                   {users.filter(u => u.role?.toLowerCase() === 'staff').length}
                 </p>
               </div>
@@ -937,7 +937,7 @@ const UsersPage = () => {
               <UserPlus className="h-8 w-8 text-green-500 mr-3" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-xl font-semibold text-neutral-900">{users.length}</p>
               </div>
             </div>
           </div>

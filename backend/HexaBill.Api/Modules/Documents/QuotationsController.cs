@@ -4,9 +4,7 @@ Purpose: Quotation API — CRUD + next number + PDF
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.SuperAdmin;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Documents
 {

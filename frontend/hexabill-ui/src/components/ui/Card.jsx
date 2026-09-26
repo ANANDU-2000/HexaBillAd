@@ -4,11 +4,13 @@
  */
 export function Card({ variant = 'default', className = '', children, ...props }) {
   const variants = {
-    default:
-      'bg-white rounded-xl border border-neutral-200 p-4 md:p-6 transition-shadow duration-150',
-    elevated:
-      'bg-white rounded-xl border border-neutral-200 p-4 md:p-6 transition-shadow duration-150',
-    glass: 'bg-white/80 backdrop-blur-md rounded-xl border border-neutral-200 p-4 md:p-6',
+    default: 'bg-white rounded-lg border border-neutral-200 p-3 md:p-4',
+    elevated: 'bg-white rounded-lg border border-neutral-200 p-3 md:p-4',
+    metric: 'bg-white rounded-lg border border-neutral-200 p-3',
+    form: 'bg-white rounded-lg border border-neutral-200 p-4',
+    table: 'bg-white rounded-lg border border-neutral-200 p-0 overflow-hidden',
+    empty: 'bg-white rounded-lg border border-dashed border-neutral-300 p-6 text-center',
+    glass: 'bg-white/80 backdrop-blur-md rounded-lg border border-neutral-200 p-3 md:p-4',
   }
   return (
     <div className={`${variants[variant]} ${className}`} {...props}>

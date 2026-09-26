@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 // Layout removed - can be used by both tenant and SuperAdmin
 import { Input } from '../components/Form'
-import { useBranding } from '../contexts/TenantBrandingContext'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 const HelpPage = () => {
   const { companyName } = useBranding()
@@ -151,7 +151,7 @@ const HelpPage = () => {
               <HelpCircle className="h-6 w-6 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Help & Support</h1>
+              <h1 className="text-xl font-semibold text-neutral-900">Help & Support</h1>
               <p className="text-gray-600">Find answers and get help with {companyName}</p>
             </div>
           </div>

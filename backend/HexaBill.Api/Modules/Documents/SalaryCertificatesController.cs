@@ -4,9 +4,7 @@ Purpose: Salary Certificate API — CRUD + blank preview + PDF (Zayoga letterhea
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.SuperAdmin;
-using HexaBill.Api.Shared.Extensions;
 
 namespace HexaBill.Api.Modules.Documents
 {

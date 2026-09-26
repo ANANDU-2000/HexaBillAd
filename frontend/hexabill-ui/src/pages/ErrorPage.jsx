@@ -43,7 +43,7 @@ const ErrorPage = () => {
           <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
             <AlertTriangle className="h-10 w-10 text-red-600" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">{getErrorTitle()}</h1>
+          <h1 className="text-xl font-semibold text-neutral-900 mb-2">{getErrorTitle()}</h1>
           <p className="text-gray-600 mb-4">{getErrorDescription()}</p>
           {errorStatus !== 404 && (
             <div className="bg-gray-50 rounded-lg p-4 text-left">

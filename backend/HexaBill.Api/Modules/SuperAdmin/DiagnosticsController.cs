@@ -5,9 +5,6 @@ using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Security;
-using HexaBill.Api.Shared.Services;
 using System.Diagnostics;
 
 namespace HexaBill.Api.Modules.SuperAdmin
@@ -322,7 +319,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex) when (IsMissingColumnOrTable(ex))
             {
-                return StatusCode(503, new { success = false, message = "ErrorLogs.ResolvedAt column is missing. Run Scripts/RUN_ON_RENDER_PSQL.sql on the database, then restart the API." });
+                return StatusCode(503, new { success = false, message = "ErrorLogs.ResolvedAt column is missing. Apply the versioned EF migrations, then restart the API." });
             }
         }
 

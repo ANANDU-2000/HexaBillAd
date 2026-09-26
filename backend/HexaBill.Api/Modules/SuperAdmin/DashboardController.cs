@@ -6,9 +6,6 @@ using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.Branches;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Services;
-using HexaBill.Api.Shared.Validation;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.SuperAdmin;

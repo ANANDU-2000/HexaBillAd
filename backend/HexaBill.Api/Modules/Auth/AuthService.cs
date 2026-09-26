@@ -11,8 +11,6 @@ using System.Security.Claims;
 using System.Text;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
-using HexaBill.Api.Shared.Hosting;
-using HexaBill.Api.Shared.Middleware;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
 

@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Auth;
-using HexaBill.Api.Modules.Billing;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Inventory;
 using HexaBill.Api.Modules.Purchases;
@@ -17,14 +16,7 @@ using HexaBill.Api.Modules.Expenses;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.SuperAdmin;
-using HexaBill.Api.Shared.Extensions;
-using HexaBill.Api.Shared.Middleware;
-using HexaBill.Api.Shared.Hosting;
 using HexaBill.Api.Modules.Subscription;
-using HexaBill.Api.Shared.Security;
-using HexaBill.Api.Shared.Services;
-using HexaBill.Api.Shared.Validation;
-using HexaBill.Api.BackgroundJobs;
 using HexaBill.Api.Models;
 using HexaBill.Api.ModelBinders; // CRITICAL: UTC DateTime model binder
 using BCrypt.Net;
@@ -91,7 +83,7 @@ builder.Services.AddControllers(options =>
         options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
         options.JsonSerializerOptions.WriteIndented = true;
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-        options.JsonSerializerOptions.Converters.Add(new HexaBill.Api.Shared.Serialization.NullableDateTimeEmptyStringConverter());
+        options.JsonSerializerOptions.Converters.Add(new HexaBill.Api.Core.Infrastructure.NullableDateTimeEmptyStringConverter());
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -291,7 +283,7 @@ builder.Services.AddHttpContextAccessor(); // Required for TenantContextService
 builder.Services.AddScoped<ITenantContextService, TenantContextService>();
 
 // Audit Service (CRITICAL: Must be scoped, depends on HttpContextAccessor and TenantContextService)
-builder.Services.AddScoped<HexaBill.Api.Shared.Services.IAuditService, HexaBill.Api.Shared.Services.AuditService>();
+builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.IAuditService, HexaBill.Api.Core.Infrastructure.AuditService>();
 
 // Services
 builder.Services.AddMemoryCache();
@@ -314,8 +306,8 @@ builder.Services.AddScoped<IPaymentReceiptService, PaymentReceiptService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IBranchService, HexaBill.Api.Modules.Branches.BranchService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IRouteService, HexaBill.Api.Modules.Branches.RouteService>();
-builder.Services.AddScoped<HexaBill.Api.Shared.Services.IRouteScopeService, HexaBill.Api.Shared.Services.RouteScopeService>();
-builder.Services.AddScoped<HexaBill.Api.Shared.Services.ISalesSchemaService, HexaBill.Api.Shared.Services.SalesSchemaService>();
+builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.IRouteScopeService, HexaBill.Api.Core.Infrastructure.RouteScopeService>();
+builder.Services.AddScoped<HexaBill.Api.Core.Infrastructure.ISalesSchemaService, HexaBill.Api.Core.Infrastructure.SalesSchemaService>();
 builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IVatReturnReportService, VatReturnReportService>();
 builder.Services.AddScoped<IVatReturnValidationService, VatReturnValidationService>();
@@ -334,18 +326,18 @@ var r2Endpoint = Environment.GetEnvironmentVariable("R2_ENDPOINT") ?? builder.Co
 var r2AccessKey = Environment.GetEnvironmentVariable("R2_ACCESS_KEY") ?? builder.Configuration["R2Settings:AccessKey"] ?? builder.Configuration["CloudflareR2:AccessKey"];
 var r2SecretKey = Environment.GetEnvironmentVariable("R2_SECRET_KEY") ?? builder.Configuration["R2Settings:SecretKey"] ?? builder.Configuration["CloudflareR2:SecretKey"];
 
-HexaBill.Api.Shared.Services.R2Configuration.EnsureProductionCredentials(
+HexaBill.Api.Core.Storage.R2Configuration.EnsureProductionCredentials(
     builder.Environment.IsProduction(), r2Endpoint, r2AccessKey, r2SecretKey);
-if (HexaBill.Api.Shared.Services.R2Configuration.HasCredentials(r2Endpoint, r2AccessKey, r2SecretKey))
+if (HexaBill.Api.Core.Storage.R2Configuration.HasCredentials(r2Endpoint, r2AccessKey, r2SecretKey))
 {
     builder.Services.AddScoped<IFileUploadService, R2FileUploadService>();
-    builder.Services.AddScoped<HexaBill.Api.Shared.Services.IStorageService, HexaBill.Api.Shared.Services.R2StorageService>();
+    builder.Services.AddScoped<HexaBill.Api.Core.Storage.IStorageService, HexaBill.Api.Core.Storage.R2StorageService>();
     logger.LogInformation("✅ Cloudflare R2 storage enabled for file uploads and logo storage");
 }
 else
 {
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
-    builder.Services.AddScoped<HexaBill.Api.Shared.Services.IStorageService, HexaBill.Api.Shared.Services.LocalStorageService>();
+    builder.Services.AddScoped<HexaBill.Api.Core.Storage.IStorageService, HexaBill.Api.Core.Storage.LocalStorageService>();
     logger.LogWarning("⚠️ R2 storage not configured - using local disk storage (development only). Set R2_ENDPOINT, R2_ACCESS_KEY, and R2_SECRET_KEY to enable R2 storage.");
 }
 builder.Services.AddScoped<IReturnService, ReturnService>();
@@ -393,21 +385,21 @@ else
 }
 // BUG #2.7 FIX: Login lockout service - changed to Scoped (requires DbContext) and async methods
 builder.Services.AddScoped<HexaBill.Api.Modules.Auth.ILoginLockoutService, HexaBill.Api.Modules.Auth.LoginLockoutService>(); // Login lockout 5 attempts, 15 min (persistent in PostgreSQL)
-builder.Services.AddSingleton<HexaBill.Api.Shared.Services.ITenantActivityService, HexaBill.Api.Shared.Services.TenantActivityService>(); // SuperAdmin Live Activity
+builder.Services.AddSingleton<HexaBill.Api.Core.Tenancy.ITenantActivityService, HexaBill.Api.Core.Tenancy.TenantActivityService>(); // SuperAdmin Live Activity
 
 // Background services
 builder.Services.AddHostedService<DailyBackupScheduler>();
 builder.Services.AddHostedService<AlertCheckBackgroundService>();
-builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.TrialExpiryCheckJob>();
-builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.BalanceReconciliationJob>();
-builder.Services.AddHostedService<HexaBill.Api.BackgroundJobs.DailyRecurringInvoiceJob>();
+builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.TrialExpiryCheckJob>();
+builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.BalanceReconciliationJob>();
+builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.DailyRecurringInvoiceJob>();
 // Data integrity validation service - temporarily disabled
-// builder.Services.AddHostedService<HexaBill.Api.Shared.Middleware.DataIntegrityValidationService>();
+// builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.DataIntegrityValidationService>();
 
 var app = builder.Build();
 
 // CRITICAL: Add SessionVersion + fix IsActive BEFORE any requests (fixes 42703, 42804)
-// PRODUCTION FIX: On Render/Production do NOT open DB at startup (avoids exit 139). Schema via RUN_ON_RENDER_PSQL.sql only.
+// PRODUCTION FIX: On Render/Production do NOT open DB at startup (avoids exit 139). Schema lives in Migrations.
 var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
 var dbUrl = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
 var isRenderDb = dbUrl.Contains("dpg-", StringComparison.OrdinalIgnoreCase) || dbUrl.Contains("render.com", StringComparison.OrdinalIgnoreCase);
@@ -415,7 +407,7 @@ var isPostgres = dbUrl.Contains("postgres", StringComparison.OrdinalIgnoreCase) 
 if (isPostgres && (isProduction || isRenderDb))
 {
     var startupLog = app.Services.GetService<ILoggerFactory>()?.CreateLogger("Startup");
-    startupLog?.LogInformation("Production/Render (PostgreSQL): no DB access at startup to avoid 139. Run Scripts/RUN_ON_RENDER_PSQL.sql then restart.");
+    startupLog?.LogInformation("Production/Render (PostgreSQL): no DB access at startup to avoid 139. Schema is the versioned EF migrations.");
     // Minimal DB access: ensure SupplierLedgerCredits exists so /api/suppliers/summary returns 200 (no heavy Migrate/ALTERs)
     try
     {
@@ -542,7 +534,7 @@ using (var scope = app.Services.CreateScope())
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId1"" integer NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""Location"" character varying(200) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""UpdatedAt"" timestamp with time zone NULL;");
-            // ErrorLogs.ResolvedAt: do NOT alter at startup (causes ERROR/errorMissingColumn on some DBs). Run Scripts/RUN_ON_RENDER_PSQL.sql manually if needed.
+            // ErrorLogs.ResolvedAt: do NOT alter at startup (causes ERROR/errorMissingColumn on some DBs).
             // Purchases: AmountPaid, PaymentType, SupplierId, DueDate (fixes 42703 column p.AmountPaid does not exist)
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Purchases"" ADD COLUMN IF NOT EXISTS ""AmountPaid"" numeric(18,2) NULL;");
             ctx.Database.ExecuteSqlRaw(@"ALTER TABLE ""Purchases"" ADD COLUMN IF NOT EXISTS ""PaymentType"" character varying(20) NULL;");
@@ -998,7 +990,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 // CRITICAL: Global Exception Handler - MUST be FIRST in pipeline to catch all unhandled exceptions
-app.UseMiddleware<HexaBill.Api.Shared.Middleware.GlobalExceptionHandlerMiddleware>();
+app.UseMiddleware<HexaBill.Api.Core.Infrastructure.GlobalExceptionHandlerMiddleware>();
 
 // Get logger from app services
 var appLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Application");
@@ -1054,7 +1046,7 @@ app.Use(async (context, next) =>
             var subdomain = host.EndsWith(suffix, StringComparison.Ordinal) ? host[..^suffix.Length] : null;
             isAllowedHexaBillOrigin = (originUri.Scheme == Uri.UriSchemeHttps)
                 && (host == baseDomain || host == "www." + baseDomain || host == platformHost
-                    || (subdomain != null && HexaBill.Api.Shared.Hosting.TenantSlugValidator.IsValid(subdomain)));
+                    || (subdomain != null && HexaBill.Api.Core.Tenancy.TenantSlugValidator.IsValid(subdomain)));
         }
         if (!string.IsNullOrEmpty(origin) && ((!app.Environment.IsProduction() && isLocalhost) || (!app.Environment.IsProduction() && origin.StartsWith("https://localhost:", StringComparison.OrdinalIgnoreCase)) || isAllowedHexaBillOrigin))
         {
@@ -1114,7 +1106,7 @@ app.Use(async (context, next) =>
         return;
     }
 
-    if (!HexaBill.Api.Shared.Security.LegacyUploadsAccess.CanAccess(context, app.Configuration))
+    if (!HexaBill.Api.Core.Storage.LegacyUploadsAccess.CanAccess(context, app.Configuration))
     {
         context.Response.StatusCode = StatusCodes.Status403Forbidden;
         await context.Response.WriteAsync("Forbidden.");
@@ -1206,7 +1198,7 @@ var useCorsDevelopment = !app.Environment.IsProduction();
 app.UseCors(useCorsDevelopment ? "Development" : "Production");
 
 // CRITICAL: PostgreSQL Error Monitoring Middleware
-app.UseMiddleware<HexaBill.Api.Shared.Middleware.PostgreSqlErrorMonitoringMiddleware>();
+app.UseMiddleware<HexaBill.Api.Core.Infrastructure.PostgreSqlErrorMonitoringMiddleware>();
 
 // PROD-2: Request logging middleware - Logs TenantId, endpoint, duration, status code, correlation ID
 app.UseRequestLogging();
@@ -1246,7 +1238,7 @@ app.UseUserActivity();
 app.UseSubscriptionMiddleware();
 
 // Maintenance Mode - Returns 503 for tenant requests when platform is under maintenance (SA bypasses)
-app.UseMiddleware<HexaBill.Api.Shared.Middleware.MaintenanceMiddleware>();
+app.UseMiddleware<HexaBill.Api.Core.Infrastructure.MaintenanceMiddleware>();
 
 app.UseAuthorization();
 
@@ -1336,7 +1328,7 @@ app.MapGet("/api/maintenance-check", async (HttpContext ctx) =>
 // Error monitoring endpoint - shows error statistics
 app.MapGet("/api/diagnostics/errors", () =>
 {
-    var errorStats = HexaBill.Api.Shared.Middleware.PostgreSqlErrorMonitoringMiddleware.GetErrorStatistics();
+    var errorStats = HexaBill.Api.Core.Infrastructure.PostgreSqlErrorMonitoringMiddleware.GetErrorStatistics();
     return Results.Ok(new
     {
         success = true,
@@ -1418,7 +1410,7 @@ _ = Task.Run(async () =>
         var isProdEnv = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var dbUrlBg = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
         var isRenderDbBg = dbUrlBg.Contains("dpg-", StringComparison.OrdinalIgnoreCase) || dbUrlBg.Contains("render.com", StringComparison.OrdinalIgnoreCase);
-        // SAFEGUARD: On Render we never open DB or run MigrateAsync/ALTERs in this task; we return below. Schema is applied only via RUN_ON_RENDER_PSQL.sql.
+        // SAFEGUARD: On Render we never open DB or run MigrateAsync/ALTERs in this task; we return below. Schema is the versioned EF migrations.
         using (var scope = app.Services.CreateScope())
         {
             var initLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
@@ -1460,7 +1452,7 @@ _ = Task.Run(async () =>
                 {
                     initLogger.LogWarning(ex, "Production/Render: SupplierLedgerCredits ensure failed: {Message}", ex.Message);
                 }
-                initLogger.LogInformation("Production/Render (PostgreSQL): skipping remaining background schema init. Schema via RUN_ON_RENDER_PSQL.sql.");
+                initLogger.LogInformation("Production/Render (PostgreSQL): skipping remaining background schema init. Schema is the versioned EF migrations.");
                 return;
             }
             // CRITICAL: Ensure all required columns exist (fixes login when migrations haven't run)
@@ -1547,7 +1539,7 @@ _ = Task.Run(async () =>
                     // Use PostgreSQL native IF NOT EXISTS syntax
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""SessionVersion"" integer NOT NULL DEFAULT 0;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Users"" ADD COLUMN IF NOT EXISTS ""LastActiveAt"" timestamp with time zone NULL;");
-                    // ErrorLogs.ResolvedAt: skip at startup to avoid ERROR/errorMissingColumn. Use RUN_ON_RENDER_PSQL.sql if needed.
+                    // ErrorLogs.ResolvedAt: skip at startup to avoid ERROR/errorMissingColumn.
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""ManagerId1"" integer NULL;");
                     await context.Database.ExecuteSqlRawAsync(@"ALTER TABLE ""Branches"" ADD COLUMN IF NOT EXISTS ""Location"" character varying(200) NULL;");
@@ -1667,7 +1659,7 @@ _ = Task.Run(async () =>
                             END IF;
                         END $$;");
                     await context.Database.ExecuteSqlRawAsync(@"CREATE INDEX IF NOT EXISTS ""IX_Purchases_SupplierId"" ON ""Purchases"" (""SupplierId"");");
-                    HexaBill.Api.Shared.Services.SalesSchemaService.ClearColumnCheckCacheStatic();
+                    HexaBill.Api.Core.Infrastructure.SalesSchemaService.ClearColumnCheckCacheStatic();
                     initLogger.LogInformation("PostgreSQL: Safety check for critical columns and Purchases/Suppliers schema completed");
                 }
                 catch (Exception ex)
@@ -1818,17 +1810,17 @@ _ = Task.Run(async () =>
                     await context.Database.ExecuteSqlRawAsync(
                         "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") SELECT {0}, '9.0.0' WHERE NOT EXISTS (SELECT 1 FROM \"__EFMigrationsHistory\" WHERE \"MigrationId\" = {0})",
                         AddBranchAndRouteMigrationId, AddBranchAndRouteMigrationId);
-                    await HexaBill.Api.Shared.Extensions.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
+                    await HexaBill.Api.Core.Infrastructure.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
                     initLogger.LogInformation("Database migrations applied successfully (AddBranchAndRoute skipped for PostgreSQL).");
                 }
                 else if (pending.Any())
                 {
                     initLogger.LogInformation("Found {Count} pending migration(s): {Migrations}", pending.Count, string.Join(", ", pending));
-                    // PRODUCTION FIX: Skip EF MigrateAsync() on PostgreSQL in production to avoid exit 139 (migrations touch ErrorLogs and can crash). Use RUN_ON_RENDER_PSQL.sql for schema.
+                    // PRODUCTION FIX: Skip EF MigrateAsync() on PostgreSQL in production to avoid exit 139 (migrations touch ErrorLogs and can crash).
                     var isProduction = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
                     if (context.Database.IsNpgsql() && isProduction)
                     {
-                        initLogger.LogWarning("Skipping EF migrations in production (PostgreSQL). Run Scripts/RUN_ON_RENDER_PSQL.sql manually if needed.");
+                        initLogger.LogWarning("Skipping EF migrations in production (PostgreSQL). Apply versioned migrations outside process startup.");
                     }
                     else
                     {
@@ -1905,9 +1897,9 @@ _ = Task.Run(async () =>
                 {
                     try
                     {
-                        await HexaBill.Api.Shared.Extensions.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
+                        await HexaBill.Api.Core.Infrastructure.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
                         // So first branch summary / report request re-checks and sees the new columns (no stale "false" cache)
-                        HexaBill.Api.Shared.Services.SalesSchemaService.ClearColumnCheckCacheStatic();
+                        HexaBill.Api.Core.Infrastructure.SalesSchemaService.ClearColumnCheckCacheStatic();
                     }
                     catch (Exception ex)
                     {
@@ -1946,7 +1938,7 @@ _ = Task.Run(async () =>
                     initLogger.LogInformation("Attempting to fix missing columns...");
                     try
                     {
-                        await HexaBill.Api.Shared.Extensions.DatabaseFixer.FixMissingColumnsAsync(context);
+                        await HexaBill.Api.Core.Infrastructure.DatabaseFixer.FixMissingColumnsAsync(context);
                     }
                     catch (Exception fixEx)
                     {
@@ -2159,8 +2151,7 @@ _ = Task.Run(async () =>
                                     initLogger.LogError("   CreditLimit: {HasCreditLimit}", hasCreditLimit);
                                     initLogger.LogError("");
                                     initLogger.LogError("⚠️  DATABASE SCHEMA IS INCOMPLETE!");
-                                    initLogger.LogError("⚠️  Please run: backend/HexaBill.Api/Scripts/ApplyRenderDatabaseFix.ps1");
-                                    initLogger.LogError("⚠️  Or manually execute: backend/HexaBill.Api/Scripts/FixProductionDatabase.sql");
+                                    initLogger.LogError("Schema mismatch. Apply the versioned EF migrations outside process startup.");
                                     initLogger.LogError("");
                                 }
                                 else
@@ -2190,7 +2181,7 @@ _ = Task.Run(async () =>
                 try
                 {
                     initLogger.LogInformation("Running database column fixer (this may show 'fail' logs for existing columns - this is normal)...");
-                    await HexaBill.Api.Shared.Extensions.DatabaseFixer.FixMissingColumnsAsync(context);
+                    await HexaBill.Api.Core.Infrastructure.DatabaseFixer.FixMissingColumnsAsync(context);
                     initLogger.LogInformation("Database column fixer completed");
                 }
                 catch (Exception ex)

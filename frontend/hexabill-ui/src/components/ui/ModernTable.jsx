@@ -47,9 +47,9 @@ const ModernTable = ({
           <thead className="bg-gray-50">
             <tr>
               {columns.map((column) => (
-                <th
+                  <th
                   key={column.key}
-                  className={`px-2 sm:px-3 py-1.5 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider ${column.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                  className={`px-2 sm:px-3 py-2 text-xs font-semibold text-neutral-600 uppercase tracking-wider ${column.align === 'right' ? 'text-right' : 'text-left'} ${column.sortable ? 'cursor-pointer hover:bg-neutral-100' : ''
                     }`}
                   onClick={() => column.sortable && handleSort(column.key)}
                 >
@@ -96,7 +96,7 @@ const ModernTable = ({
                   onClick={() => onRowClick && onRowClick(row)}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-2 sm:px-3 py-1.5 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                    <td key={column.key} className={`px-2 sm:px-3 py-2 whitespace-nowrap text-sm text-neutral-900 ${column.align === 'right' ? 'text-right tabular-nums' : ''}`}>
                       {column.render ? column.render(row) : row[column.key]}
                     </td>
                   ))}

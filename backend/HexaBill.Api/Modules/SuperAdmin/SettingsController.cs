@@ -6,7 +6,6 @@
  */
 
 using HexaBill.Api.Data;
-using HexaBill.Api.Shared.Extensions;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.AspNetCore.Authorization;
@@ -50,7 +49,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 
                 var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
                 if (IsStaff && !User.IsInRole("Admin") && !User.IsInRole("Owner") && !IsSystemAdmin)
-                    settings = HexaBill.Api.Shared.Services.R2Configuration.FilterSettingsForStaff(settings);
+                    settings = HexaBill.Api.Core.Storage.R2Configuration.FilterSettingsForStaff(settings);
                 
                 return Ok(new ServiceResponse<Dictionary<string, string>>
                 {
