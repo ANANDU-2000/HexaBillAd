@@ -30,7 +30,7 @@ public sealed class SupportSessionMiddleware
             return;
         }
 
-        var session = await db.SupportSessions.AsNoTracking().FirstOrDefaultAsync(s =>
+        var session = await db.SupportSessions.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(s =>
             s.Id == sessionId && s.EndedAt == null && s.ExpiresAt > DateTime.UtcNow);
         var tokenTenant = context.User.FindFirst("tid")?.Value;
         if (session == null || !int.TryParse(tokenTenant, out var tenantId) || tenantId != session.TenantId)
