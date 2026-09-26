@@ -35,7 +35,7 @@ namespace HexaBill.Api.Modules.Reports
         /// <remarks>Compares timestamps only (no .Date on column) to avoid date_trunc(unknown, text) when column was ever TEXT.</remarks>
         public async Task<bool> IsTransactionDateInLockedPeriodAsync(int tenantId, DateTime transactionDate)
         {
-            var startOfDay = transactionDate.Date.ToUniversalTime();
+            var startOfDay = DateTime.SpecifyKind(transactionDate.Date, DateTimeKind.Utc);
             var endOfDay = startOfDay.AddDays(1).AddTicks(-1);
             var locked = await _context.VatReturnPeriods
                 .AnyAsync(p => p.TenantId == tenantId

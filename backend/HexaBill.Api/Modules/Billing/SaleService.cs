@@ -707,7 +707,7 @@ namespace HexaBill.Api.Modules.Billing
                 }
                 _logger.LogDebug("Using invoice number: {InvoiceNo}", invoiceNo);
 
-                var invoiceDate = request.InvoiceDate ?? _timeZoneService.ConvertToUtc(_timeZoneService.GetCurrentTime());
+                var invoiceDate = (request.InvoiceDate ?? _timeZoneService.GetDefaultInvoiceDateUtc()).ToUtcKind();
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, invoiceDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.");
 
@@ -969,7 +969,7 @@ namespace HexaBill.Api.Modules.Billing
                     TenantId = tenantId,
                     InvoiceNo = invoiceNo,
                     ExternalReference = request.ExternalReference,
-                    InvoiceDate = request.InvoiceDate ?? _timeZoneService.ConvertToUtc(_timeZoneService.GetCurrentTime()),
+                    InvoiceDate = invoiceDate,
                     CustomerId = request.CustomerId,
                     BranchId = request.BranchId,
                     RouteId = request.RouteId,
@@ -1925,7 +1925,7 @@ namespace HexaBill.Api.Modules.Billing
                 // Admin and Staff: Update invoice date if provided
                 if (request.InvoiceDate.HasValue)
                 {
-                    saleForUpdate.InvoiceDate = request.InvoiceDate.Value;
+                    saleForUpdate.InvoiceDate = request.InvoiceDate.Value.ToUtcKind();
                 }
                 
                 // Handle paid_amount adjustment if new total is less than paid amount

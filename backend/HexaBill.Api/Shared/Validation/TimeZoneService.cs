@@ -11,6 +11,8 @@ namespace HexaBill.Api.Shared.Validation
     {
         DateTime GetCurrentTime();
         DateTime GetCurrentDate();
+        /// <summary>Default invoice timestamp already stored as UTC-kind. Do not pass through ConvertToUtc.</summary>
+        DateTime GetDefaultInvoiceDateUtc();
         DateTime ConvertToGst(DateTime utcDateTime);
         DateTime ConvertToUtc(DateTime gstDateTime);
         TimeZoneInfo GetGstTimeZone();
@@ -42,6 +44,8 @@ namespace HexaBill.Api.Shared.Validation
             var gstDate = new DateTime(gstTime.Year, gstTime.Month, gstTime.Day, 0, 0, 0, DateTimeKind.Utc);
             return gstDate;
         }
+
+        public DateTime GetDefaultInvoiceDateUtc() => GetCurrentTime();
 
         /// <summary>
         /// Converts UTC datetime to Gulf Standard Time
