@@ -37,7 +37,7 @@ public class R2StorageService : IStorageService
         {
             ServiceURL = r2Endpoint,
             ForcePathStyle = true,
-            RegionEndpoint = Amazon.RegionEndpoint.USEast1
+            AuthenticationRegion = "auto"
         };
         _s3Client = new AmazonS3Client(r2AccessKey, r2SecretKey, config);
     }
@@ -81,10 +81,19 @@ public class R2StorageService : IStorageService
             await response.ResponseStream.CopyToAsync(ms);
             return ms.ToArray();
         }
-        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (AmazonS3Exception ex) when (IsMissingObject(ex))
         {
             throw new FileNotFoundException("Storage file not found.", key, ex);
         }
+    }
+
+    private static bool IsMissingObject(AmazonS3Exception ex)
+    {
+        if (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return true;
+        var code = ex.ErrorCode ?? string.Empty;
+        return code.Equals("NoSuchKey", StringComparison.OrdinalIgnoreCase)
+            || code.Equals("NotFound", StringComparison.OrdinalIgnoreCase);
     }
 
     public string GetPublicUrl(string key)

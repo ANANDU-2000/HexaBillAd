@@ -66,9 +66,9 @@ namespace HexaBill.Api.Shared.Security
                 // Configure S3 client for Cloudflare R2 (S3-compatible API)
                 var config = new AmazonS3Config
                 {
-                    ServiceURL = r2Endpoint, // R2 endpoint (e.g., https://<account-id>.r2.cloudflarestorage.com)
-                    ForcePathStyle = true, // R2 requires path-style URLs
-                    RegionEndpoint = Amazon.RegionEndpoint.USEast1 // Dummy region, R2 doesn't use AWS regions
+                    ServiceURL = r2Endpoint,
+                    ForcePathStyle = true,
+                    AuthenticationRegion = "auto"
                 };
 
                 _s3Client = new AmazonS3Client(r2AccessKey, r2SecretKey, config);
