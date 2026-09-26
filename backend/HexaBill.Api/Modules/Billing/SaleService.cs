@@ -1153,97 +1153,86 @@ namespace HexaBill.Api.Modules.Billing
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Persist Sale.PaymentStatus/PaidAmount/LastPaymentDate from cleared payments (single rule; fixes drift vs reports)
-                await ReconcileSalePaymentStatusAsync(sale.Id, tenantId);
-
-                // ✅ REAL-TIME BALANCE UPDATE: Update customer balance after invoice creation
-                if (request.CustomerId.HasValue)
+                // The sale is committed. Later steps must not turn a successful save into an error response.
+                SaleDto? saleDto = null;
+                try
                 {
-                    try
+                    await ReconcileSalePaymentStatusAsync(sale.Id, tenantId);
+
+                    if (request.CustomerId.HasValue)
                     {
-                        await _balanceService.UpdateCustomerBalanceOnInvoiceCreatedAsync(
-                            request.CustomerId.Value,
-                            grandTotal);
-                        
-                        // Also update for any cleared payments
-                        if (request.Payments != null && request.Payments.Any())
+                        try
                         {
-                            var clearedAmount = request.Payments
-                                .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE" || p.Method.ToUpper() == "DEBIT")
-                                .Sum(p => p.Amount);
-                            
-                            if (clearedAmount > 0)
+                            await _balanceService.UpdateCustomerBalanceOnInvoiceCreatedAsync(
+                                request.CustomerId.Value,
+                                grandTotal);
+
+                            if (request.Payments != null && request.Payments.Any())
                             {
-                                await _balanceService.UpdateCustomerBalanceOnPaymentCreatedAsync(
-                                    request.CustomerId.Value,
-                                    clearedAmount);
+                                var clearedAmount = request.Payments
+                                    .Where(p => p.Method.ToUpper() == "CASH" || p.Method.ToUpper() == "ONLINE" || p.Method.ToUpper() == "DEBIT")
+                                    .Sum(p => p.Amount);
+
+                                if (clearedAmount > 0)
+                                {
+                                    await _balanceService.UpdateCustomerBalanceOnPaymentCreatedAsync(
+                                        request.CustomerId.Value,
+                                        clearedAmount);
+                                }
+                            }
+                        }
+                        catch (Exception balanceEx)
+                        {
+                            _logger.LogWarning(balanceEx, "Failed to update balance after committed sale {InvoiceNo}: {Message}", invoiceNo, balanceEx.Message);
+                            try
+                            {
+                                await _alertService.CreateAlertAsync(
+                                    AlertType.BalanceMismatch,
+                                    "Failed to update customer balance after invoice creation",
+                                    $"Invoice: {invoiceNo}, Customer: {request.CustomerId}",
+                                    AlertSeverity.Warning,
+                                    null,
+                                    tenantId);
+                            }
+                            catch (Exception alertEx)
+                            {
+                                _logger.LogWarning(alertEx, "Failed to record balance alert for invoice {InvoiceNo}", invoiceNo);
                             }
                         }
                     }
-                    catch (Exception balanceEx)
-                    {
-                        _logger.LogWarning(balanceEx, "Failed to update balance: {Message}", balanceEx.Message);
-                        // Don't fail the sale, but create alert
-                        await _alertService.CreateAlertAsync(
-                            AlertType.BalanceMismatch,
-                            "Failed to update customer balance after invoice creation",
-                            $"Invoice: {invoiceNo}, Customer: {request.CustomerId}",
-                            AlertSeverity.Warning,
-                            null,
-                            tenantId);
-                    }
-                }
 
-                // Auto-backup after successful invoice save
-                try
-                {
-                    var savedSale = await GetSaleByIdAsync(sale.Id, tenantId);
-                    if (savedSale != null)
+                    saleDto = await GetSaleByIdAsync(sale.Id, tenantId);
+                    if (saleDto != null)
                     {
-                        // CRITICAL: Generate and save PDF - ensure it completes successfully
                         try
                         {
-                            var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(savedSale);
+                            var pdfBytes = await _pdfService.GenerateInvoicePdfAsync(saleDto);
                             if (pdfBytes == null || pdfBytes.Length == 0)
-                            {
-                                _logger.LogError("PDF Generation Failed: Generated PDF is empty for invoice {InvoiceNo}", savedSale.InvoiceNo);
-                            }
-                            else
-                            {
-                                _logger.LogDebug("PDF Generated Successfully: {Bytes} bytes for invoice {InvoiceNo}", pdfBytes.Length, savedSale.InvoiceNo);
-                            }
+                                _logger.LogError("PDF Generation Failed: Generated PDF is empty for invoice {InvoiceNo}", saleDto.InvoiceNo);
                         }
                         catch (Exception pdfEx)
                         {
-                            _logger.LogError(pdfEx, "CRITICAL: PDF Generation Failed for invoice {InvoiceNo}: {Message}", savedSale.InvoiceNo, pdfEx.Message);
-                            // Log but don't fail sale creation - PDF can be regenerated later
+                            _logger.LogError(pdfEx, "PDF generation failed after committed sale {InvoiceNo}. The sale remains saved.", invoiceNo);
                         }
-                        
-                        // Create backup (background task, don't block)
-                        // AUDIT-8 FIX: Pass tenantId to backup
-                        var backupTenantId = tenantId; // Capture for closure
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await _backupService.CreateFullBackupAsync(backupTenantId, exportToDesktop: true);
-                                _logger.LogInformation("Auto-backup completed to Desktop");
-                            }
-                            catch (Exception backupEx)
-                            {
-                                _logger.LogWarning(backupEx, "Auto-backup failed: {Message}", backupEx.Message);
-                            }
-                        });
                     }
                 }
-                catch (Exception ex)
+                catch (Exception postCommitEx)
                 {
-                    _logger.LogWarning(ex, "Failed to generate PDF after invoice save: {Message}", ex.Message);
-                    // Don't fail the sale creation if PDF generation fails
+                    _logger.LogError(postCommitEx, "Follow-up failed after sale {InvoiceNo} (id {SaleId}) was committed. Returning success.", invoiceNo, sale.Id);
                 }
 
-                // Return sale DTO with credit limit warnings if applicable
-                var saleDto = await GetSaleByIdAsync(sale.Id, tenantId) ?? throw new InvalidOperationException("Failed to retrieve created sale");
+                saleDto ??= new SaleDto
+                {
+                    Id = sale.Id,
+                    InvoiceNo = invoiceNo,
+                    InvoiceDate = sale.InvoiceDate,
+                    CustomerId = sale.CustomerId,
+                    GrandTotal = grandTotal,
+                    Subtotal = subtotal,
+                    VatTotal = vatTotal,
+                    Discount = sale.Discount,
+                    CreatedAt = sale.CreatedAt
+                };
                 saleDto.CreditLimitExceeded = creditLimitExceeded;
                 saleDto.CreditLimitWarning = creditLimitWarning;
                 return saleDto;
@@ -1503,34 +1492,23 @@ namespace HexaBill.Api.Modules.Billing
                         }
                         catch (Exception pdfEx)
                         {
-                            _logger.LogError(pdfEx, "CRITICAL: PDF Generation Failed for invoice {InvoiceNo}: {Message}", savedSale.InvoiceNo, pdfEx.Message);
-                            // Log but don't fail sale creation - PDF can be regenerated later
+                            _logger.LogError(pdfEx, "PDF generation failed after committed override sale {InvoiceNo}. The sale remains saved.", savedSale.InvoiceNo);
                         }
-                        
-                        // Create backup (background task, don't block)
-                        // AUDIT-8 FIX: Pass tenantId to backup
-                        var backupTenantId = tenantId; // Capture for closure
-                        _ = Task.Run(async () =>
-                        {
-                            try
-                            {
-                                await _backupService.CreateFullBackupAsync(backupTenantId, exportToDesktop: true);
-                                _logger.LogInformation("Auto-backup completed to Desktop");
-                            }
-                            catch (Exception backupEx)
-                            {
-                                _logger.LogWarning(backupEx, "Auto-backup failed: {Message}", backupEx.Message);
-                            }
-                        });
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to generate PDF after invoice save: {Message}", ex.Message);
-                    // Don't fail the sale creation if PDF generation fails
+                    _logger.LogWarning(ex, "Follow-up failed after override sale was committed: {Message}", ex.Message);
                 }
 
-                return await GetSaleByIdAsync(sale.Id, tenantId) ?? throw new InvalidOperationException("Failed to retrieve created sale");
+                return await GetSaleByIdAsync(sale.Id, tenantId) ?? new SaleDto
+                {
+                    Id = sale.Id,
+                    InvoiceNo = sale.InvoiceNo,
+                    GrandTotal = sale.GrandTotal,
+                    InvoiceDate = sale.InvoiceDate,
+                    CreatedAt = sale.CreatedAt
+                };
             }
             catch
             {

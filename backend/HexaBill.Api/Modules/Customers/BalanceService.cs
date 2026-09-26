@@ -95,25 +95,20 @@ namespace HexaBill.Api.Modules.Customers
 
                 try
                 {
-                    var totalSalesTask = _context.Sales
+                    // Sequential on one DbContext. Parallel SumAsync shares the scoped context and
+                    // throws "A second operation was started on this context instance".
+                    totalSales = await _context.Sales
                         .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
-                        .SumAsync(s => (decimal?)s.GrandTotal);
-                    var totalPaymentsTask = _context.Payments
+                        .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+                    totalPayments = await _context.Payments
                         .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
-                        .SumAsync(p => (decimal?)p.Amount);
-                    var totalSalesReturnsTask = _context.SaleReturns
+                        .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+                    totalSalesReturns = await _context.SaleReturns
                         .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
-                        .SumAsync(sr => (decimal?)sr.GrandTotal);
-                    var refundsPaidTask = _context.Payments
+                        .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+                    refundsPaid = await _context.Payments
                         .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
-                        .SumAsync(p => (decimal?)p.Amount);
-
-                    await Task.WhenAll(totalSalesTask, totalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);
-
-                    totalSales = await totalSalesTask ?? 0m;
-                    totalPayments = await totalPaymentsTask ?? 0m;
-                    totalSalesReturns = await totalSalesReturnsTask ?? 0m;
-                    refundsPaid = await refundsPaidTask ?? 0m;
+                        .SumAsync(p => (decimal?)p.Amount) ?? 0m;
                 }
                 catch (Exception ex)
                 {
@@ -233,27 +228,19 @@ namespace HexaBill.Api.Modules.Customers
 
             var tenantId = customer.TenantId;
 
-            // Calculate actual values from database (same formula as RecalculateCustomerBalanceAsync)
-            // Run 4 aggregates in parallel (1 round-trip latency vs 4 sequential)
-            var actualTotalSalesTask = _context.Sales
+            // Sequential on one DbContext (same reason as RecalculateCustomerBalanceCoreAsync).
+            var actualTotalSales = await _context.Sales
                 .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
-                .SumAsync(s => (decimal?)s.GrandTotal);
-            var actualTotalPaymentsTask = _context.Payments
+                .SumAsync(s => (decimal?)s.GrandTotal) ?? 0m;
+            var actualTotalPayments = await _context.Payments
                 .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
-                .SumAsync(p => (decimal?)p.Amount);
-            var totalSalesReturnsTask = _context.SaleReturns
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
+            var totalSalesReturns = await _context.SaleReturns
                 .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
-                .SumAsync(sr => (decimal?)sr.GrandTotal);
-            var refundsPaidTask = _context.Payments
+                .SumAsync(sr => (decimal?)sr.GrandTotal) ?? 0m;
+            var refundsPaid = await _context.Payments
                 .Where(p => p.CustomerId == customerId && p.TenantId == tenantId && p.SaleReturnId != null && p.Status != PaymentStatus.VOID)
-                .SumAsync(p => (decimal?)p.Amount);
-
-            await Task.WhenAll(actualTotalSalesTask, actualTotalPaymentsTask, totalSalesReturnsTask, refundsPaidTask);
-
-            var actualTotalSales = await actualTotalSalesTask ?? 0m;
-            var actualTotalPayments = await actualTotalPaymentsTask ?? 0m;
-            var totalSalesReturns = await totalSalesReturnsTask ?? 0m;
-            var refundsPaid = await refundsPaidTask ?? 0m;
+                .SumAsync(p => (decimal?)p.Amount) ?? 0m;
 
             var actualPendingBalance = actualTotalSales - actualTotalPayments - totalSalesReturns + refundsPaid;
 
