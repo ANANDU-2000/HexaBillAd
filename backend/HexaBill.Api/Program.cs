@@ -334,7 +334,9 @@ var r2Endpoint = Environment.GetEnvironmentVariable("R2_ENDPOINT") ?? builder.Co
 var r2AccessKey = Environment.GetEnvironmentVariable("R2_ACCESS_KEY") ?? builder.Configuration["R2Settings:AccessKey"] ?? builder.Configuration["CloudflareR2:AccessKey"];
 var r2SecretKey = Environment.GetEnvironmentVariable("R2_SECRET_KEY") ?? builder.Configuration["R2Settings:SecretKey"] ?? builder.Configuration["CloudflareR2:SecretKey"];
 
-if (!string.IsNullOrWhiteSpace(r2Endpoint) && !string.IsNullOrWhiteSpace(r2AccessKey) && !string.IsNullOrWhiteSpace(r2SecretKey))
+HexaBill.Api.Shared.Services.R2Configuration.EnsureProductionCredentials(
+    builder.Environment.IsProduction(), r2Endpoint, r2AccessKey, r2SecretKey);
+if (HexaBill.Api.Shared.Services.R2Configuration.HasCredentials(r2Endpoint, r2AccessKey, r2SecretKey))
 {
     builder.Services.AddScoped<IFileUploadService, R2FileUploadService>();
     builder.Services.AddScoped<HexaBill.Api.Shared.Services.IStorageService, HexaBill.Api.Shared.Services.R2StorageService>();
@@ -344,7 +346,7 @@ else
 {
     builder.Services.AddScoped<IFileUploadService, FileUploadService>();
     builder.Services.AddScoped<HexaBill.Api.Shared.Services.IStorageService, HexaBill.Api.Shared.Services.LocalStorageService>();
-    logger.LogWarning("⚠️ R2 storage not configured - using local disk storage (files will be lost on server restart/deploy). Set R2_ENDPOINT, R2_ACCESS_KEY, and R2_SECRET_KEY to enable R2 storage.");
+    logger.LogWarning("⚠️ R2 storage not configured - using local disk storage (development only). Set R2_ENDPOINT, R2_ACCESS_KEY, and R2_SECRET_KEY to enable R2 storage.");
 }
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IProfitService, ProfitService>();

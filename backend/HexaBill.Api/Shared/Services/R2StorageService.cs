@@ -27,10 +27,11 @@ public class R2StorageService : IStorageService
         var r2SecretKey = Environment.GetEnvironmentVariable("R2_SECRET_KEY")
             ?? configuration["R2Settings:SecretKey"]
             ?? configuration["CloudflareR2:SecretKey"];
-        _bucketName = Environment.GetEnvironmentVariable("R2_BUCKET_NAME")
-            ?? configuration["R2Settings:BucketName"]
-            ?? configuration["CloudflareR2:BucketName"]
-            ?? "hexabill-uploads";
+        _bucketName = R2Configuration.ResolveBucketName(
+            Environment.GetEnvironmentVariable("R2_BUCKET"),
+            Environment.GetEnvironmentVariable("R2_BUCKET_NAME"),
+            configuration["R2Settings:BucketName"],
+            configuration["CloudflareR2:BucketName"]);
 
         var config = new AmazonS3Config
         {

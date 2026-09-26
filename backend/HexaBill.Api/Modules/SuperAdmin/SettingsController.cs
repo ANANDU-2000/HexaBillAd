@@ -49,6 +49,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
                 
                 var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
+                if (IsStaff && !User.IsInRole("Admin") && !User.IsInRole("Owner") && !IsSystemAdmin)
+                    settings = HexaBill.Api.Shared.Services.R2Configuration.FilterSettingsForStaff(settings);
                 
                 return Ok(new ServiceResponse<Dictionary<string, string>>
                 {
@@ -136,6 +138,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// PUT: api/settings
         /// </summary>
         [HttpPut]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> UpdateSettings([FromBody] Dictionary<string, string> settings)
         {
             try
@@ -176,6 +179,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// PUT: api/settings/{key}
         /// </summary>
         [HttpPut("{key}")]
+        [Authorize(Roles = "Owner,Admin")]
         public async Task<IActionResult> UpdateSetting(string key, [FromBody] string value)
         {
             try

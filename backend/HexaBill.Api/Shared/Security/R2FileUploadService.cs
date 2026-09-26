@@ -7,6 +7,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
+using HexaBill.Api.Shared.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Http;
@@ -44,10 +45,11 @@ namespace HexaBill.Api.Shared.Security
                 ?? _configuration["R2Settings:SecretKey"] 
                 ?? _configuration["CloudflareR2:SecretKey"];
             
-            _bucketName = Environment.GetEnvironmentVariable("R2_BUCKET_NAME") 
-                ?? _configuration["R2Settings:BucketName"] 
-                ?? _configuration["CloudflareR2:BucketName"] 
-                ?? "hexabill-uploads";
+            _bucketName = R2Configuration.ResolveBucketName(
+                Environment.GetEnvironmentVariable("R2_BUCKET"),
+                Environment.GetEnvironmentVariable("R2_BUCKET_NAME"),
+                _configuration["R2Settings:BucketName"],
+                _configuration["CloudflareR2:BucketName"]);
             
             _publicUrlBase = Environment.GetEnvironmentVariable("R2_PUBLIC_URL") 
                 ?? _configuration["R2Settings:PublicUrl"] 
