@@ -801,7 +801,10 @@ namespace HexaBill.Api.Modules.Customers
         /// </summary>
         public async Task<(bool Success, string Message, DeleteCustomerSummary? Summary)> ForceDeleteCustomerWithAllDataAsync(int customerId, int userId, int tenantId)
         {
-            using var transaction = await _context.Database.BeginTransactionAsync();
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync<(bool Success, string Message, DeleteCustomerSummary? Summary)>(async () =>
+            {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 // CRITICAL: Filter by both customerId and tenantId
@@ -940,6 +943,7 @@ namespace HexaBill.Api.Modules.Customers
                 await transaction.RollbackAsync();
                 return (false, $"Error deleting customer: {ex.Message}", null);
             }
+            });
         }
 
 
