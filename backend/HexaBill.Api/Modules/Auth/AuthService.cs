@@ -81,6 +81,7 @@ namespace HexaBill.Api.Modules.Auth
             // Emails are stored normalized (lowercase, trimmed) on register; existing users may need to use lowercase to login.
             // Do not use AsNoTracking: we update LastLoginAt and TenantId and call SaveChangesAsync.
             var user = await _context.Users
+                .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
 
             if (user == null)

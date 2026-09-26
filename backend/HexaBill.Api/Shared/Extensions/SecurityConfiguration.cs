@@ -80,7 +80,9 @@ namespace HexaBill.Api.Shared.Extensions
                             }
 
                             var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
-                            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+                            // Session identity must not depend on the tenant filter. A missing host
+                            // scope used to hide every user and report a valid login as expired.
+                            var user = await db.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
                             if (user == null || !user.IsActive || user.SessionVersion != tokenVer)
                             {
                                 context.Response.Headers["X-Auth-Failure"] = "Session-Expired";
