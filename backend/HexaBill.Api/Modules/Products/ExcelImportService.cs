@@ -83,6 +83,10 @@ namespace HexaBill.Api.Modules.Products
 
         private async Task<ExcelImportResult> ProcessWorksheetAsync(ExcelWorksheet worksheet, int userId)
         {
+            var tenantId = _context.RequestTenantId;
+            if (tenantId is not int verifiedTenant || verifiedTenant <= 0)
+                throw new UnauthorizedAccessException("Product import requires a verified tenant.");
+
             var result = new ExcelImportResult();
             var headers = new Dictionary<string, int>();
             
@@ -201,6 +205,7 @@ namespace HexaBill.Api.Modules.Products
                             StockQty = 0, // CRITICAL: Stock is computed from transactions only
                             ReorderLevel = 0, // Deprecated
                             DescriptionEn = productData.Description,
+                            TenantId = verifiedTenant,
                             CreatedAt = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         };
@@ -219,6 +224,7 @@ namespace HexaBill.Api.Modules.Products
                     var auditLog = new AuditLog
                     {
                         UserId = userId,
+                        TenantId = verifiedTenant,
                         Action = existingProduct != null ? "Product Updated via Excel Import" : "Product Created via Excel Import",
                         Details = $"SKU: {productData.Sku}, Name: {productData.Name}",
                         CreatedAt = DateTime.UtcNow
