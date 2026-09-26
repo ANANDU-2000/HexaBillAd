@@ -22,6 +22,28 @@ namespace HexaBill.Api.Modules.Notifications
             _logger = logger;
         }
 
+        internal async Task CheckAllTenantsAsync(CancellationToken stoppingToken)
+        {
+            List<int> tenantIds;
+            using (var listScope = _serviceProvider.CreateScope())
+            {
+                var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                tenantIds = await listContext.Tenants
+                    .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                    .Select(t => t.Id)
+                    .ToListAsync(stoppingToken);
+            }
+
+            foreach (var tenantId in tenantIds)
+            {
+                using var tenantScope = _serviceProvider.CreateScope();
+                var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                context.SetRequestTenantScope(tenantId, false);
+                var alertService = tenantScope.ServiceProvider.GetRequiredService<IAlertService>();
+                await alertService.CheckAndCreateAlertsAsync();
+            }
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogInformation("Alert check background service started");
@@ -35,24 +57,7 @@ namespace HexaBill.Api.Modules.Notifications
                 {
                     try
                     {
-                        List<int> tenantIds;
-                        using (var listScope = _serviceProvider.CreateScope())
-                        {
-                            var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                            tenantIds = await listContext.Tenants
-                                .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
-                                .Select(t => t.Id)
-                                .ToListAsync(stoppingToken);
-                        }
-
-                        foreach (var tenantId in tenantIds)
-                        {
-                            using var tenantScope = _serviceProvider.CreateScope();
-                            var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                            context.SetRequestTenantScope(tenantId, false);
-                            var alertService = tenantScope.ServiceProvider.GetRequiredService<IAlertService>();
-                            await alertService.CheckAndCreateAlertsAsync();
-                        }
+                        await CheckAllTenantsAsync(stoppingToken);
 
                         _logger.LogInformation("Alert check completed, next check in {Interval}", _checkInterval);
                     }

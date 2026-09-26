@@ -393,6 +393,7 @@ builder.Services.AddHostedService<AlertCheckBackgroundService>();
 builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.TrialExpiryCheckJob>();
 builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.BalanceReconciliationJob>();
 builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.DailyRecurringInvoiceJob>();
+builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.DisabledScheduledJobStartupCheck>();
 // Data integrity validation service - temporarily disabled
 // builder.Services.AddHostedService<HexaBill.Api.Core.Infrastructure.DataIntegrityValidationService>();
 

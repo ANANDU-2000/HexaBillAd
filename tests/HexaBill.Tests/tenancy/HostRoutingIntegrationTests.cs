@@ -44,12 +44,12 @@ public class HostRoutingIntegrationTests
     public async Task TenantA_Host_With_TenantA_Jwt_Succeeds()
     {
         var nextCalled = false;
-        var (middleware, context) = await CreatePipelineAsync(
+        var (middleware, context, resolver) = await CreatePipelineAsync(
             "tenanta.hexabill.company",
             TenantUser(1, "tenanta"),
             () => nextCalled = true);
 
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
 
         Assert.True(nextCalled);
         Assert.Equal(200, context.Response.StatusCode);
@@ -58,16 +58,16 @@ public class HostRoutingIntegrationTests
     [Fact]
     public async Task TenantA_Host_With_TenantB_Jwt_Fails()
     {
-        var (middleware, context) = await CreatePipelineAsync("tenanta.hexabill.company", TenantUser(2, "tenantb"));
-        await middleware.InvokeAsync(context);
+        var (middleware, context, resolver) = await CreatePipelineAsync("tenanta.hexabill.company", TenantUser(2, "tenantb"));
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
     [Fact]
     public async Task TenantB_Host_With_TenantA_Jwt_Fails()
     {
-        var (middleware, context) = await CreatePipelineAsync("tenantb.hexabill.company", TenantUser(1, "tenanta"));
-        await middleware.InvokeAsync(context);
+        var (middleware, context, resolver) = await CreatePipelineAsync("tenantb.hexabill.company", TenantUser(1, "tenanta"));
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
@@ -75,19 +75,19 @@ public class HostRoutingIntegrationTests
     public async Task Admin_Host_With_Platform_Jwt_Succeeds()
     {
         var nextCalled = false;
-        var (middleware, context) = await CreatePipelineAsync(
+        var (middleware, context, resolver) = await CreatePipelineAsync(
             "admin.hexabill.company",
             PlatformUser(),
             () => nextCalled = true);
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
         Assert.True(nextCalled);
     }
 
     [Fact]
     public async Task Admin_Host_With_Tenant_Jwt_Fails()
     {
-        var (middleware, context) = await CreatePipelineAsync("admin.hexabill.company", TenantUser(1, "tenanta"));
-        await middleware.InvokeAsync(context);
+        var (middleware, context, resolver) = await CreatePipelineAsync("admin.hexabill.company", TenantUser(1, "tenanta"));
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
@@ -158,8 +158,8 @@ public class HostRoutingIntegrationTests
     [Fact]
     public async Task Unknown_Hostname_Fails_Middleware()
     {
-        var (middleware, context) = await CreatePipelineAsync("evil.example.com", TenantUser(1, "tenanta"));
-        await middleware.InvokeAsync(context);
+        var (middleware, context, resolver) = await CreatePipelineAsync("evil.example.com", TenantUser(1, "tenanta"));
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
@@ -189,7 +189,7 @@ public class HostRoutingIntegrationTests
         Assert.Equal(1, resolution.TenantId);
     }
 
-    private static async Task<(TenantHostMiddleware middleware, HttpContext context)> CreatePipelineAsync(
+    private static async Task<(TenantHostMiddleware middleware, HttpContext context, ITenantHostResolver resolver)> CreatePipelineAsync(
         string authorityHost,
         ClaimsPrincipal user,
         Action? onNext = null)
@@ -213,11 +213,10 @@ public class HostRoutingIntegrationTests
                 onNext?.Invoke();
                 return Task.CompletedTask;
             },
-            resolver,
             Options.Create(CreateOptions()),
             NullLogger<TenantHostMiddleware>.Instance);
 
-        return (middleware, context);
+        return (middleware, context, resolver);
     }
 
     private static TenantHostResolver CreateResolver(AppDbContext db) =>

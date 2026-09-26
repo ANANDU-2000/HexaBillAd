@@ -19,6 +19,47 @@ namespace HexaBill.Api.Core.Infrastructure
             _logger = logger;
         }
 
+        internal async Task CheckAllTenantsAsync(CancellationToken stoppingToken)
+        {
+            List<int> tenantIds;
+            using (var listScope = _sp.CreateScope())
+            {
+                var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                tenantIds = await listContext.Tenants
+                    .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                    .Select(t => t.Id)
+                    .ToListAsync(stoppingToken);
+            }
+
+            var now = DateTime.UtcNow;
+            var in3Days = now.AddDays(3);
+            foreach (var tid in tenantIds)
+            {
+                using var tenantScope = _sp.CreateScope();
+                var tenantDb = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                tenantDb.SetRequestTenantScope(tid, false);
+                var subscriptionService = tenantScope.ServiceProvider.GetRequiredService<ISubscriptionService>();
+                var automation = tenantScope.ServiceProvider.GetRequiredService<IAutomationProvider>();
+
+                var expiringTrials = await tenantDb.Subscriptions
+                    .Where(s => s.Status == SubscriptionStatus.Trial && s.TrialEndDate.HasValue &&
+                               s.TrialEndDate.Value >= now && s.TrialEndDate.Value <= in3Days)
+                    .Select(s => s.TrialEndDate)
+                    .ToListAsync(stoppingToken);
+                foreach (var trialEndDate in expiringTrials)
+                    await automation.NotifyAsync(AutomationEvents.TrialEnding, tid, new { trialEndDate }, stoppingToken);
+
+                await subscriptionService.CheckSubscriptionStatusAsync(tid);
+
+                var overdueCount = await tenantDb.Sales
+                    .Where(s => !s.IsDeleted && s.DueDate.HasValue && s.DueDate < now &&
+                               (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
+                    .CountAsync(stoppingToken);
+                if (overdueCount > 0)
+                    await automation.NotifyAsync(AutomationEvents.PaymentOverdue, tid, new { overdueCount }, stoppingToken);
+            }
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
@@ -43,38 +84,7 @@ namespace HexaBill.Api.Core.Infrastructure
                         continue;
                     }
 
-                    var tenantIds = await db.Tenants
-                        .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
-                        .Select(t => t.Id)
-                        .ToListAsync(stoppingToken);
-
-                    var now = DateTime.UtcNow;
-                    var in3Days = now.AddDays(3);
-                    foreach (var tid in tenantIds)
-                    {
-                        using var tenantScope = _sp.CreateScope();
-                        var tenantDb = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        tenantDb.SetRequestTenantScope(tid, false);
-                        var subscriptionService = tenantScope.ServiceProvider.GetRequiredService<ISubscriptionService>();
-                        var automation = tenantScope.ServiceProvider.GetRequiredService<IAutomationProvider>();
-
-                        var expiringTrials = await tenantDb.Subscriptions
-                            .Where(s => s.Status == SubscriptionStatus.Trial && s.TrialEndDate.HasValue &&
-                                       s.TrialEndDate.Value >= now && s.TrialEndDate.Value <= in3Days)
-                            .Select(s => s.TrialEndDate)
-                            .ToListAsync(stoppingToken);
-                        foreach (var trialEndDate in expiringTrials)
-                            await automation.NotifyAsync(AutomationEvents.TrialEnding, tid, new { trialEndDate }, stoppingToken);
-
-                        await subscriptionService.CheckSubscriptionStatusAsync(tid);
-
-                        var overdueCount = await tenantDb.Sales
-                            .Where(s => !s.IsDeleted && s.DueDate.HasValue && s.DueDate < now &&
-                                       (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
-                            .CountAsync(stoppingToken);
-                        if (overdueCount > 0)
-                            await automation.NotifyAsync(AutomationEvents.PaymentOverdue, tid, new { overdueCount }, stoppingToken);
-                    }
+                    await CheckAllTenantsAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex) { _logger.LogError(ex, "TrialExpiryCheckJob error"); }

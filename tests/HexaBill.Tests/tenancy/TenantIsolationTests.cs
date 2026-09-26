@@ -80,9 +80,9 @@ public class TenantIsolationTests
     [Fact]
     public async Task TenantHostMiddleware_RejectsTenantIdInUrlBodySpoofViaHeader()
     {
-        var (middleware, context) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", TenantUser(TenantAId), "Enforce");
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", TenantUser(TenantAId), "Enforce");
         context.Request.Headers["X-Tenant-Id"] = TenantBId.ToString();
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
@@ -101,9 +101,9 @@ public class TenantIsolationTests
     [Fact]
     public async Task TenantHostMiddleware_RejectsRefererSpoofForWrongHostJwt()
     {
-        var (middleware, context) = await CreateHostMiddlewareAsync("tenantb.hexabill.company", TenantUser(TenantAId, "tenanta"), "Enforce");
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync("tenantb.hexabill.company", TenantUser(TenantAId, "tenanta"), "Enforce");
         context.Request.Headers.Referer = "https://tenanta.hexabill.company/sales";
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
 
@@ -225,7 +225,7 @@ public class TenantIsolationTests
         return db;
     }
 
-    private static async Task<(TenantHostMiddleware middleware, HttpContext context)> CreateHostMiddlewareAsync(
+    private static async Task<(TenantHostMiddleware middleware, HttpContext context, ITenantHostResolver resolver)> CreateHostMiddlewareAsync(
         string host,
         ClaimsPrincipal user,
         string enforcementMode,
@@ -250,13 +250,13 @@ public class TenantIsolationTests
             ? TenantHostResolution.Platform()
             : new TenantHostResolution(TenantHostKind.Tenant, slug, tenantId, TenantStatus.Active);
 
+        var resolver = new StubResolver(resolution);
         var middleware = new TenantHostMiddleware(
             _ => { onNext?.Invoke(); return Task.CompletedTask; },
-            new StubResolver(resolution),
             Options.Create(new HostingOptions { EnforcementMode = enforcementMode }),
             NullLogger<TenantHostMiddleware>.Instance);
 
-        return (middleware, context);
+        return (middleware, context, resolver);
     }
 
     private sealed class StubResolver(TenantHostResolution resolution) : ITenantHostResolver

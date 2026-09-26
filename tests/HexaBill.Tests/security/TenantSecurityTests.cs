@@ -99,10 +99,10 @@ public class TenantSecurityTests
     [Fact]
     public async Task TenantHostMiddleware_RejectsXTenantIdHeader()
     {
-        var (middleware, context) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", TenantUser(1), "Enforce");
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", TenantUser(1), "Enforce");
         context.Request.Headers["X-Tenant-Id"] = "2";
 
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
@@ -110,9 +110,9 @@ public class TenantSecurityTests
     [Fact]
     public async Task TenantHostMiddleware_RejectsTenantJwtOnWrongHost()
     {
-        var (middleware, context) = await CreateHostMiddlewareAsync("tenantb.hexabill.company", TenantUser(1, "tenanta"), "Enforce");
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync("tenantb.hexabill.company", TenantUser(1, "tenanta"), "Enforce");
 
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
@@ -120,9 +120,9 @@ public class TenantSecurityTests
     [Fact]
     public async Task TenantHostMiddleware_RejectsPlatformJwtOnTenantHost()
     {
-        var (middleware, context) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", PlatformUser(), "Enforce");
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync("tenanta.hexabill.company", PlatformUser(), "Enforce");
 
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
 
         Assert.Equal(StatusCodes.Status403Forbidden, context.Response.StatusCode);
     }
@@ -131,13 +131,13 @@ public class TenantSecurityTests
     public async Task TenantHostMiddleware_AllowsMatchingTenantHostAndJwt()
     {
         var nextCalled = false;
-        var (middleware, context) = await CreateHostMiddlewareAsync(
+        var (middleware, context, resolver) = await CreateHostMiddlewareAsync(
             "tenanta.hexabill.company",
             TenantUser(1),
             "Enforce",
             () => nextCalled = true);
 
-        await middleware.InvokeAsync(context);
+        await middleware.InvokeAsync(context, resolver);
 
         Assert.Equal(200, context.Response.StatusCode);
         Assert.True(nextCalled);
@@ -211,7 +211,7 @@ public class TenantSecurityTests
         return db;
     }
 
-    private static async Task<(TenantHostMiddleware middleware, HttpContext context)> CreateHostMiddlewareAsync(
+    private static async Task<(TenantHostMiddleware middleware, HttpContext context, ITenantHostResolver resolver)> CreateHostMiddlewareAsync(
         string host,
         ClaimsPrincipal user,
         string enforcementMode,
@@ -238,17 +238,17 @@ public class TenantSecurityTests
             ? TenantHostResolution.Platform()
             : new TenantHostResolution(TenantHostKind.Tenant, host.Split('.')[0], host.StartsWith("tenanta") ? 1 : 2, TenantStatus.Active);
 
+        var resolver = new StubResolver(resolution);
         var middleware = new TenantHostMiddleware(
             _ =>
             {
                 onNext?.Invoke();
                 return Task.CompletedTask;
             },
-            new StubResolver(resolution),
             Options.Create(new HostingOptions { EnforcementMode = enforcementMode }),
             NullLogger<TenantHostMiddleware>.Instance);
 
-        return (middleware, context);
+        return (middleware, context, resolver);
     }
 
     private sealed class StubResolver(TenantHostResolution resolution) : ITenantHostResolver

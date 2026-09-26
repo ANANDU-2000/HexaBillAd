@@ -21,6 +21,28 @@ namespace HexaBill.Api.Core.Infrastructure
             _logger = logger;
         }
 
+        internal async Task ProcessAllTenantsAsync(CancellationToken stoppingToken)
+        {
+            List<int> tenantIds;
+            using (var listScope = _serviceProvider.CreateScope())
+            {
+                var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                tenantIds = await listContext.Tenants
+                    .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
+                    .Select(t => t.Id)
+                    .ToListAsync(stoppingToken);
+            }
+
+            foreach (var tenantId in tenantIds)
+            {
+                using var tenantScope = _serviceProvider.CreateScope();
+                var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                context.SetRequestTenantScope(tenantId, false);
+                var service = tenantScope.ServiceProvider.GetRequiredService<IRecurringInvoiceService>();
+                await service.ProcessDueRecurringInvoicesAsync(stoppingToken);
+            }
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -34,24 +56,7 @@ namespace HexaBill.Api.Core.Infrastructure
                     _logger.LogInformation("Recurring invoice job next run: {NextRun}", nextRun);
                     await Task.Delay(delay, stoppingToken);
 
-                    List<int> tenantIds;
-                    using (var listScope = _serviceProvider.CreateScope())
-                    {
-                        var listContext = listScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        tenantIds = await listContext.Tenants
-                            .Where(t => t.Status == TenantStatus.Active || t.Status == TenantStatus.Trial)
-                            .Select(t => t.Id)
-                            .ToListAsync(stoppingToken);
-                    }
-
-                    foreach (var tenantId in tenantIds)
-                    {
-                        using var tenantScope = _serviceProvider.CreateScope();
-                        var context = tenantScope.ServiceProvider.GetRequiredService<AppDbContext>();
-                        context.SetRequestTenantScope(tenantId, false);
-                        var service = tenantScope.ServiceProvider.GetRequiredService<IRecurringInvoiceService>();
-                        await service.ProcessDueRecurringInvoicesAsync(stoppingToken);
-                    }
+                    await ProcessAllTenantsAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) { break; }
                 catch (Exception ex)

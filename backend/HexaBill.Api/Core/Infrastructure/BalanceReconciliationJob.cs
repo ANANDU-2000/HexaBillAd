@@ -47,7 +47,7 @@ namespace HexaBill.Api.Core.Infrastructure
                         scheduledTime);
                     await Task.Delay(delay, stoppingToken);
 
-                    await ReconcileAllBalancesAsync(stoppingToken);
+                    await ReconcileAllTenantsAsync(stoppingToken);
 
                     await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
                 }
@@ -63,7 +63,7 @@ namespace HexaBill.Api.Core.Infrastructure
             }
         }
 
-        private async Task<(bool enabled, DateTime scheduledTime)> GetScheduleFromSettingsAsync(CancellationToken ct)
+        internal async Task<(bool enabled, DateTime scheduledTime)> GetScheduleFromSettingsAsync(CancellationToken ct)
         {
             try
             {
@@ -98,7 +98,7 @@ namespace HexaBill.Api.Core.Infrastructure
             }
         }
 
-        private async Task ReconcileAllBalancesAsync(CancellationToken stoppingToken)
+        internal async Task ReconcileAllTenantsAsync(CancellationToken stoppingToken)
         {
             List<int> tenantIds;
             using (var listScope = _serviceProvider.CreateScope())
