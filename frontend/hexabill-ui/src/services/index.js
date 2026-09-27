@@ -1158,7 +1158,17 @@ export const settingsAPI = {
     if (filters?.action) params.action = filters.action
     if (filters?.fromDate) params.fromDate = filters.fromDate
     if (filters?.toDate) params.toDate = filters.toDate
+    if (filters?.q) params.q = filters.q
+    if (filters?.userId) params.userId = filters.userId
     const response = await api.get('/settings/audit-logs', { params })
+    return response.data
+  },
+  getAuditLog: async (id) => {
+    const response = await api.get(`/settings/audit-logs/${id}`)
+    return response.data
+  },
+  getAuditActors: async () => {
+    const response = await api.get('/settings/audit-logs/actors')
     return response.data
   }
 }
@@ -1605,6 +1615,46 @@ export const suppliersAPI = {
   deleteSupplier: async (supplierName) => {
     const response = await api.delete(`/suppliers/${encodeURIComponent(supplierName)}`)
     return response.data
+  },
+  getSupplierStatement: async (supplierName, fromDate, toDate) => {
+    const blobOpts = {
+      params: {},
+      responseType: 'blob',
+      timeout: 120000,
+      _bypassCache: true
+    }
+    if (fromDate) blobOpts.params.fromDate = fromDate
+    if (toDate) blobOpts.params.toDate = toDate
+    try {
+      const response = await api.get(`/suppliers/${encodeURIComponent(supplierName)}/statement`, blobOpts)
+      const contentType = response.headers['content-type'] || ''
+      if (response.status >= 400 || contentType.includes('application/json')) {
+        const text = await response.data.text()
+        let errorData
+        try { errorData = JSON.parse(text) } catch { throw new Error('Could not generate the statement.') }
+        throw new Error(errorData?.message || 'Could not generate the statement.')
+      }
+      return response.data
+    } catch (error) {
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          const errorData = text.trim().startsWith('{') ? JSON.parse(text) : null
+          const err = new Error(errorData?.message || 'Could not generate the statement.')
+          if (error._handledByInterceptor) err._handledByInterceptor = true
+          throw err
+        } catch (parseError) {
+          if (parseError instanceof Error && parseError.message && parseError.message !== 'Could not generate the statement.') throw parseError
+          const err = parseError instanceof Error ? parseError : new Error('Could not generate the statement.')
+          if (error._handledByInterceptor) err._handledByInterceptor = true
+          throw err
+        }
+      }
+      if (error._handledByInterceptor && error instanceof Error) throw error
+      const err = new Error(error.message || 'Could not generate the statement.')
+      if (error._handledByInterceptor) err._handledByInterceptor = true
+      throw err
+    }
   }
 }
 

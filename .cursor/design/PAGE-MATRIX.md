@@ -8,7 +8,7 @@ Live routes only, from `src/app/App.jsx`. Status starts `todo`.
 | Platform login | /Admin26 | SystemAdmin | Same card | No | Yes | No | No | Sign in | Same card | Same card, Admin Portal | verified |
 | Invite | /login?invite= | Public tenant | Same card | No | Yes | No | No | Set password | Same card | Same card on the company address. Empty submit asks for 8 characters. Password was not set | verified |
 | Signup | /signup | Public | Centered card, 400px | Steps | Yes | No | No | Create account | One column | One card. Continue is the primary action | verified |
-| Dashboard | /dashboard | Tenant | Layout | No | Period | No | No | Period, one primary | 4 metrics, attention, actions | Signed-in session showed Today, four metrics, empty attention, New invoice | verified |
+| Dashboard | /dashboard | Tenant | Layout | No | Period | No | No | Period, one primary | 4 metrics, attention, actions | Period stays in the address. Overdue and unpaid open outstanding. Net sales and receivables are the strong numbers | verified |
 | POS | /pos | Tenant | Viewport | No | Cart | Cart lines | Payment, print | Checkout | Regions stack | Signed-in PosEnterprisePage opened. Empty cart. Save stays disabled until a line exists | verified |
 | Sales ledger | /sales-ledger | Tenant | Viewport | Filters | Filters | Yes | Preview | Print, export | Inner scroll | Signed-in page opened with the current month, Show, and export actions | verified |
 | Billing history | /billing-history | Tenant | Layout | No | Filters | Yes | Preview | Print | Table scroll | Signed-in page kept filters and showed one invoice | verified |
@@ -20,9 +20,9 @@ Live routes only, from `src/app/App.jsx`. Status starts `todo`.
 | Customer detail | /customers/:id | Tenant | Layout | Yes | Yes | Ledger | Payment | Save | Stack | Signed in. Customer details opened. | verified |
 | Customer ledger | /ledger | Tenant | Layout | No | Filters | Yes | Payment | Record | Table scroll | Signed in. Filters and cash customer line shown. | verified |
 | Payments | uses ledger/modals | Tenant | Layout | No | Yes | Yes | Payment | Save | Modal scroll | Signed in. Payment form opened and closed without saving. | verified |
-| Purchases | /purchases | Tenant | Layout | No | Yes | Yes | Confirm | Add | Table scroll | Signed in. Empty period totals. | verified |
-| Suppliers | /suppliers | Tenant | Layout | No | Yes | Yes | Form | Add | Table scroll | Signed in. Empty supplier list. | verified |
-| Supplier detail | /suppliers/:name | Tenant | Layout | No | Yes | Ledger | No | Save | Stack | Signed in. Supplier ledger opened. | verified |
+| Purchases | /purchases | Tenant | Layout | No | Yes | Yes | Confirm | Add | Table scroll | Ledger first. Filters and pay on the demo company at 1280 and 375. | verified |
+| Suppliers | /suppliers | Tenant | Layout | No | Yes | Yes | Form | Add | Table, cards under 768px | Row opens detail. Search, overdue, and page stay in the URL. | verified |
+| Supplier detail | /suppliers/:name | Tenant | Layout | Summary, Ledger, Bills, Paid | Payment | Ledger | Payment | Pay, statement PDF, share | Stack, tabs scroll | Statement PDF uses the applied date range. Back keeps the list query. | verified |
 | Inventory | /stock-adjustments | Tenant | Layout | No | Yes | Yes | Adjust | Save | Table scroll | Signed in. Empty adjustment range. | verified |
 | Expenses | /expenses | Tenant | Layout | No | Yes | Yes | Form | Add, export | Ledger then chart | Signed in. Empty period ledger and totals. | verified |
 | Reports | /reports | Owner | Layout | Yes | Filters | Yes | No | Export | Charts stack | Signed in. Report tabs and filters opened. | verified |
@@ -44,13 +44,13 @@ Live routes only, from `src/app/App.jsx`. Status starts `todo`.
 | Settings | /settings | Owner | Layout | Yes | Yes | No | No | Save | Stack | Signed in. Company settings form opened. | verified |
 | Users | /users | Admin | Layout | No | Yes | Yes | Invite | Add | Table scroll | Signed in. Owner row listed. | verified |
 | Profile | /profile | Tenant | Layout | No | Yes | No | No | Save | Stack | Signed in. Profile form opened. | verified |
-| Audit | /audit | Owner | Layout | No | Filters | Yes | No | Refresh | Table scroll | Signed in. Activity rows listed. | verified |
+| Audit | /audit | Owner | Layout | No | Search, action, user, date | Yes | Activity detail | Refresh, View | Table / mobile cards | Admin and Owner only. No raw JSON in the table. Recovery is unavailable. Anonymous API calls return 401. Signed-in click-through was not completed because the local owner password does not match the development seed. | verified |
 | Backup | /backup | Owner | Layout | No | Yes | Yes | Confirm | Backup | Stack | Signed in. Backup actions shown. Backup was not run. | verified |
-| More | /more | Tenant | Layout | No | No | No | No | Navigate | List | Signed in. Section list opened. | verified |
+| More | /more | Tenant | Layout | No | No | No | No | Navigate | List | Only routes that are not already in the sidebar | verified |
 | Help | /help | Any | Both | No | No | No | No | None | Stack | Signed in. Help page opened. | verified |
 | Feedback | /feedback | Any | Both | No | Yes | No | No | Send | Stack | Signed in. Feedback form opened. It was not submitted. | verified |
 | Onboarding | /onboarding | Owner | None | Steps | Yes | No | No | Next | Stack | Signed in. Company step opened. It was not submitted. | verified |
-| App shell | tenant pages | Tenant | Layout | No | No | No | User menu, More | Nav, logout | Sidebar 240 / mobile drawer | Signed in. More menu opened with section groups. | verified |
+| App shell | tenant pages | Tenant | Layout | No | No | No | User menu, More | Nav, logout | Sidebar 240, tablet rail 80, mobile drawer | Groups: Main, Transactions, Masters, Operations, Reporting, System. Phone bottom nav stays under 768 | verified |
 | Notifications | header bell | Tenant | Layout | No | No | No | Panel | Open | Dropdown | Signed in. Notifications panel opened. | verified |
 | SuperAdmin dashboard | /superadmin/dashboard | SystemAdmin | Platform | No | No | No | No | Open | Cards | Platform session. Overview opened. | verified |
 | Tenants | /superadmin/tenants | SystemAdmin | Platform | No | Filters | Yes | Create | Add | Table scroll | Platform session. Company list opened. | verified |
@@ -78,11 +78,11 @@ Decision: one centered card, max width `400px`. No second column at any width. T
 
 Wrong portal: platform account on a tenant host, and tenant account on the platform host, are rejected and logged out. Copy does not name the other organization. No tenant id in the UI. Errors are one alert. Dark page `#0B1220`, card `#121A22`. Signup is unchanged.
 
-## Dashboard (Focus 02)
+## Dashboard (Focus 02, Focus 06)
 
 Specified in [HEXABILL-DESIGN-SYSTEM.md](HEXABILL-DESIGN-SYSTEM.md). The tenant dashboard page follows that section. Status is `verified`.
 
-Decision: one work column. Four metrics (net sales, collections, profit, receivables). Needs attention above the chart. One primary action, New invoice. No right-hand gateway. No purple, orange, or indigo tiles. SuperAdmin dashboard is a different route and was not part of this focus.
+Decision: one work column. Four metrics (net sales, collections, profit, receivables). Net sales and receivables are larger. Needs attention sits above the chart, with the count on its own line. Overdue and unpaid bills open Reports outstanding. One primary action, New invoice. Period is stored on the dashboard address and per user in the browser session. SuperAdmin dashboard is a different route and was not part of this focus.
 
 ## Expenses (Focus 03)
 
@@ -90,9 +90,9 @@ Specified in [HEXABILL-DESIGN-SYSTEM.md](HEXABILL-DESIGN-SYSTEM.md). The tenant 
 
 Decision: one page, no new tabs. Add expense is the only primary action. One filter row, one summary line, then the ledger. The breakdown chart sits under the ledger and uses period totals, or it is omitted. Export, Category VAT, and Recurring sit in one menu for Admin or Owner. Search stays on the loaded page. Recurring edit and delete are not specified, because those endpoints do not exist.
 
-## App shell (Focus 04)
+## App shell (Focus 04, Focus 06)
 
-Tenant chrome is `Layout`. Desktop sidebar is 240px, collapsing to icons. The header shows the company name, alerts, and the user menu. Mobile uses the header menu and the More sheet. Role gates stay as they are. Status is `implement`, not verified.
+Tenant chrome is `Layout`. From 1024px the sidebar is 240px and collapses to icons. From 768px to 1023px it stays an 80px icon rail, and the phone header and bottom bar are hidden. Below 768px the header menu and More sheet are used. Navigation groups come from `moreMenuConfig.js`. Daily groups stay open. Operations, Reporting, and System collapse. Help, profile, and log out sit under the work list. F3, F4, F7, F8, F9, and F10 stay. F5 is left as browser refresh. Status is `verified`.
 
 ## Sales ledger
 

@@ -6,6 +6,7 @@ Date: 2025
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using HexaBill.Api.Modules.Purchases;
 using HexaBill.Api.Models;
 
@@ -17,10 +18,12 @@ namespace HexaBill.Api.Modules.Purchases
     public class SuppliersController : TenantScopedController // MULTI-TENANT: Owner-scoped suppliers
     {
         private readonly ISupplierService _supplierService;
+        private readonly ILogger<SuppliersController> _logger;
 
-        public SuppliersController(ISupplierService supplierService)
+        public SuppliersController(ISupplierService supplierService, ILogger<SuppliersController> logger)
         {
             _supplierService = supplierService;
+            _logger = logger;
         }
 
         [HttpGet("balance/{supplierName}")]
@@ -139,6 +142,8 @@ namespace HexaBill.Api.Modules.Purchases
                     return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Request body is required." });
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Supplier name is required." });
+                if (request.CreditLimit.HasValue && request.CreditLimit.Value < 0)
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Credit limit cannot be negative." });
                 var result = await _supplierService.CreateSupplierAsync(tenantId, request);
                 return Ok(new ApiResponse<SupplierDto>
                 {
@@ -158,20 +163,16 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (DbUpdateException ex)
             {
+                _logger.LogError(ex, "CreateSupplier failed");
                 var inner = ex.InnerException?.Message ?? ex.Message;
                 if (inner.Contains("duplicate") || inner.Contains("unique") || inner.Contains("IX_Suppliers"))
-                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "A supplier with this name already exists.", Errors = new List<string> { inner } });
-                return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = inner, Errors = new List<string> { inner } });
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "A supplier with this name already exists." });
+                return StatusCode(500, new ApiResponse<SupplierDto> { Success = false, Message = "Could not create supplier." });
             }
             catch (Exception ex)
             {
-                var msg = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new ApiResponse<SupplierDto>
-                {
-                    Success = false,
-                    Message = msg,
-                    Errors = new List<string> { msg }
-                });
+                _logger.LogError(ex, "CreateSupplier failed");
+                return StatusCode(500, new ApiResponse<SupplierDto> { Success = false, Message = "Could not create supplier." });
             }
         }
 
@@ -220,6 +221,8 @@ namespace HexaBill.Api.Modules.Purchases
                     return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Supplier name is required." });
                 if (request == null)
                     return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Request body is required." });
+                if (request.CreditLimit.HasValue && request.CreditLimit.Value < 0)
+                    return BadRequest(new ApiResponse<SupplierDto> { Success = false, Message = "Credit limit cannot be negative." });
                 var result = await _supplierService.UpdateSupplierAsync(tenantId, name, request);
                 return Ok(new ApiResponse<SupplierDto>
                 {
@@ -239,13 +242,39 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                var msg = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new ApiResponse<SupplierDto>
-                {
-                    Success = false,
-                    Message = msg,
-                    Errors = new List<string> { msg }
-                });
+                _logger.LogError(ex, "UpdateSupplier failed");
+                return StatusCode(500, new ApiResponse<SupplierDto> { Success = false, Message = "Could not update supplier." });
+            }
+        }
+
+        [HttpGet("{supplierName}/statement")]
+        public async Task<ActionResult> GetSupplierStatement(string supplierName, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+                var name = Uri.UnescapeDataString(supplierName ?? "");
+                if (string.IsNullOrWhiteSpace(name))
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Supplier name is required." });
+                var from = (fromDate ?? DateTime.UtcNow.AddDays(-30)).Date;
+                var to = (toDate ?? DateTime.UtcNow).Date;
+                if (from > to)
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be on or before To date." });
+                var pdfBytes = await _supplierService.GenerateSupplierStatementAsync(tenantId, name, from, to);
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                    return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Could not generate the statement." });
+                return File(pdfBytes, "application/pdf", $"supplier_statement_{DateTime.UtcNow:yyyyMMdd}.pdf");
+            }
+            catch (InvalidOperationException)
+            {
+                return NotFound(new ApiResponse<object> { Success = false, Message = "Supplier was not found." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetSupplierStatement failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Could not generate the statement." });
             }
         }
 
@@ -277,13 +306,8 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                var msg = ex.InnerException?.Message ?? ex.Message;
-                return StatusCode(500, new ApiResponse<object>
-                {
-                    Success = false,
-                    Message = msg,
-                    Errors = new List<string> { msg }
-                });
+                _logger.LogError(ex, "DeleteSupplier failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Could not deactivate supplier." });
             }
         }
 
@@ -336,12 +360,8 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<SupplierPaymentDto>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Errors = new List<string> { ex.Message }
-                });
+                _logger.LogError(ex, "RecordPayment failed");
+                return StatusCode(500, new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Could not record payment." });
             }
         }
 
@@ -390,12 +410,8 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<SupplierLedgerCreditDto>
-                {
-                    Success = false,
-                    Message = ex.Message,
-                    Errors = new List<string> { ex.Message }
-                });
+                _logger.LogError(ex, "CreateLedgerCredit failed");
+                return StatusCode(500, new ApiResponse<SupplierLedgerCreditDto> { Success = false, Message = "Could not record ledger credit." });
             }
         }
 
@@ -419,7 +435,8 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<SupplierPaymentDto> { Success = false, Message = ex.Message });
+                _logger.LogError(ex, "UpdatePayment failed");
+                return StatusCode(500, new ApiResponse<SupplierPaymentDto> { Success = false, Message = "Could not update payment." });
             }
         }
 
@@ -437,7 +454,8 @@ namespace HexaBill.Api.Modules.Purchases
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
+                _logger.LogError(ex, "DeletePayment failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Could not delete payment." });
             }
         }
     }

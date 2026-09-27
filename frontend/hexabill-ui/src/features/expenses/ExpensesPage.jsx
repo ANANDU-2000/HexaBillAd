@@ -26,7 +26,7 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
-import { expensesAPI } from '../../services/index'
+import { expensesAPI, reportsAPI } from '../../services/index'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 
 function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
@@ -216,6 +216,8 @@ const ExpensesPage = () => {
   const [selectedExpense, setSelectedExpense] = useState(null)
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [expenseSummary, setExpenseSummary] = useState(null)
+  const [categoryPeriod, setCategoryPeriod] = useState([])
+  const [expenseView, setExpenseView] = useState('ledger')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const EXPENSES_DATE_RANGE_KEY = 'EXPENSES_DATE_RANGE'
@@ -396,13 +398,28 @@ const ExpensesPage = () => {
         setFilteredExpenses(expenseList)
         setTotalPages(response.data.totalPages || 1)
 
-        // Category-wise totals for chart – still based on current page for performance
-        const categoryTotals = expenseList.reduce((acc, expense) => {
-          const cat = expense.categoryName || 'Other'
-          const paid = expense.totalAmount != null ? Number(expense.totalAmount) : (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) || (Number(expense.amount) || 0)
-          acc[cat] = (acc[cat] || 0) + paid
-          return acc
-        }, {})
+        let periodCategories = []
+        try {
+          const catRes = await reportsAPI.getExpensesByCategory({
+            fromDate: dateRange.from,
+            toDate: `${dateRange.to}T23:59:59`,
+            branchId: selectedBranchId ? parseInt(selectedBranchId, 10) : undefined
+          })
+          if (catRes?.success && Array.isArray(catRes.data)) {
+            periodCategories = catRes.data
+              .map((row, index) => ({
+                id: row.categoryId ?? row.CategoryId ?? index,
+                name: row.categoryName ?? row.CategoryName ?? 'Uncategorized',
+                total: Number(row.totalAmount ?? row.TotalAmount ?? 0)
+              }))
+              .filter((row) => row.total > 0)
+              .sort((a, b) => b.total - a.total)
+          }
+        } catch (e) {
+          console.error('Failed to load expense categories:', e)
+        }
+        setCategoryPeriod(periodCategories)
+        const categoryTotals = Object.fromEntries(periodCategories.map((row) => [row.name, row.total]))
         // Fetch accurate totals (amount, VAT, claimable VAT) for full period from backend so cards match VAT Return Box 9b
         try {
           const summaryRes = await expensesAPI.getExpensesSummary({
@@ -453,6 +470,7 @@ const ExpensesPage = () => {
         setFilteredExpenses([])
         setTotalPages(1)
         setExpenseSummary(null)
+        setCategoryPeriod([])
       }
     } catch (error) {
       console.error('Error loading expenses')
@@ -1118,6 +1136,30 @@ const ExpensesPage = () => {
               <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-emerald-700">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
             </p>
             <p className="mt-1 text-xs text-neutral-500">Average per day {formatCurrency(averagePerDay)}</p>
+            <div className="mt-3 flex gap-2" role="tablist" aria-label="Expense view">
+              <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
+              <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
+            </div>
+            {expenseView === 'category' && (
+              <ul className="mt-3 space-y-2">
+                {categoryPeriod.length === 0 ? (
+                  <li className="text-sm text-neutral-500">No expenses in this date range</li>
+                ) : categoryPeriod.map((row) => {
+                  const width = expenseSummary.total > 0 ? Math.max(4, (row.total / expenseSummary.total) * 100) : 0
+                  return (
+                    <li key={row.id}>
+                      <div className="flex items-center justify-between gap-3 text-sm">
+                        <span className="truncate text-neutral-800">{row.name}</span>
+                        <span className="shrink-0 font-semibold tabular-nums text-neutral-900">{formatCurrency(row.total)}</span>
+                      </div>
+                      <div className="mt-1 h-2 rounded-full bg-neutral-100">
+                        <div className="h-2 rounded-full bg-primary-600" style={{ width: `${width}%` }} />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
         )}
         {vatReadiness && (vatReadiness.vatReturnEligible > 0 || vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
@@ -1368,7 +1410,7 @@ const ExpensesPage = () => {
         </div>
 
         {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
-        {!showAggregated && (
+        {!showAggregated && expenseView === 'ledger' && (
           <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
             <div className="shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
               <h3 className="text-sm font-bold text-gray-900">Expenses Ledger</h3>

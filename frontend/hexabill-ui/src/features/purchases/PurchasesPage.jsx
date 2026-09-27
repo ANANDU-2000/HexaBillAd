@@ -1,35 +1,25 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
-import { Plus, Edit, Trash2, Eye, Save, Search, X, Filter, Calendar, TrendingUp, TrendingDown, BarChart3, DollarSign, Download, ExternalLink, Users } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
 import { localDateString } from '../../utils/dateFormat'
-import {
-  tallyInputClass,
-  tallySelectClass,
-  tallyLabelClass,
-  tallySectionClass,
-  tallySectionTitleClass,
-  tallyVoucherShellClass,
-  mobilePageShellClass,
-} from '../../components/tallyFormClasses'
+import { mobilePageShellClass } from '../../components/tallyFormClasses'
 
-const VoucherSection = ({ sectionId, title, isOpen, onToggle, children }) => (
+const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-11 text-base md:min-h-9 md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
+const tallySelectClass = tallyInputClass
+const tallyLabelClass = 'block text-xs font-medium text-neutral-600 mb-1'
+const tallySectionClass = 'mb-4 w-full max-w-full'
+const tallySectionTitleClass = 'text-sm font-semibold text-neutral-900 mb-2'
+const tallyVoucherShellClass = 'bg-white rounded-lg border border-neutral-200 p-3 sm:p-4 mb-4 w-full max-w-full overflow-hidden'
+
+const VoucherSection = ({ title, children }) => (
   <div className={tallySectionClass}>
-    <button
-      type="button"
-      className="md:hidden w-full flex items-center justify-between gap-2 text-left"
-      onClick={() => onToggle(sectionId)}
-      aria-expanded={isOpen}
-    >
-      <h3 className={tallySectionTitleClass}>{title}</h3>
-      <span className="text-primary-600 text-xs font-medium shrink-0">{isOpen ? 'Hide' : 'Show'}</span>
-    </button>
-    <h3 className={`${tallySectionTitleClass} hidden md:block`}>{title}</h3>
-    <div className={`${isOpen ? 'block' : 'hidden'} md:block mt-3 md:mt-0`}>{children}</div>
+    <h3 className={tallySectionTitleClass}>{title}</h3>
+    {children}
   </div>
 )
 
@@ -50,10 +40,8 @@ const PurchasesPage = () => {
   const [supplierSearch, setSupplierSearch] = useState(() => searchParams.get('supplier') || '')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') || '')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all')
-  const [showFilters, setShowFilters] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [bulkFixingItc, setBulkFixingItc] = useState(false)
-  const [showAnalyticsMobile, setShowAnalyticsMobile] = useState(false) // Mobile: collapse long stats by default
 
   // Analytics state
   const [analytics, setAnalytics] = useState(null)
@@ -649,7 +637,7 @@ const PurchasesPage = () => {
   const handleDeletePurchase = (purchase) => {
     const confirmMessage = `Invoice: ${purchase.invoiceNo}\n` +
       `Supplier: ${purchase.supplierName}\n` +
-      `Amount: AED ${purchase.totalAmount.toFixed(2)}\n` +
+      `Amount: ${formatCurrency(purchase.totalAmount)}\n` +
       `Items: ${purchase.items?.length || 0}\n\n` +
       `This will reverse all stock changes and remove inventory transactions.`
 
@@ -680,593 +668,153 @@ const PurchasesPage = () => {
     })
   }
 
-  // TALLY ERP PURCHASE VOUCHER STYLE
+  const canPayPurchase = (purchase) => {
+    const status = (purchase.paymentStatus || '').toLowerCase()
+    const balance = Number(purchase.balanceAmount ?? purchase.totalAmount ?? 0)
+    return status !== 'paid' && balance > 0.009
+  }
+
+  const openPay = (purchase) => {
+    navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}?recordPayment=1&amount=${purchase.balanceAmount ?? purchase.totalAmount}&ref=${encodeURIComponent(purchase.invoiceNo || '')}`, { state: { returnTo: location.pathname + location.search } })
+  }
+
+  const clearPurchaseFilters = () => {
+    setCurrentPage(1)
+    setFilterPeriod('all')
+    setStartDate('')
+    setEndDate('')
+    setSupplierSearch('')
+    setCategoryFilter('')
+    setStatusFilter('all')
+  }
+
+  const statusChip = (id, label, count) => {
+    const active = statusFilter === id
+    const tone = id === 'paid' ? 'text-green-800' : id === 'unpaid' || id === 'overdue' ? 'text-red-800' : 'text-amber-800'
+    return (
+      <button
+        type="button"
+        onClick={() => { setCurrentPage(1); setStatusFilter(active ? 'all' : id) }}
+        aria-pressed={active}
+        className={`min-h-11 md:min-h-9 rounded-md border px-3 text-left ${active ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}
+      >
+        <span className="block text-xs text-neutral-500">{label}</span>
+        <span className={`block text-sm font-semibold tabular-nums ${tone}`}>{count}</span>
+      </button>
+    )
+  }
+
+  // Purchase page
   return (
-    <div className={`h-full min-h-0 bg-gradient-to-br from-blue-50 to-slate-50 overflow-x-hidden w-full flex flex-col ${mobilePageShellClass}`}>
-      {/* Top Bar */}
-      <div className="bg-primary-100 border-b-2 border-primary-200 px-2 sm:px-4 py-2 sticky top-0 z-20 shadow-sm">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <div>
-            <h1 className="text-base sm:text-lg font-bold text-primary-800">Purchase Voucher</h1>
-            <div className="text-xs text-primary-600">Date: {new Date().toLocaleDateString('en-GB')}</div>
-          </div>
+    <div className={`h-full min-h-0 bg-neutral-50 overflow-x-hidden w-full flex flex-col ${mobilePageShellClass}`}>
+      <div className="bg-white border-b border-neutral-200 px-3 sm:px-4 py-2 sticky top-0 z-20">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-xl font-semibold text-neutral-900">Purchases</h1>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={() => navigate('/suppliers')}
-              className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 bg-white text-primary-700 border-2 border-primary-300 rounded font-medium hover:bg-primary-50 flex items-center justify-center text-xs sm:text-sm flex-1 sm:flex-none min-h-[44px]"
+              type="button"
+              onClick={() => { loadPurchases(); loadAnalytics(); loadPendingSummary() }}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 bg-white md:h-9 md:w-9"
+              aria-label="Refresh"
             >
-              <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Supplier</span>
-              <span className="sm:hidden">Supplier</span>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
             <button
-              onClick={handleNewPurchase}
-              className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 bg-primary-600 text-white rounded font-medium hover:bg-primary-700 flex items-center justify-center text-xs sm:text-sm flex-1 sm:flex-none min-h-[44px]"
+              type="button"
+              onClick={() => navigate('/suppliers')}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 md:min-h-9 md:flex-none"
             >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">New Purchase</span>
-              <span className="sm:hidden">New</span>
+              <Users className="h-4 w-4" />
+              Add Supplier
+            </button>
+            <button
+              type="button"
+              onClick={handleNewPurchase}
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md bg-primary-600 px-3 text-sm font-medium text-white md:min-h-9 md:flex-none"
+            >
+              <Plus className="h-4 w-4" />
+              New Purchase
             </button>
           </div>
         </div>
       </div>
 
       <div className="p-2 sm:p-4 w-full">
-        {/* Pending Summary + Clickable Status Filter Cards */}
-        {pendingSummary && (
-          <div className="mb-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-              {/* Total Pending (Unpaid + Partial + Overdue) */}
-              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('pending') }}
-                className={`col-span-2 sm:col-span-3 lg:col-span-1 text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'pending' ? 'border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 shadow-md ring-2 ring-amber-200' : 'border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50 hover:shadow-md'}`}>
-                <h3 className="text-xs font-bold text-amber-900 uppercase tracking-wide">Total Pending</h3>
-                <p className="text-xl sm:text-2xl font-bold text-amber-700 mt-1">
-                  AED {(pendingSummary.totalPendingToPay ?? 0).toFixed(2)}
-                </p>
-                <p className="text-xs text-amber-600 mt-1">All suppliers</p>
-              </button>
-              {/* Unpaid */}
-              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('unpaid') }}
-                className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'unpaid' ? 'border-red-500 bg-red-50 shadow-md ring-2 ring-red-200' : 'border-red-200 bg-red-50 hover:shadow-md hover:border-red-400'}`}>
-                <h3 className="text-xs font-bold text-red-800 uppercase tracking-wide">Unpaid</h3>
-                <p className="text-2xl font-bold text-red-700 mt-1">{pendingSummary.unpaidCount ?? 0}</p>
-                <p className="text-xs text-red-600">invoices</p>
-              </button>
-              {/* Partial */}
-              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('partial') }}
-                className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'partial' ? 'border-amber-500 bg-amber-50 shadow-md ring-2 ring-amber-200' : 'border-amber-200 bg-amber-50 hover:shadow-md hover:border-amber-400'}`}>
-                <h3 className="text-xs font-bold text-amber-800 uppercase tracking-wide">Partial</h3>
-                <p className="text-2xl font-bold text-amber-700 mt-1">{pendingSummary.partialCount ?? 0}</p>
-                <p className="text-xs text-amber-600">invoices</p>
-              </button>
-              {/* Paid */}
-              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('paid') }}
-                className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'paid' ? 'border-green-500 bg-green-50 shadow-md ring-2 ring-green-200' : 'border-green-200 bg-green-50 hover:shadow-md hover:border-green-400'}`}>
-                <h3 className="text-xs font-bold text-green-800 uppercase tracking-wide">Paid</h3>
-                <p className="text-2xl font-bold text-green-700 mt-1">{pendingSummary.paidCount ?? 0}</p>
-                <p className="text-xs text-green-600">invoices</p>
-              </button>
-              {/* Overdue */}
-              <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter('overdue') }}
-                className={`text-left rounded-lg border-2 p-3 sm:p-4 transition-all ${statusFilter === 'overdue' ? 'border-rose-500 bg-rose-50 shadow-md ring-2 ring-rose-200' : 'border-rose-200 bg-rose-50 hover:shadow-md hover:border-rose-400'}`}>
-                <h3 className="text-xs font-bold text-rose-800 uppercase tracking-wide">Overdue</h3>
-                <p className="text-2xl font-bold text-rose-700 mt-1">{pendingSummary.overdueCount ?? 0}</p>
-                <p className="text-xs text-rose-600">invoices</p>
-              </button>
+        <div className="mb-3 rounded-lg border border-neutral-200 bg-white p-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
+            <label className="text-xs font-medium text-neutral-500 lg:col-span-2">
+              Supplier
+              <input type="search" aria-label="Search supplier" placeholder="Search supplier or invoice" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={supplierSearch} onChange={(e) => { setCurrentPage(1); setSupplierSearch(e.target.value) }} />
+            </label>
+            <label className="text-xs font-medium text-neutral-500">
+              Status
+              <select aria-label="Status" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={statusFilter} onChange={(e) => { setCurrentPage(1); setStatusFilter(e.target.value) }}>
+                <option value="all">All</option>
+                <option value="pending">Pending</option>
+                <option value="unpaid">Unpaid</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-neutral-500">
+              Period
+              <select aria-label="Period" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={filterPeriod} onChange={(e) => { setCurrentPage(1); setFilterPeriod(e.target.value) }}>
+                <option value="all">All time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This week</option>
+                <option value="lastWeek">Last week</option>
+                <option value="month">This month</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-neutral-500">
+              Category
+              <select aria-label="Category" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={categoryFilter} onChange={(e) => { setCurrentPage(1); setCategoryFilter(e.target.value) }}>
+                <option value="">All categories</option>
+                <option value="Inventory">Inventory</option>
+                <option value="Supplies">Supplies</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Maintenance">Maintenance</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button type="button" onClick={handleExportCsv} disabled={exportingCsv} className="min-h-11 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9">{exportingCsv ? 'Exporting…' : 'Export'}</button>
+              <button type="button" onClick={clearPurchaseFilters} className="min-h-11 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9">Clear</button>
             </div>
           </div>
-        )}
-
-        {/* Analytics Dashboard - Mobile: compact 2 cards + "More stats" toggle; Desktop: full */}
-        {analytics && (
-          <>
-            <div className="mb-4 grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
-              {/* Today's Total */}
-              <div className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-primary-800">Today's Purchases</h3>
-                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-blue-700">AED {analytics.todayTotal?.toFixed(2) || '0.00'}</div>
-                <div className="text-xs text-blue-600 mt-1">{analytics.todayCount || 0} purchase(s)</div>
-                {analytics.yesterdayTotal > 0 && (
-                  <div className="flex items-center mt-2 text-xs">
-                    {analytics.todayTotal > analytics.yesterdayTotal ? (
-                      <>
-                        <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-                        <span className="text-green-600 font-medium">
-                          +{((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
-                        </span>
-                      </>
-                    ) : analytics.todayTotal < analytics.yesterdayTotal ? (
-                      <>
-                        <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-                        <span className="text-red-600 font-medium">
-                          {((analytics.todayTotal - analytics.yesterdayTotal) / analytics.yesterdayTotal * 100).toFixed(1)}% vs yesterday
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-primary-600">Same as yesterday</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* This Week's Total */}
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-green-900">This Week</h3>
-                  <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-green-700">AED {analytics.thisWeekTotal?.toFixed(2) || '0.00'}</div>
-                <div className="text-xs text-green-600 mt-1">{analytics.thisWeekCount || 0} purchase(s)</div>
-                {analytics.lastWeekTotal > 0 && (
-                  <div className="flex items-center mt-2 text-xs">
-                    {analytics.thisWeekTotal > analytics.lastWeekTotal ? (
-                      <>
-                        <TrendingUp className="h-3 w-3 text-green-600 mr-1" />
-                        <span className="text-green-600 font-medium">
-                          +{((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
-                        </span>
-                      </>
-                    ) : analytics.thisWeekTotal < analytics.lastWeekTotal ? (
-                      <>
-                        <TrendingDown className="h-3 w-3 text-red-600 mr-1" />
-                        <span className="text-red-600 font-medium">
-                          {((analytics.thisWeekTotal - analytics.lastWeekTotal) / analytics.lastWeekTotal * 100).toFixed(1)}% vs last week
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-primary-600">Same as last week</span>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Top Supplier Today - hidden on mobile when analytics collapsed */}
-              <div className="hidden sm:block bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-orange-900">Top Supplier (Today)</h3>
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
-                </div>
-                {analytics.topSupplierToday ? (
-                  <>
-                    <div className="text-sm sm:text-base font-bold text-orange-700 truncate">{analytics.topSupplierToday}</div>
-                    <div className="text-xs text-orange-600 mt-1">AED {analytics.topSupplierTodayAmount?.toFixed(2)}</div>
-                  </>
-                ) : (
-                  <div className="text-sm text-primary-500">No purchases today</div>
-                )}
-              </div>
-
-              {/* Top Supplier This Week - hidden on mobile when analytics collapsed */}
-              <div className="hidden sm:block bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border-2 border-primary-300 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-purple-900">Top Supplier (Week)</h3>
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
-                </div>
-                {analytics.topSupplierWeek ? (
-                  <>
-                    <div className="text-sm sm:text-base font-bold text-purple-700 truncate">{analytics.topSupplierWeek}</div>
-                    <div className="text-xs text-purple-600 mt-1">AED {analytics.topSupplierWeekAmount?.toFixed(2)}</div>
-                  </>
-                ) : (
-                  <div className="text-sm text-primary-500">No purchases this week</div>
-                )}
-              </div>
-
-              {/* Total VAT */}
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-lg border-2 border-amber-300 p-2 sm:p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs sm:text-sm font-bold text-amber-900">Total VAT</h3>
-                  <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600" />
-                </div>
-                <div className="text-xl sm:text-2xl font-bold text-amber-700">AED {(analytics.totalVat ?? 0).toFixed(2)}</div>
-                <div className="text-xs text-amber-600 mt-1">VAT in period</div>
-              </div>
-            </div>
-
-            {/* Mobile: toggle for more stats to avoid long vertical scroll */}
-            <div className="sm:hidden mb-3">
-              <button
-                type="button"
-                onClick={() => setShowAnalyticsMobile(!showAnalyticsMobile)}
-                className="w-full py-2 px-3 rounded-lg border-2 border-primary-200 bg-primary-50 text-primary-800 text-sm font-medium"
-              >
-                {showAnalyticsMobile ? 'Hide stats & charts' : 'View stats & charts'}
-              </button>
-            </div>
-
-            {/* Charts and Graphs Section - hidden on mobile unless expanded */}
-            <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 ${!showAnalyticsMobile ? 'hidden sm:grid' : ''}`}>
-              {/* Daily Trend Chart - Last 7 Days */}
-              <div className="bg-white rounded-lg border-2 border-blue-300 shadow-sm p-4">
-                <h3 className="text-sm font-bold text-primary-800 mb-3 flex items-center">
-                  <BarChart3 className="h-4 w-4 mr-2 text-blue-600" />
-                  Daily Purchase Trend (Last 7 Days)
-                </h3>
-                {analytics.dailyStats && analytics.dailyStats.length > 0 ? (
-                  <div className="space-y-2">
-                    {analytics.dailyStats.slice(0, 7).map((day, index) => {
-                      const maxAmount = Math.max(...analytics.dailyStats.slice(0, 7).map(d => d.totalAmount || 0))
-                      const percentage = maxAmount > 0 ? (day.totalAmount / maxAmount) * 100 : 0
-                      const isToday = new Date(day.date).toDateString() === new Date().toDateString()
-
-                      return (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="text-xs font-medium text-primary-700 w-20">
-                            {new Date(day.date).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
-                            {isToday && <span className="ml-1 text-blue-600 font-bold">(Today)</span>}
-                          </div>
-                          <div className="flex-1 bg-primary-50 rounded-full h-6 relative">
-                            <div
-                              className={`h-6 rounded-full flex items-center justify-end pr-2 transition-all ${isToday ? 'bg-gradient-to-r from-blue-500 to-blue-600' : 'bg-gradient-to-r from-lime-400 to-lime-500'
-                                }`}
-                              style={{ width: `${Math.max(percentage, 5)}%` }}
-                            >
-                              <span className="text-xs font-bold text-white">AED {day.totalAmount?.toFixed(0) || 0}</span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-primary-600 w-12 text-right">{day.count || 0}x</div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-sm text-primary-500 text-center py-8">No purchase data available</div>
-                )}
-              </div>
-
-              {/* Top 5 Suppliers Chart */}
-              <div className="bg-white rounded-lg border-2 border-primary-300 shadow-sm p-4">
-                <h3 className="text-sm font-bold text-primary-800 mb-3 flex items-center">
-                  <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-                  Top 5 Suppliers (Total Spending)
-                </h3>
-                {analytics.supplierStats && analytics.supplierStats.length > 0 ? (
-                  <div className="space-y-2">
-                    {analytics.supplierStats.slice(0, 5).map((supplier, index) => {
-                      const maxAmount = analytics.supplierStats[0]?.totalAmount || 1
-                      const percentage = (supplier.totalAmount / maxAmount) * 100
-
-                      return (
-                        <div key={index} className="flex items-center gap-2">
-                          <div className="text-lg font-bold text-primary-400 w-6">{index + 1}</div>
-                          <div className="flex-1">
-                            <div className="text-xs font-medium text-primary-800 truncate mb-1">{supplier.supplierName}</div>
-                            <div className="bg-primary-50 rounded-full h-5 relative">
-                              <div
-                                className="h-5 rounded-full bg-gradient-to-r from-green-400 to-green-600 flex items-center justify-between px-2 transition-all"
-                                style={{ width: `${Math.max(percentage, 10)}%` }}
-                              >
-                                <span className="text-xs font-bold text-white">AED {supplier.totalAmount?.toFixed(0) || 0}</span>
-                              </div>
-                            </div>
-                            <div className="text-xs text-primary-500 mt-0.5">{supplier.count || 0} purchase(s), {supplier.itemCount || 0} item(s)</div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-sm text-primary-500 text-center py-8">No supplier data available</div>
-                )}
-              </div>
-            </div>
-
-            {/* Detailed Supplier Insights - hidden on mobile unless expanded */}
-            <div className={`bg-white rounded-lg border-2 border-primary-300 shadow-sm mb-4 ${!showAnalyticsMobile ? 'hidden sm:block' : ''}`}>
-              <div className="bg-primary-100 border-b-2 border-primary-300 p-3">
-                <h3 className="text-sm font-bold text-primary-800 flex items-center">
-                  <BarChart3 className="h-4 w-4 mr-2 text-purple-600" />
-                  Supplier Insights & Statistics
-                </h3>
-              </div>
-              <div className="p-4">
-                {analytics.supplierStats && analytics.supplierStats.length > 0 ? (
-                  <>
-                    {/* Desktop Table */}
-                    <div className="hidden md:block overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead className="bg-purple-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-bold text-primary-700 border-r border-primary-200">Rank</th>
-                            <th className="px-3 py-2 text-left font-bold text-primary-700 border-r border-primary-200">Supplier Name</th>
-                            <th className="px-3 py-2 text-right font-bold text-primary-700 border-r border-primary-200">Total Spent</th>
-                            <th className="px-3 py-2 text-center font-bold text-primary-700 border-r border-primary-200">Purchases</th>
-                            <th className="px-3 py-2 text-center font-bold text-primary-700 border-r border-primary-200">Total Items</th>
-                            <th className="px-3 py-2 text-right font-bold text-primary-700">Avg Per Purchase</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-purple-100">
-                          {analytics.supplierStats.map((supplier, index) => {
-                            const avgPerPurchase = supplier.count > 0 ? supplier.totalAmount / supplier.count : 0
-                            const isTopSupplier = index === 0
-
-                            return (
-                              <tr key={index} className={`hover:bg-purple-50 ${isTopSupplier ? 'bg-purple-50 font-semibold' : ''}`}>
-                                <td className="px-3 py-2 border-r border-purple-100">
-                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                    index === 1 ? 'bg-primary-200 text-primary-800' :
-                                      index === 2 ? 'bg-orange-300 text-orange-900' :
-                                        'bg-primary-100 text-purple-700'
-                                    } text-xs font-bold`}>
-                                    {index + 1}
-                                  </span>
-                                </td>
-                                <td className="px-3 py-2 border-r border-purple-100">
-                                  <div className="font-medium text-primary-800">{supplier.supplierName}</div>
-                                  {isTopSupplier && <span className="text-xs text-green-600 font-bold">🏆 Top Supplier</span>}
-                                </td>
-                                <td className="px-3 py-2 text-right border-r border-purple-100">
-                                  <span className="font-bold text-green-700">AED {supplier.totalAmount?.toFixed(2) || '0.00'}</span>
-                                </td>
-                                <td className="px-3 py-2 text-center border-r border-purple-100">
-                                  <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded font-medium">{supplier.count || 0}</span>
-                                </td>
-                                <td className="px-3 py-2 text-center border-r border-purple-100">
-                                  <span className="text-primary-700">{supplier.itemCount || 0}</span>
-                                </td>
-                                <td className="px-3 py-2 text-right">
-                                  <span className="text-orange-600 font-medium">AED {avgPerPurchase.toFixed(2)}</span>
-                                </td>
-                              </tr>
-                            )
-                          })}
-                        </tbody>
-                        <tfoot className="bg-primary-100 font-bold">
-                          <tr>
-                            <td colSpan="2" className="px-3 py-2 border-r border-primary-200">TOTAL</td>
-                            <td className="px-3 py-2 text-right border-r border-primary-200" title="Total amount (AED)">
-                              <span className="text-green-700">AED {analytics.totalAmount?.toFixed(2) || '0.00'}</span>
-                              <span className="block text-xs font-normal text-primary-600">Total (AED)</span>
-                            </td>
-                            <td className="px-3 py-2 text-center border-r border-primary-200" title="Number of purchases">
-                              <span className="text-blue-700">{analytics.totalCount || 0}</span>
-                              <span className="block text-xs font-normal text-primary-600">Purchases</span>
-                            </td>
-                            <td className="px-3 py-2 text-center border-r border-primary-200" title="Total line items">
-                              <span className="text-primary-700">{analytics.totalItems || 0}</span>
-                              <span className="block text-xs font-normal text-primary-600">Items</span>
-                            </td>
-                            <td className="px-3 py-2 text-right" title="Average per purchase (AED)">
-                              <span className="text-orange-600">
-                                AED {analytics.totalCount > 0 ? (analytics.totalAmount / analytics.totalCount).toFixed(2) : '0.00'}
-                              </span>
-                              <span className="block text-xs font-normal text-primary-600">Avg (AED)</span>
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-
-                    {/* Mobile Cards */}
-                    <div className="md:hidden space-y-3">
-                      {analytics.supplierStats.map((supplier, index) => {
-                        const avgPerPurchase = supplier.count > 0 ? supplier.totalAmount / supplier.count : 0
-                        const isTopSupplier = index === 0
-
-                        return (
-                          <div key={index} className="bg-white rounded-lg shadow-sm border border-primary-200 p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full ${index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                                  index === 1 ? 'bg-primary-200 text-primary-800' :
-                                    index === 2 ? 'bg-orange-300 text-orange-900' :
-                                      'bg-primary-100 text-purple-700'
-                                  } text-xs font-bold`}>
-                                  {index + 1}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-semibold text-primary-800">{supplier.supplierName}</p>
-                                  {isTopSupplier && <span className="text-xs text-green-600 font-bold">🏆 Top Supplier</span>}
-                                </div>
-                              </div>
-                              <p className="text-base font-bold text-green-700">{formatCurrency(supplier.totalAmount || 0)}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-purple-100">
-                              <div>
-                                <p className="text-xs text-primary-500">Purchases</p>
-                                <p className="text-sm font-medium text-blue-700">{supplier.count || 0}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-primary-500">Total Items</p>
-                                <p className="text-sm font-medium text-primary-700">{supplier.itemCount || 0}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-xs text-primary-500">Avg Per Purchase</p>
-                                <p className="text-sm font-medium text-orange-600">{formatCurrency(avgPerPurchase)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
-                      {/* Mobile Total Card */}
-                      <div className="bg-primary-100 rounded-lg border-2 border-primary-300 p-4 mt-4">
-                        <p className="text-sm font-bold text-primary-800 mb-3">TOTAL</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <p className="text-xs text-primary-600">Total Spent</p>
-                            <p className="text-sm font-bold text-green-700">{formatCurrency(analytics.totalAmount || 0)}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-primary-600">Total Purchases</p>
-                            <p className="text-sm font-bold text-blue-700">{analytics.totalCount || 0}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-primary-600">Total Items</p>
-                            <p className="text-sm font-bold text-primary-700">{analytics.totalItems || 0}</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-primary-600">Avg Per Purchase</p>
-                            <p className="text-sm font-bold text-orange-600">
-                              {formatCurrency(analytics.totalCount > 0 ? (analytics.totalAmount / analytics.totalCount) : 0)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-sm text-primary-500 text-center py-8">No supplier data available</div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Filters Section */}
-        <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm mb-4 p-3 sm:p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-primary-800 flex items-center">
-                <Filter className="h-4 w-4 mr-2" />
-                Filters & Search
-              </h3>
-              {filterPeriod !== 'all' && (
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">
-                  {filterPeriod === 'today' && 'Today'}
-                  {filterPeriod === 'yesterday' && 'Yesterday'}
-                  {filterPeriod === 'week' && 'This Week'}
-                  {filterPeriod === 'lastWeek' && 'Last Week'}
-                  {filterPeriod === 'month' && 'This Month'}
-                  {filterPeriod === 'custom' && 'Custom Range'}
-                </span>
-              )}
-              {statusFilter && statusFilter !== 'all' && (
-                <button
-                  onClick={() => { setCurrentPage(1); setStatusFilter('all') }}
-                  className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium hover:bg-amber-200 flex items-center gap-1"
-                >
-                  Status: {statusFilter} <X className="h-3 w-3" />
-                </button>
-              )}
-              {loading && (
-                <span className="flex items-center gap-1 text-blue-600 text-xs">
-                  <div className="animate-spin h-3 w-3 border-2 border-primary-600 border-t-transparent rounded-full"></div>
-                  Loading...
-                </span>
-              )}
-            </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="text-xs sm:text-sm px-2 sm:px-3 py-1 bg-lime-100 hover:bg-lime-200 border border-lime-300 rounded"
-            >
-              {showFilters ? 'Hide' : 'Show'} Filters
-            </button>
-          </div>
-
-          {showFilters && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-              {/* Period Filter */}
-              <div>
-                <label className="block text-xs font-medium text-primary-700 mb-1">Period</label>
-                <select
-                  className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
-                  value={filterPeriod}
-                  onChange={(e) => setFilterPeriod(e.target.value)}
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="week">This Week</option>
-                  <option value="lastWeek">Last Week</option>
-                  <option value="month">This Month</option>
-                  <option value="custom">Custom Range</option>
-                </select>
-              </div>
-
-              {/* Custom Date Range */}
-              {filterPeriod === 'custom' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-medium text-primary-700 mb-1">Start Date</label>
-                    <input
-                      type="date"
-                      className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-primary-700 mb-1">End Date</label>
-                    <input
-                      type="date"
-                      className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Supplier Search */}
-              <div>
-                <label className="block text-xs font-medium text-primary-700 mb-1">Supplier Name</label>
-                <input
-                  type="text"
-                  placeholder="Search supplier..."
-                  className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
-                  value={supplierSearch}
-                  onChange={(e) => setSupplierSearch(e.target.value)}
-                />
-              </div>
-
-              {/* Category Filter */}
-              <div>
-                <label className="block text-xs font-medium text-primary-700 mb-1">Category</label>
-                <select
-                  className="w-full px-2 py-1.5 text-xs border-2 border-lime-300 rounded"
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                  <option value="">All Categories</option>
-                  <option value="Inventory">Inventory</option>
-                  <option value="Supplies">Supplies</option>
-                  <option value="Equipment">Equipment</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              {/* Export CSV */}
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleExportCsv}
-                  disabled={exportingCsv}
-                  className="w-full px-2 py-1.5 text-xs bg-green-100 hover:bg-green-200 border border-green-300 rounded text-green-700 font-medium flex items-center justify-center gap-1 disabled:opacity-50"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {exportingCsv ? 'Exporting…' : 'Export CSV'}
-                </button>
-              </div>
-
-              {/* Clear Filters */}
-              <div className="flex items-end">
-                <button
-                  onClick={() => {
-                    setCurrentPage(1)
-                    setFilterPeriod('all')
-                    setStartDate('')
-                    setEndDate('')
-                    setSupplierSearch('')
-                    setCategoryFilter('')
-                    setStatusFilter('all')
-                  }}
-                  className="w-full px-2 py-1.5 text-xs bg-red-100 hover:bg-red-200 border border-red-300 rounded text-red-700 font-medium"
-                >
-                  Clear All Filters
-                </button>
-              </div>
+          {filterPeriod === 'custom' && (
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <label className="text-xs font-medium text-neutral-500">From
+                <input type="date" aria-label="From" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              </label>
+              <label className="text-xs font-medium text-neutral-500">To
+                <input type="date" aria-label="To" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </label>
             </div>
           )}
+          {loading && <p className="mt-2 text-xs text-neutral-500">Loading…</p>}
         </div>
+
+        {pendingSummary && (
+          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending') }} aria-pressed={statusFilter === 'pending'} className={`min-h-11 rounded-md border px-3 text-left md:min-h-9 ${statusFilter === 'pending' ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}>
+              <span className="block text-xs text-neutral-500">Pending</span>
+              <span className="block text-sm font-semibold tabular-nums text-amber-800">{formatCurrency(pendingSummary.totalPendingToPay ?? 0)}</span>
+            </button>
+            {statusChip('unpaid', 'Unpaid', pendingSummary.unpaidCount ?? 0)}
+            {statusChip('partial', 'Partial', pendingSummary.partialCount ?? 0)}
+            {statusChip('paid', 'Paid', pendingSummary.paidCount ?? 0)}
+            {statusChip('overdue', 'Overdue', pendingSummary.overdueCount ?? 0)}
+          </div>
+        )}
 
         {/* Purchase Form - Tally Style - mobile: single column, no horizontal scroll */}
         {showForm && (
           <div ref={formRef} className={`${tallyVoucherShellClass} shadow-lg`}>
-            <div className="flex items-center justify-between mb-3 sm:mb-4 border-b-2 border-lime-400 pb-2">
+            <div className="flex items-center justify-between mb-3 sm:mb-4 border-b-2 border-neutral-200 pb-2">
               <h2 className="text-base sm:text-lg font-bold text-primary-800">
                 {editingPurchase ? 'Edit Purchase Entry' : 'New Purchase Entry'}
               </h2>
@@ -1318,7 +866,7 @@ const PurchasesPage = () => {
                     onFocus={() => supplierSuggestions.length > 0 && setShowSupplierSuggestions(true)}
                   />
                   {showSupplierSuggestions && supplierSuggestions.length > 0 && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border-2 border-lime-300 rounded shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-20 mt-1 w-full bg-white border-2 border-neutral-200 rounded shadow-lg max-h-48 overflow-y-auto">
                       {supplierSuggestions.map((name, i) => {
                         const label = typeof name === 'string' ? name : (name?.name || String(name))
                         const pickSupplier = (ev) => {
@@ -1333,7 +881,7 @@ const PurchasesPage = () => {
                           <button
                             key={`${label}-${i}`}
                             type="button"
-                            className="block w-full text-left px-3 py-2 hover:bg-lime-50 text-sm"
+                            className="block w-full text-left px-3 py-2 hover:bg-neutral-50 text-sm"
                             onMouseDown={pickSupplier}
                             onClick={pickSupplier}
                           >
@@ -1356,7 +904,7 @@ const PurchasesPage = () => {
                 isOpen={mobileVoucherSection === 'invoice'}
                 onToggle={toggleVoucherSection}
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[11rem_11rem_minmax(0,1fr)_minmax(0,1fr)]">
                   <div>
                     <label className={tallyLabelClass}>Invoice No *</label>
                     <input type="text" required className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
@@ -1395,7 +943,7 @@ const PurchasesPage = () => {
                       type="checkbox"
                       checked={formData.isTaxClaimable !== false}
                       onChange={(e) => setFormData({ ...formData, isTaxClaimable: e.target.checked })}
-                      className="rounded border-lime-400 text-green-600 focus:ring-green-500"
+                      className="rounded border-neutral-200 text-green-600 focus:ring-green-500"
                     />
                     <span className="text-sm font-medium text-primary-700">Tax claimable (ITC)</span>
                     <span className="text-xs text-primary-500" title="Include input VAT in VAT Return Box 9b">Include in VAT Return</span>
@@ -1407,9 +955,9 @@ const PurchasesPage = () => {
               {formData.supplierName.trim() && supplierBalance != null && (
                 <div className="mb-4 sm:mb-6 p-3 bg-amber-50 rounded-lg border-2 border-amber-200">
                   <h3 className="text-sm font-bold text-amber-800 mb-2">Supplier Balance</h3>
-                  <p className="text-sm text-amber-800">Current due: AED {(supplierBalance?.netPayable || 0).toFixed(2)}</p>
+                  <p className="text-sm text-amber-800">Current due: {formatCurrency(supplierBalance?.netPayable || 0)}</p>
                   <p className="text-sm text-amber-700 mt-1">
-                    After this purchase: AED {((supplierBalance?.netPayable || 0) + (calculateTotal() * (1 + vatPercent / 100))).toFixed(2)}
+                    After this purchase: {formatCurrency((supplierBalance?.netPayable || 0) + (calculateTotal() * (1 + vatPercent / 100)))}
                   </p>
                 </div>
               )}
@@ -1439,11 +987,11 @@ const PurchasesPage = () => {
                 </div>
 
                 {showProductSearch && products.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full max-w-md bg-white border-2 border-lime-300 rounded shadow-lg max-h-64 overflow-y-auto">
+                  <div className="absolute z-10 mt-1 w-full max-w-md bg-white border-2 border-neutral-200 rounded shadow-lg max-h-64 overflow-y-auto">
                     {products.map((product) => (
                       <div
                         key={product.id}
-                        className="p-2 border-b border-lime-200 hover:bg-lime-50 cursor-pointer"
+                        className="p-2 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer"
                         onClick={() => addItem(product)}
                       >
                         <div className="flex justify-between">
@@ -1452,7 +1000,7 @@ const PurchasesPage = () => {
                             <p className="text-xs text-primary-500">SKU: {product.sku}</p>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm font-medium">AED {product.costPrice?.toFixed(2) || '0.00'}</p>
+                            <p className="text-sm font-medium">{formatCurrency(product.costPrice || 0)}</p>
                             <p className="text-xs text-primary-500">Stock: {product.stockQty}</p>
                           </div>
                         </div>
@@ -1463,12 +1011,12 @@ const PurchasesPage = () => {
 
               {/* Items - Mobile: vertical cards (no horizontal scroll); Desktop: table */}
               <div className="mb-4 w-full max-w-full mt-4">
-                <div className="bg-lime-100 p-2 border-b-2 border-lime-400">
+                <div className="bg-neutral-50 p-2 border-b-2 border-neutral-200">
                   <h3 className="text-sm font-bold text-primary-800">Items</h3>
                 </div>
 
                 {/* Mobile: compact cards per item */}
-                <div className="md:hidden space-y-2 max-h-[320px] overflow-y-auto border-2 border-lime-300 border-t-0 rounded-b-lg p-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="md:hidden space-y-2 max-h-[320px] overflow-y-auto border-2 border-neutral-200 border-t-0 rounded-b-lg p-2" style={{ WebkitOverflowScrolling: 'touch' }}>
                   {formData.items.length === 0 ? (
                     <p className="text-center text-primary-500 text-sm py-4">No items. Search and add products above.</p>
                   ) : (
@@ -1479,7 +1027,7 @@ const PurchasesPage = () => {
                       const vat = subtotal * (vatPercent / 100)
                       const total = subtotal + vat
                       return (
-                        <div key={index} className="bg-lime-50 rounded-lg border border-lime-300 p-3">
+                        <div key={index} className="bg-neutral-50 rounded-lg border border-neutral-200 p-3">
                           <div className="flex justify-between items-start gap-2">
                             <div className="min-w-0 flex-1">
                               <p className="font-medium text-primary-800 text-sm truncate">{item.productName}</p>
@@ -1492,11 +1040,11 @@ const PurchasesPage = () => {
                           <div className="grid grid-cols-2 gap-2 mt-2">
                             <div>
                               <label className="text-xs text-primary-500">Qty</label>
-                              <input type="number" min="0" step="0.01" className="w-full px-2 py-1 border border-lime-300 rounded text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
+                              <input type="number" min="0" step="0.01" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit</label>
-                              <select className="w-full px-2 py-1 border border-lime-300 rounded text-xs uppercase" value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
+                              <select className="w-full px-2 py-1 border border-neutral-200 rounded text-xs uppercase" value={item.unitType || 'PCS'} onChange={(e) => updateItem(index, 'unitType', e.target.value)}>
                                 <option value="PCS">PCS</option>
                                 <option value="CRTN">CRTN</option>
                                 <option value="KG">KG</option>
@@ -1507,12 +1055,12 @@ const PurchasesPage = () => {
                               </select>
                             </div>
                             <div>
-                              <label className="text-xs text-primary-500">Unit cost (AED)</label>
-                              <input type="number" min="0" step="0.01" className="w-full px-2 py-1 border border-lime-300 rounded text-sm" value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
+                              <label className="text-xs text-primary-500">Unit cost</label>
+                              <input type="number" min="0" step="0.01" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>
-                              <span className="text-sm font-bold text-green-700">AED {total.toFixed(2)}</span>
+                              <span className="text-sm font-bold text-green-700">{formatCurrency(total)}</span>
                             </div>
                           </div>
                         </div>
@@ -1520,25 +1068,25 @@ const PurchasesPage = () => {
                     })
                   )}
                   {formData.items.length > 0 && (
-                    <div className="pt-2 border-t border-lime-300 mt-2">
+                    <div className="pt-2 border-t border-neutral-200 mt-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-primary-600">Subtotal</span>
-                        <span className="font-medium">AED {calculateTotal().toFixed(2)}</span>
+                        <span className="font-medium">{formatCurrency(calculateTotal())}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-orange-600">VAT ({vatPercent}%)</span>
-                        <span className="font-medium text-orange-600">AED {(calculateTotal() * (vatPercent / 100)).toFixed(2)}</span>
+                        <span className="font-medium text-orange-600">{formatCurrency(calculateTotal() * (vatPercent / 100))}</span>
                       </div>
                       <div className="flex justify-between text-base font-bold text-green-700 mt-1">
                         <span>Total</span>
-                        <span>AED {(calculateTotal() * (1 + vatPercent / 100)).toFixed(2)}</span>
+                        <span>{formatCurrency(calculateTotal() * (1 + vatPercent / 100))}</span>
                       </div>
                       <label className="flex items-center gap-2 mt-2 text-sm text-primary-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formData.isTaxClaimable !== false}
                           onChange={(e) => setFormData({ ...formData, isTaxClaimable: e.target.checked })}
-                          className="rounded border-lime-400 text-green-600"
+                          className="rounded border-neutral-200 text-green-600"
                         />
                         <span>Tax claimable (ITC) – include in VAT Return Box 9b</span>
                       </label>
@@ -1547,17 +1095,17 @@ const PurchasesPage = () => {
                 </div>
 
                 {/* Desktop: table */}
-                <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[400px] w-full max-w-full border-2 border-lime-300 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[400px] w-full max-w-full border-2 border-neutral-200 border-t-0 rounded-b-lg" style={{ WebkitOverflowScrolling: 'touch' }}>
                   <table className="w-full text-xs border-collapse min-w-[640px]">
-                    <thead className="bg-lime-100 sticky top-0 z-10">
+                    <thead className="bg-neutral-50 sticky top-0 z-10">
                       <tr>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">SL</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">Description</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">Unit</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">Qty</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">Unit Cost</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">Subtotal</th>
-                        <th className="px-2 py-2 border-r border-lime-300 text-left">VAT ({vatPercent}%)</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">SL</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">Description</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">Unit</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">Qty</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">Unit Cost</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">Subtotal</th>
+                        <th className="px-2 py-2 border-r border-neutral-200 text-left">VAT ({vatPercent}%)</th>
                         <th className="px-2 py-2 text-left">Total</th>
                         <th className="px-2 py-2 text-center">Action</th>
                       </tr>
@@ -1571,17 +1119,17 @@ const PurchasesPage = () => {
                         </tr>
                       ) : (
                         formData.items.map((item, index) => (
-                          <tr key={index} className="hover:bg-lime-50">
-                            <td className="px-2 py-2 border-r border-lime-200 text-center">{index + 1}</td>
-                            <td className="px-2 py-2 border-r border-lime-200">
+                          <tr key={index} className="hover:bg-neutral-50">
+                            <td className="px-2 py-2 border-r border-neutral-100 text-center">{index + 1}</td>
+                            <td className="px-2 py-2 border-r border-neutral-100">
                               <div>
                                 <p className="font-medium">{item.productName}</p>
                                 <p className="text-primary-500">{item.sku}</p>
                               </div>
                             </td>
-                            <td className="px-2 py-2 border-r border-lime-200">
+                            <td className="px-2 py-2 border-r border-neutral-100">
                               <select
-                                className="w-full px-1 py-1 border border-lime-300 rounded text-xs uppercase"
+                                className="w-full min-h-11 px-1 border border-neutral-200 rounded text-sm uppercase md:min-h-9"
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateItem(index, 'unitType', e.target.value)}
                               >
@@ -1599,51 +1147,45 @@ const PurchasesPage = () => {
                                 <option value="MTR">MTR</option>
                               </select>
                             </td>
-                            <td className="px-2 py-2 border-r border-lime-200">
+                            <td className="px-2 py-2 border-r border-neutral-100">
                               <input
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="w-20 px-1 py-1 border border-lime-300 rounded text-xs"
+                                className="w-20 min-h-11 md:min-h-9 px-1 border border-neutral-200 rounded text-sm"
                                 value={item.qty === '' ? '' : item.qty}
                                 onChange={(e) => updateItem(index, 'qty', e.target.value)}
                               />
                             </td>
-                            <td className="px-2 py-2 border-r border-lime-200">
+                            <td className="px-2 py-2 border-r border-neutral-100">
                               <input
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="w-20 px-1 py-1 border border-lime-300 rounded text-xs"
+                                className="w-20 min-h-11 md:min-h-9 px-1 border border-neutral-200 rounded text-sm"
                                 value={item.unitCost === '' ? '' : item.unitCost}
                                 onChange={(e) => updateItem(index, 'unitCost', e.target.value)}
                               />
                             </td>
-                            <td className="px-2 py-2 border-r border-lime-200 text-primary-600">
-                              AED {(() => {
+                            <td className="px-2 py-2 border-r border-neutral-100 text-primary-600">
+                              {(() => {
                                 const qty = typeof item.qty === 'number' ? item.qty : 0
                                 const cost = typeof item.unitCost === 'number' ? item.unitCost : 0
-                                const subtotal = qty * cost
-                                return subtotal.toFixed(2)
+                                return formatCurrency(qty * cost)
                               })()}
                             </td>
-                            <td className="px-2 py-2 border-r border-lime-200 text-orange-600">
-                              AED {(() => {
+                            <td className="px-2 py-2 border-r border-neutral-100 text-orange-600">
+                              {(() => {
                                 const qty = typeof item.qty === 'number' ? item.qty : 0
                                 const cost = typeof item.unitCost === 'number' ? item.unitCost : 0
-                                const subtotal = qty * cost
-                                const vat = subtotal * (vatPercent / 100)
-                                return vat.toFixed(2)
+                                return formatCurrency(qty * cost * (vatPercent / 100))
                               })()}
                             </td>
                             <td className="px-2 py-2 font-bold text-green-700">
-                              AED {(() => {
+                              {(() => {
                                 const qty = typeof item.qty === 'number' ? item.qty : 0
                                 const cost = typeof item.unitCost === 'number' ? item.unitCost : 0
-                                const subtotal = qty * cost
-                                const vat = subtotal * (vatPercent / 100)
-                                const total = subtotal + vat
-                                return total.toFixed(2)
+                                return formatCurrency(qty * cost * (1 + vatPercent / 100))
                               })()}
                             </td>
                             <td className="px-2 py-2 text-center">
@@ -1659,17 +1201,17 @@ const PurchasesPage = () => {
                         ))
                       )}
                     </tbody>
-                    <tfoot className="bg-lime-100">
+                    <tfoot className="bg-neutral-50">
                       <tr>
-                        <td colSpan="5" className="px-2 py-2 text-right font-bold border-r border-lime-300">Totals:</td>
-                        <td className="px-2 py-2 font-bold text-primary-700 border-r border-lime-300">
-                          AED {calculateTotal().toFixed(2)}
+                        <td colSpan="5" className="px-2 py-2 text-right font-bold border-r border-neutral-200">Totals:</td>
+                        <td className="px-2 py-2 font-bold text-primary-700 border-r border-neutral-200">
+                          {formatCurrency(calculateTotal())}
                         </td>
-                        <td className="px-2 py-2 font-bold text-orange-600 border-r border-lime-300">
-                          AED {(calculateTotal() * (vatPercent / 100)).toFixed(2)}
+                        <td className="px-2 py-2 font-bold text-orange-600 border-r border-neutral-200">
+                          {formatCurrency(calculateTotal() * (vatPercent / 100))}
                         </td>
                         <td className="px-2 py-2 font-bold text-green-700">
-                          AED {(calculateTotal() * (1 + vatPercent / 100)).toFixed(2)}
+                          {formatCurrency(calculateTotal() * (1 + vatPercent / 100))}
                         </td>
                         <td></td>
                       </tr>
@@ -1680,8 +1222,8 @@ const PurchasesPage = () => {
               </VoucherSection>
 
               {/* (6) Totals - shown in items table foot; (7) Actions - sticky on mobile above BottomNav */}
-              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-lime-300 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-lime-300 rounded text-base font-medium hover:bg-lime-50">Cancel</button>
+              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
+                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
                   <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}
                 </button>
@@ -1691,8 +1233,8 @@ const PurchasesPage = () => {
         )}
 
         {/* Purchases List */}
-        <div className="bg-white rounded-lg border-2 border-lime-300 shadow-sm w-full overflow-hidden">
-          <div className="p-3 sm:p-4 border-b-2 border-lime-400 bg-lime-100">
+        <div className="bg-white rounded-lg border-2 border-neutral-200 shadow-sm w-full overflow-hidden">
+          <div className="p-3 sm:p-4 border-b-2 border-neutral-200 bg-neutral-50">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold text-primary-800">Purchase List</h3>
               <div className="flex flex-wrap items-center gap-2">
@@ -1725,20 +1267,20 @@ const PurchasesPage = () => {
               {/* Desktop Table - scroll contained, no page overflow */}
               <div className="hidden md:block overflow-x-auto max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full text-xs min-w-[700px]">
-                  <thead className="bg-lime-100">
+                  <thead className="bg-neutral-50">
                     <tr>
-                      <th className="px-3 py-2 border-r border-lime-300 text-left">Invoice No</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-left">Supplier</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-left">Date</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right">Subtotal</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right">VAT ({vatPercent}%)</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-center" title="VAT Return: Tax claimable (ITC)">ITC</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right">Total</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right" title="Vendor discount / ledger credits">V.Disc</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right">Paid</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-right">Balance</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-center">Status</th>
-                      <th className="px-3 py-2 border-r border-lime-300 text-center">Items</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-left">Invoice No</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-left">Supplier</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-left">Date</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right">Subtotal</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right">VAT ({vatPercent}%)</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-center" title="VAT Return: Tax claimable (ITC)">ITC</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right">Total</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right" title="Vendor discount / ledger credits">V.Disc</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right">Paid</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-right">Balance</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-center">Status</th>
+                      <th className="px-3 py-2 border-r border-neutral-200 text-center">Items</th>
                       <th className="px-3 py-2 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -1773,20 +1315,20 @@ const PurchasesPage = () => {
                       </tr>
                     ) : (
                       purchases.map((purchase) => (
-                        <tr key={purchase.id} className="hover:bg-lime-50">
+                        <tr key={purchase.id} className="hover:bg-neutral-50">
                           <td className="px-3 py-2 font-medium">{purchase.invoiceNo}</td>
                           <td className="px-3 py-2">{purchase.supplierName}</td>
                           <td className="px-3 py-2">{new Date(purchase.purchaseDate).toLocaleDateString('en-GB')}</td>
                           <td className="px-3 py-2 text-right">
                             {purchase.subtotal ? (
-                              <span className="text-primary-700">AED {purchase.subtotal.toFixed(2)}</span>
+                              <span className="text-primary-700">{formatCurrency(purchase.subtotal)}</span>
                             ) : (
                               <span className="text-primary-400 text-xs">-</span>
                             )}
                           </td>
                           <td className="px-3 py-2 text-right">
                             {purchase.vatTotal ? (
-                              <span className="text-orange-600 font-medium">AED {purchase.vatTotal.toFixed(2)}</span>
+                              <span className="text-orange-600 font-medium">{formatCurrency(purchase.vatTotal)}</span>
                             ) : (
                               <span className="text-primary-400 text-xs">-</span>
                             )}
@@ -1798,12 +1340,12 @@ const PurchasesPage = () => {
                               {(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right font-bold text-green-700">AED {purchase.totalAmount.toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right font-bold text-green-700">{formatCurrency(purchase.totalAmount)}</td>
                           <td className="px-3 py-2 text-right text-purple-600">
-                            {(purchase.vendorDiscountAmount ?? 0) > 0 ? `AED ${purchase.vendorDiscountAmount.toFixed(2)}` : <span className="text-primary-400">-</span>}
+                            {(purchase.vendorDiscountAmount ?? 0) > 0 ? formatCurrency(purchase.vendorDiscountAmount) : <span className="text-primary-400">-</span>}
                           </td>
-                          <td className="px-3 py-2 text-right text-primary-600">AED {(purchase.paidAmount ?? 0).toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right font-medium text-amber-700">AED {(purchase.balanceAmount ?? purchase.totalAmount ?? 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-right text-primary-600">{formatCurrency(purchase.paidAmount ?? 0)}</td>
+                          <td className="px-3 py-2 text-right font-medium text-amber-700">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                               (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
@@ -1817,25 +1359,25 @@ const PurchasesPage = () => {
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
                           <td className="px-3 py-2">
                             <div className="flex flex-wrap justify-center gap-1">
-                              {(['Unpaid', 'Partial'].includes(purchase.paymentStatus || '') && (
+                              {(canPayPurchase(purchase) && (
                                 <button
-                                  onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}?recordPayment=1&amount=${purchase.balanceAmount ?? purchase.totalAmount}&ref=${encodeURIComponent(purchase.invoiceNo || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                                  className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
-                                  title={`Pay AED ${(purchase.balanceAmount ?? purchase.totalAmount ?? 0).toFixed(2)}`}
+                                  onClick={() => openPay(purchase)}
+                                  className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                                  title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
                                 >
-                                  <DollarSign className="h-3.5 w-3.5" /> Pay
+                                  <CreditCard className="h-3.5 w-3.5" /> Pay
                                 </button>
                               ))}
                               <button
                                 onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                                className="bg-primary-50 text-primary-600 hover:bg-primary-600 hover:text-white border border-primary-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
+                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
                                 title="Supplier Ledger (full page)"
                               >
                                 <Eye className="h-3.5 w-3.5" /> Ledger
                               </button>
                               <button
                                 onClick={() => handleEditPurchase(purchase)}
-                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
                                 title="Edit Purchase"
                                 aria-label="Edit Purchase"
                               >
@@ -1844,7 +1386,7 @@ const PurchasesPage = () => {
                               </button>
                               <button
                                 onClick={() => handleDeletePurchase(purchase)}
-                                className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700 md:min-h-9"
                                 title="Delete Purchase"
                                 aria-label="Delete Purchase"
                               >
@@ -1900,14 +1442,20 @@ const PurchasesPage = () => {
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div>
-                            <p className="text-sm font-semibold text-primary-800">{purchase.supplierName}</p>
-                            <p className="text-xs text-primary-500">#{purchase.invoiceNo}</p>
+                            <p className="text-sm font-semibold text-neutral-900">{purchase.invoiceNo}</p>
+                            <p className="text-xs text-neutral-500">{purchase.supplierName}</p>
+                            <p className="text-xs text-neutral-500">{formatDate(purchase.purchaseDate)}</p>
+                            <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
+                              (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
+                              (purchase.paymentStatus || '').toLowerCase() === 'partial' || (purchase.paymentStatus || '').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>{purchase.paymentStatus || 'Unpaid'}</span>
                           </div>
                           <p className="text-base font-bold text-primary-800">{formatCurrency(purchase.totalAmount || 0)}</p>
                         </div>
-                        <div className="flex items-center justify-between text-xs text-primary-500 mt-2">
-                          <span>{formatDate(purchase.purchaseDate)}</span>
-                          <span>{purchase.items?.length || 0} item(s) {isExpanded ? '▲' : '▼'}</span>
+                        <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
+                          <span>{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)} due</span>
+                          <span>{isExpanded ? 'Hide' : 'View'}</span>
                         </div>
                       </button>
                       {isExpanded && purchase.items?.length > 0 && (
@@ -1916,7 +1464,7 @@ const PurchasesPage = () => {
                           {purchase.items.map((item, idx) => (
                             <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 text-xs py-1">
                               <span className="text-primary-700 min-w-0 break-words">{item.productName || item.product?.nameEn || 'Item'}</span>
-                              <span>{item.qty} × AED {(item.unitCost || 0).toFixed(2)} = AED {((item.qty || 0) * (item.unitCost || 0)).toFixed(2)}</span>
+                              <span>{item.qty} × {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
                             </div>
                           ))}
                         </div>
@@ -1959,25 +1507,25 @@ const PurchasesPage = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
-                        {['Unpaid', 'Partial'].includes(purchase.paymentStatus || '') && (
+                        {canPayPurchase(purchase) && (
                           <button
-                            onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}?recordPayment=1&amount=${purchase.balanceAmount ?? purchase.totalAmount}&ref=${encodeURIComponent(purchase.invoiceNo || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                            className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
-                            title={`Pay AED ${(purchase.balanceAmount ?? purchase.totalAmount ?? 0).toFixed(2)}`}
+                            onClick={() => openPay(purchase)}
+                            className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                            title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
                           >
-                            <DollarSign className="h-3.5 w-3.5" /> Pay
+                            <CreditCard className="h-3.5 w-3.5" /> Pay
                           </button>
                         )}
                         <button
                           onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                          className="bg-primary-50 text-primary-600 hover:bg-primary-600 hover:text-white border border-primary-300 px-2 py-1 rounded text-xs font-medium flex items-center gap-1"
+                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
                           title="Supplier Ledger"
                         >
                           <Eye className="h-3.5 w-3.5" /> Ledger
                         </button>
                         <button
                           onClick={() => handleEditPurchase(purchase)}
-                          className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
                           title="Edit Purchase"
                         >
                           <Edit className="h-3.5 w-3.5" />
@@ -1985,7 +1533,7 @@ const PurchasesPage = () => {
                         </button>
                         <button
                           onClick={() => handleDeletePurchase(purchase)}
-                          className="bg-red-50 text-red-600 hover:bg-red-600 hover:text-white border border-red-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
+                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700 md:min-h-9"
                           title="Delete Purchase"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -2001,11 +1549,11 @@ const PurchasesPage = () => {
           )}
 
           {totalPages > 1 && (
-            <div className="p-4 border-t border-lime-300 flex justify-center space-x-2">
+            <div className="p-4 border-t border-neutral-200 flex justify-center space-x-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1 border border-lime-300 rounded text-xs disabled:opacity-50"
+                className="px-3 py-1 border border-neutral-200 rounded text-xs disabled:opacity-50"
               >
                 Previous
               </button>
@@ -2015,10 +1563,39 @@ const PurchasesPage = () => {
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 border border-lime-300 rounded text-xs disabled:opacity-50"
+                className="px-3 py-1 border border-neutral-200 rounded text-xs disabled:opacity-50"
               >
                 Next
               </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 rounded-lg border border-neutral-200 bg-white p-3">
+          <h2 className="mb-2 text-sm font-semibold text-neutral-900">This period</h2>
+          {!analytics || !analytics.totalCount ? (
+            <p className="text-sm text-neutral-500">No purchases in this period</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div>
+                <p className="mb-2 text-xs font-medium text-neutral-500">Daily trend</p>
+                <div className="flex h-24 items-end gap-1">
+                  {(analytics.dailyStats || []).map((d, i) => (
+                    <div key={i} className="flex-1 rounded-sm bg-neutral-400" style={{ height: `${Math.max(8, ((d.totalAmount || 0) / Math.max(...(analytics.dailyStats || []).map((x) => x.totalAmount || 0), 1)) * 100)}%` }} title={formatCurrency(d.totalAmount || 0)} />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-medium text-neutral-500">Top suppliers</p>
+                <ul className="space-y-1">
+                  {(analytics.supplierStats || []).slice(0, 5).map((s, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate">{s.supplierName}</span>
+                      <span className="tabular-nums">{formatCurrency(s.totalAmount || 0)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>

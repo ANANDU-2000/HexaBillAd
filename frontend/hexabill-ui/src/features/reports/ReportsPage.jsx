@@ -18,7 +18,6 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
   ChevronRight,
   Users,
   MapPin,
@@ -186,34 +185,36 @@ const ReportsPage = () => {
   const hasInitialLoadRef = useRef(false) // Track if initial load has happened
   const initialLoadTimeoutRef = useRef(null) // Timeout for initial load
   const tabDataCacheRef = useRef({}) // Lazy load: cache loaded tab data keyed by tab+params to avoid refetch on tab switch
-  const reportsTabsRef = useRef(null) // Tab nav scroll container for left/right buttons
 
   const { user } = useAuth()
 
   const tabs = [
-    { id: 'summary', name: 'Summary', shortLabel: 'Summary', icon: BarChart3 },
-    { id: 'sales', name: 'Sales Report', shortLabel: 'Sales', icon: TrendingUp },
-    { id: 'products', name: 'Product Analysis', shortLabel: 'Product', icon: PieChart },
-    { id: 'customers', name: 'Customer Report', shortLabel: 'Customers', icon: FileText },
-    { id: 'overdue', name: 'Overdue accounts', shortLabel: 'Overdue', icon: AlertTriangle },
-    { id: 'expenses', name: 'Expenses', shortLabel: 'Expenses', icon: TrendingDown },
-    { id: 'branch', name: 'Branch Report', shortLabel: 'Branch', icon: Building2 },
-    { id: 'route', name: 'Route Report', shortLabel: 'Route', icon: MapPin },
-    { id: 'aging', name: 'Customer Aging', shortLabel: 'Aging', icon: Clock },
-    { id: 'ap-aging', name: 'AP Aging', shortLabel: 'AP Aging', icon: Truck, adminOnly: true },
-    { id: 'profit-loss', name: 'Profit & Loss', shortLabel: 'P&L', icon: TrendingUp, adminOnly: true },
-    { id: 'branch-profit', name: 'Branch Profit', shortLabel: 'Branch P&L', icon: Building2, adminOnly: true },
-    { id: 'outstanding', name: 'Outstanding Bills', shortLabel: 'Outstanding', icon: DollarSign },
-    { id: 'returns', name: 'Sales Returns', shortLabel: 'Returns', icon: RotateCcw },
-    { id: 'damage', name: 'Damage Report', shortLabel: 'Damage', icon: AlertTriangle },
-    { id: 'credit-notes', name: 'Credit Note Report', shortLabel: 'Credit Notes', icon: FileText },
-    { id: 'net-sales', name: 'Net Sales Report', shortLabel: 'Net Sales', icon: TrendingUp },
-    { id: 'collections', name: 'Collections (with phone)', shortLabel: 'Collections', icon: Phone },
-    { id: 'cheque', name: 'Cheque Report', shortLabel: 'Cheque', icon: ShieldCheck, adminOnly: true },
-    { id: 'staff', name: 'Staff Performance', shortLabel: 'Staff', icon: Users, adminOnly: true },
-    { id: 'ai', name: 'AI Insights', shortLabel: 'AI', icon: Eye, adminOnly: true }
+    { id: 'summary', name: 'Summary', shortLabel: 'Summary', icon: BarChart3, group: 'Sales' },
+    { id: 'sales', name: 'Sales Report', shortLabel: 'Sales', icon: TrendingUp, group: 'Sales' },
+    { id: 'products', name: 'Product Analysis', shortLabel: 'Product', icon: PieChart, group: 'Sales' },
+    { id: 'net-sales', name: 'Net Sales Report', shortLabel: 'Net sales', icon: TrendingUp, group: 'Sales' },
+    { id: 'returns', name: 'Sales Returns', shortLabel: 'Returns', icon: RotateCcw, group: 'Sales' },
+    { id: 'customers', name: 'Customer Report', shortLabel: 'Customers', icon: FileText, group: 'Receivables' },
+    { id: 'overdue', name: 'Overdue accounts', shortLabel: 'Overdue', icon: AlertTriangle, group: 'Receivables' },
+    { id: 'aging', name: 'Customer Aging', shortLabel: 'Aging', icon: Clock, group: 'Receivables' },
+    { id: 'outstanding', name: 'Outstanding Bills', shortLabel: 'Outstanding', icon: DollarSign, group: 'Receivables' },
+    { id: 'collections', name: 'Collections (with phone)', shortLabel: 'Collections', icon: Phone, group: 'Receivables' },
+    { id: 'credit-notes', name: 'Credit Note Report', shortLabel: 'Credit notes', icon: FileText, group: 'Receivables' },
+    { id: 'expenses', name: 'Expenses', shortLabel: 'Expenses', icon: TrendingDown, group: 'Payables' },
+    { id: 'ap-aging', name: 'AP Aging', shortLabel: 'AP aging', icon: Truck, adminOnly: true, group: 'Payables' },
+    { id: 'branch', name: 'Branch Report', shortLabel: 'Branch', icon: Building2, group: 'Operations' },
+    { id: 'route', name: 'Route Report', shortLabel: 'Route', icon: MapPin, group: 'Operations' },
+    { id: 'branch-profit', name: 'Branch Profit', shortLabel: 'Branch P&L', icon: Building2, adminOnly: true, group: 'Operations' },
+    { id: 'damage', name: 'Damage Report', shortLabel: 'Damage', icon: AlertTriangle, group: 'Operations' },
+    { id: 'staff', name: 'Staff Performance', shortLabel: 'Staff', icon: Users, adminOnly: true, group: 'Operations' },
+    { id: 'cheque', name: 'Cheque Report', shortLabel: 'Cheque', icon: ShieldCheck, adminOnly: true, group: 'Operations' },
+    { id: 'profit-loss', name: 'Profit & Loss', shortLabel: 'P&L', icon: TrendingUp, adminOnly: true, group: 'Company' },
+    { id: 'ai', name: 'AI Insights', shortLabel: 'AI', icon: Eye, adminOnly: true, group: 'Company' }
   ].filter(tab => !tab.adminOnly || isAdminOrOwner(user))
     .filter((tab) => tab.id !== 'ai' || REPORTS_AI_INSIGHTS_ENABLED)
+  const tabGroups = ['Sales', 'Receivables', 'Payables', 'Operations', 'Company']
+    .map((label) => ({ label, tabs: tabs.filter((tab) => tab.group === label) }))
+    .filter((group) => group.tabs.length > 0)
 
   // Update URL when tab changes (with debouncing to prevent request flood)
   const handleTabChange = (tabId) => {
@@ -383,7 +384,26 @@ const ReportsPage = () => {
       }
 
       // Fetch data based on active tab
-      if (activeTab === 'sales') {
+      if (activeTab === 'summary') {
+        try {
+          const expensesResponse = await reportsAPI.getExpensesByCategory({
+            fromDate: dateRange.from,
+            toDate: `${dateRange.to}T23:59:59`,
+            branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
+          })
+          if (expensesResponse?.success && expensesResponse?.data) {
+            const expenses = (expensesResponse.data || []).map((e, index) => ({
+              categoryId: e.categoryId ?? e.CategoryId ?? e.id ?? index,
+              categoryName: e.categoryName ?? e.CategoryName ?? e.name ?? e.Name ?? 'Uncategorized',
+              totalAmount: Number(e.totalAmount ?? e.TotalAmount ?? e.amount ?? e.Amount ?? 0)
+            })).filter((row) => row.totalAmount > 0)
+              .sort((a, b) => b.totalAmount - a.totalAmount)
+            setReportData(prev => ({ ...prev, expenses }))
+          }
+        } catch {
+          setReportData(prev => ({ ...prev, expenses: [] }))
+        }
+      } else if (activeTab === 'sales') {
         setLoadingSales(true)
         try {
           const salesResponse = await reportsAPI.getSalesReport({
@@ -544,7 +564,7 @@ const ReportsPage = () => {
 
           const expensesResponse = await reportsAPI.getExpensesByCategory({
             fromDate: dateRange.from,
-            toDate: dateRange.to,
+            toDate: `${dateRange.to}T23:59:59`,
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined
           })
 
@@ -1409,52 +1429,32 @@ const ReportsPage = () => {
         </div>
       </div>
 
-      {/* Tabs — full width, scrollable with visible affordance (scrollbar + arrows) */}
+      {/* Report groups wrap. No horizontal tab strip. */}
       <div className="bg-white rounded-lg border border-[#E5E7EB] w-full">
-        <div className="px-2 sm:px-4 py-2 w-full flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => reportsTabsRef.current?.scrollBy({ left: -200, behavior: 'smooth' })}
-            className="flex-shrink-0 p-1.5 rounded-md text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#334155] transition-colors"
-            aria-label="Scroll tabs left"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <nav
-            ref={reportsTabsRef}
-            className="flex gap-2 overflow-x-auto pb-1 -mx-1 w-full min-w-0"
-            role="tablist"
-            aria-label="Report sections; scroll horizontally for more tabs"
-          >
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              const active = activeTab === tab.id
-              const label = tab.shortLabel || tab.name
-              return (
-                <button
-                  key={tab.id}
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`flex-shrink-0 flex items-center gap-1.5 py-2 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-medium whitespace-nowrap transition-all duration-150 ${active
-                    ? 'bg-primary-600 text-white shadow-sm'
-                    : 'text-[#475569] bg-[#F8FAFC] border border-[#E5E7EB] hover:bg-primary-50 hover:border-primary-200 hover:text-primary-700'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  <span>{label}</span>
-                </button>
-              )
-            })}
-          </nav>
-          <button
-            type="button"
-            onClick={() => reportsTabsRef.current?.scrollBy({ left: 200, behavior: 'smooth' })}
-            className="flex-shrink-0 p-1.5 rounded-md text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#334155] transition-colors"
-            aria-label="Scroll tabs right"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
+        <div className="px-3 sm:px-4 py-3 space-y-3">
+          {tabGroups.map((group) => (
+            <div key={group.label} className="flex flex-wrap items-center gap-2">
+              <span className="w-full text-xs font-semibold text-[#64748B] sm:w-auto sm:min-w-[6.5rem]">{group.label}</span>
+              {group.tabs.map((tab) => {
+                const active = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => handleTabChange(tab.id)}
+                    className={`min-h-9 rounded-full px-3 text-sm font-medium ${active
+                      ? 'bg-primary-600 text-white'
+                      : 'border border-[#E5E7EB] bg-[#F8FAFC] text-[#475569] hover:border-primary-200 hover:text-primary-700'
+                    }`}
+                  >
+                    {tab.shortLabel || tab.name}
+                  </button>
+                )
+              })}
+            </div>
+          ))}
         </div>
 
         <div className="p-6">
@@ -1530,20 +1530,25 @@ const ReportsPage = () => {
                     </ResponsiveContainer>
                   ) : (
                     <div className="flex items-center justify-center h-64 text-gray-500">
-                      No sales data available for the selected period
+                      No sales in this date range
                     </div>
                   )}
                 </div>
 
                 <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown</h3>
-                  {reportData.summary.totalExpenses > 0 ? (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
-                      Expense breakdown chart coming soon
-                    </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense breakdown</h3>
+                  {reportData.expenses?.length > 0 ? (
+                    <ul className="space-y-2">
+                      {reportData.expenses.slice(0, 8).map((row) => (
+                        <li key={row.categoryId} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="truncate text-gray-800">{row.categoryName}</span>
+                          <span className="shrink-0 font-semibold tabular-nums text-gray-900">{formatCurrency(row.totalAmount)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
-                      No expense data available
+                    <div className="flex items-center justify-center h-32 text-gray-500">
+                      {(reportData.summary?.totalExpenses || 0) > 0 ? 'Category totals are not available' : 'No expenses in this date range'}
                     </div>
                   )}
                 </div>

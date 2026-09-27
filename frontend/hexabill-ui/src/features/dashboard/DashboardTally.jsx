@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
     ShoppingCart, Truck, FileText, Wallet, BarChart3,
     ChevronRight, RefreshCw, CheckCircle, X,
@@ -33,17 +33,17 @@ const num = (value) => {
 const surfaceClass = 'rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)]'
 const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2'
 
-const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading }) => {
+const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading, emphasis = false }) => {
     const body = (
         <>
             <div className="flex items-start justify-between gap-2">
                 <p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p>
-                <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--text-tertiary)]" strokeWidth={2} aria-hidden />
+                <Icon className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" strokeWidth={2} aria-hidden />
             </div>
             {loading ? (
                 <div className="mt-2 h-7 w-28 animate-pulse rounded bg-[var(--bg-elevated)]" aria-hidden />
             ) : (
-                <p className={`mt-1 text-2xl font-semibold tabular-nums ${valueClass}`}>{formatCurrency(value)}</p>
+                <p className={`mt-1 font-semibold tabular-nums leading-none ${emphasis ? 'text-[28px]' : 'text-[22px]'} ${valueClass}`}>{formatCurrency(value)}</p>
             )}
             {helper ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{helper}</p> : null}
         </>
@@ -62,17 +62,26 @@ const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick
     )
 }
 
-const AttentionRow = ({ label, detail, tone = 'warning', onClick }) => {
-    const accent = tone === 'danger' ? 'var(--error)' : tone === 'info' ? 'var(--primary)' : 'var(--warning)'
+const AttentionRow = ({ label, count, unit, amount, action, tone = 'warning', onClick }) => {
+    const accent = tone === 'danger' ? 'var(--error)' : tone === 'info' ? 'var(--info)' : 'var(--warning)'
     const labelClass = tone === 'danger' ? 'text-[var(--error)]' : tone === 'info' ? 'text-[var(--text-primary)]' : 'text-[var(--warning)]'
-    const className = `flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-left ${onClick ? `transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none ${focusClass}` : ''}`
+    const className = `flex min-h-11 w-full items-start justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 py-3 text-left ${onClick ? `transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none ${focusClass}` : ''}`
     const inner = (
         <>
             <span className="min-w-0">
-                <span className={`block text-sm font-medium ${labelClass}`}>{label}</span>
-                <span className="block text-xs text-[var(--text-secondary)] tabular-nums">{detail}</span>
+                <span className={`block text-sm font-semibold ${labelClass}`}>{label}</span>
+                {count != null ? (
+                    <span className="mt-1 block text-[28px] font-semibold leading-none tabular-nums text-[var(--text-primary)]">{count}</span>
+                ) : null}
+                {unit ? <span className="mt-1 block text-xs text-[var(--text-secondary)]">{unit}</span> : null}
+                {amount ? <span className="mt-1 block text-sm font-semibold tabular-nums text-[var(--text-primary)]">{amount}</span> : null}
+                {action ? (
+                    <span className="mt-2 inline-flex items-center gap-0.5 text-xs font-medium text-primary-700">
+                        {action}
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                ) : null}
             </span>
-            {onClick ? <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" aria-hidden /> : null}
         </>
     )
     if (!onClick) {
@@ -89,12 +98,27 @@ const DashboardTally = () => {
     const { user } = useAuth()
     const { branches } = useBranchesRoutes()
     const navigate = useNavigate()
+    const [searchParams, setSearchParams] = useSearchParams()
     const [refreshing, setRefreshing] = useState(true)
     const [hasFigures, setHasFigures] = useState(false)
     const [summaryError, setSummaryError] = useState(false)
-    const [dateRange, setDateRange] = useState('today')
-    const [customFromDate, setCustomFromDate] = useState('')
-    const [customToDate, setCustomToDate] = useState('')
+    const periodKey = user?.id ? `hb_dash_period_${user.id}` : null
+    const allowedPeriod = ['today', 'week', 'month', 'custom']
+    const urlPeriod = searchParams.get('period')
+    const readStoredPeriod = () => {
+        if (!periodKey || typeof sessionStorage === 'undefined') return null
+        try {
+            const stored = JSON.parse(sessionStorage.getItem(periodKey) || 'null')
+            if (!stored || !allowedPeriod.includes(stored.period)) return null
+            return stored
+        } catch {
+            return null
+        }
+    }
+    const storedPeriod = allowedPeriod.includes(urlPeriod) ? null : readStoredPeriod()
+    const dateRange = allowedPeriod.includes(urlPeriod) ? urlPeriod : (storedPeriod?.period || 'today')
+    const customFromDate = dateRange === 'custom' ? (searchParams.get('from') || storedPeriod?.from || '') : ''
+    const customToDate = dateRange === 'custom' ? (searchParams.get('to') || storedPeriod?.to || '') : ''
     const [selectedBranchId, setSelectedBranchId] = useState(null)
     const availableBranches = branches || []
     const [setupStatus, setSetupStatus] = useState(null)
@@ -325,15 +349,50 @@ const DashboardTally = () => {
         try { localStorage.setItem(GET_STARTED_DISMISSED_KEY, 'true') } catch { /* storage unavailable */ }
     }
 
-    const selectCustom = () => {
-        if (dateRange !== 'custom') {
-            const today = new Date()
-            const weekAgo = new Date(today)
-            weekAgo.setDate(today.getDate() - 6)
-            setCustomFromDate(localDateString(weekAgo))
-            setCustomToDate(localDateString(today))
+    const applyPeriod = (period, from = '', to = '') => {
+        const next = new URLSearchParams(searchParams)
+        if (!period || period === 'today') {
+            next.delete('period')
+            next.delete('from')
+            next.delete('to')
+        } else {
+            next.set('period', period)
+            if (period === 'custom') {
+                if (from) next.set('from', from)
+                else next.delete('from')
+                if (to) next.set('to', to)
+                else next.delete('to')
+            } else {
+                next.delete('from')
+                next.delete('to')
+            }
         }
-        setDateRange('custom')
+        if (periodKey) {
+            try {
+                sessionStorage.setItem(periodKey, JSON.stringify({
+                    period: period || 'today',
+                    from: period === 'custom' ? from : '',
+                    to: period === 'custom' ? to : ''
+                }))
+            } catch { /* storage unavailable */ }
+        }
+        setSearchParams(next, { replace: true })
+    }
+
+    useLayoutEffect(() => {
+        if (!periodKey || searchParams.get('period')) return
+        const stored = readStoredPeriod()
+        if (!stored || stored.period === 'today') return
+        applyPeriod(stored.period, stored.from || '', stored.to || '')
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [periodKey])
+
+    const selectCustom = () => {
+        if (dateRange === 'custom') return
+        const today = new Date()
+        const weekAgo = new Date(today)
+        weekAgo.setDate(today.getDate() - 6)
+        applyPeriod('custom', localDateString(weekAgo), localDateString(today))
     }
 
     const periodChip = (active) =>
@@ -361,16 +420,22 @@ const DashboardTally = () => {
         attention.push({
             key: 'overdue',
             label: 'Overdue',
-            detail: `${stats.overdueCustomersCount} customers · ${formatCurrency(stats.overdueAmountTotal)}`,
-            tone: 'warning',
-            onClick: canOpenReports ? () => navigate('/reports?tab=overdue') : undefined
+            count: stats.overdueCustomersCount,
+            unit: 'customers',
+            amount: formatCurrency(stats.overdueAmountTotal),
+            action: canOpenReports ? 'View outstanding' : undefined,
+            tone: 'danger',
+            onClick: canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined
         })
     }
     if (canShow('pendingAmount') !== false && (stats.pendingBills > 0 || stats.pendingBillsAmount > 0)) {
         attention.push({
             key: 'unpaid',
             label: 'Unpaid bills',
-            detail: `${stats.pendingBills} bills · ${formatCurrency(stats.pendingBillsAmount)}`,
+            count: stats.pendingBills,
+            unit: 'bills',
+            amount: formatCurrency(stats.pendingBillsAmount),
+            action: canOpenReports ? 'Review unpaid' : undefined,
             tone: 'warning',
             onClick: canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined
         })
@@ -379,8 +444,10 @@ const DashboardTally = () => {
         attention.push({
             key: 'stock',
             label: 'Low stock',
-            detail: `${stats.lowStockCount} items`,
-            tone: 'danger',
+            count: stats.lowStockCount,
+            unit: 'items',
+            action: canOpenProducts ? 'View products' : undefined,
+            tone: 'warning',
             onClick: canOpenProducts ? () => navigate('/products?tab=lowStock') : undefined
         })
     }
@@ -388,7 +455,8 @@ const DashboardTally = () => {
         attention.push({
             key: 'damage',
             label: 'Damage',
-            detail: formatCurrency(stats.damageLossToday),
+            count: formatCurrency(stats.damageLossToday),
+            unit: 'lost this period',
             tone: 'danger'
         })
     }
@@ -396,7 +464,9 @@ const DashboardTally = () => {
         attention.push({
             key: 'vat',
             label: 'VAT estimate',
-            detail: `${formatCurrency(stats.netVatPayablePeriod)}. Estimate. File on VAT Return.`,
+            count: formatCurrency(stats.netVatPayablePeriod),
+            unit: 'Estimate. File on VAT Return.',
+            action: 'Open VAT return',
             tone: 'info',
             onClick: () => navigate('/vat-return')
         })
@@ -421,12 +491,12 @@ const DashboardTally = () => {
     return (
         <div className={`${mobilePageShellClass} max-w-[1600px] space-y-4`}>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <h1 className="hidden text-xl font-semibold text-[var(--text-primary)] md:block">Dashboard</h1>
+                <h1 className="sr-only">Dashboard</h1>
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-                        <button type="button" onClick={() => setDateRange('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
-                        <button type="button" onClick={() => setDateRange('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
-                        <button type="button" onClick={() => setDateRange('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
+                        <button type="button" onClick={() => applyPeriod('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
+                        <button type="button" onClick={() => applyPeriod('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
+                        <button type="button" onClick={() => applyPeriod('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
                         <button type="button" onClick={selectCustom} className={periodChip(dateRange === 'custom')} aria-pressed={dateRange === 'custom'}>Custom</button>
                     </div>
                     {!isAdminOrOwner(user) && availableBranches.length > 1 && (
@@ -458,7 +528,7 @@ const DashboardTally = () => {
                     <input
                         type="date"
                         value={customFromDate}
-                        onChange={(e) => setCustomFromDate(e.target.value)}
+                        onChange={(e) => applyPeriod('custom', e.target.value, customToDate)}
                         aria-label="From"
                         className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
                     />
@@ -466,7 +536,7 @@ const DashboardTally = () => {
                     <input
                         type="date"
                         value={customToDate}
-                        onChange={(e) => setCustomToDate(e.target.value)}
+                        onChange={(e) => applyPeriod('custom', customFromDate, e.target.value)}
                         aria-label="To"
                         className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
                     />
@@ -522,6 +592,7 @@ const DashboardTally = () => {
                         value={stats.netSalesToday}
                         helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
                         icon={DollarSign}
+                        emphasis
                         loading={showSkeleton}
                     />
                 )}
@@ -549,6 +620,8 @@ const DashboardTally = () => {
                         label="Receivables"
                         value={stats.pendingBillsAmount}
                         icon={Wallet}
+                        emphasis
+                        valueClass={stats.pendingBillsAmount > 0 ? 'text-[var(--warning)]' : ''}
                         loading={showSkeleton}
                         onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
                     />
@@ -560,11 +633,20 @@ const DashboardTally = () => {
             <section className="space-y-2">
                 <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
                 {attention.length === 0 ? (
-                    <p className="text-sm text-[var(--text-secondary)]">Nothing needs attention in this period.</p>
+                    <p className="text-sm text-[var(--text-secondary)]">All clear. Nothing needs attention in this period.</p>
                 ) : (
-                    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                         {attention.map((row) => (
-                            <AttentionRow key={row.key} label={row.label} detail={row.detail} tone={row.tone} onClick={row.onClick} />
+                            <AttentionRow
+                                key={row.key}
+                                label={row.label}
+                                count={row.count}
+                                unit={row.unit}
+                                amount={row.amount}
+                                action={row.action}
+                                tone={row.tone}
+                                onClick={row.onClick}
+                            />
                         ))}
                     </div>
                 )}

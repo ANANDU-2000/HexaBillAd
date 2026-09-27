@@ -62,6 +62,7 @@ const CustomerLedgerPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   // Keep URL customerId only until initial deep-link hydrate finishes — never resurrect after user clears/searches
   const preserveUrlCustomerIdRef = useRef(Boolean(searchParams.get('customerId')))
+  const ignoreUrlCustomerRef = useRef(false)
   const [loading, setLoading] = useState(true)
   const [paymentLoading, setPaymentLoading] = useState(false) // Separate loading state for payment submission
   const [customerLoading, setCustomerLoading] = useState(false) // Separate loading state for customer creation
@@ -233,10 +234,7 @@ const CustomerLedgerPage = () => {
 
   /** Leave customer ledger view; invalidate in-flight loads. Shared by Back + search. */
   const clearSelectedCustomer = useCallback((options = {}) => {
-    if (selectedCustomerIdRef.current == null) {
-      if (!options.keepSearch) setSearchTerm('')
-      return
-    }
+    ignoreUrlCustomerRef.current = true
     preserveUrlCustomerIdRef.current = false
     ledgerLoadSeqRef.current += 1
     ledgerLoadInProgressRef.current = null
@@ -423,6 +421,10 @@ const CustomerLedgerPage = () => {
   // Load customer from URL parameter (deep-link). Do not overwrite a newer intentional selection.
   useEffect(() => {
     const customerIdParam = searchParams.get('customerId')
+    if (ignoreUrlCustomerRef.current) {
+      if (!customerIdParam) ignoreUrlCustomerRef.current = false
+      return
+    }
     if (!customerIdParam) {
       preserveUrlCustomerIdRef.current = false
       return
@@ -2047,19 +2049,10 @@ const CustomerLedgerPage = () => {
                   clearSelectedCustomer({ keepSearch: false })
                   return
                 }
-                const returnTo = location.state?.returnTo
-                if (typeof returnTo === 'string' && returnTo.startsWith('/')) {
-                  navigate(returnTo)
-                  return
-                }
-                if (typeof window !== 'undefined' && window.history.length > 1) {
-                  navigate(-1)
-                  return
-                }
                 navigate('/customers')
               }}
               className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
-              title={selectedCustomer ? 'Back to customer list' : (location.state?.returnTo ? 'Back' : 'Back to Customers')}
+              title={selectedCustomer ? 'Back to customer list' : 'Back to Customers'}
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -2292,7 +2285,7 @@ const CustomerLedgerPage = () => {
           {selectedCustomer && (
             <>
               {/* Compact customer + balance + actions */}
-              <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 sm:px-4">
+              <div className="sticky top-0 z-20 shrink-0 bg-white border-b border-neutral-200 px-3 py-2 sm:px-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="min-w-0">
@@ -3759,26 +3752,21 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 
       {/* Ledger Table - Desktop - full width */}
       <div className="hidden md:flex bg-white flex-1 flex-col overflow-hidden min-w-0 min-h-0">
-        <div className="overflow-x-auto overflow-y-auto flex-1 min-w-0">
-          <div className="overflow-x-auto w-full">
-            <table className="w-full min-w-[1000px] divide-y divide-neutral-200 text-sm">
+        <div className="overflow-y-auto flex-1 min-w-0">
+            <table className="w-full divide-y divide-neutral-200 text-sm">
               <thead className="bg-neutral-100 sticky top-0 z-10 border-b border-neutral-300">
                 <tr>
-                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Date</th>
-                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Type</th>
-                <th className="px-2 py-1.5 text-left text-[10px] font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-200">Invoice No</th>
-                <th className="px-3 py-2.5 text-left text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Payment Mode</th>
-                <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Debit (AED)</th>
-                <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Credit (AED)</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Status</th>
-                <th className="px-3 py-2.5 text-right text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">Balance</th>
-                <th className="px-3 py-2.5 text-center text-xs font-bold text-neutral-700 uppercase whitespace-nowrap">Actions</th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-neutral-700">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-bold text-neutral-700">Particulars</th>
+                <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Debit</th>
+                <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Credit</th>
+                <th className="px-3 py-2 text-right text-xs font-bold text-neutral-700">Balance</th>
                 </tr>
               </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
               {displayedEntries.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-4 py-8 text-center text-neutral-500">
+                  <td colSpan="5" className="px-4 py-8 text-center text-neutral-500">
                     No transactions found
                   </td>
                 </tr>
@@ -3807,74 +3795,24 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       ? 'bg-green-50 hover:bg-green-100'
                       : 'hover:bg-neutral-50'
 
-                  // CRITICAL: Inline statusColor calculation to prevent minifier conflicts
-                  // Calculate status color directly in JSX to avoid TDZ issues
-                  const getEntryStatusColor = () => {
-                    if (entryStatus === 'Paid') return 'bg-green-100 text-green-800'
-                    if (entryStatus === 'Partial') return 'bg-yellow-100 text-yellow-800'
-                    if (entryStatus === 'Unpaid') return 'bg-red-100 text-red-800'
-                    return ''
-                  }
-
                   return (
                     <tr key={idx} className={rowBgColor}>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-900 border-r border-neutral-200">
+                      <td className="px-3 py-2 align-top text-sm text-neutral-900 whitespace-nowrap">
                         {dateStr}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900 border-r border-neutral-200">
-                        {entry.type}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-semibold text-neutral-900 border-r border-neutral-200">
-                        {invoiceNo}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-600 border-r border-neutral-200">
-                        {entry.paymentMode || entry.PaymentMode || '-'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900 border-r border-neutral-200">
-                        {(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900 border-r border-neutral-200">
-                        {(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-center border-r border-neutral-200">
-                        {entryStatus !== '-' ? (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getEntryStatusColor()}`}>
-                            {entryStatus}
-                          </span>
-                        ) : (
-                          <span className="text-sm text-neutral-400">-</span>
-                        )}
-                      </td>
-                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold border-r border-neutral-200 ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'
-                        }`}>
-                        {formatBalance(Number(entry.balance) || 0)}
-                      </td>
-                      <td className="px-2 py-1.5 whitespace-nowrap text-center w-auto">
-                        {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
-                            className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
-                            title="Create return for this bill"
-                            aria-label="Create return"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                          </button>
-                        ) : entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (
-                          <button
-                            type="button"
-                            onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
-                            className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                            title="Print payment receipt"
-                            aria-label="Print payment receipt"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </button>
-                        ) : entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
-                          <div className="inline-flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={async () => {
+                      <td className="px-3 py-2 align-top text-sm text-neutral-900">
+                        <p className="font-medium">{entry.type} · {invoiceNo}</p>
+                        <p className="text-xs text-neutral-600">{entry.paymentMode || entry.PaymentMode || ''}{entryStatus !== '-' ? ` · ${entryStatus}` : ''}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
+                            <button type="button" onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })} className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2 text-xs font-medium text-amber-800" aria-label="Create return">Return</button>
+                          ) : null}
+                          {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (
+                            <button type="button" onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)} className="inline-flex min-h-9 items-center rounded-md bg-blue-100 px-2 text-xs font-medium text-blue-800" aria-label="Print payment receipt">Receipt</button>
+                          ) : null}
+                          {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
+                            <>
+                              <button type="button" onClick={async () => {
                                 try {
                                   const blob = await returnsAPI.getReturnBillPdf(entry.returnId ?? entry.ReturnId)
                                   const url = window.URL.createObjectURL(blob)
@@ -3885,43 +3823,25 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                                   a.click()
                                   window.URL.revokeObjectURL(url)
                                   document.body.removeChild(a)
-                                  toast.success('Return bill PDF downloaded')
                                 } catch (e) {
                                   if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                                 }
-                              }}
-                              className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
-                              title="View / download return bill PDF"
-                              aria-label="Return bill PDF"
-                            >
-                              <FileText className="h-4 w-4" />
-                            </button>
-                            {onDeleteReturn && (
-                              <button
-                                type="button"
-                                onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)}
-                                className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-red-100 text-red-800 rounded-lg hover:bg-red-200"
-                                title="Delete this return"
-                                aria-label="Delete return"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
-                            {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit && (
-                              <button
-                                type="button"
-                                onClick={() => onSettleCredit(entry)}
-                                className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-200"
-                                title="Apply credit to invoice or issue refund"
-                                aria-label="Settle credit"
-                              >
-                                <CreditCard className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-neutral-400">-</span>
-                        )}
+                              }} className="inline-flex min-h-9 items-center rounded-md bg-blue-100 px-2 text-xs font-medium text-blue-800">PDF</button>
+                              {onDeleteReturn ? <button type="button" onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)} className="inline-flex min-h-9 items-center rounded-md bg-red-100 px-2 text-xs font-medium text-red-800">Delete</button> : null}
+                              {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit ? <button type="button" onClick={() => onSettleCredit(entry)} className="inline-flex min-h-9 items-center rounded-md bg-emerald-100 px-2 text-xs font-medium text-emerald-800">Settle</button> : null}
+                            </>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
+                        {(Number(entry.debit) || 0) > 0 ? formatCurrency(Number(entry.debit) || 0) : '-'}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
+                        {(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}
+                      </td>
+                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'
+                        }`}>
+                        {formatBalance(Number(entry.balance) || 0)}
                       </td>
                     </tr>
                   )
@@ -3931,7 +3851,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             {hasMore && (
               <tfoot className="bg-neutral-50 border-t border-neutral-200">
                 <tr>
-                  <td colSpan="9" className="px-4 py-3 text-center">
+                  <td colSpan="5" className="px-4 py-3 text-center">
                     <button
                       onClick={handleLoadMore}
                       className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
@@ -3947,27 +3867,21 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             )}
             <tfoot className="bg-neutral-100 sticky bottom-0 border-t-2 border-neutral-300">
               <tr>
-                <td colSpan="4" className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900 border-r border-neutral-300">
-                  CLOSING BALANCE:
+                <td colSpan="2" className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900">
+                  Closing
                 </td>
-                <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900 border-r border-neutral-300">
+                <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900">
                   {formatCurrency(Number(totalDebit) || 0)}
                 </td>
-                <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900 border-r border-neutral-300">
+                <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900">
                   {formatCurrency(Number(totalCredit) || 0)}
                 </td>
-                <td className="px-3 py-2.5 text-center text-sm font-bold text-neutral-900 border-r border-neutral-300">
-                  -
-                </td>
-                <td className={`px-3 py-2.5 text-right text-sm font-bold border-r border-neutral-300 ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'
-                  }`}>
+                <td className={`px-3 py-2.5 text-right text-sm font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
                   {formatBalance(Number(closingBalance) || 0)}
                 </td>
-                <td className="px-3 py-2.5 text-center text-sm font-bold">-</td>
               </tr>
             </tfoot>
           </table>
-          </div>
         </div>
       </div>
 

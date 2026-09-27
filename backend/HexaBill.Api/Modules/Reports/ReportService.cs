@@ -1758,10 +1758,9 @@ namespace HexaBill.Api.Modules.Reports
                                          TotalAmount = g.Sum(x => x.e.Amount),
                                          ExpenseCount = g.Count()
                                      })
-                                     .OrderByDescending(x => x.TotalAmount)
                                      .ToListAsync();
 
-                return expenses;
+                return expenses.OrderByDescending(x => x.TotalAmount).ToList();
             }
             catch (Exception ex)
             {

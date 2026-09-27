@@ -2,31 +2,16 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
-  Home,
-  Package,
-  ShoppingCart,
   Settings,
   LogOut,
-  Shield,
-  BarChart3,
-  Truck,
-  FileText,
-  BookOpen,
-  Receipt,
   User,
   ChevronDown,
-  Building2,
   Printer,
-  LayoutGrid,
   ChevronLeft,
   ChevronRight,
+  Menu,
   HelpCircle,
-  Archive,
-  History,
-  ClipboardList,
-  MoreHorizontal,
-  BadgeDollarSign,
-  Menu
+  MoreHorizontal
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
@@ -35,9 +20,10 @@ import AlertNotifications from './AlertNotifications'
 import CloudHostingCostReminder from './CloudHostingCostReminder'
 import { SubscriptionGraceBanner } from './SubscriptionGraceBanner'
 import { connectionManager } from '../services/connectionManager'
-import { isAdminOrOwner, isOwner } from '../utils/roles'
+import { isAdminOrOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../tenant/TenantBrandingContext'
+import { visibleSidebar, isItemActive } from '../navigation/moreMenuConfig'
 
 const Layout = () => {
   const { user, logout, impersonatedTenantId, stopImpersonation } = useAuth()
@@ -47,8 +33,19 @@ const Layout = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
+  const [groupOpen, setGroupOpen] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('sidebar_groups') || '{}')
+    } catch {
+      return {}
+    }
+  })
+  const [isDesktopNav, setIsDesktopNav] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  )
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [navTip, setNavTip] = useState(null)
   const closeMore = useCallback(() => setMoreOpen(false), [])
   const [backendUnavailable, setBackendUnavailable] = useState(() => !connectionManager.isConnected)
 
@@ -84,6 +81,14 @@ const Layout = () => {
   }, [location.pathname, closeMore])
 
   useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => setIsDesktopNav(media.matches)
+    onChange()
+    media.addEventListener('change', onChange)
+    return () => media.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
     const onKeyDown = (e) => {
       if (!(e.ctrlKey || e.metaKey) || e.key !== '\\') return
       const tag = e.target?.tagName?.toLowerCase()
@@ -114,32 +119,9 @@ const Layout = () => {
       const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!e.target?.isContentEditable
       if (inInput) return
 
-      const ctrlOrMeta = e.ctrlKey || e.metaKey
-      if (ctrlOrMeta) {
-        const key = (e.key || '').toLowerCase()
-        if (key === 's') {
-          e.preventDefault()
-          if (isAdminOrOwner(user)) navigate('/settings')
-          return
-        }
-        if (key === 'b') {
-          e.preventDefault()
-          if (isAdminOrOwner(user)) navigate('/backup')
-          return
-        }
-        if (key === 'u') {
-          e.preventDefault()
-          if (isAdminOrOwner(user)) navigate('/users')
-          return
-        }
-        return
-      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return
 
       switch (e.key) {
-        case 'F1':
-          e.preventDefault()
-          navigate('/products')
-          break
         case 'F3':
           e.preventDefault()
           navigate('/pos')
@@ -147,10 +129,6 @@ const Layout = () => {
         case 'F4':
           e.preventDefault()
           if (isAdminOrOwner(user)) navigate('/purchases')
-          break
-        case 'F5':
-          e.preventDefault()
-          navigate('/expenses')
           break
         case 'F7':
           e.preventDefault()
@@ -198,49 +176,24 @@ const Layout = () => {
     navigate('/superadmin/dashboard')
   }
 
-  // Tenant navigation - Order follows owner workflow: Dashboard → Branches & Routes → Users → Products → … (see OWNER_WORKFLOW.md)
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home },
-    ...(isAdminOrOwner(user) ? [{ name: 'Branches & Routes', href: '/branches', icon: LayoutGrid }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Users', href: '/users', icon: Shield }] : []),
-    { name: 'Products', href: '/products', icon: Package },
-    ...(isAdminOrOwner(user) ? [{ name: 'Purchases', href: '/purchases', icon: Truck }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Suppliers', href: '/suppliers', icon: Building2 }] : []),
-    { name: 'POS', href: '/pos', icon: ShoppingCart },
-    { name: 'Customer Ledger', href: '/ledger', icon: BookOpen },
-    { name: 'Sales Ledger', href: '/sales-ledger', icon: FileText },
-    ...(isAdminOrOwner(user) ? [
-        { name: 'Billing History', href: '/billing-history', icon: History }
-      ] : []),
-    { name: 'Quotations', href: '/quotations', icon: FileText },
-    { name: 'Agreements', href: '/agreements', icon: FileText },
-    { name: 'Salary Certificates', href: '/salary-certificates', icon: BadgeDollarSign },
-    { name: 'Delivery Notes', href: '/delivery-notes', icon: Package },
-    { name: 'Expenses', href: '/expenses', icon: Receipt },
-    ...(isAdminOrOwner(user) ? [{ name: 'Reports', href: '/reports', icon: BarChart3 }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'VAT Return', href: '/vat-return', icon: FileText }] : []),
-    ...(isOwner(user) ? [{ name: 'Worksheet', href: '/worksheet', icon: FileText }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Settings', href: '/settings', icon: Settings }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Activity log', href: '/audit', icon: ClipboardList }] : []),
-    ...(isAdminOrOwner(user) ? [{ name: 'Backup & Restore', href: '/backup', icon: Archive }] : []),
-    { name: 'More', href: '/more', icon: MoreHorizontal },
-    { name: 'Help & Support', href: '/help', icon: HelpCircle },
-  ]
+  const navGroups = visibleSidebar(user, { isImpersonating: !!selectedTenantId })
+  const labelsVisible = isDesktopNav && !isSidebarCollapsed
 
-  const isActive = (href) => {
-    if (location.pathname === href) return true
-    // VAT Return: dedicated page
-    if (href === '/vat-return' && location.pathname === '/vat-return') return true
-    // Keep Branches/ Routes nav active when on detail pages
-    if (href === '/branches' && (location.pathname.startsWith('/branches/') || location.pathname.startsWith('/routes/'))) return true
-    // Keep Suppliers nav active when on supplier detail
-    if (href === '/suppliers' && location.pathname.startsWith('/suppliers/')) return true
-    if (href === '/quotations' && location.pathname.startsWith('/quotations')) return true
-    if (href === '/agreements' && location.pathname.startsWith('/agreements')) return true
-    if (href === '/salary-certificates' && location.pathname.startsWith('/salary-certificates')) return true
-    if (href === '/delivery-notes' && location.pathname.startsWith('/delivery-notes')) return true
-    if (href === '/more' && location.pathname === '/more') return true
-    return false
+  const groupIsOpen = (group) => {
+    if (!labelsVisible) return true
+    const hasActive = group.items.some((item) => isItemActive(location.pathname, item))
+    if (hasActive) return true
+    if (group.defaultOpen) return groupOpen[group.id] !== false
+    return groupOpen[group.id] === true
+  }
+
+  const toggleGroup = (group) => {
+    setGroupOpen((prev) => {
+      const openNow = group.defaultOpen ? prev[group.id] !== false : prev[group.id] === true
+      const next = { ...prev, [group.id]: !openNow }
+      localStorage.setItem('sidebar_groups', JSON.stringify(next))
+      return next
+    })
   }
 
   // Route title shown in the compact mobile header
@@ -273,7 +226,8 @@ const Layout = () => {
     '/backup': 'Backup & Restore',
     '/profile': 'Profile',
     '/help': 'Help & Support',
-    '/returns/create': 'Create Return',
+    '/feedback': 'Feedback',
+    '/returns/create': 'Returns',
   }
   const getPageTitle = (pathname) => {
     if (pathname.startsWith('/products/')) return 'Product'
@@ -320,6 +274,12 @@ const Layout = () => {
     location.pathname.startsWith('/salary-certificates') ||
     location.pathname.startsWith('/delivery-notes')
 
+  const showNavTip = (event, label) => {
+    if (labelsVisible) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    setNavTip({ label, top: rect.top + rect.height / 2, left: rect.right + 8 })
+  }
+
   return (
     <div className="min-h-screen bg-neutral-50 overflow-x-hidden">
       {/* Skip Link */}
@@ -345,7 +305,7 @@ const Layout = () => {
 
       {/* Mobile Header — hidden on /pos for full-viewport cashier mode (use BottomNav) */}
       {!isPosRoute && (
-      <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+      <div className={`md:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex items-center justify-between px-2 py-2">
           <button
             type="button"
@@ -374,63 +334,131 @@ const Layout = () => {
       </div>
       )}
 
-      {/* Desktop sidebar - 240px per design system (Task 11) */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col lg:min-h-0 transition-all duration-200 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
-        <div className="flex flex-col flex-grow bg-primary-900 text-white border-r border-primary-800 min-h-screen overflow-hidden w-full">
-          <div className={`flex items-center border-b border-primary-800 px-2 py-2 shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
-            {!isSidebarCollapsed && (
-              <span className="text-sm font-semibold text-white truncate pl-2" title={companyName}>
+      {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
+      <div className={`hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
+        <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
+          <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
+            {labelsVisible ? (
+              <span className="truncate pl-2 text-sm font-semibold text-white" title={companyName}>
                 {companyName}
               </span>
+            ) : (
+              <Logo size="small" showText={false} className="!space-x-0" />
             )}
             <button
               type="button"
               onClick={toggleSidebar}
-              className="p-2 rounded-lg hover:bg-primary-800 text-primary-200 hover:text-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+              className="hidden min-h-9 min-w-9 items-center justify-center rounded-md text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white motion-reduce:transition-none lg:flex"
               title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
               aria-label={isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto min-h-0 scrollbar-hide">
-            {navigation.map((item) => {
-              const Icon = item.icon
+          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 py-2" aria-label="Main">
+            {navGroups.map((group, groupIndex) => {
+              const open = groupIsOpen(group)
               return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-md transition-colors min-h-[44px] ${isActive(item.href)
-                    ? 'bg-primary-600 text-white'
-                    : 'text-primary-200 hover:bg-primary-800 hover:text-white'
-                    }`}
-                  title={item.name}
-                  aria-label={item.name}
-                  aria-current={isActive(item.href) ? 'page' : undefined}
-                >
-                  <Icon className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
-                  {!isSidebarCollapsed && <span className="truncate">{item.name}</span>}
-                </Link>
+                <div key={group.id} className="space-y-0.5">
+                  {labelsVisible ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group)}
+                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-[11px] font-semibold uppercase tracking-wide text-primary-300 hover:text-white"
+                      aria-expanded={open}
+                    >
+                      <span className="truncate">{group.label}</span>
+                      <ChevronDown className={`h-3.5 w-3.5 shrink-0 transition-transform duration-150 motion-reduce:transition-none ${open ? '' : '-rotate-90'}`} aria-hidden />
+                    </button>
+                  ) : groupIndex > 0 ? (
+                    <div className="mx-2 border-t border-primary-800" aria-hidden />
+                  ) : null}
+                  {open && group.items.map((item) => {
+                    const Icon = item.icon
+                    const active = isItemActive(location.pathname, item)
+                    return (
+                      <Link
+                        key={item.id}
+                        to={item.href}
+                        className={`group/nav relative flex min-h-9 items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${
+                          active ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
+                        }`}
+                        aria-label={item.label}
+                        aria-current={active ? 'page' : undefined}
+                        onMouseEnter={(event) => showNavTip(event, item.label)}
+                        onMouseLeave={() => setNavTip(null)}
+                        onFocus={(event) => showNavTip(event, item.label)}
+                        onBlur={() => setNavTip(null)}
+                      >
+                        <Icon className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+                        {labelsVisible && <span className="truncate">{item.label}</span>}
+                      </Link>
+                    )
+                  })}
+                </div>
               )
             })}
+            <Link
+              to="/more"
+              className={`group/nav relative flex min-h-9 items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${
+                location.pathname === '/more' ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
+              }`}
+              aria-label="More"
+              aria-current={location.pathname === '/more' ? 'page' : undefined}
+              onMouseEnter={(event) => showNavTip(event, 'More')}
+              onMouseLeave={() => setNavTip(null)}
+              onFocus={(event) => showNavTip(event, 'More')}
+              onBlur={() => setNavTip(null)}
+            >
+              <MoreHorizontal className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+              {labelsVisible && <span className="truncate">More</span>}
+            </Link>
           </nav>
-          <div className="border-t border-primary-800 p-3">
+          <div className="shrink-0 space-y-1 border-t border-primary-800 p-2">
+            <Link
+              to="/profile"
+              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${location.pathname === '/profile' ? 'bg-primary-800 text-white' : ''}`}
+              aria-label="My profile"
+              aria-current={location.pathname === '/profile' ? 'page' : undefined}
+              onMouseEnter={(event) => showNavTip(event, user?.name || 'Profile')}
+              onMouseLeave={() => setNavTip(null)}
+              onFocus={(event) => showNavTip(event, user?.name || 'Profile')}
+              onBlur={() => setNavTip(null)}
+            >
+              <User className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+              {labelsVisible && <span className="truncate">{user?.name || 'Profile'}</span>}
+            </Link>
+            <Link
+              to="/help"
+              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
+              aria-label="Help"
+              onMouseEnter={(event) => showNavTip(event, 'Help')}
+              onMouseLeave={() => setNavTip(null)}
+              onFocus={(event) => showNavTip(event, 'Help')}
+              onBlur={() => setNavTip(null)}
+            >
+              <HelpCircle className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+              {labelsVisible && <span className="truncate">Help</span>}
+            </Link>
             <button
               type="button"
               onClick={logout}
-              className={`flex items-center w-full ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm text-primary-200 hover:text-white hover:bg-primary-800 rounded-md transition-colors min-h-[44px]`}
-              title="Logout"
-              aria-label="Logout"
+              className={`group/nav relative flex min-h-11 w-full items-center rounded-md text-sm text-red-200 transition-colors duration-150 hover:bg-red-950/40 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
+              aria-label="Log out"
+              onMouseEnter={(event) => showNavTip(event, 'Log out')}
+              onMouseLeave={() => setNavTip(null)}
+              onFocus={(event) => showNavTip(event, 'Log out')}
+              onBlur={() => setNavTip(null)}
             >
-              <LogOut className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
-              {!isSidebarCollapsed && <span>Logout</span>}
+              <LogOut className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+              {labelsVisible && <span>Log out</span>}
             </button>
           </div>
         </div>
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex flex-col min-h-screen w-full transition-all duration-200 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10 lg:pt-10' : ''}`}>
+      <div className={`flex min-h-screen w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
           <div className="px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
@@ -440,12 +468,12 @@ const Layout = () => {
         <CloudHostingCostReminder />
         {/* Top Header Bar — fully hidden on /pos for full-viewport cashier mode */}
         {!isPosRoute && (
-        <div className={`hidden lg:block fixed right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30 transition-all duration-200 ${isSidebarCollapsed ? 'left-20' : 'left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <div className={`fixed right-0 z-30 hidden h-16 border-b border-primary-800 bg-primary-900 text-white transition-all duration-150 motion-reduce:transition-none md:block md:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
               <Logo size="default" showText={false} className="flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <h1 className="text-base font-semibold text-white truncate">{companyName}</h1>
+                <p className="truncate text-base font-semibold text-white">{companyName}</p>
                 {mobilePageTitle && (
                   <p className="text-xs text-primary-200 truncate">{mobilePageTitle}</p>
                 )}
@@ -525,9 +553,9 @@ const Layout = () => {
         </div>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" className={`flex-1 w-full min-w-0 flex flex-col overflow-hidden pb-[4.75rem] lg:pb-6 bg-[#F8FAFC] ${userIsSystemAdmin && selectedTenantId
-          ? (isPosRoute ? 'pt-10' : 'pt-24 lg:pt-28')
-          : (isPosRoute ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] lg:pt-20')
+        <main id="main-content" className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] pb-[4.75rem] md:pb-6 ${userIsSystemAdmin && selectedTenantId
+          ? (isPosRoute ? 'pt-10' : 'pt-24 md:pt-[6.5rem]')
+          : (isPosRoute ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
@@ -536,11 +564,20 @@ const Layout = () => {
           </div>
         </main>
         {/* Mobile Bottom Navigation */}
-        <div className="lg:hidden">
+        <div className="md:hidden">
           <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} />
           <MoreMenuSheet open={moreOpen} onClose={closeMore} />
         </div>
       </div>
+      {navTip && (
+        <div
+          role="tooltip"
+          className="pointer-events-none fixed z-[70] -translate-y-1/2 whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white shadow-lg"
+          style={{ top: navTip.top, left: navTip.left }}
+        >
+          {navTip.label}
+        </div>
+      )}
     </div>
   )
 }

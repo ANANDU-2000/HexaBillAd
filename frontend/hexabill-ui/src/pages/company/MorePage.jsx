@@ -2,52 +2,21 @@ import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { visibleMoreMenu, isItemActive } from '../../navigation/moreMenuConfig'
 
-/** Already listed in the desktop sidebar (Layout.jsx navigation). */
-const SIDEBAR_HREFS = new Set([
-  '/dashboard',
-  '/branches',
-  '/users',
-  '/products',
-  '/purchases',
-  '/suppliers',
-  '/pos',
-  '/ledger',
-  '/sales-ledger',
-  '/billing-history',
-  '/quotations',
-  '/agreements',
-  '/salary-certificates',
-  '/delivery-notes',
-  '/expenses',
-  '/reports',
-  '/vat-return',
-  '/worksheet',
-  '/settings',
-  '/audit',
-  '/backup',
-  '/help',
-])
-
-/**
- * MorePage — desktop /more hub. The mobile sheet keeps the full menu.
- * This page only lists links the sidebar does not already show.
- * Sign out stays on the sidebar.
- */
+/** Desktop /more lists only routes that are not already in the sidebar or shell. */
 const MorePage = () => {
   const { user, impersonatedTenantId } = useAuth()
   const { pathname } = useLocation()
 
-  const groups = visibleMoreMenu(user, { isImpersonating: !!impersonatedTenantId })
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.href && !SIDEBAR_HREFS.has(item.href) && !item.action),
-    }))
-    .filter((group) => group.items.length > 0)
+  const groups = visibleMoreMenu(user, {
+    isImpersonating: !!impersonatedTenantId,
+    hideSidebar: true,
+    hideShell: true,
+  })
 
   return (
     <div className="p-4 md:p-6 max-w-lg mx-auto w-full">
-      <h1 className="text-h2 font-bold text-text-primary mb-1">More</h1>
-      <p className="text-sm text-text-secondary mb-6">Sections that are not already in the sidebar.</p>
+      <h1 className="text-xl font-semibold text-text-primary mb-1">More</h1>
+      <p className="text-sm text-text-secondary mb-6">Sections that are not in the sidebar.</p>
 
       {groups.length === 0 ? (
         <p className="text-sm text-text-secondary">No additional sections available for your role.</p>

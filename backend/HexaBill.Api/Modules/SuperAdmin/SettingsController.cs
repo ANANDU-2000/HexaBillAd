@@ -5,6 +5,8 @@
  * Date: 2024-12-24
  */
 
+using System.Text.Json.Nodes;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
@@ -23,13 +25,15 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private readonly ISuperAdminTenantService _tenantService;
         private readonly ILogger<SettingsController> _logger;
         private readonly AppDbContext _context;
+        private readonly ITimeZoneService _timeZoneService;
 
-        public SettingsController(ISettingsService settingsService, ISuperAdminTenantService tenantService, ILogger<SettingsController> logger, AppDbContext context)
+        public SettingsController(ISettingsService settingsService, ISuperAdminTenantService tenantService, ILogger<SettingsController> logger, AppDbContext context, ITimeZoneService timeZoneService)
         {
             _settingsService = settingsService;
             _tenantService = tenantService;
             _logger = logger;
             _context = context;
+            _timeZoneService = timeZoneService;
         }
 
         /// <summary>
@@ -270,7 +274,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
             [FromQuery] int pageSize = 20,
             [FromQuery] string? action = null,
             [FromQuery] DateTime? fromDate = null,
-            [FromQuery] DateTime? toDate = null)
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string? q = null,
+            [FromQuery] int? userId = null)
         {
             try
             {
@@ -278,32 +284,21 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 if (tenantId <= 0 && !IsSystemAdmin)
                     return Forbid();
 
+                if (!TryGetGstUtcRange(fromDate, toDate, out var fromUtc, out var toExclusiveUtc, out var dateError))
+                {
+                    return BadRequest(new ApiResponse<PagedResponse<TenantAuditLogDto>>
+                    {
+                        Success = false,
+                        Message = dateError ?? "From date must be on or before to date."
+                    });
+                }
+
                 if (page < 1) page = 1;
                 if (pageSize < 1) pageSize = 20;
                 if (pageSize > 100) pageSize = 100;
 
-                var query = _context.AuditLogs
-                    .Include(a => a.User)
-                    .AsQueryable();
-                query = query.Where(a => (a.TenantId != null && a.TenantId == tenantId) || (a.TenantId == null && a.OwnerId == tenantId));
-
-                if (!string.IsNullOrWhiteSpace(action))
-                {
-                    var actionFilter = action.Trim();
-                    query = query.Where(a => a.Action != null && a.Action.Contains(actionFilter));
-                }
-
-                if (fromDate.HasValue)
-                {
-                    var fromUtc = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
-                    query = query.Where(a => a.CreatedAt >= fromUtc);
-                }
-
-                if (toDate.HasValue)
-                {
-                    var toExclusive = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
-                    query = query.Where(a => a.CreatedAt < toExclusive);
-                }
+                var query = TenantAuditQuery(tenantId);
+                query = ApplyAuditFilters(query, action, q, userId, fromUtc, toExclusiveUtc);
 
                 var totalCount = await query.CountAsync();
                 var logs = await query
@@ -319,6 +314,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         CreatedAt = a.CreatedAt
                     })
                     .ToListAsync();
+
+                foreach (var log in logs)
+                    log.Details = MaskSensitiveJson(log.Details);
 
                 var result = new PagedResponse<TenantAuditLogDto>
                 {
@@ -337,14 +335,241 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting audit logs: {Message}", ex.Message);
+                _logger.LogError(ex, "Error getting audit logs");
                 return StatusCode(500, new ApiResponse<PagedResponse<TenantAuditLogDto>>
                 {
                     Success = false,
-                    Message = "An error occurred",
-                    Errors = new List<string> { ex.Message }
+                    Message = "Unable to load activity log."
                 });
             }
+        }
+
+        /// <summary>
+        /// Distinct users who appear in this tenant's activity log.
+        /// GET: api/settings/audit-logs/actors
+        /// </summary>
+        [HttpGet("audit-logs/actors")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<List<TenantAuditActorDto>>>> GetAuditActors()
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                    return Forbid();
+
+                var actors = await TenantAuditQuery(tenantId)
+                    .Where(a => a.User != null)
+                    .Select(a => new { a.UserId, Name = a.User.Name })
+                    .Distinct()
+                    .OrderBy(a => a.Name)
+                    .Select(a => new TenantAuditActorDto
+                    {
+                        UserId = a.UserId,
+                        UserName = a.Name ?? ""
+                    })
+                    .ToListAsync();
+
+                return Ok(new ApiResponse<List<TenantAuditActorDto>>
+                {
+                    Success = true,
+                    Message = "Activity users retrieved successfully",
+                    Data = actors
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit actors");
+                return StatusCode(500, new ApiResponse<List<TenantAuditActorDto>>
+                {
+                    Success = false,
+                    Message = "Unable to load activity users."
+                });
+            }
+        }
+
+        /// <summary>
+        /// One tenant activity row, including masked before/after values when stored.
+        /// GET: api/settings/audit-logs/{id}
+        /// </summary>
+        [HttpGet("audit-logs/{id:int}")]
+        [Authorize(Roles = "Admin,Owner,SystemAdmin")]
+        public async Task<ActionResult<ApiResponse<TenantAuditLogDetailDto>>> GetAuditLog(int id)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0 && !IsSystemAdmin)
+                    return Forbid();
+
+                var log = await TenantAuditQuery(tenantId)
+                    .Where(a => a.Id == id)
+                    .Select(a => new TenantAuditLogDetailDto
+                    {
+                        Id = a.Id,
+                        UserName = a.User.Name,
+                        Action = a.Action,
+                        Details = a.Details,
+                        CreatedAt = a.CreatedAt,
+                        EntityType = a.EntityType,
+                        OldValues = a.OldValues,
+                        NewValues = a.NewValues
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (log == null)
+                {
+                    return NotFound(new ApiResponse<TenantAuditLogDetailDto>
+                    {
+                        Success = false,
+                        Message = "Activity not found."
+                    });
+                }
+
+                log.Details = MaskSensitiveJson(log.Details);
+                log.OldValues = MaskSensitiveJson(log.OldValues);
+                log.NewValues = MaskSensitiveJson(log.NewValues);
+
+                return Ok(new ApiResponse<TenantAuditLogDetailDto>
+                {
+                    Success = true,
+                    Message = "Activity retrieved successfully",
+                    Data = log
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit log {AuditLogId}", id);
+                return StatusCode(500, new ApiResponse<TenantAuditLogDetailDto>
+                {
+                    Success = false,
+                    Message = "Unable to load this activity."
+                });
+            }
+        }
+
+        private IQueryable<AuditLog> TenantAuditQuery(int tenantId)
+        {
+            return _context.AuditLogs
+                .Where(a => (a.TenantId != null && a.TenantId == tenantId) || (a.TenantId == null && a.OwnerId == tenantId));
+        }
+
+        private static IQueryable<AuditLog> ApplyAuditFilters(
+            IQueryable<AuditLog> query,
+            string? action,
+            string? q,
+            int? userId,
+            DateTime? fromUtc,
+            DateTime? toExclusiveUtc)
+        {
+            if (!string.IsNullOrWhiteSpace(action))
+            {
+                var actionFilter = action.Trim().ToLower();
+                query = query.Where(a => a.Action != null && a.Action.ToLower().Contains(actionFilter));
+            }
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var term = q.Trim().ToLower();
+                query = query.Where(a =>
+                    (a.Action != null && a.Action.ToLower().Contains(term)) ||
+                    (a.Details != null && a.Details.ToLower().Contains(term)) ||
+                    (a.User != null && a.User.Name != null && a.User.Name.ToLower().Contains(term)));
+            }
+
+            if (userId.HasValue && userId.Value > 0)
+                query = query.Where(a => a.UserId == userId.Value);
+
+            if (fromUtc.HasValue)
+                query = query.Where(a => a.CreatedAt >= fromUtc.Value);
+
+            if (toExclusiveUtc.HasValue)
+                query = query.Where(a => a.CreatedAt < toExclusiveUtc.Value);
+
+            return query;
+        }
+
+        /// <summary>
+        /// Calendar dates are Gulf Standard Time days. CreatedAt is stored as real UTC.
+        /// </summary>
+        private bool TryGetGstUtcRange(DateTime? fromDate, DateTime? toDate, out DateTime? fromUtc, out DateTime? toExclusiveUtc, out string? error)
+        {
+            fromUtc = null;
+            toExclusiveUtc = null;
+            error = null;
+
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+            {
+                error = "From date must be on or before to date.";
+                return false;
+            }
+
+            if (fromDate.HasValue)
+            {
+                var gstStart = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Unspecified);
+                fromUtc = DateTime.SpecifyKind(_timeZoneService.ConvertToUtc(gstStart), DateTimeKind.Utc);
+            }
+
+            if (toDate.HasValue)
+            {
+                var gstEnd = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Unspecified);
+                toExclusiveUtc = DateTime.SpecifyKind(_timeZoneService.ConvertToUtc(gstEnd), DateTimeKind.Utc);
+            }
+
+            return true;
+        }
+
+        private static string? MaskSensitiveJson(string? raw)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) return raw;
+            var text = raw.Trim();
+            if (text.Length == 0 || (text[0] != '{' && text[0] != '[')) return raw;
+            try
+            {
+                var node = JsonNode.Parse(text);
+                if (node == null) return raw;
+                MaskNode(node);
+                return node.ToJsonString();
+            }
+            catch
+            {
+                return raw;
+            }
+        }
+
+        private static void MaskNode(JsonNode node)
+        {
+            if (node is JsonObject obj)
+            {
+                foreach (var key in obj.Select(p => p.Key).ToList())
+                {
+                    if (IsSensitiveKey(key))
+                    {
+                        obj[key] = "***";
+                        continue;
+                    }
+                    var child = obj[key];
+                    if (child != null) MaskNode(child);
+                }
+            }
+            else if (node is JsonArray arr)
+            {
+                foreach (var child in arr)
+                {
+                    if (child != null) MaskNode(child);
+                }
+            }
+        }
+
+        private static bool IsSensitiveKey(string key)
+        {
+            var n = key.Replace("_", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal).ToLowerInvariant();
+            return n.Contains("password", StringComparison.Ordinal)
+                || n.Contains("secret", StringComparison.Ordinal)
+                || n.Contains("apikey", StringComparison.Ordinal)
+                || n.Contains("token", StringComparison.Ordinal)
+                || n.Contains("connectionstring", StringComparison.Ordinal)
+                || n.Contains("authorization", StringComparison.Ordinal);
         }
     }
 
@@ -355,5 +580,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public string Action { get; set; } = string.Empty;
         public string? Details { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    public class TenantAuditLogDetailDto : TenantAuditLogDto
+    {
+        public string? EntityType { get; set; }
+        public string? OldValues { get; set; }
+        public string? NewValues { get; set; }
+    }
+
+    public class TenantAuditActorDto
+    {
+        public int UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
     }
 }

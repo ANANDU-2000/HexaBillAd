@@ -24,7 +24,10 @@ const MoreMenuSheet = ({ open, onClose }) => {
   const [query, setQuery] = useState('')
   const sentinelRef = useRef(false)
 
-  const groups = visibleMoreMenu(user, { isImpersonating: !!impersonatedTenantId })
+  const groups = visibleMoreMenu(user, {
+    isImpersonating: !!impersonatedTenantId,
+    hideBottomNav: true,
+  })
 
   // Android back: push a sentinel entry while open; popping it closes the sheet.
   useEffect(() => {

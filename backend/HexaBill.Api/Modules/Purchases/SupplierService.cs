@@ -5,6 +5,9 @@ Date: 2025
 */
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 
@@ -24,6 +27,7 @@ namespace HexaBill.Api.Modules.Purchases
         Task<SupplierDto?> GetSupplierByNameAsync(int tenantId, string supplierName);
         Task<SupplierDto> UpdateSupplierAsync(int tenantId, string supplierName, UpdateSupplierRequest request);
         Task DeleteSupplierAsync(int tenantId, string supplierName);
+        Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate);
     }
 
     public class SupplierService : ISupplierService
@@ -643,6 +647,127 @@ namespace HexaBill.Api.Modules.Purchases
             supplier.IsActive = false;
             supplier.UpdatedAt = DateTime.UtcNow;
             await _context.SaveChangesAsync();
+        }
+
+        public async Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate)
+        {
+            QuestPDF.Settings.License = LicenseType.Community;
+            QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
+
+            var resolved = await GetSupplierByNameAsync(tenantId, supplierName);
+            if (resolved == null)
+                throw new InvalidOperationException("Supplier not found");
+
+            var name = resolved.Name;
+            var all = await GetSupplierTransactionsAsync(tenantId, name, null, null);
+            var fromStart = fromDate.Date;
+            var toCutoff = toDate.Date.AddDays(1);
+            var prior = all.Where(t => t.Date < fromStart).ToList();
+            var opening = prior.Count > 0 ? prior[^1].Balance : 0m;
+            var period = all.Where(t => t.Date >= fromStart && t.Date <= toCutoff).ToList();
+            var closing = period.Count > 0 ? period[^1].Balance : opening;
+            var outstanding = await GetSupplierBalanceAsync(tenantId, name);
+
+            var settings = await _context.Settings.AsNoTracking()
+                .Where(s => s.TenantId == tenantId)
+                .ToDictionaryAsync(s => s.Key, s => s.Value ?? "");
+            if (settings.Count == 0)
+            {
+                settings = await _context.Settings.AsNoTracking()
+                    .Where(s => s.OwnerId == tenantId)
+                    .ToDictionaryAsync(s => s.Key, s => s.Value ?? "");
+            }
+
+            string Setting(string key)
+            {
+                return settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : "";
+            }
+
+            var companyName = Setting("COMPANY_NAME_EN");
+            if (string.IsNullOrWhiteSpace(companyName)) companyName = "Company";
+            var companyAddress = Setting("COMPANY_ADDRESS");
+            var companyTrn = Setting("COMPANY_TRN");
+            var currency = Setting("CURRENCY");
+
+            string Money(decimal amount) => string.IsNullOrWhiteSpace(currency)
+                ? amount.ToString("N2")
+                : $"{amount:N2} {currency}";
+
+            return Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(15, Unit.Millimetre);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
+
+                    page.Header().Column(column =>
+                    {
+                        column.Item().Text(companyName).FontSize(14).SemiBold();
+                        if (!string.IsNullOrWhiteSpace(companyAddress))
+                            column.Item().Text(companyAddress).FontSize(9).FontColor(Colors.Grey.Darken2);
+                        if (!string.IsNullOrWhiteSpace(companyTrn))
+                            column.Item().Text($"TRN: {companyTrn}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                        column.Item().PaddingTop(8).Text("Supplier statement").FontSize(12).SemiBold();
+                        column.Item().Text(name).FontSize(11);
+                        column.Item().Text($"{fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}").FontColor(Colors.Grey.Darken2);
+                    });
+
+                    page.Content().PaddingTop(12).Column(column =>
+                    {
+                        column.Item().Text($"Opening balance  {Money(opening)}").SemiBold();
+                        column.Item().PaddingTop(8).Table(table =>
+                        {
+                            table.ColumnsDefinition(cols =>
+                            {
+                                cols.ConstantColumn(72);
+                                cols.RelativeColumn(1.1f);
+                                cols.RelativeColumn(1.6f);
+                                cols.ConstantColumn(68);
+                                cols.ConstantColumn(68);
+                                cols.ConstantColumn(72);
+                            });
+
+                            table.Header(header =>
+                            {
+                                static IContainer Head(IContainer c) => c.BorderBottom(1).BorderColor(Colors.Grey.Lighten1).PaddingVertical(4).DefaultTextStyle(x => x.SemiBold());
+                                header.Cell().Element(Head).Text("Date");
+                                header.Cell().Element(Head).Text("Type");
+                                header.Cell().Element(Head).Text("Reference");
+                                header.Cell().Element(Head).AlignRight().Text("Debit");
+                                header.Cell().Element(Head).AlignRight().Text("Credit");
+                                header.Cell().Element(Head).AlignRight().Text("Balance");
+                            });
+
+                            foreach (var row in period)
+                            {
+                                static IContainer Cell(IContainer c) => c.BorderBottom(0.5f).BorderColor(Colors.Grey.Lighten2).PaddingVertical(3);
+                                table.Cell().Element(Cell).Text(row.Date.ToString("dd MMM yyyy"));
+                                table.Cell().Element(Cell).Text(row.Type ?? "");
+                                table.Cell().Element(Cell).Text(row.Reference ?? "");
+                                table.Cell().Element(Cell).AlignRight().Text(row.Debit > 0 ? row.Debit.ToString("N2") : "");
+                                table.Cell().Element(Cell).AlignRight().Text(row.Credit > 0 ? row.Credit.ToString("N2") : "");
+                                table.Cell().Element(Cell).AlignRight().Text(row.Balance.ToString("N2"));
+                            }
+                        });
+
+                        if (period.Count == 0)
+                            column.Item().PaddingTop(8).Text("No ledger activity for this period.").FontColor(Colors.Grey.Darken2);
+
+                        column.Item().PaddingTop(10).Text($"Closing balance  {Money(closing)}").SemiBold();
+                        column.Item().Text($"Outstanding  {Money(outstanding.NetPayable)}").SemiBold();
+                    });
+
+                    page.Footer().AlignRight().Text(text =>
+                    {
+                        text.Span("Page ");
+                        text.CurrentPageNumber();
+                        text.Span(" of ");
+                        text.TotalPages();
+                    });
+                });
+            }).GeneratePdf();
         }
     }
 

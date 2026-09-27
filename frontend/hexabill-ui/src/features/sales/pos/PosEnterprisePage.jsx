@@ -2746,7 +2746,7 @@ const PosEnterprisePage = () => {
                               ? 'bg-primary-50 ring-2 ring-inset ring-primary-500'
                               : ''
                           }`}
-                          onClick={() => {
+                          onClick={(e) => {
                             focusedCartRowRef.current = index
                             selection.syncRow(index, { selected: true, focused: true })
                             if (item.rowId) {
@@ -2755,9 +2755,11 @@ const PosEnterprisePage = () => {
                                 editingRowId: item.rowId,
                               })
                             }
+                            const control = e.target?.closest?.('[data-pos-control]')?.getAttribute('data-pos-control')
+                            if (control && control !== 'product') return
                             if (isFormDisabled || item.productId) return
+                            if (e.target?.closest?.('input, select, button')) return
                             openProductPicker(item.rowId || index)
-                            focusCartField(index, 'product')
                           }}
                           onFocusCapture={() => {
                             focusedCartRowRef.current = index
