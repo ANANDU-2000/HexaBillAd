@@ -35,9 +35,11 @@ import {
   History,
   ClipboardList,
   MoreHorizontal,
-  BadgeDollarSign
+  BadgeDollarSign,
+  Menu
 } from 'lucide-react'
 import BottomNav from './BottomNav'
+import MoreMenuSheet from './mobile/MoreMenuSheet'
 import Logo from './Logo'
 import AlertNotifications from './AlertNotifications'
 import CloudHostingCostReminder from './CloudHostingCostReminder'
@@ -56,6 +58,8 @@ const Layout = () => {
     return localStorage.getItem('sidebar_collapsed') === 'true'
   })
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const closeMore = useCallback(() => setMoreOpen(false), [])
   const [backendUnavailable, setBackendUnavailable] = useState(() => !connectionManager.isConnected)
 
   useEffect(() => {
@@ -84,6 +88,10 @@ const Layout = () => {
       return newState
     })
   }, [])
+
+  useEffect(() => {
+    closeMore()
+  }, [location.pathname, closeMore])
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -348,9 +356,17 @@ const Layout = () => {
       {/* Mobile Header — hidden on /pos for full-viewport cashier mode (use BottomNav) */}
       {!isPosRoute && (
       <div className={`lg:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
-        <div className="flex items-center justify-between px-4 py-3">
-          <Logo size="small" showText={false} className="flex-shrink-0" />
-          <div className="flex-1 flex justify-center min-w-0">
+        <div className="flex items-center justify-between px-2 py-2">
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className="p-2 rounded-lg hover:bg-primary-800 active:bg-primary-700 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+            aria-label="Menu"
+            aria-expanded={moreOpen}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex-1 flex justify-center min-w-0 px-2">
             <span className="text-sm font-semibold truncate">{mobilePageTitle || companyName}</span>
           </div>
           <button
@@ -567,7 +583,8 @@ const Layout = () => {
         </main>
         {/* Mobile Bottom Navigation */}
         <div className="lg:hidden">
-          <BottomNav />
+          <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} />
+          <MoreMenuSheet open={moreOpen} onClose={closeMore} />
         </div>
       </div>
     </div>

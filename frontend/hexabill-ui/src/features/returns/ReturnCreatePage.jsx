@@ -191,7 +191,7 @@ export default function ReturnCreatePage() {
   const customerName = sale.customerName ?? sale.customer?.name ?? '—'
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div>
       <div className="mb-6 flex items-center justify-between">
         <button
           type="button"

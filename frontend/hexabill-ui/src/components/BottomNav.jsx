@@ -1,9 +1,7 @@
-import { useEffect, useCallback, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Home, History, Plus, BookOpen, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccessPage } from '../utils/roles'
-import MoreMenuSheet from './mobile/MoreMenuSheet'
 
 /**
  * Mobile primary IA: Home · History · POS · Ledger · More.
@@ -41,18 +39,11 @@ const isNavActive = (pathname, href) => {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-const BottomNav = () => {
+const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
   const location = useLocation()
   const { user } = useAuth()
-  const [moreOpen, setMoreOpen] = useState(false)
-  const closeMore = useCallback(() => setMoreOpen(false), [])
 
   const pathname = location.pathname
-
-  // Close the More sheet on any route change (nav taps, keyboard shortcuts)
-  useEffect(() => {
-    closeMore()
-  }, [pathname, closeMore])
 
   const navItems = NAV_ITEMS.filter((item) => {
     if (item.isMore) return true // More is a permanent anchor
@@ -87,7 +78,7 @@ const BottomNav = () => {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setMoreOpen(true)}
+                    onClick={onOpenMore}
                     className={`${linkClass} ${moreActive ? 'text-primary-600' : 'text-[#475569]'}`}
                     aria-label="More options"
                     aria-expanded={moreOpen}
@@ -118,7 +109,7 @@ const BottomNav = () => {
                   <Link
                     key={item.id}
                     to={item.href}
-                    onClick={closeMore}
+                    onClick={onCloseMore}
                     className="flex flex-col items-center justify-end min-w-0 min-h-[44px] pb-0.5"
                     aria-current={isNavActive(pathname, item.href) ? 'page' : undefined}
                     aria-label="POS"
@@ -148,7 +139,7 @@ const BottomNav = () => {
                 <Link
                   key={item.id}
                   to={item.href}
-                  onClick={closeMore}
+                  onClick={onCloseMore}
                   className={`${linkClass} active:text-primary-600 ${active ? 'text-primary-600' : 'text-[#475569]'}`}
                   aria-current={active ? 'page' : undefined}
                 >
@@ -173,7 +164,6 @@ const BottomNav = () => {
           </div>
         </div>
       </nav>
-      <MoreMenuSheet open={moreOpen} onClose={closeMore} />
     </>
   )
 }

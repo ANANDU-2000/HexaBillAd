@@ -88,7 +88,7 @@ export default function DeliveryNoteViewPage() {
   const items = sale.items || []
 
   return (
-    <div className="p-3 md:p-4 w-full max-w-4xl mx-auto">
+    <div className="w-full">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2 min-w-0">
           <button

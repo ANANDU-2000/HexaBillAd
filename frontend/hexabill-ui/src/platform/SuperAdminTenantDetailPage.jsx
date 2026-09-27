@@ -53,6 +53,7 @@ import toast from 'react-hot-toast'
 import { Input, Select } from '../components/Form'
 import ConfirmDangerModal from '../components/ConfirmDangerModal'
 import { isValidTenantSlug } from '../tenant/tenantHost'
+import { TabNavigation } from '../components/ui'
 
 const SuperAdminTenantDetailPage = () => {
   const { id } = useParams()
@@ -711,23 +712,15 @@ const SuperAdminTenantDetailPage = () => {
         </div>
       </div>
 
-      {/* Tabs - overflow-x-auto for mobile to prevent overlapping */}
-      <div className="border-b border-gray-200 mb-6 font-bold overflow-x-auto scrollbar-hide">
-        <nav className="-mb-px flex space-x-4 sm:space-x-8 min-w-max">
-          {['overview', 'users', 'invoices', 'payments', 'subscription', 'usage', 'limits', 'features', 'reports'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`py-4 px-1 border-b-2 font-bold text-sm transition-all ${activeTab === tab
-                ? 'border-indigo-600 text-indigo-600'
-                : 'border-transparent text-gray-400 hover:text-gray-600 hover:border-gray-300'
-                }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <TabNavigation
+        className="mb-6"
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        tabs={['overview', 'users', 'invoices', 'payments', 'subscription', 'usage', 'limits', 'features', 'reports'].map((id) => ({
+          id,
+          label: id.charAt(0).toUpperCase() + id.slice(1),
+        }))}
+      />
 
       {/* Tab Content */}
       {activeTab === 'overview' && (

@@ -3,7 +3,7 @@ import { Fragment } from 'react'
 const TabNavigation = ({ tabs, activeTab, onChange, className = '' }) => {
   return (
     <div className={`border-b border-gray-200 ${className}`}>
-      <nav className="-mb-px flex space-x-4 sm:space-x-8 overflow-x-auto scrollbar-hide" aria-label="Tabs">
+      <nav className="flex flex-wrap gap-2" aria-label="Tabs">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
@@ -11,7 +11,7 @@ const TabNavigation = ({ tabs, activeTab, onChange, className = '' }) => {
               key={tab.id}
               onClick={() => onChange(tab.id)}
               className={`
-                flex-shrink-0 py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap
+                py-2 px-2 border-b-2 font-medium text-sm transition-colors
                 ${
                   isActive
                     ? 'border-primary-600 text-primary-600'

@@ -19,35 +19,46 @@ import { MobilePeriodBar, mobilePeriodChipClass } from '../../components/mobileP
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 
 // Helper components defined first so they are never used before initialization (avoids TDZ after minification)
-const StatCard = ({ title, value, icon: Icon, color, loading, adminOnly, valueType = 'currency', onClick }) => {
-    const iconBgClasses = {
-        green: 'bg-green-500/10 text-green-600',
-        red: 'bg-red-500/10 text-red-600',
-        blue: 'bg-blue-500/10 text-blue-600'
-    }
+const STAT_TONE = {
+    accent: 'bg-accent/10 text-accent',
+    warning: 'bg-warning/10 text-warning',
+    error: 'bg-error/10 text-error',
+    primary: 'bg-primary-100 text-primary-700',
+    neutral: 'bg-neutral-100 text-neutral-600',
+}
+
+const StatCard = ({ title, value, icon: Icon, tone = 'neutral', variant = 'standard', loading, valueType = 'currency', onClick }) => {
+    const valueClass = variant === 'kpi'
+        ? 'text-2xl font-bold'
+        : 'text-lg sm:text-xl font-bold'
+    const attentionBorder = variant === 'attention'
+        ? (tone === 'error' ? 'border-l-4 border-l-error' : 'border-l-4 border-l-warning')
+        : ''
+    const shown = valueType === 'number'
+        ? (typeof value === 'number' ? value.toLocaleString() : String(value ?? ''))
+        : formatCurrency(value)
     return (
         <div
             role={onClick ? 'button' : undefined}
             tabIndex={onClick ? 0 : undefined}
             onClick={onClick}
             onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-            className={`rounded-lg border border-neutral-200 bg-white p-4 transition-colors duration-200 ${onClick ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
+            className={`rounded-lg border border-neutral-200 bg-white p-4 ${attentionBorder} ${onClick ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
         >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium text-neutral-600 mb-0.5 truncate">{title}</p>
-                    {loading ? (
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900">...</p>
-                    ) : (
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-neutral-900 truncate">
-                            {valueType === 'number'
-                                ? (typeof value === 'number' ? value.toLocaleString() : String(value ?? ''))
-                                : formatCurrency(value)}
+                    <p className="text-caption font-medium text-neutral-600 mb-1 truncate">{title}</p>
+                    <div className="relative min-h-7">
+                        {loading && (
+                            <div className="h-7 w-28 animate-pulse rounded bg-neutral-200" aria-hidden />
+                        )}
+                        <p className={`${valueClass} text-neutral-900 truncate tabular-nums transition-opacity duration-ui ${loading ? 'absolute inset-0 opacity-0' : 'opacity-100'}`}>
+                            {shown}
                         </p>
-                    )}
+                    </div>
                 </div>
-                <div className={`p-2 rounded-lg flex-shrink-0 ${iconBgClasses[color] || iconBgClasses.blue}`}>
-                    <Icon className="h-5 w-5" />
+                <div className={`w-10 h-10 rounded-lg shrink-0 flex items-center justify-center ${STAT_TONE[tone] || STAT_TONE.neutral}`}>
+                    <Icon className="h-5 w-5" aria-hidden />
                 </div>
             </div>
         </div>
@@ -615,150 +626,173 @@ const DashboardTally = () => {
                         )}
                     </MobilePeriodBar>
 
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {canShow('salesToday') && (
-                            <StatCard
-                                title={dateRange === 'today' ? 'Sales (Gross) Today' : dateRange === 'week' ? 'Sales (Gross) This Week' : dateRange === 'month' ? 'Sales (Gross) This Month' : 'Sales (Gross)'}
-                                value={stats.salesToday}
-                                icon={DollarSign}
-                                color="green"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('returnsToday') && (
-                            <StatCard
-                                title={dateRange === 'today' ? 'Return Value Today' : dateRange === 'week' ? 'Return Value This Week' : dateRange === 'month' ? 'Return Value This Month' : 'Return Value'}
-                                value={stats.returnsToday}
-                                icon={RotateCcw}
-                                color="red"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('netSalesToday') && (
-                            <StatCard
-                                title={dateRange === 'today' ? 'Net Sales Today' : dateRange === 'week' ? 'Net Sales This Week' : dateRange === 'month' ? 'Net Sales This Month' : 'Net Sales'}
-                                value={stats.netSalesToday}
-                                icon={DollarSign}
-                                color="blue"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('damageLossToday') !== false && (
-                            <StatCard
-                                title={dateRange === 'today' ? 'Total Damage Loss Today' : dateRange === 'week' ? 'Total Damage Loss This Week' : dateRange === 'month' ? 'Total Damage Loss This Month' : 'Total Damage Loss'}
-                                value={stats.damageLossToday}
-                                icon={AlertTriangle}
-                                color="red"
-                                loading={loading}
-                            />
-                        )}
-                        {(isAdminOrOwner(user) || (!isAdminOrOwner(user) && selectedBranchId)) && canShow('expensesToday') && (
-                            <StatCard
-                                title={
-                                    dateRange === 'today' ? 'Expenses Today' : 
-                                    dateRange === 'week' ? 'Expenses This Week' : 
-                                    dateRange === 'month' ? 'Expenses This Month' : 'Expenses'
-                                }
-                                value={stats.expensesToday}
-                                icon={TrendingUp}
-                                color="red"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('purchasesToday') !== false && (
-                            <StatCard
-                                title={
-                                    dateRange === 'today' ? 'Purchases Today' :
-                                    dateRange === 'week' ? 'Purchases This Week' :
-                                    dateRange === 'month' ? 'Purchases This Month' : 'Purchases'
-                                }
-                                value={stats.purchasesToday}
-                                icon={Truck}
-                                color="green"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('pendingAmount') !== false && (
-                            <StatCard
-                                title="Pending Total Amount"
-                                value={stats.pendingBillsAmount}
-                                icon={Wallet}
-                                color="red"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('cashCollections') !== false && (
-                            <StatCard
-                                title={
-                                    dateRange === 'today' ? 'Cash & bank collections' :
-                                        dateRange === 'week' ? 'Cash & bank collections (week)' :
-                                            dateRange === 'month' ? 'Cash & bank collections (month)' : 'Cash & bank collections'
-                                }
-                                value={stats.cashCollectionsTotal}
-                                icon={Banknote}
-                                color="green"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('creditInvoiced') !== false && (
-                            <StatCard
-                                title={
-                                    dateRange === 'today' ? 'On-account sales (billed)' :
-                                        dateRange === 'week' ? 'On-account sales (week)' :
-                                            dateRange === 'month' ? 'On-account sales (month)' : 'On-account sales (billed)'
-                                }
-                                value={stats.creditInvoicedTotal}
-                                icon={Receipt}
-                                color="blue"
-                                loading={loading}
-                            />
-                        )}
-                        {canShow('overdueAccounts') !== false && (
-                            <>
-                                <StatCard
-                                    title="Overdue customers (30d+)"
-                                    value={stats.overdueCustomersCount}
-                                    icon={Users}
-                                    color="red"
-                                    loading={loading}
-                                    valueType="number"
-                                    onClick={() => navigate('/reports?tab=overdue')}
-                                />
-                                <StatCard
-                                    title="Overdue balance (30d+)"
-                                    value={stats.overdueAmountTotal}
-                                    icon={AlertTriangle}
-                                    color="red"
-                                    loading={loading}
-                                    onClick={() => navigate('/reports?tab=overdue')}
-                                />
-                            </>
-                        )}
-                        {isAdminOrOwner(user) && canShow('profitToday') && (
-                            <StatCard
-                                title={dateRange === 'today' ? 'Profit Today' : dateRange === 'week' ? 'Profit This Week' : dateRange === 'month' ? 'Profit This Month' : 'Profit'}
-                                value={stats.profitToday}
-                                icon={TrendingUp}
-                                color="blue"
-                                loading={loading}
-                                adminOnly
-                            />
-                        )}
-                        {isOwner(user) && (
-                            <StatCard
-                                title={
-                                    dateRange === 'today' ? 'Net VAT payable (today)' :
-                                        dateRange === 'week' ? 'Net VAT payable (week)' :
-                                            dateRange === 'month' ? 'Net VAT payable (month)' : 'Net VAT payable (period)'
-                                }
-                                value={stats.netVatPayablePeriod}
-                                icon={Percent}
-                                color="blue"
-                                loading={loading}
-                                onClick={() => navigate('/reports?tab=summary')}
-                            />
-                        )}
+                    <div className="space-y-6">
+                        <section className="space-y-2">
+                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Today&apos;s money</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {canShow('netSalesToday') && (
+                                    <StatCard
+                                        variant="kpi"
+                                        tone="accent"
+                                        title={dateRange === 'today' ? 'Net Sales Today' : dateRange === 'week' ? 'Net Sales This Week' : dateRange === 'month' ? 'Net Sales This Month' : 'Net Sales'}
+                                        value={stats.netSalesToday}
+                                        icon={DollarSign}
+                                        loading={loading}
+                                    />
+                                )}
+                                {isAdminOrOwner(user) && canShow('profitToday') && (
+                                    <StatCard
+                                        variant="kpi"
+                                        tone="accent"
+                                        title={dateRange === 'today' ? 'Profit Today' : dateRange === 'week' ? 'Profit This Week' : dateRange === 'month' ? 'Profit This Month' : 'Profit'}
+                                        value={stats.profitToday}
+                                        icon={TrendingUp}
+                                        loading={loading}
+                                    />
+                                )}
+                                {canShow('cashCollections') !== false && (
+                                    <StatCard
+                                        variant="kpi"
+                                        tone="accent"
+                                        title={
+                                            dateRange === 'today' ? 'Cash & bank collections' :
+                                                dateRange === 'week' ? 'Cash & bank collections (week)' :
+                                                    dateRange === 'month' ? 'Cash & bank collections (month)' : 'Cash & bank collections'
+                                        }
+                                        value={stats.cashCollectionsTotal}
+                                        icon={Banknote}
+                                        loading={loading}
+                                    />
+                                )}
+                                {isOwner(user) && (
+                                    <StatCard
+                                        variant="kpi"
+                                        tone="primary"
+                                        title={
+                                            dateRange === 'today' ? 'Net VAT payable (today)' :
+                                                dateRange === 'week' ? 'Net VAT payable (week)' :
+                                                    dateRange === 'month' ? 'Net VAT payable (month)' : 'Net VAT payable (period)'
+                                        }
+                                        value={stats.netVatPayablePeriod}
+                                        icon={Percent}
+                                        loading={loading}
+                                        onClick={() => navigate('/reports?tab=summary')}
+                                    />
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="space-y-2">
+                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Activity</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {canShow('salesToday') && (
+                                    <StatCard
+                                        tone="accent"
+                                        title={dateRange === 'today' ? 'Sales (Gross) Today' : dateRange === 'week' ? 'Sales (Gross) This Week' : dateRange === 'month' ? 'Sales (Gross) This Month' : 'Sales (Gross)'}
+                                        value={stats.salesToday}
+                                        icon={DollarSign}
+                                        loading={loading}
+                                    />
+                                )}
+                                {canShow('returnsToday') && (
+                                    <StatCard
+                                        tone="neutral"
+                                        title={dateRange === 'today' ? 'Return Value Today' : dateRange === 'week' ? 'Return Value This Week' : dateRange === 'month' ? 'Return Value This Month' : 'Return Value'}
+                                        value={stats.returnsToday}
+                                        icon={RotateCcw}
+                                        loading={loading}
+                                    />
+                                )}
+                                {canShow('purchasesToday') !== false && (
+                                    <StatCard
+                                        tone="neutral"
+                                        title={
+                                            dateRange === 'today' ? 'Purchases Today' :
+                                            dateRange === 'week' ? 'Purchases This Week' :
+                                            dateRange === 'month' ? 'Purchases This Month' : 'Purchases'
+                                        }
+                                        value={stats.purchasesToday}
+                                        icon={Truck}
+                                        loading={loading}
+                                    />
+                                )}
+                                {(isAdminOrOwner(user) || (!isAdminOrOwner(user) && selectedBranchId)) && canShow('expensesToday') && (
+                                    <StatCard
+                                        tone="neutral"
+                                        title={
+                                            dateRange === 'today' ? 'Expenses Today' :
+                                            dateRange === 'week' ? 'Expenses This Week' :
+                                            dateRange === 'month' ? 'Expenses This Month' : 'Expenses'
+                                        }
+                                        value={stats.expensesToday}
+                                        icon={TrendingUp}
+                                        loading={loading}
+                                    />
+                                )}
+                                {canShow('creditInvoiced') !== false && (
+                                    <StatCard
+                                        tone="neutral"
+                                        title={
+                                            dateRange === 'today' ? 'On-account sales (billed)' :
+                                                dateRange === 'week' ? 'On-account sales (week)' :
+                                                    dateRange === 'month' ? 'On-account sales (month)' : 'On-account sales (billed)'
+                                        }
+                                        value={stats.creditInvoicedTotal}
+                                        icon={Receipt}
+                                        loading={loading}
+                                    />
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="space-y-2">
+                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Needs attention</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {canShow('overdueAccounts') !== false && (
+                                    <>
+                                        <StatCard
+                                            variant="attention"
+                                            tone="warning"
+                                            title="Overdue customers (30d+)"
+                                            value={stats.overdueCustomersCount}
+                                            icon={Users}
+                                            loading={loading}
+                                            valueType="number"
+                                            onClick={() => navigate('/reports?tab=overdue')}
+                                        />
+                                        <StatCard
+                                            variant="attention"
+                                            tone="warning"
+                                            title="Overdue balance (30d+)"
+                                            value={stats.overdueAmountTotal}
+                                            icon={AlertTriangle}
+                                            loading={loading}
+                                            onClick={() => navigate('/reports?tab=overdue')}
+                                        />
+                                    </>
+                                )}
+                                {canShow('pendingAmount') !== false && (
+                                    <StatCard
+                                        variant="attention"
+                                        tone="warning"
+                                        title="Pending Total Amount"
+                                        value={stats.pendingBillsAmount}
+                                        icon={Wallet}
+                                        loading={loading}
+                                    />
+                                )}
+                                {canShow('damageLossToday') !== false && (
+                                    <StatCard
+                                        variant="attention"
+                                        tone="error"
+                                        title={dateRange === 'today' ? 'Total Damage Loss Today' : dateRange === 'week' ? 'Total Damage Loss This Week' : dateRange === 'month' ? 'Total Damage Loss This Month' : 'Total Damage Loss'}
+                                        value={stats.damageLossToday}
+                                        icon={AlertTriangle}
+                                        loading={loading}
+                                    />
+                                )}
+                            </div>
+                        </section>
                     </div>
 
                     {/* Branch Breakdown Card */}

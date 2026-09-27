@@ -49,7 +49,7 @@ const StockAdjustmentsHistoryPage = () => {
   }, [load])
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Link
           to="/more"

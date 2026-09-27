@@ -9,6 +9,7 @@ import Modal from '../../components/Modal'
 import { Input } from '../../components/Form'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { isAdminOrOwner } from '../../utils/roles'
+import { TabNavigation } from '../../components/ui'
 
 const BranchesPage = () => {
   const { user } = useAuth()
@@ -252,28 +253,15 @@ const BranchesPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-neutral-200 mb-6 overflow-x-auto scrollbar-hide">
-        <button
-          onClick={() => setActiveTab('branches')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'branches'
-            ? 'border-primary-600 text-primary-600'
-            : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
-        >
-          <Building2 className="h-4 w-4" />
-          Branches
-        </button>
-        <button
-          onClick={() => setActiveTab('routes')}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'routes'
-            ? 'border-primary-600 text-primary-600'
-            : 'border-transparent text-neutral-500 hover:text-neutral-700'
-            }`}
-        >
-          <MapPin className="h-4 w-4" />
-          Routes
-        </button>
-      </div>
+      <TabNavigation
+        className="mb-6"
+        activeTab={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { id: 'branches', label: 'Branches', icon: Building2 },
+          { id: 'routes', label: 'Routes', icon: MapPin },
+        ]}
+      />
 
       {/* Tab Content: Branches */}
       {activeTab === 'branches' && (
