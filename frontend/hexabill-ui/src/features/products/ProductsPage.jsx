@@ -269,6 +269,7 @@ const ProductsPage = () => {
           }
         }
         offerCreateSuccessWithPrint(response.data)
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowForm(false)
         loadProducts()
       } else {
@@ -284,7 +285,7 @@ const ProductsPage = () => {
           toast.error(`${msg} Use a different SKU or edit the existing product.`, { duration: 6000 })
           loadProducts()
         } else {
-          const msg = data?.message || error?.message || 'Failed to create product'
+          const msg = data?.message || 'Failed to create product'
           const errors = data?.errors
           const fullMsg = errors?.length ? `${msg} (${errors.join(', ')})` : msg
           toast.error(fullMsg, { duration: 6000 })
@@ -344,6 +345,7 @@ const ProductsPage = () => {
         setShowForm(false)
         setEditingProduct(null)
         loadProducts()
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
       } else {
         toast.error(response?.message || 'Failed to update product')
       }
@@ -385,6 +387,7 @@ const ProductsPage = () => {
       const response = await productsAPI.deleteProduct(productId)
       if (response?.success) {
         toast.success('Product deactivated successfully')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         loadProducts()
       } else {
         toast.error(response?.message || 'Failed to deactivate product')
@@ -405,6 +408,7 @@ const ProductsPage = () => {
       const response = await productsAPI.activateProduct(productId)
       if (response?.success) {
         toast.success('Product activated successfully')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         loadProducts()
       } else {
         toast.error(response?.message || 'Failed to activate product')
@@ -447,6 +451,7 @@ const ProductsPage = () => {
       }
       if (response?.success) {
         toast.success('Stock adjusted successfully')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowStockModal(false)
         setSelectedProduct(null)
         await loadProducts()
@@ -471,6 +476,7 @@ const ProductsPage = () => {
       if (response?.success) {
         setImportResult(response.data)
         toast.success(`Import completed: ${response.data.imported} new, ${response.data.updated} updated`)
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
       } else {
         toast.error(response?.message || 'Import failed')
       }
@@ -501,6 +507,7 @@ const ProductsPage = () => {
           if (response?.success) {
             const updatedCount = response.data?.productsUpdated || 0
             toast.success(`Stock reset complete! ${updatedCount} products set to zero stock.`, { duration: 5000 })
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
             await loadProducts() // Refresh to show updated stock
           } else {
             toast.error(response?.message || 'Failed to reset stock')
@@ -508,7 +515,7 @@ const ProductsPage = () => {
         } catch (error) {
           console.error('Reset stock error:', error)
           if (!error?._handledByInterceptor) {
-            const errorMsg = error?.response?.data?.message || error?.message || 'Failed to reset stock'
+            const errorMsg = error?.response?.data?.message || 'Failed to reset stock'
             toast.error(`Reset failed: ${errorMsg}`)
           }
         }
@@ -667,6 +674,7 @@ const ProductsPage = () => {
                     if (res?.success) {
                       const n = res?.data?.productsUpdated ?? 0
                       toast.success(`Stock recomputed from inventory movements (${n} products).`)
+                      window.dispatchEvent(new CustomEvent('dataUpdated'))
                       await loadProducts()
                     } else toast.error(res?.message || 'Recompute failed')
                   } catch (e) {
@@ -747,6 +755,7 @@ const ProductsPage = () => {
                     if (res?.success) {
                       const n = res?.data?.productsUpdated ?? res?.data?.ProductsUpdated ?? 0
                       toast.success(res?.message || `Stock recomputed (${n} products).`)
+                      window.dispatchEvent(new CustomEvent('dataUpdated'))
                       await loadProducts()
                     } else toast.error(res?.message || 'Recompute failed')
                   } catch (e) {
@@ -1011,7 +1020,8 @@ const ProductsPage = () => {
         onApply={() => setMobileFiltersOpen(false)}
       />
 
-      {/* Modern Products Table */}
+      {/* Modern Products Table — desktop and tablet only */}
+      <div className="hidden md:block">
       <ModernTable
         data={products}
         loading={loading}
@@ -1139,7 +1149,7 @@ const ProductsPage = () => {
           }
         ]}
         actions={(product) => (
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 max-w-[16rem]">
             <button
               onClick={(e) => {
                 e.stopPropagation()
@@ -1238,6 +1248,7 @@ const ProductsPage = () => {
           </div>
         )}
       />
+      </div>
 
       {/* Mobile product cards (md:hidden) */}
       {loading ? (

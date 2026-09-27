@@ -54,6 +54,7 @@ export const BrandingProvider = ({ children }) => {
     // Skip API on login page to avoid ERR_CONNECTION_REFUSED flood when backend is down
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
     if (path === '/login' && getTenantHost().mode === 'tenant') {
+      setBranding(prev => ({ ...prev, companyName: 'HexaBill', companyLogo: null, loading: true }))
       try {
         const response = await fetch(`${getApiBaseUrl()}/public/tenant-context`, { headers: { Accept: 'application/json' } })
         const payload = await response.json()
@@ -64,11 +65,11 @@ export const BrandingProvider = ({ children }) => {
           return
         }
       } catch (_) { /* fallback to generic branding */ }
-      setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
+      setBranding(prev => ({ ...prev, companyName: 'HexaBill', companyLogo: null, loading: false }))
       return
     }
     if (path === '/login' || path === '/Admin26') {
-      setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
+      setBranding(prev => ({ ...prev, companyName: 'HexaBill', companyLogo: null, loading: false }))
       return
     }
     const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null

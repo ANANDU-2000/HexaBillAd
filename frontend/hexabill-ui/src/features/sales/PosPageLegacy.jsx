@@ -37,6 +37,7 @@ import PrintOptionsModal from '../../components/PrintOptionsModal'
 
 import { getApiBaseUrl } from '../../services/apiConfig'
 import { SETTLEMENT_TOLERANCE_AED, isInvoiceFullySettled, getInvoicePaymentBadge } from '../../utils/salePaymentSettlement'
+import { localDateString } from '../../utils/dateFormat'
 const API_BASE_URL = getApiBaseUrl()
 
 /** Product picker list page size (client-side only). */
@@ -103,7 +104,7 @@ const PosPage = () => {
   const [pendingSaveData, setPendingSaveData] = useState(null) // Store data when awaiting confirmation
   const [invoiceDate, setInvoiceDate] = useState(() => {
     const today = new Date()
-    return today.toISOString().split('T')[0] // YYYY-MM-DD format
+    return localDateString(today) // YYYY-MM-DD format
   })
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(false) // Desktop: payment accordion (collapsed by default)
@@ -406,7 +407,7 @@ const PosPage = () => {
         // Load invoice date from sale
         if (sale.invoiceDate) {
           const date = new Date(sale.invoiceDate)
-          setInvoiceDate(date.toISOString().split('T')[0])
+          setInvoiceDate(localDateString(date))
         }
 
         toast.success(`Invoice ${sale.invoiceNo || saleId} loaded for editing`, { id: 'invoice-load', duration: 3000 })
@@ -1034,7 +1035,7 @@ const PosPage = () => {
     } catch (error) {
       console.error('Print error:', error)
       toast.dismiss(toastId)
-      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare PDF')
+      if (!error?._handledByInterceptor) toast.error('Failed to prepare PDF')
     }
   }
 
@@ -1328,7 +1329,7 @@ const PosPage = () => {
     } catch (error) {
       console.error('WhatsApp share error:', error)
       toast.dismiss('whatsapp-share')
-      if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to share via WhatsApp')
+      if (!error?._handledByInterceptor) toast.error('Failed to share via WhatsApp')
     }
   }
 
@@ -1826,7 +1827,7 @@ const PosPage = () => {
     }).catch(() => {})
     // Reset invoice date to today
     const today = new Date()
-    setInvoiceDate(today.toISOString().split('T')[0])
+    setInvoiceDate(localDateString(today))
   }
 
   const handleRepeatLastInvoice = async () => {
@@ -1901,7 +1902,7 @@ const PosPage = () => {
     setCart(held.cart || [])
     const cust = held.selectedCustomer
     setSelectedCustomer(cust ? customers.find(c => c.id === cust.id) || cust : null)
-    setInvoiceDate(held.invoiceDate || new Date().toISOString().split('T')[0])
+    setInvoiceDate(held.invoiceDate || localDateString(new Date()))
     setNotes(held.notes || '')
     setDiscount(held.discount ?? 0)
     setDiscountInput(String(held.discountInput ?? ''))
@@ -3650,7 +3651,6 @@ const PosPage = () => {
                       console.error('Error updating invoice:', error)
                       const errorMsg = error?.response?.data?.message ||
                         error?.response?.data?.errors?.[0] ||
-                        error?.message ||
                         'Failed to update invoice. Please try again.'
                       if (!error?._handledByInterceptor) toast.error(errorMsg)
                     } finally {
@@ -3786,7 +3786,6 @@ const PosPage = () => {
                       console.error('Error updating invoice:', error)
                       const errorMsg = error?.response?.data?.message ||
                         error?.response?.data?.errors?.[0] ||
-                        error?.message ||
                         'Failed to update invoice. Please try again.'
                       if (error?.response?.status === 409 && editingSaleId) {
                         toast.error(`Conflict: ${errorMsg}`, { duration: 8000 })

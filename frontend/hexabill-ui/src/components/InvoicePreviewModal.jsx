@@ -94,7 +94,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
       toast.success('Invoice downloaded successfully')
     } catch (error) {
       console.error('Download error:', error)
-      if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to download invoice. Please try again.')
+      if (!error?._handledByInterceptor) toast.error('Failed to download invoice. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -182,7 +182,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
       toast.success('PDF downloaded. WhatsApp opened. Please attach the downloaded PDF file.')
     } catch (error) {
       console.error('WhatsApp share error:', error)
-      if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to share via WhatsApp. Please try downloading PDF manually.')
+      if (!error?._handledByInterceptor) toast.error('Failed to share via WhatsApp. Please try downloading PDF manually.')
     } finally {
       setLoading(false)
     }

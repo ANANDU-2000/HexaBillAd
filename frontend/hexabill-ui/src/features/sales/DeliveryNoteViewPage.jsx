@@ -44,7 +44,7 @@ export default function DeliveryNoteViewPage() {
       }
     } catch (e) {
       setSale(null)
-      setError(e?.response?.data?.message || e.message || 'Failed to load')
+      setError(e?.response?.data?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -64,7 +64,7 @@ export default function DeliveryNoteViewPage() {
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
     } catch (e) {
-      toast.error(e?.message || 'PDF failed')
+      toast.error('PDF failed')
     } finally {
       setBusy(false)
     }

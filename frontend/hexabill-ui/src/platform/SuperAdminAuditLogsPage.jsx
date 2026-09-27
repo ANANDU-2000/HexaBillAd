@@ -75,7 +75,7 @@ const SuperAdminAuditLogsPage = () => {
       setTotalPages(data?.totalPages ?? Math.ceil((data?.totalCount ?? 0) / PAGE_SIZE))
     } catch (err) {
       console.error('Audit logs fetch error:', err)
-      setError(err?.response?.data?.message || err?.message || 'Failed to load audit logs')
+      setError(err?.response?.data?.message || 'Failed to load audit logs')
       if (!append) setLogs([])
       toast.error('Failed to load audit logs')
     } finally {

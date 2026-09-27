@@ -10,6 +10,7 @@ using HexaBill.Api.Modules.Users;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Auth;
+using HexaBill.Api.Modules.Subscription;
 
 namespace HexaBill.Api.Modules.Users
 {
@@ -20,12 +21,14 @@ namespace HexaBill.Api.Modules.Users
     {
         private readonly IAuthService _authService;
         private readonly AppDbContext _context;
+        private readonly ISubscriptionService _subscriptions;
         private readonly ILogger<UsersController> _logger;
 
-        public UsersController(IAuthService authService, AppDbContext context, ILogger<UsersController> logger)
+        public UsersController(IAuthService authService, AppDbContext context, ISubscriptionService subscriptions, ILogger<UsersController> logger)
         {
             _authService = authService;
             _context = context;
+            _subscriptions = subscriptions;
             _logger = logger;
         }
 
@@ -256,6 +259,19 @@ namespace HexaBill.Api.Modules.Users
                         Success = false,
                         Message = "Invalid role. Must be 'Admin' or 'Staff'"
                     });
+                }
+
+                if (CurrentTenantId > 0)
+                {
+                    var activeUsers = await _context.Users.CountAsync(u => u.TenantId == CurrentTenantId && u.IsActive);
+                    if (!await _subscriptions.CheckLimitAsync(CurrentTenantId, "users", activeUsers))
+                    {
+                        return BadRequest(new ApiResponse<RegisterResponse>
+                        {
+                            Success = false,
+                            Message = "Staff limit reached for this company. No new user was created."
+                        });
+                    }
                 }
 
                 // Convert to RegisterRequest

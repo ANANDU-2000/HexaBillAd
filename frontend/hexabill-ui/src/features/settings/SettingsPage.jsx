@@ -540,7 +540,7 @@ const SettingsPage = () => {
     } catch (error) {
       console.error('Failed to save settings:', error)
       if (!error?._handledByInterceptor) {
-        const msg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || error?.message || 'Failed to save settings'
+        const msg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || 'Failed to save settings'
         toast.error(msg)
       }
     } finally {
@@ -1102,7 +1102,7 @@ const SettingsPage = () => {
                   Place stamp on the left
                 </label>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <Input label="Top margin (mm)" type="number" step="1" {...register('printMarginTopMm')} />
                   <Input label="Bottom margin (mm)" type="number" step="1" {...register('printMarginBottomMm')} />
                   <Input label="Stamp width (mm)" type="number" step="1" {...register('stampWidthMm')} />

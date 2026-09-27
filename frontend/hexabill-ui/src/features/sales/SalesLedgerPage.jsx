@@ -6,8 +6,6 @@ import {
   FileText,
   MessageCircle,
   Pencil,
-  ChevronDown,
-  ChevronUp,
   Banknote,
   Printer,
   Trash2
@@ -16,7 +14,6 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { mobileFormFieldClass, mobilePageShellClass, mobileFilterGridClass } from '../../components/tallyFormClasses'
 import { mobilePageTitleClass, MobileActionStrip, mobileActionBtnClass } from '../../components/mobilePageUi'
-import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import PaymentModal from '../../components/PaymentModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
@@ -30,7 +27,6 @@ import { isAdminOrOwner, canManagePayments } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
-const SHOW_KPI_KEY = 'hexabill_sales_ledger_show_kpi'
 const SORT_ORDER_KEY = 'hexabill_sales_ledger_sort_order'
 
 /** Canonical row type for filter/sort (API may send Type/type or different casing). */
@@ -208,9 +204,15 @@ const SalesLedgerPage = () => {
   const getDefaultDateRange = () => {
     const today = new Date()
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+    const localDateString = (date) => {
+      const y = date.getFullYear()
+      const m = String(date.getMonth() + 1).padStart(2, '0')
+      const d = String(date.getDate()).padStart(2, '0')
+      return `${y}-${m}-${d}`
+    }
     return {
-      from: firstDayOfMonth.toISOString().split('T')[0],
-      to: today.toISOString().split('T')[0]
+      from: localDateString(firstDayOfMonth),
+      to: localDateString(today)
     }
   }
   const [dateRange, setDateRange] = useState(() => {
@@ -244,12 +246,6 @@ const SalesLedgerPage = () => {
       const v = localStorage.getItem(SHOW_FILTERS_KEY)
       return v === null ? false : v === 'true'
     } catch { return false }
-  })
-  const [showKpiStrip, setShowKpiStrip] = useState(() => {
-    try {
-      const v = localStorage.getItem(SHOW_KPI_KEY)
-      return v === null ? true : v === 'true'
-    } catch { return true }
   })
   const [sortOrder, setSortOrder] = useState(() => {
     const fromUrl = searchParams.get('sort')
@@ -376,7 +372,7 @@ const SalesLedgerPage = () => {
       }
     } catch (error) {
       console.error('Error loading sales ledger:', error)
-      const msg = error?.response?.data?.message || error?.message || 'Failed to load sales ledger'
+      const msg = error?.response?.data?.message || 'Failed to load sales ledger'
       if (!error?._handledByInterceptor) toast.error(msg)
       setReportData({ salesLedger: [], salesLedgerSummary: null })
     } finally {
@@ -847,14 +843,8 @@ const SalesLedgerPage = () => {
     } catch (error) {
       console.error('Failed to export PDF:', error)
       toast.dismiss()
-      if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to export PDF')
+      if (!error?._handledByInterceptor) toast.error('Could not export the sales ledger.')
     }
-  }
-
-  const toggleKpiStrip = () => {
-    const next = !showKpiStrip
-    setShowKpiStrip(next)
-    try { localStorage.setItem(SHOW_KPI_KEY, String(next)) } catch (_) { }
   }
 
   const stickyActionTh = 'sticky right-0 z-30 bg-gray-100 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-gray-300'
@@ -912,7 +902,7 @@ const SalesLedgerPage = () => {
     <div className={`flex flex-col flex-1 min-h-0 ${mobilePageShellClass} overflow-hidden bg-neutral-50`}>
       {/* Header — full width, filters horizontal, export right */}
       <div className="flex-shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 lg:px-6 py-2 md:py-3">
-        <h1 className={`${mobilePageTitleClass} md:text-xl lg:text-2xl mb-2`}>Sales Ledger</h1>
+        <h1 className={`${mobilePageTitleClass} mb-2`}>Sales Ledger</h1>
         <div className={`${mobileFilterGridClass} mb-2 md:hidden`}>
           <input
             type="date"
@@ -942,15 +932,6 @@ const SalesLedgerPage = () => {
                 className={`${mobileFormFieldClass} md:min-h-0 md:py-1.5 md:text-xs w-36`}
               />
             </div>
-            <button
-              type="button"
-              onClick={toggleKpiStrip}
-              className="px-2 md:px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1"
-              title={showKpiStrip ? 'Hide summary cards' : 'Show summary cards'}
-            >
-              {showKpiStrip ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">Summary</span>
-            </button>
               <button
                 type="button"
                 onClick={() => setOverdueOnly((v) => !v)}
@@ -1172,89 +1153,31 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      {/* Summary Cards - collapsible for more table space */}
-      {!showKpiStrip && (
-        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-gray-200 text-xs text-gray-700">
-          <span className="font-medium text-gray-500 mr-2">Totals:</span>
-          Sales {formatCurrency(filteredSummary.totalSales)}
-          <span className="mx-1.5 text-gray-300">|</span>
-          Net {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
-          <span className="mx-1.5 text-gray-300">|</span>
-          Recv. {formatCurrency(filteredSummary.totalPayments)}
-          <span className="mx-1.5 text-gray-300">|</span>
-          Unpaid {formatCurrency(filteredSummary.totalRealPending)}
-          <span className="mx-1.5 text-gray-300">|</span>
-          VAT {formatCurrency(filteredSummary.totalVat ?? 0)}
-          <span className="mx-1.5 text-gray-300">|</span>
-          {filteredLedger.length} rows
-        </div>
-      )}
-      {showKpiStrip && (
-      <div className="flex-shrink-0 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-9 gap-1.5 md:gap-2 lg:gap-3 px-2 md:px-4 py-2 md:py-3 bg-white border-b border-gray-200">
-        <div className="bg-blue-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-blue-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Sales</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-gray-900 truncate">
-            {formatCurrency(filteredSummary.totalSales)}
-          </div>
-        </div>
-        <div className="bg-amber-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-amber-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Returns</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-amber-700 truncate">
-            {formatCurrency(filteredSummary.totalReturns ?? 0)}
-          </div>
-        </div>
-        <div className="bg-indigo-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-indigo-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Net Sales</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-indigo-700 truncate">
-            {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
-          </div>
-        </div>
-        <div className="bg-green-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-green-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Received</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-green-600 truncate">
-            {formatCurrency(filteredSummary.totalPayments)}
-          </div>
-        </div>
-        <div className="bg-yellow-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-yellow-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Unpaid</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-yellow-600 truncate">
-            {formatCurrency(filteredSummary.totalRealPending)}
-          </div>
-        </div>
-        <div className="bg-orange-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-orange-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Balance</div>
-          <div className={`text-sm md:text-base lg:text-lg font-bold truncate ${filteredSummary.pendingBalance > 0 ? 'text-red-600' :
-            filteredSummary.pendingBalance < 0 ? 'text-green-600' :
-              'text-gray-600'
-            }`}>
-            {formatBalance(filteredSummary.pendingBalance)}
-          </div>
-        </div>
-        <div className="bg-purple-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-purple-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Invoices</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-purple-600">
-            {filteredSummary.totalInvoices || 0}
-          </div>
-        </div>
-        <div className="bg-teal-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-teal-500" title="Output VAT (Sales minus Returns)">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Net VAT</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-teal-700 truncate">
-            {formatCurrency(filteredSummary.totalVat ?? 0)}
-          </div>
-        </div>
-        <div className="bg-indigo-50 rounded p-1.5 md:p-2 lg:p-3 border-l-2 md:border-l-4 border-indigo-500">
-          <div className="text-xs md:text-xs lg:text-xs text-gray-600 uppercase mb-0.5">Total</div>
-          <div className="text-sm md:text-base lg:text-lg font-bold text-indigo-600">
-            {filteredLedger.length}
-          </div>
-        </div>
+      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-gray-200 text-xs text-gray-700">
+        <span className="font-medium text-gray-500 mr-2">Totals:</span>
+        Sales {formatCurrency(filteredSummary.totalSales)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        Returns {formatCurrency(filteredSummary.totalReturns ?? 0)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        Net {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        Received {formatCurrency(filteredSummary.totalPayments)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        Unpaid {formatCurrency(filteredSummary.totalRealPending)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        Balance {formatBalance(filteredSummary.pendingBalance)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        VAT {formatCurrency(filteredSummary.totalVat ?? 0)}
+        <span className="mx-1.5 text-gray-300">|</span>
+        {filteredSummary.totalInvoices || 0} invoices
+        <span className="mx-1.5 text-gray-300">|</span>
+        {filteredLedger.length} rows
       </div>
-      )}
 
       {/* Table - Scrollable (fills remaining viewport height) */}
       {loading ? (
         <div className="flex-1 min-h-0 flex items-center justify-center">
-          <LoadingCard message="Loading sales ledger..." />
+        <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading sales ledger…</p>
         </div>
       ) : (
         <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white w-full rounded-lg border border-gray-200">

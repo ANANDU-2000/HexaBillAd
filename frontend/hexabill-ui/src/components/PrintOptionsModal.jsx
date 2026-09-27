@@ -66,7 +66,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
       printWindow.close()
       console.error('Print error:', error)
       setPrinting(false)
-      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to generate PDF')
+      if (!error?._handledByInterceptor) toast.error('Failed to generate PDF')
     }
   }
 
@@ -107,7 +107,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     } catch (error) {
       printWindow.close()
       setPrinting(false)
-      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to generate delivery note')
+      if (!error?._handledByInterceptor) toast.error('Failed to generate delivery note')
     }
   }
 

@@ -31,7 +31,7 @@ const SuperAdminHealthPage = () => {
       }
     } catch (err) {
       console.error('Health check error:', err)
-      setError(err?.response?.data?.message || err?.message || 'Failed to load platform health')
+      setError(err?.response?.data?.message || 'Failed to load platform health')
       setHealth(null)
       toast.error('Failed to load platform health')
     } finally {
@@ -54,7 +54,7 @@ const SuperAdminHealthPage = () => {
       setShowMigrateModal(false)
       fetchHealth()
     } catch (err) {
-      const errMsg = err?.response?.data?.error || err?.message || 'Failed to apply migrations'
+      const errMsg = err?.response?.data?.error || 'Failed to apply migrations'
       toast.error(errMsg)
     } finally {
       setMigrating(false)

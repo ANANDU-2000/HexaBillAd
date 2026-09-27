@@ -26,7 +26,7 @@ export const isNetworkErrorToSuppress = (error) => {
 export const handleApiError = (error, defaultMessage = 'An error occurred', showToast = true) => {
   if (!error) return defaultMessage
   
-  const message = error?.response?.data?.message || error?.message || defaultMessage
+  const message = error?.response?.data?.message || defaultMessage
   
   // Suppress network errors (already handled by interceptor)
   if (showToast && !isNetworkErrorToSuppress(error)) {

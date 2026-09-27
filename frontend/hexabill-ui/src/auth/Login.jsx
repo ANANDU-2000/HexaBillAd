@@ -1,407 +1,386 @@
-import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { forwardRef, useEffect, useState } from 'react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useBranding } from '../tenant/TenantBrandingContext'
-import { Input } from '../components/Form'
-import { LoadingButton } from '../components/Loading'
-import { showToast } from '../utils/toast'
-import Logo from '../components/Logo'
+import { authAPI } from '../services/index'
+import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { isSystemAdmin } from '../utils/superAdmin'
 import { getTenantHost } from '../tenant/tenantHost'
-import { authAPI } from '../services/index'
+
+const fieldClass = (invalid, hasIcon, hasEnd) =>
+  `block h-11 w-full rounded-md border bg-white px-3 text-base text-[#0F172A] shadow-none transition-colors placeholder:text-neutral-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-[#F3F4F6] disabled:opacity-40 lg:h-[38px] lg:text-sm dark:border-[#1E293B] dark:bg-[#0F172A] dark:text-[#F8FAFC] dark:disabled:bg-[#1E293B] ${hasIcon ? 'ps-9' : ''} ${hasEnd ? 'pe-12' : ''} ${invalid ? 'border-red-300 focus:ring-red-500/20' : 'border-[#E5E7EB]'}`
+
+const AuthField = forwardRef(function AuthField({ id, label, error, icon: Icon, end, className = '', ...props }, ref) {
+  const errorId = error ? `${id}-error` : undefined
+  return (
+    <div className="space-y-1 text-start">
+      <label htmlFor={id} className="block text-xs font-medium leading-[1.4] text-neutral-700 dark:text-[#8B9BB4]">
+        {label}
+        <span className="ms-1 text-red-600" aria-hidden="true">*</span>
+      </label>
+      <div className="relative">
+        {Icon && (
+          <Icon className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" strokeWidth={2} aria-hidden="true" />
+        )}
+        <input
+          ref={ref}
+          id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
+          className={`${fieldClass(!!error, !!Icon, !!end)} ${className}`}
+          {...props}
+        />
+        {end && <div className="absolute inset-y-0 end-0 flex items-center">{end}</div>}
+      </div>
+      {error && (
+        <p id={errorId} className="text-xs leading-[1.4] text-red-600 dark:text-red-400">{error}</p>
+      )}
+    </div>
+  )
+})
+
+function PasswordToggle({ shown, onClick, label }) {
+  const Icon = shown ? EyeOff : Eye
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className="flex h-11 w-11 items-center justify-center text-neutral-400 hover:text-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 lg:h-8 lg:w-8 dark:hover:text-[#F8FAFC]"
+    >
+      <Icon className="h-4 w-4" strokeWidth={2} aria-hidden="true" />
+    </button>
+  )
+}
+
+function AuthAlert({ children, onRetry }) {
+  if (!children) return null
+  return (
+    <div role="alert" className="flex gap-2 rounded-md border border-red-200 bg-[#FEF2F2] px-3 py-2 text-xs leading-[1.4] text-red-700 dark:border-red-900 dark:bg-[#450A0A] dark:text-red-200">
+      <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+      <div>
+        <p>{children}</p>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="mt-2 font-medium text-primary-600 hover:text-primary-700">
+            Retry
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Mark({ name, logoSrc, onLogoError }) {
+  if (logoSrc) {
+    return (
+      <img src={logoSrc} alt="" className="h-8 w-8 object-contain" onError={onLogoError} />
+    )
+  }
+  if (name) {
+    return (
+      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary-600 text-[20px] font-semibold leading-none text-white">
+        {name.charAt(0).toUpperCase()}
+      </span>
+    )
+  }
+  return <img src="/hexabill-logo.svg" alt="" className="h-8 w-8 object-contain" />
+}
+
+function publicLogoSrc(logoUrl) {
+  if (!logoUrl || logoUrl.startsWith('data:') || logoUrl.startsWith('http')) return logoUrl || null
+  const path = logoUrl.startsWith('/') ? logoUrl : `/uploads/${logoUrl}`
+  return `${getApiBaseUrlNoSuffix()}${path}`
+}
+
+function loginFailureMessage(result) {
+  if (result?.network) return 'Unable to reach the server. Please check your internet connection.'
+  if (result?.status === 429) return 'Too many sign-in attempts. For security, sign-in is locked for 15 minutes.'
+  if (result?.status === 401 || result?.status === 400) return 'Incorrect email or password. Please verify your credentials.'
+  if (result?.status === 403) return 'Account is deactivated or access restricted. Contact your organization administrator.'
+  return 'Authentication service is temporarily unavailable. Please try again shortly.'
+}
 
 const Login = ({ isSuperAdminLogin = false }) => {
-  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [locked, setLocked] = useState(false)
+  const [alert, setAlert] = useState('')
+  const [canRetry, setCanRetry] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [invitePassword, setInvitePassword] = useState('')
   const [inviteConfirm, setInviteConfirm] = useState('')
-  const [inviteError, setInviteError] = useState('')
+  const [inviteFieldError, setInviteFieldError] = useState({ password: '', confirm: '' })
+  const [logoFailed, setLogoFailed] = useState(false)
   const { login, logout } = useAuth()
-  const { companyName } = useBranding()
+  const { companyName, companyLogo, loading: brandingLoading } = useBranding()
   const navigate = useNavigate()
   const location = useLocation()
-  const emailInputRef = useRef(null)
   const inviteToken = new URLSearchParams(location.search).get('invite')
-
-  const acceptInvite = async (event) => {
-    event.preventDefault()
-    setInviteError('')
-    if (invitePassword.length < 8) return setInviteError('Password must be at least 8 characters.')
-    if (invitePassword !== inviteConfirm) return setInviteError('Passwords do not match.')
-    setLoading(true)
-    try {
-      const result = await authAPI.acceptInvite(inviteToken, invitePassword)
-      if (result?.success) {
-        showToast.success('Password set. Sign in with your owner email.')
-        navigate('/login', { replace: true })
-      } else {
-        setInviteError(result?.message || 'Invite could not be accepted.')
-      }
-    } catch (error) {
-      setInviteError(error.response?.data?.message || 'Invite could not be accepted.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const lang = typeof localStorage !== 'undefined' ? (localStorage.getItem('hexabill_lang') || 'en') : 'en'
+  const isRtl = lang === 'ar'
+  const tenantLogin = !isSuperAdminLogin && getTenantHost().mode === 'tenant'
+  const resolvedName = tenantLogin && companyName && companyName !== 'HexaBill' ? companyName : ''
+  const showBrandSkeleton = tenantLogin && brandingLoading
+  const logoSrc = tenantLogin && !logoFailed ? publicLogoSrc(companyLogo) : null
 
   const {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm()
+  } = useForm({ mode: 'onBlur', reValidateMode: 'onBlur' })
 
-  // Keyboard shortcuts: Ctrl+L to focus login, Enter to submit
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.ctrlKey && e.key === 'l') {
-        e.preventDefault()
-        emailInputRef.current?.focus()
-      }
+    setLogoFailed(false)
+  }, [companyLogo])
+
+  useEffect(() => {
+    if (isSuperAdminLogin) {
+      document.title = 'Admin Portal'
+      return
+    }
+    if (brandingLoading && tenantLogin) return
+    if (inviteToken && !isSuperAdminLogin) {
+      document.title = resolvedName ? `${resolvedName} | Set your password` : 'Set your password'
+      return
+    }
+    document.title = resolvedName ? `${resolvedName} | Sign in` : 'Sign in'
+  }, [isSuperAdminLogin, brandingLoading, tenantLogin, resolvedName, inviteToken])
+
+  const finishSignIn = async (result) => {
+    if (!result?.success) {
+      const lockedOut = result?.status === 429
+      setLocked(lockedOut)
+      setCanRetry(!!result?.network)
+      setAlert(loginFailureMessage(result))
+      return
     }
 
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [])
+    const userPayload = result.data?.user || result.data || {}
+    const tenantId = result.data?.tenantId ?? userPayload.tenantId
+    const isSuperAdmin = isSystemAdmin({ ...userPayload, tenantId }, result.data?.token)
+
+    if (isSuperAdminLogin) {
+      if (isSuperAdmin) {
+        navigate('/superadmin/dashboard')
+      } else {
+        await logout()
+        setCanRetry(false)
+        setAlert('This portal is restricted to platform administrators.')
+      }
+      return
+    }
+
+    if (isSuperAdmin) {
+      await logout()
+      setCanRetry(false)
+      setAlert('This account belongs to the platform portal.')
+      return
+    }
+
+    navigate(result.data?.mustChangePassword ? '/profile?forcePassword=1' : '/dashboard')
+  }
 
   const onSubmit = async (data) => {
+    if (loading || locked) return
+    setAlert('')
+    setCanRetry(false)
     setLoading(true)
     try {
       const result = await login({
         email: data.email,
         password: data.password,
-        rememberMe: rememberMe
+        rememberMe: false
       })
-
-      if (result?.success) {
-        // Post-login check
-        const user = result.data.user || result.data // Assuming user data is returned in result.data.user or result.data based on API response structure. The useAuth hook usually returns user object.
-        // Actually, modify this to use the user object from result if available, otherwise fetch from state?
-        // Let's rely on result content.
-
-        // However, useAuth login result might return raw response.
-        // The App.jsx uses isSystemAdmin(user)
-
-        const userPayload = result.data?.user || result.data || {}
-        const tenantId = result.data?.tenantId ?? userPayload.tenantId
-        const isSuperAdmin = isSystemAdmin({ ...userPayload, tenantId: tenantId }, result.data?.token)
-
-        if (isSuperAdminLogin) {
-          if (isSuperAdmin) {
-            showToast.success('Super Admin Login successful!')
-            navigate('/superadmin/dashboard')
-          } else {
-            await logout()
-            showToast.error('This is the Admin Portal. Use the main app to sign in with your company account. If you need admin access, contact your administrator.')
-          }
-        } else {
-          if (isSuperAdmin) {
-            await logout()
-            showToast.error('Use the Admin Portal to sign in as Super Admin, or sign in here with a company account (e.g. owner1@hexabill.com).')
-          } else {
-            showToast.success('Login successful!')
-            navigate(result.data?.mustChangePassword ? '/profile?forcePassword=1' : '/dashboard')
-          }
-        }
-
-      } else {
-        // Check for specific error codes
-        if (result?.status === 429) {
-          showToast.error('Too many attempts. Please try again later.')
-        } else if (result?.status === 401) {
-          showToast.error('Email or password incorrect.')
-        } else if (result?.status === 500) {
-          showToast.error('Server error — try again later.')
-        } else {
-          showToast.error(result?.message || 'Login failed')
-        }
-      }
-    } catch (error) {
-      const isConnectionError = !error.response &&
-        (error.code === 'ECONNREFUSED' || error.code === 'ERR_NETWORK' ||
-          error.message?.includes('Network Error') || error.message?.includes('Failed to fetch'))
-      if (isConnectionError) {
-        showToast.error('Service temporarily unavailable. Please try again in a moment or contact support.')
-      } else if (error.response?.status === 429) {
-        showToast.error('Too many attempts. Please try again later.')
-      } else if (error.response?.status === 401) {
-        showToast.error('Email or password incorrect.')
-      } else if (error.response?.status === 500) {
-        showToast.error('Server error — try again later.')
-      } else {
-        showToast.error(error.message || 'Login failed')
-      }
+      await finishSignIn(result)
     } finally {
       setLoading(false)
     }
   }
 
-  const lang = typeof localStorage !== 'undefined' ? (localStorage.getItem('hexabill_lang') || 'en') : 'en'
-  const isRtl = lang === 'ar'
-  const dir = isRtl ? 'rtl' : 'ltr'
-  const textAlign = isRtl ? 'text-right' : 'text-left'
-  const tenantLogin = !isSuperAdminLogin && getTenantHost().mode === 'tenant'
-  const displayName = companyName && companyName !== 'HexaBill' ? companyName : ''
+  const acceptInvite = async (event) => {
+    event.preventDefault()
+    if (loading) return
+    const next = { password: '', confirm: '' }
+    if (invitePassword.length < 8) next.password = 'Password must be at least 8 characters.'
+    if (invitePassword !== inviteConfirm) next.confirm = 'Passwords do not match.'
+    setInviteFieldError(next)
+    setAlert('')
+    setCanRetry(false)
+    if (next.password || next.confirm) return
 
-  if (inviteToken && !isSuperAdminLogin) {
-    return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-6" dir={dir} lang={lang}>
-        <form onSubmit={acceptInvite} className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-neutral-200 p-8 space-y-5">
-          {displayName ? <h1 className="text-2xl font-bold text-neutral-900">{displayName}</h1> : <Logo size="large" showText={true} />}
-          <div><h2 className="text-xl font-bold text-neutral-900">Set your owner password</h2><p className="text-sm text-neutral-600 mt-2">This invite works only on your company address and can be used once.</p></div>
-          {inviteError && <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 p-3 text-sm">{inviteError}</div>}
-          <Input label="New password" type="password" value={invitePassword} onChange={e => setInvitePassword(e.target.value)} required minLength={8} />
-          <Input label="Confirm password" type="password" value={inviteConfirm} onChange={e => setInviteConfirm(e.target.value)} required minLength={8} />
-          <LoadingButton type="submit" loading={loading} className="w-full">Set password</LoadingButton>
-        </form>
-      </div>
-    )
+    setLoading(true)
+    try {
+      const result = await authAPI.acceptInvite(inviteToken, invitePassword)
+      if (result?.success) {
+        navigate('/login', { replace: true })
+        return
+      }
+      setAlert('This invite link has expired or has already been used. Please request a new invite from your administrator.')
+    } catch (error) {
+      const network = !error.response
+      setCanRetry(network)
+      setAlert(network
+        ? 'Unable to reach the server. Please check your internet connection.'
+        : 'This invite link has expired or has already been used. Please request a new invite from your administrator.')
+    } finally {
+      setLoading(false)
+    }
   }
 
+  const heading = inviteToken && !isSuperAdminLogin
+    ? 'Set your password'
+    : isSuperAdminLogin
+      ? 'Admin Portal'
+      : (resolvedName || 'Sign in')
+
+  const context = inviteToken && !isSuperAdminLogin
+    ? (resolvedName ? `Set your password for ${resolvedName}` : 'This invite works only on your company address and can be used once.')
+    : isSuperAdminLogin
+      ? 'Platform administration'
+      : tenantLogin
+        ? (resolvedName ? 'Sign in' : '')
+        : 'Access your company workspace.'
+
+  const submitLabel = inviteToken && !isSuperAdminLogin
+    ? (loading ? 'Setting password…' : 'Set password')
+    : (loading ? 'Signing in…' : 'Sign in')
+
   return (
-    <div className="h-screen bg-neutral-50 flex overflow-hidden" dir={dir} lang={lang}>
-      {/* Split screen: left brand (desktop), right form — works LTR/RTL */}
-      {!tenantLogin && (
-      <div className="hidden lg:flex lg:w-1/2 lg:flex-col lg:items-start lg:justify-start lg:bg-gradient-to-br lg:from-primary-50 lg:via-primary-100 lg:to-primary-50 lg:border-r lg:border-primary-200 lg:px-10 lg:py-8 overflow-y-auto">
-        <div className={`max-w-lg w-full ${isRtl ? 'text-right' : 'text-left'}`}>
-          <Logo size="large" showText={true} />
-          <h2 className="mt-4 text-2xl font-bold text-primary-900 leading-tight">
-            Complete Business Management Software
-          </h2>
-          <p className="mt-2 text-sm text-primary-700 leading-snug">
-            Streamline invoicing, inventory, POS, customer management, and financial reporting — all in one platform for businesses in the Gulf, India, and worldwide.
-          </p>
-
-          {/* Key Features - Compact Grid */}
-          <div className="mt-5 grid grid-cols-1 gap-2.5">
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Professional Invoicing & Billing</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Create, send, track invoices. Multi-currency, automated reminders.</p>
-              </div>
+    <div className="auth-entry flex min-h-dvh w-full flex-col items-center justify-center overflow-x-hidden bg-[#F8FAFC] px-4 py-6 dark:bg-[#0B1220] md:px-6" dir={isRtl ? 'rtl' : 'ltr'} lang={lang}>
+      <main className="w-full max-w-[400px] rounded-lg border border-[#E5E7EB] bg-white p-6 dark:border-[#1E293B] dark:bg-[#121A22] lg:p-8">
+        <header className="mb-6 text-start">
+          {showBrandSkeleton ? (
+            <div className="space-y-2" aria-hidden="true">
+              <div className="h-8 w-8 animate-pulse rounded-md bg-neutral-200 motion-reduce:animate-none dark:bg-[#1E293B]" />
+              <div className="h-5 w-[120px] animate-pulse rounded bg-neutral-200 motion-reduce:animate-none dark:bg-[#1E293B]" />
             </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Point of Sale (POS) System</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Fast checkout, barcode scanning, receipt printing, real-time updates.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Smart Inventory Management</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Track stock, low stock alerts, multi-location, automated reorder.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Customer & Payment Management</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Customer ledger, payment tracking, credit limits, balance reports.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Advanced Analytics & Reports</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Sales reports, profit analysis, expense tracking, tax reports.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary-600 flex items-center justify-center mt-0.5">
-                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-primary-900 text-sm">Multi-Branch & Route Management</h3>
-                <p className="text-xs text-primary-600 mt-0.5">Multiple locations, delivery routes, staff assignments, branch reports.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Business Benefits - Compact */}
-          <div className="mt-5 p-4 bg-white/60 backdrop-blur-sm rounded-lg border border-primary-200">
-            <h3 className="font-bold text-primary-900 text-sm mb-2">Why Choose HexaBill?</h3>
-            <ul className="space-y-1 text-xs text-primary-700">
-              <li className="flex items-center gap-1.5">
-                <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Save Time:</strong> Automate invoicing & inventory</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Grow Faster:</strong> Real-time insights & data-driven decisions</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Scale Easily:</strong> Single location to multi-branch</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <span className="text-primary-600 font-semibold">✓</span>
-                <span><strong>Stay Compliant:</strong> Tax reports, VAT, audit trails</span>
-              </li>
-            </ul>
-          </div>
-
-          {/* SEO Keywords - Compact */}
-          <div className="mt-4 text-xs text-primary-600 leading-snug">
-            <p>
-              <strong>Perfect for:</strong> Retail, wholesale, restaurants, e-commerce, manufacturing.
-              <strong className="text-primary-700"> Trusted across UAE, Saudi Arabia, India & 50+ countries.</strong>
-            </p>
-          </div>
-        </div>
-      </div>
-      )}
-      <div className="flex-1 flex items-center justify-center py-8 px-4 sm:px-6 lg:px-8 overflow-y-auto">
-        <div className={`max-w-md w-full space-y-6 ${textAlign}`}>
-          <div className={isRtl ? 'text-right' : 'text-center'}>
-            {tenantLogin ? (
-              <h1 className="text-2xl font-semibold tracking-tight text-neutral-900">{displayName || 'Sign in'}</h1>
-            ) : (
-            <div className={`mb-4 lg:hidden ${isRtl ? 'flex justify-end' : 'mx-auto flex justify-center'}`}>
-              <Logo size="large" showText={true} />
-            </div>
-            )}
-            {!tenantLogin && (
-            <h1 className="mt-2 text-xl font-semibold tracking-tight text-neutral-900">
-              {isSuperAdminLogin ? 'Admin Portal' : 'Sign in'}
-            </h1>
-            )}
-            <p className="mt-1 text-sm text-neutral-500">
-              {isSuperAdminLogin
-                ? 'Manage the platform'
-                : tenantLogin
-                  ? (displayName ? `Sign in to ${displayName}` : 'Sign in')
-                  : 'Sign in with your company account'}
-            </p>
-          </div>
-
-          <div className={`bg-white py-5 px-4 rounded-lg border border-neutral-200 ${(errors.email || errors.password) ? 'animate-shake' : ''}`}>
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-              <Input
-                ref={emailInputRef}
-                label="Email Address"
-                type="email"
-                placeholder="Enter your email address"
-                required
-                error={errors.email?.message}
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address'
-                  }
-                })}
-                icon={<Mail className="h-5 w-5 text-gray-400" />}
+          ) : (
+            <>
+              <Mark
+                name={isSuperAdminLogin ? '' : resolvedName}
+                logoSrc={isSuperAdminLogin ? null : logoSrc}
+                onLogoError={() => setLogoFailed(true)}
               />
-
-              <div className="relative">
-                <Input
-                  label="Password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Enter your password"
-                  autoComplete="current-password"
-                  required
-                  error={errors.password?.message}
-                  {...register('password', {
-                    required: 'Password is required',
-                    minLength: {
-                      value: 6,
-                      message: 'Password must be at least 6 characters'
-                    }
-                  })}
-                  icon={<Lock className="h-5 w-5 text-neutral-400" />}
-                />
-                <button
-                  type="button"
-                  className={`absolute top-8 text-neutral-400 hover:text-neutral-600 ${isRtl ? 'left-3' : 'right-3'}`}
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5" />
-                  ) : (
-                    <Eye className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-
-              <div className={`flex items-center justify-between ${isRtl ? 'flex-row-reverse' : ''}`}>
-                <div className={`flex items-center ${isRtl ? 'flex-row-reverse' : ''}`}>
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
-                  />
-                  <label htmlFor="remember-me" className={isRtl ? 'mr-2 ml-0' : 'ml-2'} dir={dir}>
-                    Remember me
-                  </label>
-                </div>
-                <div className="text-sm">
-                  <a href="#" className="font-medium text-primary-600 hover:text-primary-500" dir={dir}>
-                    Forgot your password?
-                  </a>
-                </div>
-              </div>
-
-              <LoadingButton
-                type="submit"
-                loading={loading}
-                disabled={loading}
-                className="w-full"
-              >
-                Sign in
-              </LoadingButton>
-            </form>
-          </div>
-
-          {/* Admin Portal: link to main app so company users don't get stuck */}
-          {isSuperAdminLogin && (
-            <div className={isRtl ? 'text-right mt-4' : 'text-center mt-4'}>
-              <a href="/login" className="text-sm text-primary-600 hover:text-primary-700 font-medium" dir={dir}>
-                {isRtl ? '← Company user? Sign in to your billing app here' : 'Company user? Sign in to your billing app here →'}
-              </a>
-            </div>
+              <h1 className="mt-3 text-xl font-semibold leading-[1.25] text-[#0F172A] dark:text-[#F8FAFC]">{heading}</h1>
+              {context && <p className="mt-1 text-[13px] leading-[1.4] text-neutral-500 dark:text-[#8B9BB4]">{context}</p>}
+            </>
           )}
+        </header>
 
-          <div className={`text-sm text-neutral-400 ${isRtl ? 'text-right' : 'text-center'}`}>
-            <p>© 2026 HexaBill</p>
-          </div>
-        </div>
-      </div>
+        <AuthAlert onRetry={canRetry ? () => document.querySelector('.auth-entry form')?.requestSubmit() : null}>{alert}</AuthAlert>
+
+        {inviteToken && !isSuperAdminLogin ? (
+          <form className="mt-4 space-y-4" onSubmit={acceptInvite} noValidate>
+            <AuthField
+              id="new-password"
+              label="New password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              value={invitePassword}
+              onChange={(event) => setInvitePassword(event.target.value)}
+              onBlur={() => {
+                if (invitePassword && invitePassword.length < 8) {
+                  setInviteFieldError((prev) => ({ ...prev, password: 'Password must be at least 8 characters.' }))
+                }
+              }}
+              error={inviteFieldError.password}
+              icon={Lock}
+              end={<PasswordToggle shown={showPassword} onClick={() => setShowPassword((value) => !value)} label={showPassword ? 'Hide password' : 'Show password'} />}
+            />
+            <AuthField
+              id="confirm-password"
+              label="Confirm password"
+              type={showConfirm ? 'text' : 'password'}
+              autoComplete="new-password"
+              required
+              value={inviteConfirm}
+              onChange={(event) => setInviteConfirm(event.target.value)}
+              onBlur={() => {
+                if (inviteConfirm && inviteConfirm !== invitePassword) {
+                  setInviteFieldError((prev) => ({ ...prev, confirm: 'Passwords do not match.' }))
+                }
+              }}
+              error={inviteFieldError.confirm}
+              icon={Lock}
+              end={<PasswordToggle shown={showConfirm} onClick={() => setShowConfirm((value) => !value)} label={showConfirm ? 'Hide password' : 'Show password'} />}
+            />
+            <SubmitButton loading={loading} disabled={loading}>{submitLabel}</SubmitButton>
+            <button
+              type="button"
+              onClick={() => navigate('/login', { replace: true })}
+              className="w-full text-center text-sm font-medium text-primary-600 hover:text-primary-700"
+            >
+              Back to sign in
+            </button>
+          </form>
+        ) : (
+          <form className={`space-y-4 ${alert ? 'mt-4' : ''}`} onSubmit={handleSubmit(onSubmit)} noValidate>
+            <AuthField
+              id="email"
+              label="Email address"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              spellCheck={false}
+              required
+              icon={Mail}
+              error={errors.email?.message}
+              {...register('email', {
+                required: 'Email is required',
+                pattern: {
+                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                  message: 'Invalid email address'
+                }
+              })}
+            />
+            <AuthField
+              id="password"
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              required
+              icon={Lock}
+              error={errors.password?.message}
+              end={<PasswordToggle shown={showPassword} onClick={() => setShowPassword((value) => !value)} label={showPassword ? 'Hide password' : 'Show password'} />}
+              {...register('password', {
+                required: 'Password is required',
+                minLength: { value: 6, message: 'Password must be at least 6 characters' }
+              })}
+            />
+            <SubmitButton loading={loading} disabled={loading || locked} locked={locked}>{submitLabel}</SubmitButton>
+            <p className="text-xs leading-[1.4] text-neutral-500 dark:text-[#8B9BB4]">
+              Need password help? Contact your company administrator.
+            </p>
+          </form>
+        )}
+
+        {isSuperAdminLogin && (
+          <p className="mt-4 text-center">
+            <Link to="/login" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+              Company sign in
+            </Link>
+          </p>
+        )}
+      </main>
+      <p className="mt-6 text-center text-xs text-neutral-500 dark:text-[#8B9BB4]">© {new Date().getFullYear()} HexaBill</p>
     </div>
+  )
+}
+
+function SubmitButton({ loading, locked, children, disabled }) {
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary-600 px-4 text-[15px] font-medium text-white hover:bg-primary-700 active:bg-primary-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 disabled:cursor-not-allowed disabled:opacity-40 lg:h-[38px] lg:text-sm"
+    >
+      {loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-pulse" aria-hidden="true" />}
+      {!loading && locked && <Lock className="h-4 w-4" strokeWidth={2} aria-hidden="true" />}
+      {children}
+    </button>
   )
 }
 

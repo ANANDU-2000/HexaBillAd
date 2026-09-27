@@ -246,7 +246,7 @@ export default function SalaryCertificateEditorPage() {
           )
         }
       } catch (e) {
-        if (!cancelled) setError(e?.response?.data?.message || e.message || 'Failed to load')
+        if (!cancelled) setError(e?.response?.data?.message || 'Failed to load')
       }
     })()
     return () => {
@@ -304,6 +304,7 @@ export default function SalaryCertificateEditorPage() {
       : await salaryCertificatesAPI.create(payload())
     const a = res?.data ?? res
     applyDto(a, { setClean: true })
+    window.dispatchEvent(new CustomEvent('dataUpdated'))
     if (!isEdit && a.id) navigate(`/salary-certificates/${a.id}`, { replace: true })
     return a.id
   }
@@ -321,7 +322,7 @@ export default function SalaryCertificateEditorPage() {
     try {
       await persist()
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Save failed')
+      setError(e?.response?.data?.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -340,7 +341,7 @@ export default function SalaryCertificateEditorPage() {
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'PDF failed')
+      setError(e?.response?.data?.message || 'PDF failed')
     } finally {
       setSaving(false)
     }
@@ -431,7 +432,7 @@ export default function SalaryCertificateEditorPage() {
           <p className="text-xs text-text-secondary">
             Only employee / recipient fields change. Body wording is a fixed letter template. Stamp &amp; sign on the left.
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Date</span>
               <input
@@ -481,7 +482,7 @@ export default function SalaryCertificateEditorPage() {
               onKeyDown={(e) => onFieldKeyDown(e, '[data-sc-field="nationality"]')}
             />
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Nationality</span>
               <input
@@ -514,7 +515,7 @@ export default function SalaryCertificateEditorPage() {
               placeholder="e.g. SHOP ASSISTANT{SALES EXCECUTIVE}"
             />
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Monthly Salary</span>
               <input
@@ -565,7 +566,7 @@ export default function SalaryCertificateEditorPage() {
               placeholder="e.g. 0506918642"
             />
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Signatory Name</span>
               <input

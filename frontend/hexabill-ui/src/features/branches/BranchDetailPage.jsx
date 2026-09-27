@@ -10,6 +10,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { useAuth } from '../../hooks/useAuth'
+import { localDateString } from '../../utils/dateFormat'
 
 const TABS = ['overview', 'routes', 'staff', 'customers', 'expenses', 'performance', 'report']
 
@@ -32,19 +33,19 @@ const BranchDetailPage = () => {
   const getDefaultFrom = () => {
     const d = new Date()
     d.setFullYear(d.getFullYear() - 1)
-    return d.toISOString().split('T')[0]
+    return localDateString(d)
   }
   const [fromDate, setFromDate] = useState(getDefaultFrom)
-  const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0])
+  const [toDate, setToDate] = useState(localDateString(new Date()))
   const [dateDraft, setDateDraft] = useState(() => ({
     from: getDefaultFrom(),
-    to: new Date().toISOString().split('T')[0]
+    to: localDateString(new Date())
   }))
   // Branch-level expenses
   const [branchExpenses, setBranchExpenses] = useState([])
   const [branchExpensesLoading, setBranchExpensesLoading] = useState(false)
   const [showAddExpenseModal, setShowAddExpenseModal] = useState(false)
-  const [expenseForm, setExpenseForm] = useState({ categoryId: '', amount: '', date: new Date().toISOString().split('T')[0], note: '' })
+  const [expenseForm, setExpenseForm] = useState({ categoryId: '', amount: '', date: localDateString(new Date()), note: '' })
   const [expenseCategories, setExpenseCategories] = useState([])
   const [expenseSaving, setExpenseSaving] = useState(false)
   const [selectedExpenseForEdit, setSelectedExpenseForEdit] = useState(null)
@@ -81,7 +82,7 @@ const BranchDetailPage = () => {
         setBranchExpenses([])
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to load branch expenses')
+      if (!e?._handledByInterceptor) toast.error('Failed to load branch expenses')
       setBranchExpenses([])
     } finally {
       setBranchExpensesLoading(false)
@@ -130,7 +131,7 @@ const BranchDetailPage = () => {
           setSummaryError(res?.message || 'No data returned')
         }
       } catch (e) {
-        const msg = e?.response?.data?.message || e?.message || 'Failed to load branch summary'
+        const msg = e?.response?.data?.message || 'Failed to load branch summary'
         if (!e?._handledByInterceptor) toast.error(msg)
         setSummaryError(msg)
         setSummary(null)
@@ -193,7 +194,7 @@ const BranchDetailPage = () => {
         }
       })
       .catch(e => {
-        setSummaryError(e?.response?.data?.message || e?.message || 'Failed to load')
+        setSummaryError(e?.response?.data?.message || 'Failed to load')
         setSummary(null)
       })
       .finally(() => setLoading(false))
@@ -218,7 +219,7 @@ const BranchDetailPage = () => {
       const staff = items.filter(u => (u.role || '').toLowerCase() === 'staff' && !alreadyAssignedIds.has(u.id))
       setStaffToAssignList(staff)
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || 'Failed to load users'
+      const msg = e?.response?.data?.message || 'Failed to load users'
       setAssignStaffLoadError(msg)
       toast.error(msg)
     } finally {
@@ -245,7 +246,7 @@ const BranchDetailPage = () => {
       } else toast.error(res?.message || 'Failed to assign')
     } catch (e) {
       if (!e?._handledByInterceptor) {
-        const msg = e?.response?.data?.message || e?.response?.data?.errors?.[0] || e?.message || 'Failed to assign'
+        const msg = e?.response?.data?.message || e?.response?.data?.errors?.[0] || 'Failed to assign'
         toast.error(msg)
       }
     } finally {
@@ -269,7 +270,7 @@ const BranchDetailPage = () => {
       } else toast.error(res?.message || 'Failed to remove')
     } catch (e) {
       if (!e?._handledByInterceptor) {
-        const msg = e?.response?.data?.message || e?.response?.data?.errors?.[0] || e?.message || 'Failed to remove'
+        const msg = e?.response?.data?.message || e?.response?.data?.errors?.[0] || 'Failed to remove'
         toast.error(msg)
       }
     } finally {
@@ -291,13 +292,14 @@ const BranchDetailPage = () => {
       })
       if (res?.success) {
         toast.success('Branch updated')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowEditModal(false)
         setBranch(prev => prev ? { ...prev, name: editForm.name.trim(), address: editForm.address?.trim() || '' } : null)
         const sumRes = await branchesAPI.getBranchSummary(id, fromDate, toDate)
         if (sumRes?.success && sumRes?.data) setSummary(sumRes.data)
       } else toast.error(res?.message || 'Failed to update')
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to update branch')
+      if (!e?._handledByInterceptor) toast.error('Failed to update branch')
     } finally {
       setSaving(false)
     }
@@ -314,20 +316,21 @@ const BranchDetailPage = () => {
       const res = await routesAPI.createRoute({ name: routeName.trim(), branchId: parseInt(id, 10) })
       if (res?.success) {
         toast.success('Route created')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowAddRouteModal(false)
         setRouteName('')
         const sumRes = await branchesAPI.getBranchSummary(id, fromDate, toDate)
         if (sumRes?.success && sumRes?.data) setSummary(sumRes.data)
       } else toast.error(res?.message || 'Failed to create route')
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to create route')
+      if (!e?._handledByInterceptor) toast.error('Failed to create route')
     } finally {
       setSaving(false)
     }
   }
 
   const openAddExpenseModal = () => {
-    setExpenseForm({ categoryId: '', amount: '', date: new Date().toISOString().split('T')[0], note: '' })
+    setExpenseForm({ categoryId: '', amount: '', date: localDateString(new Date()), note: '' })
     setSelectedExpenseForEdit(null)
     fetchExpenseCategories()
     setShowAddExpenseModal(true)
@@ -374,6 +377,7 @@ const BranchDetailPage = () => {
         const res = await expensesAPI.updateExpense(selectedExpenseForEdit.id, payload)
         if (res?.success) {
           toast.success('Expense updated', { id: 'branch-expense-save' })
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
           setShowAddExpenseModal(false)
           fetchBranchExpenses()
           const sumRes = await branchesAPI.getBranchSummary(id, fromDate, toDate)
@@ -383,6 +387,7 @@ const BranchDetailPage = () => {
         const res = await expensesAPI.createExpense(payload)
         if (res?.success) {
           toast.success('Expense added', { id: 'branch-expense-save' })
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
           setShowAddExpenseModal(false)
           fetchBranchExpenses()
           const sumRes = await branchesAPI.getBranchSummary(id, fromDate, toDate)
@@ -390,7 +395,7 @@ const BranchDetailPage = () => {
         } else toast.error(res?.message || 'Failed to add')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to save expense')
+      if (!e?._handledByInterceptor) toast.error('Failed to save expense')
     } finally {
       setExpenseSaving(false)
     }
@@ -400,7 +405,7 @@ const BranchDetailPage = () => {
     setExpenseForm({
       categoryId: String(exp.categoryId || ''),
       amount: String(exp.amount || ''),
-      date: exp.date ? new Date(exp.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      date: exp.date ? localDateString(new Date(exp.date)) : localDateString(new Date()),
       note: exp.note || ''
     })
     fetchExpenseCategories()
@@ -452,7 +457,7 @@ const BranchDetailPage = () => {
         toast.error(res?.message || 'Failed to transfer customer')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to transfer customer')
+      if (!e?._handledByInterceptor) toast.error('Failed to transfer customer')
     } finally {
       setTransferSaving(false)
     }
@@ -468,12 +473,13 @@ const BranchDetailPage = () => {
           const res = await expensesAPI.deleteExpense(exp.id)
           if (res?.success) {
             toast.success('Expense deleted', { id: 'branch-expense-delete' })
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
             fetchBranchExpenses()
             const sumRes = await branchesAPI.getBranchSummary(id, fromDate, toDate)
             if (sumRes?.success && sumRes?.data) setSummary(sumRes.data)
           } else toast.error(res?.message || 'Failed to delete')
         } catch (err) {
-          if (!err?._handledByInterceptor) toast.error(err?.message || 'Failed to delete')
+          if (!err?._handledByInterceptor) toast.error('Failed to delete')
         }
         setExpenseDangerModal(prev => ({ ...prev, isOpen: false }))
       }
@@ -501,7 +507,7 @@ const BranchDetailPage = () => {
 
   return (
     <div className="w-full h-full min-h-0 flex flex-col">
-      <div className="flex items-center justify-between mb-2 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2 shrink-0">
         <Link to="/branches" className="inline-flex items-center gap-1 text-primary-600 hover:underline text-sm">
           <ArrowLeft className="h-4 w-4" />
           Back to Branches
@@ -607,7 +613,7 @@ const BranchDetailPage = () => {
           ) : (
             <ul className="space-y-1.5">
               {summary.routes?.map((r) => (
-                <li key={r.routeId || r.id} className="flex items-center justify-between py-2 px-2.5 bg-white rounded border border-neutral-200 text-sm">
+                <li key={r.routeId || r.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-2 px-2.5 bg-white rounded border border-neutral-200 text-sm">
                   <Link
                     to={`/routes/${r.routeId || r.id}?fromDate=${fromDate}&toDate=${toDate}`}
                     className="font-medium text-primary-600 hover:underline"

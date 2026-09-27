@@ -36,6 +36,7 @@ import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
+import { localDateString } from '../../utils/dateFormat'
 
 /** wa.me URL with digits-only MSISDN; Gulf-oriented defaults for UAE-style local numbers. */
 function buildWhatsAppUrlFromPhone(phone) {
@@ -277,6 +278,7 @@ const CustomersPage = () => {
 
       if (response.success) {
         toast.success(selectedCustomer ? 'Customer updated successfully!' : 'Customer added successfully!')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         // Refresh customer list without page reload
         await fetchCustomers()
         reset()
@@ -311,6 +313,7 @@ const CustomersPage = () => {
       const response = await customersAPI.createCustomer(payload)
       if (response.success) {
         toast.success('Customer added successfully!')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         await fetchCustomers()
         reset()
         setShowAddModal(false)
@@ -372,7 +375,7 @@ const CustomersPage = () => {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `customers_export_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `customers_export_${localDateString(new Date())}.csv`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -452,6 +455,7 @@ const CustomersPage = () => {
       }
 
       toast.success(`Import completed: ${successCount} successful, ${errorCount} failed`)
+      if (successCount > 0) window.dispatchEvent(new CustomEvent('dataUpdated'))
       await fetchCustomers(1, false)
       event.target.value = '' // Reset file input
     } catch (error) {
@@ -466,11 +470,11 @@ const CustomersPage = () => {
       const fromDate = new Date()
       fromDate.setDate(fromDate.getDate() - 30) // Last 30 days
       const toDate = new Date()
-      const blob = await customersAPI.getCustomerStatement(customerId, fromDate.toISOString().split('T')[0], toDate.toISOString().split('T')[0])
+      const blob = await customersAPI.getCustomerStatement(customerId, localDateString(fromDate), localDateString(toDate))
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `customer_statement_${customerId}_${new Date().toISOString().split('T')[0]}.pdf`
+      a.download = `customer_statement_${customerId}_${localDateString(new Date())}.pdf`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
@@ -530,8 +534,10 @@ const CustomersPage = () => {
             (summary.stockRestored ? ' Stock restored.' : ''),
             { duration: 5000 }
           )
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
           toast.success('Customer deleted successfully!')
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
         }
         // Update state directly without full page reload
         setCustomers(prev => prev.filter(c => c.id !== customerId))
@@ -565,6 +571,7 @@ const CustomersPage = () => {
       const response = await customersAPI.recalculateBalance(customerId)
       if (response.success) {
         toast.success('Balance recalculated successfully!')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         fetchCustomers() // Refresh customer list
       } else {
         toast.error(response.message || 'Failed to recalculate balance')
@@ -701,7 +708,7 @@ const CustomersPage = () => {
               />
             </div>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               onClick={handleExportCustomers}
               className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -723,7 +730,7 @@ const CustomersPage = () => {
               className="hidden"
               onChange={handleImportCustomers}
             />
-            <div className="w-full sm:w-48">
+            <div className="w-full sm:w-48 min-w-[10rem]">
               <label htmlFor="customer-sort" className="block text-xs text-gray-500 mb-1">Sort</label>
               <select
                 id="customer-sort"
@@ -897,7 +904,7 @@ const CustomersPage = () => {
                   </button>
                   <div className="text-xs text-gray-500 mt-1">{customer.phone}</div>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <button
                     onClick={() => handleViewLedger(customer)}
                     className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"

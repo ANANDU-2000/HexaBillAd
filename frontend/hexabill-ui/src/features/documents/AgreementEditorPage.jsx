@@ -183,7 +183,7 @@ export default function AgreementEditorPage() {
           )
         }
       } catch (e) {
-        if (!cancelled) setError(e?.response?.data?.message || e.message || 'Failed to load')
+        if (!cancelled) setError(e?.response?.data?.message || 'Failed to load')
       }
     })()
     return () => {
@@ -227,6 +227,7 @@ export default function AgreementEditorPage() {
       : await agreementsAPI.create(payload())
     const a = res?.data ?? res
     applyDto(a, { setClean: true })
+    window.dispatchEvent(new CustomEvent('dataUpdated'))
     if (!isEdit && a.id) navigate(`/agreements/${a.id}`, { replace: true })
     return a.id
   }
@@ -244,7 +245,7 @@ export default function AgreementEditorPage() {
     try {
       await persist()
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Save failed')
+      setError(e?.response?.data?.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -263,7 +264,7 @@ export default function AgreementEditorPage() {
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'PDF failed')
+      setError(e?.response?.data?.message || 'PDF failed')
     } finally {
       setSaving(false)
     }
@@ -310,7 +311,7 @@ export default function AgreementEditorPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
           <p className="text-xs text-text-secondary">Second Party fields start blank. First Party uses this company&apos;s letter template.</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="text-xs space-y-1">
               <span className="text-text-secondary">Date</span>
               <input type="date" className="w-full border rounded px-2 py-1.5 text-sm" value={agreementDate} onChange={(e) => setAgreementDate(e.target.value)} />
@@ -407,7 +408,7 @@ export default function AgreementEditorPage() {
               </li>
             ))}
           </ul>
-          <div className="grid grid-cols-2 gap-8 text-sm pt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 text-sm pt-6">
             <div>
               <div className="font-semibold">First Party:</div>
               <div className="text-xs mt-2 leading-relaxed">{first.firstPartyName}</div>

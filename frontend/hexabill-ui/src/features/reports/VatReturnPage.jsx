@@ -248,7 +248,7 @@ const VatReturnPage = () => {
     } catch (err) {
       const status = err?.response?.status
       const data = err?.response?.data
-      const msg = data?.message || err?.message || 'Failed to load VAT return'
+      const msg = data?.message || 'Failed to load VAT return'
       const errors = data?.errors
       const url = err?.config?.url ?? err?.config?.baseURL ?? '(request URL not available)'
       if (status === 403) {
@@ -380,6 +380,15 @@ const VatReturnPage = () => {
 
   const [activeTab, setActiveTab] = useState('overview') // overview | transactions | sales | purchases | expenses | creditNotes | validation
   const v = vatReturn
+  const isProfitBasis = String(v?.vatCalculationBasis ?? v?.VatCalculationBasis ?? 'SalesBased') === 'ProfitBased'
+  const profitSales = Number(v?.profitSales ?? v?.ProfitSales ?? 0)
+  const profitCogs = Number(v?.profitCogs ?? v?.ProfitCogs ?? 0)
+  const profitExpenses = Number(v?.profitExpenses ?? v?.ProfitExpenses ?? 0)
+  const profitAmount = Number(v?.profitAmount ?? v?.ProfitAmount ?? 0)
+  const profitVat = Number(v?.profitVat ?? v?.ProfitVat ?? 0)
+  useEffect(() => {
+    if (isProfitBasis && !['overview', 'profit', 'validation'].includes(activeTab)) setActiveTab('overview')
+  }, [isProfitBasis, activeTab])
   // Normalize API response: support both camelCase and PascalCase; coerce to number so totals always display correctly
   const box1a = v != null ? Number(v.box1a ?? v.Box1a ?? 0) : 0
   const box1b = v != null ? Number(v.box1b ?? v.Box1b ?? 0) : 0
@@ -559,7 +568,7 @@ const VatReturnPage = () => {
               This Year
             </button>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="date"
               value={fromDate}
@@ -710,7 +719,7 @@ const VatReturnPage = () => {
                     } else setLedgerFallback(null)
                   } else if (!dto) toast.error(res?.message || 'Recalculate returned no data')
                 } catch (err) {
-                  const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || err?.message || 'Calculate failed'
+                  const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || 'Calculate failed'
                   toast.error(msg)
                 }
               }}
@@ -739,14 +748,17 @@ const VatReturnPage = () => {
                 </button>
                 <button
                   type="button"
+                  disabled={(v.status || '').toLowerCase() !== 'locked'}
                   onClick={async () => {
+                    if ((v.status || '').toLowerCase() !== 'locked') return
                     try {
                       const res = await reportsAPI.submitVatReturnPeriod(v.periodId)
-                      if (res?.success) { setVatReturn(prev => ({ ...prev, status: 'Submitted' })); toast.success('VAT return submitted (placeholder)') }
+                      if (res?.success) toast.success(`VAT return submitted for ${periodLabel}`)
                       else toast.error(res?.message || 'Submit failed')
                     } catch (err) { toast.error(err?.response?.data?.message || 'Submit failed') }
+                    await fetchVatReturn(fromDate, toDate)
                   }}
-                  className="inline-flex items-center gap-1 px-3 py-2 border border-green-600 text-green-700 rounded-md text-sm hover:bg-green-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 border border-green-600 text-green-700 rounded-md text-sm hover:bg-green-50 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" /> Submit
                 </button>
@@ -1096,15 +1108,22 @@ const VatReturnPage = () => {
           {/* Tabs navigation */}
           <div className="mt-4 border-b border-gray-200">
             <nav className="-mb-px flex flex-wrap gap-4 text-sm" aria-label="VAT tabs">
-              {[
-                { id: 'overview', label: 'Overview' },
-                { id: 'transactions', label: 'Transactions' },
-                { id: 'sales', label: 'Sales' },
-                { id: 'purchases', label: 'Purchases' },
-                { id: 'expenses', label: 'Expenses' },
-                { id: 'creditNotes', label: 'Credit Notes' },
-                { id: 'validation', label: 'Validation' }
-              ].map(tab => (
+              {(isProfitBasis
+                ? [
+                    { id: 'overview', label: 'Overview' },
+                    { id: 'profit', label: 'Profit Calculation' },
+                    { id: 'validation', label: 'Validation' }
+                  ]
+                : [
+                    { id: 'overview', label: 'Overview' },
+                    { id: 'transactions', label: 'Transactions' },
+                    { id: 'sales', label: 'Sales' },
+                    { id: 'purchases', label: 'Purchases' },
+                    { id: 'expenses', label: 'Expenses' },
+                    { id: 'creditNotes', label: 'Credit Notes' },
+                    { id: 'validation', label: 'Validation' }
+                  ]
+              ).map(tab => (
                 <button
                   key={tab.id}
                   type="button"
@@ -1125,9 +1144,9 @@ const VatReturnPage = () => {
             aria-hidden={activeTab !== 'overview'}
           >
             <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">VAT Return Summary</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">{isProfitBasis ? 'Profit VAT' : 'VAT Return Summary'}</h2>
               <p className="text-xs text-gray-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
-              {!outputLines.length && !inputLines.length && !creditNoteLines.length && (
+              {!isProfitBasis && !outputLines.length && !inputLines.length && !creditNoteLines.length && (
                 <p className="text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4 mb-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto">
@@ -1141,6 +1160,35 @@ const VatReturnPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
+                    {isProfitBasis ? (
+                      <>
+                        <tr>
+                          <td className="px-3 py-2 font-medium">1</td>
+                          <td className="px-3 py-2 text-gray-700">Sales</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitSales)}</td>
+                          <td className="px-3 py-2 text-right font-medium">—</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium">2</td>
+                          <td className="px-3 py-2 text-gray-700">Cost of goods</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitCogs)}</td>
+                          <td className="px-3 py-2 text-right font-medium">—</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium">3</td>
+                          <td className="px-3 py-2 text-gray-700">Expenses</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitExpenses)}</td>
+                          <td className="px-3 py-2 text-right font-medium">—</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 font-medium">4</td>
+                          <td className="px-3 py-2 text-gray-700">Profit</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td>
+                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitVat)}</td>
+                        </tr>
+                      </>
+                    ) : (
+                      <>
                     <tr>
                       <td className="px-3 py-2 font-medium">1</td>
                       <td className="px-3 py-2 text-gray-700">Total Sales</td>
@@ -1163,22 +1211,24 @@ const VatReturnPage = () => {
                         </span>
                       </td>
                     </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>
-              <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
+              {!isProfitBasis && <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
                 <p className="font-medium text-gray-800">Overview totals are correct.</p>
                 <p className="mt-1">Net VAT to Pay = Sales VAT (Box 1b) − Input VAT (Box 12: purchases + claimable expenses). If Expense VAT shows 0, only expenses marked <strong>Tax claimable (ITC)</strong> on the Expenses page with VAT in this period are included. After adding or editing expenses, click <strong>Refresh</strong> or <strong>Recalculate</strong> to update.</p>
-              </div>
-              {(v?.petroleumExcluded ?? 0) > 0 && (
+              </div>}
+              {!isProfitBasis && (v?.petroleumExcluded ?? 0) > 0 && (
                 <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
               )}
             </div>
-            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${displayBox13a > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${(isProfitBasis ? profitVat > 0 : displayBox13a > 0) ? 'bg-red-50' : 'bg-green-50'}`}>
               <div>
-                <p className="text-sm font-medium text-gray-700">{displayBox13a > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
-                <p className={`text-2xl font-bold mt-0.5 ${displayBox13a > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                  {displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
+                <p className="text-sm font-medium text-gray-700">{isProfitBasis ? 'Profit VAT' : displayBox13a > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${(isProfitBasis ? profitVat > 0 : displayBox13a > 0) ? 'text-red-700' : 'text-green-700'}`}>
+                  {isProfitBasis ? formatCurrency(profitVat) : displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
                 </p>
               </div>
               <div className="text-right">
@@ -1461,6 +1511,22 @@ const VatReturnPage = () => {
                   </tfoot>
                 </table>
               </div>
+            </div>
+          )}
+
+          {isProfitBasis && activeTab === 'profit' && (
+            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+              <h2 className="text-sm font-semibold text-gray-900">Profit Calculation</h2>
+              <p className="text-xs text-gray-500 mt-1 mb-3">Sales minus cost of goods minus expenses. VAT is 5% of a positive profit.</p>
+              <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+                <tbody className="divide-y divide-gray-100">
+                  <tr><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right">{formatCurrency(profitSales)}</td></tr>
+                  <tr><td className="px-3 py-2">Cost of goods</td><td className="px-3 py-2 text-right">{formatCurrency(profitCogs)}</td></tr>
+                  <tr><td className="px-3 py-2">Expenses</td><td className="px-3 py-2 text-right">{formatCurrency(profitExpenses)}</td></tr>
+                  <tr><td className="px-3 py-2 font-medium">Profit</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td></tr>
+                  <tr><td className="px-3 py-2 font-medium">Profit VAT</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitVat)}</td></tr>
+                </tbody>
+              </table>
             </div>
           )}
 

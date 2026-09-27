@@ -4,8 +4,9 @@ import { ArrowLeft, RefreshCw, Package } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { productsAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
+import { localDateString } from '../../utils/dateFormat'
 
-const todayStr = () => new Date().toISOString().split('T')[0]
+const todayStr = () => localDateString(new Date())
 
 const StockAdjustmentsHistoryPage = () => {
   const [searchParams] = useSearchParams()
@@ -18,7 +19,7 @@ const StockAdjustmentsHistoryPage = () => {
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 90)
-    return d.toISOString().split('T')[0]
+    return localDateString(d)
   })
   const [toDate, setToDate] = useState(todayStr)
 

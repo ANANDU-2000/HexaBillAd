@@ -174,6 +174,7 @@ const SuppliersPage = () => {
       })
       if (res?.success) {
         toast.success('Supplier updated successfully')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowEditModal(false)
         setEditingSupplier(null)
         loadSuppliers()
@@ -182,7 +183,7 @@ const SuppliersPage = () => {
       }
     } catch (err) {
       console.error(err)
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to update supplier')
+      toast.error(err?.response?.data?.message || 'Failed to update supplier')
     } finally {
       setUpdating(false)
     }
@@ -195,11 +196,12 @@ const SuppliersPage = () => {
       setDeleting(true)
       await suppliersAPI.deleteSupplier(supplierName)
       toast.success('Supplier deactivated. Existing purchases remain.')
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
       setDeleteConfirm(null)
       loadSuppliers()
     } catch (err) {
       console.error(err)
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to delete supplier')
+      toast.error(err?.response?.data?.message || 'Failed to delete supplier')
     } finally {
       setDeleting(false)
     }
@@ -224,6 +226,7 @@ const SuppliersPage = () => {
       })
       if (res?.success) {
         toast.success('Supplier created successfully')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowCreateModal(false)
         setCreateForm({ name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' })
         loadSuppliers()
@@ -242,7 +245,7 @@ const SuppliersPage = () => {
       }
     } catch (err) {
       console.error(err)
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to create supplier')
+      toast.error(err?.response?.data?.message || 'Failed to create supplier')
     } finally {
       setCreating(false)
     }

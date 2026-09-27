@@ -3,14 +3,15 @@ import toast from 'react-hot-toast'
 import Modal from './Modal'
 import { paymentsAPI, customersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
+import { localDateString } from '../utils/dateFormat'
 
 const MODES = ['CASH', 'CHEQUE', 'ONLINE', 'CREDIT']
 
 function toDateInputValue (d) {
-  if (!d) return new Date().toISOString().split('T')[0]
+  if (!d) return localDateString(new Date())
   const date = new Date(d)
-  if (Number.isNaN(date.getTime())) return new Date().toISOString().split('T')[0]
-  return date.toISOString().split('T')[0]
+  if (Number.isNaN(date.getTime())) return localDateString(new Date())
+  return localDateString(date)
 }
 
 function normalizeMode (raw) {
@@ -170,7 +171,7 @@ export default function EditPaymentModal ({
         toast.error(response?.message || 'Failed to update payment', { id: 'edit-payment' })
       }
     } catch (error) {
-      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to update payment'
+      const errorMsg = error?.response?.data?.message || 'Failed to update payment'
       if (!error?._handledByInterceptor) toast.error(errorMsg, { id: 'edit-payment' })
     } finally {
       setSaving(false)
@@ -193,7 +194,7 @@ export default function EditPaymentModal ({
             <input
               type="date"
               required
-              max={new Date().toISOString().split('T')[0]}
+              max={localDateString(new Date())}
               value={form.paymentDate}
               onChange={(e) => setForm((f) => ({ ...f, paymentDate: e.target.value }))}
               className="w-full min-h-[44px] border border-neutral-300 rounded-lg px-3 py-2.5"

@@ -678,10 +678,18 @@ api.interceptors.response.use(
     }
 
     // Ping is best-effort; never trigger disconnect or toasts (avoids 404/network spam and health-check flood)
-    const isPingRequest = (error.config?.url || '').includes('me/ping')
+    const requestUrl = (error.config?.url || '').toLowerCase()
+    const isPingRequest = requestUrl.includes('me/ping')
     if (isPingRequest) {
       error._handledByInterceptor = true
       return Promise.reject(error)
+    }
+
+    // Sign-in and invite render their own alert. Do not also toast raw server text.
+    const silentAuthEntry = requestUrl.includes('auth/login') || requestUrl.includes('auth/invite/accept')
+    const reportError = (...args) => {
+      if (silentAuthEntry) return
+      showThrottledError(...args)
     }
 
     // Handle network/connection errors (includes timeout ECONNABORTED)
@@ -733,7 +741,7 @@ api.interceptors.response.use(
         }
         if (!serverMsg) serverMsg = extractErrorMessageFromResponse(error)
         const msg = serverMsg || 'Request failed after multiple attempts. Please refresh the page.'
-        showThrottledError(msg, false)
+        reportError(msg, false)
       }
       return Promise.reject(error)
     }
@@ -768,7 +776,7 @@ api.interceptors.response.use(
           ? 'Service is temporarily unavailable. Please try again or contact support.'
           : 'Service temporarily unavailable. Please try again or contact support.'
 
-      if (!isLoginRequest) showThrottledError(errorMsg, true)
+      if (!isLoginRequest) reportError(errorMsg, true)
       error._handledByInterceptor = true
       // Queue so Super Admin sees it in Error Logs when backend is back
       queueClientError(errorMsg, error.config?.url || (typeof window !== 'undefined' ? window.location?.pathname : ''))
@@ -793,7 +801,7 @@ api.interceptors.response.use(
       const retryAfter = error.response?.headers?.['retry-after'] || 5
       const message = `Too many requests. Please wait ${retryAfter} seconds before trying again.`
 
-      showThrottledError(message, false)
+      reportError(message, false)
       error._handledByInterceptor = true
 
       // Don't log every 429 error to prevent console flooding
@@ -812,7 +820,7 @@ api.interceptors.response.use(
 
     // Handle rate limited requests
     if (error.isRateLimited) {
-      showThrottledError('Too many requests in progress. Please wait...', false)
+      reportError('Too many requests in progress. Please wait...', false)
       error._handledByInterceptor = true
       return Promise.reject(error)
     }
@@ -832,7 +840,7 @@ api.interceptors.response.use(
       } else {
         message = body?.message || body?.title || 'Invalid request. Please check your input.'
       }
-      showThrottledError(message, false)
+      reportError(message, false)
       error._handledByInterceptor = true
       return Promise.reject(error)
     }
@@ -849,7 +857,7 @@ api.interceptors.response.use(
       } else {
         msg = error.response?.data?.message || 'Resource not found.'
       }
-      showThrottledError(msg, false)
+      reportError(msg, false)
       error._handledByInterceptor = true
       return Promise.reject(error)
     }
@@ -859,7 +867,7 @@ api.interceptors.response.use(
       connectionManager.markConnected()
       queueClientError('Server 502 Bad Gateway', error.config?.url)
       const msg = error.response?.data?.message || 'Server temporarily unavailable. Please try again.'
-      showThrottledError(msg, false, { isServerError: true })
+      reportError(msg, false, { isServerError: true })
       error._handledByInterceptor = true
       return Promise.reject(error)
     }
@@ -881,7 +889,7 @@ api.interceptors.response.use(
         : isAdminEndpoint && !msg
           ? 'Admin or Owner access required for this feature.'
           : msg
-      showThrottledError(displayMsg, false)
+      reportError(displayMsg, false)
       error._handledByInterceptor = true
       return Promise.reject(error)
     }
@@ -898,6 +906,10 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized errors
     // CRITICAL: Never retry 401 errors - prevent infinite retry loops
     if (error.response?.status === 401) {
+      if (silentAuthEntry) {
+        error._handledByInterceptor = true
+        return Promise.reject(error)
+      }
       connectionManager.markConnected() // Server is responding, just auth issue
       
       // Prevent retry loops on 401 - mark as handled immediately
@@ -957,7 +969,7 @@ api.interceptors.response.use(
         const msg = isMutating
           ? (errorMessage || 'Your session may have expired. Please log in again.')
           : (errorMessage || 'You are not authorized to perform this action')
-        showThrottledError(msg)
+        reportError(msg)
       }
       // If no token: silent fail (e.g. BrandingProvider on login page) - no toast, no redirect
       
@@ -988,7 +1000,7 @@ api.interceptors.response.use(
       lastServerErrorToast = now
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
       const errorMsg = correlationId ? `${baseMessage} (Ref: ${correlationId})` : baseMessage
-      showThrottledError(errorMsg, false, { isServerError: true })
+      reportError(errorMsg, false, { isServerError: true })
       error._handledByInterceptor = true
     } else if (error.response?.data?.message) {
       // Server is responding with message
@@ -996,7 +1008,7 @@ api.interceptors.response.use(
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
       const baseMessage = error.response.data.message
       const errorMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : baseMessage
-      showThrottledError(errorMsg)
+      reportError(errorMsg)
       error._handledByInterceptor = true
     } else if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
       // Server is responding with errors array
@@ -1004,7 +1016,7 @@ api.interceptors.response.use(
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
       const errorMsg = error.response.data.errors.join(', ')
       const finalMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : errorMsg
-      showThrottledError(finalMsg)
+      reportError(finalMsg)
       error._handledByInterceptor = true
     } else if (error.response?.data !== undefined && error.response?.data !== null) {
       // Server responded with a body but no message/errors (e.g. ProblemDetails shape, empty object)
@@ -1014,13 +1026,13 @@ api.interceptors.response.use(
       const errorMsg = correlationId
         ? `${extracted || 'Something went wrong'} (Ref: ${correlationId})`
         : (extracted || 'An error occurred. Please try again.')
-      showThrottledError(errorMsg)
+      reportError(errorMsg)
       error._handledByInterceptor = true
     } else {
       // e.g. HTTP error with empty body
       connectionManager.markConnected()
       const extracted = extractErrorMessageFromResponse(error)
-      showThrottledError(extracted || 'An error occurred. Please try again.')
+      reportError(extracted || 'An error occurred. Please try again.')
       error._handledByInterceptor = true
     }
 

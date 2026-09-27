@@ -42,9 +42,12 @@ namespace HexaBill.Api.Migrations
                 nullable: false,
                 defaultValue: 0m);
 
-            migrationBuilder.RestartSequence(
-                name: "invoice_number_seq",
-                startValue: 1L);
+            if (migrationBuilder.ActiveProvider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                migrationBuilder.RestartSequence(
+                    name: "invoice_number_seq",
+                    startValue: 1L);
+            }
 
             migrationBuilder.CreateTable(
                 name: "SupplierPayments",

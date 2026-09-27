@@ -25,7 +25,7 @@ const SuperAdminErrorLogsPage = () => {
       setTotalCount(data?.count ?? items.length)
     } catch (err) {
       console.error('Error logs fetch error:', err)
-      setError(err?.response?.data?.message || err?.message || 'Failed to load error logs')
+      setError(err?.response?.data?.message || 'Failed to load error logs')
       setLogs([])
       toast.error('Failed to load error logs')
     } finally {

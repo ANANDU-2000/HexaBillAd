@@ -457,7 +457,53 @@ namespace HexaBill.Api.Modules.Reports
             };
             _logger.LogDebug("VAT return assurance: tenant {TenantId} Box1a={Box1a}, Box1b={Box1b}, Box9b={Box9b}, Box12={Box12}, Box13a={Box13a}, Box13b={Box13b}.",
                 tenantId, dto.Box1a, dto.Box1b, dto.Box9b, dto.Box12, dto.Box13a, dto.Box13b);
+            await FillProfitFormAsync(dto, tenantId, from, to);
             return dto;
+        }
+
+        /// <summary>Profit form is a second view. Sales box amounts are left as calculated.</summary>
+        private async Task FillProfitFormAsync(VatReturn201Dto dto, int tenantId, DateTime from, DateTime to)
+        {
+            dto.VatCalculationBasis = nameof(VatCalculationBasis.SalesBased);
+            VatCalculationBasis? basis;
+            try
+            {
+                basis = await _context.Tenants.AsNoTracking()
+                    .Where(t => t.Id == tenantId)
+                    .Select(t => (VatCalculationBasis?)t.VatCalculationBasis)
+                    .FirstOrDefaultAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "VAT profit basis could not be read for tenant {TenantId}. Sales boxes were left unchanged.", tenantId);
+                return;
+            }
+            if (basis != VatCalculationBasis.ProfitBased)
+                return;
+
+            dto.VatCalculationBasis = nameof(VatCalculationBasis.ProfitBased);
+            var sales = _context.Sales.AsNoTracking()
+                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
+            var profitSales = await sales.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+            var saleIds = await sales.Select(s => s.Id).ToListAsync();
+            var saleItems = await _context.SaleItems.AsNoTracking()
+                .Include(si => si.Product)
+                .Where(si => saleIds.Contains(si.SaleId))
+                .ToListAsync();
+            var cogs = saleItems.Sum(si =>
+            {
+                var factor = si.Product != null && si.Product.ConversionToBase > 0 ? si.Product.ConversionToBase : 1;
+                return si.Qty * factor * (si.Product?.CostPrice ?? 0);
+            });
+            var expenses = await _context.Expenses.AsNoTracking()
+                .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date < to)
+                .SumAsync(e => (decimal?)e.Amount) ?? 0;
+            var profit = profitSales - cogs - expenses;
+            dto.ProfitSales = VatCalculator.Round(profitSales);
+            dto.ProfitCogs = VatCalculator.Round(cogs);
+            dto.ProfitExpenses = VatCalculator.Round(expenses);
+            dto.ProfitAmount = VatCalculator.Round(profit);
+            dto.ProfitVat = profit > 0 ? VatCalculator.Round(profit * VatCalculator.StandardRate) : 0;
         }
 
         private static bool IsStandardRated(Sale s)

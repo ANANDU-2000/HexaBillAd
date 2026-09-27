@@ -73,7 +73,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     } catch (error) {
       console.error(error)
       if (!error?._handledByInterceptor) {
-        toast.error(error?.message || 'Failed to get barcode PDF')
+        toast.error('Failed to get barcode PDF')
       }
     } finally {
       setBarcodePdfBusy(false)

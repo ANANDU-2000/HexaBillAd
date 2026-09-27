@@ -322,7 +322,7 @@ const SuperAdminTenantDetailPage = () => {
       URL.revokeObjectURL(url)
       toast.success('Export downloaded')
     } catch (e) {
-      toast.error(e?.response?.data?.message || e?.message || 'Export failed')
+      toast.error(e?.response?.data?.message || 'Export failed')
     } finally {
       setExportLoading(false)
     }
@@ -350,7 +350,6 @@ const SuperAdminTenantDetailPage = () => {
       // BUG #2.2 FIX: Enhanced error handling - show detailed error messages from backend
       const errorMsg = error?.response?.data?.errors?.[0] ||
         error?.response?.data?.message ||
-        error?.message ||
         'An error occurred while clearing data. Please check the console for details.'
       if (!error?._handledByInterceptor) {
         toast.error(errorMsg, { duration: 6000 }) // Show for 6 seconds for important errors
@@ -1451,7 +1450,7 @@ const SuperAdminTenantDetailPage = () => {
                   await superAdminAPI.updateTenantLimits(parseInt(id), limitsData)
                   toast.success('Limits updated successfully')
                 } catch (err) {
-                  toast.error(err?.message || 'Failed to update limits')
+                  toast.error('Failed to update limits')
                 } finally {
                   setLimitsSaving(false)
                 }
@@ -2209,7 +2208,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
       setTenantFeatures(next)
       toast.success(`${featureName || featureKey} ${newValue ? 'enabled' : 'disabled'}`)
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to update feature'
+      const msg = err?.response?.data?.message || 'Failed to update feature'
       toast.error(msg)
     } finally {
       setFeaturesSaving(false)
@@ -2237,7 +2236,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
       toast.success('Features updated successfully')
     } catch (err) {
       console.error('Failed to update features:', err)
-      const errorMsg = err?.response?.data?.message || err?.message || 'Failed to save changes. Please try again.'
+      const errorMsg = err?.response?.data?.message || 'Failed to save changes. Please try again.'
       toast.error(errorMsg)
       // Reload features to revert to server state
       try {

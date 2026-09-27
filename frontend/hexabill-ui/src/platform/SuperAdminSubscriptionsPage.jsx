@@ -14,6 +14,7 @@ import { formatCurrency } from '../utils/currency'
 import { LoadingCard } from '../components/Loading'
 import { Input, Select } from '../components/Form'
 import toast from 'react-hot-toast'
+import { localDateString } from '../utils/dateFormat'
 
 const SuperAdminSubscriptionsPage = () => {
   const navigate = useNavigate()
@@ -118,7 +119,7 @@ const SuperAdminSubscriptionsPage = () => {
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
-                a.download = `subscriptions-${new Date().toISOString().split('T')[0]}.csv`
+                a.download = `subscriptions-${localDateString(new Date())}.csv`
                 a.click()
                 URL.revokeObjectURL(url)
                 toast.success('CSV exported')

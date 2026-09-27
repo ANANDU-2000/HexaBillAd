@@ -104,6 +104,7 @@ const BranchesPage = () => {
       })
       if (res?.success) {
         toast.success('Branch created')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowBranchModal(false)
         setBranchForm({ name: '', address: '', assignedStaffIds: [] })
         refreshBranchesRoutes()
@@ -111,7 +112,7 @@ const BranchesPage = () => {
         toast.error(res?.message || 'Failed to create branch')
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to create branch')
+      toast.error(err.response?.data?.message || 'Failed to create branch')
     } finally {
       setSaving(false)
     }
@@ -138,6 +139,7 @@ const BranchesPage = () => {
         })
         if (res?.success) {
           toast.success('Route updated')
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
           setShowRouteModal(false)
           setEditingRoute(null)
           setRouteForm({ name: '', branchId: '', assignedStaffIds: [] })
@@ -153,6 +155,7 @@ const BranchesPage = () => {
         })
         if (res?.success) {
           toast.success('Route created')
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
           setShowRouteModal(false)
           setRouteForm({ name: '', branchId: '', assignedStaffIds: [] })
           refreshBranchesRoutes()
@@ -161,7 +164,7 @@ const BranchesPage = () => {
         }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || (editingRoute ? 'Failed to update route' : 'Failed to create route'))
+      toast.error(err.response?.data?.message || (editingRoute ? 'Failed to update route' : 'Failed to create route'))
     } finally {
       setSaving(false)
     }
@@ -191,13 +194,14 @@ const BranchesPage = () => {
       const res = await routesAPI.deleteRoute(routeToDelete.id)
       if (res?.success !== false) {
         toast.success('Route deleted')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setRouteToDelete(null)
         refreshBranchesRoutes()
       } else {
         toast.error(res?.message || 'Failed to delete route')
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to delete route')
+      toast.error(err.response?.data?.message || 'Failed to delete route')
       setRouteToDelete(null)
     }
   }

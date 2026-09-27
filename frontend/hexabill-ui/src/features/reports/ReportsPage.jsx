@@ -37,6 +37,7 @@ import { showToast } from '../../utils/toast'
 import { LoadingCard } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import { reportsAPI, productsAPI, customersAPI, profitAPI, paymentsAPI, adminAPI, returnsAPI } from '../../services/index'
+import { localDateString } from '../../utils/dateFormat'
 import {
   LineChart,
   Line,
@@ -61,15 +62,15 @@ const REPORTS_AI_INSIGHTS_ENABLED = import.meta.env.VITE_REPORTS_AI_INSIGHTS ===
 function getDefaultDateRange() {
   // Use 2 years to capture full history (e.g. migrated 2025 data) - prevents "No data found"
   return {
-    from: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    to: new Date().toISOString().split('T')[0]
+    from: localDateString(new Date(Date.now() - 730 * 24 * 60 * 60 * 1000)),
+    to: localDateString(new Date())
   }
 }
 
 function isValidDateString(str) {
   if (typeof str !== 'string' || str.length !== 10) return false
   const d = new Date(str)
-  return !isNaN(d.getTime()) && d.toISOString().split('T')[0] === str
+  return !isNaN(d.getTime()) && localDateString(d) === str
 }
 
 function loadDateRangeFromStorage() {
@@ -95,7 +96,7 @@ const ReportsPage = () => {
   // Shared date range across all report tabs; persisted so last range is restored (PRODUCTION_MASTER_TODO #40)
   const [dateRange, setDateRange] = useState(() => loadDateRangeFromStorage() || getDefaultDateRange())
   // FIX: Add "as of date" for aging report (defaults to today, can be set to past date)
-  const [agingAsOfDate, setAgingAsOfDate] = useState(new Date().toISOString().split('T')[0])
+  const [agingAsOfDate, setAgingAsOfDate] = useState(localDateString(new Date()))
   // FIX: Add days overdue filter for Outstanding Bills
   const [outstandingDaysFilter, setOutstandingDaysFilter] = useState('') // '', '30', '60', '90'
   const [filters, setFilters] = useState({
@@ -334,7 +335,7 @@ const ReportsPage = () => {
       setLoading(true)
 
       // P3: For Returns/Damage tabs, ensure "to" includes today so recent returns are visible
-      const todayStr = new Date().toISOString().split('T')[0]
+      const todayStr = localDateString(new Date())
       let effectiveDateRange = dateRange
       if ((activeTab === 'returns' || activeTab === 'damage') && dateRange.to < todayStr) {
         setDateRange(prev => ({ ...prev, to: todayStr }))
@@ -431,7 +432,7 @@ const ReportsPage = () => {
             // CRITICAL: Group by date for chart - track ALL customers' sales
             // Also track pending vs paid for accurate reporting
             const salesByDate = salesData.reduce((acc, sale) => {
-              const date = new Date(sale.invoiceDate).toISOString().split('T')[0]
+              const date = localDateString(new Date(sale.invoiceDate))
               if (!acc[date]) {
                 acc[date] = { date, amount: 0, count: 0, pending: 0, paid: 0 }
               }
@@ -489,7 +490,7 @@ const ReportsPage = () => {
           }
         } catch (error) {
           console.error('Error loading product sales:', error)
-          const msg = error?.response?.data?.message || error?.message || 'Failed to load product sales report'
+          const msg = error?.response?.data?.message || 'Failed to load product sales report'
           if (!error?._handledByInterceptor) toast.error(msg)
           setReportData(prev => ({ ...prev, products: [] }))
         } finally {
@@ -608,7 +609,7 @@ const ReportsPage = () => {
           setLoading(true)
           // FIX: Use agingAsOfDate instead of dateRange.to for historical aging analysis
           const agingRes = await reportsAPI.getAgingReport({
-            asOfDate: agingAsOfDate || new Date().toISOString().split('T')[0]
+            asOfDate: agingAsOfDate || localDateString(new Date())
           })
           if (agingRes?.success && agingRes?.data) {
             setReportData(prev => ({ ...prev, agingReport: agingRes.data }))
@@ -625,7 +626,7 @@ const ReportsPage = () => {
         try {
           setLoading(true)
           const apRes = await reportsAPI.getApAgingReport({
-            asOfDate: agingAsOfDate || new Date().toISOString().split('T')[0]
+            asOfDate: agingAsOfDate || localDateString(new Date())
           })
           if (apRes?.success && apRes?.data) {
             setReportData(prev => ({ ...prev, apAgingReport: apRes.data }))
@@ -671,7 +672,7 @@ const ReportsPage = () => {
 
             // CRITICAL: Format daily profit data for chart (convert date strings to Date objects)
             const formattedDailyProfit = (profitData.dailyProfit || []).map(day => ({
-              date: day.date ? new Date(day.date).toISOString().split('T')[0] : day.date,
+              date: day.date ? localDateString(new Date(day.date)) : day.date,
               sales: parseFloat(day.sales || 0),
               expenses: parseFloat(day.expenses || 0),
               profit: parseFloat(day.profit || 0)
@@ -1232,7 +1233,7 @@ const ReportsPage = () => {
         <div className="mb-3 sm:mb-4 flex flex-wrap gap-2">
           <button
             onClick={() => {
-              const today = new Date().toISOString().split('T')[0]
+              const today = localDateString(new Date())
               setDateRange({ from: today, to: today })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
@@ -1243,7 +1244,7 @@ const ReportsPage = () => {
             onClick={() => {
               const yesterday = new Date()
               yesterday.setDate(yesterday.getDate() - 1)
-              const yesterdayStr = yesterday.toISOString().split('T')[0]
+              const yesterdayStr = localDateString(yesterday)
               setDateRange({ from: yesterdayStr, to: yesterdayStr })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
@@ -1252,10 +1253,10 @@ const ReportsPage = () => {
           </button>
           <button
             onClick={() => {
-              const to = new Date().toISOString().split('T')[0]
+              const to = localDateString(new Date())
               const from = new Date()
               from.setDate(from.getDate() - 7)
-              setDateRange({ from: from.toISOString().split('T')[0], to })
+              setDateRange({ from: localDateString(from), to })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
           >
@@ -1266,7 +1267,7 @@ const ReportsPage = () => {
               const to = new Date()
               const from = new Date(to)
               from.setDate(from.getDate() - from.getDay()) // Start of week (Sunday)
-              setDateRange({ from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] })
+              setDateRange({ from: localDateString(from), to: localDateString(to) })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
           >
@@ -1274,10 +1275,10 @@ const ReportsPage = () => {
           </button>
           <button
             onClick={() => {
-              const to = new Date().toISOString().split('T')[0]
+              const to = localDateString(new Date())
               const from = new Date()
               from.setDate(1) // First day of month
-              setDateRange({ from: from.toISOString().split('T')[0], to })
+              setDateRange({ from: localDateString(from), to })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
           >
@@ -1285,10 +1286,10 @@ const ReportsPage = () => {
           </button>
           <button
             onClick={() => {
-              const to = new Date().toISOString().split('T')[0]
+              const to = localDateString(new Date())
               const from = new Date()
               from.setFullYear(from.getFullYear(), 0, 1) // First day of year
-              setDateRange({ from: from.toISOString().split('T')[0], to })
+              setDateRange({ from: localDateString(from), to })
             }}
             className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
           >
@@ -2187,20 +2188,13 @@ const ReportsPage = () => {
                     />
                     <button
                       onClick={() => {
-                        const today = new Date().toISOString().split('T')[0]
+                        const today = localDateString(new Date())
                         setAgingAsOfDate(today)
                         tabDataCacheRef.current = {}
                       }}
                       className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
                     >
                       Reset to Today
-                    </button>
-                    <button
-                      onClick={() => fetchReportData(true)}
-                      className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 flex items-center gap-1"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Refresh
                     </button>
                   </div>
                   {/* FIX: Add export button for Customer Aging */}
@@ -2315,19 +2309,12 @@ const ReportsPage = () => {
                     />
                     <button
                       onClick={() => {
-                        setAgingAsOfDate(new Date().toISOString().split('T')[0])
+                        setAgingAsOfDate(localDateString(new Date()))
                         tabDataCacheRef.current = {}
                       }}
                       className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
                     >
                       Reset to Today
-                    </button>
-                    <button
-                      onClick={() => fetchReportData(true)}
-                      className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 flex items-center gap-1"
-                    >
-                      <RefreshCw className="h-3 w-3" />
-                      Refresh
                     </button>
                   </div>
                 </div>
@@ -2426,7 +2413,7 @@ const ReportsPage = () => {
                         } catch (error) {
                           console.error('Failed to export P&L PDF:', error)
                           toast.dismiss()
-                          if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to export P&L PDF')
+                          if (!error?._handledByInterceptor) toast.error('Failed to export P&L PDF')
                         }
                       }}
                       className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
@@ -2720,7 +2707,7 @@ const ReportsPage = () => {
                       } catch (error) {
                         console.error('Failed to export PDF:', error)
                         toast.dismiss()
-                        if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to export PDF')
+                        if (!error?._handledByInterceptor) toast.error('Failed to export PDF')
                       }
                     }}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 transition-colors"
@@ -3050,14 +3037,14 @@ const ReportsPage = () => {
                                     const url = window.URL.createObjectURL(blob)
                                     const a = document.createElement('a')
                                     a.href = url
-                                    a.download = `Return_${ret.returnNo || ret.id}_${new Date().toISOString().split('T')[0]}.pdf`
+                                    a.download = `Return_${ret.returnNo || ret.id}_${localDateString(new Date())}.pdf`
                                     document.body.appendChild(a)
                                     a.click()
                                     window.URL.revokeObjectURL(url)
                                     document.body.removeChild(a)
                                     toast.success('Return bill PDF downloaded')
                                   } catch (e) {
-                                    if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                                    if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                                   }
                                 }}
                                 className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"

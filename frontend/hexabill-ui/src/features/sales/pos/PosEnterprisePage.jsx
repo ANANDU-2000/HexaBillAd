@@ -56,6 +56,7 @@ import PrintOptionsModal from '../../../components/PrintOptionsModal'
 
 import { getApiBaseUrl } from '../../../services/apiConfig'
 import { SETTLEMENT_TOLERANCE_AED, isInvoiceFullySettled, getInvoicePaymentBadge } from '../../../utils/salePaymentSettlement'
+import { localDateString } from '../../../utils/dateFormat'
 const API_BASE_URL = getApiBaseUrl()
 
 /** Product picker list page size (client-side only). */
@@ -132,7 +133,7 @@ const PosEnterprisePage = () => {
   const [pendingSaveData, setPendingSaveData] = useState(null) // Store data when awaiting confirmation
   const [invoiceDate, setInvoiceDate] = useState(() => {
     const today = new Date()
-    return today.toISOString().split('T')[0] // YYYY-MM-DD format
+    return localDateString(today) // YYYY-MM-DD format
   })
   const [showPaymentSheet, setShowPaymentSheet] = useState(false) // Mobile: payment in bottom sheet
   const [paymentPanelOpen, setPaymentPanelOpen] = useState(true) // Desktop: payment panel open by default
@@ -482,7 +483,7 @@ const PosEnterprisePage = () => {
         // Load invoice date from sale
         if (sale.invoiceDate) {
           const date = new Date(sale.invoiceDate)
-          setInvoiceDate(date.toISOString().split('T')[0])
+          setInvoiceDate(localDateString(date))
         }
 
         toast.success(`Invoice ${sale.invoiceNo || saleId} loaded for editing`, { id: 'invoice-load', duration: 3000 })
@@ -1108,7 +1109,7 @@ const PosEnterprisePage = () => {
       printWindow.close()
       toast.dismiss(toastId)
       console.error('Print error:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare PDF')
+      if (!error?._handledByInterceptor) toast.error('Failed to prepare PDF')
     }
   }
 
@@ -1146,7 +1147,7 @@ const PosEnterprisePage = () => {
       printWindow.close()
       toast.dismiss(toastId)
       console.error('Delivery note print error:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to prepare delivery note')
+      if (!error?._handledByInterceptor) toast.error('Failed to prepare delivery note')
     }
   }
 
@@ -1438,7 +1439,7 @@ const PosEnterprisePage = () => {
     } catch (error) {
       console.error('WhatsApp share error:', error)
       toast.dismiss('whatsapp-share')
-      if (!error?._handledByInterceptor) toast.error(error.message || 'Failed to share via WhatsApp')
+      if (!error?._handledByInterceptor) toast.error('Failed to share via WhatsApp')
     }
   }
 
@@ -1947,7 +1948,7 @@ const PosEnterprisePage = () => {
     }).catch(() => {})
     // Reset invoice date to today
     const today = new Date()
-    setInvoiceDate(today.toISOString().split('T')[0])
+    setInvoiceDate(localDateString(today))
   }
 
   const handleRepeatLastInvoice = async () => {
@@ -2022,7 +2023,7 @@ const PosEnterprisePage = () => {
     setCart(ensureCartRowIds(held.cart || []))
     const cust = held.selectedCustomer
     setSelectedCustomer(cust ? customers.find(c => c.id === cust.id) || cust : null)
-    setInvoiceDate(held.invoiceDate || new Date().toISOString().split('T')[0])
+    setInvoiceDate(held.invoiceDate || localDateString(new Date()))
     setNotes(held.notes || '')
     setDiscount(held.discount ?? 0)
     setDiscountInput(String(held.discountInput ?? ''))
@@ -2214,7 +2215,7 @@ const PosEnterprisePage = () => {
   const posHeader = (
       <>
       {/* Compact cashier header max 56px */}
-      <div className="bg-primary-900 text-white px-2 sm:px-3 h-14 max-h-14 flex items-center justify-between gap-2 flex-shrink-0 overflow-x-auto">
+      <div className="bg-primary-900 text-white px-2 sm:px-3 min-h-14 py-1.5 flex flex-wrap items-center justify-between gap-2 flex-shrink-0 md:h-14 md:max-h-14 md:flex-nowrap md:overflow-x-auto md:py-0">
         <div className="min-w-0 flex items-center gap-1.5 sm:gap-3 shrink">
           <span className="hidden sm:inline text-sm sm:text-base font-bold tracking-wide whitespace-nowrap">Tax Invoice</span>
           {isEditMode ? (
@@ -2298,7 +2299,7 @@ const PosEnterprisePage = () => {
             className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Repeat last invoice"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Repeat</span>
           </button>
           <button
@@ -2642,7 +2643,7 @@ const PosEnterprisePage = () => {
             type="button"
             onClick={addEmptyRow}
             disabled={isFormDisabled}
-            className="h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 inline-flex items-center gap-1"
+            className="hidden md:inline-flex h-9 px-2.5 text-xs font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 items-center gap-1"
             title="Add row (F3)"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -3185,7 +3186,7 @@ const PosEnterprisePage = () => {
           />
 
           <div className="hidden md:block px-2 py-1 shrink-0">
-            <p className="text-[10px] sm:text-[11px] text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
+            <p className="text-xs text-neutral-600 leading-relaxed" aria-label="Keyboard shortcuts">
               <span className="font-semibold text-neutral-700">Shortcuts:</span>{' '}
               F2 customer · F3/Ctrl+L products · Tab/Enter next field · F4 payment · F6 hold · F8 discount · F9/Ctrl+S save · F10 new · Del row · Ctrl+\ menu · Scan toggle for camera
             </p>
@@ -3281,7 +3282,7 @@ const PosEnterprisePage = () => {
                 )}
                 <div className="flex justify-between items-end gap-2 border-t-2 border-primary-500 pt-2 mt-0.5">
                   <span className="text-xs font-bold uppercase tracking-wide text-primary-700">Grand Total</span>
-                  <span className="text-xl xl:text-2xl font-extrabold text-neutral-900 tabular-nums whitespace-nowrap leading-none">AED {totals.grandTotal.toFixed(2)}</span>
+                  <span className="text-lg font-semibold text-neutral-900 tabular-nums whitespace-nowrap leading-none">AED {totals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
               {!isEditMode && (
@@ -3386,7 +3387,7 @@ const PosEnterprisePage = () => {
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
                 className={`w-full min-h-11 px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm transition-all active:scale-[0.98] ${isEditMode
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
-                  : 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-accent text-white hover:bg-accent/90'
                   }`}
               >
                 {(loading || loadingSale) ? (
@@ -3425,8 +3426,8 @@ const PosEnterprisePage = () => {
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
       <div className="md:hidden fixed bottom-[4.75rem] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
-          <span className="text-[10px] font-bold uppercase tracking-wide text-primary-700 block">Grand Total</span>
-          <span className="text-2xl font-extrabold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
+          <span className="text-lg font-semibold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
         </div>
         <button
           onClick={() => (cart.length > 0 ? setShowPaymentSheet(true) : null)}
@@ -3510,7 +3511,7 @@ const PosEnterprisePage = () => {
               )}
               <div className="flex justify-between items-end pt-2 border-t-2 border-primary-500 font-semibold">
                 <span className="text-sm font-bold uppercase tracking-wide text-primary-700">Grand Total</span>
-                <span className="text-2xl font-extrabold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
+                <span className="text-lg font-semibold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Payment method</label>
@@ -3782,7 +3783,6 @@ const PosEnterprisePage = () => {
                       console.error('Error updating invoice:', error)
                       const errorMsg = error?.response?.data?.message ||
                         error?.response?.data?.errors?.[0] ||
-                        error?.message ||
                         'Failed to update invoice. Please try again.'
                       if (!error?._handledByInterceptor) toast.error(errorMsg)
                     } finally {
@@ -3919,7 +3919,6 @@ const PosEnterprisePage = () => {
                       console.error('Error updating invoice:', error)
                       const errorMsg = error?.response?.data?.message ||
                         error?.response?.data?.errors?.[0] ||
-                        error?.message ||
                         'Failed to update invoice. Please try again.'
                       if (error?.response?.status === 409 && editingSaleId) {
                         toast.error(`Conflict: ${errorMsg}`, { duration: 8000 })

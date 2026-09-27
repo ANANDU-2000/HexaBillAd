@@ -5,15 +5,8 @@ import {
   Home,
   Package,
   ShoppingCart,
-  CreditCard,
-  Users,
-  DollarSign,
-  TrendingUp,
   Settings,
   LogOut,
-  Bell,
-  Search,
-  DollarSign as PriceTag,
   Shield,
   BarChart3,
   Truck,
@@ -22,10 +15,7 @@ import {
   Receipt,
   User,
   ChevronDown,
-  Lock,
   Building2,
-  LayoutDashboard,
-  MapPin,
   Printer,
   LayoutGrid,
   ChevronLeft,
@@ -45,7 +35,7 @@ import AlertNotifications from './AlertNotifications'
 import CloudHostingCostReminder from './CloudHostingCostReminder'
 import { SubscriptionGraceBanner } from './SubscriptionGraceBanner'
 import { connectionManager } from '../services/connectionManager'
-import { isAdminOrOwner, isOwner, isStaff } from '../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { isAdminOrOwner, isOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'  // Super Admin checking
 import { useBranding } from '../tenant/TenantBrandingContext'
 
@@ -385,12 +375,12 @@ const Layout = () => {
       )}
 
       {/* Desktop sidebar - 240px per design system (Task 11) */}
-      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col lg:min-h-0 transition-all duration-300 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col lg:min-h-0 transition-all duration-200 ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex flex-col flex-grow bg-primary-900 text-white border-r border-primary-800 min-h-screen overflow-hidden w-full">
           <div className={`flex items-center border-b border-primary-800 px-2 py-2 shrink-0 ${isSidebarCollapsed ? 'justify-center' : 'justify-between gap-2'}`}>
             {!isSidebarCollapsed && (
-              <span className="text-[11px] font-medium text-primary-300 truncate pl-2" title="Ctrl+\ toggle menu">
-                Menu
+              <span className="text-sm font-semibold text-white truncate pl-2" title={companyName}>
+                {companyName}
               </span>
             )}
             <button
@@ -410,11 +400,13 @@ const Layout = () => {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-lg transition-colors min-h-[44px] ${isActive(item.href)
+                  className={`flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm font-medium rounded-md transition-colors min-h-[44px] ${isActive(item.href)
                     ? 'bg-primary-600 text-white'
                     : 'text-primary-200 hover:bg-primary-800 hover:text-white'
                     }`}
                   title={item.name}
+                  aria-label={item.name}
+                  aria-current={isActive(item.href) ? 'page' : undefined}
                 >
                   <Icon className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
                   {!isSidebarCollapsed && <span className="truncate">{item.name}</span>}
@@ -424,9 +416,11 @@ const Layout = () => {
           </nav>
           <div className="border-t border-primary-800 p-3">
             <button
+              type="button"
               onClick={logout}
-              className={`flex items-center w-full ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm text-primary-200 hover:text-white hover:bg-primary-800 rounded-lg transition-colors min-h-[44px]`}
+              className={`flex items-center w-full ${isSidebarCollapsed ? 'justify-center px-2' : 'px-4'} py-3 text-sm text-primary-200 hover:text-white hover:bg-primary-800 rounded-md transition-colors min-h-[44px]`}
               title="Logout"
+              aria-label="Logout"
             >
               <LogOut className={`h-5 w-5 flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
               {!isSidebarCollapsed && <span>Logout</span>}
@@ -436,78 +430,38 @@ const Layout = () => {
       </div>
 
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
-      <div className={`flex flex-col min-h-screen w-full transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10 lg:pt-10' : ''}`}>
+      <div className={`flex flex-col min-h-screen w-full transition-all duration-200 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10 lg:pt-10' : ''}`}>
         {backendUnavailable && (
-          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-sm text-left">
-            <span className="font-medium">Service temporarily unavailable.</span>
-            <span>Service is temporarily unavailable. Please try again in a moment or contact your administrator.</span>
+          <div className="px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-sm">
+            Service temporarily unavailable. Try again in a moment, or contact your company administrator.
           </div>
         )}
         <SubscriptionGraceBanner />
         <CloudHostingCostReminder />
         {/* Top Header Bar — fully hidden on /pos for full-viewport cashier mode */}
         {!isPosRoute && (
-        <div className={`hidden lg:block fixed right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30 transition-all duration-300 ${isSidebarCollapsed ? 'left-20' : 'left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <div className={`hidden lg:block fixed right-0 h-16 bg-primary-900 text-white border-b border-primary-800 z-30 transition-all duration-200 ${isSidebarCollapsed ? 'left-20' : 'left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <button
-                onClick={toggleSidebar}
-                className="p-1.5 rounded-lg hover:bg-primary-800 text-primary-200 hover:text-white transition-colors"
-                title={isSidebarCollapsed ? 'Expand sidebar (Ctrl+\\)' : 'Collapse sidebar (Ctrl+\\)'}
-              >
-                {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-              </button>
               <Logo size="default" showText={false} className="flex-shrink-0" />
               <div className="min-w-0 flex-1">
-                <h1 className="text-base xl:text-lg font-semibold text-white truncate">{companyName}</h1>
+                <h1 className="text-base font-semibold text-white truncate">{companyName}</h1>
+                {mobilePageTitle && (
+                  <p className="text-xs text-primary-200 truncate">{mobilePageTitle}</p>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-1.5 flex-shrink-0">
               {isAdminOrOwner(user) && <AlertNotifications />}
-              {isAdminOrOwner(user) && (
-                <>
-                  <button
-                    onClick={() => navigate('/backup')}
-                    className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                    title="Backup & Restore — Download or restore your data"
-                    aria-label="Backup and restore data"
-                  >
-                    <Archive className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => navigate('/settings')}
-                    className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                    title="Company settings — Manage preferences, logo, currency"
-                    aria-label="Company settings"
-                  >
-                    <Settings className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => navigate('/reports?tab=profit-loss')}
-                    className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                    title="Profit & Loss report — View revenue, expenses, profit"
-                    aria-label="Profit and loss report"
-                  >
-                    <TrendingUp className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => navigate('/users')}
-                    className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                    title="Users — Manage staff and permissions"
-                    aria-label="Manage users"
-                  >
-                    <Users className="h-5 w-5" />
-                  </button>
-                </>
-              )}
               <button
-                  onClick={() => window.print()}
-                  className="p-2 hover:bg-primary-800 rounded-lg transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                  title="Print this page"
-                  aria-label="Print current page"
-                >
-                  <Printer className="h-5 w-5" />
-                </button>
+                type="button"
+                onClick={() => window.print()}
+                className="p-2 hover:bg-primary-800 rounded-md transition flex items-center justify-center min-h-[44px] min-w-[44px]"
+                title="Print this page"
+                aria-label="Print current page"
+              >
+                <Printer className="h-5 w-5" />
+              </button>
               <div className="relative ml-2" ref={profileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}

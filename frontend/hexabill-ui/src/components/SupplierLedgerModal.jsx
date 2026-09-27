@@ -5,6 +5,7 @@ import ConfirmDangerModal from './ConfirmDangerModal'
 import { suppliersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
 import toast from 'react-hot-toast'
+import { localDateString } from '../utils/dateFormat'
 
 const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded, initialShowRecordPayment }) => {
   const [loading, setLoading] = useState(false)
@@ -15,7 +16,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
   const [showRecordPayment, setShowRecordPayment] = useState(!!initialShowRecordPayment)
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: localDateString(new Date()),
     mode: 'Cash',
     reference: '',
     notes: ''
@@ -71,7 +72,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
         toast.success('Payment recorded successfully')
         setShowRecordPayment(false)
         setShowOverpaymentConfirm(false)
-        setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], mode: 'Cash', reference: '', notes: '' })
+        setPaymentForm({ amount: '', paymentDate: localDateString(new Date()), mode: 'Cash', reference: '', notes: '' })
         loadData()
         onPaymentRecorded?.()
       } else {
@@ -114,7 +115,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `supplier_ledger_${(supplierName || 'export').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `supplier_ledger_${(supplierName || 'export').replace(/\s/g, '_')}_${localDateString(new Date())}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Exported to CSV')

@@ -5,6 +5,7 @@ import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { customersAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
+import { localDateString } from '../../utils/dateFormat'
 
 const CustomerDetailPage = () => {
   const { id } = useParams()
@@ -16,9 +17,9 @@ const CustomerDetailPage = () => {
   const [statementFrom, setStatementFrom] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 90)
-    return d.toISOString().split('T')[0]
+    return localDateString(d)
   })
-  const [statementTo, setStatementTo] = useState(() => new Date().toISOString().split('T')[0])
+  const [statementTo, setStatementTo] = useState(() => localDateString(new Date()))
   const [statementDownloading, setStatementDownloading] = useState(false)
 
   useEffect(() => {
@@ -88,7 +89,7 @@ const CustomerDetailPage = () => {
       toast.success('Statement downloaded successfully')
     } catch (error) {
       console.error('Failed to download statement:', error)
-      const msg = error?.response?.data?.message || error?.message || 'Failed to download statement'
+      const msg = error?.response?.data?.message || 'Failed to download statement'
       toast.error(typeof msg === 'string' ? msg : 'Failed to download statement')
     } finally {
       setStatementDownloading(false)
@@ -309,7 +310,28 @@ const CustomerDetailPage = () => {
             <p className="mt-2 text-sm text-gray-500">No transactions found</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          <div className="md:hidden space-y-3">
+            {ledger.map((entry, index) => (
+              <div key={index} className="rounded-lg border border-neutral-200 p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-neutral-900">{entry.type}</p>
+                    <p className="text-xs text-neutral-500">{new Date(entry.date).toLocaleDateString()}</p>
+                  </div>
+                  <p className={`text-sm font-semibold tabular-nums ${entry.balance > 0 ? 'text-error' : entry.balance < 0 ? 'text-accent' : 'text-neutral-900'}`}>
+                    {formatBalance(entry.balance)}
+                  </p>
+                </div>
+                <p className="text-sm text-neutral-700 break-words">{entry.reference || entry.remarks || '—'}</p>
+                <div className="flex justify-between text-xs text-neutral-600">
+                  <span>Debit {entry.debit > 0 ? formatCurrency(entry.debit) : '—'}</span>
+                  <span className="text-accent">Credit {entry.credit > 0 ? formatCurrency(entry.credit) : '—'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -345,6 +367,7 @@ const CustomerDetailPage = () => {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>

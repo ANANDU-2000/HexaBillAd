@@ -3,6 +3,7 @@ import { X, Wallet, DollarSign, Calendar, FileText, AlertTriangle, CheckCircle }
 import toast from 'react-hot-toast'
 import { paymentsAPI, salesAPI } from '../services'
 import ConfirmDangerModal from './ConfirmDangerModal'
+import { localDateString } from '../utils/dateFormat'
 
 const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess }) => {
   const [loading, setLoading] = useState(false)
@@ -15,7 +16,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
     amount: 0,
     mode: 'CASH',
     reference: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: localDateString(new Date())
   })
 
   useEffect(() => {
@@ -96,7 +97,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         const checkRes = await paymentsAPI.checkDuplicatePayment(
           customerId,
           parseFloat(formData.amount),
-          formData.paymentDate || new Date().toISOString().split('T')[0]
+          formData.paymentDate || localDateString(new Date())
         )
         const hasDuplicate = checkRes?.data?.hasDuplicate || checkRes?.hasDuplicate
         if (hasDuplicate) {
@@ -158,7 +159,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           amount: 0,
           mode: 'CASH',
           reference: '',
-          paymentDate: new Date().toISOString().split('T')[0]
+          paymentDate: localDateString(new Date())
         })
         setShowConfirmation(false)
       } else {
@@ -203,7 +204,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message, { id: 'payment-error' })
       } else {
-        toast.error(error?.message || 'Failed to save payment', { id: 'payment-error' })
+        toast.error('Failed to save payment', { id: 'payment-error' })
       }
     } finally {
       submissionInProgressRef.current = false

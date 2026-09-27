@@ -55,7 +55,7 @@ export default function DeliveryNotesPage() {
         setError(res?.message || 'Failed to load delivery notes')
       }
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Failed to load')
+      setError(e?.response?.data?.message || 'Failed to load')
       setRows([])
     } finally {
       setLoading(false)
@@ -80,7 +80,7 @@ export default function DeliveryNotesPage() {
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.message || 'Delivery note PDF failed'
+      const msg = e?.response?.data?.message || 'Delivery note PDF failed'
       setError(msg)
       toast.error(msg)
     } finally {
@@ -167,10 +167,10 @@ export default function DeliveryNotesPage() {
                             })
                           : '—'}
                       </td>
-                      <td className="px-2 py-1">{r.customerName || 'Cash Customer'}</td>
+                      <td className="px-2 py-1 max-w-[12rem] truncate" title={r.customerName || 'Cash Customer'}>{r.customerName || 'Cash Customer'}</td>
                       <td className="px-2 py-1 text-right">{itemCount}</td>
                       <td className="px-2 py-1 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center gap-1 justify-end">
+                        <div className="flex flex-wrap items-center gap-1 justify-end">
                           <Link
                             to={`/delivery-notes/${r.id}`}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50"

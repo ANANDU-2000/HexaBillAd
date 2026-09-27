@@ -7,7 +7,7 @@ const ErrorPage = () => {
   const location = useLocation()
   // Use location.state when navigated with error info; works with BrowserRouter (no data router)
   const error = location.state?.error || null
-  const errorMessage = error?.statusText || error?.message || location.state?.message || 'An unexpected error occurred'
+  const errorMessage = error?.statusText || location.state?.message || 'An unexpected error occurred'
   const errorStatus = error?.status || location.state?.status || 500
 
   const getErrorTitle = () => {

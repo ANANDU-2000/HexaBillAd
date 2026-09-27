@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
+import { localDateString } from '../../utils/dateFormat'
 import {
   tallyInputClass,
   tallySelectClass,
@@ -63,7 +64,7 @@ const PurchasesPage = () => {
   const [formData, setFormData] = useState({
     supplierName: '',
     invoiceNo: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: localDateString(new Date()),
     expenseCategory: 'Inventory', // Default category
     paymentType: 'Credit', // Cash or Credit (pay later)
     isTaxClaimable: true, // VAT Return: include input VAT in Box 9b
@@ -346,7 +347,7 @@ const PurchasesPage = () => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `purchases_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `purchases_${localDateString(new Date())}.csv`
       a.click()
       URL.revokeObjectURL(url)
       toast.success('CSV downloaded')
@@ -380,18 +381,18 @@ const PurchasesPage = () => {
 
     switch (period) {
       case 'today':
-        return { startDate: today.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
+        return { startDate: localDateString(today), endDate: localDateString(today) }
 
       case 'yesterday': {
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
-        return { startDate: yesterday.toISOString().split('T')[0], endDate: yesterday.toISOString().split('T')[0] }
+        return { startDate: localDateString(yesterday), endDate: localDateString(yesterday) }
       }
 
       case 'week': {
         const startOfWeek = new Date(today)
         startOfWeek.setDate(today.getDate() - today.getDay())
-        return { startDate: startOfWeek.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
+        return { startDate: localDateString(startOfWeek), endDate: localDateString(today) }
       }
 
       case 'lastWeek': {
@@ -399,12 +400,12 @@ const PurchasesPage = () => {
         startOfLastWeek.setDate(today.getDate() - today.getDay() - 7)
         const endOfLastWeek = new Date(startOfLastWeek)
         endOfLastWeek.setDate(startOfLastWeek.getDate() + 6)
-        return { startDate: startOfLastWeek.toISOString().split('T')[0], endDate: endOfLastWeek.toISOString().split('T')[0] }
+        return { startDate: localDateString(startOfLastWeek), endDate: localDateString(endOfLastWeek) }
       }
 
       case 'month': {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
-        return { startDate: startOfMonth.toISOString().split('T')[0], endDate: today.toISOString().split('T')[0] }
+        return { startDate: localDateString(startOfMonth), endDate: localDateString(today) }
       }
 
       default:
@@ -535,7 +536,7 @@ const PurchasesPage = () => {
 
     try {
       setSubmitting(true)
-      const purchaseDate = formData.purchaseDate || new Date().toISOString().split('T')[0]
+      const purchaseDate = formData.purchaseDate || localDateString(new Date())
       const purchaseData = {
         supplierName: (formData.supplierName || '').trim(),
         invoiceNo: (formData.invoiceNo || '').trim(),
@@ -573,7 +574,7 @@ const PurchasesPage = () => {
         setFormData({
           supplierName: '',
           invoiceNo: '',
-          purchaseDate: new Date().toISOString().split('T')[0],
+          purchaseDate: localDateString(new Date()),
           expenseCategory: 'Inventory',
           paymentType: 'Credit',
           isTaxClaimable: true,
@@ -594,7 +595,7 @@ const PurchasesPage = () => {
       console.error('Purchase submit error:', error)
       const data = error?.response?.data
       const errors = data?.errors
-      const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message || error?.message || 'Failed to save purchase'
+      const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message || 'Failed to save purchase'
       toast.error(editingPurchase ? `Update failed: ${errorMsg}` : `Create failed: ${errorMsg}`, { duration: 6000 })
     } finally {
       setSubmitting(false)
@@ -606,7 +607,7 @@ const PurchasesPage = () => {
     setFormData({
       supplierName: '',
       invoiceNo: '',
-      purchaseDate: new Date().toISOString().split('T')[0],
+      purchaseDate: localDateString(new Date()),
       expenseCategory: 'Inventory',
       paymentType: 'Credit',
       isTaxClaimable: true,
@@ -628,7 +629,7 @@ const PurchasesPage = () => {
     setFormData({
       supplierName: purchase.supplierName || '',
       invoiceNo: purchase.invoiceNo || '',
-      purchaseDate: purchase.purchaseDate ? new Date(purchase.purchaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      purchaseDate: purchase.purchaseDate ? localDateString(new Date(purchase.purchaseDate)) : localDateString(new Date()),
       expenseCategory: purchase.expenseCategory || 'Inventory',
       paymentType: 'Credit',
       isTaxClaimable: purchase.isTaxClaimable !== false,
@@ -672,7 +673,7 @@ const PurchasesPage = () => {
           }
         } catch (error) {
           console.error('Delete purchase error:', error)
-          const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete purchase'
+          const errorMsg = error?.response?.data?.message || 'Failed to delete purchase'
           toast.error(`Delete failed: ${errorMsg}`)
         }
       }
@@ -1913,8 +1914,8 @@ const PurchasesPage = () => {
                         <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
                           <p className="text-xs font-medium text-primary-600 mb-2">Items</p>
                           {purchase.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between text-xs py-1">
-                              <span className="text-primary-700">{item.productName || item.product?.nameEn || 'Item'}</span>
+                            <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 text-xs py-1">
+                              <span className="text-primary-700 min-w-0 break-words">{item.productName || item.product?.nameEn || 'Item'}</span>
                               <span>{item.qty} × AED {(item.unitCost || 0).toFixed(2)} = AED {((item.qty || 0) * (item.unitCost || 0)).toFixed(2)}</span>
                             </div>
                           ))}

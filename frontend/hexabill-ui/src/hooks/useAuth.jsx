@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { authAPI } from '../services'
+import { clearAllCache } from '../services/api'
 
 const AuthContext = createContext()
 
@@ -43,6 +44,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    clearAllCache()
     setUser(null)
     setImpersonatedTenantId(null)
   }
@@ -161,12 +163,13 @@ export const AuthProvider = ({ children }) => {
 
         return { success: true, data: response.data }
       } else {
-        return { success: false, message: response.message }
+        return { success: false, status: 400 }
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Login failed'
+        status: error.response?.status || 0,
+        network: !error.response
       }
     }
   }

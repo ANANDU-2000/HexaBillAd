@@ -1715,6 +1715,12 @@ namespace HexaBill.Api.Models
         public DateTime PeriodEnd { get; set; }
         public DateTime DueDate { get; set; }
         public string Status { get; set; } = "Draft";
+        public string VatCalculationBasis { get; set; } = "SalesBased";
+        public decimal ProfitSales { get; set; }
+        public decimal ProfitCogs { get; set; }
+        public decimal ProfitExpenses { get; set; }
+        public decimal ProfitAmount { get; set; }
+        public decimal ProfitVat { get; set; }
         public DateTime? CalculatedAt { get; set; }
         public int? PeriodId { get; set; }
         public decimal Box1a { get; set; }

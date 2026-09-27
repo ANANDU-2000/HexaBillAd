@@ -100,6 +100,7 @@ const ProductDetailPage = () => {
       })
       if (response?.success) {
         toast.success('Stock adjusted')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowStockModal(false)
         await loadProduct()
         await loadMovements()
@@ -119,6 +120,7 @@ const ProductDetailPage = () => {
       const response = await productsAPI.updateProduct(product.id, formData)
       if (response?.success) {
         toast.success('Product updated')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowEditModal(false)
         await loadProduct()
         await loadMovements()

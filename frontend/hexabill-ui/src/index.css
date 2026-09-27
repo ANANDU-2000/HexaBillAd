@@ -215,3 +215,29 @@
     display: none !important;
   }
 }
+
+/* Authentication shell only. Left side stays quiet. The blue panel is the brand field. */
+.auth-entry {
+  background-color: #F7F8FA;
+  color: #0F172A;
+}
+
+[data-theme='dark'] .auth-entry,
+.dark .auth-entry {
+  background-color: #0B1220;
+  color: #F8FAFC;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .auth-entry {
+    background-color: #0B1220;
+    color: #F8FAFC;
+  }
+}
+
+/* Full-screen dialogs sit above the mobile bottom nav so Save/Create stays clickable. */
+@media (max-width: 1023px) {
+  .fixed.inset-0.z-50 {
+    z-index: 60;
+  }
+}

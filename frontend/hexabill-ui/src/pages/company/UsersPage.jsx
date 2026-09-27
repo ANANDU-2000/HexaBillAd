@@ -525,12 +525,9 @@ const UsersPage = () => {
 
   if (!isAdminOrOwner(currentUser)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
-          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Access Denied</h2>
-          <p className="text-gray-600">Only administrators and owners can access this page.</p>
-        </div>
+      <div className="p-6">
+        <h2 className="text-base font-semibold text-neutral-900">Access denied</h2>
+        <p className="mt-1 text-sm text-neutral-600">Only an owner or admin can open users.</p>
       </div>
     )
   }
@@ -551,7 +548,7 @@ const UsersPage = () => {
             </h1>
             <p className="text-gray-600">Manage admin and staff users</p>
           </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
+          <div className="mt-4 sm:mt-0 flex flex-wrap gap-2">
             <button
               onClick={fetchUsers}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition flex items-center"

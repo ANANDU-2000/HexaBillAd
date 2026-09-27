@@ -280,7 +280,7 @@ export default function QuotationEditorPage() {
           skipAutoSave.current = true
         }
       } catch (e) {
-        if (!cancelled) setError(e?.response?.data?.message || e.message || 'Failed to load')
+        if (!cancelled) setError(e?.response?.data?.message || 'Failed to load')
       }
     })()
     return () => {
@@ -374,6 +374,7 @@ export default function QuotationEditorPage() {
       )
     }
     markCleanFromState(q)
+    window.dispatchEvent(new CustomEvent('dataUpdated'))
     if (!isEdit && q.id) navigate(`/quotations/${q.id}`, { replace: true })
     return q.id
   }
@@ -409,7 +410,7 @@ export default function QuotationEditorPage() {
     try {
       await persist()
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Save failed')
+      setError(e?.response?.data?.message || 'Save failed')
     } finally {
       setSaving(false)
     }
@@ -428,7 +429,7 @@ export default function QuotationEditorPage() {
       if (mode === 'download') downloadBlob(blob, name)
       else openPdfBlob(blob)
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'PDF failed')
+      setError(e?.response?.data?.message || 'PDF failed')
     } finally {
       setSaving(false)
     }
@@ -570,7 +571,7 @@ export default function QuotationEditorPage() {
               </button>
             </div>
             <div className="overflow-x-auto border rounded">
-              <table className="w-full text-xs table-fixed">
+              <table className="min-w-[40rem] w-full text-xs">
                 <thead className="bg-slate-100">
                   <tr>
                     <th className="p-1 text-left w-[38%]">Description</th>

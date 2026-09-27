@@ -6,7 +6,6 @@ import {
   Download,
   Printer,
   Calendar,
-  Filter,
   RefreshCw,
   FileText,
   ChevronLeft,
@@ -24,7 +23,6 @@ import { formatCurrency } from '../../utils/currency'
 import { getInvoicePaymentBadge, isInvoiceFullySettled } from '../../utils/salePaymentSettlement'
 import { useDebounce } from '../../hooks/useDebounce'
 import toast from 'react-hot-toast'
-import { LoadingCard } from '../../components/Loading'
 import { Input } from '../../components/Form'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
@@ -54,12 +52,14 @@ const BillingHistoryPage = () => {
   const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
   const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
   const [loadingReceiptSaleId, setLoadingReceiptSaleId] = useState(null)
+  const [listError, setListError] = useState(false)
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner'
   const canEdit = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'owner' // Admin and Owner can edit
 
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true)
+      setListError(false)
 
       const params = {
         page: currentPage,
@@ -84,22 +84,11 @@ const BillingHistoryPage = () => {
         setTotalCount(response.data.totalCount || 0)
         setTotalPages(response.data.totalPages || 1)
       } else {
-        setSales([])
-        setTotalCount(0)
-        setTotalPages(1)
-        toast.error(response.message || 'Failed to load billing history')
+        setListError(true)
       }
     } catch (error) {
       console.error('Error fetching sales:', error)
-      const msg =
-        error?.response?.data?.message ||
-        error?.response?.data?.errors?.[0] ||
-        error?.message ||
-        'Failed to load billing history'
-      toast.error(msg)
-      setSales([])
-      setTotalCount(0)
-      setTotalPages(1)
+      setListError(true)
     } finally {
       setLoading(false)
     }
@@ -259,7 +248,11 @@ const BillingHistoryPage = () => {
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `Combined_Invoices_${new Date().toISOString().split('T')[0]}.pdf`
+      const today = new Date()
+      const y = today.getFullYear()
+      const m = String(today.getMonth() + 1).padStart(2, '0')
+      const d = String(today.getDate()).padStart(2, '0')
+      link.download = `Combined_Invoices_${y}-${m}-${d}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -271,11 +264,7 @@ const BillingHistoryPage = () => {
     } catch (error) {
       toast.dismiss()
       console.error('Failed to generate combined PDF:', error)
-      const msg =
-        error?.response?.data?.message ||
-        error?.message ||
-        'Failed to generate combined PDF'
-      toast.error(msg, { id: 'combined-pdf' })
+      toast.error('Could not export the invoices.', { id: 'combined-pdf' })
     }
   }
 
@@ -315,10 +304,6 @@ const BillingHistoryPage = () => {
     return 'Pending'
   }
 
-  if (loading && sales.length === 0) {
-    return <LoadingCard message="Loading billing history..." />
-  }
-
   return (
     <div className="space-y-3 max-w-full overflow-x-hidden h-full min-h-0 flex flex-col">
       {/* Header + compact filters */}
@@ -349,30 +334,23 @@ const BillingHistoryPage = () => {
               placeholder="Invoice #, customer, status, method…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded pl-7 pr-2 py-1 text-sm"
+              className="w-full border border-gray-300 rounded pl-7 pr-2 py-2 min-h-11 text-sm"
             />
           </div>
           <input
             type="date"
             value={dateFilter.from}
             onChange={(e) => { setDateFilter({ ...dateFilter, from: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-1.5 py-1 text-xs w-[8.5rem]"
+            className="border border-gray-300 rounded px-2 min-h-11 md:min-h-9 text-sm md:text-xs w-[8.5rem]"
             title="From"
           />
           <input
             type="date"
             value={dateFilter.to}
             onChange={(e) => { setDateFilter({ ...dateFilter, to: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-1.5 py-1 text-xs w-[8.5rem]"
+            className="border border-gray-300 rounded px-2 min-h-11 md:min-h-9 text-sm md:text-xs w-[8.5rem]"
             title="To"
           />
-          <button
-            type="submit"
-            className="inline-flex items-center px-2.5 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
-          >
-            <Filter className="h-3.5 w-3.5 mr-1" />
-            Apply
-          </button>
           {(searchTerm || dateFilter.from || dateFilter.to) && (
             <button
               type="button"
@@ -395,7 +373,14 @@ const BillingHistoryPage = () => {
 
       {/* Sales Table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        {sales.length === 0 ? (
+        {loading && sales.length === 0 && !listError ? (
+          <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading billing history…</p>
+        ) : listError && sales.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-neutral-700">Unable to load billing history.</p>
+            <button type="button" className="mt-2 text-sm text-primary-700" onClick={() => fetchSales()}>Retry</button>
+          </div>
+        ) : sales.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices found</h3>
@@ -407,6 +392,12 @@ const BillingHistoryPage = () => {
           </div>
         ) : (
           <>
+            {listError && (
+              <p className="px-3 py-2 text-xs text-neutral-700 border-b border-neutral-200">
+                Unable to refresh billing history.{' '}
+                <button type="button" className="text-primary-700" onClick={() => fetchSales()}>Retry</button>
+              </p>
+            )}
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -520,7 +511,7 @@ const BillingHistoryPage = () => {
                             <button
                               onClick={() => handlePrintPaymentReceipt(sale)}
                               disabled={loadingReceiptSaleId === sale.id}
-                              className="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50"
+                              className="inline-flex h-8 w-8 items-center justify-center text-neutral-700 hover:bg-neutral-100 rounded-md disabled:opacity-50"
                               title="Print payment receipt"
                               aria-label="Print payment receipt"
                             >
@@ -530,7 +521,7 @@ const BillingHistoryPage = () => {
                           {canEdit && (
                             <button
                               onClick={() => handleEditSale(sale)}
-                              className="text-indigo-600 hover:text-indigo-900 p-1 hover:bg-indigo-50 rounded transition-colors"
+                              className="inline-flex h-8 w-8 items-center justify-center text-neutral-700 hover:bg-neutral-100 rounded-md"
                               title="Edit Invoice"
                               aria-label="Edit Invoice"
                             >
@@ -594,10 +585,10 @@ const BillingHistoryPage = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-2">
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
                     <button
                       onClick={() => handleViewInvoice(sale)}
-                      className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100"
+                      className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       View
@@ -606,7 +597,7 @@ const BillingHistoryPage = () => {
                       <button
                         onClick={() => handlePrintPaymentReceipt(sale)}
                         disabled={loadingReceiptSaleId === sale.id}
-                        className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-indigo-300 rounded-md text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50"
+                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-800 bg-white hover:bg-neutral-50 disabled:opacity-50"
                       >
                         <Printer className="h-4 w-4 mr-2" />
                         Receipt
@@ -615,7 +606,7 @@ const BillingHistoryPage = () => {
                     {canEdit && (
                       <button
                         onClick={() => handleEditSale(sale)}
-                        className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-indigo-300 rounded-md text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-800 bg-white hover:bg-neutral-50"
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
@@ -624,7 +615,7 @@ const BillingHistoryPage = () => {
                     {isAdmin && (
                       <button
                         onClick={() => handleDeleteSale(sale.id)}
-                        className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
+                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete

@@ -116,36 +116,28 @@ const SignupPage = () => {
 
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-neutral-200">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="h-10 w-10 text-green-600" />
-          </div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Welcome Aboard!</h2>
-          <p className="text-neutral-600 mb-8">
-            Your account for <span className="font-bold text-neutral-900">{formData.companyName}</span> has been created.
-            Ready to simplify your business operations?
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <div className="max-w-[400px] w-full bg-white rounded-lg border border-[#E5E7EB] p-8 text-center">
+          <CheckCircle className="h-8 w-8 text-green-700 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Account created</h2>
+          <p className="text-sm text-neutral-600 mb-6">
+            {formData.companyName} is ready. Sign in to open the workspace.
           </p>
-
           <button
+            type="button"
             onClick={handleLoginAfterSignup}
-            className="w-full bg-primary-600 text-white py-4 rounded-xl hover:bg-primary-700 font-bold shadow-lg hover:shadow-primary-200 transition-all flex items-center justify-center space-x-2"
+            className="w-full min-h-11 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm font-medium"
           >
-            <span>Get Started Now</span>
-            <ArrowRight className="h-5 w-5" />
+            Sign in
           </button>
-
-          <p className="mt-6 text-sm text-neutral-500">
-            Initial setup will take less than 2 minutes.
-          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-4 py-8">
+      <div className="max-w-[400px] w-full bg-white border border-[#E5E7EB] rounded-lg p-6 md:p-8">
         <div className="text-center mb-8">
           <div className="mx-auto flex justify-center mb-4">
             <Logo size="large" showText={true} />
@@ -163,7 +155,7 @@ const SignupPage = () => {
           <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${step >= 2 ? 'bg-primary-600 text-white' : 'bg-neutral-200 text-neutral-500'}`}>2</div>
         </div>
 
-        <div className="bg-white py-8 px-8 rounded-2xl border border-neutral-200 shadow-sm">
+        <div className="pt-2">
           <form onSubmit={handleSubmit} className="space-y-5">
             {step === 1 && (
               <>
@@ -266,7 +258,7 @@ const SignupPage = () => {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="flex-1 px-6 py-3 border border-neutral-300 rounded-xl text-neutral-600 font-semibold hover:bg-neutral-50 transition-all flex items-center justify-center space-x-2"
+                  className="flex-1 min-h-11 px-3 border border-neutral-300 rounded-md text-sm text-neutral-700 hover:bg-neutral-50 flex items-center justify-center"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back</span>
@@ -276,9 +268,9 @@ const SignupPage = () => {
               <LoadingButton
                 type="submit"
                 loading={loading}
-                className="flex-[2] bg-primary-600 text-white px-6 py-3 rounded-xl hover:bg-primary-700 font-bold shadow-md hover:shadow-primary-100 transition-all flex items-center justify-center space-x-2"
+                className="flex-[2] min-h-11 bg-primary-600 text-white px-4 rounded-md hover:bg-primary-700 text-sm font-medium flex items-center justify-center"
               >
-                <span>{step === 1 ? 'Next Step' : 'Create My Account'}</span>
+                <span>{step === 1 ? 'Continue' : 'Create account'}</span>
                 {step === 1 && <ArrowRight className="h-5 w-5" />}
               </LoadingButton>
             </div>
@@ -287,7 +279,7 @@ const SignupPage = () => {
           <div className="mt-8 text-center pt-8 border-t border-neutral-100">
             <p className="text-sm text-neutral-600 font-medium">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary-600 hover:text-primary-700 font-bold">
+              <Link to="/login" className="text-primary-700">
                 Sign in here
               </Link>
             </p>

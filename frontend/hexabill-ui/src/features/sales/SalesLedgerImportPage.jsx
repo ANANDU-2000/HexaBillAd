@@ -56,7 +56,7 @@ export default function SalesLedgerImportPage() {
         toast.error(res?.message || 'Parse failed')
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to parse file')
+      toast.error(err?.response?.data?.message || 'Failed to parse file')
     } finally {
       setLoading(false)
     }
@@ -93,7 +93,7 @@ export default function SalesLedgerImportPage() {
         toast.error(res?.message || 'Import failed')
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || err?.message || 'Import failed')
+      toast.error(err?.response?.data?.message || 'Import failed')
     } finally {
       setApplying(false)
     }

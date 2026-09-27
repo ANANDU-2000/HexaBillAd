@@ -8,6 +8,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
 import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, MobileLedgerTxnCard } from '../../components/mobilePageUi'
 import { mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
+import { localDateString } from '../../utils/dateFormat'
 const DISCOUNT_TYPES = [
   'Cash Discount',
   'Free Products',
@@ -35,7 +36,7 @@ const SupplierDetailPage = () => {
   const [saving, setSaving] = useState(false)
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: localDateString(new Date()),
     mode: 'Cash',
     reference: '',
     notes: ''
@@ -56,7 +57,7 @@ const SupplierDetailPage = () => {
   const [recordEntryType, setRecordEntryType] = useState('payment')
   const [ledgerCreditForm, setLedgerCreditForm] = useState({
     amount: '',
-    creditDate: new Date().toISOString().split('T')[0],
+    creditDate: localDateString(new Date()),
     creditType: 'Cash Discount',
     notes: ''
   })
@@ -146,7 +147,7 @@ const SupplierDetailPage = () => {
         setShowRecordPayment(false)
         setShowOverpaymentConfirm(false)
         setPreFillPayment({ amount: '', reference: '' })
-        setPaymentForm({ amount: '', paymentDate: new Date().toISOString().split('T')[0], mode: 'Cash', reference: '', notes: '' })
+        setPaymentForm({ amount: '', paymentDate: localDateString(new Date()), mode: 'Cash', reference: '', notes: '' })
         await loadData()
         const resPurchases = await purchasesAPI.getPurchases({ supplierName, pageSize: 100 })
         if (resPurchases?.success && resPurchases?.data?.items) setPurchases(resPurchases.data.items)
@@ -172,7 +173,7 @@ const SupplierDetailPage = () => {
       if (res?.success) {
         toast.success('Ledger credit recorded. Outstanding updated.')
         setShowRecordPayment(false)
-        setLedgerCreditForm({ amount: '', creditDate: new Date().toISOString().split('T')[0], creditType: 'Cash Discount', notes: '' })
+        setLedgerCreditForm({ amount: '', creditDate: localDateString(new Date()), creditType: 'Cash Discount', notes: '' })
         setRecordEntryType('payment')
         await loadData()
       } else toast.error(res?.message || 'Failed to record ledger credit')
@@ -226,7 +227,7 @@ const SupplierDetailPage = () => {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `supplier_ledger_${(supplierName || 'export').replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `supplier_ledger_${(supplierName || 'export').replace(/\s/g, '_')}_${localDateString(new Date())}.csv`
     a.click()
     URL.revokeObjectURL(url)
     toast.success('Exported to CSV')
@@ -234,7 +235,7 @@ const SupplierDetailPage = () => {
 
   const openEditPayment = (t) => {
     if (!t?.paymentId) return
-    const d = t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    const d = t.date ? localDateString(new Date(t.date)) : localDateString(new Date())
     setEditingPayment(t)
     setEditPaymentForm({
       amount: String(t.credit ?? 0),
@@ -835,7 +836,7 @@ const SupplierDetailPage = () => {
             <input
               type="date"
               required
-              max={new Date().toISOString().split('T')[0]}
+              max={localDateString(new Date())}
               value={editPaymentForm.paymentDate}
               onChange={e => setEditPaymentForm(f => ({ ...f, paymentDate: e.target.value }))}
               className="w-full border-2 border-primary-200 rounded-lg px-3 py-2"

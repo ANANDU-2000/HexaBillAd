@@ -11,7 +11,7 @@ const normalizeDateParams = (params = {}) => {
 
 export const authAPI = {
   login: async (credentials) => {
-    const response = await api.post('/auth/login', credentials)
+    const response = await api.post('/auth/login', credentials, { _skipRetry: true })
     return response.data
   },
 
@@ -2083,7 +2083,7 @@ export const superAdminAPI = {
   },
 
   acceptInvite: async (token, newPassword) => {
-    const response = await api.post('/auth/invite/accept', { token, newPassword })
+    const response = await api.post('/auth/invite/accept', { token, newPassword }, { _skipRetry: true })
     return response.data
   },
 

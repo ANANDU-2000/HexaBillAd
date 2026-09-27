@@ -1,18 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
   Plus,
-  Search,
-  Filter,
   RefreshCw,
   DollarSign,
-  Calendar,
-  Tag,
   Edit,
   Trash2,
-  TrendingDown,
-  PieChart,
   X,
   Save,
   Upload,
@@ -21,30 +15,19 @@ import {
   XCircle,
   Clock,
   Repeat,
-  Download,
   Eye,
-  ExternalLink,
-  Shield,
-  ChevronDown
+  MoreHorizontal
 } from 'lucide-react'
 import { formatCurrency, roundMoney } from '../../utils/currency'
 import toast from 'react-hot-toast'
-import { showToast } from '../../utils/toast'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
-import { LoadingCard, LoadingButton } from '../../components/Loading'
+import { LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
 import { expensesAPI } from '../../services/index'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import {
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip
-} from 'recharts'
 
 function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
   const [interpretation, setInterpretation] = useState('add-on-top')
@@ -210,9 +193,17 @@ function getVatQuarterRange(q, year) {
   return { from: `${year - 1}-11-01`, to: `${year}-01-31` }
 }
 
+function localDateString(date) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 const ExpensesPage = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -230,6 +221,9 @@ const ExpensesPage = () => {
   const EXPENSES_DATE_RANGE_KEY = 'EXPENSES_DATE_RANGE'
   const EXPENSES_BRANCH_KEY = 'EXPENSES_BRANCH'
   const [dateRange, setDateRange] = useState(() => {
+    const fromParam = searchParams.get('from')
+    const toParam = searchParams.get('to')
+    if (fromParam && toParam) return { from: fromParam, to: toParam }
     try {
       const saved = localStorage.getItem(EXPENSES_DATE_RANGE_KEY)
       if (saved) {
@@ -237,10 +231,10 @@ const ExpensesPage = () => {
         if (parsed.from && parsed.to) return parsed
       }
     } catch {}
-    return {
-      from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      to: new Date().toISOString().split('T')[0]
-    }
+    const today = new Date()
+    const from = new Date(today)
+    from.setDate(from.getDate() - 365)
+    return { from: localDateString(from), to: localDateString(today) }
   })
   const [pendingDateRange, setPendingDateRange] = useState(dateRange)
   const [groupBy, setGroupBy] = useState('') // '', 'weekly', 'monthly', 'yearly'
@@ -259,6 +253,8 @@ const ExpensesPage = () => {
 
   const [categories, setCategories] = useState([])
   const [selectedBranchId, setSelectedBranchId] = useState(() => {
+    const fromUrl = searchParams.get('branchId')
+    if (fromUrl) return fromUrl
     try { return localStorage.getItem(EXPENSES_BRANCH_KEY) || '' } catch { return '' }
   })
   const [attachmentFile, setAttachmentFile] = useState(null)
@@ -277,6 +273,9 @@ const ExpensesPage = () => {
   const [quickBulkVatInterpretation, setQuickBulkVatInterpretation] = useState('add-on-top')
   const [vatReadiness, setVatReadiness] = useState(null)
   const [showVatReadiness, setShowVatReadiness] = useState(false)
+  const [listError, setListError] = useState(false)
+  const [searchDraft, setSearchDraft] = useState('')
+  const [moreOpen, setMoreOpen] = useState(false)
 
   const {
     register,
@@ -338,16 +337,23 @@ const ExpensesPage = () => {
 
   useEffect(() => {
     try { localStorage.setItem(EXPENSES_DATE_RANGE_KEY, JSON.stringify(dateRange)) } catch {}
-  }, [dateRange])
-
-  useEffect(() => {
     try { localStorage.setItem(EXPENSES_BRANCH_KEY, selectedBranchId) } catch {}
-  }, [selectedBranchId])
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      if (dateRange.from) params.set('from', dateRange.from)
+      if (dateRange.to) params.set('to', dateRange.to)
+      if (selectedBranchId) params.set('branchId', selectedBranchId)
+      else params.delete('branchId')
+      return params
+    }, { replace: true })
+  }, [dateRange, selectedBranchId, setSearchParams])
 
   const fetchExpenses = useCallback(async (pageOverride) => {
+    if (dateRange.from && dateRange.to && dateRange.to < dateRange.from) return
     try {
       if (!initialExpensesLoadDoneRef.current) setLoading(true)
       else setRefreshing(true)
+      setListError(false)
       const page = pageOverride != null ? pageOverride : currentPage
       const params = {
         page,
@@ -376,7 +382,7 @@ const ExpensesPage = () => {
           }
         } catch (error) {
           console.error('Error loading aggregated expenses:', error)
-          const errorMessage = error?.response?.data?.message || error?.message || 'Failed to load aggregated expenses'
+          const errorMessage = error?.response?.data?.message || 'Failed to load aggregated expenses'
           if (!error?._handledByInterceptor) toast.error(errorMessage)
           setAggregatedData([])
           // Don't fail the entire fetch if aggregated view fails
@@ -449,11 +455,8 @@ const ExpensesPage = () => {
         setExpenseSummary(null)
       }
     } catch (error) {
-      console.error('Error loading expenses:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to load expenses')
-      setExpenses([])
-      setFilteredExpenses([])
-      setExpenseSummary(null)
+      console.error('Error loading expenses')
+      setListError(true)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -496,12 +499,12 @@ const ExpensesPage = () => {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `expenses_${localDateString(new Date())}.csv`
       a.click()
       URL.revokeObjectURL(url)
       toast.success('CSV downloaded')
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to export CSV')
+      toast.error('Could not export expenses.')
     } finally {
       setExportingCsv(false)
     }
@@ -526,7 +529,7 @@ const ExpensesPage = () => {
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
       toast.success('PDF downloaded')
     } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to export PDF')
+      toast.error('Could not export expenses.')
     } finally {
       setExportingPdf(false)
     }
@@ -594,10 +597,15 @@ const ExpensesPage = () => {
     filterExpenses()
   }, [filterExpenses])
 
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchTerm(searchDraft), 300)
+    return () => clearTimeout(timer)
+  }, [searchDraft])
+
   // Pre-fill Add modal with default date (today) and first category so form is valid once user enters amount
   useEffect(() => {
     if (showAddModal && !selectedExpense) {
-      const today = new Date().toISOString().split('T')[0]
+      const today = localDateString(new Date())
       const defaultCategory = categories.length > 0 ? String(categories[0].id) : ''
       reset({
         category: defaultCategory,
@@ -658,7 +666,7 @@ const ExpensesPage = () => {
         if (response?.success) {
           toast.success('Expense updated successfully!', { id: 'expense-update', duration: 4000 })
         } else {
-          toast.error(response?.message || 'Failed to update expense', { id: 'expense-update' })
+          toast.error('Could not save this expense.', { id: 'expense-update' })
           return
         }
       } else {
@@ -715,7 +723,7 @@ const ExpensesPage = () => {
           toast.success('Expense added successfully!', { id: 'expense-add', duration: 4000 })
           window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
-          toast.error(response?.message || 'Failed to create expense', { id: 'expense-add' })
+          toast.error('Could not save this expense.', { id: 'expense-add' })
           return
         }
       }
@@ -731,7 +739,7 @@ const ExpensesPage = () => {
       window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
       console.error('Error saving expense:', error)
-      const errMsg = error?.response?.data?.message || error?.response?.data?.errors?.[0] || 'Failed to save expense. Check category, amount, and date.'
+      const errMsg = 'Could not save this expense.'
       if (!error?._handledByInterceptor) toast.error(errMsg)
     }
   }
@@ -744,8 +752,8 @@ const ExpensesPage = () => {
     setValue('routeId', expense.routeId ? String(expense.routeId) : '')
     setValue('recurringExpenseId', expense.recurringExpenseId ? String(expense.recurringExpenseId) : '')
     const expenseDate = expense.date
-      ? new Date(expense.date).toISOString().split('T')[0]
-      : new Date().toISOString().split('T')[0]
+      ? localDateString(new Date(expense.date))
+      : localDateString(new Date())
     setValue('date', expenseDate)
     setValue('note', expense.note || '')
     setValue('withVat', expense.vatAmount != null || expense.VatAmount != null)
@@ -885,37 +893,11 @@ const ExpensesPage = () => {
           }
         } catch (error) {
           console.error('Error deleting expense:', error)
-          toast.error(error?.response?.data?.message || 'Failed to delete expense')
+          toast.error('Could not delete this expense.')
         }
       }
     })
   }
-
-  const getCategoryColor = (category) => {
-    const colors = {
-      'Rent': '#EF4444',
-      'Utilities': '#F59E0B',
-      'Staff Salary': '#10B981',
-      'Marketing': '#3B82F6',
-      'Fuel': '#8B5CF6',
-      'Delivery': '#F97316',
-      'Meals': '#EC4899',
-      'Maintenance': '#6B7280',
-      'Insurance': '#14B8A6',
-      'Other': '#84CC16'
-    }
-    return colors[category] || '#6B7280'
-  }
-
-  const CHART_PALETTE = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316', '#84CC16', '#6366F1', '#06B6D4', '#EAB308']
-
-  const chartData = expenseSummary ? Object.entries(expenseSummary.categoryTotals)
-    .sort((a, b) => b[1] - a[1])
-    .map(([category, amount], index) => ({
-      name: category,
-      value: amount,
-      color: CHART_PALETTE[index % CHART_PALETTE.length]
-    })) : []
 
   const handleCreateCategory = async (categoryName) => {
     if (!categoryName || !categoryName.trim()) {
@@ -957,94 +939,88 @@ const ExpensesPage = () => {
     })
   }
 
-  if (loading) {
-    return <LoadingCard message="Loading expenses..." />
+  const rangeInvalid = !!(pendingDateRange.from && pendingDateRange.to && pendingDateRange.to < pendingDateRange.from)
+  const applyRange = (next) => {
+    setPendingDateRange(next)
+    if (next.from && next.to && next.to < next.from) return
+    setCurrentPage(1)
+    setDateRange(next)
   }
+  const presetActive = (next) => dateRange.from === next.from && dateRange.to === next.to
+  const presetChip = (active) =>
+    `min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${active ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'}`
+  const todayDate = new Date()
+  const quarterYear = todayDate.getFullYear()
+  const presetRanges = {
+    '7': (() => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 7); return { from: localDateString(from), to: localDateString(to) } })(),
+    week: (() => { const to = new Date(); const from = new Date(to); from.setDate(from.getDate() - from.getDay()); return { from: localDateString(from), to: localDateString(to) } })(),
+    month: (() => { const to = new Date(); const from = new Date(to.getFullYear(), to.getMonth(), 1); return { from: localDateString(from), to: localDateString(to) } })(),
+    year: (() => { const to = new Date(); const from = new Date(to.getFullYear(), 0, 1); return { from: localDateString(from), to: localDateString(to) } })()
+  }
+  const daysInRange = Math.max(1, (new Date(dateRange.to) - new Date(dateRange.from)) / (1000 * 60 * 60 * 24) + 1)
+  const averagePerDay = expenseSummary ? expenseSummary.total / daysInRange : 0
 
-  // TALLY ERP LEDGER STYLE — flex layout fills main viewport (see Layout isExpensesLedger)
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-neutral-50">
-      {/* Top Bar - Mobile Responsive */}
-      <div className="shrink-0 bg-white border-b border-neutral-200 px-2 sm:px-4 py-2">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+      <div className="shrink-0 border-b border-neutral-200 bg-white px-3 py-3 md:px-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-base sm:text-lg font-bold text-gray-900">Expenses Ledger</h1>
-            <div className="text-xs text-gray-600">Date: {new Date().toLocaleDateString('en-GB')}</div>
+            <h1 className="hidden text-xl font-semibold text-neutral-900 md:block">Expenses</h1>
             {user && !isAdminOrOwner(user) && (
-              <p className="text-xs text-blue-700 mt-0.5">Totals and list are for your assigned branch(es).</p>
+              <p className="text-xs text-neutral-500">Totals and list are for your assigned branch(es).</p>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => navigate('/vat-return')}
-              className="px-2 sm:px-3 py-1 text-xs font-medium bg-slate-100 border border-slate-300 rounded hover:bg-slate-200 flex items-center justify-center gap-1 flex-1 sm:flex-none"
-              title="VAT Return – track and fix zero values"
-            >
-              <ExternalLink className="h-3 w-3" />
-              <span className="hidden sm:inline">VAT Return</span>
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdminOrOwner(user) && (
+              <button type="button" onClick={() => navigate('/vat-return')} className="text-sm text-primary-700 hover:underline">
+                VAT Return
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handleRefresh()}
               disabled={refreshing}
-              title="Reload list and summary (bypasses short-lived cache)"
-              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-blue-300 rounded hover:bg-blue-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-60"
+              aria-label="Refresh"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 md:h-9 md:w-9"
             >
-              <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">{refreshing ? 'Refreshing…' : 'Refresh'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportCsv}
-              disabled={exportingCsv || exportingPdf}
-              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-green-300 rounded hover:bg-green-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-50"
-            >
-              <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-              <span className="hidden sm:inline">{exportingCsv ? 'Exporting…' : 'Export CSV'}</span>
-              <span className="sm:hidden">{exportingCsv ? '…' : 'CSV'}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPdf}
-              disabled={exportingCsv || exportingPdf}
-              title="Expenses register PDF for the current date range and branch filter"
-              className="px-2 sm:px-3 py-1 text-xs font-medium bg-white border border-rose-300 rounded hover:bg-rose-50 flex items-center justify-center flex-1 sm:flex-none disabled:opacity-50"
-            >
-              <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-1" />
-              <span className="hidden sm:inline">{exportingPdf ? 'PDF…' : 'Export PDF'}</span>
-              <span className="sm:hidden">{exportingPdf ? '…' : 'PDF'}</span>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'motion-safe:animate-spin' : ''}`} aria-hidden />
             </button>
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded font-medium hover:bg-green-700 flex items-center justify-center text-xs sm:text-sm flex-1 sm:flex-none min-h-[44px]"
+              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700 md:min-h-9 md:flex-none"
             >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Expense</span>
-              <span className="sm:hidden">Add</span>
+              <Plus className="h-4 w-4" aria-hidden />
+              Add expense
             </button>
             {isAdminOrOwner(user) && (
-              <>
-              <button
-                type="button"
-                onClick={() => setShowCategorySettingsModal(true)}
-                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                <Tag className="h-4 w-4" />
-                <span className="hidden sm:inline">Category VAT</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowRecurringModal(true)}
-                className="px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 flex items-center justify-center text-xs sm:text-sm flex-1 sm:flex-none min-h-[44px]"
-                title="Manage recurring expenses"
-              >
-                <Repeat className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Recurring</span>
-                <span className="sm:hidden">Repeat</span>
-              </button>
-              </>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="More actions"
+                  aria-expanded={moreOpen}
+                  onClick={() => setMoreOpen((open) => !open)}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 md:h-9 md:w-9"
+                >
+                  <MoreHorizontal className="h-4 w-4" aria-hidden />
+                </button>
+                {moreOpen && (
+                  <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
+                    <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportCsv() }}>
+                      {exportingCsv ? 'Exporting…' : 'Export CSV'}
+                    </button>
+                    <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportPdf() }}>
+                      {exportingPdf ? 'Exporting…' : 'Export PDF'}
+                    </button>
+                    <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50" onClick={() => { setMoreOpen(false); setShowCategorySettingsModal(true) }}>
+                      Category VAT
+                    </button>
+                    <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50" onClick={() => { setMoreOpen(false); setShowRecurringModal(true) }}>
+                      Recurring
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1052,368 +1028,116 @@ const ExpensesPage = () => {
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-full px-0 sm:px-1">
         <div className="shrink-0">
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4 mb-4">
-          <div className="flex items-center mb-3">
-            <Filter className="h-4 w-4 text-blue-600 mr-2" />
-            <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
-          </div>
-
-          {/* Date Range Presets */}
-          <div className="mb-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                const to = new Date().toISOString().split('T')[0]
-                const from = new Date()
-                from.setDate(from.getDate() - 7)
-                const r = { from: from.toISOString().split('T')[0], to }
-                setPendingDateRange(r)
-                setDateRange(r)
-              }}
-              className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-            >
-              Last 7 Days
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const to = new Date()
-                const from = new Date(to)
-                from.setDate(from.getDate() - from.getDay())
-                const r = { from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] }
-                setPendingDateRange(r)
-                setDateRange(r)
-              }}
-              className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-            >
-              This Week
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const to = new Date().toISOString().split('T')[0]
-                const from = new Date()
-                from.setDate(1)
-                const r = { from: from.toISOString().split('T')[0], to }
-                setPendingDateRange(r)
-                setDateRange(r)
-              }}
-              className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-            >
-              This Month
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const to = new Date().toISOString().split('T')[0]
-                const from = new Date()
-                from.setFullYear(from.getFullYear(), 0, 1)
-                const r = { from: from.toISOString().split('T')[0], to }
-                setPendingDateRange(r)
-                setDateRange(r)
-              }}
-              className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
-            >
-              This Year
-            </button>
-            <span className="text-xs text-gray-400 mx-1 hidden sm:inline">|</span>
-            {[1, 2, 3, 4].map(q => {
-              const yr = new Date().getFullYear()
-              const qr = getVatQuarterRange(q, yr)
+        <div className="mb-4 space-y-2 rounded-lg border border-neutral-200 bg-white p-3">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={presetChip(presetActive(presetRanges['7']))} onClick={() => applyRange(presetRanges['7'])}>Last 7 days</button>
+            <button type="button" className={presetChip(presetActive(presetRanges.week))} onClick={() => applyRange(presetRanges.week)}>Week</button>
+            <button type="button" className={presetChip(presetActive(presetRanges.month))} onClick={() => applyRange(presetRanges.month)}>Month</button>
+            <button type="button" className={presetChip(presetActive(presetRanges.year))} onClick={() => applyRange(presetRanges.year)}>Year</button>
+            {[1, 2, 3, 4].map((q) => {
+              const qr = getVatQuarterRange(q, quarterYear)
               return (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => {
-                    setPendingDateRange(qr)
-                    setDateRange(qr)
-                  }}
-                  className="px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded hover:bg-purple-100 font-medium"
-                >
-                  Q{q} {yr}
+                <button key={q} type="button" className={presetChip(presetActive(qr))} onClick={() => applyRange(qr)}>
+                  Q{q}
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setFilterNoVatOnly(prev => !prev)}
-              className={`px-2 py-1 text-xs rounded ${filterNoVatOnly ? 'bg-amber-200 text-amber-900' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}`}
-            >
-              No VAT data only {filterNoVatOnly ? '(on)' : ''}
-            </button>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <Input
-              label="From Date"
-              type="date"
-              value={pendingDateRange.from}
-              onChange={(e) => setPendingDateRange(prev => ({ ...prev, from: e.target.value }))}
-            />
-            <Input
-              label="To Date"
-              type="date"
-              value={pendingDateRange.to}
-              onChange={(e) => setPendingDateRange(prev => ({ ...prev, to: e.target.value }))}
-            />
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => setDateRange({ ...pendingDateRange })}
-                className="px-4 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 text-xs sm:text-sm w-full"
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+            <label className="text-xs font-medium text-neutral-500">
+              From
+              <input type="date" value={pendingDateRange.from} aria-label="From" onChange={(e) => applyRange({ ...pendingDateRange, from: e.target.value })} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" />
+            </label>
+            <label className="text-xs font-medium text-neutral-500">
+              To
+              <input type="date" value={pendingDateRange.to} aria-label="To" onChange={(e) => applyRange({ ...pendingDateRange, to: e.target.value })} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" />
+            </label>
+            <label className="text-xs font-medium text-neutral-500">
+              Branch
+              <select
+                aria-label="Branch"
+                value={selectedBranchId || ''}
+                disabled={user && !isAdminOrOwner(user) && (branches || []).length <= 1}
+                onChange={(e) => { setCurrentPage(1); setSelectedBranchId(e.target.value) }}
+                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9"
               >
-                Apply Dates
-              </button>
-            </div>
-            <div className="flex items-end gap-2">
-              <Select
-                label="Group By"
-                options={[
-                  { value: '', label: 'None' },
-                  { value: 'weekly', label: 'Weekly' },
-                  { value: 'monthly', label: 'Monthly' },
-                  { value: 'yearly', label: 'Yearly' }
-                ]}
+                {isAdminOrOwner(user) && <option value="">All branches</option>}
+                {(branches || []).map((branch) => (
+                  <option key={branch.id} value={branch.id}>{branch.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="min-w-[8rem] text-xs font-medium text-neutral-500">
+              Group
+              <select
+                aria-label="Group by"
                 value={groupBy}
                 onChange={(e) => {
                   setGroupBy(e.target.value)
                   setShowAggregated(e.target.value !== '')
                   if (e.target.value !== '') setSelectedExpenseIds([])
                 }}
+                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9"
+              >
+                <option value="">None</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </label>
+            <label className="relative min-w-[12rem] flex-1 text-xs font-medium text-neutral-500">
+              Search this page
+              <input
+                type="search"
+                value={searchDraft}
+                onChange={(e) => setSearchDraft(e.target.value)}
+                placeholder="Search this page"
+                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm"
               />
-            </div>
-          </div>
-        </div>
-
-        {noVatCount > 0 && isAdminOrOwner(user) && (
-          <div className="mb-4 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm text-amber-800">
-              {noVatCount} expense(s) have no VAT data.
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowBulkVatModal(true)}
-              className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700"
-            >
-              Review & Update
-            </button>
-          </div>
-        )}
-
-        {/* Summary Cards - Mobile Responsive */}
-        {expenseSummary && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4">
-              <div className="flex items-center">
-                <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-red-600 flex-shrink-0" />
-                <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-red-600">Total Expenses</p>
-                  <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-900 truncate">
-                    {formatCurrency(expenseSummary.total)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4">
-              <div className="flex items-center">
-                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600 flex-shrink-0" />
-                <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-blue-600">Average per Day</p>
-                  <p className="text-base sm:text-xl lg:text-2xl font-bold text-blue-900 truncate">
-                    {formatCurrency(expenseSummary.averagePerDay)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4">
-              <div className="flex items-center">
-                <Tag className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
-                <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-green-600">Top Category</p>
-                  <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-900 truncate">
-                    {expenseSummary.topCategory}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-neutral-200 p-3 sm:p-4">
-              <div className="flex items-center">
-                <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-amber-600 flex-shrink-0" />
-                <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-amber-600">Total VAT</p>
-                  <p className="text-base sm:text-xl lg:text-2xl font-bold text-amber-900 truncate">
-                    {formatCurrency(expenseSummary.totalVat ?? 0)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-green-200 p-3 sm:p-4">
-              <div className="flex items-center">
-                <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
-                <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                  <p className="text-xs sm:text-sm font-medium text-green-600">Claimable VAT (Box 9b)</p>
-                  <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-900 truncate">
-                    {formatCurrency(expenseSummary.totalClaimableVat ?? 0)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">After entertainment cap & petroleum exclusion. Mark expenses as Tax claimable (ITC) to include in Box 9b.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* VAT Readiness Panel */}
-        {vatReadiness && (
-          <div className="bg-white rounded-xl border border-neutral-200 mb-4">
-            <button
-              type="button"
-              onClick={() => setShowVatReadiness(prev => !prev)}
-              className="w-full flex items-center justify-between px-4 py-3 hover:bg-neutral-50 rounded-xl"
-            >
-              <div className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-semibold text-gray-900">VAT Readiness</span>
-                {vatReadiness.vatReturnEligible > 0 ? (
-                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-green-100 text-green-800">
-                    {vatReadiness.vatReturnEligible} eligible for VAT Return
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
-                    No expenses eligible for VAT Return
-                  </span>
-                )}
-              </div>
-              <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showVatReadiness ? 'rotate-180' : ''}`} />
-            </button>
-            {showVatReadiness && (
-              <div className="px-4 pb-4 border-t border-neutral-100 pt-3">
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-900">{vatReadiness.total}</p>
-                    <p className="text-xs text-blue-700">Total Expenses</p>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-900">{vatReadiness.approved}</p>
-                    <p className="text-xs text-green-700">Approved</p>
-                  </div>
-                  <div className={`rounded-lg p-3 text-center ${vatReadiness.noVatData > 0 ? 'bg-amber-50' : 'bg-green-50'}`}>
-                    <p className={`text-2xl font-bold ${vatReadiness.noVatData > 0 ? 'text-amber-900' : 'text-green-900'}`}>{vatReadiness.noVatData}</p>
-                    <p className={`text-xs ${vatReadiness.noVatData > 0 ? 'text-amber-700' : 'text-green-700'}`}>No VAT Data</p>
-                  </div>
-                  <div className={`rounded-lg p-3 text-center ${vatReadiness.notClaimable > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
-                    <p className={`text-2xl font-bold ${vatReadiness.notClaimable > 0 ? 'text-red-900' : 'text-green-900'}`}>{vatReadiness.notClaimable}</p>
-                    <p className={`text-xs ${vatReadiness.notClaimable > 0 ? 'text-red-700' : 'text-green-700'}`}>Not Claimable (ITC)</p>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-purple-900">{vatReadiness.vatReturnEligible}</p>
-                    <p className="text-xs text-purple-700">VAT Return Eligible</p>
-                  </div>
-                </div>
-                {(vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    {vatReadiness.petroleum > 0 && (
-                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{vatReadiness.petroleum} Petroleum (excluded from Box 9b)</span>
-                    )}
-                    {vatReadiness.exempt > 0 && (
-                      <span className="px-2 py-1 rounded bg-gray-100 text-gray-700">{vatReadiness.exempt} Exempt</span>
-                    )}
-                    {vatReadiness.pending > 0 && (
-                      <span className="px-2 py-1 rounded bg-yellow-100 text-yellow-800">{vatReadiness.pending} Pending approval</span>
-                    )}
-                    {vatReadiness.rejected > 0 && (
-                      <span className="px-2 py-1 rounded bg-red-100 text-red-800">{vatReadiness.rejected} Rejected</span>
-                    )}
-                  </div>
-                )}
-                {vatReadiness.claimableVatTotal > 0 && (
-                  <div className="mt-3 p-3 bg-green-50 rounded-lg">
-                    <p className="text-sm font-semibold text-green-900">
-                      Total Claimable VAT: {formatCurrency(vatReadiness.claimableVatTotal)}
-                    </p>
-                    <p className="text-xs text-green-700 mt-1">This should match Box 9b on the VAT Return for the same period.</p>
-                  </div>
-                )}
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {vatReadiness.noVatData > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setFilterNoVatOnly(true)}
-                      className="px-3 py-1.5 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
-                    >
-                      Review {vatReadiness.noVatData} expenses with no VAT
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => navigate('/vat-return')}
-                    className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
-                  >
-                    Open VAT Return
-                  </button>
-                </div>
-              </div>
+            </label>
+            {isAdminOrOwner(user) && (
+              <button
+                type="button"
+                aria-pressed={filterNoVatOnly}
+                onClick={() => setFilterNoVatOnly((prev) => !prev)}
+                className={`min-h-11 rounded-md border px-3 text-sm md:min-h-9 ${filterNoVatOnly ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
+              >
+                VAT missing
+              </button>
             )}
           </div>
-        )}
-
-        {/* Chart - Tally Style */}
-        {chartData.length > 0 && (
-          <div className="bg-white rounded-xl border border-neutral-200 p-4 mb-6">
-            <div className="flex items-center mb-4 border-b border-neutral-200 pb-2">
-              <PieChart className="h-6 w-6 text-blue-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Expense Breakdown</h3>
-            </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={chartData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(props) => {
-                      const sliceName = String(props?.name ?? '')
-                      const frac = typeof props?.percent === 'number' ? props.percent : Number(props?.percent) || 0
-                      return `${sliceName} ${(frac * 100).toFixed(0)}%`
-                    }}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Search and Filters - Tally Style */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search expenses..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm"
-                />
-              </div>
-            </div>
-          </div>
+          <p className="text-xs text-neutral-500">Searches the rows on this page.</p>
+          {rangeInvalid && <p className="text-xs text-red-700">End date is before the start date.</p>}
         </div>
 
+        {expenseSummary && (
+          <div className="mb-4 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+            <p className="flex flex-wrap gap-x-4 gap-y-1">
+              <span className="text-xs font-medium text-neutral-500">Total <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.total)}</span></span>
+              <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
+              <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-emerald-700">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
+            </p>
+            <p className="mt-1 text-xs text-neutral-500">Average per day {formatCurrency(averagePerDay)}</p>
+          </div>
+        )}
+        {vatReadiness && (vatReadiness.vatReturnEligible > 0 || vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
+          <p className="mb-4 text-xs text-neutral-500">
+            {vatReadiness.vatReturnEligible > 0 && <span>{vatReadiness.vatReturnEligible} eligible for VAT return. </span>}
+            {vatReadiness.petroleum > 0 && <span>{vatReadiness.petroleum} petroleum, excluded from box 9b. </span>}
+            {vatReadiness.exempt > 0 && <span>{vatReadiness.exempt} exempt. </span>}
+            {vatReadiness.pending > 0 && <span>{vatReadiness.pending} pending. </span>}
+            {vatReadiness.rejected > 0 && <span>{vatReadiness.rejected} rejected.</span>}
+          </p>
+        )}
+        {noVatCount > 0 && isAdminOrOwner(user) && (
+          <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-600 bg-white px-3">
+            <p className="text-sm text-amber-700">Missing VAT · {noVatCount} expenses need VAT</p>
+            <span className="flex gap-2">
+              <button type="button" className="min-h-11 rounded-md px-3 text-sm text-amber-800 hover:bg-amber-50 md:min-h-9" onClick={() => setFilterNoVatOnly(true)}>Review</button>
+              <button type="button" className="min-h-11 rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50 md:min-h-9" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
+            </span>
+          </div>
+        )}
         {/* Aggregated View */}
         {showAggregated && aggregatedData.length > 0 && (
           <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden mb-6">
@@ -1428,9 +1152,9 @@ const ExpensesPage = () => {
               <table className="min-w-full text-xs">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700 border-r border-neutral-200">Period</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700 border-r border-neutral-200">Total Amount</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-700 border-r border-neutral-200">Count</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Period</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-700">Total Amount</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-700">Count</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-700">By Category</th>
                   </tr>
                 </thead>
@@ -1656,7 +1380,7 @@ const ExpensesPage = () => {
               <table className="min-w-max w-full text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-2 py-2 text-center font-semibold text-gray-700 border-r border-neutral-200 w-10 bg-neutral-50">
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700 w-10 bg-neutral-50">
                       <input
                         type="checkbox"
                         checked={displayExpenses.length > 0 && displayExpenses.every(e => selectedExpenseIds.includes(e.id))}
@@ -1667,16 +1391,16 @@ const ExpensesPage = () => {
                         className="rounded border-gray-300"
                       />
                     </th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200 bg-neutral-50">Category</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Branch</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Route</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Amount</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">VAT</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Claimable VAT</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700 border-r border-neutral-200">Total</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Date</th>
-                    <th className="px-2 py-2 text-center font-semibold text-gray-700 border-r border-neutral-200">VAT Period</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 border-r border-neutral-200">Status</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700 bg-neutral-50">Category</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Branch</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Route</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Amount</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Claimable VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Total</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Date</th>
+                    <th className="px-2 py-2 text-center font-semibold text-gray-700">VAT Period</th>
+                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Status</th>
                     <th className="px-2 py-2 text-left font-semibold text-gray-700">Note</th>
                     <th className="px-2 py-2 text-center font-semibold text-gray-700">Actions</th>
                   </tr>
@@ -1685,9 +1409,16 @@ const ExpensesPage = () => {
                   {displayExpenses.length === 0 ? (
                     <tr>
                       <td colSpan="14" className="px-6 py-8 text-center text-gray-500">
-                        {user && !isAdminOrOwner(user)
+                        {loading && displayExpenses.length === 0 && !listError
+                          ? 'Loading expenses…'
+                          : listError
+                          ? 'Unable to load expenses.'
+                          : user && !isAdminOrOwner(user)
                           ? 'No expenses in your assigned branch(es) for this period.'
-                          : 'No expenses found'}
+                          : 'No expenses in this period.'}
+                        {listError && (
+                          <button type="button" className="mt-2 block w-full text-sm text-primary-700" onClick={() => handleRefresh()}>Retry</button>
+                        )}
                       </td>
                     </tr>
                   ) : (
@@ -1706,10 +1437,6 @@ const ExpensesPage = () => {
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div
-                              className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
-                              style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
-                            />
                             <span className="font-medium text-gray-900">{expense.categoryName}</span>
                             {expense.isTaxClaimable && (expense.claimableVat > 0 || expense.ClaimableVat > 0) ? (
                               <span className="ml-1.5 flex-shrink-0" title="VAT Claimable (ITC)">
@@ -1729,10 +1456,10 @@ const ExpensesPage = () => {
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-sm text-gray-700 border-r border-neutral-200">
+                        <td className="px-2 py-2 text-sm text-gray-700">
                           {expense.branchName || '-'}
                         </td>
-                        <td className="px-2 py-2 text-sm text-gray-700 border-r border-neutral-200">
+                        <td className="px-2 py-2 text-sm text-gray-700">
                           {expense.routeName || '-'}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-gray-900">
@@ -1744,7 +1471,7 @@ const ExpensesPage = () => {
                           )}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-right text-gray-700">
-                          {expense.vatAmount != null ? formatCurrency(expense.vatAmount) : '-'}
+                          {expense.vatAmount != null && expense.vatAmount !== 0 ? formatCurrency(expense.vatAmount) : ''}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-right text-green-700">
                           {expense.claimableVat != null || expense.ClaimableVat != null ? formatCurrency(expense.claimableVat ?? expense.ClaimableVat) : '-'}
@@ -1760,7 +1487,7 @@ const ExpensesPage = () => {
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-center">
                           {expense.date ? (
-                            <span className="inline-flex px-2 py-0.5 text-xs font-semibold rounded bg-purple-100 text-purple-800">
+                            <span className="text-xs text-neutral-600">
                               {getVatQuarter(expense.date).label}
                             </span>
                           ) : '-'}
@@ -1814,6 +1541,7 @@ const ExpensesPage = () => {
                                 onClick={() => handleEdit(expense)}
                                 className="text-indigo-600 hover:text-indigo-900"
                                 title="Edit expense"
+                                aria-label="Edit expense"
                               >
                                 <Edit className="h-4 w-4" />
                               </button>
@@ -1822,6 +1550,7 @@ const ExpensesPage = () => {
                                 onClick={() => handleDelete(expense.id)}
                                 className="text-red-600 hover:text-red-900"
                                 title="Delete expense"
+                                aria-label="Delete expense"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -1837,12 +1566,16 @@ const ExpensesPage = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden flex-1 min-h-0 overflow-y-auto space-y-3 p-3 max-h-[70vh]">
+            <div className="md:hidden space-y-3 p-3">
               {displayExpenses.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  {user && !isAdminOrOwner(user)
+                  {loading && displayExpenses.length === 0 && !listError
+                    ? 'Loading expenses…'
+                    : user && !isAdminOrOwner(user)
                     ? 'No expenses in your assigned branch(es) for this period.'
-                    : 'No expenses found'}
+                    : listError
+                    ? 'Unable to load expenses.'
+                    : 'No expenses in this period.'}
                 </div>
               ) : (
                 displayExpenses.map((expense) => (
@@ -1860,10 +1593,6 @@ const ExpensesPage = () => {
                         />
                         <div className="flex-1 min-w-0">
                         <div className="flex items-center mb-1">
-                          <div
-                            className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
-                            style={{ backgroundColor: expense.categoryColor || '#6B7280' }}
-                          />
                           <p className="text-sm font-semibold text-gray-900">{expense.categoryName || 'Uncategorized'}</p>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">{expense.note || 'No description'}</p>
@@ -2453,23 +2182,10 @@ const ExpensesPage = () => {
               Set up expenses that repeat automatically (e.g., monthly rent, weekly fuel).
             </p>
             
-            <button
-              type="button"
-              onClick={() => {
-                // TODO: Open create recurring expense form
-                showToast.info('Recurring expense creation coming soon')
-              }}
-              className="w-full px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 flex items-center justify-center min-h-[44px]"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Create Recurring Expense
-            </button>
-
             {recurringExpenses.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <Repeat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
                 <p>No recurring expenses configured</p>
-                <p className="text-xs mt-1">Create one to automate expense entry</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -2482,28 +2198,6 @@ const ExpensesPage = () => {
                         <p className="text-xs text-gray-500 mt-1">
                           {recurring.frequency} • {recurring.isActive ? 'Active' : 'Inactive'}
                         </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // TODO: Edit recurring expense
-                            showToast.info('Edit recurring expense coming soon')
-                          }}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // TODO: Delete recurring expense
-                            showToast.info('Delete recurring expense coming soon')
-                          }}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
                       </div>
                     </div>
                   </div>

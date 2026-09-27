@@ -35,7 +35,7 @@ const SuperAdminSqlConsolePage = () => {
         setResult(res?.data || null)
       }
     } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Request failed'
+      const msg = err?.response?.data?.message || 'Request failed'
       setError(msg)
       setResult(null)
       if (!err?._handledByInterceptor) toast.error(msg)

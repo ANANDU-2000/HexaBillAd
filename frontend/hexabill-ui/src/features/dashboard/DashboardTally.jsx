@@ -1,184 +1,101 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-    Package, ShoppingCart, Users, Truck, FileText, Percent,
-    Settings, Database, BarChart3, DollarSign, TrendingUp,
-    AlertTriangle, ChevronRight, BookOpen, Wallet,
-    Building2, MapPin, RefreshCw, RotateCcw, CheckCircle, X,
-    Banknote, Receipt
+    ShoppingCart, Truck, FileText, Wallet, BarChart3,
+    ChevronRight, RefreshCw, CheckCircle, X,
+    Banknote, DollarSign, TrendingUp
 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../utils/currency'
-import toast from 'react-hot-toast'
-import { reportsAPI, alertsAPI } from '../../services/index'
-import { isAdminOrOwner, isOwner } from '../../utils/roles'
-import { useBranding } from '../../tenant/TenantBrandingContext'
+import { reportsAPI } from '../../services/index'
+import { canAccessPage, isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
-import { MobilePeriodBar, mobilePeriodChipClass } from '../../components/mobilePageUi'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
-
-// Helper components defined first so they are never used before initialization (avoids TDZ after minification)
-const STAT_TONE = {
-    accent: 'bg-accent/10 text-accent',
-    warning: 'bg-warning/10 text-warning',
-    error: 'bg-error/10 text-error',
-    primary: 'bg-primary-100 text-primary-700',
-    neutral: 'bg-neutral-100 text-neutral-600',
-}
-
-const StatCard = ({ title, value, icon: Icon, tone = 'neutral', variant = 'standard', loading, valueType = 'currency', onClick }) => {
-    const valueClass = variant === 'kpi'
-        ? 'text-2xl font-bold'
-        : 'text-lg sm:text-xl font-bold'
-    const attentionBorder = variant === 'attention'
-        ? (tone === 'error' ? 'border-l-4 border-l-error' : 'border-l-4 border-l-warning')
-        : ''
-    const shown = valueType === 'number'
-        ? (typeof value === 'number' ? value.toLocaleString() : String(value ?? ''))
-        : formatCurrency(value)
-    return (
-        <div
-            role={onClick ? 'button' : undefined}
-            tabIndex={onClick ? 0 : undefined}
-            onClick={onClick}
-            onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } : undefined}
-            className={`rounded-lg border border-neutral-200 bg-white p-4 ${attentionBorder} ${onClick ? 'cursor-pointer hover:bg-neutral-50' : ''}`}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                    <p className="text-caption font-medium text-neutral-600 mb-1 truncate">{title}</p>
-                    <div className="relative min-h-7">
-                        {loading && (
-                            <div className="h-7 w-28 animate-pulse rounded bg-neutral-200" aria-hidden />
-                        )}
-                        <p className={`${valueClass} text-neutral-900 truncate tabular-nums transition-opacity duration-ui ${loading ? 'absolute inset-0 opacity-0' : 'opacity-100'}`}>
-                            {shown}
-                        </p>
-                    </div>
-                </div>
-                <div className={`w-10 h-10 rounded-lg shrink-0 flex items-center justify-center ${STAT_TONE[tone] || STAT_TONE.neutral}`}>
-                    <Icon className="h-5 w-5" aria-hidden />
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const QuickActionButton = ({ icon: Icon, label, onClick, color, shortcut }) => {
-    const colorClasses = {
-        blue: 'bg-blue-100 hover:bg-blue-200 text-blue-900',
-        green: 'bg-green-100 hover:bg-green-200 text-green-900',
-        purple: 'bg-purple-100 hover:bg-purple-200 text-purple-900',
-        orange: 'bg-orange-100 hover:bg-orange-200 text-orange-900'
-    }
-    return (
-        <button
-            onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg border-2 p-4 sm:p-5 lg:p-6 flex flex-col items-center justify-center space-y-3 transition-colors group cursor-pointer min-h-[120px]`}
-        >
-            <div className={`p-2 sm:p-3 bg-white rounded-lg border border-neutral-200 ${colorClasses[color]}`}>
-                <Icon className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8" />
-            </div>
-            <span className="text-sm sm:text-base font-bold text-center">{label}</span>
-            <span className="text-xs opacity-70 group-hover:opacity-100 hidden sm:inline">{shortcut}</span>
-        </button>
-    )
-}
-
-const AlertCard = ({ title, count, icon: Icon, color, onClick }) => {
-    const colorClasses = {
-        yellow: 'bg-yellow-50 border-yellow-300 text-yellow-900',
-        red: 'bg-red-50 border-red-300 text-red-900'
-    }
-    return (
-        <button
-            onClick={onClick}
-            className={`${colorClasses[color]} rounded-lg border border-neutral-200 p-3 w-full text-left transition-colors group cursor-pointer`}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`p-2 bg-white rounded-md border border-neutral-200 ${colorClasses[color]} flex-shrink-0`}>
-                        <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-xs font-medium text-neutral-600 truncate">{title}</p>
-                        <p className="text-xl font-semibold tabular-nums text-neutral-900">{count}</p>
-                    </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-neutral-400 flex-shrink-0" />
-            </div>
-        </button>
-    )
-}
-
-const GatewayGroup = ({ group, user, navigate }) => {
-    const [expanded, setExpanded] = useState(true)
-    const isAdmin = user?.role?.toLowerCase() === 'admin'
-    const isOwnerUser = user?.role?.toLowerCase() === 'owner' || user?.role?.toLowerCase() === 'systemadmin'
-    const canShowItem = (itemId) => {
-        if (isOwnerUser) return true
-        // Guard: no permissions string OR empty string → show everything (legacy/default)
-        if (!user?.dashboardPermissions || user.dashboardPermissions.trim() === '') return true
-        return user.dashboardPermissions.split(',').map(p => p.trim()).includes(itemId)
-    }
-    const visibleItems = group.items.filter(item => {
-        if (item.adminOnly && !isAdmin && !isOwnerUser) return false
-        if (item.id && !canShowItem(item.id)) return false
-        return true
-    })
-    return (
-        <div className="border-2 border-blue-200 rounded-lg overflow-hidden">
-            <button
-                onClick={() => setExpanded(!expanded)}
-                className="w-full bg-blue-50 hover:bg-blue-100 px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between transition-colors cursor-pointer"
-            >
-                <h3 className="text-xs sm:text-sm font-bold text-blue-900">{group.title}</h3>
-                <ChevronRight className={`h-3 w-3 sm:h-4 sm:w-4 text-blue-700 transform transition-transform ${expanded ? 'rotate-90' : ''}`} />
-            </button>
-            {expanded && (
-                <div className="bg-white divide-y divide-blue-100">
-                    {visibleItems.map((item, idx) => {
-                        const Icon = item.icon
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => navigate(item.path)}
-                                className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 flex items-center justify-between hover:bg-blue-50 transition-colors group cursor-pointer ${item.primary ? 'bg-emerald-50 hover:bg-emerald-100' : ''
-                                    }`}
-                            >
-                                <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-1">
-                                    <div className={`p-1 sm:p-1.5 rounded-lg flex-shrink-0 border border-neutral-200 ${item.primary ? 'bg-emerald-200' : 'bg-blue-100'
-                                        }`}>
-                                        <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
-                                    </div>
-                                    <div className="text-left min-w-0 flex-1">
-                                        <p className="text-xs sm:text-xs font-medium text-gray-900 truncate">{item.label}</p>
-                                        <p className="text-xs text-gray-500 hidden sm:block">{item.shortcut}</p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-gray-400 group-hover:text-gray-600 flex-shrink-0" />
-                            </button>
-                        )
-                    })}
-                </div>
-            )}
-        </div>
-    )
-}
+import Button from '../../components/ui/Button'
+import { localDateString } from '../../utils/dateFormat'
 
 const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
 
+const formatDisplayDate = (value) => {
+    if (!value) return ''
+    const iso = String(value).slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return String(value)
+    const [y, m, d] = iso.split('-')
+    return `${d}/${m}/${y}`
+}
+
+const num = (value) => {
+    const n = parseFloat(value)
+    return Number.isFinite(n) ? n : 0
+}
+
+const surfaceClass = 'rounded-lg border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)]'
+const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2'
+
+const MetricCard = ({ label, value, helper, icon: Icon, valueClass = '', onClick, loading }) => {
+    const body = (
+        <>
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-xs font-medium text-[var(--text-secondary)]">{label}</p>
+                <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--text-tertiary)]" strokeWidth={2} aria-hidden />
+            </div>
+            {loading ? (
+                <div className="mt-2 h-7 w-28 animate-pulse rounded bg-[var(--bg-elevated)]" aria-hidden />
+            ) : (
+                <p className={`mt-1 text-2xl font-semibold tabular-nums ${valueClass}`}>{formatCurrency(value)}</p>
+            )}
+            {helper ? <p className="mt-1 text-xs text-[var(--text-secondary)]">{helper}</p> : null}
+        </>
+    )
+    if (!onClick) {
+        return <div className={`${surfaceClass} p-3 lg:p-4`}>{body}</div>
+    }
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`${surfaceClass} p-3 text-left transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none lg:p-4 ${focusClass}`}
+        >
+            {body}
+        </button>
+    )
+}
+
+const AttentionRow = ({ label, detail, tone = 'warning', onClick }) => {
+    const accent = tone === 'danger' ? 'var(--error)' : tone === 'info' ? 'var(--primary)' : 'var(--warning)'
+    const labelClass = tone === 'danger' ? 'text-[var(--error)]' : tone === 'info' ? 'text-[var(--text-primary)]' : 'text-[var(--warning)]'
+    const className = `flex min-h-11 w-full items-center justify-between gap-3 rounded-lg border border-[var(--border)] bg-[var(--bg-base)] px-3 text-left ${onClick ? `transition-colors duration-150 hover:bg-[var(--bg-raised)] motion-reduce:transition-none ${focusClass}` : ''}`
+    const inner = (
+        <>
+            <span className="min-w-0">
+                <span className={`block text-sm font-medium ${labelClass}`}>{label}</span>
+                <span className="block text-xs text-[var(--text-secondary)] tabular-nums">{detail}</span>
+            </span>
+            {onClick ? <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-tertiary)]" aria-hidden /> : null}
+        </>
+    )
+    if (!onClick) {
+        return <div className={className} style={{ borderLeftWidth: 2, borderLeftColor: accent }}>{inner}</div>
+    }
+    return (
+        <button type="button" onClick={onClick} className={className} style={{ borderLeftWidth: 2, borderLeftColor: accent }}>
+            {inner}
+        </button>
+    )
+}
+
 const DashboardTally = () => {
-    const { user, logout } = useAuth()
-    const { companyName } = useBranding()
+    const { user } = useAuth()
     const { branches } = useBranchesRoutes()
     const navigate = useNavigate()
-    const [loading, setLoading] = useState(true)
-    const [dateRange, setDateRange] = useState('today') // 'today' | 'week' | 'month' | 'custom'
+    const [refreshing, setRefreshing] = useState(true)
+    const [hasFigures, setHasFigures] = useState(false)
+    const [summaryError, setSummaryError] = useState(false)
+    const [dateRange, setDateRange] = useState('today')
     const [customFromDate, setCustomFromDate] = useState('')
     const [customToDate, setCustomToDate] = useState('')
-    const [selectedBranchId, setSelectedBranchId] = useState(null) // For Staff branch filtering
+    const [selectedBranchId, setSelectedBranchId] = useState(null)
     const availableBranches = branches || []
     const [setupStatus, setSetupStatus] = useState(null)
     const [getStartedDismissed, setGetStartedDismissed] = useState(() => typeof localStorage !== 'undefined' && localStorage.getItem(GET_STARTED_DISMISSED_KEY) === 'true')
@@ -194,9 +111,6 @@ const DashboardTally = () => {
         pendingBillsAmount: 0,
         purchasesToday: 0,
         lowStockCount: 0,
-        invoicesToday: 0,
-        invoicesWeekly: 0,
-        invoicesMonthly: 0,
         cashCollectionsTotal: 0,
         creditInvoicedTotal: 0,
         overdueCustomersCount: 0,
@@ -208,44 +122,36 @@ const DashboardTally = () => {
     const [topCustomers, setTopCustomers] = useState([])
     const [topProducts, setTopProducts] = useState([])
 
-
-    // Request throttling for dashboard
     const lastFetchTimeRef = useRef(0)
     const isFetchingRef = useRef(false)
     const fetchTimeoutRef = useRef(null)
-    const DASHBOARD_THROTTLE_MS = 60000 // 60 seconds minimum between dashboard requests (increased from 10s to reduce API requests)
+    const DASHBOARD_THROTTLE_MS = 60000
 
-    // Dashboard Item Permissions Logic
     const canShow = (itemId) => {
-        // Only Owners and SystemAdmins bypass all permission checks
         if (isOwner(user)) return true
-
-        // Guard: no permissions string OR empty string → show everything (legacy/default)
         if (!user?.dashboardPermissions || user.dashboardPermissions.trim() === '') return true
         return user.dashboardPermissions.split(',').map(p => p.trim()).includes(itemId)
     }
 
-    // Calculate date range based on selected period (must be before fetchStats)
     const getDateRange = () => {
         const today = new Date()
-        const todayStr = today.toISOString().split('T')[0]
+        const todayStr = localDateString(today)
         switch (dateRange) {
             case 'today': return { from: todayStr, to: todayStr }
             case 'week': {
                 const weekStart = new Date(today)
                 weekStart.setDate(today.getDate() - today.getDay())
-                return { from: weekStart.toISOString().split('T')[0], to: todayStr }
+                return { from: localDateString(weekStart), to: todayStr }
             }
             case 'month': {
                 const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-                return { from: monthStart.toISOString().split('T')[0], to: todayStr }
+                return { from: localDateString(monthStart), to: todayStr }
             }
             case 'custom': {
                 if (customFromDate && customToDate) return { from: customFromDate, to: customToDate }
-                // Default to last 7 days when Custom selected but dates not yet picked
                 const weekAgo = new Date(today)
                 weekAgo.setDate(today.getDate() - 6)
-                return { from: weekAgo.toISOString().split('T')[0], to: todayStr }
+                return { from: localDateString(weekAgo), to: todayStr }
             }
             default: return { from: todayStr, to: todayStr }
         }
@@ -253,107 +159,69 @@ const DashboardTally = () => {
 
     const fetchStats = async (skipCache = false) => {
         try {
-            setLoading(true)
+            setRefreshing(true)
             const { from, to } = getDateRange()
+            if (!from || !to) return
 
-            // Pass branchId if Staff user has selected a branch; refresh=true bypasses server cache
-            const params = {
-                fromDate: from,
-                toDate: to
-            }
-            if (selectedBranchId && !isAdminOrOwner(user)) {
-                params.branchId = selectedBranchId
-            }
+            const params = { fromDate: from, toDate: to }
+            if (selectedBranchId && !isAdminOrOwner(user)) params.branchId = selectedBranchId
             if (skipCache) params.refresh = true
 
             const response = await reportsAPI.getSummaryReport(params)
 
             if (response?.success && response?.data) {
                 const data = response.data
+                const netRaw = data.netSalesToday ?? data.NetSalesToday
                 setStats({
-                    salesToday: parseFloat(data.salesToday || data.SalesToday) || 0,
-                    returnsToday: parseFloat(data.returnsToday ?? data.ReturnsToday) || 0,
-                    netSalesToday: parseFloat(data.netSalesToday ?? data.NetSalesToday) ?? (parseFloat(data.salesToday || data.SalesToday) || 0) - (parseFloat(data.returnsToday ?? data.ReturnsToday) || 0),
-                    damageLossToday: parseFloat(data.damageLossToday ?? data.DamageLossToday) || 0,
-                    returnsCountToday: parseInt(data.returnsCountToday ?? data.ReturnsCountToday) || 0,
-                    expensesToday: parseFloat(data.expensesToday || data.ExpensesToday) || 0,
-                    profitToday: parseFloat(data.profitToday || data.ProfitToday) || 0,
-                    pendingBills: parseInt(data.pendingBills || data.PendingBills) || 0,
-                    pendingBillsAmount: parseFloat(data.pendingBillsAmount ?? data.PendingBillsAmount) || 0,
-                    purchasesToday: parseFloat(data.purchasesToday || data.PurchasesToday) || 0,
-                    lowStockCount: Array.isArray(data.lowStockProducts || data.LowStockProducts) ? (data.lowStockProducts || data.LowStockProducts || []).length : 0,
-                    invoicesToday: parseInt(data.invoicesToday || data.InvoicesToday) || 0,
-                    invoicesWeekly: parseInt(data.invoicesWeekly || data.InvoicesWeekly) || 0,
-                    invoicesMonthly: parseInt(data.invoicesMonthly || data.InvoicesMonthly) || 0,
-                    cashCollectionsTotal: parseFloat(data.cashCollectionsTotal ?? data.CashCollectionsTotal) || 0,
-                    creditInvoicedTotal: parseFloat(data.creditInvoicedTotal ?? data.CreditInvoicedTotal) || 0,
+                    salesToday: num(data.salesToday ?? data.SalesToday),
+                    returnsToday: num(data.returnsToday ?? data.ReturnsToday),
+                    netSalesToday: netRaw == null ? 0 : num(netRaw),
+                    damageLossToday: num(data.damageLossToday ?? data.DamageLossToday),
+                    returnsCountToday: parseInt(data.returnsCountToday ?? data.ReturnsCountToday, 10) || 0,
+                    expensesToday: num(data.expensesToday ?? data.ExpensesToday),
+                    profitToday: num(data.profitToday ?? data.ProfitToday),
+                    pendingBills: parseInt(data.pendingBills ?? data.PendingBills, 10) || 0,
+                    pendingBillsAmount: num(data.pendingBillsAmount ?? data.PendingBillsAmount),
+                    purchasesToday: num(data.purchasesToday ?? data.PurchasesToday),
+                    lowStockCount: Array.isArray(data.lowStockProducts || data.LowStockProducts) ? (data.lowStockProducts || data.LowStockProducts).length : 0,
+                    cashCollectionsTotal: num(data.cashCollectionsTotal ?? data.CashCollectionsTotal),
+                    creditInvoicedTotal: num(data.creditInvoicedTotal ?? data.CreditInvoicedTotal),
                     overdueCustomersCount: parseInt(data.overdueCustomersCount ?? data.OverdueCustomersCount, 10) || 0,
-                    overdueAmountTotal: parseFloat(data.overdueAmountTotal ?? data.OverdueAmountTotal) || 0,
-                    netVatPayablePeriod: parseFloat(data.netVatPayablePeriod ?? data.NetVatPayablePeriod) || 0
+                    overdueAmountTotal: num(data.overdueAmountTotal ?? data.OverdueAmountTotal),
+                    netVatPayablePeriod: num(data.netVatPayablePeriod ?? data.NetVatPayablePeriod)
                 })
-                
-                // Set branch breakdown
-                if (data.branchBreakdown && Array.isArray(data.branchBreakdown)) {
-                    setBranchBreakdown(data.branchBreakdown)
-                } else {
-                    setBranchBreakdown([])
-                }
-
-                if (isAdminOrOwner(user)) {
-                    reportsAPI.getSetupStatus().then((res) => {
-                        if (res?.success && res?.data) setSetupStatus(res.data)
-                    }).catch(() => {})
-                }
-                
-                // Set daily sales trend
-                if (data.dailySalesTrend && Array.isArray(data.dailySalesTrend)) {
-                    setDailySalesTrend(data.dailySalesTrend)
-                } else {
-                    setDailySalesTrend([])
-                }
-                
-                // Set top customers
-                if (data.topCustomersToday && Array.isArray(data.topCustomersToday)) {
-                    setTopCustomers(data.topCustomersToday)
-                } else {
-                    setTopCustomers([])
-                }
-                
-                // Set top products
-                if (data.topProductsToday && Array.isArray(data.topProductsToday)) {
-                    setTopProducts(data.topProductsToday)
-                } else {
-                    setTopProducts([])
-                }
+                setBranchBreakdown(Array.isArray(data.branchBreakdown) ? data.branchBreakdown : [])
+                setDailySalesTrend(Array.isArray(data.dailySalesTrend) ? data.dailySalesTrend : [])
+                setTopCustomers(Array.isArray(data.topCustomersToday) ? data.topCustomersToday : [])
+                setTopProducts(Array.isArray(data.topProductsToday) ? data.topProductsToday : [])
+                setHasFigures(true)
+                setSummaryError(false)
             } else {
-                console.error('Dashboard API response invalid:', response)
-                toast.error('Failed to load dashboard data: Invalid response')
+                setSummaryError(true)
             }
-        } catch (error) {
-            console.error('Failed to fetch dashboard stats:', error)
-            toast.error(`Failed to load dashboard data: ${error.message || 'Unknown error'}`)
+        } catch {
+            console.error('Failed to fetch dashboard stats')
+            setSummaryError(true)
         } finally {
-            setLoading(false)
+            setRefreshing(false)
         }
     }
 
     const handleRefresh = async () => {
         if (isFetchingRef.current) return
-        lastFetchTimeRef.current = 0 // Bypass throttle so explicit Refresh always fetches fresh data
+        lastFetchTimeRef.current = 0
         isFetchingRef.current = true
         try {
-            await fetchStats(true) // true = skip server cache so Refresh shows live data
+            await fetchStats(true)
         } finally {
             isFetchingRef.current = false
         }
     }
 
     useEffect(() => {
-        // Period / branch change: always fetch immediately (bypass throttle) so chips feel live
         lastFetchTimeRef.current = 0
         const runImmediate = async () => {
             if (isFetchingRef.current) {
-                // Queue one refresh after in-flight request
                 if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current)
                 fetchTimeoutRef.current = setTimeout(() => {
                     lastFetchTimeRef.current = 0
@@ -393,7 +261,7 @@ const DashboardTally = () => {
         }
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible' && !isFetchingRef.current) fetchStatsThrottled()
-        }, 120000) // 2 minutes
+        }, 120000)
         let debounceTimer = null
         const handleDataUpdate = () => {
             if (debounceTimer) clearTimeout(debounceTimer)
@@ -445,7 +313,7 @@ const DashboardTally = () => {
             .then((res) => {
                 if (res?.success && res?.data) setSetupStatus(res.data)
             })
-            .catch(() => {})
+            .catch(() => undefined)
     }, [user])
 
     const setupComplete = setupStatus && setupStatus.hasBranch && setupStatus.hasRoute && setupStatus.hasStaff &&
@@ -454,597 +322,414 @@ const DashboardTally = () => {
 
     const handleDismissGetStarted = () => {
         setGetStartedDismissed(true)
-        try { localStorage.setItem(GET_STARTED_DISMISSED_KEY, 'true') } catch (_) {}
+        try { localStorage.setItem(GET_STARTED_DISMISSED_KEY, 'true') } catch { /* storage unavailable */ }
     }
 
-    const gatewayMenu = [
-        {
-            title: 'MASTERS',
-            items: [
-                ...(isAdminOrOwner(user) ? [
-                    { icon: Building2, label: 'Branches', path: '/branches', shortcut: '', adminOnly: true },
-                    { icon: MapPin, label: 'Routes', path: '/routes', shortcut: '', adminOnly: true }
-                ] : []),
-                { icon: Package, label: 'Products', path: '/products', shortcut: 'F1' }
-            ]
-        },
-        {
-            title: 'TRANSACTIONS',
-            items: [
-                { id: 'pos', icon: ShoppingCart, label: 'POS Billing', path: '/pos', shortcut: 'F3', primary: true },
-                ...(isAdminOrOwner(user)
-                    ? [
-                        { id: 'purchases', icon: Truck, label: 'Purchases', path: '/purchases', shortcut: 'F4' },
-                        { id: 'expenses', icon: Wallet, label: 'Expenses', path: '/expenses', shortcut: 'F5' }
-                    ]
-                    : [{ id: 'expenses', icon: Wallet, label: 'Add expense', path: '/expenses', shortcut: 'F5' }]),
-                { id: 'customerLedger', icon: FileText, label: 'Customer Ledger', path: '/ledger', shortcut: 'F10' },
-                { id: 'salesLedger', icon: BookOpen, label: 'Sales Ledger', path: '/sales-ledger', shortcut: 'F10' }
-            ]
-        },
-        {
-            title: 'REPORTS',
-            items: [
-                ...(isAdminOrOwner(user) ? [
-                    { id: 'salesTrend', icon: BarChart3, label: 'Sales Report', path: '/reports?tab=sales', shortcut: 'F7' },
-                    { id: 'profitToday', icon: TrendingUp, label: 'Profit & Loss', path: '/reports?tab=profit-loss', shortcut: 'F8' },
-                    { id: 'pendingBills', icon: DollarSign, label: 'Outstanding Bills', path: '/reports?tab=outstanding', shortcut: 'F9' },
-                    { id: 'staffPerformance', icon: Users, label: 'Staff Performance', path: '/reports?tab=staff', shortcut: '', adminOnly: true },
-                    { id: 'routesSummary', icon: MapPin, label: 'Routes summary & ledger', path: '/routes', shortcut: '', adminOnly: true }
-                ] : [])
-            ]
-        },
-        {
-            title: 'UTILITIES',
-            items: [
-                { icon: Settings, label: 'Settings', path: '/settings', shortcut: 'Ctrl+S', adminOnly: true },
-                { icon: Database, label: 'Backup & Restore', path: '/backup', shortcut: 'Ctrl+B', adminOnly: true },
-                { icon: Users, label: 'Users', path: '/users', shortcut: 'Ctrl+U', adminOnly: true }
-            ]
+    const selectCustom = () => {
+        if (dateRange !== 'custom') {
+            const today = new Date()
+            const weekAgo = new Date(today)
+            weekAgo.setDate(today.getDate() - 6)
+            setCustomFromDate(localDateString(weekAgo))
+            setCustomToDate(localDateString(today))
         }
+        setDateRange('custom')
+    }
+
+    const periodChip = (active) =>
+        `min-h-11 rounded-md px-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none md:min-h-9 ${focusClass} ${
+            active
+                ? 'bg-primary-600 text-white'
+                : 'border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
+        }`
+
+    const showProfit = isAdminOrOwner(user) && canShow('profitToday')
+    const showExpenses = (isAdminOrOwner(user) || selectedBranchId) && canShow('expensesToday')
+    const canOpenReports = canAccessPage(user, 'reports')
+    const canOpenPos = canAccessPage(user, 'pos')
+    const canOpenProducts = canAccessPage(user, 'products')
+    const showSkeleton = !hasFigures && refreshing
+    const trendSales = dailySalesTrend.reduce((sum, point) => sum + num(point.sales), 0)
+    const trendHasSales = trendSales > 0
+    const periodName = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : dateRange === 'month' ? 'This month' : 'Period'
+    const rangeLabel = dateRange === 'custom' && customFromDate && customToDate
+        ? `${formatDisplayDate(customFromDate)} – ${formatDisplayDate(customToDate)}`
+        : periodName
+
+    const attention = []
+    if (canShow('overdueAccounts') !== false && (stats.overdueCustomersCount > 0 || stats.overdueAmountTotal > 0)) {
+        attention.push({
+            key: 'overdue',
+            label: 'Overdue',
+            detail: `${stats.overdueCustomersCount} customers · ${formatCurrency(stats.overdueAmountTotal)}`,
+            tone: 'warning',
+            onClick: canOpenReports ? () => navigate('/reports?tab=overdue') : undefined
+        })
+    }
+    if (canShow('pendingAmount') !== false && (stats.pendingBills > 0 || stats.pendingBillsAmount > 0)) {
+        attention.push({
+            key: 'unpaid',
+            label: 'Unpaid bills',
+            detail: `${stats.pendingBills} bills · ${formatCurrency(stats.pendingBillsAmount)}`,
+            tone: 'warning',
+            onClick: canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined
+        })
+    }
+    if (canShow('lowStockAlert') && stats.lowStockCount > 0) {
+        attention.push({
+            key: 'stock',
+            label: 'Low stock',
+            detail: `${stats.lowStockCount} items`,
+            tone: 'danger',
+            onClick: canOpenProducts ? () => navigate('/products?tab=lowStock') : undefined
+        })
+    }
+    if (canShow('damageLossToday') !== false && stats.damageLossToday > 0) {
+        attention.push({
+            key: 'damage',
+            label: 'Damage',
+            detail: formatCurrency(stats.damageLossToday),
+            tone: 'danger'
+        })
+    }
+    if (isOwner(user) && stats.netVatPayablePeriod !== 0) {
+        attention.push({
+            key: 'vat',
+            label: 'VAT estimate',
+            detail: `${formatCurrency(stats.netVatPayablePeriod)}. Estimate. File on VAT Return.`,
+            tone: 'info',
+            onClick: () => navigate('/vat-return')
+        })
+    }
+
+    const profitClass = stats.profitToday > 0 ? 'text-[var(--success)]' : stats.profitToday < 0 ? 'text-[var(--error)]' : ''
+    const profitHelper = [
+        canShow('purchasesToday') !== false ? `Purchases ${formatCurrency(stats.purchasesToday)}` : null,
+        showExpenses ? `Expenses ${formatCurrency(stats.expensesToday)}` : null
+    ].filter(Boolean).join(' · ')
+
+    const setupSteps = [
+        { done: setupStatus?.hasBranch, label: 'Add branch', path: '/branches' },
+        { done: setupStatus?.hasRoute, label: 'Add route', path: '/routes' },
+        { done: setupStatus?.hasStaff, label: 'Add staff', path: '/users' },
+        { done: setupStatus?.productCount > 0, label: 'Add products', path: '/products' },
+        { done: setupStatus?.hasPurchase, label: 'Add purchase', path: '/purchases' },
+        { done: setupStatus?.customerCount > 0, label: 'Add customers', path: '/customers' },
+        { done: setupStatus?.hasInvoice, label: 'Create first invoice', path: '/pos' }
     ]
 
     return (
-        <div className={`h-full ${mobilePageShellClass}`}>
-            <div className="flex flex-col lg:flex-row h-full gap-4">
-                {/* Central Content */}
-                <div className="flex-1 space-y-4">
-                    {/* Get started checklist (Owner/Admin, incomplete setup, not dismissed) */}
-                    {showGetStarted && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 relative">
-                            <button
-                                type="button"
-                                onClick={handleDismissGetStarted}
-                                className="absolute top-2 right-2 p-1 rounded hover:bg-blue-100 text-neutral-500 hover:text-neutral-700"
-                                aria-label="Dismiss"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                            <h3 className="text-sm font-bold text-blue-900 mb-2 pr-8">Get started</h3>
-                            <p className="text-xs text-blue-800 mb-3">Complete these steps to get the most out of HexaBill (see <a href="/help" className="underline" onClick={(e) => { e.preventDefault(); navigate('/help') }}>Help</a> for the full workflow).</p>
-                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                                <button type="button" onClick={() => navigate('/branches')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.hasBranch ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add branch
-                                </button>
-                                <button type="button" onClick={() => navigate('/routes')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.hasRoute ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add route
-                                </button>
-                                <button type="button" onClick={() => navigate('/users')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.hasStaff ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add staff
-                                </button>
-                                <button type="button" onClick={() => navigate('/products')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.productCount > 0 ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add products
-                                </button>
-                                <button type="button" onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.hasPurchase ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add purchase
-                                </button>
-                                <button type="button" onClick={() => navigate('/customers')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.customerCount > 0 ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Add customers
-                                </button>
-                                <button type="button" onClick={() => navigate('/pos')} className="flex items-center gap-1.5 text-blue-800 hover:underline">
-                                    {setupStatus.hasInvoice ? <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-blue-400 flex-shrink-0" />}
-                                    Create first invoice
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Date Range — 2×2 chips on phone; one row on tablet+ */}
-                    <MobilePeriodBar>
-                        <div className="col-span-2 sm:col-span-1 flex items-center justify-between sm:justify-start gap-2">
-                            <span className="text-sm font-medium text-neutral-700">Period</span>
-                            <button
-                                type="button"
-                                onClick={handleRefresh}
-                                disabled={loading}
-                                className="inline-flex items-center justify-center gap-1 min-h-10 px-3 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-60"
-                                title="Refresh dashboard data"
-                            >
-                                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                                <span className="hidden sm:inline">Refresh</span>
-                            </button>
-                        </div>
-                        <button type="button" onClick={() => setDateRange('today')} className={mobilePeriodChipClass(dateRange === 'today')}>
-                            Today
-                        </button>
-                        <button type="button" onClick={() => setDateRange('week')} className={mobilePeriodChipClass(dateRange === 'week')}>
-                            Week
-                        </button>
-                        <button type="button" onClick={() => setDateRange('month')} className={mobilePeriodChipClass(dateRange === 'month')}>
-                            Month
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                if (dateRange !== 'custom') {
-                                    const today = new Date()
-                                    const weekAgo = new Date(today)
-                                    weekAgo.setDate(today.getDate() - 6)
-                                    setCustomFromDate(weekAgo.toISOString().split('T')[0])
-                                    setCustomToDate(today.toISOString().split('T')[0])
-                                }
-                                setDateRange('custom')
-                            }}
-                            className={mobilePeriodChipClass(dateRange === 'custom')}
+        <div className={`${mobilePageShellClass} max-w-[1600px] space-y-4`}>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h1 className="hidden text-xl font-semibold text-[var(--text-primary)] md:block">Dashboard</h1>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                        <button type="button" onClick={() => setDateRange('today')} className={periodChip(dateRange === 'today')} aria-pressed={dateRange === 'today'}>Today</button>
+                        <button type="button" onClick={() => setDateRange('week')} className={periodChip(dateRange === 'week')} aria-pressed={dateRange === 'week'}>Week</button>
+                        <button type="button" onClick={() => setDateRange('month')} className={periodChip(dateRange === 'month')} aria-pressed={dateRange === 'month'}>Month</button>
+                        <button type="button" onClick={selectCustom} className={periodChip(dateRange === 'custom')} aria-pressed={dateRange === 'custom'}>Custom</button>
+                    </div>
+                    {!isAdminOrOwner(user) && availableBranches.length > 1 && (
+                        <select
+                            value={selectedBranchId || ''}
+                            onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                            className={`min-h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] md:min-h-9 ${focusClass}`}
+                            aria-label="Branch"
                         >
-                            Custom
-                        </button>
-                        {dateRange === 'custom' && (
-                            <div className="col-span-2 sm:col-span-full flex items-center gap-2 min-w-0">
-                                <input
-                                    type="date"
-                                    value={customFromDate}
-                                    onChange={(e) => setCustomFromDate(e.target.value)}
-                                    className="flex-1 min-w-0 px-2 py-2 text-sm border border-neutral-300 rounded-lg"
-                                />
-                                <span className="text-neutral-500 text-sm shrink-0">–</span>
-                                <input
-                                    type="date"
-                                    value={customToDate}
-                                    onChange={(e) => setCustomToDate(e.target.value)}
-                                    className="flex-1 min-w-0 px-2 py-2 text-sm border border-neutral-300 rounded-lg"
-                                />
-                            </div>
-                        )}
-                        {!isAdminOrOwner(user) && availableBranches.length > 1 && (
-                            <select
-                                value={selectedBranchId || ''}
-                                onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value) : null)}
-                                className="col-span-2 sm:col-span-1 min-h-10 px-3 text-sm border border-neutral-300 rounded-lg bg-white"
-                            >
-                                <option value="">All branches</option>
-                                {availableBranches.map((branch) => (
-                                    <option key={branch.id} value={branch.id}>{branch.name}</option>
-                                ))}
-                            </select>
-                        )}
-                    </MobilePeriodBar>
-
-                    <div className="space-y-6">
-                        <section className="space-y-2">
-                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Today&apos;s money</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {canShow('netSalesToday') && (
-                                    <StatCard
-                                        variant="kpi"
-                                        tone="accent"
-                                        title={dateRange === 'today' ? 'Net Sales Today' : dateRange === 'week' ? 'Net Sales This Week' : dateRange === 'month' ? 'Net Sales This Month' : 'Net Sales'}
-                                        value={stats.netSalesToday}
-                                        icon={DollarSign}
-                                        loading={loading}
-                                    />
-                                )}
-                                {isAdminOrOwner(user) && canShow('profitToday') && (
-                                    <StatCard
-                                        variant="kpi"
-                                        tone="accent"
-                                        title={dateRange === 'today' ? 'Profit Today' : dateRange === 'week' ? 'Profit This Week' : dateRange === 'month' ? 'Profit This Month' : 'Profit'}
-                                        value={stats.profitToday}
-                                        icon={TrendingUp}
-                                        loading={loading}
-                                    />
-                                )}
-                                {canShow('cashCollections') !== false && (
-                                    <StatCard
-                                        variant="kpi"
-                                        tone="accent"
-                                        title={
-                                            dateRange === 'today' ? 'Cash & bank collections' :
-                                                dateRange === 'week' ? 'Cash & bank collections (week)' :
-                                                    dateRange === 'month' ? 'Cash & bank collections (month)' : 'Cash & bank collections'
-                                        }
-                                        value={stats.cashCollectionsTotal}
-                                        icon={Banknote}
-                                        loading={loading}
-                                    />
-                                )}
-                                {isOwner(user) && (
-                                    <StatCard
-                                        variant="kpi"
-                                        tone="primary"
-                                        title={
-                                            dateRange === 'today' ? 'Net VAT payable (today)' :
-                                                dateRange === 'week' ? 'Net VAT payable (week)' :
-                                                    dateRange === 'month' ? 'Net VAT payable (month)' : 'Net VAT payable (period)'
-                                        }
-                                        value={stats.netVatPayablePeriod}
-                                        icon={Percent}
-                                        loading={loading}
-                                        onClick={() => navigate('/reports?tab=summary')}
-                                    />
-                                )}
-                            </div>
-                        </section>
-
-                        <section className="space-y-2">
-                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Activity</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {canShow('salesToday') && (
-                                    <StatCard
-                                        tone="accent"
-                                        title={dateRange === 'today' ? 'Sales (Gross) Today' : dateRange === 'week' ? 'Sales (Gross) This Week' : dateRange === 'month' ? 'Sales (Gross) This Month' : 'Sales (Gross)'}
-                                        value={stats.salesToday}
-                                        icon={DollarSign}
-                                        loading={loading}
-                                    />
-                                )}
-                                {canShow('returnsToday') && (
-                                    <StatCard
-                                        tone="neutral"
-                                        title={dateRange === 'today' ? 'Return Value Today' : dateRange === 'week' ? 'Return Value This Week' : dateRange === 'month' ? 'Return Value This Month' : 'Return Value'}
-                                        value={stats.returnsToday}
-                                        icon={RotateCcw}
-                                        loading={loading}
-                                    />
-                                )}
-                                {canShow('purchasesToday') !== false && (
-                                    <StatCard
-                                        tone="neutral"
-                                        title={
-                                            dateRange === 'today' ? 'Purchases Today' :
-                                            dateRange === 'week' ? 'Purchases This Week' :
-                                            dateRange === 'month' ? 'Purchases This Month' : 'Purchases'
-                                        }
-                                        value={stats.purchasesToday}
-                                        icon={Truck}
-                                        loading={loading}
-                                    />
-                                )}
-                                {(isAdminOrOwner(user) || (!isAdminOrOwner(user) && selectedBranchId)) && canShow('expensesToday') && (
-                                    <StatCard
-                                        tone="neutral"
-                                        title={
-                                            dateRange === 'today' ? 'Expenses Today' :
-                                            dateRange === 'week' ? 'Expenses This Week' :
-                                            dateRange === 'month' ? 'Expenses This Month' : 'Expenses'
-                                        }
-                                        value={stats.expensesToday}
-                                        icon={TrendingUp}
-                                        loading={loading}
-                                    />
-                                )}
-                                {canShow('creditInvoiced') !== false && (
-                                    <StatCard
-                                        tone="neutral"
-                                        title={
-                                            dateRange === 'today' ? 'On-account sales (billed)' :
-                                                dateRange === 'week' ? 'On-account sales (week)' :
-                                                    dateRange === 'month' ? 'On-account sales (month)' : 'On-account sales (billed)'
-                                        }
-                                        value={stats.creditInvoicedTotal}
-                                        icon={Receipt}
-                                        loading={loading}
-                                    />
-                                )}
-                            </div>
-                        </section>
-
-                        <section className="space-y-2">
-                            <h2 className="text-caption font-medium text-neutral-500 uppercase tracking-wide border-b border-neutral-200 pb-1">Needs attention</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {canShow('overdueAccounts') !== false && (
-                                    <>
-                                        <StatCard
-                                            variant="attention"
-                                            tone="warning"
-                                            title="Overdue customers (30d+)"
-                                            value={stats.overdueCustomersCount}
-                                            icon={Users}
-                                            loading={loading}
-                                            valueType="number"
-                                            onClick={() => navigate('/reports?tab=overdue')}
-                                        />
-                                        <StatCard
-                                            variant="attention"
-                                            tone="warning"
-                                            title="Overdue balance (30d+)"
-                                            value={stats.overdueAmountTotal}
-                                            icon={AlertTriangle}
-                                            loading={loading}
-                                            onClick={() => navigate('/reports?tab=overdue')}
-                                        />
-                                    </>
-                                )}
-                                {canShow('pendingAmount') !== false && (
-                                    <StatCard
-                                        variant="attention"
-                                        tone="warning"
-                                        title="Pending Total Amount"
-                                        value={stats.pendingBillsAmount}
-                                        icon={Wallet}
-                                        loading={loading}
-                                    />
-                                )}
-                                {canShow('damageLossToday') !== false && (
-                                    <StatCard
-                                        variant="attention"
-                                        tone="error"
-                                        title={dateRange === 'today' ? 'Total Damage Loss Today' : dateRange === 'week' ? 'Total Damage Loss This Week' : dateRange === 'month' ? 'Total Damage Loss This Month' : 'Total Damage Loss'}
-                                        value={stats.damageLossToday}
-                                        icon={AlertTriangle}
-                                        loading={loading}
-                                    />
-                                )}
-                            </div>
-                        </section>
-                    </div>
-
-                    {/* Branch Breakdown Card */}
-                    {isAdminOrOwner(user) && branchBreakdown.length > 0 && (
-                        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-                            <h3 className="text-sm font-medium text-neutral-700 mb-3">
-                                Branch Breakdown {dateRange === 'today' ? '(Today)' : dateRange === 'week' ? '(This Week)' : dateRange === 'month' ? '(This Month)' : ''}
-                            </h3>
-                            <div className="space-y-2">
-                                {branchBreakdown.map(branch => (
-                                    <div
-                                        key={branch.branchId}
-                                        className="p-3 hover:bg-neutral-50 rounded-md cursor-pointer border border-neutral-100 mb-2"
-                                        onClick={() => navigate(`/branches/${branch.branchId}`)}
-                                    >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="font-semibold text-neutral-900 truncate">{branch.branchName}</span>
-                                                <span className="text-xs text-neutral-400 whitespace-nowrap flex-shrink-0">({branch.invoiceCount} invoices)</span>
-                                            </div>
-                                            <span className={`text-sm font-bold flex-shrink-0 ml-2 ${branch.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                                {formatCurrency(branch.profit)}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                                            <div>
-                                                <span className="text-neutral-500 block">Sales</span>
-                                                <span className="font-medium text-neutral-800">{formatCurrency(branch.sales)}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-neutral-500 block">Paid</span>
-                                                <span className="font-medium text-green-600">{formatCurrency(branch.paidAmount ?? 0)}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-neutral-500 block">Unpaid</span>
-                                                <span className="font-medium text-amber-600">{formatCurrency(branch.unpaidAmount ?? 0)}</span>
-                                            </div>
-                                            <div>
-                                                <span className="text-neutral-500 block">Expenses (this branch)</span>
-                                                <span className="font-medium text-red-600">{formatCurrency(branch.expenses)}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <p className="mt-2 text-xs text-neutral-500">Branch expenses only. Total expenses at the top include company-level (unassigned) expenses.</p>
-                        </div>
-                    )}
-
-                    {/* Sales Trend Chart - title reflects selected period */}
-                    {dailySalesTrend.length > 0 && (
-                        <div className="bg-white rounded-lg border border-neutral-200 p-4">
-                            <h3 className="text-sm font-medium text-neutral-700 mb-3">
-                                Sales Trend {dateRange === 'today' ? '(Today)' : dateRange === 'week' ? '(This Week)' : dateRange === 'month' ? '(This Month)' : dateRange === 'custom' && customFromDate && customToDate ? `(${customFromDate} to ${customToDate})` : `(${dailySalesTrend.length} days)`}
-                            </h3>
-                            <ResponsiveContainer width="100%" height={150}>
-                                <BarChart data={dailySalesTrend}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                                    <XAxis 
-                                        dataKey="date" 
-                                        tickFormatter={(d) => {
-                                            const date = new Date(d)
-                                            return date.toLocaleDateString('en', { weekday: 'short', day: 'numeric' })
-                                        }}
-                                        stroke="#6b7280"
-                                        fontSize={12}
-                                    />
-                                    <YAxis 
-                                        tickFormatter={(v) => {
-                                            if (v >= 1000) return `${(v/1000).toFixed(1)}k`
-                                            return v.toString()
-                                        }}
-                                        stroke="#6b7280"
-                                        fontSize={12}
-                                    />
-                                    <Tooltip 
-                                        formatter={(value) => formatCurrency(value)}
-                                        labelFormatter={(label) => {
-                                            const date = new Date(label)
-                                            return date.toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })
-                                        }}
-                                        contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '6px' }}
-                                    />
-                                    <Bar dataKey="sales" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                    )}
-
-                    {/* Top Customers and Products */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {/* Top Customers */}
-                        {topCustomers.length > 0 && (
-                            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-                                <h3 className="text-sm font-medium text-neutral-700 mb-3">
-                                    Top Customers {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : dateRange === 'month' ? 'This Month' : ''}
-                                </h3>
-                                <div className="space-y-2">
-                                    {topCustomers.map((customer, idx) => (
-                                        <div 
-                                            key={customer.customerId} 
-                                            className="flex items-center justify-between text-sm p-2 hover:bg-neutral-50 rounded-md cursor-pointer"
-                                            onClick={() => navigate(`/ledger?customerId=${customer.customerId}`)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-neutral-400 font-medium">#{idx + 1}</span>
-                                                <span className="font-medium text-neutral-900">{customer.customerName}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-neutral-600">{formatCurrency(customer.totalSales)}</span>
-                                                <span className="text-neutral-500 text-xs">({customer.invoiceCount} invoices)</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Top Products */}
-                        {topProducts.length > 0 && (
-                            <div className="bg-white rounded-lg border border-neutral-200 p-4">
-                                <h3 className="text-sm font-medium text-neutral-700 mb-3">
-                                    Top Products {dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This Week' : dateRange === 'month' ? 'This Month' : ''}
-                                </h3>
-                                <div className="space-y-2">
-                                    {topProducts.map((product, idx) => (
-                                        <div 
-                                            key={product.productId} 
-                                            className="flex items-center justify-between text-sm p-2 hover:bg-neutral-50 rounded-md cursor-pointer"
-                                            onClick={() => navigate(`/products?productId=${product.productId}`)}
-                                        >
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-neutral-400 font-medium">#{idx + 1}</span>
-                                                <span className="font-medium text-neutral-900">{product.productName}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-neutral-600">{formatCurrency(product.totalSales)}</span>
-                                                <span className="text-neutral-500 text-xs">({product.totalQty} {product.unitType})</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Quick Actions Bar */}
-                    {canShow('quickActions') && (
-                        <div className="bg-white rounded-lg border border-neutral-200 p-4 lg:p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                                <QuickActionButton
-                                    icon={ShoppingCart}
-                                    label="New Invoice"
-                                    onClick={() => navigate('/pos')}
-                                    color="blue"
-                                    shortcut="F3"
-                                />
-                                {isAdminOrOwner(user) && (
-                                    <QuickActionButton
-                                        icon={Truck}
-                                        label="New Purchase"
-                                        onClick={() => navigate('/purchases?action=create')}
-                                        color="green"
-                                        shortcut="F4"
-                                    />
-                                )}
-                                <QuickActionButton
-                                    icon={FileText}
-                                    label="Customer Ledger"
-                                    onClick={() => navigate('/ledger')}
-                                    color="purple"
-                                    shortcut="F6"
-                                />
-                                {isAdminOrOwner(user) && (
-                                    <QuickActionButton
-                                        icon={Database}
-                                        label="Backup Now"
-                                        onClick={() => navigate('/backup')}
-                                        color="orange"
-                                        shortcut="Ctrl+B"
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Invoice Counts & Alerts */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        {canShow('salesLedger') && (
-                            <div
-                                onClick={() => navigate('/sales-ledger')}
-                                className="cursor-pointer bg-indigo-50 rounded-lg border-2 border-indigo-300 p-4 lg:p-6 text-center hover:border-indigo-400 transition-colors"
-                            >
-                                <BookOpen className="h-8 w-8 mx-auto mb-2 text-indigo-600" />
-                                <p className="text-sm font-semibold text-gray-700 mb-1">Sales Ledger</p>
-                                <p className="text-xl font-bold text-indigo-700">View</p>
-                                <p className="text-xs text-indigo-600 mt-1">Click to open →</p>
-                            </div>
-                        )}
-                        {(canShow('expenses') || !isAdminOrOwner(user)) && (
-                            <div
-                                onClick={() => navigate('/expenses')}
-                                className="cursor-pointer bg-purple-50 rounded-lg border-2 border-purple-300 p-4 lg:p-6 text-center hover:border-purple-400 transition-colors"
-                            >
-                                <Wallet className="h-8 w-8 mx-auto mb-2 text-purple-600" />
-                                <p className="text-sm font-semibold text-gray-700 mb-1">{isAdminOrOwner(user) ? 'Expenses' : 'Add expense'}</p>
-                                <p className="text-xl font-bold text-purple-700">{isAdminOrOwner(user) ? 'Manage' : 'Log expense'}</p>
-                                <p className="text-xs text-purple-600 mt-1">Click to open →</p>
-                            </div>
-                        )}
-                        {isAdminOrOwner(user) && canShow('pendingBills') && (
-                            <AlertCard
-                                title="Unpaid Bills"
-                                count={stats.pendingBills}
-                                icon={AlertTriangle}
-                                color="yellow"
-                                onClick={() => navigate('/reports?tab=outstanding')}
-                            />
-                        )}
-                        {canShow('lowStockAlert') && (
-                            <AlertCard
-                                title="Low Stock"
-                                count={stats.lowStockCount}
-                                icon={Package}
-                                color="red"
-                                onClick={() => navigate('/products?tab=lowStock')}
-                            />
-                        )}
-                    </div>
-                </div>
-
-                {/* Right: Gateway Column */}
-                <div className="hidden lg:block lg:w-72 bg-white border border-blue-200 rounded-lg overflow-hidden h-fit sticky top-4">
-                    <div className="p-4">
-                        <div className="bg-neutral-900 text-white rounded-lg p-3 mb-4 border border-neutral-700">
-                            <h2 className="text-base font-bold text-center">{companyName} Dashboard</h2>
-                            <p className="text-xs text-center text-blue-200 mt-0.5">Billing software for business</p>
-                        </div>
-
-                        <div className="space-y-3">
-                            {gatewayMenu.map((group, idx) => (
-                                <GatewayGroup key={idx} group={group} user={user} navigate={navigate} />
+                            <option value="">All branches</option>
+                            {availableBranches.map((branch) => (
+                                <option key={branch.id} value={branch.id}>{branch.name}</option>
                             ))}
-                        </div>
-                    </div>
+                        </select>
+                    )}
+                    <Button
+                        variant="secondary"
+                        className="!h-11 !w-11 !min-h-11 !min-w-11 !p-0 md:!h-9 md:!w-9 md:!min-h-9 md:!min-w-9"
+                        onClick={handleRefresh}
+                        disabled={refreshing}
+                        aria-label="Refresh"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${refreshing ? 'motion-safe:animate-spin' : ''}`} aria-hidden />
+                    </Button>
                 </div>
             </div>
+            {dateRange === 'custom' && (
+                <div className="flex items-center gap-2">
+                    <input
+                        type="date"
+                        value={customFromDate}
+                        onChange={(e) => setCustomFromDate(e.target.value)}
+                        aria-label="From"
+                        className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
+                    />
+                    <span className="text-sm text-[var(--text-tertiary)]" aria-hidden>–</span>
+                    <input
+                        type="date"
+                        value={customToDate}
+                        onChange={(e) => setCustomToDate(e.target.value)}
+                        aria-label="To"
+                        className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
+                    />
+                </div>
+            )}
+
+            {showGetStarted && (
+                <div className={`${surfaceClass} relative p-4`}>
+                    <button
+                        type="button"
+                        onClick={handleDismissGetStarted}
+                        className={`absolute right-2 top-2 rounded-md p-2 text-[var(--text-tertiary)] hover:bg-[var(--bg-raised)] ${focusClass}`}
+                        aria-label="Dismiss"
+                    >
+                        <X className="h-4 w-4" aria-hidden />
+                    </button>
+                    <h2 className="pr-8 text-sm font-semibold text-[var(--text-primary)]">Get started</h2>
+                    <p className="mb-3 mt-1 text-xs text-[var(--text-secondary)]">
+                        Complete these steps, or open{' '}
+                        <button type="button" className="underline" onClick={() => navigate('/help')}>Help</button>
+                        {' '}for the full workflow.
+                    </p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+                        {setupSteps.map((step) => (
+                            <button
+                                key={step.label}
+                                type="button"
+                                onClick={() => navigate(step.path)}
+                                className={`inline-flex min-h-11 items-center gap-1.5 text-[var(--text-primary)] hover:underline md:min-h-9 ${focusClass}`}
+                            >
+                                {step.done
+                                    ? <CheckCircle className="h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden />
+                                    : <span className="h-4 w-4 shrink-0 rounded-full border-2 border-[var(--border)]" aria-hidden />}
+                                {step.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {summaryError && (
+                <div className={`${surfaceClass} flex flex-wrap items-center justify-between gap-3 p-4`} role="alert">
+                    <p className="text-sm text-[var(--text-primary)]">Unable to load this period.</p>
+                    <Button variant="secondary" onClick={handleRefresh} disabled={refreshing}>Retry</Button>
+                </div>
+            )}
+
+            {(hasFigures || showSkeleton) && (
+            <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Period summary">
+                {canShow('netSalesToday') && (
+                    <MetricCard
+                        label="Net sales"
+                        value={stats.netSalesToday}
+                        helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
+                        icon={DollarSign}
+                        loading={showSkeleton}
+                    />
+                )}
+                {canShow('cashCollections') !== false && (
+                    <MetricCard
+                        label="Collections"
+                        value={stats.cashCollectionsTotal}
+                        helper={canShow('creditInvoiced') !== false ? `On account ${formatCurrency(stats.creditInvoicedTotal)}` : undefined}
+                        icon={Banknote}
+                        loading={showSkeleton}
+                    />
+                )}
+                {showProfit && (
+                    <MetricCard
+                        label="Profit"
+                        value={stats.profitToday}
+                        helper={profitHelper || undefined}
+                        icon={TrendingUp}
+                        valueClass={profitClass}
+                        loading={showSkeleton}
+                    />
+                )}
+                {canShow('pendingAmount') !== false && (
+                    <MetricCard
+                        label="Receivables"
+                        value={stats.pendingBillsAmount}
+                        icon={Wallet}
+                        loading={showSkeleton}
+                        onClick={canOpenReports ? () => navigate('/reports?tab=outstanding') : undefined}
+                    />
+                )}
+            </section>
+            )}
+
+            {hasFigures && (
+            <section className="space-y-2">
+                <h2 className="text-sm font-semibold text-[var(--text-primary)]">Needs attention</h2>
+                {attention.length === 0 ? (
+                    <p className="text-sm text-[var(--text-secondary)]">Nothing needs attention in this period.</p>
+                ) : (
+                    <div className="grid grid-cols-1 gap-2 lg:grid-cols-2 xl:grid-cols-4">
+                        {attention.map((row) => (
+                            <AttentionRow key={row.key} label={row.label} detail={row.detail} tone={row.tone} onClick={row.onClick} />
+                        ))}
+                    </div>
+                )}
+            </section>
+            )}
+
+            {canShow('quickActions') && (
+                <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:flex lg:flex-row">
+                    {canOpenPos && (
+                        <Button className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/pos')} aria-keyshortcuts="F3">
+                            <ShoppingCart className="h-4 w-4" aria-hidden />
+                            New invoice
+                            <span className="hidden text-xs font-normal text-white/80 lg:inline">F3</span>
+                        </Button>
+                    )}
+                    {isAdminOrOwner(user) && (
+                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/purchases?action=create')} aria-keyshortcuts="F4">
+                            <Truck className="h-4 w-4" aria-hidden />
+                            New purchase
+                            <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F4</span>
+                        </Button>
+                    )}
+                    {canAccessPage(user, 'invoices') && (
+                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/ledger')} aria-keyshortcuts="F10">
+                            <FileText className="h-4 w-4" aria-hidden />
+                            Customer ledger
+                            <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F10</span>
+                        </Button>
+                    )}
+                    {canAccessPage(user, 'expenses') && (
+                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/expenses')}>
+                            <Wallet className="h-4 w-4" aria-hidden />
+                            {isAdminOrOwner(user) ? 'Expenses' : 'Add expense'}
+                        </Button>
+                    )}
+                </div>
+            )}
+
+            {(hasFigures || showSkeleton) && (
+            <section className={`${surfaceClass} p-4`}>
+                <h2 className="mb-3 text-sm font-semibold text-[var(--text-primary)]">Sales trend</h2>
+                {showSkeleton ? (
+                    <div className="h-[140px] animate-pulse rounded bg-[var(--bg-elevated)] md:h-[160px]" aria-hidden />
+                ) : trendHasSales ? (
+                    <div className="h-[140px] md:h-[160px]" role="img" aria-label={`Sales trend, ${rangeLabel}, ${formatCurrency(trendSales)}`}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dailySalesTrend}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(d) => formatDisplayDate(d).slice(0, 5)}
+                                    stroke="var(--text-tertiary)"
+                                    fontSize={12}
+                                />
+                                <YAxis
+                                    tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v))}
+                                    stroke="var(--text-tertiary)"
+                                    fontSize={12}
+                                />
+                                <Tooltip
+                                    formatter={(value) => formatCurrency(value)}
+                                    labelFormatter={(label) => formatDisplayDate(label)}
+                                    contentStyle={{ backgroundColor: 'var(--bg-raised)', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text-primary)' }}
+                                />
+                                <Bar dataKey="sales" fill="var(--primary)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <div className="flex flex-wrap items-center gap-3 py-2">
+                        <BarChart3 className="h-5 w-5 text-[var(--text-tertiary)]" aria-hidden />
+                        <p className="text-sm text-[var(--text-secondary)]">No sales in this period.</p>
+                        {canOpenPos && (
+                            <Button variant="ghost" className="text-primary-700" onClick={() => navigate('/pos')}>Create invoice</Button>
+                        )}
+                    </div>
+                )}
+            </section>
+            )}
+
+            {(topCustomers.length > 0 || topProducts.length > 0) && (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    {topCustomers.length > 0 && (
+                        <section className={`${surfaceClass} p-4`}>
+                            <h2 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Top customers</h2>
+                            <div className="space-y-1">
+                                {topCustomers.map((customer, idx) => (
+                                    <button
+                                        key={customer.customerId}
+                                        type="button"
+                                        onClick={() => navigate(`/ledger?customerId=${customer.customerId}`)}
+                                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${focusClass}`}
+                                    >
+                                        <span className="min-w-0 truncate">
+                                            <span className="text-[var(--text-tertiary)]">#{idx + 1} </span>
+                                            {customer.customerName}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-[var(--text-secondary)]">
+                                            {formatCurrency(customer.totalSales)}
+                                            <span className="ml-2 text-xs">({customer.invoiceCount})</span>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                    {topProducts.length > 0 && (
+                        <section className={`${surfaceClass} p-4`}>
+                            <h2 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Top products</h2>
+                            <div className="space-y-1">
+                                {topProducts.map((product, idx) => (
+                                    <button
+                                        key={product.productId}
+                                        type="button"
+                                        onClick={() => navigate(`/products?productId=${product.productId}`)}
+                                        className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${focusClass}`}
+                                    >
+                                        <span className="min-w-0 truncate">
+                                            <span className="text-[var(--text-tertiary)]">#{idx + 1} </span>
+                                            {product.productName}
+                                        </span>
+                                        <span className="shrink-0 tabular-nums text-[var(--text-secondary)]">
+                                            {formatCurrency(product.totalSales)}
+                                            <span className="ml-2 text-xs">({product.totalQty} {product.unitType})</span>
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+                    )}
+                </div>
+            )}
+
+            {isAdminOrOwner(user) && branchBreakdown.length > 0 && (
+                <section className={`${surfaceClass} p-4`}>
+                    <h2 className="mb-2 text-sm font-semibold text-[var(--text-primary)]">Branches</h2>
+                    <div className="space-y-2">
+                        {branchBreakdown.map((branch) => (
+                            <button
+                                key={branch.branchId}
+                                type="button"
+                                onClick={() => navigate(`/branches/${branch.branchId}`)}
+                                className={`w-full rounded-md border border-[var(--border)] p-3 text-left hover:bg-[var(--bg-raised)] ${focusClass}`}
+                            >
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                    <span className="min-w-0 truncate text-sm font-medium">{branch.branchName}</span>
+                                    <span className={`shrink-0 text-sm font-semibold tabular-nums ${branch.profit >= 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>
+                                        {formatCurrency(branch.profit)}
+                                    </span>
+                                </div>
+                                <span className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                                    <span><span className="block text-[var(--text-tertiary)]">Sales</span><span className="tabular-nums">{formatCurrency(branch.sales)}</span></span>
+                                    <span><span className="block text-[var(--text-tertiary)]">Paid</span><span className="tabular-nums">{formatCurrency(branch.paidAmount ?? 0)}</span></span>
+                                    <span><span className="block text-[var(--text-tertiary)]">Unpaid</span><span className="tabular-nums">{formatCurrency(branch.unpaidAmount ?? 0)}</span></span>
+                                    <span><span className="block text-[var(--text-tertiary)]">Expenses</span><span className="tabular-nums">{formatCurrency(branch.expenses)}</span></span>
+                                </span>
+                                <span className="mt-1 block text-xs text-[var(--text-tertiary)]">{branch.invoiceCount} invoices</span>
+                            </button>
+                        ))}
+                    </div>
+                    <p className="mt-2 text-xs text-[var(--text-secondary)]">Branch expenses only. Total expenses include company-level expenses that are not assigned to a branch.</p>
+                </section>
+            )}
         </div>
     )
 }
 
 export default DashboardTally
-
-

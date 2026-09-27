@@ -10,6 +10,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useAuth } from '../../hooks/useAuth'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
+import { localDateString } from '../../utils/dateFormat'
 
 const EXPENSE_CATEGORIES = ['Fuel', 'Staff', 'Delivery', 'Vehicle Maintenance', 'Toll/Parking', 'Misc']
 const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'performance', 'stops']
@@ -30,9 +31,9 @@ const RouteDetailPage = () => {
     if (urlFrom) return urlFrom
     const d = new Date()
     d.setMonth(d.getMonth() - 1)
-    return d.toISOString().split('T')[0]
+    return localDateString(d)
   })()
-  const computedDefaultTo = urlTo || new Date().toISOString().split('T')[0]
+  const computedDefaultTo = urlTo || localDateString(new Date())
 
   const [fromDate, setFromDate] = useState(computedDefaultFrom)
   const [toDate, setToDate] = useState(computedDefaultTo)
@@ -42,7 +43,7 @@ const RouteDetailPage = () => {
   const [saving, setSaving] = useState(false)
   const [expenseCategory, setExpenseCategory] = useState('Misc')
   const [expenseAmount, setExpenseAmount] = useState('')
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().split('T')[0])
+  const [expenseDate, setExpenseDate] = useState(localDateString(new Date()))
   const [expenseDescription, setExpenseDescription] = useState('')
   const [selectedExpenseForEdit, setSelectedExpenseForEdit] = useState(null)
   const [dangerModal, setDangerModal] = useState({
@@ -52,7 +53,7 @@ const RouteDetailPage = () => {
     onConfirm: () => { }
   })
   const [collectionSheet, setCollectionSheet] = useState(null)
-  const [collectionSheetDate, setCollectionSheetDate] = useState(new Date().toISOString().split('T')[0])
+  const [collectionSheetDate, setCollectionSheetDate] = useState(localDateString(new Date()))
   const [loadingSheet, setLoadingSheet] = useState(false)
   const [routeSales, setRouteSales] = useState([])
   const [routeSalesLoading, setRouteSalesLoading] = useState(false)
@@ -158,7 +159,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to assign staff')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to assign staff')
+      if (!e?._handledByInterceptor) toast.error('Failed to assign staff')
     } finally {
       setRouteStaffAssignSaving(false)
     }
@@ -176,7 +177,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to remove staff')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to remove staff')
+      if (!e?._handledByInterceptor) toast.error('Failed to remove staff')
     } finally {
       setRouteStaffRemovingId(null)
     }
@@ -238,6 +239,7 @@ const RouteDetailPage = () => {
       })
       if (res?.success) {
         toast.success('Expense added', { id: 'route-expense-add' })
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowExpenseModal(false)
         resetExpenseForm()
         loadExpenses()
@@ -246,7 +248,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to add expense')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to add expense')
+      if (!e?._handledByInterceptor) toast.error('Failed to add expense')
     } finally {
       setSaving(false)
     }
@@ -255,7 +257,7 @@ const RouteDetailPage = () => {
   const resetExpenseForm = () => {
     setExpenseCategory('Misc')
     setExpenseAmount('')
-    setExpenseDate(new Date().toISOString().split('T')[0])
+    setExpenseDate(localDateString(new Date()))
     setExpenseDescription('')
     setSelectedExpenseForEdit(null)
   }
@@ -269,7 +271,7 @@ const RouteDetailPage = () => {
     setSelectedExpenseForEdit(expense)
     setExpenseCategory(expense.category || 'Misc')
     setExpenseAmount(String(expense.amount ?? ''))
-    setExpenseDate((expense.expenseDate || expense.ExpenseDate || '').toString().split('T')[0] || new Date().toISOString().split('T')[0])
+    setExpenseDate((expense.expenseDate || expense.ExpenseDate || '').toString().split('T')[0] || localDateString(new Date()))
     setExpenseDescription(expense.description || expense.Description || '')
     setShowExpenseModal(true)
   }
@@ -292,6 +294,7 @@ const RouteDetailPage = () => {
       })
       if (res?.success) {
         toast.success('Expense updated', { id: 'route-expense-update' })
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowExpenseModal(false)
         resetExpenseForm()
         loadExpenses()
@@ -300,7 +303,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to update expense')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to update expense')
+      if (!e?._handledByInterceptor) toast.error('Failed to update expense')
     } finally {
       setSaving(false)
     }
@@ -344,7 +347,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to update visit status')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to update visit status')
+      if (!e?._handledByInterceptor) toast.error('Failed to update visit status')
     } finally {
       setUpdatingVisitStatus(null)
     }
@@ -433,13 +436,14 @@ const RouteDetailPage = () => {
           const res = await routesAPI.deleteRouteExpense(id, expenseId)
           if (res?.success) {
             toast.success('Expense deleted', { id: 'route-expense-delete' })
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
             loadExpenses()
             loadSummary()
           } else {
             toast.error(res?.message || 'Failed to delete')
           }
         } catch (e) {
-          if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to delete')
+          if (!e?._handledByInterceptor) toast.error('Failed to delete')
         }
       }
     })
@@ -494,13 +498,14 @@ const RouteDetailPage = () => {
       })
       if (res?.success) {
         toast.success('Route updated')
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowEditRouteModal(false)
         loadRoute()
       } else {
         toast.error(res?.message || 'Failed to update route')
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || err?.message || 'Failed to update route')
+      toast.error(err?.response?.data?.message || 'Failed to update route')
     } finally {
       setSavingRouteEdit(false)
     }
@@ -517,12 +522,13 @@ const RouteDetailPage = () => {
           const res = await routesAPI.deleteRoute(route.id)
           if (res?.success !== false) {
             toast.success('Route deleted')
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
             navigate('/branches?tab=routes')
           } else {
             toast.error(res?.message || 'Failed to delete route')
           }
         } catch (err) {
-          toast.error(err?.response?.data?.message || err?.message || 'Failed to delete route')
+          toast.error(err?.response?.data?.message || 'Failed to delete route')
         } finally {
           setDangerModal(prev => ({ ...prev, isOpen: false }))
         }

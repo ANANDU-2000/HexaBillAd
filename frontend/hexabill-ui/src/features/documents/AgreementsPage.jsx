@@ -36,7 +36,7 @@ export default function AgreementsPage() {
       const res = await agreementsAPI.list()
       setRows(res?.data || [])
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Failed to load')
+      setError(e?.response?.data?.message || 'Failed to load')
     } finally {
       setLoading(false)
     }
@@ -52,9 +52,10 @@ export default function AgreementsPage() {
     setError('')
     try {
       await agreementsAPI.delete(row.id)
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
       setRows((prev) => prev.filter((r) => r.id !== row.id))
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'Delete failed')
+      setError(e?.response?.data?.message || 'Delete failed')
     } finally {
       setBusyId(null)
     }
@@ -68,7 +69,7 @@ export default function AgreementsPage() {
       if (mode === 'download') downloadBlob(blob, `${row.agreementNo}_${format}.pdf`)
       else openPdfBlob(blob)
     } catch (e) {
-      setError(e?.response?.data?.message || e.message || 'PDF failed')
+      setError(e?.response?.data?.message || 'PDF failed')
     } finally {
       setBusyId(null)
     }

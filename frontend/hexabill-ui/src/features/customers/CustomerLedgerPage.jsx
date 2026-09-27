@@ -46,6 +46,7 @@ import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+import { localDateString } from '../../utils/dateFormat'
 
 // CRITICAL: Define status property name constants at top level to prevent minifier from creating 'st' variable
 // These must be defined before any component code to avoid TDZ errors
@@ -137,29 +138,30 @@ const CustomerLedgerPage = () => {
     const yearsAgo = new Date(now)
     yearsAgo.setFullYear(now.getFullYear() - 5)
     return {
-      from: yearsAgo.toISOString().split('T')[0],
-      to: now.toISOString().split('T')[0]
+      from: localDateString(yearsAgo),
+      to: localDateString(now)
     }
   })
   const [ledgerFilters, setLedgerFilters] = useState({
     status: 'all',
     type: 'all'
   })
-  const [ledgerBranchId, setLedgerBranchId] = useState('')
-  const [ledgerRouteId, setLedgerRouteId] = useState('')
-  const [ledgerStaffId, setLedgerStaffId] = useState('')
-  // Staged filter values (used by Apply button); applied values above drive API calls
+  const [ledgerBranchId, setLedgerBranchId] = useState(() => searchParams.get('branchId') || '')
+  const [ledgerRouteId, setLedgerRouteId] = useState(() => searchParams.get('routeId') || '')
+  const [ledgerStaffId, setLedgerStaffId] = useState(() => searchParams.get('staffId') || '')
+  // Staged filter values; applied values above drive API calls
   const [filterDraft, setFilterDraft] = useState(() => {
     const now = new Date()
     const yearsAgo = new Date(now)
     yearsAgo.setFullYear(now.getFullYear() - 5)
     return {
-      from: yearsAgo.toISOString().split('T')[0],
-      to: now.toISOString().split('T')[0],
-    branchId: '',
-    routeId: '',
-    staffId: ''
-  }});
+      from: searchParams.get('from') || localDateString(yearsAgo),
+      to: searchParams.get('to') || localDateString(now),
+      branchId: searchParams.get('branchId') || '',
+      routeId: searchParams.get('routeId') || '',
+      staffId: searchParams.get('staffId') || '',
+    }
+  })
   const [staffUsers, setStaffUsers] = useState([])
   const [staffAssignmentsLoaded, setStaffAssignmentsLoaded] = useState(false)
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })
@@ -219,9 +221,15 @@ const CustomerLedgerPage = () => {
       else params.delete('from')
       if (dateRange.to) params.set('to', dateRange.to)
       else params.delete('to')
+      if (ledgerBranchId) params.set('branchId', ledgerBranchId)
+      else params.delete('branchId')
+      if (ledgerRouteId) params.set('routeId', ledgerRouteId)
+      else params.delete('routeId')
+      if (ledgerStaffId) params.set('staffId', ledgerStaffId)
+      else params.delete('staffId')
       return params
     }, { replace: true })
-  }, [selectedCustomer?.id, dateRange.from, dateRange.to, setSearchParams])
+  }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId, setSearchParams])
 
   /** Leave customer ledger view; invalidate in-flight loads. Shared by Back + search. */
   const clearSelectedCustomer = useCallback((options = {}) => {
@@ -305,7 +313,7 @@ const CustomerLedgerPage = () => {
       const link = document.createElement('a')
       const url = URL.createObjectURL(blob)
       link.setAttribute('href', url)
-      link.setAttribute('download', `Ledger_${selectedCustomer.name}_${new Date().toISOString().split('T')[0]}.csv`)
+      link.setAttribute('download', `Ledger_${selectedCustomer.name}_${localDateString(new Date())}.csv`)
       link.style.visibility = 'hidden'
       document.body.appendChild(link)
       link.click()
@@ -1313,8 +1321,7 @@ const CustomerLedgerPage = () => {
       }
     } catch (error) {
       const errorMessage = error?.response?.data?.message ||
-        (Array.isArray(error?.response?.data?.errors) ? error.response.data.errors.join(', ') : '') ||
-        error?.message || 'Failed to create customer'
+        (Array.isArray(error?.response?.data?.errors) ? error.response.data.errors.join(', ') : '') || 'Failed to create customer'
       if (!error?._handledByInterceptor) toast.error(errorMessage)
     } finally {
       customerLoadingRef.current = false
@@ -1390,7 +1397,6 @@ const CustomerLedgerPage = () => {
       console.error('Error response:', error?.response)
       const errorMessage = error?.response?.data?.message ||
         (Array.isArray(error?.response?.data?.errors) ? error.response.data.errors.join(', ') : '') ||
-        error?.message ||
         'Failed to create customer'
       if (!error?._handledByInterceptor) toast.error(errorMessage)
     } finally {
@@ -1456,7 +1462,7 @@ const CustomerLedgerPage = () => {
       }
     } catch (error) {
       console.error('Failed to update customer:', error)
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to update customer'
+      const errorMessage = error?.response?.data?.message || 'Failed to update customer'
       if (!error?._handledByInterceptor) toast.error(errorMessage)
     } finally {
       customerLoadingRef.current = false
@@ -1523,7 +1529,7 @@ const CustomerLedgerPage = () => {
 
     // DUPLICATE PAYMENT CHECK: same customer + same amount + same day
     if (!isCashCustomer) {
-      const paymentDateStr = data.paymentDate ? (data.paymentDate.includes('T') ? data.paymentDate.split('T')[0] : data.paymentDate) : new Date().toISOString().split('T')[0]
+      const paymentDateStr = data.paymentDate ? (data.paymentDate.includes('T') ? data.paymentDate.split('T')[0] : data.paymentDate) : localDateString(new Date())
       let checkAmount = amount
       if (isAllocate) {
         checkAmount = outstandingInvoices
@@ -1773,7 +1779,7 @@ const CustomerLedgerPage = () => {
       if (!opened) {
         const a = document.createElement('a')
         a.href = url
-        a.download = `Ledger_${selectedCustomer.name}_${new Date().toISOString().split('T')[0]}.pdf`
+        a.download = `Ledger_${selectedCustomer.name}_${localDateString(new Date())}.pdf`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
@@ -1783,7 +1789,7 @@ const CustomerLedgerPage = () => {
     } catch (error) {
       console.error('Failed to export PDF:', error)
       if (!error?._handledByInterceptor) {
-        toast.error(error?.message || 'Failed to export PDF')
+        toast.error('Failed to export PDF')
       }
     } finally {
       setPdfLoading(false)
@@ -1807,7 +1813,7 @@ const CustomerLedgerPage = () => {
       const toDate = new Date(dateRange.to)
       let pdfBlob
       try {
-        pdfBlob = await customersAPI.getCustomerStatement(selectedCustomer.id, fromDate.toISOString().split('T')[0], toDate.toISOString().split('T')[0])
+        pdfBlob = await customersAPI.getCustomerStatement(selectedCustomer.id, localDateString(fromDate), localDateString(toDate))
       } catch (pdfError) {
         console.error('Failed to generate PDF:', pdfError)
         toast.error('Failed to generate PDF statement')
@@ -1818,7 +1824,7 @@ const CustomerLedgerPage = () => {
       const pdfUrl = window.URL.createObjectURL(pdfBlob)
       const pdfLink = document.createElement('a')
       pdfLink.href = pdfUrl
-      pdfLink.download = `statement_${selectedCustomer.name}_${new Date().toISOString().split('T')[0]}.pdf`
+      pdfLink.download = `statement_${selectedCustomer.name}_${localDateString(new Date())}.pdf`
       document.body.appendChild(pdfLink)
       pdfLink.click()
       document.body.removeChild(pdfLink)
@@ -2168,7 +2174,7 @@ const CustomerLedgerPage = () => {
         </div>
         )}
         {/* TOP BAR - Customer Search */}
-        <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 flex items-center gap-2 flex-wrap">
+        <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
           <div className="relative flex-1 min-w-0 max-w-full lg:max-w-xl">
             <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
             <input
@@ -2205,7 +2211,7 @@ const CustomerLedgerPage = () => {
             <span className="hidden sm:inline">Add Customer</span>
           </button>
           {selectedCustomer && (
-            <div className="px-2.5 py-1.5 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold whitespace-nowrap min-w-0 truncate max-w-[200px] sm:max-w-none" title={selectedCustomer.name}>
+            <div className="px-2.5 py-1.5 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold min-w-0 truncate max-w-full" title={selectedCustomer.name}>
               {selectedCustomer.name}
             </div>
           )}
@@ -2329,7 +2335,7 @@ const CustomerLedgerPage = () => {
                             customerForm.setValue('routeId', selectedCustomer.routeId || '')
                             setShowEditCustomerModal(true)
                           }}
-                          className={`${mobileActionBtnClass} bg-primary-600 text-white hover:bg-primary-700`}
+                          className={`${mobileActionBtnClass} min-h-11 bg-primary-600 text-white hover:bg-primary-700`}
                           title="Edit Customer (F3)"
                         >
                           <Edit className="h-3.5 w-3.5" />
@@ -2341,7 +2347,7 @@ const CustomerLedgerPage = () => {
                             setPaymentModalInvoiceId(null)
                             setShowPaymentModal(true)
                           }}
-                          className="px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 flex items-center gap-1 transition-colors"
+                          className="min-h-11 px-3 py-2 bg-primary-600 text-white text-xs rounded-md hover:bg-primary-700 flex items-center gap-1 transition-colors"
                           title="Add Payment (F4)"
                         >
                           <Plus className="h-3 w-3" />
@@ -2355,11 +2361,11 @@ const CustomerLedgerPage = () => {
                               const total = outstandingInvoices.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
                               setPaymentValue('amount', total)
                               setPaymentValue('saleId', '')
-                              setPaymentValue('paymentDate', new Date().toISOString().split('T')[0])
+                              setPaymentValue('paymentDate', localDateString(new Date()))
                               setPaymentValue('method', 'CASH')
                               setShowPaymentModal(true)
                             }}
-                            className="px-2 py-1 bg-emerald-600 text-white text-xs rounded hover:bg-emerald-700 flex items-center gap-1 transition-colors"
+                            className="min-h-11 px-3 py-2 bg-accent text-white text-xs rounded-md hover:bg-accent/90 flex items-center gap-1 transition-colors"
                             title="Pay all outstanding invoices in one payment"
                           >
                             <Wallet className="h-3 w-3" />
@@ -2411,7 +2417,7 @@ const CustomerLedgerPage = () => {
                         } catch (error) {
                           console.error('Failed to export pending bills PDF:', error)
                           if (!error?._handledByInterceptor) {
-                            toast.error(error?.message || 'Failed to export PDF')
+                            toast.error('Failed to export PDF')
                           }
                         } finally {
                           toast.dismiss(loadingToast)
@@ -2567,15 +2573,6 @@ const CustomerLedgerPage = () => {
                     {isAdminOrOwner(user) && <option value="">All staff</option>}
                     {availableStaff.map(u => <option key={u.id} value={u.id}>{u.name || u.email}</option>)}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => applyLedgerFilters(true)}
-                    className="inline-flex items-center justify-center gap-1 min-h-8 px-2.5 bg-primary-600 text-white text-xs font-medium rounded-md hover:bg-primary-700"
-                    title="Apply filters now"
-                  >
-                    <Filter className="h-3.5 w-3.5" />
-                    Apply
-                  </button>
                 </div>
               )}
 
@@ -2710,7 +2707,7 @@ const CustomerLedgerPage = () => {
                           window.open(url, '_blank')
                           setTimeout(() => window.URL.revokeObjectURL(url), 100)
                         } catch (error) {
-                          if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to generate PDF')
+                          if (!error?._handledByInterceptor) toast.error('Failed to generate PDF')
                         }
                       }}
                       onEditInvoice={(invoiceId) => {
@@ -2828,7 +2825,7 @@ const CustomerLedgerPage = () => {
                               }
                             } catch (error) {
                               console.error('Error deleting payment:', error)
-                              const errorMsg = error?.response?.data?.message || error?.message || 'Failed to delete payment'
+                              const errorMsg = error?.response?.data?.message || 'Failed to delete payment'
                               if (!error?._handledByInterceptor) toast.error(errorMsg, { id: 'delete-payment' })
                             }
                           }
@@ -2924,7 +2921,7 @@ const CustomerLedgerPage = () => {
               }
               setTimeout(() => window.URL.revokeObjectURL(url), 100)
             } catch (error) {
-              if (!error?._handledByInterceptor) toast.error(error?.message || 'Failed to print invoice')
+              if (!error?._handledByInterceptor) toast.error('Failed to print invoice')
             }
           }}
         />
@@ -3652,6 +3649,7 @@ const DEFAULT_LEDGER_FILTERS = { statusFilterValue: 'all', typeFilterValue: 'all
 
 const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGeneratePDF, onShareWhatsApp, onPrintPreview, onDeleteReturn, onSettleCredit, onViewReceipt, filters, onFilterChange }) => {
   const navigate = useNavigate()
+  const location = useLocation()
   // CRITICAL: Initialize safeFilters FIRST before any other code to prevent TDZ errors
   // Use constant property name to prevent minifier from creating 'st' from filters.status
   const hasFilters = filters && typeof filters === 'object'
@@ -3855,7 +3853,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
                           <button
                             type="button"
-                            onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
+                            onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
                             className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
                             title="Create return for this bill"
                             aria-label="Create return"
@@ -3882,14 +3880,14 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                                   const url = window.URL.createObjectURL(blob)
                                   const a = document.createElement('a')
                                   a.href = url
-                                  a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${new Date().toISOString().split('T')[0]}.pdf`
+                                  a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${localDateString(new Date())}.pdf`
                                   document.body.appendChild(a)
                                   a.click()
                                   window.URL.revokeObjectURL(url)
                                   document.body.removeChild(a)
                                   toast.success('Return bill PDF downloaded')
                                 } catch (e) {
-                                  if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                                  if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                                 }
                               }}
                               className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 text-xs font-medium bg-blue-100 text-blue-800 rounded-lg hover:bg-blue-200"
@@ -4024,7 +4022,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                     {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) && (
                       <button
                         type="button"
-                        onClick={() => navigate(`/reports?tab=returns&saleId=${entry.saleId ?? entry.SaleId}`)}
+                        onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })}
                         className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded hover:bg-amber-200"
                         title="Create return for this bill"
                       >
@@ -4053,14 +4051,14 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                               const url = window.URL.createObjectURL(blob)
                               const a = document.createElement('a')
                               a.href = url
-                              a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${new Date().toISOString().split('T')[0]}.pdf`
+                              a.download = `Return_${entry.reference || entry.returnId || entry.ReturnId}_${localDateString(new Date())}.pdf`
                               document.body.appendChild(a)
                               a.click()
                               window.URL.revokeObjectURL(url)
                               document.body.removeChild(a)
                               toast.success('Return bill PDF downloaded')
                             } catch (e) {
-                              if (!e?._handledByInterceptor) toast.error(e?.message || 'Failed to generate PDF')
+                              if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                             }
                           }}
                           className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
@@ -4853,13 +4851,13 @@ const PaymentEntryModal = ({
       // Reset when modal opens without pre-selected invoice - use default values
       setValue('saleId', '')
       setValue('amount', '')
-      setValue('paymentDate', new Date().toISOString().split('T')[0])
+      setValue('paymentDate', localDateString(new Date()))
       setValue('method', 'CASH')
     } else if (isOpen && payAllOutstandingMode) {
       setValue('saleId', '')
       const total = outstandingInvoices.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
       setValue('amount', total)
-      setValue('paymentDate', new Date().toISOString().split('T')[0])
+      setValue('paymentDate', localDateString(new Date()))
       setValue('method', 'CASH')
     }
   }, [isOpen, invoiceId, payAllOutstandingMode, allAvailableInvoices, outstandingInvoices, setValue])
@@ -4906,7 +4904,7 @@ const PaymentEntryModal = ({
           <Input
             label="Date"
             type="date"
-            defaultValue={new Date().toISOString().split('T')[0]}
+            defaultValue={localDateString(new Date())}
             required
             error={errors.paymentDate?.message}
             {...register('paymentDate', { required: 'Date is required' })}
