@@ -27,13 +27,77 @@ namespace HexaBill.Api.Modules.SuperAdmin
         private const int BackupScheduleOwnerId = 0; // Platform-wide schedule
         private readonly IComprehensiveBackupService _backupService;
         private readonly IAuditService _auditService;
+        private readonly IBackupAgentService _localBackup;
         private readonly AppDbContext _context;
 
-        public BackupController(IComprehensiveBackupService backupService, IAuditService auditService, AppDbContext context)
+        public BackupController(IComprehensiveBackupService backupService, IAuditService auditService, IBackupAgentService localBackup, AppDbContext context)
         {
             _backupService = backupService;
             _auditService = auditService;
+            _localBackup = localBackup;
             _context = context;
+        }
+
+        [HttpGet("local/status")]
+        public async Task<ActionResult<ApiResponse<LocalBackupStatusDto>>> GetLocalStatus(CancellationToken ct)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0)
+                return BadRequest(new ApiResponse<LocalBackupStatusDto> { Success = false, Message = "Company backup is not available for this sign-in." });
+            try
+            {
+                var status = await _localBackup.GetStatusAsync(tenantId, ct);
+                return Ok(new ApiResponse<LocalBackupStatusDto> { Success = true, Data = status });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<LocalBackupStatusDto> { Success = false, Message = "Could not load backup status." });
+            }
+        }
+
+        [HttpPost("devices/pairing")]
+        public async Task<ActionResult<ApiResponse<object>>> CreatePairing(CancellationToken ct)
+        {
+            var tenantId = CurrentTenantId;
+            var userId = CurrentUserId();
+            if (tenantId <= 0 || userId <= 0)
+                return Forbid();
+            var issued = await _localBackup.CreatePairingCodeAsync(tenantId, userId, ct);
+            if (issued == null)
+                return BadRequest(new ApiResponse<object> { Success = false, Message = "Automatic local backup is not enabled, or this company already has the maximum number of PCs." });
+            return Ok(new ApiResponse<object> { Success = true, Message = "Pairing code created", Data = new { code = issued.Code, expiresAt = issued.ExpiresAt } });
+        }
+
+        [HttpPut("devices/{id:int}/schedule")]
+        public async Task<ActionResult<ApiResponse<object>>> SaveDeviceSchedule(int id, [FromBody] BackupDeviceScheduleDto dto, CancellationToken ct)
+        {
+            var tenantId = CurrentTenantId;
+            var userId = CurrentUserId();
+            if (tenantId <= 0 || userId <= 0)
+                return Forbid();
+            var (ok, message) = await _localBackup.SaveScheduleAsync(tenantId, userId, id, dto ?? new BackupDeviceScheduleDto(), ct);
+            return ok
+                ? Ok(new ApiResponse<object> { Success = true, Message = message })
+                : BadRequest(new ApiResponse<object> { Success = false, Message = message });
+        }
+
+        [HttpPost("devices/{id:int}/revoke")]
+        public async Task<ActionResult<ApiResponse<bool>>> RevokeDevice(int id, CancellationToken ct)
+        {
+            var tenantId = CurrentTenantId;
+            var userId = CurrentUserId();
+            if (tenantId <= 0 || userId <= 0)
+                return Forbid();
+            var revoked = await _localBackup.RevokeAsync(tenantId, userId, id, ct);
+            if (revoked)
+                return Ok(new ApiResponse<bool> { Success = true, Message = "This PC was disconnected.", Data = true });
+            return NotFound(new ApiResponse<bool> { Success = false, Message = "PC was not found." });
+        }
+
+        private int CurrentUserId()
+        {
+            var claim = User.FindFirst("UserId") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+            return claim != null && int.TryParse(claim.Value, out var userId) ? userId : 0;
         }
 
         [HttpGet("schedule")]
@@ -375,6 +439,35 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     Message = "Restore failed",
                     Errors = new List<string> { ex.Message }
                 });
+            }
+        }
+
+        [HttpPost("preview-upload")]
+        public async Task<ActionResult<ApiResponse<ImportPreview>>> PreviewUpload([FromForm] IFormFile file)
+        {
+            if (file == null || file.Length == 0 || !file.FileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new ApiResponse<ImportPreview> { Success = false, Message = "Choose a backup ZIP file." });
+            if (file.Length > MaxRestoreFileSizeBytes)
+                return BadRequest(new ApiResponse<ImportPreview> { Success = false, Message = "That backup is too large to restore from this page." });
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0 && !IsSystemAdmin)
+                return Forbid();
+            var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.zip");
+            try
+            {
+                await using (var stream = System.IO.File.Create(tempPath))
+                    await file.CopyToAsync(stream);
+                var preview = await _backupService.PreviewImportAsync("", tempPath, tenantId > 0 ? tenantId : null, IsSystemAdmin);
+                return Ok(new ApiResponse<ImportPreview> { Success = true, Data = preview });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new ApiResponse<ImportPreview> { Success = false, Message = "This backup could not be checked." });
+            }
+            finally
+            {
+                if (System.IO.File.Exists(tempPath))
+                    System.IO.File.Delete(tempPath);
             }
         }
 

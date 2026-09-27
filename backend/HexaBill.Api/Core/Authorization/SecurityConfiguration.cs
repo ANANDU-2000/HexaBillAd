@@ -3,6 +3,7 @@ Purpose: Enhanced security configuration and CORS policy
 Author: AI Assistant
 Date: 2024
 */
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.RateLimiting;
@@ -41,6 +42,7 @@ namespace HexaBill.Api.Core.Authorization
             }
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddScheme<AuthenticationSchemeOptions, BackupAgentAuthenticationHandler>(BackupAgentAuthenticationHandler.AgentScheme, _ => { })
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters

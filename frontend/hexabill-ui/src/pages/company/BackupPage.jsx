@@ -1,573 +1,417 @@
-import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
 import { backupAPI } from '../../services'
 import { useAuth } from '../../hooks/useAuth'
-import { Database, HardDrive, Download, Trash2, RefreshCw, Upload, FileText, X, Settings, Cloud } from 'lucide-react'
+import {
+  CircleAlert, CircleCheck, Clock, Cloud, Download, Eye, Folder, HardDrive, Laptop, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload
+} from 'lucide-react'
 import toast from 'react-hot-toast'
-import { isAdminOrOwner } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
+import { isAdminOrOwner } from '../../utils/roles'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+
+const ZONES = [
+  { id: 'Asia/Kolkata', label: 'India Standard Time' },
+  { id: 'Asia/Dubai', label: 'Gulf Standard Time' },
+  { id: 'UTC', label: 'UTC' }
+]
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+const formatWhen = (value) => {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+const formatBytes = (bytes) => {
+  if (!bytes) return '—'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)))
+  return `${(bytes / (1024 ** index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}
+
+const zoneLabel = (id) => ZONES.find((zone) => zone.id === id)?.label || id || 'UTC'
+
+const StatusIcon = ({ status }) => {
+  if (status === 'Automatic backup active' || status === 'Connected') return <CircleCheck className="h-5 w-5 text-green-600" aria-hidden="true" />
+  if (status === 'Needs attention' || status === 'Configured, device offline' || status === 'Disconnected') return <CircleAlert className="h-5 w-5 text-amber-600" aria-hidden="true" />
+  if (status === 'Running') return <RefreshCw className="h-5 w-5 text-blue-600 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+  return <ShieldCheck className="h-5 w-5 text-neutral-500" aria-hidden="true" />
+}
 
 const BackupPage = () => {
   const { user } = useAuth()
-  const navigate = useNavigate()
-  const isAdmin = isAdminOrOwner(user)  // MULTI-TENANT: Both Admin and Owner can backup
+  const isAdmin = isAdminOrOwner(user)
+  const [status, setStatus] = useState(null)
   const [backups, setBackups] = useState([])
   const [loading, setLoading] = useState(false)
   const [restoring, setRestoring] = useState(false)
-  const [selectedFile, setSelectedFile] = useState(null)
-  const [fileToDelete, setFileToDelete] = useState(null)
-  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
-  const [showCloudSettings, setShowCloudSettings] = useState(false)
-  const [showScheduleSettings, setShowScheduleSettings] = useState(false)
-  const [cloudSettings, setCloudSettings] = useState({
-    googleDriveClientId: '',
-    googleDriveClientSecret: '',
-    googleDriveRefreshToken: '',
-    googleDriveEnabled: false
-  })
-  const [scheduleSettings, setScheduleSettings] = useState({
+  const [showSchedule, setShowSchedule] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [pairing, setPairing] = useState(null)
+  const [schedule, setSchedule] = useState({
     enabled: false,
-    time: '21:00', // Default 9 PM
-    frequency: 'daily', // daily, weekly
-    retentionDays: 30
+    time: '23:00',
+    frequency: 'daily',
+    timeZoneId: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+    weeklyDay: 0,
+    includeInvoicePdfs: false,
+    retentionCount: 7
   })
   const [includeInvoicePdfs, setIncludeInvoicePdfs] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [preview, setPreview] = useState(null)
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
+  const [fileToDelete, setFileToDelete] = useState(null)
+  const [uploadFile, setUploadFile] = useState(null)
 
-  useEffect(() => {
-    loadBackups()
+  const loadStatus = useCallback(async () => {
+    try {
+      const response = await backupAPI.getLocalStatus()
+      if (response?.success) setStatus(response.data)
+    } catch {
+      setStatus(null)
+    }
   }, [])
 
-  const loadSchedule = async () => {
-    try {
-      const res = await backupAPI.getSchedule()
-      if (res.success && res.data) {
-        setScheduleSettings({
-          enabled: res.data.enabled ?? false,
-          time: res.data.time || '21:00',
-          frequency: res.data.frequency || 'daily',
-          retentionDays: res.data.retentionDays ?? 30
-        })
-      }
-    } catch (e) {
-      console.error('Failed to load backup schedule', e)
-    }
-  }
-
-  const loadBackups = async () => {
+  const loadBackups = useCallback(async () => {
     try {
       const response = await backupAPI.getBackups()
-      if (response.success) {
-        setBackups(response.data || [])
-      }
-    } catch (error) {
-      console.error('Failed to load backups:', error)
+      setBackups(response?.data || response || [])
+    } catch {
+      toast.error('Could not load backup history.')
     }
-  }
+  }, [])
 
-  const handleCreateBackup = async () => {
-    try {
-      setLoading(true)
-      const response = await backupAPI.createBackup(false, false, false, includeInvoicePdfs)
-      if (response.success) {
-        toast.success('Backup created successfully!')
-        await loadBackups()
-      } else {
-        toast.error(response.message || 'Failed to create backup')
-      }
-    } catch (error) {
-      if (!error?._handledByInterceptor) toast.error('Failed to create backup')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    if (!isAdmin) return undefined
+    loadStatus()
+    loadBackups()
+    const timer = setInterval(loadStatus, 60000)
+    return () => clearInterval(timer)
+  }, [isAdmin, loadStatus, loadBackups])
 
-  const handleCreateFullBackup = async (downloadToBrowser = false) => {
-    try {
-      setLoading(true)
-      const response = await backupAPI.createFullBackup(downloadToBrowser, includeInvoicePdfs)
-      if (response.success) {
-        if (downloadToBrowser) {
-          toast.success('Backup downloaded to your computer!')
-        } else {
-          toast.success('Full backup created successfully! Click Download to save to your computer.')
-        }
-        await loadBackups()
-      } else {
-        toast.error(response.message || 'Failed to create full backup')
-      }
-    } catch (error) {
-      if (!error?._handledByInterceptor) toast.error('Failed to create full backup')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    if (!status?.deviceId) return
+    setSchedule((current) => ({
+      ...current,
+      enabled: !!status.scheduleEnabled,
+      time: status.time || current.time,
+      frequency: status.frequency || 'daily',
+      timeZoneId: status.timeZoneId || current.timeZoneId,
+      weeklyDay: status.weeklyDay ?? 0,
+      includeInvoicePdfs: !!status.includeInvoicePdfs,
+      retentionCount: status.retentionCount || 7
+    }))
+  }, [status])
 
-  const handleDownloadBackup = async (fileName) => {
+  const history = (status?.history?.length ? status.history : (Array.isArray(backups) ? backups : []).map((backup) => ({
+    id: backup.fileName,
+    fileName: backup.fileName,
+    createdAt: backup.createdDate || backup.createdAt,
+    type: 'Backup',
+    device: backup.location || 'Server',
+    sizeBytes: backup.fileSize,
+    status: 'Saved',
+    verified: false,
+    canDownload: true,
+    canRestore: true,
+    canDelete: true
+  })))
+
+  const downloadFile = async (fileName) => {
     try {
       const blob = await backupAPI.downloadBackup(fileName)
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = fileName
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      toast.success('Backup downloaded')
-    } catch (error) {
-      if (!error?._handledByInterceptor) toast.error('Failed to download backup')
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = fileName
+      link.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error('Backup could not be downloaded.')
     }
   }
 
-  const handleDeleteBackup = (fileName) => {
-    setFileToDelete(fileName)
-  }
-
-  const handleConfirmDeleteBackup = async () => {
-    if (!fileToDelete) return
-
+  const handleBackupNow = async () => {
+    if (loading) return
+    setLoading(true)
     try {
-      const response = await backupAPI.deleteBackup(fileToDelete)
-      if (response.success) {
-        toast.success('Backup deleted')
-        await loadBackups()
-      } else {
-        toast.error(response.message || 'Failed to delete backup')
-      }
-    } catch (error) {
-      toast.error('Failed to delete backup')
+      await backupAPI.createFullBackup(true, includeInvoicePdfs)
+      toast.success('Backup downloaded')
+      await loadBackups()
+      await loadStatus()
+    } catch {
+      toast.error('Backup could not be completed.')
     } finally {
-      setFileToDelete(null)
+      setLoading(false)
     }
   }
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setSelectedFile(file)
+  const handlePair = async () => {
+    try {
+      const response = await backupAPI.createPairingCode()
+      if (!response?.success) {
+        toast.error(response?.message || 'This PC could not be connected.')
+        return
+      }
+      setPairing(response.data)
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'This PC could not be connected.')
     }
   }
 
-  const handleRestoreClick = () => {
-    if (!selectedFile) {
-      toast.error('Please select a backup file')
+  const handleSaveSchedule = async () => {
+    if (!status?.deviceId) {
+      toast.error('Connect a PC before saving a schedule.')
       return
     }
-    setShowRestoreConfirm(true)
+    try {
+      const response = await backupAPI.saveDeviceSchedule(status.deviceId, schedule)
+      if (!response?.success) {
+        toast.error(response?.message || 'Schedule could not be saved.')
+        return
+      }
+      toast.success('Schedule saved')
+      setShowSchedule(false)
+      await loadStatus()
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Schedule could not be saved.')
+    }
+  }
+
+  const openRestore = async (row, file) => {
+    setSelected(row || (file ? { fileName: file.name, sizeBytes: file.size, createdAt: null, type: 'Uploaded backup' } : null))
+    setUploadFile(file || null)
+    setPreview(null)
+    try {
+      const response = file
+        ? await backupAPI.previewBackupUpload(file)
+        : await backupAPI.previewBackup(row.fileName)
+      const data = response?.data
+      if (!response?.success || data?.isCompatible === false) {
+        toast.error(data?.compatibilityMessage || 'This backup could not be checked.')
+        return
+      }
+      setPreview(data)
+      setShowRestoreConfirm(true)
+    } catch {
+      toast.error('This backup could not be checked.')
+    }
   }
 
   const handleRestore = async () => {
-    if (!selectedFile) return
     setShowRestoreConfirm(false)
+    setRestoring(true)
     try {
-      setRestoring(true)
-      toast.loading('Restoring backup... This may take a few minutes.')
-
-      let response
-
-      // Check if selectedFile is a File object (uploaded) or object with name (from list)
-      if (selectedFile instanceof File) {
-        // File uploaded from computer - use upload endpoint
-        response = await backupAPI.restoreBackupFromFile(selectedFile)
-      } else {
-        // File selected from backup list - use restore endpoint
-        const fileName = selectedFile.name || selectedFile.fileName
-        response = await backupAPI.restoreBackup(fileName, null)
-      }
-
-      if (response.success) {
-        toast.success('Backup restored successfully! Refreshing data...')
-        // Refresh backup list and use client-side navigation instead of full page reload
+      const response = uploadFile
+        ? await backupAPI.restoreBackupFromFile(uploadFile)
+        : await backupAPI.restoreBackup(selected.fileName, null)
+      if (response?.success) {
+        toast.success('Backup restored')
+        setSelected(null)
+        setUploadFile(null)
         await loadBackups()
-        setTimeout(() => {
-          navigate(0) // Client-side reload using react-router
-        }, 1000)
-      } else {
-        toast.error(response.message || 'Failed to restore backup')
-      }
-    } catch (error) {
-      console.error('Restore error:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to restore backup. Please check server logs.')
+      } else toast.error(response?.message || 'Restore failed')
+    } catch {
+      toast.error('Restore failed')
     } finally {
       setRestoring(false)
-      setSelectedFile(null)
     }
   }
 
-  const handleSaveCloudSettings = async () => {
+  const handleDelete = async () => {
+    const name = fileToDelete
+    setFileToDelete(null)
     try {
-      // NOTE: Cloud backup (S3/Google Drive) is not yet implemented
-      // For production, backups should be stored in S3/Cloudflare R2/Google Cloud Storage
-      // instead of ephemeral server filesystem
-      toast.error('Cloud backup settings are not yet implemented. For production, configure S3/cloud storage backups.')
-      setShowCloudSettings(false)
-    } catch (error) {
-      if (!error?._handledByInterceptor) toast.error('Failed to save cloud settings')
+      const response = await backupAPI.deleteBackup(name)
+      if (response?.success) {
+        toast.success('Backup deleted')
+        await loadBackups()
+        await loadStatus()
+      } else toast.error('Backup could not be deleted.')
+    } catch {
+      toast.error('Backup could not be deleted.')
     }
   }
 
-  const formatBytes = (bytes) => {
-    if (!bytes) return '0 B'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
+  if (!isAdmin) {
+    return (
+      <div className="mx-auto max-w-lg p-6 text-sm text-neutral-700 dark:text-neutral-300">
+        You do not have access to backup and restore.
+      </div>
+    )
   }
+
+  const localOn = status?.featureEnabled
+  const statusText = localOn ? (status?.status || 'Not configured') : 'Manual backup'
+  const counts = preview?.manifest?.recordCounts
 
   return (
-    <div className="min-h-screen bg-gray-50 p-2 sm:p-4 lg:p-6">
-      <div className="w-full">
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-xl font-semibold text-neutral-900">My Data Export</h1>
-          <p className="mt-1 sm:mt-2 text-sm sm:text-base text-gray-600">Export your company&apos;s data (CSV, database, optional invoice PDFs). Use this to download a backup of your tenant data only. Restore from a previous export if needed.</p>
+    <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-neutral-900 dark:text-[#F8FAFC]">Backup and restore</h1>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-[#8B9BB4]">Company data only. A paired PC saves the scheduled copy.</p>
         </div>
-
-        {/* Last Successful Backup Indicator */}
-        {backups.length > 0 && (() => {
-          const sorted = [...backups].sort((a, b) => new Date(b.createdDate || b.createdAt || 0) - new Date(a.createdDate || a.createdAt || 0))
-          const lastBackup = sorted[0]
-          const lastDate = lastBackup ? new Date(lastBackup.createdDate || lastBackup.createdAt) : null
-          const hoursAgo = lastDate ? (Date.now() - lastDate.getTime()) / (1000 * 60 * 60) : Infinity
-          const statusColor = hoursAgo < 24 ? 'text-green-700 bg-green-50 border-green-200' : hoursAgo < 72 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-red-700 bg-red-50 border-red-200'
-          const statusText = hoursAgo < 24 ? 'Recent' : hoursAgo < 72 ? 'Consider creating a new backup' : 'Backup is outdated'
-          return (
-            <div className={`mb-4 p-3 rounded-lg border ${statusColor}`}>
-              <p className="text-sm font-medium">
-                Last successful backup: <strong>{lastDate ? lastDate.toLocaleString() : '—'}</strong>
-                <span className="ml-2 text-xs">({statusText})</span>
-              </p>
-            </div>
-          )
-        })()}
-
-        {/* Create Backup Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-4 lg:p-6 mb-4 sm:mb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center">
-              <Database className="h-6 w-6 text-indigo-600 mr-3" />
-              <h2 className="text-lg font-semibold text-gray-900">Create Backup</h2>
-            </div>
-            {isAdmin && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    setShowCloudSettings(!showCloudSettings)
-                    setShowScheduleSettings(false)
-                  }}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  title="Cloud Backup Settings"
-                >
-                  <Cloud className="h-4 w-4 mr-2" />
-                  Cloud Settings
-                </button>
-                <button
-                  onClick={async () => {
-                    setShowScheduleSettings(!showScheduleSettings)
-                    setShowCloudSettings(false)
-                    if (!showScheduleSettings) await loadSchedule()
-                  }}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                  title="Backup Schedule Settings"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Schedule
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Backup Schedule Settings (Admin Only) */}
-          {isAdmin && showScheduleSettings && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="text-sm font-semibold text-blue-900 mb-3">Backup Schedule Settings</h3>
-              <div className="bg-white p-3 rounded border border-blue-200 mb-3">
-                <p className="text-xs text-blue-800 mb-3">
-                  Configure automatic daily backups. Backups run automatically at the scheduled time.
-                </p>
-                <div className="space-y-3">
-                  <div className="flex items-center">
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={scheduleSettings.enabled}
-                        onChange={(e) => setScheduleSettings(prev => ({ ...prev, enabled: e.target.checked }))}
-                        className="mr-2"
-                      />
-                      <span className="text-sm text-gray-700">Enable automatic backups</span>
-                    </label>
-                  </div>
-                  {scheduleSettings.enabled && (
-                    <>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Backup Time</label>
-                        <input
-                          type="time"
-                          value={scheduleSettings.time}
-                          onChange={(e) => setScheduleSettings(prev => ({ ...prev, time: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Frequency</label>
-                        <select
-                          value={scheduleSettings.frequency}
-                          onChange={(e) => setScheduleSettings(prev => ({ ...prev, frequency: e.target.value }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="daily">Daily</option>
-                          <option value="weekly">Weekly (Sunday)</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">Retention (days)</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="365"
-                          value={scheduleSettings.retentionDays}
-                          onChange={(e) => setScheduleSettings(prev => ({ ...prev, retentionDays: parseInt(e.target.value) || 30 }))}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Backups older than this will be automatically deleted</p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={async () => {
-                    try {
-                      const res = await backupAPI.saveSchedule(scheduleSettings)
-                      if (res.success) {
-                        toast.success('Backup schedule saved.')
-                        setShowScheduleSettings(false)
-                      } else toast.error(res.message || 'Failed to save schedule')
-                    } catch (e) {
-                      if (!e?._handledByInterceptor) toast.error('Failed to save schedule')
-                    }
-                  }}
-                  className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-                >
-                  Save Schedule
-                </button>
-                <button
-                  onClick={() => setShowScheduleSettings(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 text-sm rounded-md hover:bg-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-              <p className="text-xs text-gray-600 mt-2">
-                Automatic backups run at the scheduled time. Older backups are deleted after the retention period.
-              </p>
-            </div>
-          )}
-
-          {/* Cloud Backup Settings (Admin Only) */}
-          {isAdmin && showCloudSettings && (
-            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-              <h3 className="text-sm font-semibold text-blue-900 mb-3">Cloud backup (S3 / offline)</h3>
-              <div className="bg-white p-3 rounded border border-blue-200 mb-3">
-                <p className="text-xs text-blue-800 mb-2">
-                  <strong>S3 (recommended for production):</strong> Backups can be uploaded to AWS S3 or compatible storage (e.g. Cloudflare R2). Configure in <code className="bg-blue-100 px-1">appsettings.json</code>: <code className="bg-blue-100 px-1">BackupSettings:S3:Enabled</code> = true, <code className="bg-blue-100 px-1">Bucket</code>, <code className="bg-blue-100 px-1">Region</code>, <code className="bg-blue-100 px-1">AwsAccessKeyId</code>, <code className="bg-blue-100 px-1">AwsSecretAccessKey</code>. Optional: <code className="bg-blue-100 px-1">Prefix</code> for folder path.
-                </p>
-                <p className="text-xs text-blue-700 mb-2">
-                  <strong>Offline / desktop:</strong> Use &quot;Full Backup (Download to PC/Desktop)&quot; to save a copy on your computer. Server backups are ephemeral on cloud hosts; keep a local or S3 copy.
-                </p>
-              </div>
-              <button
-                onClick={() => setShowCloudSettings(false)}
-                className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700"
-              >
-                Close
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={handleBackupNow} disabled={loading} className="inline-flex min-h-11 items-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
+            <Download className="h-4 w-4" aria-hidden="true" />
+            {loading ? 'Creating…' : 'Backup now'}
+          </button>
+          {localOn && (
+            <>
+              <button type="button" onClick={() => setShowSchedule((open) => !open)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-50 dark:border-[#1E293B] dark:text-[#F8FAFC] dark:hover:bg-[#1E293B]">
+                <Clock className="h-4 w-4" aria-hidden="true" /> Schedule
               </button>
-            </div>
+              <button type="button" onClick={handlePair} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-50 dark:border-[#1E293B] dark:text-[#F8FAFC] dark:hover:bg-[#1E293B]">
+                <Laptop className="h-4 w-4" aria-hidden="true" /> Connect this PC
+              </button>
+            </>
           )}
+          <button type="button" onClick={() => setShowAdvanced((open) => !open)} className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 px-4 text-sm font-medium text-neutral-800 hover:bg-neutral-50 dark:border-[#1E293B] dark:text-[#F8FAFC] dark:hover:bg-[#1E293B]">
+            <HardDrive className="h-4 w-4" aria-hidden="true" /> Advanced
+          </button>
+        </div>
+      </div>
 
-          {/* Offline / Desktop backup notice */}
-          <div className="bg-blue-50 border border-blue-300 rounded-md p-3 mb-4">
-            <p className="text-sm font-medium text-blue-800">
-              💾 <strong>Offline &amp; desktop backup</strong>
-            </p>
-            <p className="text-xs text-blue-700 mt-1">
-              To keep a copy on your computer (desktop or folder): use <strong>Full Backup (Download to Browser)</strong>.
-              The file will download to your default Downloads folder so you have an offline copy even if the server is down.
-              You can also download any backup from the list below.
-            </p>
+      <section aria-live="polite" className="mb-4 grid gap-3 rounded-lg border border-neutral-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-[#1E293B] dark:bg-[#121A22]">
+        <div className="flex items-start gap-2 sm:col-span-2 lg:col-span-1">
+          <StatusIcon status={statusText} />
+          <div>
+            <p className="text-xs text-neutral-500 dark:text-[#8B9BB4]">Backup status</p>
+            <p className="text-sm font-medium text-neutral-900 dark:text-[#F8FAFC]">{statusText}</p>
           </div>
+        </div>
+        <div>
+          <p className="text-xs text-neutral-500 dark:text-[#8B9BB4]">Last successful</p>
+          <p className="text-sm text-neutral-900 dark:text-[#F8FAFC]">{formatWhen(status?.lastSuccessAt)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-neutral-500 dark:text-[#8B9BB4]">Next backup</p>
+          <p className="text-sm text-neutral-900 dark:text-[#F8FAFC]">{status?.online && status?.scheduleEnabled ? formatWhen(status?.nextRunAt) : localOn && status?.scheduleEnabled ? 'When the PC reconnects' : '—'}</p>
+        </div>
+        <div>
+          <p className="text-xs text-neutral-500 dark:text-[#8B9BB4]">Device / folder</p>
+          <p className="text-sm text-neutral-900 dark:text-[#F8FAFC]">{status?.deviceName || 'No PC connected'}</p>
+          <p className="text-xs text-neutral-500 dark:text-[#8B9BB4]">{status?.folderLabel || 'No folder chosen'}{status?.lastSeenAt ? ` · Last seen ${formatWhen(status.lastSeenAt)}` : ''}</p>
+        </div>
+      </section>
 
-          <div className="flex flex-wrap items-center gap-4 mb-3">
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeInvoicePdfs}
-                onChange={(e) => setIncludeInvoicePdfs(e.target.checked)}
-                className="h-4 w-4 text-indigo-600 rounded border-gray-300"
-              />
-              Include invoice PDFs (may take longer)
+      {status?.serverCopyEnabled && (
+        <p className="mb-4 flex items-center gap-2 text-sm text-neutral-600 dark:text-[#8B9BB4]">
+          <Cloud className="h-4 w-4" aria-hidden="true" /> Server copy is enabled. Local PC backup is separate.
+        </p>
+      )}
+
+      {pairing?.code && (
+        <section className="mb-4 rounded-lg border border-neutral-200 bg-white p-4 dark:border-[#1E293B] dark:bg-[#121A22]">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-[#F8FAFC]">Connect this PC</h2>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-[#8B9BB4]">On this computer, run HexaBill Backup Agent and enter this code. It expires at {formatWhen(pairing.expiresAt)}. Use this site: {window.location.origin}</p>
+          <p className="mt-2 font-mono text-lg tracking-widest text-neutral-900 dark:text-[#F8FAFC]" aria-label="Pairing code">{pairing.code}</p>
+        </section>
+      )}
+
+      {showSchedule && localOn && (
+        <form className="mb-4 grid gap-3 rounded-lg border border-neutral-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-[#1E293B] dark:bg-[#121A22]" onSubmit={(event) => { event.preventDefault(); handleSaveSchedule() }}>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-neutral-800 dark:text-[#F8FAFC]">
+            <input type="checkbox" checked={schedule.enabled} onChange={(event) => setSchedule((current) => ({ ...current, enabled: event.target.checked }))} />
+            Automatic backup
+          </label>
+          <label className="text-sm text-neutral-700 dark:text-[#8B9BB4]">
+            Frequency
+            <select value={schedule.frequency} onChange={(event) => setSchedule((current) => ({ ...current, frequency: event.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-neutral-900 dark:border-[#1E293B] dark:bg-[#0B1220] dark:text-[#F8FAFC]">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </label>
+          <label className="text-sm text-neutral-700 dark:text-[#8B9BB4]">
+            Time
+            <input type="time" value={schedule.time} onChange={(event) => setSchedule((current) => ({ ...current, time: event.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-neutral-900 dark:border-[#1E293B] dark:bg-[#0B1220] dark:text-[#F8FAFC]" />
+          </label>
+          <label className="text-sm text-neutral-700 dark:text-[#8B9BB4]">
+            Timezone
+            <select value={schedule.timeZoneId} onChange={(event) => setSchedule((current) => ({ ...current, timeZoneId: event.target.value }))} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-neutral-900 dark:border-[#1E293B] dark:bg-[#0B1220] dark:text-[#F8FAFC]">
+              {!ZONES.some((zone) => zone.id === schedule.timeZoneId) && <option value={schedule.timeZoneId}>{zoneLabel(schedule.timeZoneId)}</option>}
+              {ZONES.map((zone) => <option key={zone.id} value={zone.id}>{zone.label}</option>)}
+            </select>
+          </label>
+          {schedule.frequency === 'weekly' && (
+            <label className="text-sm text-neutral-700 dark:text-[#8B9BB4]">
+              Day
+              <select value={schedule.weeklyDay} onChange={(event) => setSchedule((current) => ({ ...current, weeklyDay: Number(event.target.value) }))} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 dark:border-[#1E293B] dark:bg-[#0B1220] dark:text-[#F8FAFC]">
+                {DAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
+              </select>
             </label>
+          )}
+          <label className="text-sm text-neutral-700 dark:text-[#8B9BB4]">
+            Retention
+            <select value={schedule.retentionCount} onChange={(event) => setSchedule((current) => ({ ...current, retentionCount: Number(event.target.value) }))} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 dark:border-[#1E293B] dark:bg-[#0B1220] dark:text-[#F8FAFC]">
+              <option value={7}>7 backups</option>
+              <option value={14}>14 backups</option>
+              <option value={30}>30 backups</option>
+            </select>
+          </label>
+          <label className="flex min-h-11 items-center gap-2 text-sm text-neutral-800 dark:text-[#F8FAFC]">
+            <input type="checkbox" checked={schedule.includeInvoicePdfs} onChange={(event) => setSchedule((current) => ({ ...current, includeInvoicePdfs: event.target.checked }))} />
+            Include invoice PDFs
+          </label>
+          <div className="text-sm text-neutral-600 dark:text-[#8B9BB4] sm:col-span-2">
+            <p>Device: {status?.deviceName || 'Not connected'} {status?.online ? '· Connected' : '· Device disconnected'}</p>
+            <p className="mt-1 flex items-center gap-1"><Folder className="h-4 w-4" aria-hidden="true" /> {status?.folderLabel || 'Folder is chosen on the PC'}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleCreateFullBackup(true)}
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
-              title="Creates backup and downloads to your computer (offline/desktop copy)"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {loading ? 'Creating...' : 'Full Backup (Download to PC/Desktop)'}
-            </button>
-            <button
-              onClick={() => handleCreateFullBackup(false)}
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
-            >
-              <HardDrive className="h-4 w-4 mr-2" />
-              {loading ? 'Creating...' : 'Full Backup (Server Only)'}
-            </button>
-            <button
-              onClick={handleCreateBackup}
-              disabled={loading}
-              className="inline-flex items-center px-4 py-2 border border-indigo-300 rounded-md shadow-sm text-sm font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-50"
-            >
-              <Database className="h-4 w-4 mr-2" />
-              {loading ? 'Creating...' : 'Database Backup'}
-            </button>
+          <div className="flex gap-2">
+            <button type="submit" className="min-h-11 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white">Save schedule</button>
           </div>
+        </form>
+      )}
+
+      {showAdvanced && (
+        <label className="mb-4 flex min-h-11 items-center gap-2 text-sm text-neutral-700 dark:text-[#8B9BB4]">
+          <input type="checkbox" checked={includeInvoicePdfs} onChange={(event) => setIncludeInvoicePdfs(event.target.checked)} />
+          Include invoice PDFs in Backup now
+        </label>
+      )}
+
+      <section className="rounded-lg border border-neutral-200 bg-white dark:border-[#1E293B] dark:bg-[#121A22]">
+        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-[#1E293B]">
+          <h2 className="text-sm font-semibold text-neutral-900 dark:text-[#F8FAFC]">Backup history</h2>
+          <button type="button" aria-label="Refresh history" onClick={() => { loadBackups(); loadStatus() }} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-100 dark:text-[#8B9BB4] dark:hover:bg-[#1E293B]">
+            <RefreshCw className="h-4 w-4" />
+          </button>
         </div>
-
-        {/* Restore Backup Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex items-center mb-4">
-            <Upload className="h-6 w-6 text-green-600 mr-3" />
-            <h2 className="text-lg font-semibold text-gray-900">Restore Backup</h2>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer">
-                <FileText className="h-4 w-4 mr-2" />
-                Select Backup File (.zip)
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
-              </label>
-
-              {selectedFile && (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600 font-medium">{selectedFile.name}</span>
-                  <span className="text-xs text-gray-500">({formatBytes(selectedFile.size)})</span>
-                  <button
-                    onClick={() => setSelectedFile(null)}
-                    className="text-red-600 hover:text-red-800"
-                    title="Clear selection"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-              <p className="text-sm text-yellow-800">
-                <strong>Important:</strong> To restore from a backup file:
-              </p>
-              <ol className="text-xs text-yellow-700 mt-2 ml-4 list-decimal space-y-1">
-                <li>Select a backup ZIP file from the list below</li>
-                <li>Or upload a backup file from your computer</li>
-                <li>Click "Restore" - this will replace ALL current data</li>
-                <li>Make sure to backup current data first!</li>
-              </ol>
-            </div>
-
-            <button
-              onClick={handleRestoreClick}
-              disabled={!selectedFile || restoring}
-              className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${restoring ? 'animate-spin' : ''}`} />
-              {restoring ? 'Restoring...' : 'Restore from Backup'}
-            </button>
-          </div>
-        </div>
-
-        {/* Backup List */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <FileText className="h-6 w-6 text-gray-600 mr-3" />
-              <h2 className="text-lg font-semibold text-gray-900">Backup History</h2>
-            </div>
-            <button
-              onClick={loadBackups}
-              className="text-sm text-indigo-600 hover:text-indigo-800"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-
-          {backups.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Database className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-              <p>No backups found</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+        {history.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-neutral-500">No backups yet.</p>
+        ) : (
+          <>
+            <div className="hidden overflow-x-auto md:block">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-xs uppercase text-neutral-500 dark:text-[#8B9BB4]">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-2 font-medium">Date / time</th>
+                    <th className="px-4 py-2 font-medium">Type</th>
+                    <th className="px-4 py-2 font-medium">Device</th>
+                    <th className="px-4 py-2 font-medium">Size</th>
+                    <th className="px-4 py-2 font-medium">Status</th>
+                    <th className="px-4 py-2 font-medium">Verified</th>
+                    <th className="px-4 py-2 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {backups.map((backup, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {backup.fileName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(backup.createdDate).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatBytes(backup.fileSize)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {backup.location}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => {
-                              setSelectedFile({ name: backup.fileName, size: backup.fileSize })
-                              toast.success('Backup file selected. Click "Restore" button above to restore.')
-                            }}
-                            className="text-green-600 hover:text-green-900"
-                            title="Select for Restore"
-                          >
-                            <Upload className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDownloadBackup(backup.fileName)}
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="Download"
-                          >
-                            <Download className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteBackup(backup.fileName)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                <tbody>
+                  {history.map((row) => (
+                    <tr key={row.id || row.fileName} className="border-t border-neutral-100 dark:border-[#1E293B]">
+                      <td className="px-4 py-3 text-neutral-900 dark:text-[#F8FAFC]">{formatWhen(row.createdAt)}</td>
+                      <td className="px-4 py-3">{row.type}</td>
+                      <td className="px-4 py-3">{row.device}</td>
+                      <td className="px-4 py-3">{formatBytes(row.sizeBytes)}</td>
+                      <td className="px-4 py-3">{row.status}{row.detail ? ` · ${row.detail}` : ''}</td>
+                      <td className="px-4 py-3">{row.verified ? 'Yes' : 'No'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-1">
+                          <button type="button" aria-label="View details" onClick={() => setDetail(row)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><Eye className="h-4 w-4" /></button>
+                          {row.canDownload && row.fileName && <button type="button" aria-label="Download" onClick={() => downloadFile(row.fileName)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><Download className="h-4 w-4" /></button>}
+                          {row.canRestore && row.fileName && <button type="button" aria-label="Restore" onClick={() => openRestore(row)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><RotateCcw className="h-4 w-4" /></button>}
+                          {row.canDelete && row.fileName && <button type="button" aria-label="Delete backup file" onClick={() => setFileToDelete(row.fileName)} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>}
                         </div>
                       </td>
                     </tr>
@@ -575,30 +419,76 @@ const BackupPage = () => {
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+            <div className="space-y-3 p-3 md:hidden">
+              {history.map((row) => (
+                <article key={row.id || row.fileName} className="rounded-md border border-neutral-200 p-3 dark:border-[#1E293B]">
+                  <p className="text-sm font-medium text-neutral-900 dark:text-[#F8FAFC]">{formatWhen(row.createdAt)}</p>
+                  <p className="text-xs text-neutral-500">{row.type} · {row.device} · {formatBytes(row.sizeBytes)}</p>
+                  <p className="text-xs text-neutral-600 dark:text-[#8B9BB4]">{row.status}{row.verified ? ' · Verified' : ''}{row.detail ? ` · ${row.detail}` : ''}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button type="button" className="min-h-11 px-2 text-sm" onClick={() => setDetail(row)}>View</button>
+                    {row.canRestore && row.fileName && <button type="button" className="min-h-11 px-2 text-sm" onClick={() => openRestore(row)}>Restore</button>}
+                    {row.canDownload && row.fileName && <button type="button" className="min-h-11 px-2 text-sm" onClick={() => downloadFile(row.fileName)}>Download</button>}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-neutral-300 px-3 text-sm dark:border-[#1E293B] dark:text-[#F8FAFC]">
+          <Upload className="h-4 w-4" aria-hidden="true" />
+          Upload a backup
+          <input type="file" accept=".zip,application/zip" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) openRestore(null, file) }} />
+        </label>
       </div>
+
+      {detail && (
+        <section className="mt-4 rounded-lg border border-neutral-200 bg-white p-4 text-sm dark:border-[#1E293B] dark:bg-[#121A22]" aria-label="Backup details">
+          <h2 className="font-semibold text-neutral-900 dark:text-[#F8FAFC]">Backup details</h2>
+          <p className="mt-1 text-neutral-700 dark:text-[#8B9BB4]">{formatWhen(detail.createdAt)} · {detail.type} · {detail.device}</p>
+          <p>Size: {formatBytes(detail.sizeBytes)} · {detail.verified ? 'Verified' : 'Not verified'} · {detail.status}</p>
+          {detail.detail && <p>{detail.detail}</p>}
+          <button type="button" className="mt-2 min-h-11 text-sm text-indigo-700 dark:text-indigo-300" onClick={() => setDetail(null)}>Close</button>
+        </section>
+      )}
+
+      {localOn && status?.devices?.length > 1 && (
+        <section className="mt-4 text-sm text-neutral-700 dark:text-[#8B9BB4]">
+          <h2 className="font-medium text-neutral-900 dark:text-[#F8FAFC]">Paired PCs</h2>
+          <ul className="mt-1 space-y-1">
+            {status.devices.map((device) => (
+              <li key={device.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span>{device.name} — {device.online ? 'Connected' : 'Offline'}{device.lastSeenAt ? `, last seen ${formatWhen(device.lastSeenAt)}` : ''} · {device.folderLabel || 'No folder'}</span>
+                <button type="button" className="min-h-11 text-red-700" onClick={() => backupAPI.revokeDevice(device.id).then(() => loadStatus())}>Disconnect</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <ConfirmDangerModal
         isOpen={!!fileToDelete}
         onClose={() => setFileToDelete(null)}
-        onConfirm={handleConfirmDeleteBackup}
-        title="Delete backup"
-        message={fileToDelete ? `Are you sure you want to delete ${fileToDelete}?` : ''}
+        onConfirm={handleDelete}
+        title="Delete backup file"
+        message="This removes the server copy of the selected backup. Local copies on a PC are not deleted."
         confirmLabel="Delete"
+        requireTypedText="DELETE"
       />
       <ConfirmDangerModal
         isOpen={showRestoreConfirm}
         onClose={() => setShowRestoreConfirm(false)}
-        onConfirm={() => handleRestore()}
-        title="Restore from backup"
-        message="WARNING: This will REPLACE ALL CURRENT DATA with the backup data.\n\nMake sure you have a backup of current data first. Continue?"
-        confirmLabel="Restore"
+        onConfirm={handleRestore}
+        title="Restore this backup"
+        message={`Backup: ${formatWhen(selected?.createdAt)}\nSize: ${formatBytes(selected?.sizeBytes || uploadFile?.size)}\nContains: database${counts ? `, ${counts.sales || 0} sales, ${counts.customers || 0} customers` : ''}${includeInvoicePdfs || status?.includeInvoicePdfs ? ', files' : ''}.\n\nRestore replaces current company data with the selected backup.`}
+        confirmLabel={restoring ? 'Restoring…' : 'Restore'}
+        requireTypedText="RESTORE"
       />
     </div>
   )
 }
 
 export default BackupPage
-
-

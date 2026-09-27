@@ -134,6 +134,11 @@ namespace HexaBill.Api.Data
         public DbSet<QuotationItem> QuotationItems { get; set; }
         public DbSet<Agreement> Agreements { get; set; }
         public DbSet<SalaryCertificate> SalaryCertificates { get; set; }
+        public DbSet<BackupDevice> BackupDevices { get; set; }
+        public DbSet<BackupDeviceSchedule> BackupDeviceSchedules { get; set; }
+        public DbSet<BackupDeviceToken> BackupDeviceTokens { get; set; }
+        public DbSet<BackupPairingCode> BackupPairingCodes { get; set; }
+        public DbSet<BackupRun> BackupRuns { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -1031,6 +1036,64 @@ namespace HexaBill.Api.Data
                 entity.HasIndex(e => new { e.TenantId, e.EffectiveFrom });
                 entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne<User>().WithMany().HasForeignKey(e => e.SetByUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BackupDevice>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(80);
+                entity.Property(e => e.FolderLabel).HasMaxLength(120);
+                entity.Property(e => e.AgentVersion).HasMaxLength(40);
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<User>().WithMany().HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BackupDeviceSchedule>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Frequency).IsRequired().HasMaxLength(16);
+                entity.Property(e => e.LocalTime).IsRequired().HasMaxLength(5);
+                entity.Property(e => e.TimeZoneId).IsRequired().HasMaxLength(80);
+                entity.HasIndex(e => e.DeviceId).IsUnique();
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne<BackupDevice>().WithMany().HasForeignKey(e => e.DeviceId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BackupDeviceToken>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.TokenHash).IsRequired().HasMaxLength(64);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.HasIndex(e => e.DeviceId);
+                entity.HasOne<BackupDevice>().WithMany().HasForeignKey(e => e.DeviceId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BackupPairingCode>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CodeHash).IsRequired().HasMaxLength(64);
+                entity.HasIndex(e => e.CodeHash).IsUnique();
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<User>().WithMany().HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<BackupRun>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.SlotKey).IsRequired().HasMaxLength(16);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.Sha256).HasMaxLength(64);
+                entity.Property(e => e.FailureReason).HasMaxLength(200);
+                entity.Property(e => e.FileName).HasMaxLength(180);
+                entity.Property(e => e.DownloadName).HasMaxLength(180);
+                entity.HasIndex(e => new { e.DeviceId, e.SlotKey }).IsUnique();
+                entity.HasIndex(e => e.TenantId);
+                entity.HasOne<BackupDevice>().WithMany().HasForeignKey(e => e.DeviceId).OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<TenantInvite>(entity =>

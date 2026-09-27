@@ -1736,6 +1736,34 @@ export const backupAPI = {
       responseType: 'blob'
     })
     return response.data
+  },
+  getLocalStatus: async () => {
+    const response = await api.get('/backup/local/status')
+    return response.data
+  },
+  createPairingCode: async () => {
+    const response = await api.post('/backup/devices/pairing')
+    return response.data
+  },
+  saveDeviceSchedule: async (deviceId, dto) => {
+    const response = await api.put(`/backup/devices/${deviceId}/schedule`, dto)
+    return response.data
+  },
+  revokeDevice: async (deviceId) => {
+    const response = await api.post(`/backup/devices/${deviceId}/revoke`)
+    return response.data
+  },
+  previewBackup: async (fileName) => {
+    const response = await api.post('/backup/preview', { fileName })
+    return response.data
+  },
+  previewBackupUpload: async (file) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await api.post('/backup/preview-upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
   }
 }
 
@@ -2008,7 +2036,8 @@ export const superAdminAPI = {
               dataImport: 'data_import',
               backup: 'backup',
               salesLedger: 'sales_ledger',
-              priceList: 'price_list'
+              priceList: 'price_list',
+              localBackupAgent: 'localBackupAgent'
             }
             return keyMap[key] || key
           })

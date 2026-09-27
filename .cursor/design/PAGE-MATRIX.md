@@ -45,7 +45,7 @@ Live routes only, from `src/app/App.jsx`. Status starts `todo`.
 | Users | /users | Admin | Layout | No | Yes | Yes | Invite | Add | Table scroll | Signed in. Owner row listed. | verified |
 | Profile | /profile | Tenant | Layout | No | Yes | No | No | Save | Stack | Signed in. Profile form opened. | verified |
 | Audit | /audit | Owner | Layout | No | Search, action, user, date | Yes | Activity detail | Refresh, View | Table / mobile cards | Admin and Owner only. No raw JSON in the table. Recovery is unavailable. Anonymous API calls return 401. Signed-in click-through was not completed because the local owner password does not match the development seed. | verified |
-| Backup | /backup | Owner | Layout | No | Yes | Yes | Confirm | Backup | Stack | Signed in. Backup actions shown. Backup was not run. | verified |
+| Backup | /backup | Owner | Layout | No | Yes | Yes | Confirm | Backup now | Stack / history cards | Admin and Owner. Local PC backup is off until the tenant feature is enabled. Schedule, pairing, and restore confirmation are on the page. Backup was not run. | verified |
 | More | /more | Tenant | Layout | No | No | No | No | Navigate | List | Only routes that are not already in the sidebar | verified |
 | Help | /help | Any | Both | No | No | No | No | None | Stack | Signed in. Help page opened. | verified |
 | Feedback | /feedback | Any | Both | No | Yes | No | No | Send | Stack | Signed in. Feedback form opened. It was not submitted. | verified |

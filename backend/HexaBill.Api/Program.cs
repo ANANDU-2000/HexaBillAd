@@ -320,6 +320,7 @@ builder.Services.AddScoped<HexaBill.Api.Modules.Documents.IAgreementService, Hex
 builder.Services.AddScoped<HexaBill.Api.Modules.Documents.ISalaryCertificateService, HexaBill.Api.Modules.Documents.SalaryCertificateService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<IComprehensiveBackupService, ComprehensiveBackupService>();
+builder.Services.AddScoped<IBackupAgentService, BackupAgentService>();
 builder.Services.AddScoped<ICurrencyService, CurrencyService>();
 // BUG #2.2 FIX: Use R2 storage if configured, otherwise fallback to local disk storage
 var r2Endpoint = Environment.GetEnvironmentVariable("R2_ENDPOINT") ?? builder.Configuration["R2Settings:Endpoint"] ?? builder.Configuration["CloudflareR2:Endpoint"];

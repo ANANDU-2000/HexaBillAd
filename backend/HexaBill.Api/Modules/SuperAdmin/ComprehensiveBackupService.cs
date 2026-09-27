@@ -1082,6 +1082,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     preview.Manifest = System.Text.Json.JsonSerializer.Deserialize<BackupManifest>(manifestJson) ?? new BackupManifest();
                 }
 
+                if (preview.Manifest.TenantId.HasValue && tenantId is > 0 && preview.Manifest.TenantId.Value != tenantId.Value && !isPlatformAdmin)
+                {
+                    preview.IsCompatible = false;
+                    preview.CompatibilityMessage = "This backup belongs to a different company.";
+                    return preview;
+                }
+
                 // Check schema compatibility
                 var currentSchemaVersion = "1.0";
                 preview.IsCompatible = preview.Manifest.SchemaVersion == currentSchemaVersion;

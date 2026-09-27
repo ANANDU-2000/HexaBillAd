@@ -32,7 +32,8 @@ namespace HexaBill.Api.Core.Infrastructure
             int? entityId = null,
             object? oldValues = null,
             object? newValues = null,
-            string? details = null);
+            string? details = null,
+            int? actingUserId = null);
     }
 
     public class AuditService : IAuditService
@@ -60,15 +61,16 @@ namespace HexaBill.Api.Core.Infrastructure
             int? entityId = null,
             object? oldValues = null,
             object? newValues = null,
-            string? details = null)
+            string? details = null,
+            int? actingUserId = null)
         {
             try
             {
                 var httpContext = _httpContextAccessor.HttpContext;
                 
                 // Get user ID from HttpContext claims
-                int? userId = null;
-                if (httpContext?.User?.Identity?.IsAuthenticated == true)
+                int? userId = actingUserId is > 0 ? actingUserId : null;
+                if (!userId.HasValue && httpContext?.User?.Identity?.IsAuthenticated == true)
                 {
                     var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
                         ?? httpContext.User.FindFirst("id")?.Value

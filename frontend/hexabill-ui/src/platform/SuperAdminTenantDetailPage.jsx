@@ -11,6 +11,7 @@ import {
   Package,
   DollarSign,
   Database,
+  HardDrive,
   Calendar,
   Mail,
   Phone,
@@ -2082,7 +2083,8 @@ const TenantFeaturesTab = ({ tenantId }) => {
     dataImport: 'data_import',
     backup: 'backup',
     salesLedger: 'sales_ledger',
-    priceList: 'price_list'
+    priceList: 'price_list',
+    localBackupAgent: 'localBackupAgent'
   }
 
   // Reverse mapping: backend key -> frontend key
@@ -2105,7 +2107,8 @@ const TenantFeaturesTab = ({ tenantId }) => {
     dataImport: true,
     backup: true,
     salesLedger: true,
-    priceList: true
+    priceList: true,
+    localBackupAgent: false
   })
   const [featuresLoading, setFeaturesLoading] = useState(false)
   const [featuresSaving, setFeaturesSaving] = useState(false)
@@ -2125,6 +2128,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
     { key: 'routeManagement', label: 'Route Management', description: 'Delivery routes, route assignments', icon: MapPin },
     { key: 'dataImport', label: 'Data Import', description: 'Import products, customers, invoices from CSV/Excel', icon: Download },
     { key: 'backup', label: 'Backup', description: 'Data backup and restore functionality', icon: Database },
+    { key: 'localBackupAgent', label: 'Local PC backup', description: 'Scheduled backup to a paired PC. Off until enabled.', icon: HardDrive },
     { key: 'salesLedger', label: 'Sales Ledger', description: 'Sales ledger and transaction history', icon: BookOpen },
     { key: 'priceList', label: 'Price List', description: 'Price list management and bulk pricing', icon: List }
   ]
@@ -2164,7 +2168,8 @@ const TenantFeaturesTab = ({ tenantId }) => {
         dataImport: false,
         backup: false,
         salesLedger: false,
-        priceList: false
+        priceList: false,
+        localBackupAgent: false
       }
       
       // Set enabled features to true
@@ -2182,7 +2187,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
       if (!hasAnyEnabled && backendFeatures.length === 0) {
         // New tenant - enable all features by default
         Object.keys(featuresObj).forEach(key => {
-          featuresObj[key] = true
+          if (key !== 'localBackupAgent') featuresObj[key] = true
         })
       }
       

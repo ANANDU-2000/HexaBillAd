@@ -7,3 +7,4 @@ global using HexaBill.Api.Modules.Sales;
 global using HexaBill.Api.Modules.Returns;
 global using HexaBill.Api.Modules.Products;
 global using HexaBill.Api.Modules.Tenants;
+global using HexaBill.Api.Modules.SuperAdmin;
