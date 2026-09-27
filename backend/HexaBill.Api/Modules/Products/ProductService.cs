@@ -913,7 +913,20 @@ namespace HexaBill.Api.Modules.Products
         /// <summary>Recompute stock from inventory movements. Stock = SUM(ChangeQty) per product. Run to fix drift.</summary>
         public async Task<int> RecomputeStockFromMovementsAsync(int tenantId)
         {
-            var updated = await _context.Database.ExecuteSqlInterpolatedAsync($@"
+            if (_context.Database.IsSqlite())
+            {
+                return await _context.Database.ExecuteSqlInterpolatedAsync($@"
+                    UPDATE ""Products""
+                    SET ""StockQty"" = COALESCE((
+                        SELECT SUM(it.""ChangeQty"") FROM ""InventoryTransactions"" it
+                        WHERE it.""ProductId"" = ""Products"".""Id""
+                          AND (it.""TenantId"" = ""Products"".""TenantId"" OR (it.""TenantId"" IS NULL AND ""Products"".""TenantId"" IS NULL))
+                    ), 0),
+                    ""UpdatedAt"" = datetime('now')
+                    WHERE ""TenantId"" = {tenantId}");
+            }
+
+            return await _context.Database.ExecuteSqlInterpolatedAsync($@"
                 UPDATE ""Products"" p
                 SET ""StockQty"" = COALESCE((
                     SELECT SUM(it.""ChangeQty"") FROM ""InventoryTransactions"" it
@@ -921,7 +934,6 @@ namespace HexaBill.Api.Modules.Products
                 ), 0),
                 ""UpdatedAt"" = (now() AT TIME ZONE 'utc')
                 WHERE p.""TenantId"" = {tenantId}");
-            return updated;
         }
 
         public async Task<int> AutoFillMissingBarcodesAsync(int tenantId)
