@@ -75,6 +75,7 @@ namespace HexaBill.Api.Data
         }
 
         public DbSet<Tenant> Tenants { get; set; }
+        public DbSet<TenantVatBasisHistory> TenantVatBasisHistory { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<TenantInvite> TenantInvites { get; set; }
         public DbSet<SupportSession> SupportSessions { get; set; }
@@ -150,6 +151,11 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Country).IsRequired().HasMaxLength(10).HasDefaultValue("AE");
                 entity.Property(e => e.Currency).IsRequired().HasMaxLength(10).HasDefaultValue("AED");
                 entity.Property(e => e.Status).HasConversion<string>().HasDefaultValue(TenantStatus.Active);
+                entity.Property(e => e.VatCalculationBasis)
+                    .HasConversion<string>()
+                    .HasMaxLength(20)
+                    .HasDefaultValue(VatCalculationBasis.SalesBased)
+                    .IsRequired();
                 entity.Property(e => e.CreatedAt).IsRequired();
                 entity.Property(e => e.Subdomain).IsRequired().HasMaxLength(30);
                 entity.HasIndex(e => e.Subdomain).IsUnique();
@@ -1014,6 +1020,17 @@ namespace HexaBill.Api.Data
                     .IsUnique()
                     .HasFilter("\"IsDeleted\" = false");
                 entity.HasIndex(e => e.TenantId);
+            });
+
+            modelBuilder.Entity<TenantVatBasisHistory>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Basis).HasConversion<string>().HasMaxLength(20).IsRequired();
+                entity.Property(e => e.EffectiveFrom).IsRequired();
+                entity.Property(e => e.CreatedAt).IsRequired();
+                entity.HasIndex(e => new { e.TenantId, e.EffectiveFrom });
+                entity.HasOne<Tenant>().WithMany().HasForeignKey(e => e.TenantId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne<User>().WithMany().HasForeignKey(e => e.SetByUserId).OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<TenantInvite>(entity =>

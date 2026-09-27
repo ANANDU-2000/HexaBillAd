@@ -53,6 +53,8 @@ namespace HexaBill.Api.Models
         public string? LogoPath { get; set; }
         
         public TenantStatus Status { get; set; } = TenantStatus.Active;
+
+        public VatCalculationBasis VatCalculationBasis { get; set; } = VatCalculationBasis.SalesBased;
         
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
@@ -70,6 +72,13 @@ namespace HexaBill.Api.Models
         public virtual ICollection<User> Users { get; set; } = new List<User>();
         public virtual ICollection<Setting> Settings { get; set; } = new List<Setting>();
         public virtual ICollection<Branch> Branches { get; set; } = new List<Branch>();
+    }
+
+    public enum VatCalculationBasis
+    {
+        SalesBased = 0,
+        ProfitBased = 1,
+        Disabled = 2
     }
 
     public enum TenantStatus

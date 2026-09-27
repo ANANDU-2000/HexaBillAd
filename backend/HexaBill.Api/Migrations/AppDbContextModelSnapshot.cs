@@ -3009,6 +3009,13 @@ namespace HexaBill.Api.Migrations
                     b.Property<DateTime?>("TrialEndDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("VatCalculationBasis")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("SalesBased");
+
                     b.Property<string>("VatNumber")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
@@ -3023,6 +3030,38 @@ namespace HexaBill.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Tenants");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.TenantVatBasisHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("EffectiveFrom")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SetByUserId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TenantId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SetByUserId");
+
+                    b.HasIndex("TenantId", "EffectiveFrom");
+
+                    b.ToTable("TenantVatBasisHistory");
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.User", b =>
@@ -4222,6 +4261,21 @@ namespace HexaBill.Api.Migrations
             modelBuilder.Entity("HexaBill.Api.Models.SupplierCategory", b =>
                 {
                     b.Navigation("Suppliers");
+                });
+
+            modelBuilder.Entity("HexaBill.Api.Models.TenantVatBasisHistory", b =>
+                {
+                    b.HasOne("HexaBill.Api.Models.Tenant", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("HexaBill.Api.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("SetByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("HexaBill.Api.Models.Tenant", b =>
