@@ -6,7 +6,7 @@ import {
   Search,
   Eye,
   History,
-  CircleAlert
+  AlertCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDebounce } from '../../hooks/useDebounce'
@@ -88,7 +88,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
       </div>
       {deleted && (
         <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-          <CircleAlert className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
+          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           Recovery unavailable.
         </p>
       )}
