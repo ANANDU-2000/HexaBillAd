@@ -4,6 +4,9 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 static-36 FH1 5VP | local | WIP | FH1 | owner | 5 VPs | 36 static routes ×5 | non-blank shells | ok=180 fail=0 warn=57 | Desktop/HexaBill_Backups/field-edge-static36-fh1-5vp-20261004 | tested |
+| 2026-10-04 | §10 static-36 owner×4 | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 36 static routes field-edge | non-blank shells | ok=144 fail=0 warn=36 | Desktop/HexaBill_Backups/field-edge-static36-owner-4t-20261004 | tested |
+| 2026-10-04 | §10 static-36 staff×4 | local | WIP | FH1/FH2/GH/ZY | staff | 360 | 36 static routes field-edge | non-blank shells | ok=144 fail=0 warn=36 | Desktop/HexaBill_Backups/field-edge-static36-4t-20261004 | tested |
 | 2026-10-04 | Browser print live | local Vite+API | WIP | FH1 | owner | 1366 | Billing History → Preview → Print Options + API A4 PDF | modal + PDF bytes | sale 17; API PDF 119298; Print Options A4 selected | Desktop/HexaBill_Backups/browser-print-20261004 | tested |
 | 2026-10-04 | PG dump/restore COPY | local PG :5433 | WIP | n/a | n/a | n/a | pg_dump Fc → restore_copy → isolation retest | 67 tables + tests green | src=dst 67; isolation **8/8**; EF migrate-to-head **FAIL** (Customers 42P07) | Desktop/HexaBill_Backups/pg-rollback-20261004 | tested |
 | 2026-10-04 | PG isolation suite | local PG :5433 | WIP | A/B | — | — | `dotnet test --filter ~PostgreSql\|~Postgres` + `HEXABILL_TEST_POSTGRES` | 55 green | **Passed 55 / Failed 0** (~12s) on `hexabill_master_loop_test` | disposable DB only (not committed) | tested |

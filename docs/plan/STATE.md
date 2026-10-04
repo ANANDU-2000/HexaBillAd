@@ -145,6 +145,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice §10 static-36×4 owner+staff (PARTIAL)
+- **changed:** `phase7-field-edge-smoke.mjs` DEFAULT_PAGES → 36 static ROUTE-MANIFEST paths; multi-VP via `HEXABILL_VIEWPORTS`; dismiss notification overlay
+- **files:** phase7-field-edge-smoke.mjs, STATE.md, EVIDENCE.md, PHASE-TODO.md
+- **tests+evidence:** owner **ok=144** warn=36; staff **ok=144** warn=36 (@360); FH1 owner **ok=180** @5VP; Zayogya 8; coverage JSON `section10-coverage-20261004.json`
+- **NOT RUN / blocked:** full §10 field-by-field (Arabic/offline/RTL/…); static 5VP for FH2/GH/ZY; `git push`; Phases 9–11
+- **flags+rollback:** none
+- **next:** push branch; Phases 9–11 gated until you authorize
+
 ### 2026-10-04 — slice browser-print live (PARTIAL)
 - **changed:** `scripts/tier0-browser-print-evidence.mjs` — Billing History → Invoice Preview → Print Options (+ API A4 PDF)
 - **files:** scripts/tier0-browser-print-evidence.mjs, STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md
