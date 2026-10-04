@@ -145,6 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 5 Phase 7 skeletons (PARTIAL)
+- **changed:** Purchases/Suppliers/Expenses list loading → shared `ListSkeleton` (no blank spinner/white text-only cards)
+- **files:** PurchasesPage.jsx, SuppliersPage.jsx, ExpensesPage.jsx, STATE.md
+- **tests+evidence:** BottomNav already Home/Sale/Ledger/More; Zayogya 3 PASS earlier; shell 33 routes prior
+- **NOT RUN:** section-10 matrix 5 viewports × POS/ledger/purchases/suppliers/expenses/products
+- **flags+rollback:** none
+- **next:** continue Phase 7 page-by-page matrix; push branch when git auth available
 ### 2026-10-04 — slice 4 receipts/docs (PARTIAL)
 - **changed:** none product (existing ReceiptPreviewModal already has popup-denied → download message, PDF download+retry, preview without remint storm)
 - **files:** STATE.md only this slice

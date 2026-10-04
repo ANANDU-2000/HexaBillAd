@@ -8,6 +8,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
+import { ListSkeleton } from '../../components/mobile/index'
 import { readSuppliersStateFromParams, syncSuppliersSearchParams } from '../../utils/suppliersUrl'
 
 const PAGE_SIZE = 25
@@ -484,10 +485,8 @@ const SuppliersPage = () => {
 
       <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
         {loading ? (
-          <div className="p-3 space-y-2" aria-busy="true" aria-label="Loading suppliers">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-10 animate-pulse bg-neutral-100 rounded" />
-            ))}
+          <div className="p-3" aria-busy="true" aria-label="Loading suppliers">
+            <ListSkeleton count={6} />
           </div>
         ) : loadError ? (
           <div className="p-8 text-center">

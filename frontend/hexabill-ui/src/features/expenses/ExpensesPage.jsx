@@ -26,6 +26,7 @@ import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { LoadingButton } from '../../components/Loading'
 import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
+import { ListSkeleton } from '../../components/mobile/index'
 import { expensesAPI, reportsAPI } from '../../services/index'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
@@ -1638,15 +1639,19 @@ const ExpensesPage = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3 p-3">
               {displayExpenses.length === 0 ? (
+                loading && !listError ? (
+                  <div aria-busy="true" aria-label="Loading expenses">
+                    <ListSkeleton count={5} />
+                  </div>
+                ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {loading && displayExpenses.length === 0 && !listError
-                    ? 'Loading expenses…'
-                    : user && !isAdminOrOwner(user)
+                  {user && !isAdminOrOwner(user)
                     ? 'No expenses in your assigned branch(es) for this period.'
                     : listError
                     ? 'Unable to load expenses.'
                     : 'No expenses in this period.'}
                 </div>
+                )
               ) : (
                 displayExpenses.map((expense) => (
                   <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">

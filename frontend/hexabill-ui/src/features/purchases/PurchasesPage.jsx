@@ -8,6 +8,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
 import { localDateString } from '../../utils/dateFormat'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
+import { ListSkeleton } from '../../components/mobile/index'
 import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-11 text-base md:min-h-9 md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
@@ -1275,8 +1276,8 @@ const PurchasesPage = () => {
             </div>
           </div>
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+            <div className="p-3" aria-busy="true" aria-label="Loading purchases">
+              <ListSkeleton count={6} />
             </div>
           ) : (
             <>
