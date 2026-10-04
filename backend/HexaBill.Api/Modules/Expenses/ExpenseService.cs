@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
+using HexaBill.Api.Modules.DailyClose;
 
 namespace HexaBill.Api.Modules.Expenses
 {
@@ -399,6 +400,8 @@ namespace HexaBill.Api.Modules.Expenses
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, request.Date, request.BranchId);
+
                     if (staffAllowedBranchIds != null)
                     {
                         if (staffAllowedBranchIds.Count == 0)
@@ -565,6 +568,11 @@ namespace HexaBill.Api.Modules.Expenses
                         await transaction.RollbackAsync();
                         return null;
                     }
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, new[]
+                    {
+                        (expense.Date, expense.BranchId),
+                        (request.Date, request.BranchId)
+                    });
                     if (staffAllowedBranchIds != null)
                     {
                         if (staffAllowedBranchIds.Count == 0) return null;
@@ -712,6 +720,8 @@ namespace HexaBill.Api.Modules.Expenses
                         return false;
                     }
 
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, expense.Date, expense.BranchId);
+
                     if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, expense.Date))
                         throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot delete transactions in a locked period.");
 
@@ -857,6 +867,11 @@ namespace HexaBill.Api.Modules.Expenses
                         .Where(e => e.TenantId == tenantId && request.ExpenseIds.Contains(e.Id))
                         .Include(e => e.Category)
                         .ToListAsync();
+
+                    await DailyClosePostingGuard.EnsureOpenAsync(
+                        _context,
+                        tenantId,
+                        expenses.Select(expense => (expense.Date, expense.BranchId)));
 
                     foreach (var expense in expenses)
                     {

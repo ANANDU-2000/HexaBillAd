@@ -6,6 +6,7 @@ Date: 2024
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Modules.Expenses;
+using HexaBill.Api.Modules.DailyClose;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using Microsoft.EntityFrameworkCore;
@@ -827,6 +828,7 @@ namespace HexaBill.Api.Modules.Expenses
                 }
 
                 var tenantId = CurrentTenantId;
+                await using var transaction = await _context.Database.BeginTransactionAsync();
                 var expense = await _context.Expenses
                     .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId);
                 
@@ -839,17 +841,23 @@ namespace HexaBill.Api.Modules.Expenses
                     });
                 }
 
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, expense.Date, expense.BranchId);
                 expense.Status = ExpenseStatus.Approved;
                 expense.ApprovedBy = userId;
                 expense.ApprovedAt = DateTime.UtcNow;
                 expense.RejectionReason = null;
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
                     Message = "Expense approved successfully"
                 });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("business day is closed", StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -879,6 +887,7 @@ namespace HexaBill.Api.Modules.Expenses
                 }
 
                 var tenantId = CurrentTenantId;
+                await using var transaction = await _context.Database.BeginTransactionAsync();
                 var expense = await _context.Expenses
                     .FirstOrDefaultAsync(e => e.Id == id && e.TenantId == tenantId);
                 
@@ -891,17 +900,23 @@ namespace HexaBill.Api.Modules.Expenses
                     });
                 }
 
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, expense.Date, expense.BranchId);
                 expense.Status = ExpenseStatus.Rejected;
                 expense.ApprovedBy = userId;
                 expense.ApprovedAt = DateTime.UtcNow;
                 expense.RejectionReason = request.RejectionReason;
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
                     Message = "Expense rejected successfully"
                 });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("business day is closed", StringComparison.OrdinalIgnoreCase))
+            {
+                return Conflict(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -1085,4 +1100,3 @@ namespace HexaBill.Api.Modules.Expenses
         public bool? VatDefaultLocked { get; set; }
     }
 }
-

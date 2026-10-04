@@ -81,6 +81,78 @@ public class DailyClosePetrolJourneyTests
         Assert.Equal(200m, preview.ExpectedCash);
     }
 
+    [Fact]
+    public async Task PetrolCashExpense_OnClosedBusinessDay_IsRejected()
+    {
+        await using var db = await DatabaseAsync();
+        var businessDate = new DateTime(2026, 10, 4, 0, 0, 0, DateTimeKind.Utc);
+        var expenseService = new ExpenseService(db, new VatValidationStub().Object, NullLogger<ExpenseService>.Instance);
+        var existingExpense = await expenseService.CreateExpenseAsync(new CreateExpenseRequest
+        {
+            CategoryId = 1,
+            Amount = 75m,
+            Date = new DateTime(2026, 10, 4, 10, 30, 0, DateTimeKind.Utc),
+            Note = "Petrol before close",
+            WithVat = false,
+            PaidFrom = "Cash",
+            TaxType = "Petroleum"
+        }, userId: 1, tenantId: 10);
+        var close = new DailyCloseService(db, new TimeZoneService(), new AuditNoop(), new AlertNoop(), new SalesSchemaNoBranch());
+        await close.SaveCloseAsync(new SaveDailyCloseRequest
+        {
+            BusinessDate = businessDate,
+            OpeningCash = 200m,
+            CountedCash = 125m,
+            SubmitClose = true
+        }, 10, 1, canSubmitClose: true);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => expenseService.CreateExpenseAsync(new CreateExpenseRequest
+        {
+            CategoryId = 1,
+            Amount = 75m,
+            // 20:30 UTC is 00:30 GST on the following business date.
+            Date = new DateTime(2026, 10, 3, 20, 30, 0, DateTimeKind.Utc),
+            Note = "Petrol after close",
+            WithVat = false,
+            PaidFrom = "Cash",
+            TaxType = "Petroleum"
+        }, userId: 1, tenantId: 10));
+
+        Assert.Contains("business day is closed", ex.Message, StringComparison.OrdinalIgnoreCase);
+        var updateError = await Assert.ThrowsAsync<InvalidOperationException>(() => expenseService.UpdateExpenseAsync(existingExpense.Id, new CreateExpenseRequest
+        {
+            CategoryId = 1,
+            Amount = 100m,
+            Date = new DateTime(2026, 10, 4, 10, 30, 0, DateTimeKind.Utc),
+            Note = "Edited after close",
+            WithVat = false,
+            PaidFrom = "Cash",
+            TaxType = "Petroleum"
+        }, userId: 1, tenantId: 10));
+        Assert.Contains("business day is closed", updateError.Message, StringComparison.OrdinalIgnoreCase);
+
+        var deleteError = await Assert.ThrowsAsync<InvalidOperationException>(() => expenseService.DeleteExpenseAsync(existingExpense.Id, userId: 1, tenantId: 10));
+        Assert.Contains("business day is closed", deleteError.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(await db.Expenses.IgnoreQueryFilters().Where(e => e.TenantId == 10).ToListAsync());
+
+        await close.ReopenAsync(new ReopenDailyCloseRequest
+        {
+            BusinessDate = businessDate,
+            Reason = "Correct late expense"
+        }, 10, 1, canReopen: true);
+        var created = await expenseService.CreateExpenseAsync(new CreateExpenseRequest
+        {
+            CategoryId = 1,
+            Amount = 75m,
+            Date = new DateTime(2026, 10, 3, 20, 30, 0, DateTimeKind.Utc),
+            Note = "Petrol after reopen",
+            WithVat = false,
+            PaidFrom = "Cash",
+            TaxType = "Petroleum"
+        }, userId: 1, tenantId: 10);
+        Assert.Equal("Petrol after reopen", created.Note);
+    }
+
     private static async Task<AppDbContext> DatabaseAsync()
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=:memory:").Options);
