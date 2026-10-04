@@ -1,8 +1,9 @@
 # Tier 0 sign-off table (Master Loop)
 
 **As of:** 2026-10-04  
-**Code SHA:** `4ac380e` on `master-loop-2` (local; push pending GitHub git auth)  
-**Baseline main:** `7edb29b`
+**Code SHA:** `8b5c2b0+` on `master-loop-2` (local; **ahead of origin**; push pending GitHub git auth)  
+**Baseline main:** `7edb29b`  
+**Render live:** `39ffafb` (`autoDeploy=no`) · **Vercel prod SHA:** UNVERIFIED (API 403)
 
 | Gate | Status | Evidence |
 |---|---|---|

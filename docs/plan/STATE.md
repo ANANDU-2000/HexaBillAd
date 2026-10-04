@@ -121,9 +121,9 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 | Surface | SHA | Status |
 |---|---|---|
-| Vercel production | — | **UNVERIFIED** (not queried this session) |
-| Render backend | — | **UNVERIFIED** (not queried this session) |
-| GitHub `origin/main` | `6dc8d9c` | Verified local = remote |
+| Vercel production (`hexabill-ui`) | — | **UNVERIFIED** (project found `prj_GRooh8ebxo33R0uy5EspPoe5HmAo`; deployment list 403) |
+| Render backend (`HexaBill` / `srv-d68jpdvpm1nc7393q4d0`) | `39ffafb` | **VERIFIED** live; `autoDeploy=no`; older than local `master-loop-2` tip |
+| GitHub `origin/main` | `7edb29b` | Verified local = remote |
 
 ---
 
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice deploy SHA + restore copy + §10×4 (PARTIAL)
+- **changed:** field-edge multi-tenant; SQLite copy restore rehearsal; Render/Vercel read-only deploy check
+- **files:** phase7-field-edge-smoke.mjs, STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md, PHASE-TODO.md
+- **tests+evidence:** field-edge 4 tenants **ok=28 fail=0 warn=4**; sqlite restore copy **pass**; Render live `39ffafb` autoDeploy=no; Vercel deploy list 403; Zayogya 3 passed
+- **NOT RUN / blocked:** PG 44; `git push`; full §10; R2/agent zip restore; Phases 9–11
+- **flags+rollback:** none
+- **next:** push branch; disposable `HEXABILL_TEST_POSTGRES`
 
 ### 2026-10-04 — slice 8c params 5VP all tenants + ledger 44px (PARTIAL)
 - **changed:** CustomerLedgerPage primary/tool actions → min-h-[44px]; FH2/GH/ZY param 5VP matrix

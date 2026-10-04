@@ -27,7 +27,13 @@ const PAGES = [
   { id: 'customers', path: '/customers', expectSearch: true },
 ]
 
-function loadOwner (slug = 'frozenhub1') {
+const TENANT_FILTER = (process.env.HEXABILL_TENANTS || 'frozenhub1')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+const SLUG_PREFIX = { frozenhub1: 'fh1', frozenhub2: 'fh2', gulfharvest: 'gh', zayoga: 'zy' }
+
+function loadOwners () {
   const dirs = [
     path.join(process.env.USERPROFILE || '', 'OneDrive', 'Desktop', 'HexaBill_Backups'),
     path.join(process.env.USERPROFILE || '', 'Desktop', 'HexaBill_Backups'),
@@ -37,10 +43,13 @@ function loadOwner (slug = 'frozenhub1') {
     const files = fs.readdirSync(dir).filter((f) => f.startsWith('tier0-local-bootstrap-') && f.endsWith('.json')).sort()
     if (!files.length) continue
     const report = JSON.parse(fs.readFileSync(path.join(dir, files[files.length - 1]), 'utf8'))
-    const owner = (report.owners || []).find((o) => o.slug === slug)
-    if (owner) return owner
+    const owners = report.owners || []
+    if (!owners.length) continue
+    return TENANT_FILTER.length
+      ? owners.filter((o) => TENANT_FILTER.includes(o.slug))
+      : owners
   }
-  return null
+  return []
 }
 
 async function login (slug, email) {
@@ -75,103 +84,112 @@ async function login (slug, email) {
 
 async function main () {
   if (!PASS) throw new Error('Set HEXABILL_OWNER_PASSWORD')
-  const owner = loadOwner('frozenhub1')
-  if (!owner) throw new Error('No frozenhub1 owner')
+  const owners = loadOwners()
+  if (!owners.length) throw new Error('No bootstrap owners for selected tenants')
   fs.mkdirSync(path.join(OUT, 'screenshots'), { recursive: true })
 
-  const session = await login(owner.slug, owner.email)
   const browser = await chromium.launch({ headless: true })
-  const context = await browser.newContext({ viewport: { width: 360, height: 800 } })
-  const page = await context.newPage()
-  await page.goto(`${FE}/login`, { waitUntil: 'domcontentloaded' })
-  await page.evaluate(({ token, user, slug }) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    localStorage.setItem('hexabill_dev_tenant_host', `${slug}.localhost`)
-    localStorage.setItem('hexabill_dev_edge_secret', 'dev-local-edge-secret')
-  }, { token: session.token, user: session.user, slug: owner.slug })
+  const report = { at: new Date().toISOString(), out: OUT, tenants: [], cells: {} }
 
-  const report = { at: new Date().toISOString(), out: OUT, cells: {} }
-
-  for (const p of PAGES) {
-    const key = `fh1-owner-${p.id}-360-field-edge`
-    const file = path.join(OUT, 'screenshots', `${key}.png`)
-    const cell = { path: p.path, checks: {} }
+  for (const owner of owners) {
+    const prefix = SLUG_PREFIX[owner.slug] || owner.slug
+    let session
     try {
-      await page.goto(`${FE}${p.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-      await page.waitForTimeout(700)
-      const text = await page.locator('body').innerText().catch(() => '')
-      cell.checks.blank = text.trim().length < 20
-      cell.checks.hasBodyText = text.trim().length >= 20
-
-      const search = page.locator('input[type="search"], input[placeholder*="Search" i], input[placeholder*="search" i]').first()
-      cell.checks.searchPresent = (await search.count()) > 0
-      if (p.expectSearch && cell.checks.searchPresent) {
-        const visible = await search.isVisible().catch(() => false)
-        cell.checks.searchVisible = visible
-        if (visible) {
-          await search.fill('zzzz-no-match-hexabill')
-          await page.waitForTimeout(400)
-          cell.checks.searchTyped = true
-        } else {
-          // Mobile layouts may keep a desktop search in DOM but hidden — not a blank-page failure.
-          cell.checks.searchTyped = false
-        }
-      }
-
-      // Prefer clearly primary actions; skip tiny icon-only "New" chips under 40px tall when a better match exists.
-      const candidates = page.locator('button').filter({ hasText: /add |new |create|save|record|pay |close day/i })
-      const count = await candidates.count()
-      let best = null
-      for (let i = 0; i < Math.min(count, 8); i++) {
-        const btn = candidates.nth(i)
-        if (!(await btn.isVisible().catch(() => false))) continue
-        const box = await btn.boundingBox()
-        if (!box) continue
-        const label = (await btn.innerText().catch(() => '')).trim().replace(/\s+/g, ' ').slice(0, 40)
-        const score = box.height * box.width
-        if (!best || score > best.score) best = { box, label, score }
-      }
-      if (best) {
-        cell.checks.primaryFound = true
-        cell.checks.primaryMin44 = best.box.height >= 44 && best.box.width >= 44
-        cell.checks.primaryLabel = best.label
-      } else {
-        cell.checks.primaryFound = false
-        cell.checks.primaryMin44 = null
-      }
-
-      // Empty-ish form submit smoke: click Save/Create if visible and note validation text
-      const saveBtn = page.getByRole('button', { name: /save|create|submit/i }).first()
-      if (await saveBtn.count()) {
-        await saveBtn.click({ timeout: 2000 }).catch(() => {})
-        await page.waitForTimeout(300)
-        const after = await page.locator('body').innerText().catch(() => '')
-        cell.checks.validationOrStay = /required|invalid|enter|must|cannot|error|please/i.test(after) || page.url().includes(p.path)
-      }
-
-      await page.screenshot({ path: file, fullPage: false })
-      cell.bytes = fs.statSync(file).size
-      // Fail hard on blank shells; soft-warn under-44 CTAs / hidden search (recorded in checks).
-      const fail = cell.checks.blank || (p.expectSearch && !cell.checks.searchPresent)
-      cell.warn = cell.checks.primaryMin44 === false || (p.expectSearch && cell.checks.searchVisible === false)
-      cell.status = fail ? 'fail' : 'captured'
-      console.log(cell.status === 'captured' ? 'OK' : 'FAIL', key, JSON.stringify(cell.checks))
+      session = await login(owner.slug, owner.email)
     } catch (e) {
-      cell.status = 'fail'
-      cell.error = String(e.message || e)
-      console.error('FAIL', key, e.message || e)
+      report.tenants.push({ slug: owner.slug, status: 'login_fail', error: String(e.message || e) })
+      continue
     }
-    report.cells[key] = cell
+    report.tenants.push({ slug: owner.slug, status: 'ok' })
+
+    const context = await browser.newContext({ viewport: { width: 360, height: 800 } })
+    const page = await context.newPage()
+    await page.goto(`${FE}/login`, { waitUntil: 'domcontentloaded' })
+    await page.evaluate(({ token, user, slug }) => {
+      localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
+      localStorage.setItem('hexabill_dev_tenant_host', `${slug}.localhost`)
+      localStorage.setItem('hexabill_dev_edge_secret', 'dev-local-edge-secret')
+    }, { token: session.token, user: session.user, slug: owner.slug })
+
+    for (const p of PAGES) {
+      const key = `${prefix}-owner-${p.id}-360-field-edge`
+      const file = path.join(OUT, 'screenshots', `${key}.png`)
+      const cell = { path: p.path, slug: owner.slug, checks: {} }
+      try {
+        await page.goto(`${FE}${p.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+        await page.waitForTimeout(700)
+        const text = await page.locator('body').innerText().catch(() => '')
+        cell.checks.blank = text.trim().length < 20
+        cell.checks.hasBodyText = text.trim().length >= 20
+
+        const search = page.locator('input[type="search"], input[placeholder*="Search" i], input[placeholder*="search" i]').first()
+        cell.checks.searchPresent = (await search.count()) > 0
+        if (p.expectSearch && cell.checks.searchPresent) {
+          const visible = await search.isVisible().catch(() => false)
+          cell.checks.searchVisible = visible
+          if (visible) {
+            await search.fill('zzzz-no-match-hexabill')
+            await page.waitForTimeout(400)
+            cell.checks.searchTyped = true
+          } else {
+            cell.checks.searchTyped = false
+          }
+        }
+
+        const candidates = page.locator('button').filter({ hasText: /add |new |create|save|record|pay |close day/i })
+        const count = await candidates.count()
+        let best = null
+        for (let i = 0; i < Math.min(count, 8); i++) {
+          const btn = candidates.nth(i)
+          if (!(await btn.isVisible().catch(() => false))) continue
+          const box = await btn.boundingBox()
+          if (!box) continue
+          const label = (await btn.innerText().catch(() => '')).trim().replace(/\s+/g, ' ').slice(0, 40)
+          const score = box.height * box.width
+          if (!best || score > best.score) best = { box, label, score }
+        }
+        if (best) {
+          cell.checks.primaryFound = true
+          cell.checks.primaryMin44 = best.box.height >= 44 && best.box.width >= 44
+          cell.checks.primaryLabel = best.label
+        } else {
+          cell.checks.primaryFound = false
+          cell.checks.primaryMin44 = null
+        }
+
+        const saveBtn = page.getByRole('button', { name: /save|create|submit/i }).first()
+        if (await saveBtn.count()) {
+          await saveBtn.click({ timeout: 2000 }).catch(() => {})
+          await page.waitForTimeout(300)
+          const after = await page.locator('body').innerText().catch(() => '')
+          cell.checks.validationOrStay = /required|invalid|enter|must|cannot|error|please/i.test(after) || page.url().includes(p.path)
+        }
+
+        await page.screenshot({ path: file, fullPage: false })
+        cell.bytes = fs.statSync(file).size
+        const fail = cell.checks.blank || (p.expectSearch && !cell.checks.searchPresent)
+        cell.warn = cell.checks.primaryMin44 === false || (p.expectSearch && cell.checks.searchVisible === false)
+        cell.status = fail ? 'fail' : 'captured'
+        console.log(cell.status === 'captured' ? 'OK' : 'FAIL', key, JSON.stringify(cell.checks))
+      } catch (e) {
+        cell.status = 'fail'
+        cell.error = String(e.message || e)
+        console.error('FAIL', key, e.message || e)
+      }
+      report.cells[key] = cell
+    }
+    await context.close()
   }
 
   await browser.close()
   const ok = Object.values(report.cells).filter((c) => c.status === 'captured').length
   const fail = Object.values(report.cells).filter((c) => c.status !== 'captured').length
-  report.summary = { ok, fail, total: ok + fail }
+  const warn = Object.values(report.cells).filter((c) => c.warn).length
+  report.summary = { ok, fail, warn, total: ok + fail }
   const reportPath = path.join(OUT, 'field-edge-report.json')
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2))
-  console.log('Wrote', reportPath, `ok=${ok} fail=${fail}`)
+  console.log('Wrote', reportPath, `ok=${ok} fail=${fail} warn=${warn}`)
   if (fail) process.exitCode = 1
 }
 

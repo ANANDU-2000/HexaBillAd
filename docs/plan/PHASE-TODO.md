@@ -14,8 +14,8 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | Backend Release + tests | **PASS** | 564 passed / 44 PG skipped / 0 failed |
 | Frontend lint/test/build | **PASS** | 0 lint errors; 74 tests; Vite build OK |
 | Zayogya regression | **PASS** | `ZayogyaRegressionSnapshotTests` |
-| PostgreSQL suite | **NOT RUN** | no HEXABILL_TEST_POSTGRES / docker |
-| Production deploy | **BLOCKED** | needs separate auth |
+| PostgreSQL suite | **NOT RUN** | no usable HEXABILL_TEST_POSTGRES password |
+| Production deploy | **BLOCKED** | needs separate auth; Render live `39ffafb` autoDeploy=no |
 
 ## Tier 0 remaining gates
 
@@ -26,8 +26,8 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | T0-S3 | Provisioning + redirect | **PASS** | unit + prior local |
 | T0-S4 | Legacy settings TenantId | **PASS** | SettingsService |
 | T0-S5 | Isolation audit | **PARTIAL** | ISOLATION-AUDIT.md; PG NOT RUN |
-| T0-S6 | Seven journeys re-run | **NOT RUN** | prior local PASS; API down this session |
-| T0-S7 | Backup restore copy | **NOT RUN** | no staging copy |
+| T0-S6 | Seven journeys re-run | **PASS** | master-loop-2-journeys-20261004-105936 |
+| T0-S7 | Backup restore copy | **PARTIAL** | SQLite copy hash PASS; R2/agent zip NOT RUN |
 | T0-S8 | Sample TRN never blocks | **PASS** | prod samples allowed; Zayogya excluded |
 | T0-S9 | D5 profit VAT | **PASS** | Standard VAT + Estimate not for filing |
 | T0-13 | Push main | **PASS** | `6dc8d9c` on origin/main |

@@ -4,6 +4,10 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 field-edge ×4 | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 7 Phase-7 pages ×4 | non-blank shells | ok=28 fail=0 warn=4 | Desktop/HexaBill_Backups/field-edge-4tenants-20261004 | tested |
+| 2026-10-04 | SQLite restore copy | local | WIP | n/a | n/a | n/a | copy→backup→restore hash | identical SHA256 | pass (live db locked by API) | Desktop/HexaBill_Backups/sqlite-restore-rehearsal-* | tested |
+| 2026-10-04 | Render live SHA | prod | 39ffafb | n/a | n/a | n/a | read-only list_deploys | autoDeploy=no + SHA | live `39ffafb` | Render HexaBill srv-d68jpdvpm1nc7393q4d0 | tested |
+| 2026-10-04 | Vercel production SHA | prod | — | n/a | n/a | n/a | list_deployments hexabill-ui | production SHA | 403 forbidden | prj_GRooh8ebxo33R0uy5EspPoe5HmAo | blocked |
 | 2026-10-04 | Phase8 params 5VP | local | WIP | FH1 | owner | 5 VPs | 9 detail routes ×5 | shell loads | ok=45 fail=0 | Desktop/HexaBill_Backups/phase8-params-5vp-20261004 | tested |
 | 2026-10-04 | Phase8 params 5VP rest | local | WIP | FH2/GH/ZY | owner | 5 VPs | 9 detail routes ×3×5 | shell loads | ok=135 fail=0 | Desktop/HexaBill_Backups/phase8-params-5vp-20261004-rest | tested |
 | 2026-10-04 | Ledger CTA ≥44px | local | WIP | FH1 | owner | 360 | field-edge after touch-target bump | primaryMin44 | true (ok=7) | Desktop/HexaBill_Backups/field-edge-ledger-44 | tested |
