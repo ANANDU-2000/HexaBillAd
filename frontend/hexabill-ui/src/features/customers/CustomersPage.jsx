@@ -1608,7 +1608,7 @@ const CustomersPage = () => {
               })}
               state={{ returnTo: location.pathname + location.search }}
               onClick={() => setShowLedgerModal(false)}
-              className="inline-flex min-h-11 items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
+              className="inline-flex min-h-[44px] items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
             >
               <DollarSign className="h-4 w-4 mr-2" aria-hidden />
               Record payment
@@ -1617,7 +1617,7 @@ const CustomersPage = () => {
               to={buildCustomerLedgerHref({ customerId: selectedCustomer?.id })}
               state={{ returnTo: location.pathname + location.search }}
               onClick={() => setShowLedgerModal(false)}
-              className="inline-flex min-h-11 items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 md:min-h-9"
+              className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
             >
               <CreditCard className="h-4 w-4 mr-2" aria-hidden />
               Open Ledger
