@@ -109,7 +109,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
-| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; FH1 owner 6 pages × 5 VPs screenshots; other tenants/roles NOT RUN |
+| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
 | 8 Remaining routes matrix | **PARTIAL** | Shell check 25 routes×4 tenants; full 61×5 viewports NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 5b Phase 7 all-tenant owner viewports (PARTIAL)
+- **changed:** `phase7-capture-screens.mjs` multi-tenant login + loopback override (uses `HEXABILL_PHASE7_OUT`, not stale evidence dir)
+- **files:** scripts/phase7-capture-screens.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** FH1+FH2+GH+ZY owner × 6 pages × 5 VPs = **120 PNGs** (`phase7-matrix-20261004-111213/screenshots`); report `ok=90` for FH2/GH/ZY rerun + prior FH1 30; Zayogya 8 PASS earlier this session
+- **NOT RUN:** staff role matrix; full §10 field/edge per cell; interactive click-depth counts
+- **flags+rollback:** local override only
+- **next:** Phase 8 remaining routes from ROUTE-MANIFEST + platform monitoring fields
 
 ### 2026-10-04 — slice 5 Phase 7 matrix (PARTIAL)
 - **changed:** `ListSkeleton` on purchases/suppliers/expenses; Billing History no longer `bottomNav` (was hidden from More); loopback tenant override (`resolveDevTenantHeaders` + Vite proxy prefers `*.localhost` Original-Host)
