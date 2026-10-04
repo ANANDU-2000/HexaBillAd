@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, Edit, Mail, Phone, MapPin, DollarSign, Calendar, FileText, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
+import { ArrowLeft, Edit, Mail, Phone, MapPin, DollarSign, Calendar, FileText, TrendingUp, TrendingDown, RefreshCw, CreditCard } from 'lucide-react'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { formatCurrency, formatBalance } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { customersAPI } from '../../services/index'
@@ -10,6 +11,8 @@ import { localDateString } from '../../utils/dateFormat'
 const CustomerDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const returnTo = location.pathname + location.search
   const [customer, setCustomer] = useState(null)
   const [ledger, setLedger] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,8 +126,10 @@ const CustomerDetailPage = () => {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/customers')}
-            className="p-2 hover:bg-gray-100 rounded-md transition-colors"
+            type="button"
+            onClick={() => navigate(location.state?.returnTo || '/customers')}
+            className="p-2 hover:bg-gray-100 rounded-md transition-colors min-h-11 min-w-11"
+            aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -134,16 +139,33 @@ const CustomerDetailPage = () => {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => navigate(`/customers?edit=${customer.id}`)}
-            className="inline-flex items-center px-4 py-2 min-h-11 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          <Link
+            to={buildCustomerLedgerHref({ customerId: customer.id, tab: 'payments', openPayment: true })}
+            state={{ returnTo }}
+            className="inline-flex min-h-11 items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
           >
-            <Edit className="h-4 w-4 mr-2" />
+            <DollarSign className="h-4 w-4 mr-2 shrink-0" aria-hidden />
+            Record payment
+          </Link>
+          <Link
+            to={buildCustomerLedgerHref({ customerId: customer.id })}
+            state={{ returnTo }}
+            className="inline-flex min-h-11 items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 md:min-h-9"
+          >
+            <CreditCard className="h-4 w-4 mr-2 shrink-0" aria-hidden />
+            Open ledger
+          </Link>
+          <button
+            type="button"
+            onClick={() => navigate(`/customers?edit=${customer.id}`)}
+            className="inline-flex min-h-11 items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 md:min-h-9"
+          >
+            <Edit className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Edit
           </button>
           <Link
             to="/reports?tab=overdue"
-            className="inline-flex items-center px-4 py-2 min-h-11 border border-amber-200 rounded-md text-sm font-medium text-amber-900 bg-amber-50 hover:bg-amber-100"
+            className="inline-flex min-h-11 items-center rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 md:min-h-9"
           >
             Overdue report
           </Link>

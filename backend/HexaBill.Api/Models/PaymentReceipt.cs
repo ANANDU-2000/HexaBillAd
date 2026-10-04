@@ -19,6 +19,8 @@ namespace HexaBill.Api.Models
         public int GeneratedByUserId { get; set; }
         [MaxLength(500)]
         public string? PdfStoragePath { get; set; }
+        /// <summary>Versioned immutable document details; null for receipts created before snapshots.</summary>
+        public string? SnapshotJson { get; set; }
 
         public virtual Payment Payment { get; set; } = null!;
         public virtual User GeneratedByUser { get; set; } = null!;

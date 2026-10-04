@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import RouteContent from './RouteContent'
 import { useAuth } from '../hooks/useAuth'
 import {
   Settings,
@@ -31,11 +32,13 @@ const Layout = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    return localStorage.getItem('sidebar_collapsed') === 'true'
+    try { return localStorage.getItem('sidebar_collapsed') === 'true' }
+    catch { return false }
   })
   const [groupOpen, setGroupOpen] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('sidebar_groups') || '{}')
+      const saved = JSON.parse(localStorage.getItem('sidebar_groups') || '{}')
+      return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
     } catch {
       return {}
     }
@@ -71,7 +74,7 @@ const Layout = () => {
   const toggleSidebar = useCallback(() => {
     setIsSidebarCollapsed((prev) => {
       const newState = !prev
-      localStorage.setItem('sidebar_collapsed', String(newState))
+      try { localStorage.setItem('sidebar_collapsed', String(newState)) } catch { /* Keep the preference in memory. */ }
       return newState
     })
   }, [])
@@ -157,7 +160,8 @@ const Layout = () => {
   // CRITICAL: SystemAdmin should ONLY see tenant navigation if they are impersonating
   const userIsSystemAdmin = isSystemAdmin(user)
   const selectedTenantId = impersonatedTenantId
-  const selectedTenantName = localStorage.getItem('selected_tenant_name')
+  let selectedTenantName = null
+  try { selectedTenantName = localStorage.getItem('selected_tenant_name') } catch { /* Optional display label. */ }
 
   // If SystemAdmin but NOT impersonating, redirect to SuperAdmin dashboard
   if (userIsSystemAdmin && !selectedTenantId) {
@@ -172,7 +176,7 @@ const Layout = () => {
       await superAdminAPI.impersonateExit(tenantId || undefined, tenantName || undefined)
     } catch (_) { /* Audit logging failure should not block */ }
     stopImpersonation()
-    localStorage.removeItem('selected_tenant_name')
+    try { localStorage.removeItem('selected_tenant_name') } catch { /* Exit must remain usable. */ }
     navigate('/superadmin/dashboard')
   }
 
@@ -191,7 +195,7 @@ const Layout = () => {
     setGroupOpen((prev) => {
       const openNow = group.defaultOpen ? prev[group.id] !== false : prev[group.id] === true
       const next = { ...prev, [group.id]: !openNow }
-      localStorage.setItem('sidebar_groups', JSON.stringify(next))
+      try { localStorage.setItem('sidebar_groups', JSON.stringify(next)) } catch { /* Keep navigation usable without storage. */ }
       return next
     })
   }
@@ -214,6 +218,7 @@ const Layout = () => {
     '/salary-certificates': 'Salary Certificates',
     '/delivery-notes': 'Delivery Notes',
     '/reports': 'Reports',
+    '/daily-close': 'Daily close',
     '/vat-return': 'VAT Return',
     '/worksheet': 'Worksheet',
     '/branches': 'Branches & Routes',
@@ -559,7 +564,7 @@ const Layout = () => {
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
-              <Outlet />
+              <RouteContent />
             </div>
           </div>
         </main>

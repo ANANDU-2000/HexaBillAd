@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.SuperAdmin;
 using Stripe;
 using Stripe.Checkout;
 
@@ -361,7 +362,7 @@ namespace HexaBill.Api.Modules.Subscription
             var subscription = await GetTenantSubscriptionAsync(tenantId);
             if (subscription == null) return false;
 
-            return feature switch
+            var planAllowed = feature switch
             {
                 "advanced_reports" => subscription.Plan.HasAdvancedReports,
                 "api_access" => subscription.Plan.HasApiAccess,
@@ -370,6 +371,13 @@ namespace HexaBill.Api.Modules.Subscription
                 "custom_branding" => subscription.Plan.HasCustomBranding,
                 _ => false
             };
+            if (planAllowed) return true;
+
+            var featuresJson = await _context.Tenants.AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => t.FeaturesJson)
+                .FirstOrDefaultAsync();
+            return TenantFeatureFlags.IsEnabled(featuresJson, feature);
         }
 
         public async Task<SubscriptionLimitsDto> GetTenantLimitsAsync(int tenantId)

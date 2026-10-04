@@ -1,7 +1,5 @@
-import { useMemo } from 'react'
-
-const FREQ_KEY = 'hexabill_pos_product_freq'
-const LAST_KEY = 'hexabill_pos_last_billed'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { getPosDraftKey } from './usePosDraft.js'
 
 function readJson(key, fallback) {
   try {
@@ -13,23 +11,39 @@ function readJson(key, fallback) {
   }
 }
 
-export function recordProductBilled(productId) {
-  if (productId == null) return
-  const id = String(productId)
-  try {
-    const freq = readJson(FREQ_KEY, {})
-    freq[id] = (freq[id] || 0) + 1
-    localStorage.setItem(FREQ_KEY, JSON.stringify(freq))
-    const last = readJson(LAST_KEY, [])
-    const next = [id, ...last.filter((x) => x !== id)].slice(0, 30)
-    localStorage.setItem(LAST_KEY, JSON.stringify(next))
-  } catch { /* ignore */ }
+function readHistory(key) {
+  const data = key ? readJson(key, null) : null
+  if (data?.version !== 1 || data.scope !== key || !Array.isArray(data.entries)) return []
+  return data.entries.filter((entry) => Array.isArray(entry) && entry.length === 2 &&
+    typeof entry[0] === 'string' && /^[1-9]\d*$/.test(entry[0]) &&
+    Number.isSafeInteger(entry[1]) && entry[1] > 0).slice(0, 200)
 }
 
 /**
  * Client-only catalog: filter + Recent (session) + Frequent + Last billed + All.
  */
-export function useProductCatalog({ products, cart, searchTerm, pageSize = 10, page = 0 }) {
+export function useProductCatalog({ products, cart, searchTerm, pageSize = 10, page = 0,
+  tenantId, userId, readOnly = false }) {
+  const identityKey = getPosDraftKey(tenantId, userId)
+  const historyKey = identityKey ? `${identityKey}_product_history` : null
+  const currentScope = useRef({ historyKey, readOnly })
+  currentScope.current = { historyKey, readOnly }
+  const [historyUpdate, setHistoryUpdate] = useState(null)
+  const recordProductBilled = useCallback((productId) => {
+    if (!historyKey || readOnly || currentScope.current.readOnly ||
+      currentScope.current.historyKey !== historyKey) return
+    const id = String(productId)
+    if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id))) return
+    try {
+      const entries = readHistory(historyKey)
+      const count = entries.find(([entryId]) => entryId === id)?.[1] || 0
+      const next = [[id, Math.min(count + 1, Number.MAX_SAFE_INTEGER)],
+        ...entries.filter(([entryId]) => entryId !== id)].slice(0, 200)
+      localStorage.setItem(historyKey, JSON.stringify({ version: 1, scope: historyKey, entries: next }))
+      setHistoryUpdate({ key: historyKey, entries: next })
+    } catch { /* Storage can be unavailable; product selection still works. */ }
+  }, [historyKey, readOnly])
+
   return useMemo(() => {
     const term = (searchTerm || '').trim().toLowerCase()
     const filterOne = (p) => {
@@ -56,8 +70,9 @@ export function useProductCatalog({ products, cart, searchTerm, pageSize = 10, p
       if (p && filterOne(p)) recent.push(p)
     }
 
-    const freqMap = readJson(FREQ_KEY, {})
-    const frequent = Object.entries(freqMap)
+    const history = readOnly ? [] : historyUpdate?.key === historyKey
+      ? historyUpdate.entries : readHistory(historyKey)
+    const frequent = [...history]
       .sort((a, b) => b[1] - a[1])
       .map(([id]) => byId.get(id))
       .filter(Boolean)
@@ -65,7 +80,7 @@ export function useProductCatalog({ products, cart, searchTerm, pageSize = 10, p
       .filter((p) => !seen.has(String(p.id)))
       .slice(0, 20)
 
-    const lastIds = readJson(LAST_KEY, [])
+    const lastIds = history.map(([id]) => id)
     const lastBilled = lastIds
       .map((id) => byId.get(String(id)))
       .filter(Boolean)
@@ -110,6 +125,7 @@ export function useProductCatalog({ products, cart, searchTerm, pageSize = 10, p
       totalPages,
       start,
       categories,
+      recordProductBilled,
     }
-  }, [products, cart, searchTerm, pageSize, page])
+  }, [products, cart, searchTerm, pageSize, page, historyKey, readOnly, historyUpdate, recordProductBilled])
 }

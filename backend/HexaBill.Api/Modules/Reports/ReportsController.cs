@@ -804,12 +804,11 @@ namespace HexaBill.Api.Modules.Reports
             }
             catch (Exception ex)
             {
-                // PRODUCTION: Return empty summary instead of 500 so Dashboard keeps working
-                _logger.LogWarning($"[GetSummaryReport] Returning empty data after error: {ex.Message}");
-                return Ok(new ApiResponse<SummaryReportDto>
+                _logger.LogError(ex, "Unable to calculate the summary report");
+                return StatusCode(500, new ApiResponse<SummaryReportDto>
                 {
-                    Success = true,
-                    Data = new SummaryReportDto()
+                    Success = false,
+                    Message = "The summary could not be calculated. Please retry or contact support."
                 });
             }
         }

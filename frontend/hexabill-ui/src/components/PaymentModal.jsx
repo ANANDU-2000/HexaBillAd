@@ -1,11 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, Wallet, DollarSign, Calendar, FileText, AlertTriangle, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { paymentsAPI, salesAPI } from '../services'
+import { paymentsAPI, salesAPI, subscriptionAPI } from '../services'
 import ConfirmDangerModal from './ConfirmDangerModal'
 import { localDateString } from '../utils/dateFormat'
+import {
+  computeInvoiceSettlementShortfall,
+  TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS
+} from '../utils/salePaymentSettlement'
+import {
+  offerReceiptPreviewAfterPayment,
+  receiptOfferBlockedMessage
+} from '../utils/offerReceiptPreview'
+import { formatCurrency } from '../utils/currency'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
-const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess }) => {
+const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess, onReceiptPreview }) => {
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => formatCurrency(value, tenantCurrency)
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
   const [showConfirmation, setShowConfirmation] = useState(false) // Confirmation step
@@ -18,6 +30,38 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
     reference: '',
     paymentDate: localDateString(new Date())
   })
+  const [settlementAdjustmentsEnabled, setSettlementAdjustmentsEnabled] = useState(false)
+  const [applySettlementAdjustment, setApplySettlementAdjustment] = useState(false)
+  const [settlementAdjustmentReason, setSettlementAdjustmentReason] = useState('')
+
+  const outstandingAmount = Number(invoice?.outstandingAmount) || 0
+  const settlementShortfall = invoiceId && formData.mode === 'CASH'
+    ? computeInvoiceSettlementShortfall(outstandingAmount, formData.amount)
+    : 0
+
+  useEffect(() => {
+    if (!isOpen) {
+      setApplySettlementAdjustment(false)
+      setSettlementAdjustmentReason('')
+      setShowConfirmation(false)
+      return
+    }
+    let cancelled = false
+    subscriptionAPI.checkFeature(TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS)
+      .then((res) => {
+        if (!cancelled) setSettlementAdjustmentsEnabled(Boolean(res?.success && res?.data))
+      })
+      .catch(() => {
+        if (!cancelled) setSettlementAdjustmentsEnabled(false)
+      })
+    return () => { cancelled = true }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!settlementShortfall || !settlementAdjustmentsEnabled) {
+      setApplySettlementAdjustment(false)
+    }
+  }, [settlementShortfall, settlementAdjustmentsEnabled])
 
   useEffect(() => {
     if (isOpen && invoiceId) {
@@ -85,6 +129,17 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       return
     }
 
+    if (applySettlementAdjustment) {
+      if (!settlementAdjustmentReason?.trim() || settlementAdjustmentReason.trim().length < 3) {
+        toast.error('Enter a short reason for the settlement adjustment (at least 3 characters)')
+        return
+      }
+      if (settlementShortfall <= 0) {
+        toast.error('Settlement adjustment is not applicable for this amount')
+        return
+      }
+    }
+
     // CONFIRMATION STEP: Show confirmation dialog for payments (overpayment allowed — excess becomes customer credit)
     if (!showConfirmation) {
       setShowConfirmation(true)
@@ -134,6 +189,10 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         reference: formData.reference || null,
         paymentDate: formData.paymentDate ? new Date(formData.paymentDate).toISOString() : new Date().toISOString()
       }
+      if (applySettlementAdjustment && settlementShortfall > 0) {
+        paymentData.settlementAdjustmentAmount = settlementShortfall
+        paymentData.settlementAdjustmentReason = settlementAdjustmentReason.trim()
+      }
       
       console.log('Submitting payment:', paymentData, 'Idempotency:', idempotencyKey)
 
@@ -145,12 +204,23 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         const invoiceData = response?.data?.invoice
         const mode = paymentResult?.mode || formData.mode
         const amount = paymentResult?.amount || formData.amount
+        const adj = response?.data?.settlementAdjustment?.amount
+        const adjPart = adj > 0 ? ` + ${money(adj)} adjustment` : ''
         
         const statusMsg = invoiceData?.invoiceNo
           ? ` Invoice ${invoiceData.invoiceNo} status: ${invoiceData.status || invoiceData.paymentStatus || 'PENDING'}`
           : ''
-        toast.success(`Payment recorded: ${amount.toFixed(2)} AED (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
-        
+        toast.success(`Payment recorded: ${money(amount)} cash${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
+
+        if (typeof onReceiptPreview === 'function') {
+          offerReceiptPreviewAfterPayment(paymentResult, onReceiptPreview)
+        } else {
+          const blocked = receiptOfferBlockedMessage(paymentResult)
+          if (blocked) {
+            toast(blocked, { duration: 7000, id: 'payment-receipt-blocked' })
+          }
+        }
+
         onPaymentSuccess?.(response?.data || response)
         onClose()
         
@@ -259,15 +329,15 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Total Amount:</span>
-                <span className="font-medium">{invoice.totalAmount?.toFixed(2) || '0.00'} AED</span>
+                <span className="font-medium">{money(invoice.totalAmount)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Paid So Far:</span>
-                <span className="font-medium text-blue-600">{invoice.paidAmount?.toFixed(2) || '0.00'} AED</span>
+                <span className="font-medium text-blue-600">{money(invoice.paidAmount)}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t">
                 <span className="text-sm font-semibold text-gray-700">Outstanding:</span>
-                <span className="font-bold text-red-600">{invoice.outstandingAmount?.toFixed(2) || '0.00'} AED</span>
+                <span className="font-bold text-red-600">{money(invoice.outstandingAmount)}</span>
               </div>
             </div>
           </div>
@@ -295,13 +365,40 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
             />
             {invoice && (
               <p className="mt-1 text-xs text-gray-500">
-                Outstanding: {(Number(invoice.outstandingAmount) || 0).toFixed(2)} AED
-                {formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && (
+                Outstanding: {money(invoice.outstandingAmount)}
+                {formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && !settlementShortfall && (
                   <span className="block mt-1 text-amber-600 font-medium">
                     Excess will be added as customer credit
                   </span>
                 )}
               </p>
+            )}
+            {settlementAdjustmentsEnabled && settlementShortfall > 0 && (
+              <div className="mt-3 p-3 border border-amber-200 bg-amber-50 rounded-lg space-y-2">
+                <p className="text-sm text-amber-900">
+                  Cash is {money(settlementShortfall)} short of closing this invoice. You can record an authorized settlement adjustment (not counted as cash received).
+                </p>
+                <label className="flex items-start gap-2 text-sm text-amber-900 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={applySettlementAdjustment}
+                    onChange={(e) => setApplySettlementAdjustment(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span>Close invoice with authorized adjustment of {money(settlementShortfall)}</span>
+                </label>
+                {applySettlementAdjustment && (
+                  <textarea
+                    className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm min-h-[72px]"
+                    placeholder="Reason for adjustment (required)"
+                    value={settlementAdjustmentReason}
+                    onChange={(e) => setSettlementAdjustmentReason(e.target.value)}
+                    disabled={loading}
+                    maxLength={500}
+                  />
+                )}
+              </div>
             )}
           </div>
 
@@ -388,7 +485,10 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                     <span className="font-semibold">Confirm Payment</span>
                   </div>
                   <p className="text-sm text-yellow-700">
-                    You are about to record a payment of <strong>{formData.amount?.toFixed(2) || '0.00'} AED</strong>
+                    You are about to record <strong>{money(formData.amount)} cash received</strong>
+                    {applySettlementAdjustment && settlementShortfall > 0 && (
+                      <> plus <strong>{money(settlementShortfall)} authorized adjustment</strong> (applied {money((formData.amount || 0) + settlementShortfall)})</>
+                    )}
                     {invoice && <> for invoice <strong>{invoice.invoiceNo}</strong></>}.
                   </p>
                   <p className="text-sm text-yellow-700 mt-2">
@@ -397,7 +497,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   </p>
                   {invoice && formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && (
                     <p className="text-sm text-amber-700 mt-2 font-medium">
-                      This payment exceeds outstanding by {(formData.amount - (Number(invoice.outstandingAmount) || 0)).toFixed(2)} AED. The excess will be added as customer credit.
+                      This payment exceeds outstanding by {money(formData.amount - (Number(invoice.outstandingAmount) || 0))}. The excess will be added as customer credit.
                     </p>
                   )}
                   <p className="text-xs text-yellow-600 mt-2">
@@ -439,7 +539,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       onClose={() => setShowDuplicateWarning(false)}
       onConfirm={handleConfirmDuplicate}
       title="Possible Duplicate Payment"
-      message={`A payment of ${(formData.amount || 0).toFixed(2)} AED was already recorded for this customer today. Record another payment anyway?`}
+      message={`A payment of ${money(formData.amount)} was already recorded for this customer today. Record another payment anyway?`}
       confirmLabel="Yes, Record Another"
     />
   </>

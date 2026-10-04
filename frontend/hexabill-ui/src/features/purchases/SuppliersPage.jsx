@@ -8,6 +8,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import Modal from '../../components/Modal'
 import toast from 'react-hot-toast'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
+import { readSuppliersStateFromParams, syncSuppliersSearchParams } from '../../utils/suppliersUrl'
 
 const PAGE_SIZE = 25
 const fieldClass = 'w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500'
@@ -122,18 +123,24 @@ const SuppliersPage = () => {
   useEffect(() => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
-      const q = searchTerm.trim()
-      if (q) next.set('q', q)
-      else next.delete('q')
-      if (overdueOnly) next.set('overdue', '1')
-      else next.delete('overdue')
-      if (showDeactivated) next.set('inactive', '1')
-      else next.delete('inactive')
-      if (page > 1) next.set('page', String(page))
-      else next.delete('page')
+      syncSuppliersSearchParams(next, {
+        searchTerm,
+        overdueOnly,
+        showDeactivated,
+        page
+      })
       return next
     }, { replace: true })
   }, [searchTerm, overdueOnly, showDeactivated, page, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readSuppliersStateFromParams(searchParams)
+    skipPageReset.current = true
+    setSearchTerm((s) => (s === parsed.searchTerm ? s : parsed.searchTerm))
+    setOverdueOnly((o) => (o === parsed.overdueOnly ? o : parsed.overdueOnly))
+    setShowDeactivated((v) => (v === parsed.showDeactivated ? v : parsed.showDeactivated))
+    setPage((p) => (p === parsed.page ? p : parsed.page))
+  }, [searchParams])
 
   const filteredSuppliers = useMemo(() => {
     let list = suppliers

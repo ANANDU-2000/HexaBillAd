@@ -10,13 +10,15 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Modules.SuperAdmin;
 
 namespace HexaBill.Api.Modules.Payments
 {
     public interface IPaymentService
     {
         Task<bool> CheckDuplicatePaymentAsync(int tenantId, int customerId, decimal amount, DateTime paymentDate);
-        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null);
+        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null);
         Task<PaymentDto?> GetPaymentByIdAsync(int id, int tenantId);
         Task<CreatePaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null);
         Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId);
@@ -49,6 +51,36 @@ namespace HexaBill.Api.Modules.Payments
             _alertService = alertService;
         }
 
+        private async Task<bool> SettlementAdjustmentsEnabledAsync(int tenantId) =>
+            TenantFeatureFlags.IsEnabled(
+                await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(),
+                TenantFeatureFlags.SettlementAdjustments);
+
+        private async Task RefreshSalePaymentStateAsync(Sale sale, int tenantId, IEnumerable<Payment>? pending = null, IEnumerable<int>? omitPaymentIds = null)
+        {
+            var omit = omitPaymentIds?.ToHashSet();
+            var lines = await _context.Payments
+                .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
+                .Where(p => omit == null || !omit.Contains(p.Id))
+                .ToListAsync();
+            if (pending != null)
+            {
+                var pendingLines = pending
+                    .Where(p => p.SaleId == sale.Id && p.Status != PaymentStatus.VOID && p.Status != PaymentStatus.RETURNED)
+                    .ToList();
+                var pendingIds = pendingLines.Select(p => p.Id).ToHashSet();
+                lines = lines.Where(l => !pendingIds.Contains(l.Id)).ToList();
+                lines.AddRange(pendingLines);
+            }
+            var clearedCash = lines.Where(p => !p.IsSettlementAdjustment && p.Status == PaymentStatus.CLEARED).Sum(p => p.Amount);
+            var clearedAdj = lines.Where(p => p.IsSettlementAdjustment && p.Status == PaymentStatus.CLEARED).Sum(p => p.Amount);
+            var last = lines.Where(p => p.Status == PaymentStatus.CLEARED).OrderByDescending(p => p.PaymentDate).Select(p => (DateTime?)p.PaymentDate).FirstOrDefault();
+            var (paid, status, lastDate) = SalePaymentHelpers.ComputeSalePaymentStateFromClearedAndAdjustments(clearedCash, clearedAdj, sale.GrandTotal, last);
+            sale.PaidAmount = paid;
+            sale.PaymentStatus = status;
+            sale.LastPaymentDate = lastDate;
+        }
+
         public async Task<bool> CheckDuplicatePaymentAsync(int tenantId, int customerId, decimal amount, DateTime paymentDate)
         {
             var dayStart = paymentDate.Date;
@@ -63,8 +95,10 @@ namespace HexaBill.Api.Modules.Payments
             return exists;
         }
 
-        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null)
+        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null)
         {
+            if (page < 1 || pageSize < 1 || pageSize > 1000 || customerId < 0)
+                throw new ArgumentException("Use a valid page, customer and page size between 1 and 1000.");
             var query = _context.Payments
                 .Where(p => p.TenantId == tenantId) // CRITICAL: Multi-tenant filter
                 .Include(p => p.Sale)
@@ -74,16 +108,21 @@ namespace HexaBill.Api.Modules.Payments
 
             if (saleId.HasValue)
                 query = query.Where(p => p.SaleId == saleId.Value);
+            if (customerId.HasValue)
+                query = customerId.Value == 0 ? query.Where(p => p.CustomerId == null)
+                    : query.Where(p => p.CustomerId == customerId.Value);
 
             var totalCount = await query.CountAsync();
             var payments = await query
                 .OrderByDescending(p => p.PaymentDate)
+                .ThenByDescending(p => p.Id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(p => new PaymentDto
                 {
                     Id = p.Id,
                     SaleId = p.SaleId,
+                    SaleReturnId = p.SaleReturnId,
                     InvoiceNo = p.Sale != null ? p.Sale.InvoiceNo : null,
                     CustomerId = p.CustomerId,
                     CustomerName = p.Customer != null ? p.Customer.Name : null,
@@ -93,7 +132,9 @@ namespace HexaBill.Api.Modules.Payments
                     Status = p.Status.ToString(),
                     PaymentDate = p.PaymentDate,
                     CreatedBy = p.CreatedBy,
-                    CreatedAt = p.CreatedAt
+                    CreatedAt = p.CreatedAt,
+                    IsSettlementAdjustment = p.IsSettlementAdjustment,
+                    ParentPaymentId = p.ParentPaymentId
                 })
                 .ToListAsync();
 
@@ -122,6 +163,7 @@ namespace HexaBill.Api.Modules.Payments
             {
                 Id = payment.Id,
                 SaleId = payment.SaleId,
+                SaleReturnId = payment.SaleReturnId,
                 InvoiceNo = payment.Sale?.InvoiceNo,
                 CustomerId = payment.CustomerId,
                 CustomerName = payment.Customer?.Name,
@@ -131,15 +173,30 @@ namespace HexaBill.Api.Modules.Payments
                 Status = payment.Status.ToString(),
                 PaymentDate = payment.PaymentDate,
                 CreatedBy = payment.CreatedBy,
-                CreatedAt = payment.CreatedAt
+                CreatedAt = payment.CreatedAt,
+                IsSettlementAdjustment = payment.IsSettlementAdjustment,
+                ParentPaymentId = payment.ParentPaymentId
             };
         }
 
         public async Task<CreatePaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null)
         {
-            // Validate request
-            if (request.Amount <= 0)
+            var adjustmentAmount = Math.Round(request.SettlementAdjustmentAmount, 2, MidpointRounding.AwayFromZero);
+            if (request.Amount <= 0 && adjustmentAmount <= 0)
                 throw new ArgumentException("Payment amount must be greater than zero. Please enter a valid amount.");
+            if (adjustmentAmount < 0)
+                throw new ArgumentException("Settlement adjustment cannot be negative.");
+            if (adjustmentAmount > 0)
+            {
+                if (!await SettlementAdjustmentsEnabledAsync(tenantId))
+                    throw new ArgumentException("Settlement adjustments are not enabled for this workspace.");
+                if (!request.SaleId.HasValue)
+                    throw new ArgumentException("Settlement adjustments apply to invoice payments only.");
+                if (string.IsNullOrWhiteSpace(request.SettlementAdjustmentReason) || request.SettlementAdjustmentReason.Trim().Length < 3)
+                    throw new ArgumentException("A settlement adjustment requires a short reason (at least 3 characters).");
+                if (adjustmentAmount > SalePaymentHelpers.MaxExplicitSettlementAdjustmentAed)
+                    throw new ArgumentException($"Settlement adjustment cannot exceed {SalePaymentHelpers.MaxExplicitSettlementAdjustmentAed:F2} AED per payment.");
+            }
 
             // NOTE: CustomerId can be null for CASH sales (walk-in customers)
             // Only require CustomerId for invoice-linked payments
@@ -225,8 +282,16 @@ namespace HexaBill.Api.Modules.Payments
                         if (realOutstanding <= 0)
                             throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} is already fully paid. Total: {invoiceSale.GrandTotal:F2} AED, Paid: {actualPaidAmount:F2} AED. No more payments allowed.");
 
-                        if (request.Amount > realOutstanding + 0.01m)
-                            throw new ArgumentException($"Payment amount ({request.Amount:F2} AED) exceeds outstanding balance ({realOutstanding:F2} AED). Maximum allowed: {realOutstanding:F2} AED");
+                        var totalIncoming = request.Amount + adjustmentAmount;
+                        if (totalIncoming > realOutstanding + 0.01m)
+                            throw new ArgumentException($"Cash plus adjustment ({totalIncoming:F2} AED) exceeds outstanding balance ({realOutstanding:F2} AED).");
+
+                        if (adjustmentAmount > 0)
+                        {
+                            var expectedAdj = Math.Round(realOutstanding - request.Amount, 2, MidpointRounding.AwayFromZero);
+                            if (Math.Abs(adjustmentAmount - expectedAdj) > 0.01m)
+                                throw new ArgumentException($"Settlement adjustment must equal the remaining shortfall ({expectedAdj:F2} AED) after cash received.");
+                        }
 
                         var recentDuplicatePayment = await _context.Payments
                             .Where(p => p.SaleId == request.SaleId.Value && p.Amount == request.Amount && p.TenantId == tenantId
@@ -235,7 +300,13 @@ namespace HexaBill.Api.Modules.Payments
                         if (recentDuplicatePayment != null)
                             throw new ArgumentException($"A payment of {request.Amount:F2} AED was already recorded for invoice {invoiceSale.InvoiceNo} just now. Please refresh and verify before trying again.");
 
-                        var validationResult = await _validationService.ValidatePaymentAmountAsync(request.SaleId, request.CustomerId, request.Amount);
+                        var validationResult = await _validationService.ValidatePaymentAmountAsync(request.SaleId, request.CustomerId, request.Amount, tenantId);
+                        if (!validationResult.IsValid)
+                            throw new ArgumentException(string.Join(" ", validationResult.Errors));
+                    }
+                    else if (request.CustomerId.HasValue)
+                    {
+                        var validationResult = await _validationService.ValidatePaymentAmountAsync(null, request.CustomerId, request.Amount, tenantId);
                         if (!validationResult.IsValid)
                             throw new ArgumentException(string.Join(" ", validationResult.Errors));
                     }
@@ -262,18 +333,35 @@ namespace HexaBill.Api.Modules.Payments
                         UpdatedAt = paymentDate
                     };
                     _context.Payments.Add(payment);
+                    Payment? adjustmentPayment = null;
+                    if (adjustmentAmount > 0 && request.SaleId.HasValue)
+                    {
+                        await _context.SaveChangesAsync();
+                        adjustmentPayment = new Payment
+                        {
+                            OwnerId = tenantId,
+                            TenantId = tenantId,
+                            SaleId = request.SaleId,
+                            CustomerId = request.CustomerId,
+                            Amount = adjustmentAmount,
+                            Mode = PaymentMode.CASH,
+                            Reference = request.SettlementAdjustmentReason!.Trim(),
+                            Status = PaymentStatus.CLEARED,
+                            IsSettlementAdjustment = true,
+                            ParentPaymentId = payment.Id,
+                            PaymentDate = paymentDate,
+                            CreatedBy = userId,
+                            CreatedAt = paymentDate,
+                            UpdatedAt = paymentDate
+                        };
+                        _context.Payments.Add(adjustmentPayment);
+                    }
 
                     if (request.SaleId.HasValue && invoiceSale != null)
                     {
-                        var clearedSum = await _context.Payments
-                            .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
-                            .SumAsync(p => p.Amount);
-                        var newPaidAmount = clearedSum + (paymentStatus == PaymentStatus.CLEARED ? request.Amount : 0);
-                        invoiceSale.PaidAmount = newPaidAmount;
-                        invoiceSale.LastPaymentDate = payment.PaymentDate;
-                        var shortfall = invoiceSale.GrandTotal - newPaidAmount;
-                        invoiceSale.PaymentStatus = shortfall <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
-                            : (newPaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending);
+                        var pending = new List<Payment> { payment };
+                        if (adjustmentPayment != null) pending.Add(adjustmentPayment);
+                        await RefreshSalePaymentStateAsync(invoiceSale, tenantId, pending);
                     }
 
                     Customer? updatedCustomer = null;
@@ -283,7 +371,8 @@ namespace HexaBill.Api.Modules.Payments
                             .FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value && c.TenantId == tenantId);
                         if (customer != null)
                         {
-                            customer.Balance = Math.Round(customer.Balance - request.Amount, 2, MidpointRounding.AwayFromZero);
+                            var balanceCredit = request.Amount + (adjustmentPayment != null ? adjustmentAmount : 0);
+                            customer.Balance = Math.Round(customer.Balance - balanceCredit, 2, MidpointRounding.AwayFromZero);
                             customer.LastActivity = DateTime.UtcNow;
                             customer.UpdatedAt = DateTime.UtcNow;
                             updatedCustomer = customer;
@@ -304,9 +393,11 @@ namespace HexaBill.Api.Modules.Payments
                             InvoiceId = request.SaleId,
                             CustomerId = request.CustomerId,
                             Amount = request.Amount,
+                            SettlementAdjustmentAmount = adjustmentAmount,
                             Mode = request.Mode,
                             Status = paymentStatus.ToString(),
-                            Reference = request.Reference
+                            Reference = request.Reference,
+                            SettlementAdjustmentReason = adjustmentAmount > 0 ? request.SettlementAdjustmentReason : null
                         }),
                         CreatedAt = DateTime.UtcNow
                     };
@@ -330,6 +421,9 @@ namespace HexaBill.Api.Modules.Payments
                     return new CreatePaymentResponse
                     {
                         Payment = await GetPaymentByIdAsync(paymentId, tenantId) ?? throw new InvalidOperationException("Failed to retrieve payment"),
+                        SettlementAdjustment = adjustmentPayment != null
+                            ? await GetPaymentByIdAsync(adjustmentPayment.Id, tenantId)
+                            : null,
                         Invoice = invoiceSale != null ? new InvoiceSummaryDto
                         {
                             Id = invoiceSale.Id,
@@ -391,6 +485,17 @@ namespace HexaBill.Api.Modules.Payments
                 payment.Status = status;
                 payment.UpdatedAt = DateTime.UtcNow;
 
+            if (payment.SaleId.HasValue)
+            {
+                var sale = await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
+                if (sale != null)
+                {
+                    IEnumerable<int>? omitIds = status is PaymentStatus.VOID or PaymentStatus.RETURNED ? new[] { paymentId } : null;
+                    IEnumerable<Payment>? pending = omitIds == null ? new[] { payment } : null;
+                    await RefreshSalePaymentStateAsync(sale, tenantId, pending, omitIds);
+                }
+            }
+
             // CRITICAL FIX: Handle status changes correctly
             // Since CreatePaymentAsync updates Sale.PaidAmount for ALL payment types (including PENDING),
             // but only updates Customer.Balance for CLEARED payments, we need to handle transitions carefully:
@@ -399,80 +504,25 @@ namespace HexaBill.Api.Modules.Payments
             // - CLEARED → VOID/RETURNED: Reverse both PaidAmount and Balance
             // - CLEARED → PENDING: Reverse Balance only (keep PaidAmount)
 
+            // Persist payment status and sale paid state before balance aggregates query the database.
+            await _context.SaveChangesAsync();
+
             if (oldStatus == PaymentStatus.PENDING && status == PaymentStatus.CLEARED)
             {
-                // Recalculate sale PaidAmount from cleared payments (this payment now counts)
-                if (payment.SaleId.HasValue)
-                {
-                    var sale = await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value);
-                    if (sale != null)
-                    {
-                        var clearedSum = await _context.Payments
-                            .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
-                            .SumAsync(p => (decimal?)p.Amount) ?? 0;
-                        clearedSum += payment.Amount;
-                        sale.PaidAmount = clearedSum;
-                        sale.LastPaymentDate = payment.PaymentDate;
-                        var sf = sale.GrandTotal - clearedSum;
-                        sale.PaymentStatus = sf <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
-                            : clearedSum > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                    }
-                }
                 if (payment.CustomerId.HasValue)
-                {
                     await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
-                }
             }
-            // If voiding/returning - recalc Sale.PaidAmount from CLEARED only (this payment excluded after save)
             else if ((status == PaymentStatus.VOID || status == PaymentStatus.RETURNED) && oldStatus != PaymentStatus.VOID)
             {
                 _logger.LogInformation("Payment status change {OldStatus} to {NewStatus} for payment {PaymentId}; reversing effects", oldStatus, status, paymentId);
-                if (payment.SaleId.HasValue)
-                {
-                    var sale = await _context.Sales
-                        .FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
-                    if (sale != null)
-                    {
-                        // Recalc from CLEARED only; exclude this payment (it is being set to VOID/RETURNED)
-                        var newPaidAmount = await _context.Payments
-                            .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
-                            .SumAsync(p => p.Amount);
-                        sale.PaidAmount = newPaidAmount;
-                        sale.LastPaymentDate = await _context.Payments
-                            .Where(p => p.SaleId == sale.Id && p.Status != PaymentStatus.VOID && p.Status != PaymentStatus.RETURNED && p.Id != paymentId)
-                            .OrderByDescending(p => p.PaymentDate)
-                            .Select(p => p.PaymentDate)
-                            .FirstOrDefaultAsync();
-                        var sf2 = sale.GrandTotal - sale.PaidAmount;
-                        sale.PaymentStatus = sf2 <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
-                            : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                    }
-                }
-
                 if (payment.CustomerId.HasValue)
-                {
                     await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
-                }
             }
-            // If changing from CLEARED to PENDING - reverse Customer.Balance and recalc Sale.PaidAmount (this payment no longer cleared)
             else if (oldStatus == PaymentStatus.CLEARED && status == PaymentStatus.PENDING)
             {
                 _logger.LogInformation("Payment status change CLEARED to PENDING for payment {PaymentId}", paymentId);
-                if (payment.SaleId.HasValue)
-                {
-                    var sale = await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
-                    if (sale != null)
-                    {
-                        sale.PaidAmount = Math.Max(0, sale.PaidAmount - payment.Amount);
-                        var sf3 = sale.GrandTotal - sale.PaidAmount;
-                        sale.PaymentStatus = sf3 <= SalePaymentHelpers.SettlementToleranceAed ? SalePaymentStatus.Paid
-                            : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
-                    }
-                }
                 if (payment.CustomerId.HasValue)
-                {
                     await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
-                }
             }
 
             // Create audit log
@@ -596,49 +646,43 @@ namespace HexaBill.Api.Modules.Payments
             var isNowCleared = newStatus == PaymentStatus.CLEARED;
             const decimal overpayEpsilon = 0.05m;
 
-            // If invoice changed, recalc old sale without this payment
             if (oldSaleId.HasValue && oldSaleId != payment.SaleId)
             {
                 var oldSale = await _context.Sales
                     .FirstOrDefaultAsync(s => s.Id == oldSaleId.Value && s.TenantId == tenantId);
                 if (oldSale != null)
                 {
-                    var oldPaid = await _context.Payments
-                        .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
-                        .SumAsync(p => p.Amount);
-                    oldSale.PaidAmount = oldPaid;
-                    var oldLastPay = await _context.Payments
-                        .Where(p => p.SaleId == oldSale.Id && p.TenantId == tenantId && p.Status != PaymentStatus.VOID && p.Id != paymentId)
-                        .OrderByDescending(p => p.PaymentDate)
-                        .Select(p => (DateTime?)p.PaymentDate)
-                        .FirstOrDefaultAsync();
-                    oldSale.LastPaymentDate = oldLastPay.HasValue ? oldLastPay.Value.ToUtcKind() : null;
-                    oldSale.PaymentStatus = oldSale.PaidAmount >= oldSale.GrandTotal ? SalePaymentStatus.Paid
-                        : oldSale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
+                    await RefreshSalePaymentStateAsync(oldSale, tenantId, omitPaymentIds: new[] { paymentId });
                     _logger.LogInformation("UpdatePayment: Old sale {InvoiceNo} PaidAmount now {PaidAmount}", oldSale.InvoiceNo, oldSale.PaidAmount);
                 }
             }
 
-            // Recalc target/current sale PaidAmount from CLEARED only
             if (payment.SaleId.HasValue)
             {
                 var sale = await _context.Sales
                     .FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
                 if (sale != null)
                 {
-                    var otherCleared = await _context.Payments
-                        .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
-                        .SumAsync(p => p.Amount);
-                    var proposedPaid = otherCleared + (isNowCleared ? newAmount : 0);
-                    if (isNowCleared && proposedPaid > sale.GrandTotal + overpayEpsilon)
+                    if (isNowCleared && !payment.IsSettlementAdjustment)
                     {
-                        throw new ArgumentException(
-                            $"Payment would overpay invoice {sale.InvoiceNo}. Invoice total: {sale.GrandTotal:F2}, other cleared payments: {otherCleared:F2}, this payment: {newAmount:F2}. Maximum allowed for this payment: {Math.Max(0, sale.GrandTotal - otherCleared):F2}.");
+                        var otherCash = await _context.Payments
+                            .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED
+                                && p.Id != paymentId && !p.IsSettlementAdjustment)
+                            .SumAsync(p => p.Amount);
+                        var otherAdj = await _context.Payments
+                            .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED
+                                && p.Id != paymentId && p.IsSettlementAdjustment)
+                            .SumAsync(p => p.Amount);
+                        var (proposedPaid, _, _) = SalePaymentHelpers.ComputeSalePaymentStateFromClearedAndAdjustments(
+                            otherCash + newAmount, otherAdj, sale.GrandTotal, null);
+                        if (proposedPaid > sale.GrandTotal + overpayEpsilon)
+                        {
+                            throw new ArgumentException(
+                                $"Payment would overpay invoice {sale.InvoiceNo}. Invoice total: {sale.GrandTotal:F2}, other cleared cash: {otherCash:F2}, this payment: {newAmount:F2}.");
+                        }
                     }
-                    sale.PaidAmount = proposedPaid;
-                    sale.LastPaymentDate = payment.PaymentDate.ToUtcKind();
-                    sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
-                        : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
+
+                    await RefreshSalePaymentStateAsync(sale, tenantId, pending: new[] { payment });
                     _logger.LogInformation("UpdatePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount}", sale.InvoiceNo, sale.PaidAmount);
                 }
             }
@@ -742,25 +786,35 @@ namespace HexaBill.Api.Modules.Payments
             var wasCleared = payment.Status == PaymentStatus.CLEARED;
             var wasNonVoid = payment.Status != PaymentStatus.VOID;
 
-            // Recalc Sale.PaidAmount from CLEARED only (excluding this payment which is being deleted)
+            var removingPaymentIds = new List<int> { paymentId };
+            if (!payment.IsSettlementAdjustment)
+            {
+                var pairedAdjustments = await _context.Payments
+                    .Where(p => p.TenantId == tenantId && p.IsSettlementAdjustment && p.ParentPaymentId == paymentId && p.Status != PaymentStatus.VOID)
+                    .ToListAsync();
+                if (pairedAdjustments.Count == 0 && payment.SaleId.HasValue)
+                {
+                    pairedAdjustments = await _context.Payments
+                        .Where(p => p.SaleId == payment.SaleId && p.TenantId == tenantId && p.IsSettlementAdjustment
+                            && p.Status != PaymentStatus.VOID
+                            && p.CreatedAt >= payment.CreatedAt.AddSeconds(-2)
+                            && p.CreatedAt <= payment.CreatedAt.AddSeconds(2))
+                        .ToListAsync();
+                }
+                foreach (var adj in pairedAdjustments)
+                {
+                    removingPaymentIds.Add(adj.Id);
+                    _context.Payments.Remove(adj);
+                }
+            }
+
             if (payment.SaleId.HasValue)
             {
                 var sale = await _context.Sales
                     .FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
                 if (sale != null)
                 {
-                    var newPaidAmount = await _context.Payments
-                        .Where(p => p.SaleId == sale.Id && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.Id != paymentId)
-                        .SumAsync(p => p.Amount);
-                    sale.PaidAmount = newPaidAmount;
-                    var delLastPay = await _context.Payments
-                        .Where(p => p.SaleId == sale.Id && p.Status != PaymentStatus.VOID && p.Id != paymentId)
-                        .OrderByDescending(p => p.PaymentDate)
-                        .Select(p => (DateTime?)p.PaymentDate)
-                        .FirstOrDefaultAsync();
-                    sale.LastPaymentDate = delLastPay.HasValue ? delLastPay.Value.ToUtcKind() : null;
-                    sale.PaymentStatus = sale.PaidAmount >= sale.GrandTotal ? SalePaymentStatus.Paid
-                        : sale.PaidAmount > 0 ? SalePaymentStatus.Partial : SalePaymentStatus.Pending;
+                    await RefreshSalePaymentStateAsync(sale, tenantId, omitPaymentIds: removingPaymentIds);
                     _logger.LogInformation("DeletePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount} Status {Status}", sale.InvoiceNo, sale.PaidAmount, sale.PaymentStatus);
                 }
             }
@@ -1126,6 +1180,7 @@ namespace HexaBill.Api.Modules.Payments
     {
         public int Id { get; set; }
         public int? SaleId { get; set; }
+        public int? SaleReturnId { get; set; }
         public string? InvoiceNo { get; set; }
         public int? CustomerId { get; set; }
         public string? CustomerName { get; set; }
@@ -1136,6 +1191,8 @@ namespace HexaBill.Api.Modules.Payments
         public DateTime PaymentDate { get; set; }
         public int CreatedBy { get; set; }
         public DateTime CreatedAt { get; set; }
+        public bool IsSettlementAdjustment { get; set; }
+        public int? ParentPaymentId { get; set; }
     }
 
     public class CreatePaymentRequest
@@ -1143,6 +1200,9 @@ namespace HexaBill.Api.Modules.Payments
         public int? SaleId { get; set; }
         public int? CustomerId { get; set; }
         public decimal Amount { get; set; }
+        /// <summary>Explicit authorized shortfall (not cash). Requires <see cref="SettlementAdjustmentReason"/> and tenant flag.</summary>
+        public decimal SettlementAdjustmentAmount { get; set; }
+        public string? SettlementAdjustmentReason { get; set; }
         public string Mode { get; set; } = string.Empty; // CASH, CHEQUE, ONLINE, CREDIT
         public string? Reference { get; set; }
         public DateTime? PaymentDate { get; set; }
@@ -1162,6 +1222,7 @@ namespace HexaBill.Api.Modules.Payments
     public class CreatePaymentResponse
     {
         public PaymentDto Payment { get; set; } = null!;
+        public PaymentDto? SettlementAdjustment { get; set; }
         public InvoiceSummaryDto? Invoice { get; set; }
         public CustomerSummaryDto? Customer { get; set; }
     }

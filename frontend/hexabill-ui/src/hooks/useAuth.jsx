@@ -1,31 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { authAPI } from '../services'
-import { clearAllCache } from '../services/api'
+import { resetRequestSession } from '../services/api'
+import { mergeValidatedUser, userFromToken } from '../auth/sessionUser'
 
 const AuthContext = createContext()
-
-const decodeJwtPayload = (token) => {
-  try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => `%${('00' + c.charCodeAt(0).toString(16)).slice(-2)}`).join('')))
-  } catch {
-    return null
-  }
-}
-
-const userFromToken = (token) => {
-  const decoded = decodeJwtPayload(token)
-  if (!decoded) return null
-  return {
-    id: Number(decoded.sub || decoded.UserId || 0),
-    role: decoded.role || decoded['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] || 'Owner',
-    name: decoded.name || 'Support session',
-    tenantId: decoded.tid ? Number(decoded.tid) : null,
-    supportSession: decoded.support_session ? Number(decoded.support_session) : null,
-    supportReadOnly: decoded.support_readonly === 'true'
-  }
-}
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
@@ -44,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
-    clearAllCache()
+    resetRequestSession()
     setUser(null)
     setImpersonatedTenantId(null)
   }
@@ -60,6 +38,7 @@ export const AuthProvider = ({ children }) => {
       userData = JSON.stringify(userFromToken(supportToken))
       localStorage.setItem('token', supportToken)
       localStorage.setItem('user', userData)
+      resetRequestSession()
       window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`)
     }
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
@@ -80,19 +59,7 @@ export const AuthProvider = ({ children }) => {
           .then(response => {
             if (response?.success && response?.data) {
               // Update user data if response contains user info
-              const updatedUser = {
-                id: response.data.UserId || parsedUser.id,
-                role: response.data.Role || parsedUser.role,
-                name: response.data.Name || parsedUser.name,
-                dashboardPermissions: response.data.dashboardPermissions || response.data.DashboardPermissions || parsedUser.dashboardPermissions,
-                pageAccess: response.data.pageAccess ?? response.data.PageAccess ?? parsedUser.pageAccess,
-                companyName: parsedUser.companyName,
-                assignedBranchIds: response.data.assignedBranchIds || response.data.AssignedBranchIds || parsedUser.assignedBranchIds || [],
-                assignedRouteIds: response.data.assignedRouteIds || response.data.AssignedRouteIds || parsedUser.assignedRouteIds || [],
-                mustChangePassword: response.data.mustChangePassword ?? parsedUser.mustChangePassword ?? false,
-                supportSession: parsedUser.supportSession ?? null,
-                supportReadOnly: parsedUser.supportReadOnly ?? false
-              }
+              const updatedUser = mergeValidatedUser(parsedUser, response.data, token)
               setUser(updatedUser)
               localStorage.setItem('user', JSON.stringify(updatedUser))
             } else {
@@ -125,21 +92,7 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login(credentials)
       if (response.success) {
         const token = response.data.token
-        let tenantId = response.data.tenantId ?? null
-        if (tenantId === undefined && token) {
-          try {
-            const base64Url = token.split('.')[1]
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-            const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-            }).join(''))
-            const decoded = JSON.parse(jsonPayload)
-            const tenantIdStr = decoded.tid || decoded.tenant_id
-            tenantId = tenantIdStr ? parseInt(tenantIdStr, 10) : null
-          } catch (e) {
-            console.warn('Failed to decode tenantId from token:', e)
-          }
-        }
+        const tenantId = response.data.tenantId ?? userFromToken(token)?.tenantId ?? null
 
         const userData = {
           id: response.data.userId,
@@ -156,6 +109,7 @@ export const AuthProvider = ({ children }) => {
 
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(userData))
+        resetRequestSession()
         setUser(userData)
 
         // Tenant context is established by the verified host and JWT. Never mirror it into browser storage.

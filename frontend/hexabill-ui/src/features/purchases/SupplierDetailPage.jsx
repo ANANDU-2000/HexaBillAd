@@ -11,6 +11,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import { localDateString } from '../../utils/dateFormat'
+import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
 
 const DISCOUNT_TYPES = ['Cash Discount', 'Free Products', 'Promotional Offer', 'Negotiated Discount']
 const tabs = [
@@ -45,7 +46,9 @@ const SupplierDetailPage = () => {
   const { user } = useAuth()
   const canPay = isAdminOrOwner(user)
   const supplierName = name ? decodeURIComponent(name) : ''
+  const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : null
   const backTo = location.state?.listQuery ? `/suppliers?${location.state.listQuery}` : '/suppliers'
+  const backHref = returnTo || backTo
 
   const [activeTab, setActiveTab] = useState('summary')
   const [balance, setBalance] = useState(null)
@@ -101,7 +104,7 @@ const SupplierDetailPage = () => {
       setPreFillPayment({ amount: urlAmount, reference: urlRef ? decodeURIComponent(urlRef) : '' })
       setShowRecordPayment(true)
     }
-  }, [canPay])
+  }, [canPay, searchParams])
 
   const loadData = async () => {
     if (!supplierName) return
@@ -257,6 +260,7 @@ const SupplierDetailPage = () => {
       })
       if (res?.success) {
         toast.success('Payment recorded. Bills and reports updated.')
+        showReturnToPrompt(navigate, returnTo)
         setShowRecordPayment(false)
         setShowOverpaymentConfirm(false)
         setPreFillPayment({ amount: '', reference: '' })
@@ -414,7 +418,7 @@ const SupplierDetailPage = () => {
   return (
     <div className={`w-full px-3 sm:px-4 py-3 pb-24 lg:pb-4 ${mobilePageShellClass}`}>
       <div className="flex items-center gap-2 mb-3">
-        <Link to={backTo} className="inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 text-neutral-700 hover:bg-neutral-100 rounded-md shrink-0" title="Back" aria-label="Back to suppliers">
+        <Link to={backHref} className="inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 text-neutral-700 hover:bg-neutral-100 rounded-md shrink-0" title={returnTo ? `Back to ${getReturnLabel(returnTo)}` : 'Back'} aria-label={returnTo ? `Back to ${getReturnLabel(returnTo)}` : 'Back to suppliers'}>
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="min-w-0 flex-1">

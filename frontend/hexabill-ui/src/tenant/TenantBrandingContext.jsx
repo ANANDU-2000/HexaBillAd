@@ -5,6 +5,7 @@ import { clearAllCache } from '../services/api'
 import { getApiBaseUrl, getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from './tenantHost'
 import { useAuth } from '../hooks/useAuth'
+import { getSetting } from '../utils/settingsKeys'
 
 const BrandingContext = createContext()
 
@@ -15,6 +16,7 @@ export const useBranding = () => {
       companyName: 'HexaBill',
       companyLogo: null,
       primaryColor: '#2563EB',
+      currency: 'AED',
       loading: false,
       refresh: () => {},
     }
@@ -30,6 +32,7 @@ export const BrandingProvider = ({ children }) => {
     companyLogo: null,
     primaryColor: '#2563EB',
     accentColor: '#10B981',
+    currency: 'AED',
     loading: true,
   })
 
@@ -95,6 +98,7 @@ export const BrandingProvider = ({ children }) => {
         const logoUrl = data.COMPANY_LOGO || data.LOGO_PUBLIC_URL || data.logoUrl || data.companyLogo || data.company_logo || null
         const primary = data.primaryColor || data.primary_color || '#2563EB'
         const accent = data.accentColor || data.accent_color || '#10B981'
+        const currency = getSetting(data, 'CURRENCY') || getSetting(data, 'defaultCurrency') || 'AED'
 
         if (!logoDisplay && logoUrl) {
           const apiBase = getApiBaseUrlNoSuffix()
@@ -108,6 +112,7 @@ export const BrandingProvider = ({ children }) => {
           companyLogo: logoDisplay,
           primaryColor: primary,
           accentColor: accent,
+          currency,
           loading: false,
         }))
 

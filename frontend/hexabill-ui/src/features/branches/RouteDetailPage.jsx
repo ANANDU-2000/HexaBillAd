@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { MapPin, ArrowLeft, Plus, Trash2, Edit, Printer, Users, UserPlus, Receipt, BarChart3, TrendingUp, DollarSign, FileText, Calendar, Navigation } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -18,6 +19,8 @@ const ROUTE_TABS = ['overview', 'customers', 'sales', 'expenses', 'staff', 'perf
 const RouteDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const ledgerReturnTo = location.pathname + location.search
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
@@ -645,7 +648,15 @@ const RouteDetailPage = () => {
                   {route.customers.map(rc => (
                     <tr key={rc.customerId || rc.id} className="hover:bg-neutral-50">
                       <td className="px-4 py-2 font-medium">{rc.customerName}</td>
-                      <td className="px-4 py-2 text-right"><button type="button" onClick={() => navigate(`/ledger?customerId=${rc.customerId}`)} className="text-primary-600 hover:underline text-sm">Ledger</button></td>
+                      <td className="px-4 py-2 text-right">
+                        <button
+                          type="button"
+                          onClick={() => navigate(buildCustomerLedgerHref({ customerId: rc.customerId }), { state: { returnTo: ledgerReturnTo } })}
+                          className="min-h-11 text-sm text-primary-600 hover:underline sm:min-h-0"
+                        >
+                          Ledger
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

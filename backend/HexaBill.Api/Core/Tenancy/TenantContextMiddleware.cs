@@ -32,6 +32,7 @@ namespace HexaBill.Api.Core.Tenancy
             // Skip for public endpoints
             var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
             if (path.StartsWith("/api/auth") ||
+                path.StartsWith("/api/health") ||
                 path.StartsWith("/health") ||
                 path == "/" ||
                 path.StartsWith("/swagger"))

@@ -703,6 +703,52 @@ export const customersAPI = {
   },
 }
 
+export const dailyCloseAPI = {
+  getPreview: async (businessDate, openingCash = 0, branchId = null) => {
+    const params = new URLSearchParams({ businessDate, openingCash: String(openingCash) })
+    if (branchId != null) params.set('branchId', String(branchId))
+    const response = await api.get(`/daily-close/preview?${params}`)
+    return response.data
+  },
+  getStatus: async (businessDate, branchId = null) => {
+    const params = new URLSearchParams({ businessDate })
+    if (branchId != null) params.set('branchId', String(branchId))
+    const response = await api.get(`/daily-close/status?${params}`)
+    return response.data
+  },
+  getHistory: async (from = null, to = null, branchId = null) => {
+    const params = new URLSearchParams()
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    if (branchId != null) params.set('branchId', String(branchId))
+    const qs = params.toString()
+    const response = await api.get(`/daily-close/history${qs ? `?${qs}` : ''}`)
+    return response.data
+  },
+  save: async (payload) => {
+    const response = await api.post('/daily-close', payload)
+    return response.data
+  },
+  reopen: async (payload) => {
+    const response = await api.post('/daily-close/reopen', payload)
+    return response.data
+  },
+  getMovements: async (businessDate, branchId = null) => {
+    const params = new URLSearchParams({ businessDate })
+    if (branchId != null) params.set('branchId', String(branchId))
+    const response = await api.get(`/daily-close/movements?${params}`)
+    return response.data
+  },
+  createMovement: async (payload) => {
+    const response = await api.post('/daily-close/movements', payload)
+    return response.data
+  },
+  deleteMovement: async (id) => {
+    const response = await api.delete(`/daily-close/movements/${id}`)
+    return response.data
+  }
+}
+
 export const paymentsAPI = {
   checkDuplicatePayment: async (customerId, amount, paymentDate) => {
     if (!customerId || !amount || !paymentDate) return { success: true, data: { hasDuplicate: false } }
@@ -783,6 +829,31 @@ export const paymentsAPI = {
   generateReceiptBatch: async (paymentIds) => {
     const response = await api.post('/payments/receipt/batch', { paymentIds })
     return response.data
+  },
+
+  getInvoiceReceiptPaymentIds: async (saleId) => {
+    const response = await api.get(`/payments/receipt/invoice/${saleId}/payment-ids`, { _bypassCache: true })
+    return response.data
+  },
+
+  getReceiptPdf: async (paymentIds, expectedDocumentFingerprint) => {
+    try {
+      const response = await api.post('/payments/receipt/pdf', { paymentIds, expectedDocumentFingerprint },
+        { responseType: 'blob', _bypassCache: true, _skipRetry: true })
+      if (!(response.data instanceof Blob) || response.data.size === 0 ||
+          !String(response.headers?.['content-type'] || response.data.type).includes('application/pdf')) {
+        throw new Error('Receipt PDF was not returned. Please reopen the preview and try again.')
+      }
+      return response.data
+    } catch (error) {
+      if (error?.response?.data instanceof Blob) {
+        try {
+          const body = JSON.parse(await error.response.data.text())
+          if (body.message) error.message = body.message
+        } catch { /* Keep the transport message when the response is not JSON. */ }
+      }
+      throw error
+    }
   },
 
   getReceiptByPayment: async (paymentId) => {
@@ -1932,6 +2003,15 @@ export const superAdminAPI = {
     return response.data
   },
 
+  /** SystemAdmin: set VAT profit-form basis with audited effective-dated history. */
+  updateTenantVatCalculationBasis: async (tenantId, { basis, effectiveFrom }) => {
+    const response = await api.put(`/superadmin/tenant/${tenantId}/vat-calculation-basis`, {
+      basis,
+      effectiveFrom: effectiveFrom || undefined
+    })
+    return response.data
+  },
+
   suspendTenant: async (id, reason) => {
     const response = await api.put(`/superadmin/tenant/${id}/suspend`, { reason })
     return response.data
@@ -2037,7 +2117,14 @@ export const superAdminAPI = {
               backup: 'backup',
               salesLedger: 'sales_ledger',
               priceList: 'price_list',
-              localBackupAgent: 'localBackupAgent'
+              localBackupAgent: 'localBackupAgent',
+              sharedLegalWorkspace: 'shared_legal_workspace',
+    receiptSnapshots: 'receipt_snapshots',
+              settlementAdjustments: 'settlement_adjustments',
+              dailyClose: 'daily_close',
+              saleCostSnapshots: 'sale_cost_snapshots',
+              purchaseCostSnapshots: 'purchase_cost_snapshots',
+              vatBasisEffectiveDating: 'vat_basis_effective_dating'
             }
             return keyMap[key] || key
           })

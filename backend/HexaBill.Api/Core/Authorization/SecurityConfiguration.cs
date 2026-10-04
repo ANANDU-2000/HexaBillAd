@@ -22,6 +22,9 @@ namespace HexaBill.Api.Core.Authorization
 {
     public static class SecurityConfiguration
     {
+        private static bool IsHttpIntegrationTestHost() =>
+            string.Equals(Environment.GetEnvironmentVariable("HEXABILL_HTTP_INTEGRATION_TEST"), "1", StringComparison.Ordinal);
+
         public static IServiceCollection AddSecurityServices(this IServiceCollection services, IConfiguration configuration)
         {
             // JWT Authentication with enhanced security
@@ -237,30 +240,32 @@ namespace HexaBill.Api.Core.Authorization
                 });
             });
 
-            // Built-in rate limiter
-            // Increased from 100 to 300 req/min to prevent 429 when multiple pages load branches/routes
-            services.AddRateLimiter(options =>
+            // Built-in rate limiter (disabled for isolated HTTP integration tests — shared test client IP hits 300/min)
+            if (!IsHttpIntegrationTestHost())
             {
-                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+                services.AddRateLimiter(options =>
                 {
-                    var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-                    return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
                     {
-                        PermitLimit = 300,
-                        Window = TimeSpan.FromMinutes(1)
+                        var clientIp = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                        return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 300,
+                            Window = TimeSpan.FromMinutes(1)
+                        });
                     });
-                });
-                options.OnRejected = async (context, cancellationToken) =>
-                {
-                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                    context.HttpContext.Response.ContentType = "application/json";
-                    await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new
+                    options.OnRejected = async (context, cancellationToken) =>
                     {
-                        success = false,
-                        message = "Rate limit exceeded. Please try again later."
-                    }), cancellationToken);
-                };
-            });
+                        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                        context.HttpContext.Response.ContentType = "application/json";
+                        await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(new
+                        {
+                            success = false,
+                            message = "Rate limit exceeded. Please try again later."
+                        }), cancellationToken);
+                    };
+                });
+            }
 
             return services;
         }
@@ -298,8 +303,8 @@ namespace HexaBill.Api.Core.Authorization
                 await next();
             });
 
-            // Rate limiting (ASP.NET Core built-in; no in-memory lock contention)
-            app.UseRateLimiter();
+            if (!IsHttpIntegrationTestHost())
+                app.UseRateLimiter();
 
             // Note: CORS is now called in Program.cs BEFORE UseSecurityMiddleware
             // This ensures CORS headers are set before authentication checks

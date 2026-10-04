@@ -192,6 +192,15 @@ const SuperAdminHealthPage = () => {
             <p className="text-sm text-neutral-600">
               {health.timestamp ? new Date(health.timestamp).toLocaleString() : '—'}
             </p>
+            <p className="text-sm text-neutral-500 mt-3">Deploy version</p>
+            <p className="font-mono text-sm bg-neutral-100 px-2 py-1 rounded truncate mt-1" title={health.deployVersion || 'Not reported by this instance'}>
+              {health.deployVersion || 'Not reported'}
+            </p>
+            {health.backendUrl && (
+              <p className="text-xs text-neutral-500 mt-2 truncate" title={health.backendUrl}>
+                API host: {health.backendUrl}
+              </p>
+            )}
           </div>
         </div>
       )}

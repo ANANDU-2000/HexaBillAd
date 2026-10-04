@@ -63,6 +63,75 @@ namespace HexaBill.Api.Modules.Sales
             #endif
         }
 
+        public Task<byte[]> GeneratePaymentReceiptPdfAsync(PaymentReceiptDetailDto receipt)
+        {
+            if (receipt == null || receipt.Invoices.Count == 0 || receipt.AmountReceived <= 0)
+                throw new ArgumentException("A valid receipt is required.");
+            var document = Document.Create(container => container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(18, Unit.Millimetre);
+                page.DefaultTextStyle(style => style.FontFamily(_englishFont).FontSize(10));
+                page.Header().Column(column =>
+                {
+                    column.Item().Text(receipt.CompanyName).Bold().FontSize(16);
+                    if (!string.IsNullOrWhiteSpace(receipt.CompanyNameAr))
+                        column.Item().AlignRight().Text(receipt.CompanyNameAr).FontFamily(_arabicFont);
+                    if (!string.IsNullOrWhiteSpace(receipt.CompanyAddress)) column.Item().Text(receipt.CompanyAddress);
+                    if (!string.IsNullOrWhiteSpace(receipt.CompanyPhone)) column.Item().Text(receipt.CompanyPhone);
+                    if (!string.IsNullOrWhiteSpace(receipt.CompanyTrn)) column.Item().Text($"TRN: {receipt.CompanyTrn}");
+                    column.Item().PaddingTop(12).Text("PAYMENT RECEIPT").Bold().FontSize(14);
+                    column.Item().Text("Proof of payment — not a tax invoice").FontSize(9);
+                    column.Item().Text($"Receipt: {receipt.ReceiptNumber}");
+                });
+                page.Content().PaddingTop(12).Column(column =>
+                {
+                    column.Item().Text($"Payment date: {receipt.ReceiptDate.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+                    if (receipt.ReceiptEndDate.HasValue && receipt.ReceiptEndDate.Value != receipt.ReceiptDate)
+                        column.Item().Text($"Payments through: {receipt.ReceiptEndDate.Value.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+                    column.Item().Text($"Received from: {receipt.ReceivedFrom}");
+                    if (!string.IsNullOrWhiteSpace(receipt.CustomerTrn)) column.Item().Text($"Customer TRN: {receipt.CustomerTrn}");
+                    column.Item().Text($"Method: {receipt.PaymentMethod}");
+                    if (!string.IsNullOrWhiteSpace(receipt.Reference)) column.Item().Text($"Reference: {receipt.Reference}");
+                    if (receipt.LegacyReconstruction)
+                        column.Item().PaddingTop(6).Text("Legacy receipt reconstructed from available records. Original company and invoice details were not saved.").FontSize(9);
+                    if (receipt.PaymentChangedSinceSnapshot)
+                        column.Item().PaddingTop(6).Text("Saved receipt copy. The payment was changed afterward; review the ledger for its current details.").FontSize(9);
+                    column.Item().PaddingTop(12).Table(table =>
+                    {
+                        table.ColumnsDefinition(cols => { cols.RelativeColumn(2); cols.RelativeColumn(); cols.RelativeColumn(); cols.RelativeColumn(); });
+                        table.Header(header =>
+                        {
+                            foreach (var title in new[] { "Invoice", "Date", "Invoice total", "Amount applied" })
+                                header.Cell().BorderBottom(1).Padding(5).Text(title).Bold();
+                        });
+                        foreach (var line in receipt.Invoices)
+                        {
+                            table.Cell().BorderBottom(0.5f).Padding(5).Text(line.InvoiceNo);
+                            table.Cell().BorderBottom(0.5f).Padding(5).Text($"{line.InvoiceDate.ToString("dd-MM-yyyy", System.Globalization.CultureInfo.InvariantCulture)}");
+                            table.Cell().BorderBottom(0.5f).Padding(5).AlignRight().Text($"{line.InvoiceTotal.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}");
+                            table.Cell().BorderBottom(0.5f).Padding(5).AlignRight().Text($"{line.AmountApplied.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}");
+                        }
+                    });
+                    column.Item().PaddingTop(12).AlignRight().Text($"CASH RECEIVED: {receipt.AmountReceived.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}").Bold().FontSize(13);
+                    if (receipt.SettlementAdjustmentAmount is > 0)
+                    {
+                        column.Item().AlignRight().Text($"Settlement adjustment: {receipt.SettlementAdjustmentAmount.Value.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}").FontSize(10);
+                        if (!string.IsNullOrWhiteSpace(receipt.SettlementAdjustmentReason))
+                            column.Item().AlignRight().Text($"Reason: {receipt.SettlementAdjustmentReason}").FontSize(9);
+                        column.Item().AlignRight().Text($"Total applied to invoice(s): {receipt.AmountPaid.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}").Bold().FontSize(11);
+                    }
+                    else if (receipt.AmountPaid > receipt.AmountReceived)
+                    {
+                        column.Item().AlignRight().Text($"Total applied: {receipt.AmountPaid.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {receipt.Currency}").FontSize(10);
+                    }
+                    if (!string.IsNullOrWhiteSpace(receipt.AmountInWords)) column.Item().PaddingTop(4).Text(receipt.AmountInWords).FontSize(9);
+                });
+                page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+            }));
+            return Task.FromResult(document.GeneratePdf());
+        }
+
         public async Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4", string? layout = null)
         {
             var formatNormalized = (format ?? "A4").Trim();
@@ -2297,6 +2366,8 @@ if (hasLogo)
                         page.Content().Column(column =>
                         {
                             column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "Profit & Loss Statement", $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}"));
+                            if (report.EstimatedCostLineCount > 0)
+                                column.Item().PaddingTop(8).Text($"Estimated costs: {report.EstimatedCostLineCount} invoice lines have no saved historical cost. Current product costs are used and may change.").FontSize(9).FontColor(Colors.Orange.Darken3);
                             column.Item().PaddingTop(8).PaddingBottom(5).Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(9).FontColor(Colors.Grey.Medium);
                             column.Item().PaddingTop(12).Table(table =>
                             {

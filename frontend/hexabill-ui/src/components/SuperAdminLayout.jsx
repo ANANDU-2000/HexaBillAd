@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import RouteContent from './RouteContent'
 import { useAuth } from '../hooks/useAuth'
 import {
   LayoutDashboard,
@@ -386,7 +387,7 @@ const SuperAdminLayout = () => {
         <main className="flex-1 pb-6 pt-14 lg:pt-24 min-w-0">
           <div className="py-1 sm:py-2 lg:py-6">
             <div className="w-full px-4 sm:px-6 lg:px-8">
-              <Outlet />
+          <RouteContent />
             </div>
           </div>
         </main>

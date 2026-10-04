@@ -43,7 +43,7 @@ namespace HexaBill.Api.Core.Infrastructure
             }
 
             // Bypass: Health, swagger, static
-            if (path.StartsWith("/health") || path.StartsWith("/swagger") || path == "/" || path.StartsWith("/uploads"))
+            if (path.StartsWith("/health") || path.StartsWith("/api/health") || path.StartsWith("/swagger") || path == "/" || path.StartsWith("/uploads"))
             {
                 await _next(context);
                 return;

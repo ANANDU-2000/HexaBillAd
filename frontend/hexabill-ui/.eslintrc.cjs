@@ -26,7 +26,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['*.cjs', '*.config.js', 'tailwind.config.js', 'postcss.config.cjs', 'vite.config.js'],
+      files: ['*.cjs', '*.config.js', 'tailwind.config.js', 'postcss.config.cjs', 'vite.config.js', 'middleware.js', 'tests/**/*.test.js'],
       env: { node: true },
     },
   ],

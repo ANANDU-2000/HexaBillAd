@@ -447,6 +447,13 @@ namespace HexaBill.Api.Models
 
     public class PaymentReceiptDetailDto
     {
+        public string Currency { get; set; } = "AED";
+        public string DocumentFingerprint { get; set; } = string.Empty;
+        public bool IsHistoricalSnapshot { get; set; }
+        public bool LegacyReconstruction { get; set; }
+        public bool PaymentChangedSinceSnapshot { get; set; }
+        public DateTime? SnapshotCapturedAt { get; set; }
+        public DateTime? ReceiptEndDate { get; set; }
         public string ReceiptNumber { get; set; } = string.Empty;
         public DateTime ReceiptDate { get; set; }
         public string CompanyName { get; set; } = string.Empty;
@@ -457,11 +464,16 @@ namespace HexaBill.Api.Models
         public string ReceivedFrom { get; set; } = string.Empty;
         public string? CustomerTrn { get; set; }
         public decimal AmountReceived { get; set; }
+        /// <summary>Cash physically received (same as AmountReceived for normal payments).</summary>
         public string AmountInWords { get; set; } = string.Empty;
         public string PaymentMethod { get; set; } = string.Empty;
         public string? Reference { get; set; }
+        /// <summary>Authorized settlement shortfall paired with this cash payment; not counted as cash collected.</summary>
+        public decimal? SettlementAdjustmentAmount { get; set; }
+        public string? SettlementAdjustmentReason { get; set; }
         public List<PaymentReceiptInvoiceLineDto> Invoices { get; set; } = new();
         public decimal? PreviousBalance { get; set; }
+        /// <summary>Total applied to invoice(s): cash received plus any paired settlement adjustment.</summary>
         public decimal AmountPaid { get; set; }
         public decimal? RemainingBalance { get; set; }
     }
@@ -478,6 +490,11 @@ namespace HexaBill.Api.Models
     {
         [JsonPropertyName("paymentIds")]
         public List<int> PaymentIds { get; set; } = new();
+    }
+
+    public class PaymentReceiptPdfRequest : PaymentReceiptBatchRequest
+    {
+        public string ExpectedDocumentFingerprint { get; set; } = string.Empty;
     }
 
     // Purchase DTOs
@@ -646,6 +663,8 @@ namespace HexaBill.Api.Models
         public decimal? VatRate { get; set; }
         /// <summary>True = amount was VAT-inclusive; false = net; null = legacy/unknown.</summary>
         public bool? VatInclusive { get; set; }
+        /// <summary>Cash or Bank — affects daily close drawer expected cash.</summary>
+        public string PaidFrom { get; set; } = "Cash";
     }
 
     public class ExpenseCategoryDto
@@ -682,6 +701,9 @@ namespace HexaBill.Api.Models
         public decimal PartialCreditPct { get; set; } = 100;
         /// <summary>True = amount is VAT-inclusive (gross); false = amount is net, VAT added on top.</summary>
         public bool? VatInclusive { get; set; }
+        /// <summary>Cash (drawer) or Bank. Defaults to Cash when omitted.</summary>
+        [MaxLength(16)]
+        public string? PaidFrom { get; set; }
     }
 
     public class ApproveExpenseRequest
@@ -797,6 +819,7 @@ namespace HexaBill.Api.Models
 
     public class SummaryReportDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public decimal SalesToday { get; set; }
         public decimal ReturnsToday { get; set; }
         public decimal NetSalesToday { get; set; }
@@ -1110,6 +1133,7 @@ namespace HexaBill.Api.Models
 
     public class RouteSummaryDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public int RouteId { get; set; }
         public string RouteName { get; set; } = string.Empty;
         public string BranchName { get; set; } = string.Empty;
@@ -1131,6 +1155,7 @@ namespace HexaBill.Api.Models
 
     public class BranchSummaryDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public int BranchId { get; set; }
         public string BranchName { get; set; } = string.Empty;
         public decimal TotalSales { get; set; }
@@ -1370,6 +1395,7 @@ namespace HexaBill.Api.Models
     // Profit DTOs
     public class ProfitReportDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public DateTime FromDate { get; set; }
         public DateTime ToDate { get; set; }
         public decimal TotalSales { get; set; }
@@ -1387,6 +1413,7 @@ namespace HexaBill.Api.Models
 
     public class ProductProfitDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public decimal QuantitySold { get; set; }
@@ -1398,6 +1425,7 @@ namespace HexaBill.Api.Models
 
     public class DailyProfitDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public DateTime Date { get; set; }
         public decimal Sales { get; set; }
         public decimal Expenses { get; set; }
@@ -1407,6 +1435,7 @@ namespace HexaBill.Api.Models
     /// <summary>Branch-wise profit breakdown (PRODUCTION_MASTER_TODO #57). Same formula: Net = Sales - COGS - Expenses.</summary>
     public class BranchProfitDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public int BranchId { get; set; }
         public string BranchName { get; set; } = string.Empty;
         public decimal Sales { get; set; }
@@ -1718,6 +1747,7 @@ namespace HexaBill.Api.Models
         public string VatCalculationBasis { get; set; } = "SalesBased";
         public decimal ProfitSales { get; set; }
         public decimal ProfitCogs { get; set; }
+        public int EstimatedCostLineCount { get; set; }
         public decimal ProfitExpenses { get; set; }
         public decimal ProfitAmount { get; set; }
         public decimal ProfitVat { get; set; }

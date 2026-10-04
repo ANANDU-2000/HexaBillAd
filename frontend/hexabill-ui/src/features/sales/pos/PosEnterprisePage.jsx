@@ -7,7 +7,7 @@ import { PosSelectionProvider, usePosSelection } from './managers/SelectionManag
 import { createBarcodeEngine } from './barcode/BarcodeEngine'
 import { usePosUndo } from './hooks/usePosUndo'
 import { usePosDraft } from './hooks/usePosDraft'
-import { useProductCatalog, recordProductBilled } from './hooks/useProductCatalog'
+import { useProductCatalog } from './hooks/useProductCatalog'
 import {
   usePosInteraction,
   ensureCartRowIds,
@@ -42,7 +42,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  ScanBarcode
+  ScanBarcode,
+  Banknote
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../../services/index'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../../utils/currency'
@@ -56,6 +57,8 @@ import PrintOptionsModal from '../../../components/PrintOptionsModal'
 
 import { getApiBaseUrl } from '../../../services/apiConfig'
 import { SETTLEMENT_TOLERANCE_AED, isInvoiceFullySettled, getInvoicePaymentBadge } from '../../../utils/salePaymentSettlement'
+import { buildCustomerLedgerHref } from '../../../utils/customerLedgerUrl'
+import { getReturnLabel } from '../../../utils/returnNavigation'
 import { localDateString } from '../../../utils/dateFormat'
 const API_BASE_URL = getApiBaseUrl()
 
@@ -68,16 +71,6 @@ function normalizeApiPaymentMethodToUi(method) {
   const u = String(method).toUpperCase()
   const map = { CASH: 'Cash', CHEQUE: 'Cheque', ONLINE: 'Online', CREDIT: 'Credit', DEBIT: 'Debit' }
   return map[u] || (String(method).charAt(0).toUpperCase() + String(method).slice(1).toLowerCase())
-}
-
-function getReturnLabel(path) {
-  if (!path) return ''
-  if (path.startsWith('/billing-history')) return 'Billing History'
-  if (path.startsWith('/sales-ledger')) return 'Sales Ledger'
-  if (path.startsWith('/ledger')) return 'Customer Ledger'
-  if (path.startsWith('/reports')) return 'Reports'
-  if (path.startsWith('/customers')) return 'Customers'
-  return 'Previous Page'
 }
 
 const PosEnterprisePage = () => {
@@ -803,7 +796,7 @@ const PosEnterprisePage = () => {
     if (idx == null || idx < 0) idx = cartNow.findIndex((l) => !l.productId)
     if (idx < 0) return
     addToCart(product, idx)
-    recordProductBilled(product.id)
+    catalogForDrawer.recordProductBilled(product.id)
     setProductPickerRowIndex(null)
     const rowId = cartNow[idx]?.rowId
     if (rowId) {
@@ -1492,6 +1485,31 @@ const PosEnterprisePage = () => {
     await sendEmail(customerEmail)
   }
 
+  const posReturnPath = location.pathname + location.search
+
+  const handleCollectInLedger = () => {
+    const sale = lastCreatedInvoice?.data
+    const saleId = lastCreatedInvoice?.id
+    const customerId = sale?.customerId ?? sale?.CustomerId ?? selectedCustomer?.id
+    if (!customerId) {
+      toast.error('Assign a customer to collect the balance in Customer Ledger.')
+      return
+    }
+    if (isInvoiceFullySettled(sale)) {
+      toast.error('This invoice has no outstanding balance.')
+      return
+    }
+    setShowInvoiceOptionsModal(false)
+    navigate(
+      buildCustomerLedgerHref({
+        customerId,
+        recordPaymentSaleId: saleId,
+        tab: 'payments'
+      }),
+      { state: { returnTo: returnTo || posReturnPath } }
+    )
+  }
+
   const handleCloseInvoiceOptions = async () => {
     setShowInvoiceOptionsModal(false)
     setLastCreatedInvoice(null)
@@ -2105,10 +2123,12 @@ const PosEnterprisePage = () => {
 
   const { clearDraft } = usePosDraft({
     tenantId,
-    enabled: true,
+    userId: user?.id,
+    readOnly: !!user?.supportReadOnly,
+    enabled: !lastCreatedInvoice && !loadingSale && !user?.supportReadOnly,
     getSnapshot: getDraftSnapshot,
     onRestore: applyDraftRestore,
-    isEditMode,
+    isEditMode: isEditMode || !!searchParams.get('editId'),
   })
 
   const drawerOwnerRowId = usePosInteractionStore((s) => s.drawerOwnerRowId)
@@ -2124,6 +2144,9 @@ const PosEnterprisePage = () => {
     : ''
 
   const catalogForDrawer = useProductCatalog({
+    tenantId,
+    userId: user?.id,
+    readOnly: !!user?.supportReadOnly,
     products,
     cart,
     searchTerm: catalogSearchTerm,
@@ -2151,7 +2174,7 @@ const PosEnterprisePage = () => {
       setProductPickerPage((p) => Math.max(0, p + delta))
       setProductHighlight(delta > 0 ? 0 : Math.max(0, PRODUCT_PICKER_PAGE_SIZE - 1))
     },
-    onRecordProductBilled: recordProductBilled,
+    onRecordProductBilled: catalogForDrawer.recordProductBilled,
     getLastUnitPrice,
     onFocusCustomer: () => setShowCustomerSearch(true),
     onFocusPayment: () => { setPaymentPanelOpen(true); setShowPaymentSheet(true) },
@@ -4050,6 +4073,18 @@ const PosEnterprisePage = () => {
                   <Mail className="h-5 w-5 mr-2" />
                   Send via Email
                 </button>
+
+                {lastCreatedInvoice.data && !isInvoiceFullySettled(lastCreatedInvoice.data) &&
+                  (lastCreatedInvoice.data?.customerId ?? lastCreatedInvoice.data?.CustomerId ?? selectedCustomer?.id) ? (
+                  <button
+                    type="button"
+                    onClick={handleCollectInLedger}
+                    className="w-full flex items-center justify-center px-6 py-3 min-h-[48px] bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
+                  >
+                    <Banknote className="h-5 w-5 mr-2" />
+                    Collect balance in Customer Ledger
+                  </button>
+                ) : null}
               </div>
             </div>
 
@@ -4082,9 +4117,10 @@ const PosEnterprisePage = () => {
 }
 
 function PosEnterprisePageWithProviders(props) {
+  const { user } = useAuth()
   return (
     <PosSelectionProvider>
-      <PosEnterprisePage {...props} />
+      <PosEnterprisePage key={`${user?.tenantId ?? 'unresolved'}:${user?.id ?? 'anonymous'}:${user?.supportSession ?? 'regular'}`} {...props} />
     </PosSelectionProvider>
   )
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
+import { buildCustomerLedgerCollectHref, buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { useDebounce } from '../../hooks/useDebounce'
 import {
   Download,
@@ -87,6 +88,22 @@ function loadDateRangeFromStorage() {
 const ReportsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const ledgerReturnTo = location.pathname + location.search
+  const openOutstandingBillLedger = useCallback((bill) => {
+    if (!bill?.customerId) {
+      toast.error('Customer ID not available for this bill')
+      return
+    }
+    navigate(
+      buildCustomerLedgerCollectHref({
+        customerId: bill.customerId,
+        saleId: bill.id ?? bill.saleId,
+        balanceAmount: bill.balanceAmount
+      }),
+      { state: { returnTo: ledgerReturnTo } }
+    )
+  }, [navigate, ledgerReturnTo])
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
   const rawInitialTab = searchParams.get('tab') || 'summary'
@@ -712,6 +729,7 @@ const ReportsPage = () => {
                 totalSalesWithVat: parseFloat(profitData.totalSalesWithVat || 0),
                 totalPurchases: parseFloat(profitData.totalPurchases || 0),
                 costOfGoodsSold: parseFloat(profitData.costOfGoodsSold || 0),
+                estimatedCostLineCount: Number(profitData.estimatedCostLineCount || 0),
                 totalExpenses: parseFloat(profitData.totalExpenses || 0),
                 grossProfit: parseFloat(profitData.grossProfit || 0),
                 grossProfitMargin: parseFloat(profitData.grossProfitMargin || 0),
@@ -2427,6 +2445,11 @@ const ReportsPage = () => {
                       <span>Export PDF</span>
                     </button>
                   </div>
+                  {reportData.profitLoss.estimatedCostLineCount > 0 && (
+                    <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      Cost estimates are included for {reportData.profitLoss.estimatedCostLineCount} invoice lines without saved historical costs. Those estimates use current product costs and may change when products are updated.
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                     <div className="bg-green-50 rounded-lg p-6 border border-green-200">
                       <p className="text-sm font-medium text-green-600">Total Sales</p>
@@ -2790,17 +2813,12 @@ const ReportsPage = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
                               <button
-                                onClick={() => {
-                                  if (bill.customerId) {
-                                    navigate(`/ledger?customerId=${bill.customerId}`)
-                                  } else {
-                                    toast.error('Customer ID not available for this bill')
-                                  }
-                                }}
+                                type="button"
+                                onClick={() => openOutstandingBillLedger(bill)}
                                 className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
                                 title={bill.customerName || 'View customer ledger'}
                               >
-                                {bill.customerName ? bill.customerName : 'View Ledger'}
+                                {(Number(bill.balanceAmount) || 0) > 0 ? 'Collect' : (bill.customerName || 'View ledger')}
                               </button>
                             </td>
                           </tr>
@@ -2861,10 +2879,11 @@ const ReportsPage = () => {
                           </div>
                           {bill.customerId && (
                             <button
-                              onClick={() => navigate(`/ledger?customerId=${bill.customerId}`)}
+                              type="button"
+                              onClick={() => openOutstandingBillLedger(bill)}
                               className="mt-2.5 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 min-h-[44px] px-1 -ml-1"
                             >
-                              View Ledger
+                              {(Number(bill.balanceAmount) || 0) > 0 ? 'Collect payment' : 'View ledger'}
                             </button>
                           )}
                         </div>
@@ -3412,6 +3431,7 @@ const ReportsPage = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Phone</th>
                           <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Balance</th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase hidden sm:table-cell">Address</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -3423,6 +3443,22 @@ const ReportsPage = () => {
                               {formatCurrency(c.pendingBalance ?? c.balance ?? 0)}
                             </td>
                             <td className="px-6 py-4 text-gray-600 hidden sm:table-cell max-w-xs truncate">{c.address || '—'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                              {c.id ? (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(
+                                    buildCustomerLedgerHref({ customerId: c.id, tab: 'payments', openPayment: true }),
+                                    { state: { returnTo: ledgerReturnTo } }
+                                  )}
+                                  className="min-h-11 px-3 text-sm font-medium text-primary-700 hover:underline md:min-h-9"
+                                >
+                                  Collect
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-400">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -3433,6 +3469,7 @@ const ReportsPage = () => {
                           <td className="px-6 py-4 text-right font-bold text-red-700">
                             {formatCurrency((reportData.collectionsList || []).reduce((s, c) => s + (Number(c.pendingBalance ?? c.balance) || 0), 0))}
                           </td>
+                          <td className="hidden sm:table-cell"></td>
                           <td></td>
                         </tr>
                       </tfoot>

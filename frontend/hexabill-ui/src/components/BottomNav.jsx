@@ -1,24 +1,23 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, History, Plus, BookOpen, MoreHorizontal } from 'lucide-react'
+import { Home, Plus, BookOpen, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccessPage } from '../utils/roles'
 
 /**
- * Mobile primary IA: Home · History · POS · Ledger · More.
- * The four direct tabs map to real routes; "More" opens the grouped menu
+ * Mobile primary IA: Home · Sale · Ledger · More.
+ * The three direct tabs map to real routes; "More" opens the grouped menu
  * bottom sheet (MoreMenuSheet). Home and More are permanent anchors — every
  * other tab is filtered by the staff page-access check.
  */
 const NAV_ITEMS = [
   { id: 'home', name: 'Home', href: '/dashboard', icon: Home, pageId: null },
-  { id: 'history', name: 'History', href: '/billing-history', icon: History, pageId: 'pos' },
-  { id: 'pos', name: 'POS', href: '/pos', icon: Plus, center: true, pageId: 'pos' },
+  { id: 'pos', name: 'Sale', href: '/pos', icon: Plus, center: true, pageId: 'pos' },
   { id: 'ledger', name: 'Ledger', href: '/ledger', icon: BookOpen, pageId: 'invoices' },
   { id: 'more', name: 'More', icon: MoreHorizontal, isMore: true },
 ]
 
 // Routes owned by a real tab — everything else counts as "More" territory.
-const TAB_ROUTES = ['/dashboard', '/pos', '/ledger', '/billing-history']
+const TAB_ROUTES = ['/dashboard', '/pos', '/ledger']
 
 const isNavActive = (pathname, href) => {
   if (href === '/dashboard') {
@@ -112,7 +111,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                     onClick={onCloseMore}
                     className="flex flex-col items-center justify-end min-w-0 min-h-[44px] pb-0.5"
                     aria-current={isNavActive(pathname, item.href) ? 'page' : undefined}
-                    aria-label="POS"
+                    aria-label="New sale"
                   >
                     <span
                       className={`flex items-center justify-center w-12 h-12 -mt-5 rounded-full shadow-md transition-colors duration-150 ${

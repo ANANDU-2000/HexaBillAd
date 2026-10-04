@@ -7,6 +7,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Models;
@@ -128,9 +129,9 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId;
-                if (tenantId <= 0)
-                    return Forbid();
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
 
                 var result = await _customerService.GetCustomerByIdAsync(id, tenantId);
                 if (result == null)
@@ -311,7 +312,9 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
                 // CRITICAL: Normalize dates for PostgreSQL (match ReportsController pattern)
                 var fromNorm = fromDate.HasValue ? fromDate.Value.ToUtcKind() : (DateTime?)null;
                 var toNorm = toDate.HasValue ? ((toDate.Value.Date.AddDays(1)).ToUtcKind()) : (DateTime?)null;
@@ -454,7 +457,9 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
                 var outstandingInvoices = await _customerService.GetOutstandingInvoicesAsync(id, tenantId);
                 return Ok(new ApiResponse<List<Models.OutstandingInvoiceDto>>
                 {
@@ -489,7 +494,9 @@ namespace HexaBill.Api.Modules.Customers
                 {
                     return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be before or equal to To date." });
                 }
-                var tenantId = CurrentTenantId;
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
                 var pdfBytes = await _customerService.GenerateCustomerStatementAsync(id, from, to, tenantId);
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
@@ -527,16 +534,9 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId;
-                var customer = await _customerService.GetCustomerByIdAsync(id, tenantId);
-                if (customer == null)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        Success = false,
-                        Message = "Customer not found"
-                    });
-                }
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
 
                 List<int>? ids = null;
                 if (!string.IsNullOrWhiteSpace(productIds))
@@ -573,7 +573,9 @@ namespace HexaBill.Api.Modules.Customers
         {
             try
             {
-                var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
+                var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
+                if (denial != null)
+                    return denial;
                 var customer = await _customerService.GetCustomerByIdAsync(id, tenantId);
                 if (customer == null)
                 {
@@ -619,6 +621,16 @@ namespace HexaBill.Api.Modules.Customers
                     Errors = new List<string> { ex.Message }
                 });
             }
+        }
+
+        private async Task<(int TenantId, ActionResult? Denial)> ResolveCustomerTenantAsync(int customerId)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0)
+                return (0, Forbid());
+            if (!await TenantEntityAccess.CustomerBelongsToTenantAsync(_context, customerId, tenantId))
+                return (0, NotFound(new ApiResponse<object> { Success = false, Message = "Customer not found" }));
+            return (tenantId, null);
         }
     }
 }

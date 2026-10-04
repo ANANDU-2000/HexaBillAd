@@ -13,6 +13,7 @@ public sealed class UpstreamApiGuardMiddleware
     private static readonly string[] AllowedWithoutEdge =
     [
         "/health",
+        "/api/health",
         "/swagger",
     ];
 

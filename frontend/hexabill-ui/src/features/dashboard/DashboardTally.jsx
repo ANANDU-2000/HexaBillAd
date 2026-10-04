@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import {
     ShoppingCart, Truck, FileText, Wallet, BarChart3,
     ChevronRight, RefreshCw, CheckCircle, X,
@@ -98,6 +99,7 @@ const DashboardTally = () => {
     const { user } = useAuth()
     const { branches } = useBranchesRoutes()
     const navigate = useNavigate()
+    const location = useLocation()
     const [searchParams, setSearchParams] = useSearchParams()
     const [refreshing, setRefreshing] = useState(true)
     const [hasFigures, setHasFigures] = useState(false)
@@ -204,6 +206,7 @@ const DashboardTally = () => {
                     returnsCountToday: parseInt(data.returnsCountToday ?? data.ReturnsCountToday, 10) || 0,
                     expensesToday: num(data.expensesToday ?? data.ExpensesToday),
                     profitToday: num(data.profitToday ?? data.ProfitToday),
+                    estimatedCostLineCount: num(data.estimatedCostLineCount ?? data.EstimatedCostLineCount),
                     pendingBills: parseInt(data.pendingBills ?? data.PendingBills, 10) || 0,
                     pendingBillsAmount: num(data.pendingBillsAmount ?? data.PendingBillsAmount),
                     purchasesToday: num(data.purchasesToday ?? data.PurchasesToday),
@@ -221,10 +224,14 @@ const DashboardTally = () => {
                 setHasFigures(true)
                 setSummaryError(false)
             } else {
+                setHasFigures(false)
+                setBranchBreakdown([])
                 setSummaryError(true)
             }
         } catch {
             console.error('Failed to fetch dashboard stats')
+            setHasFigures(false)
+            setBranchBreakdown([])
             setSummaryError(true)
         } finally {
             setRefreshing(false)
@@ -584,6 +591,12 @@ const DashboardTally = () => {
                 </div>
             )}
 
+            {hasFigures && showProfit && stats.estimatedCostLineCount > 0 && (
+                <div className={`${surfaceClass} border-amber-200 bg-amber-50 p-3 text-sm text-amber-900`} role="status">
+                    Profit includes current-cost estimates for {stats.estimatedCostLineCount} invoice lines without saved historical costs. Product cost changes can change these estimates.
+                </div>
+            )}
+
             {(hasFigures || showSkeleton) && (
             <section className="grid grid-cols-2 gap-4 lg:grid-cols-4" aria-label="Period summary">
                 {canShow('netSalesToday') && (
@@ -737,7 +750,7 @@ const DashboardTally = () => {
                                     <button
                                         key={customer.customerId}
                                         type="button"
-                                        onClick={() => navigate(`/ledger?customerId=${customer.customerId}`)}
+                                        onClick={() => navigate(buildCustomerLedgerHref({ customerId: customer.customerId }), { state: { returnTo: location.pathname + location.search } })}
                                         className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-md px-2 text-left text-sm hover:bg-[var(--bg-raised)] ${focusClass}`}
                                     >
                                         <span className="min-w-0 truncate">

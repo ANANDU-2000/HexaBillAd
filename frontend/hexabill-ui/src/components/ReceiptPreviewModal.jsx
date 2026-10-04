@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Printer, X, Loader2 } from 'lucide-react'
+import { Printer, Download, X, Loader2 } from 'lucide-react'
 import Modal from './Modal'
 import { paymentsAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 /** Format date as dd-mm-yyyy for receipt and print. */
 function toReceiptDate (d) {
@@ -21,11 +22,18 @@ function toReceiptDate (d) {
  * Print is optional – only when the customer requests a copy.
  * Calls POST /payments/{id}/receipt or POST /payments/receipt/batch.
  */
-export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose, onSuccess }) {
+export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose }) {
+  const { currency: tenantCurrency = 'AED' } = useBranding()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null) // { detail, receiptNumber, receiptId } or { detail, receipts }
   const printRef = useRef(null)
+  const [outputError, setOutputError] = useState(null)
+  const [downloading, setDownloading] = useState(false)
+  const [retry, setRetry] = useState(0)
+  const paymentKey = JSON.stringify(paymentIds)
+  const activePreview = useRef(null)
+  activePreview.current = isOpen ? paymentKey : null
 
   useEffect(() => {
     if (!isOpen) {
@@ -34,7 +42,8 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
       setLoading(false)
       return
     }
-    if (!paymentIds?.length) {
+    const selectedIds = JSON.parse(paymentKey)
+    if (!selectedIds?.length) {
       setData(null)
       setError('No payments selected. Please select at least one payment to generate a receipt.')
       setLoading(false)
@@ -42,12 +51,14 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
     }
     let cancelled = false
     setError(null)
+    setOutputError(null)
+    setData(null)
     setLoading(true)
     const fetchReceipt = async () => {
       try {
-        const res = paymentIds.length === 1
-          ? await paymentsAPI.generateReceipt(paymentIds[0])
-          : await paymentsAPI.generateReceiptBatch(paymentIds)
+        const res = selectedIds.length === 1
+          ? await paymentsAPI.generateReceipt(selectedIds[0])
+          : await paymentsAPI.generateReceiptBatch(selectedIds)
         if (cancelled) return
         const payload = res?.data
         const detail = payload?.detail ?? (payload?.receiptNumber ? payload : null)
@@ -68,12 +79,37 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
     }
     fetchReceipt()
     return () => { cancelled = true }
-  }, [isOpen, paymentIds])
+  }, [isOpen, paymentKey, retry])
+
+  const handleDownload = async () => {
+    const preview = paymentKey
+    setOutputError(null)
+    setDownloading(true)
+    try {
+      const blob = await paymentsAPI.getReceiptPdf(paymentIds, data.detail.documentFingerprint)
+      if (activePreview.current !== preview) return
+      const url = URL.createObjectURL(blob)
+      try {
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `receipt-${String(data.detail.receiptNumber).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+      } finally { setTimeout(() => URL.revokeObjectURL(url), 1000) }
+    } catch (err) {
+      if (activePreview.current === preview) setOutputError(err?.message || 'PDF download failed. Please try again.')
+    } finally { setDownloading(false) }
+  }
 
   const handlePrint = () => {
     if (!printRef.current) return
     const win = window.open('', '_blank')
-    if (!win) return
+    setOutputError(null)
+    if (!win) {
+      setOutputError('The print window was blocked. Allow pop-ups for this site and try again, or download the PDF.')
+      return
+    }
     win.document.write(`
       <!DOCTYPE html><html><head><title>Payment Receipt</title>
       <style>
@@ -115,18 +151,24 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
     // Give the new document a moment to layout, then open the system print dialog.
     // Do NOT close immediately — that caused the open/close flash. afterprint closes;
     // long fallback only if afterprint never fires (some browsers).
-    setTimeout(() => {
+    const printWhenReady = async () => {
       try {
+        if (win.document.fonts?.ready) await win.document.fonts.ready
+        if (win.closed) return
         win.print()
       } catch (_) {
+        setOutputError('Printing could not start. Please try again or download the PDF.')
         closePrintWindow()
         return
       }
       setTimeout(closePrintWindow, 60000)
-    }, 250)
+    }
+    if (win.document.readyState === 'complete') printWhenReady()
+    else win.addEventListener('load', printWhenReady, { once: true })
   }
 
   const detail = data?.detail
+  const displayCurrency = detail?.currency || tenantCurrency || 'AED'
 
   return (
     <Modal
@@ -144,8 +186,9 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
         </div>
       )}
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
           {error}
+          <button type="button" onClick={() => setRetry(value => value + 1)} className="block mt-2 min-h-[44px] underline font-medium">Try again</button>
         </div>
       )}
       {!loading && !error && data?.detail && (
@@ -154,6 +197,15 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
             <h1 className="text-xl font-bold text-gray-900 mb-2">PAYMENT RECEIPT</h1>
             <p className="text-sm text-gray-700">Receipt No: {detail.receiptNumber}</p>
             <p className="text-sm text-gray-700">Date: {toReceiptDate(detail.receiptDate)}</p>
+            {detail.receiptEndDate && detail.receiptEndDate !== detail.receiptDate && (
+              <p className="text-sm text-gray-700">Payments through: {toReceiptDate(detail.receiptEndDate)}</p>
+            )}
+            {detail.legacyReconstruction && (
+              <p className="mt-2 text-xs text-amber-800">Legacy receipt reconstructed from available records. Original company and invoice details were not saved.</p>
+            )}
+            {detail.paymentChangedSinceSnapshot && (
+              <p className="mt-2 text-xs text-amber-800" role="status">This copy shows the saved receipt. The payment was changed afterward; review the ledger for its current details.</p>
+            )}
             <div className="mt-4">
               <p className="text-sm font-medium text-gray-700">Received From:</p>
               <p className="text-gray-900 font-medium">{detail.receivedFrom}</p>
@@ -177,8 +229,8 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
                       <tr key={i} className="border-b border-gray-200">
                         <td className="py-2">{inv.invoiceNo}</td>
                         <td className="py-2">{toReceiptDate(inv.invoiceDate)}</td>
-                        <td className="py-2 text-right">{formatCurrency(inv.invoiceTotal)}</td>
-                        <td className="py-2 text-right">{formatCurrency(inv.amountApplied)}</td>
+                        <td className="py-2 text-right">{formatCurrency(inv.invoiceTotal, displayCurrency)}</td>
+                        <td className="py-2 text-right">{formatCurrency(inv.amountApplied, displayCurrency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -187,8 +239,24 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
               </>
             )}
             <p className="text-base font-bold text-gray-900">
-              Total Paid: {formatCurrency(detail.amountReceived, 'AED')}
+              Cash received: {formatCurrency(detail.amountReceived, displayCurrency)}
             </p>
+            {Number(detail.settlementAdjustmentAmount) > 0 && (
+              <div className="mt-1 text-sm text-gray-800 space-y-0.5">
+                <p>
+                  Settlement adjustment: {formatCurrency(detail.settlementAdjustmentAmount, displayCurrency)}
+                  {detail.settlementAdjustmentReason ? ` — ${detail.settlementAdjustmentReason}` : ''}
+                </p>
+                <p className="font-semibold">
+                  Total applied to invoice: {formatCurrency(detail.amountPaid ?? detail.amountReceived, displayCurrency)}
+                </p>
+              </div>
+            )}
+            {Number(detail.settlementAdjustmentAmount) <= 0 && Number(detail.amountPaid) > Number(detail.amountReceived) && (
+              <p className="text-sm text-gray-700 mt-1">
+                Total applied: {formatCurrency(detail.amountPaid, displayCurrency)}
+              </p>
+            )}
             {detail.amountInWords && (
               <p className="text-xs text-gray-500 mt-1 italic">{detail.amountInWords}</p>
             )}
@@ -199,6 +267,14 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose,
             </div>
           </div>
           <div className="mt-6 flex flex-wrap gap-3">
+            {outputError && <p role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{outputError}</p>}
+            {detail.isHistoricalSnapshot && (
+              <button type="button" onClick={handleDownload} disabled={downloading}
+                className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+                {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                {downloading ? 'Downloading…' : 'Download PDF'}
+              </button>
+            )}
             <button
               type="button"
               onClick={handlePrint}

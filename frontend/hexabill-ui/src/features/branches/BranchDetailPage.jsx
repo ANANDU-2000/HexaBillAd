@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { Building2, ArrowLeft, Plus, Pencil, MapPin, Filter, DollarSign, Trash2, Edit, Users, UserPlus, BarChart3, TrendingUp, ArrowRightLeft } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -17,6 +18,8 @@ const TABS = ['overview', 'routes', 'staff', 'customers', 'expenses', 'performan
 const BranchDetailPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const ledgerReturnTo = location.pathname + location.search
   const { user } = useAuth()
   const { branches: contextBranches, routes: contextRoutes } = useBranchesRoutes()
   const [activeTab, setActiveTab] = useState('overview')
@@ -815,7 +818,13 @@ const BranchDetailPage = () => {
                       {canManage && (
                         <td className="px-4 py-2 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <button type="button" onClick={() => navigate(`/ledger?customerId=${c.id}`)} className="text-primary-600 hover:underline text-sm">Ledger</button>
+                            <button
+                              type="button"
+                              onClick={() => navigate(buildCustomerLedgerHref({ customerId: c.id }), { state: { returnTo: ledgerReturnTo } })}
+                              className="min-h-11 text-sm text-primary-600 hover:underline sm:min-h-0"
+                            >
+                              Ledger
+                            </button>
                             <button
                               type="button"
                               onClick={() => {

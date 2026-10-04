@@ -35,7 +35,12 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI } from '../../services/index'
+import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI } from '../../services/index'
+import {
+  computeInvoiceSettlementShortfall,
+  computeOutstanding,
+  TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS
+} from '../../utils/salePaymentSettlement'
 import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
@@ -45,8 +50,18 @@ import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTi
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
+import {
+  canReceivePaymentReceipt,
+  currentReceiptSelection,
+  paymentFromCustomerLedgerEntry,
+  receiptIneligibilityReason
+} from '../../utils/receiptEligibility'
+import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { localDateString } from '../../utils/dateFormat'
+import { normalizeLedgerTab, syncLedgerTabSearchParam } from '../../utils/customerLedgerUrl'
+import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
+import { customerLedgerScrollKey, readCustomerLedgerScroll, writeCustomerLedgerScroll } from '../../utils/customerLedgerScroll'
 
 // CRITICAL: Define status property name constants at top level to prevent minifier from creating 'st' variable
 // These must be defined before any component code to avoid TDZ errors
@@ -59,6 +74,7 @@ const CustomerLedgerPage = () => {
   const { branches, routes, staffHasNoAssignments, loading: branchesRoutesLoading } = useBranchesRoutes()
   const navigate = useNavigate()
   const location = useLocation()
+  const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : null
   const [searchParams, setSearchParams] = useSearchParams()
   // Keep URL customerId only until initial deep-link hydrate finishes — never resurrect after user clears/searches
   const preserveUrlCustomerIdRef = useRef(Boolean(searchParams.get('customerId')))
@@ -77,6 +93,7 @@ const CustomerLedgerPage = () => {
   const ledgerLoadSeqRef = useRef(0) // monotonic; discard superseded loadCustomerData responses
   const searchSeqRef = useRef(0) // monotonic; discard out-of-order search responses
   const [balanceRefreshSkeleton, setBalanceRefreshSkeleton] = useState(false) // "Refreshing balance…" after payment
+  const [settlementAdjustmentsEnabled, setSettlementAdjustmentsEnabled] = useState(false)
   const [customers, setCustomers] = useState([])
   const [filteredCustomers, setFilteredCustomers] = useState([]) // Kept for backwards compat; search uses searchDropdownResults
   const [searchDropdownResults, setSearchDropdownResults] = useState([])
@@ -104,7 +121,17 @@ const CustomerLedgerPage = () => {
   }
 
   // UI State
-  const [activeTab, setActiveTab] = useState('ledger') // ledger, invoices, payments, reports
+  const [activeTab, setActiveTab] = useState(() => normalizeLedgerTab(searchParams.get('tab')))
+  const ledgerScrollRef = useRef(null)
+  const ledgerScrollStorageKey = useMemo(
+    () => customerLedgerScrollKey({
+      tenantId: user?.tenantId,
+      userId: user?.id,
+      customerId: selectedCustomer?.id,
+      tab: activeTab
+    }),
+    [user?.tenantId, user?.id, selectedCustomer?.id, activeTab]
+  )
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showSettleCreditModal, setShowSettleCreditModal] = useState(false)
   const [settleCreditEntry, setSettleCreditEntry] = useState(null)
@@ -203,6 +230,19 @@ const CustomerLedgerPage = () => {
     selectedCustomerIdRef.current = normalizeLedgerCustomerId(selectedCustomer?.id)
   }, [selectedCustomer?.id])
 
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    subscriptionAPI.checkFeature(TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS)
+      .then((res) => {
+        if (!cancelled) setSettlementAdjustmentsEnabled(Boolean(res?.success && res?.data))
+      })
+      .catch(() => {
+        if (!cancelled) setSettlementAdjustmentsEnabled(false)
+      })
+    return () => { cancelled = true }
+  }, [user])
+
   // Sync key filters to URL so they survive navigation and browser back.
   // When selection is cleared, always drop customerId — otherwise hydrate re-selects the previous customer.
   useEffect(() => {
@@ -228,12 +268,50 @@ const CustomerLedgerPage = () => {
       else params.delete('routeId')
       if (ledgerStaffId) params.set('staffId', ledgerStaffId)
       else params.delete('staffId')
+      syncLedgerTabSearchParam(params, { tab: activeTab })
       return params
     }, { replace: true })
-  }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId, setSearchParams])
+  }, [selectedCustomer?.id, dateRange.from, dateRange.to, ledgerBranchId, ledgerRouteId, ledgerStaffId, activeTab, setSearchParams])
+
+  useEffect(() => {
+    const fromUrl = normalizeLedgerTab(searchParams.get('tab'))
+    setActiveTab((current) => (current === fromUrl ? current : fromUrl))
+  }, [searchParams])
+
+  useEffect(() => {
+    if (loading || !selectedCustomer) return
+    if (loadedForCustomerId !== normalizeLedgerCustomerId(selectedCustomer.id)) return
+    const el = ledgerScrollRef.current
+    if (!el) return
+    const top = readCustomerLedgerScroll(ledgerScrollStorageKey)
+    requestAnimationFrame(() => {
+      if (ledgerScrollRef.current) ledgerScrollRef.current.scrollTop = top
+    })
+  }, [loading, loadedForCustomerId, selectedCustomer?.id, activeTab, ledgerScrollStorageKey])
+
+  const persistLedgerScroll = useCallback(() => {
+    const el = ledgerScrollRef.current
+    if (!el) return
+    writeCustomerLedgerScroll(ledgerScrollStorageKey, el.scrollTop)
+  }, [ledgerScrollStorageKey])
+
+  const handleLedgerTabChange = useCallback((nextTab) => {
+    const el = ledgerScrollRef.current
+    if (el) {
+      const keyForCurrentTab = customerLedgerScrollKey({
+        tenantId: user?.tenantId,
+        userId: user?.id,
+        customerId: selectedCustomer?.id,
+        tab: activeTab
+      })
+      writeCustomerLedgerScroll(keyForCurrentTab, el.scrollTop)
+    }
+    setActiveTab(normalizeLedgerTab(nextTab))
+  }, [activeTab, user?.tenantId, user?.id, selectedCustomer?.id])
 
   /** Leave customer ledger view; invalidate in-flight loads. Shared by Back + search. */
   const clearSelectedCustomer = useCallback((options = {}) => {
+    persistLedgerScroll()
     ignoreUrlCustomerRef.current = true
     preserveUrlCustomerIdRef.current = false
     ledgerLoadSeqRef.current += 1
@@ -253,7 +331,7 @@ const CustomerLedgerPage = () => {
       next.delete('recordPayment')
       return next
     }, { replace: true })
-  }, [setSearchParams])
+  }, [setSearchParams, persistLedgerScroll])
 
   // ========== ALL HANDLER FUNCTIONS - DEFINED FIRST ==========
   // Excel Export Handler
@@ -465,8 +543,11 @@ const CustomerLedgerPage = () => {
   const recordPaymentParam = searchParams.get('recordPayment')
   useEffect(() => {
     if (!recordPaymentParam || !selectedCustomer?.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0) return
+    const normalizedId = normalizeLedgerCustomerId(selectedCustomer.id)
+    if (loadedForCustomerId !== normalizedId) return
     const saleId = parseInt(recordPaymentParam, 10)
     if (Number.isNaN(saleId)) return
+    setActiveTab('payments')
     setPaymentModalInvoiceId(saleId)
     setShowPaymentModal(true)
     setSearchParams((prev) => {
@@ -474,7 +555,22 @@ const CustomerLedgerPage = () => {
       next.delete('recordPayment')
       return next
     }, { replace: true })
-  }, [selectedCustomer?.id, recordPaymentParam, setSearchParams])
+  }, [selectedCustomer?.id, recordPaymentParam, loadedForCustomerId, setSearchParams])
+
+  const openPaymentParam = searchParams.get('openPayment')
+  useEffect(() => {
+    if (openPaymentParam !== '1' || !selectedCustomer?.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0) return
+    const normalizedId = normalizeLedgerCustomerId(selectedCustomer.id)
+    if (loadedForCustomerId !== normalizedId) return
+    setActiveTab('payments')
+    setPaymentModalInvoiceId(null)
+    setShowPaymentModal(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('openPayment')
+      return next
+    }, { replace: true })
+  }, [selectedCustomer?.id, openPaymentParam, loadedForCustomerId, setSearchParams])
 
   // Load customer data when selected or date range changes (debounced to prevent excessive calls)
   useEffect(() => {
@@ -982,7 +1078,7 @@ const CustomerLedgerPage = () => {
         const [ledgerRes, salesRes, paymentsRes] = await Promise.all([
           customersAPI.getCashCustomerLedger(),
           salesAPI.getSales({ page: 1, pageSize: 1000 }),
-          paymentsAPI.getPayments({ page: 1, pageSize: 1000 }) // Get all payments
+          paymentsAPI.getPayments({ page: 1, pageSize: 1000, customerId: 0 })
         ])
 
         if (isStale()) return
@@ -1276,6 +1372,7 @@ const CustomerLedgerPage = () => {
   }
 
   const handleSelectCustomer = (customer) => {
+    persistLedgerScroll()
     // Invalidate in-flight loads and clear UI before switching
     preserveUrlCustomerIdRef.current = false
     ledgerLoadSeqRef.current += 1
@@ -1501,6 +1598,29 @@ const CustomerLedgerPage = () => {
     }
   }
 
+  const openReceiptPreviewForPaymentId = useCallback((paymentId) => {
+    const id = Number(paymentId)
+    if (!Number.isFinite(id) || id <= 0) {
+      toast.error('Invalid payment for receipt.')
+      return
+    }
+    const fromPayments = customerPayments.find((p) => Number(p.id) === id)
+    const ledgerEntry = customerLedger.find(
+      (e) => e.type === 'Payment' && Number(e.paymentId ?? e.PaymentId) === id
+    )
+    const payment = fromPayments || (ledgerEntry ? paymentFromCustomerLedgerEntry(ledgerEntry) : null)
+    if (payment && !canReceivePaymentReceipt(payment)) {
+      toast.error(receiptIneligibilityReason(payment))
+      return
+    }
+    setReceiptPreviewPaymentIds([id])
+    setShowReceiptPreviewModal(true)
+  }, [customerPayments, customerLedger])
+
+  const onPaymentReceiptOffer = useCallback((payment) => {
+    offerReceiptPreviewAfterPayment(payment, openReceiptPreviewForPaymentId)
+  }, [openReceiptPreviewForPaymentId])
+
   const handlePaymentSubmit = async (data) => {
     if (paymentLoadingRef.current || paymentLoading) return
     if (!selectedCustomer) {
@@ -1528,6 +1648,36 @@ const CustomerLedgerPage = () => {
 
     const isCashCustomer = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
     const isAllocate = payAllOutstandingMode && outstandingInvoices.length > 0
+    const paymentMethod = (data.method || data.mode || 'CASH').toUpperCase()
+    const saleIdParsed = data.saleId ? parseInt(data.saleId, 10) : null
+    let settlementAdjustmentAmount = 0
+    let settlementAdjustmentReason = null
+
+    if (settlementAdjustmentsEnabled && saleIdParsed && !isAllocate && paymentMethod === 'CASH') {
+      const selectedInv = outstandingInvoices.find((inv) => inv.id === saleIdParsed)
+        || customerInvoices.find((inv) => inv.id === saleIdParsed)
+      const balance = selectedInv
+        ? Number(selectedInv.balanceAmount ?? computeOutstanding(selectedInv.grandTotal || selectedInv.total, selectedInv.paidAmount))
+        : 0
+      const shortfall = computeInvoiceSettlementShortfall(balance, amount)
+      if (data.applySettlementAdjustment) {
+        if (shortfall <= 0) {
+          toast.error('Settlement adjustment is not applicable for this cash amount')
+          paymentLoadingRef.current = false
+          setPaymentLoading(false)
+          return
+        }
+        const reason = (data.settlementAdjustmentReason || '').trim()
+        if (reason.length < 3) {
+          toast.error('Enter a short reason for the settlement adjustment (at least 3 characters)')
+          paymentLoadingRef.current = false
+          setPaymentLoading(false)
+          return
+        }
+        settlementAdjustmentAmount = shortfall
+        settlementAdjustmentReason = reason
+      }
+    }
 
     // DUPLICATE PAYMENT CHECK: same customer + same amount + same day
     if (!isCashCustomer) {
@@ -1553,7 +1703,11 @@ const CustomerLedgerPage = () => {
       }
     }
 
-    await executePaymentApi({ data, idempotencyKey, isAllocate })
+    await executePaymentApi({
+      data: { ...data, settlementAdjustmentAmount, settlementAdjustmentReason },
+      idempotencyKey,
+      isAllocate
+    })
   }
 
   const executePaymentApi = async ({ data, idempotencyKey, isAllocate }) => {
@@ -1591,6 +1745,9 @@ const CustomerLedgerPage = () => {
         ])
         if (response?.success) {
           toast.success(`Payment recorded: ${formatCurrency(amount)} across ${allocations.length} invoice(s)`, { id: 'payment-success', duration: 5000 })
+          const allocatedPayment = response?.data?.payment || response?.data?.Payment
+          onPaymentReceiptOffer(allocatedPayment)
+          showReturnToPrompt(navigate, returnTo)
           setShowPaymentModal(false)
           setPayAllOutstandingMode(false)
           setPaymentModalInvoiceId(null)
@@ -1641,6 +1798,10 @@ const CustomerLedgerPage = () => {
         reference: data.ref || data.reference || null,
         paymentDate: data.paymentDate || new Date().toISOString()
       }
+      if (data.settlementAdjustmentAmount > 0) {
+        paymentData.settlementAdjustmentAmount = data.settlementAdjustmentAmount
+        paymentData.settlementAdjustmentReason = data.settlementAdjustmentReason
+      }
 
       console.log('Submitting payment with data:', paymentData)
       console.log('Idempotency key:', idempotencyKey)
@@ -1664,10 +1825,14 @@ const CustomerLedgerPage = () => {
         const mode = paymentResult?.mode || paymentResult?.method || data.method || 'CASH'
         const amount = paymentResult?.amount || data.amount
 
+        const adjAmt = response?.data?.settlementAdjustment?.amount
+        const adjPart = adjAmt > 0 ? ` + ${formatCurrency(adjAmt)} adjustment` : ''
         const statusMsg = invoiceResult?.invoiceNo
           ? ` Invoice ${invoiceResult.invoiceNo} status: ${invoiceResult.status || invoiceResult.paymentStatus || 'PENDING'}`
           : ''
-        toast.success(`Payment recorded: ${formatCurrency(amount)} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
+        toast.success(`Payment recorded: ${formatCurrency(amount)} cash${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
+        onPaymentReceiptOffer(paymentResult)
+        showReturnToPrompt(navigate, returnTo)
 
         setShowPaymentModal(false)
         setPaymentModalInvoiceId(null)
@@ -2044,15 +2209,22 @@ const CustomerLedgerPage = () => {
           <div className="flex items-center gap-2 min-w-0 flex-1">
             {/* Return/Back Button */}
             <button
+              type="button"
               onClick={() => {
                 if (selectedCustomer) {
                   clearSelectedCustomer({ keepSearch: false })
                   return
                 }
-                navigate('/customers')
+                navigate(returnTo || '/customers')
               }}
               className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
-              title={selectedCustomer ? 'Back to customer list' : 'Back to Customers'}
+              title={
+                selectedCustomer
+                  ? 'Clear selected customer'
+                  : returnTo
+                    ? `Back to ${getReturnLabel(returnTo)}`
+                    : 'Back to Customers'
+              }
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -2061,6 +2233,15 @@ const CustomerLedgerPage = () => {
               <p className="text-xs text-gray-500 truncate hidden sm:block">{companyName || 'Select a customer below'}</p>
             </div>
           </div>
+          {returnTo && (
+            <button
+              type="button"
+              onClick={() => navigate(returnTo)}
+              className="hidden sm:inline-flex min-h-9 shrink-0 items-center rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
+            >
+              {getReturnLabel(returnTo)}
+            </button>
+          )}
           <div className="hidden md:flex items-center gap-3 shrink-0">
             <div className="text-right text-xs text-gray-600">
               <p>{new Date().toLocaleDateString('en-GB')}</p>
@@ -2574,7 +2755,7 @@ const CustomerLedgerPage = () => {
                 <MobileIconTabBar
                   className="sticky top-0 z-10 shrink-0"
                   activeId={activeTab}
-                  onChange={setActiveTab}
+                  onChange={handleLedgerTabChange}
                   tabs={[
                     { id: 'ledger', label: 'Ledger', shortLabel: 'Ledger', icon: FileText },
                     { id: 'invoices', label: 'Invoices', shortLabel: 'Bills', icon: FileText },
@@ -2584,7 +2765,11 @@ const CustomerLedgerPage = () => {
                 />
 
                 {/* TAB CONTENT — primary scroll region */}
-                <div className="flex-1 min-h-0 overflow-auto w-full pb-24 lg:pb-2">
+                <div
+                  ref={ledgerScrollRef}
+                  onScroll={persistLedgerScroll}
+                  className="flex-1 min-h-0 overflow-auto w-full pb-24 lg:pb-2"
+                >
                   {activeTab === 'ledger' && (
                     showLedgerLoading ? (
                       <div className="flex items-center justify-center h-full p-8">
@@ -2671,10 +2856,7 @@ const CustomerLedgerPage = () => {
                             return updated
                           })
                         }}
-                        onViewReceipt={(paymentId) => {
-                          setReceiptPreviewPaymentIds([paymentId])
-                          setShowReceiptPreviewModal(true)
-                        }}
+                        onViewReceipt={openReceiptPreviewForPaymentId}
                       />
                     )
                   )}
@@ -2778,14 +2960,17 @@ const CustomerLedgerPage = () => {
                       </div>
                     ) : (
                     <PaymentsTab
+                      key={`${user?.tenantId}:${selectedCustomer?.id}`}
                       payments={customerPayments}
                       user={user}
-                      onViewReceipt={(paymentId) => {
-                        setReceiptPreviewPaymentIds([paymentId])
-                        setShowReceiptPreviewModal(true)
-                      }}
+                      onViewReceipt={openReceiptPreviewForPaymentId}
                       onGenerateReceiptBatch={(paymentIds) => {
-                        setReceiptPreviewPaymentIds(paymentIds)
+                        const ids = currentReceiptSelection(customerPayments, paymentIds)
+                        if (ids.length === 0) {
+                          toast.error('Select cleared incoming payments to generate a receipt.')
+                          return
+                        }
+                        setReceiptPreviewPaymentIds(ids)
                         setShowReceiptPreviewModal(true)
                       }}
                       onEditPayment={(payment) => {
@@ -2871,6 +3056,7 @@ const CustomerLedgerPage = () => {
         setValue={setPaymentValue}
         watch={watchPayment}
         loading={paymentLoading}
+        settlementAdjustmentsEnabled={settlementAdjustmentsEnabled}
       />
 
       {/* Settle Credit Modal — Apply to invoice or Issue refund */}
@@ -2927,9 +3113,6 @@ const CustomerLedgerPage = () => {
         onClose={() => {
           setShowReceiptPreviewModal(false)
           setReceiptPreviewPaymentIds([])
-        }}
-        onSuccess={async () => {
-          if (selectedCustomer?.id) await loadCustomerData(selectedCustomer.id)
         }}
       />
 
@@ -3807,9 +3990,13 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                           {((entry.type === 'Sale' || entry.type === 'Invoice') && (entry.saleId ?? entry.SaleId)) ? (
                             <button type="button" onClick={() => navigate(`/returns/create?saleId=${entry.saleId ?? entry.SaleId}`, { state: { returnTo: location.pathname + location.search } })} className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2 text-xs font-medium text-amber-800" aria-label="Create return">Return</button>
                           ) : null}
-                          {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (
+                          {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt ? (() => {
+                            const ledgerPay = paymentFromCustomerLedgerEntry(entry)
+                            if (ledgerPay && !canReceivePaymentReceipt(ledgerPay)) return null
+                            return (
                             <button type="button" onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)} className="inline-flex min-h-9 items-center rounded-md bg-blue-100 px-2 text-xs font-medium text-blue-800" aria-label="Print payment receipt">Receipt</button>
-                          ) : null}
+                            )
+                          })() : null}
                           {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
                             <>
                               <button type="button" onClick={async () => {
@@ -3944,17 +4131,21 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                         Return
                       </button>
                     )}
-                    {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt && (
+                    {entry.type === 'Payment' && (entry.paymentId ?? entry.PaymentId) && onViewReceipt && (() => {
+                      const ledgerPay = paymentFromCustomerLedgerEntry(entry)
+                      if (ledgerPay && !canReceivePaymentReceipt(ledgerPay)) return null
+                      return (
                       <button
                         type="button"
                         onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                        className="inline-flex min-h-[44px] items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
                         title="Print payment receipt"
                       >
                         <Printer className="h-3 w-3" />
                         Receipt
                       </button>
-                    )}
+                      )
+                    })()}
                     {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) && (
                       <>
                         <button
@@ -4375,14 +4566,25 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
   const userRole = user?.role?.toLowerCase()
   const canEditDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'manager'
 
+  const eligiblePayments = canEditDelete && !user?.supportReadOnly ? payments.filter(canReceivePaymentReceipt) : []
+  const currentSelectedIds = currentReceiptSelection(eligiblePayments, selectedPaymentIds)
   const togglePaymentSelection = (id) => {
-    setSelectedPaymentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+    if (!eligiblePayments.some(payment => payment.id === id)) return
+    if (!currentSelectedIds.includes(id) && currentSelectedIds.length >= 500) {
+      toast.error('Select up to 500 payments per receipt.')
+      return
+    }
+    setSelectedPaymentIds(currentSelectedIds.includes(id) ? currentSelectedIds.filter(value => value !== id) : [...currentSelectedIds, id])
   }
   const toggleSelectAllPayments = () => {
-    if (selectedPaymentIds.length === payments.length) setSelectedPaymentIds([])
-    else setSelectedPaymentIds(payments.map(p => p.id))
+    if (eligiblePayments.length > 500) {
+      toast.error('Select up to 500 eligible payments at a time.')
+      return
+    }
+    if (currentSelectedIds.length === eligiblePayments.length) setSelectedPaymentIds([])
+    else setSelectedPaymentIds(eligiblePayments.map(payment => payment.id))
   }
-  const selectedTotal = payments.filter(p => selectedPaymentIds.includes(p.id)).reduce((sum, p) => sum + (p.amount || 0), 0)
+  const selectedTotal = payments.filter(p => currentSelectedIds.includes(p.id)).reduce((sum, p) => sum + Number(p.amount || 0), 0)
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -4392,6 +4594,8 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
           <span>Filter by Mode</span>
         </button>
       </div>
+
+      <p className="mb-3 text-xs text-gray-600">Receipts are available for cleared incoming payments only. Select up to 500 payments.</p>
 
       {/* Payments Table - Desktop */}
       <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden flex-1 min-h-0">
@@ -4403,7 +4607,9 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={payments.length > 0 && selectedPaymentIds.length === payments.length}
+                      checked={eligiblePayments.length > 0 && currentSelectedIds.length === eligiblePayments.length}
+                      disabled={eligiblePayments.length === 0}
+                      aria-label="Select all eligible payments"
                       onChange={toggleSelectAllPayments}
                       className="rounded border-gray-300"
                     />
@@ -4431,7 +4637,9 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                       <td className="px-4 py-3 whitespace-nowrap">
                         <input
                           type="checkbox"
-                          checked={selectedPaymentIds.includes(payment.id)}
+                          checked={currentSelectedIds.includes(payment.id)}
+                          disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
+                          aria-label={`Select payment ${payment.id} for receipt`}
                           onChange={() => togglePaymentSelection(payment.id)}
                           className="rounded border-gray-300"
                         />
@@ -4456,9 +4664,17 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                       <div className="flex items-center justify-center gap-2">
                         <button
                           type="button"
-                          onClick={() => onViewReceipt(payment.id)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded transition-colors"
-                          title="Print receipt (optional – when customer asks)"
+                          onClick={() => {
+                            if (!canEditDelete || user?.supportReadOnly) return
+                            if (!canReceivePaymentReceipt(payment)) {
+                              toast.error(receiptIneligibilityReason(payment))
+                              return
+                            }
+                            onViewReceipt(payment.id)
+                          }}
+                          disabled={!canEditDelete || user?.supportReadOnly}
+                          className="text-blue-600 hover:text-blue-900 p-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                         >
                           <Printer className="h-4 w-4" />
                         </button>
@@ -4493,16 +4709,16 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
       </div>
 
       {/* Selection action bar - Generate Receipt */}
-      {onGenerateReceiptBatch && selectedPaymentIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between">
+      {onGenerateReceiptBatch && currentSelectedIds.length > 0 && (
+        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
           <span className="text-sm font-medium text-gray-700">
-            {selectedPaymentIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
+            {currentSelectedIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
           </span>
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => onGenerateReceiptBatch(selectedPaymentIds)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              onClick={() => onGenerateReceiptBatch(currentSelectedIds)}
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
             >
               <Printer className="h-4 w-4" />
               Generate Receipt
@@ -4510,7 +4726,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
             <button
               type="button"
               onClick={() => setSelectedPaymentIds([])}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
             >
               Cancel
             </button>
@@ -4526,7 +4742,14 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
           </div>
         ) : (
           payments.map((payment) => (
-            <div key={payment.id} className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <div key={payment.id} className="bg-white rounded-lg border border-neutral-200 p-4">
+              {onGenerateReceiptBatch && (
+                <label className="flex min-h-[44px] items-center gap-2 text-sm mb-2">
+                  <input type="checkbox" checked={currentSelectedIds.includes(payment.id)}
+                    disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)} onChange={() => togglePaymentSelection(payment.id)} />
+                  {canReceivePaymentReceipt(payment) ? 'Select for receipt' : 'Receipt unavailable'}
+                </label>
+              )}
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-semibold text-neutral-900">{formatCurrency(payment.amount)}</p>
@@ -4546,10 +4769,19 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
               )}
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => onViewReceipt(payment.id)}
-                  className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md text-xs font-medium flex items-center gap-1"
+                  type="button"
+                  onClick={() => {
+                    if (!canEditDelete || user?.supportReadOnly) return
+                    if (!canReceivePaymentReceipt(payment)) {
+                      toast.error(receiptIneligibilityReason(payment))
+                      return
+                    }
+                    onViewReceipt(payment.id)
+                  }}
+                  disabled={!canEditDelete || user?.supportReadOnly}
+                  className="min-h-[44px] px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                   aria-label="Print receipt (optional)"
-                  title="Print receipt when customer asks"
+                  title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                 >
                   <Printer className="h-3.5 w-3.5" /> Receipt
                 </button>
@@ -4697,9 +4929,12 @@ const PaymentEntryModal = ({
   errors,
   setValue,
   watch,
-  loading = false
+  loading = false,
+  settlementAdjustmentsEnabled = false
 }) => {
   const selectedSaleId = watch('saleId')
+  const watchedAmount = watch('amount')
+  const watchedMethod = watch('method')
 
   // Combine outstanding and all invoices, prioritizing outstanding ones
   const allAvailableInvoices = useMemo(() => {
@@ -4743,6 +4978,16 @@ const PaymentEntryModal = ({
       return new Date(b.invoiceDate) - new Date(a.invoiceDate)
     })
   }, [outstandingInvoices, allInvoices])
+
+  const selectedInvoiceForSettlement = selectedSaleId
+    ? allAvailableInvoices.find((inv) => inv.id === parseInt(selectedSaleId, 10))
+    : null
+  const settlementShortfall = settlementAdjustmentsEnabled
+    && !payAllOutstandingMode
+    && selectedInvoiceForSettlement
+    && (watchedMethod || 'CASH').toUpperCase() === 'CASH'
+    ? computeInvoiceSettlementShortfall(selectedInvoiceForSettlement.balanceAmount, watchedAmount)
+    : 0
 
   // Load invoice amount when modal opens with pre-selected invoice
   useEffect(() => {
@@ -4851,6 +5096,36 @@ const PaymentEntryModal = ({
               min: { value: 0.01, message: 'Amount must be greater than 0' }
             })}
           />
+
+          {settlementShortfall > 0 && (
+            <div className="col-span-2 p-3 border border-amber-200 bg-amber-50 rounded-lg space-y-2">
+              <p className="text-sm text-amber-900">
+                Cash is {formatCurrency(settlementShortfall)} short of closing this invoice. An authorized adjustment can close the balance without inflating cash received.
+              </p>
+              <label className="flex items-start gap-2 text-sm text-amber-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  {...register('applySettlementAdjustment')}
+                  disabled={loading}
+                />
+                <span>Close invoice with authorized adjustment of {formatCurrency(settlementShortfall)}</span>
+              </label>
+              <Input
+                label="Adjustment reason"
+                placeholder="Required when using settlement adjustment"
+                error={errors.settlementAdjustmentReason?.message}
+                {...register('settlementAdjustmentReason', {
+                  validate: (value, formValues) => {
+                    if (!formValues.applySettlementAdjustment) return true
+                    const t = (value || '').trim()
+                    if (t.length < 3) return 'Reason must be at least 3 characters'
+                    return true
+                  }
+                })}
+              />
+            </div>
+          )}
 
           <Select
             label="Payment Mode"

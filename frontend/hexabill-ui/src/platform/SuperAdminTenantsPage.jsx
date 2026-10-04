@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -38,6 +38,11 @@ const SuperAdminTenantsPage = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [sharedLegalSource, setSharedLegalSource] = useState(null)
+  const [legalIdentityConfirmed, setLegalIdentityConfirmed] = useState(false)
+  const [ownerSetupLoading, setOwnerSetupLoading] = useState(false)
+  const [createError, setCreateError] = useState('')
+  const createErrorRef = useRef(null)
   const [showSuspendModal, setShowSuspendModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState(null)
@@ -74,6 +79,12 @@ const SuperAdminTenantsPage = () => {
   useEffect(() => {
     fetchTenants()
   }, [currentPage, searchTerm, statusFilter])
+
+  useEffect(() => {
+    if (!createError) return
+    createErrorRef.current?.focus({ preventScroll: true })
+    createErrorRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [createError])
 
   const fetchTenants = async () => {
     try {
@@ -223,6 +234,37 @@ const SuperAdminTenantsPage = () => {
       console.error('Delete tenant error:', data?.message || error?.message, { response: data, status: error?.response?.status })
     } finally {
       setDeleteLoading(false)
+    }
+  }
+
+  const openOwnerSetup = async (tenant) => {
+    if (ownerSetupLoading) return
+    setOwnerSetupLoading(true)
+    try {
+      const response = await superAdminAPI.getTenant(tenant.id)
+      const source = response?.data
+      if (!response?.success || !source) throw new Error('Could not load the company details. Try again.')
+      if (!source.sharedLegalWorkspaceEnabled) {
+        toast.error('Enable Shared legal owner setup in this company’s Features tab first.')
+        return
+      }
+      if (!source.vatNumber?.trim() || !source.companyLicense?.trim()) {
+        toast.error('Complete and verify the source company’s TRN and licence before owner setup.')
+        return
+      }
+      setCreateFormData({ name: source.name, subdomain: `${source.subdomain}2`,
+        companyNameEn: source.companyNameEn || source.name, companyNameAr: source.companyNameAr || '',
+        vatNumber: source.vatNumber, companyLicense: source.companyLicense,
+        country: source.country, currency: source.currency, ownerName: '', email: '', phone: '', address: '',
+        status: 'Trial', trialDays: '14' })
+      setSharedLegalSource(source)
+      setLegalIdentityConfirmed(false)
+      setCreateError('')
+      setShowCreateModal(true)
+    } catch (error) {
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || error.message || 'Could not prepare owner setup.')
+    } finally {
+      setOwnerSetupLoading(false)
     }
   }
 
@@ -381,6 +423,11 @@ const SuperAdminTenantsPage = () => {
             <Ban className="h-4 w-4" />
           </button>
         )}
+        <button type="button" disabled={ownerSetupLoading} onClick={() => openOwnerSetup(tenant)}
+          className="inline-flex min-h-11 items-center rounded px-2 text-xs font-medium text-primary-700 hover:bg-primary-50 disabled:opacity-50"
+          title="Create a separate owner workspace using this company’s verified legal details">
+          New owner
+        </button>
         <button
           onClick={() => {
             setSelectedTenant(tenant)
@@ -404,7 +451,7 @@ const SuperAdminTenantsPage = () => {
           <p className="text-neutral-500 mt-1">Manage and monitor all platform organizations</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => { setSharedLegalSource(null); setLegalIdentityConfirmed(false); setCreateError(''); setShowCreateModal(true) }}
           className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2"
         >
           <Plus className="h-5 w-5" />
@@ -677,6 +724,9 @@ const SuperAdminTenantsPage = () => {
         isOpen={showCreateModal}
         onClose={() => {
           setShowCreateModal(false)
+          setSharedLegalSource(null)
+          setLegalIdentityConfirmed(false)
+          setCreateError('')
           setCreateFormData({
             name: '',
             subdomain: '',
@@ -692,25 +742,43 @@ const SuperAdminTenantsPage = () => {
             trialDays: '14'
           })
         }}
-        title="Create New Company"
+        title={sharedLegalSource ? 'Create separate owner workspace' : 'Create New Company'}
         size="2xl"
         closeOnOverlayClick={false}
       >
         <form onSubmit={async (e) => {
           e.preventDefault()
           if (createLoading) return
+          if (sharedLegalSource && !legalIdentityConfirmed) {
+            setCreateError('Review and confirm the shared legal details before creating the workspace.')
+            return
+          }
           if (!createFormData.name.trim()) {
-            toast.error('Company name is required')
+            setCreateError('Company name is required')
+            return
+          }
+          if (!createFormData.email?.trim()) {
+            setCreateError('Owner email is required for the invite.')
+            return
+          }
+          if (sharedLegalSource && (!createFormData.ownerName?.trim() || !createFormData.phone?.trim())) {
+            setCreateError('Enter the new owner’s name and contact phone.')
             return
           }
           if (!isValidTenantSlug(createFormData.subdomain.trim().toLowerCase())) {
-            toast.error('Enter a valid subdomain using lowercase letters, numbers, and hyphens.')
+            setCreateError('Enter a valid subdomain using lowercase letters, numbers, and hyphens.')
             return
           }
           try {
+            setCreateError('')
             setCreateLoading(true)
             const response = await superAdminAPI.createTenant({
               ...createFormData,
+              sharedLegalIdentityFromTenantId: sharedLegalSource?.id,
+              expectedLegalIdentityFingerprint: sharedLegalSource?.legalIdentityFingerprint,
+              confirmSharedLegalIdentity: !!sharedLegalSource && legalIdentityConfirmed,
+              ownerName: createFormData.ownerName?.trim() || undefined,
+              companyLicense: createFormData.companyLicense?.trim() || undefined,
               name: createFormData.name.trim(),
               subdomain: createFormData.subdomain.trim().toLowerCase(),
               companyNameEn: createFormData.companyNameEn?.trim() || undefined,
@@ -771,14 +839,29 @@ const SuperAdminTenantsPage = () => {
                 fetchTenants()
               }
             } else {
-              toast.error(response.message || 'Failed to create company')
+              setCreateError(response.message || 'Failed to create company. Your setup details are preserved; try again.')
             }
           } catch (error) {
-            if (!error?._handledByInterceptor) toast.error(error.response?.data?.message || 'Failed to create company')
+            setCreateError(error.response?.data?.message || 'Could not complete company setup. Your details are preserved; try again.')
           } finally {
             setCreateLoading(false)
           }
-        }} className="space-y-6 max-h-[80vh] overflow-y-auto px-1">
+        }} className="space-y-6 px-1">
+
+          {createError && <p id="company-create-error" ref={createErrorRef} role="alert" tabIndex={-1}
+            className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 focus:outline-none focus:ring-2 focus:ring-red-500">{createError}</p>}
+
+          {sharedLegalSource && (
+            <section className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm">
+              <p className="font-semibold text-neutral-900">Shared legal company: {sharedLegalSource.companyNameEn || sharedLegalSource.name}</p>
+              <p className="mt-1 text-neutral-700">TRN: {sharedLegalSource.vatNumber} · Licence: {sharedLegalSource.companyLicense}</p>
+              <p className="mt-2 text-neutral-700">The new owner gets a separate login, phone, stock, customers, invoices and balances. Opening data starts empty; decide any import during setup.</p>
+              <label className="mt-3 flex min-h-11 items-center gap-2 font-medium">
+                <input type="checkbox" className="h-4 w-4 shrink-0" checked={legalIdentityConfirmed} onChange={(e) => setLegalIdentityConfirmed(e.target.checked)} />
+                I have verified this company name, TRN and licence for the new owner.
+              </label>
+            </section>
+          )}
 
           {/* Section 1: Identity & Contact */}
           <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 space-y-4">
@@ -793,17 +876,21 @@ const SuperAdminTenantsPage = () => {
                 placeholder="e.g. Acme Corp"
                 required
                 value={createFormData.name}
+                readOnly={!!sharedLegalSource}
                 onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
                 className="bg-white"
               />
               <Input
                 label="Owner Email Address"
                 type="email"
+                required
                 placeholder="admin@company.com"
                 value={createFormData.email}
                 onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
                 className="bg-white"
               />
+              <Input label="Owner Name" required={!!sharedLegalSource} value={createFormData.ownerName || ''}
+                onChange={(e) => setCreateFormData({ ...createFormData, ownerName: e.target.value })} className="bg-white" />
               <div className="md:col-span-2">
                 <Input
                   label="Client Subdomain"
@@ -825,6 +912,7 @@ const SuperAdminTenantsPage = () => {
               <div className="md:col-span-2">
                 <Input
                   label="Contact Phone"
+                  required={!!sharedLegalSource}
                   placeholder="+971 50 123 4567"
                   value={createFormData.phone}
                   onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
@@ -846,6 +934,7 @@ const SuperAdminTenantsPage = () => {
                 label="Company Name (English)"
                 placeholder="Acme Trading LLC"
                 value={createFormData.companyNameEn}
+                readOnly={!!sharedLegalSource}
                 onChange={(e) => setCreateFormData({ ...createFormData, companyNameEn: e.target.value })}
                 className="bg-white"
               />
@@ -854,6 +943,7 @@ const SuperAdminTenantsPage = () => {
                 placeholder="شركة اكمي للتجارة"
                 dir="rtl"
                 value={createFormData.companyNameAr}
+                readOnly={!!sharedLegalSource}
                 onChange={(e) => setCreateFormData({ ...createFormData, companyNameAr: e.target.value })}
                 className="bg-white"
               />
@@ -861,9 +951,12 @@ const SuperAdminTenantsPage = () => {
                 label="VAT Number"
                 placeholder="100xxxxxxxxxxxx"
                 value={createFormData.vatNumber}
+                readOnly={!!sharedLegalSource}
                 onChange={(e) => setCreateFormData({ ...createFormData, vatNumber: e.target.value })}
                 className="bg-white"
               />
+              <Input label="Trade Licence" value={createFormData.companyLicense || ''} readOnly={!!sharedLegalSource}
+                onChange={(e) => setCreateFormData({ ...createFormData, companyLicense: e.target.value })} className="bg-white" />
               <Input
                 label="Physical Address"
                 placeholder="Street, City, Building"
@@ -884,6 +977,7 @@ const SuperAdminTenantsPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <Select
                 label="Operating Country"
+                disabled={!!sharedLegalSource}
                 value={createFormData.country}
                 onChange={(e) => setCreateFormData({ ...createFormData, country: e.target.value })}
                 className="bg-white"
@@ -898,6 +992,7 @@ const SuperAdminTenantsPage = () => {
 
               <Select
                 label="Base Currency"
+                disabled={!!sharedLegalSource}
                 value={createFormData.currency}
                 onChange={(e) => setCreateFormData({ ...createFormData, currency: e.target.value })}
                 className="bg-white"
@@ -940,6 +1035,8 @@ const SuperAdminTenantsPage = () => {
               type="button"
               onClick={() => {
                 setShowCreateModal(false)
+                setSharedLegalSource(null)
+                setLegalIdentityConfirmed(false)
                 setCreateFormData({
                   name: '',
                   subdomain: '',
@@ -964,7 +1061,7 @@ const SuperAdminTenantsPage = () => {
               loading={createLoading}
               className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-bold rounded-2xl hover:shadow-lg hover:from-blue-700 hover:to-indigo-800 transition-all transform hover:-translate-y-0.5"
             >
-              Open Company
+              {sharedLegalSource ? 'Create owner workspace' : 'Create company'}
             </LoadingButton>
           </div>
         </form>

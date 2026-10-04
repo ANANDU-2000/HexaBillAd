@@ -121,7 +121,8 @@ namespace HexaBill.Api.Modules.Expenses
                     PartialCreditPct = e.PartialCreditPct,
                     ClaimableVat = e.ClaimableVat,
                     VatRate = e.VatRate,
-                    VatInclusive = e.VatInclusive
+                    VatInclusive = e.VatInclusive,
+                    PaidFrom = e.PaidFrom == ExpensePaidFrom.Bank ? "Bank" : "Cash"
                 })
                 .ToListAsync();
 
@@ -385,7 +386,8 @@ namespace HexaBill.Api.Modules.Expenses
                 PartialCreditPct = expense.PartialCreditPct,
                 ClaimableVat = expense.ClaimableVat,
                 VatRate = expense.VatRate,
-                VatInclusive = expense.VatInclusive
+                VatInclusive = expense.VatInclusive,
+                PaidFrom = expense.PaidFrom == ExpensePaidFrom.Bank ? "Bank" : "Cash"
             };
         }
 
@@ -472,7 +474,8 @@ namespace HexaBill.Api.Modules.Expenses
                         IsEntertainment = isEnt,
                         PartialCreditPct = partialPct,
                         ClaimableVat = vatResult?.ClaimableVat ?? (withVat && isPetroleum ? 0m : (decimal?)null),
-                        VatInclusive = request.VatInclusive
+                        VatInclusive = request.VatInclusive,
+                        PaidFrom = ParsePaidFrom(request.PaidFrom)
                     };
 
                     // Auto-approve if owner/admin
@@ -531,7 +534,8 @@ namespace HexaBill.Api.Modules.Expenses
                         PartialCreditPct = expense.PartialCreditPct,
                         ClaimableVat = expense.ClaimableVat,
                         VatRate = expense.VatRate,
-                        VatInclusive = expense.VatInclusive
+                        VatInclusive = expense.VatInclusive,
+                        PaidFrom = FormatPaidFrom(expense.PaidFrom)
                     };
                 }
                 catch (Exception ex)
@@ -627,6 +631,7 @@ namespace HexaBill.Api.Modules.Expenses
                     expense.PartialCreditPct = partialPct;
                     expense.ClaimableVat = vatResult?.ClaimableVat ?? (withVat && isPetroleum ? 0m : (decimal?)null);
                     expense.VatInclusive = request.VatInclusive;
+                    expense.PaidFrom = ParsePaidFrom(request.PaidFrom);
 
                     await _context.SaveChangesAsync();
 
@@ -677,7 +682,8 @@ namespace HexaBill.Api.Modules.Expenses
                         PartialCreditPct = expense.PartialCreditPct,
                         ClaimableVat = expense.ClaimableVat,
                         VatRate = expense.VatRate,
-                        VatInclusive = expense.VatInclusive
+                        VatInclusive = expense.VatInclusive,
+                        PaidFrom = FormatPaidFrom(expense.PaidFrom)
                     };
                 }
                 catch (Exception ex)
@@ -938,6 +944,12 @@ namespace HexaBill.Api.Modules.Expenses
             await _context.SaveChangesAsync();
             return result;
         }
+
+        private static ExpensePaidFrom ParsePaidFrom(string? value) =>
+            string.Equals(value, "Bank", StringComparison.OrdinalIgnoreCase) ? ExpensePaidFrom.Bank : ExpensePaidFrom.Cash;
+
+        private static string FormatPaidFrom(ExpensePaidFrom value) =>
+            value == ExpensePaidFrom.Bank ? "Bank" : "Cash";
     }
 }
 

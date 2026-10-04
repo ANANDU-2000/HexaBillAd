@@ -89,6 +89,18 @@ public class UpstreamApiGuardTests
     }
 
     [Fact]
+    public async Task ApiHealth_OnUpstream_AllowedWithoutEdge()
+    {
+        var nextCalled = false;
+        var middleware = CreateMiddleware(() => nextCalled = true);
+        var context = CreateContext("hexabill.onrender.com", "/api/health", withEdge: false);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.True(nextCalled);
+    }
+
+    [Fact]
     public async Task DirectTenantHost_AllowedWithoutEdge()
     {
         var nextCalled = false;

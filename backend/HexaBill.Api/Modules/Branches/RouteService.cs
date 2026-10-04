@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Sales;
 using System.Security.Claims;
 
 namespace HexaBill.Api.Modules.Branches
@@ -512,31 +513,33 @@ namespace HexaBill.Api.Modules.Branches
             var netSales = totalSales - totalReturns;
 
             decimal costOfGoodsSold = 0m;
+            int estimatedCostLineCount = 0;
             if (invoiceCount > 0)
             {
                 try
                 {
                     // Get SaleItems with ProductId only (avoid loading entire Product entity)
                     var saleItems = await _context.SaleItems
+                        .AsNoTracking()
                         .Where(si => saleIds.Contains(si.SaleId))
-                        .Select(si => new { si.SaleId, si.Qty, si.ProductId })
                         .ToListAsync();
                     
                     // Get CostPrice separately for products that exist
                     var productIds = saleItems.Select(si => si.ProductId).Distinct().ToList();
                     var productCosts = await _context.Products
-                        .Where(p => productIds.Contains(p.Id))
-                        .Select(p => new { p.Id, p.CostPrice })
-                        .ToDictionaryAsync(p => p.Id, p => p.CostPrice);
+                        .Where(p => productIds.Contains(p.Id) && (tenantId <= 0 || p.TenantId == tenantId))
+                        .Select(p => new Product { Id = p.Id, CostPrice = p.CostPrice, ConversionToBase = p.ConversionToBase })
+                        .ToDictionaryAsync(p => p.Id);
                     
-                    costOfGoodsSold = saleItems
-                        .Where(si => productCosts.ContainsKey(si.ProductId))
-                        .Sum(si => si.Qty * productCosts[si.ProductId]);
+                    foreach (var item in saleItems)
+                        item.Product = productCosts.GetValueOrDefault(item.ProductId)!;
+                    costOfGoodsSold = saleItems.Sum(SaleCostBasis.Calculate);
+                    estimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating route COGS");
-                    costOfGoodsSold = 0m;
+                    throw;
                 }
             }
             int visitCount;
@@ -567,6 +570,7 @@ namespace HexaBill.Api.Modules.Branches
                 NetSales = netSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = costOfGoodsSold,
+                EstimatedCostLineCount = estimatedCostLineCount,
                 Profit = netSales - costOfGoodsSold - totalExpenses,
                 InvoiceCount = invoiceCount,
                 VisitCount = visitCount,

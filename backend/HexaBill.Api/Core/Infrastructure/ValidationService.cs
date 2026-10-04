@@ -6,10 +6,11 @@ namespace HexaBill.Api.Core.Infrastructure
 {
     public interface IValidationService
     {
-        Task<ValidationResult> ValidatePaymentAmountAsync(int? saleId, int? customerId, decimal amount);
-        Task<ValidationResult> ValidateStockAvailabilityAsync(int productId, decimal quantity, int? excludeSaleId = null);
+        Task<ValidationResult> ValidatePaymentAmountAsync(int? saleId, int? customerId, decimal amount, int tenantId);
+        Task<ValidationResult> ValidateStockAvailabilityAsync(int productId, decimal quantity, int? excludeSaleId = null, int? tenantId = null, string? unitType = null);
+        Task<ValidationResult> ValidateSaleStockLinesAsync(IReadOnlyList<SaleItemRequest> lines, int? excludeSaleId = null, int? tenantId = null);
         Task<ValidationResult> ValidateCustomerBalanceAsync(int customerId, decimal? expectedBalance = null);
-        Task<ValidationResult> ValidateSaleEditAsync(int saleId, List<SaleItemRequest> newItems);
+        Task<ValidationResult> ValidateSaleEditAsync(int saleId, List<SaleItemRequest> newItems, int? tenantId = null);
         Task<ValidationResult> ValidateQuantityAsync(decimal quantity);
         Task<ValidationResult> ValidatePriceAsync(decimal price);
         Task<ValidationResult> ValidateInvoiceNumberAsync(string invoiceNo, int? excludeSaleId = null);
@@ -40,7 +41,7 @@ namespace HexaBill.Api.Core.Infrastructure
         /// <summary>
         /// Validates that payment amount doesn't exceed outstanding amount
         /// </summary>
-        public async Task<ValidationResult> ValidatePaymentAmountAsync(int? saleId, int? customerId, decimal amount)
+        public async Task<ValidationResult> ValidatePaymentAmountAsync(int? saleId, int? customerId, decimal amount, int tenantId)
         {
             var errors = new List<string>();
 
@@ -59,7 +60,7 @@ namespace HexaBill.Api.Core.Infrastructure
             if (saleId.HasValue)
             {
                 var sale = await _context.Sales
-                    .FirstOrDefaultAsync(s => s.Id == saleId.Value && !s.IsDeleted);
+                    .FirstOrDefaultAsync(s => s.Id == saleId.Value && s.TenantId == tenantId && !s.IsDeleted);
 
                 if (sale == null)
                 {
@@ -70,7 +71,7 @@ namespace HexaBill.Api.Core.Infrastructure
                     // CRITICAL FIX: Calculate ACTUAL paid amount from Payments table (not stale Sale.PaidAmount)
                     // This ensures we use real-time payment data instead of potentially stale cached values
                     var actualPaidAmount = await _context.Payments
-                        .Where(p => p.SaleId == saleId.Value && p.Status != PaymentStatus.VOID)
+                        .Where(p => p.SaleId == saleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
                         .SumAsync(p => p.Amount);
                     
                     var outstanding = sale.GrandTotal - actualPaidAmount;
@@ -103,7 +104,8 @@ namespace HexaBill.Api.Core.Infrastructure
             // If payment is for a customer (not linked to invoice)
             if (customerId.HasValue && !saleId.HasValue)
             {
-                var customer = await _context.Customers.FindAsync(customerId.Value);
+                var customer = await _context.Customers
+                    .FirstOrDefaultAsync(c => c.Id == customerId.Value && c.TenantId == tenantId);
                 if (customer == null)
                 {
                     errors.Add($"Customer with ID {customerId.Value} not found.");
@@ -112,7 +114,7 @@ namespace HexaBill.Api.Core.Infrastructure
                 {
                     // Check if customer has any outstanding invoices
                     var totalOutstanding = await _context.Sales
-                        .Where(s => s.CustomerId == customerId.Value && !s.IsDeleted)
+                        .Where(s => s.TenantId == tenantId && s.CustomerId == customerId.Value && !s.IsDeleted)
                         .SumAsync(s => s.GrandTotal - s.PaidAmount);
 
                     if (totalOutstanding <= 0)
@@ -133,84 +135,73 @@ namespace HexaBill.Api.Core.Infrastructure
         /// <summary>
         /// Validates stock availability for a product
         /// </summary>
-        public async Task<ValidationResult> ValidateStockAvailabilityAsync(int productId, decimal quantity, int? excludeSaleId = null)
+        public Task<ValidationResult> ValidateStockAvailabilityAsync(int productId, decimal quantity, int? excludeSaleId = null, int? tenantId = null, string? unitType = null)
         {
-            var errors = new List<string>();
-            var warnings = new List<string>();
+            return ValidateStockLinesAsync([new SaleItemRequest { ProductId = productId, Qty = quantity, UnitType = unitType ?? "CRTN" }], excludeSaleId, tenantId);
+        }
 
-            if (quantity <= 0)
-            {
-                errors.Add("Quantity must be greater than zero.");
-                return ValidationResult.Failure(errors);
-            }
+        public Task<ValidationResult> ValidateSaleStockLinesAsync(IReadOnlyList<SaleItemRequest> lines, int? excludeSaleId = null, int? tenantId = null) =>
+            ValidateStockLinesAsync(lines.ToList(), excludeSaleId, tenantId);
 
-            if (quantity > 100000)
-            {
-                errors.Add("Quantity exceeds maximum limit of 100,000.");
-                return ValidationResult.Failure(errors);
-            }
+        private async Task<ValidationResult> ValidateStockLinesAsync(List<SaleItemRequest> lines, int? excludeSaleId, int? tenantId)
+        {
+            var scope = _context.RequestScopeEstablished && !_context.RequestIsPlatformScope ? _context.RequestTenantId : tenantId;
+            if (!scope.HasValue || scope <= 0 || (tenantId.HasValue && tenantId != scope))
+                return ValidationResult.Failure("A verified workspace is required for stock validation.");
+            if (lines.Count == 0 || lines.Any(i => i.ProductId <= 0 || i.Qty <= 0 || i.Qty > 100000))
+                return ValidationResult.Failure("Select valid products with quantities greater than zero and no more than 100,000 per line.");
 
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null)
-            {
-                errors.Add($"Product with ID {productId} not found.");
-                return ValidationResult.Failure(errors);
-            }
+            var ids = lines.Select(i => i.ProductId).Distinct().ToList();
+            var products = await _context.Products.AsNoTracking()
+                .Where(p => ids.Contains(p.Id) && p.TenantId == scope.Value).ToDictionaryAsync(p => p.Id);
+            if (products.Count != ids.Count)
+                return ValidationResult.Failure("One or more products are unavailable in this workspace.");
 
-            // Calculate base quantity
-            var baseQty = quantity * product.ConversionToBase;
-
-            // Get current stock
-            var currentStock = product.StockQty;
-
-            // If editing a sale, add back the quantity from the excluded sale
+            Sale? excluded = null;
             if (excludeSaleId.HasValue)
             {
-                var excludedSale = await _context.Sales
-                    .Include(s => s.Items)
-                    .FirstOrDefaultAsync(s => s.Id == excludeSaleId.Value);
-
-                if (excludedSale?.Items != null)
+                excluded = await _context.Sales.AsNoTracking().Include(s => s.Items)
+                    .FirstOrDefaultAsync(s => s.Id == excludeSaleId.Value && s.TenantId == scope.Value && !s.IsDeleted);
+                if (excluded == null) return ValidationResult.Failure("The original invoice is unavailable in this workspace.");
+            }
+            var errors = new List<string>();
+            var warnings = new List<string>();
+            foreach (var group in lines.GroupBy(i => i.ProductId))
+            {
+                var product = products[group.Key];
+                try
                 {
-                    var excludedItem = excludedSale.Items.FirstOrDefault(i => i.ProductId == productId);
-                    if (excludedItem != null)
+                    decimal required = 0;
+                    foreach (var request in group)
                     {
-                        var excludedBaseQty = excludedItem.Qty * product.ConversionToBase;
-                        currentStock += excludedBaseQty; // Add back excluded quantity
+                        var basis = new SaleItem { ProductId = product.Id, Product = product,
+                            UnitType = string.IsNullOrWhiteSpace(request.UnitType) ? "CRTN" : request.UnitType.ToUpperInvariant() };
+                        SaleCostBasis.Capture(basis, product, scope.Value, enabled: false, previous: excluded?.Items);
+                        required += SaleCostBasis.BaseQuantity(basis, request.Qty);
                     }
+                    var available = product.StockQty;
+                    if (excluded?.IsFinalized == true)
+                    {
+                        foreach (var old in excluded.Items.Where(i => i.ProductId == product.Id))
+                        {
+                            old.Product = product;
+                            available += SaleCostBasis.BaseQuantity(old, old.Qty);
+                        }
+                    }
+                    if (available < required)
+                        errors.Add($"Insufficient stock for '{product.NameEn}'. Available: {available:N2} stock units; required: {required:N2} stock units.");
+                    else if (available > 0 && available < required * 1.2m)
+                        warnings.Add($"Low stock for '{product.NameEn}' after the selected quantities.");
+                }
+                catch (InvalidOperationException ex)
+                {
+                    errors.Add(ex.Message);
                 }
             }
-
-            // Check stock availability
-            if (currentStock < baseQty)
-            {
-                errors.Add(
-                    $"Insufficient stock for '{product.NameEn}'. " +
-                    $"Available: {currentStock:N2} {product.UnitType}, " +
-                    $"Required: {baseQty:N2} {product.UnitType}. " +
-                    $"Shortage: {baseQty - currentStock:N2} {product.UnitType}"
-                );
-            }
-
-            // Warning for low stock (less than 20% of required quantity remaining)
-            if (currentStock > 0 && currentStock < baseQty * 1.2m)
-            {
-                warnings.Add($"Low stock warning: Only {currentStock:N2} {product.UnitType} remaining after this transaction.");
-            }
-
-            if (errors.Any())
-            {
-                return ValidationResult.Failure(errors);
-            }
-
-            var result = ValidationResult.Success();
+            var result = errors.Count > 0 ? ValidationResult.Failure(errors) : ValidationResult.Success();
             result.Warnings = warnings;
             return result;
         }
-
-        /// <summary>
-        /// Validates customer balance is correct
-        /// </summary>
         public async Task<ValidationResult> ValidateCustomerBalanceAsync(int customerId, decimal? expectedBalance = null)
         {
             var errors = new List<string>();
@@ -282,13 +273,16 @@ namespace HexaBill.Api.Core.Infrastructure
         /// <summary>
         /// Validates sale edit is allowed and stock is available
         /// </summary>
-        public async Task<ValidationResult> ValidateSaleEditAsync(int saleId, List<SaleItemRequest> newItems)
+        public async Task<ValidationResult> ValidateSaleEditAsync(int saleId, List<SaleItemRequest> newItems, int? tenantId = null)
         {
             var errors = new List<string>();
+            var scope = _context.RequestScopeEstablished && !_context.RequestIsPlatformScope ? _context.RequestTenantId : tenantId;
+            if (!scope.HasValue || scope <= 0 || (tenantId.HasValue && tenantId != scope))
+                return ValidationResult.Failure("A verified workspace is required for invoice validation.");
 
             var sale = await _context.Sales
                 .Include(s => s.Items)
-                .FirstOrDefaultAsync(s => s.Id == saleId && !s.IsDeleted);
+                .FirstOrDefaultAsync(s => s.Id == saleId && s.TenantId == scope.Value && !s.IsDeleted);
 
             if (sale == null)
             {
@@ -320,12 +314,6 @@ namespace HexaBill.Api.Core.Infrastructure
                     errors.AddRange(priceResult.Errors);
                 }
 
-                // Validate stock availability (excluding current sale)
-                var stockResult = await ValidateStockAvailabilityAsync(item.ProductId, item.Qty, saleId);
-                if (!stockResult.IsValid)
-                {
-                    errors.AddRange(stockResult.Errors);
-                }
             }
 
             if (errors.Any())
@@ -333,7 +321,7 @@ namespace HexaBill.Api.Core.Infrastructure
                 return ValidationResult.Failure(errors);
             }
 
-            return ValidationResult.Success();
+            return await ValidateStockLinesAsync(newItems, saleId, scope.Value);
         }
 
         /// <summary>

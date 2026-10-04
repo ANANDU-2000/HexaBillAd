@@ -8,6 +8,7 @@ using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Reports;
+using HexaBill.Api.Modules.SuperAdmin;
 
 namespace HexaBill.Api.Modules.Purchases
 {
@@ -34,6 +35,35 @@ namespace HexaBill.Api.Modules.Purchases
         {
             _context = context;
             _vatValidation = vatValidation;
+        }
+
+        private async Task<bool> PurchaseCostSnapshotsEnabledAsync(int tenantId) =>
+            TenantFeatureFlags.IsEnabled(
+                await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(),
+                TenantFeatureFlags.PurchaseCostSnapshots);
+
+        private static string NormalizePurchasePaymentType(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return "Credit";
+            if (value.Equals("Cash", StringComparison.OrdinalIgnoreCase))
+                return "Cash";
+            if (value.Equals("Partial", StringComparison.OrdinalIgnoreCase))
+                return "Partial";
+            return "Credit";
+        }
+
+        private decimal ResolveAmountPaidAtPurchase(string paymentType, decimal totalAmount, decimal? requestAmountPaid)
+        {
+            if (paymentType.Equals("Cash", StringComparison.OrdinalIgnoreCase))
+                return totalAmount;
+            if (!paymentType.Equals("Partial", StringComparison.OrdinalIgnoreCase))
+                return 0m;
+            if (!requestAmountPaid.HasValue || requestAmountPaid.Value <= 0)
+                throw new InvalidOperationException("Amount paid is required when payment type is Partial.");
+            if (requestAmountPaid.Value > totalAmount + SettlementToleranceAed)
+                throw new InvalidOperationException("Amount paid cannot exceed the purchase total.");
+            return requestAmountPaid.Value;
         }
 
         /// <summary>
@@ -345,6 +375,7 @@ namespace HexaBill.Api.Modules.Purchases
                 decimal totalAmount = 0;
                 var purchaseItems = new List<PurchaseItem>();
                 var inventoryTransactions = new List<InventoryTransaction>();
+                var capturePurchaseEvidence = await PurchaseCostSnapshotsEnabledAsync(tenantId);
 
                 foreach (var item in request.Items)
                 {
@@ -357,11 +388,6 @@ namespace HexaBill.Api.Modules.Purchases
                     // Calculate quantities safely
                     if (item.Qty <= 0 || item.Qty > 1000000)
                         throw new InvalidOperationException($"Invalid quantity {item.Qty} for product '{product.NameEn}'. Must be between 0.01 and 1,000,000.");
-                    
-                    var conversionToBase = product.ConversionToBase > 0 ? product.ConversionToBase : 1m;
-                    var baseQty = item.Qty * conversionToBase;
-                    if (baseQty <= 0)
-                        throw new InvalidOperationException($"Calculated base quantity is invalid. Please check conversion ratio for product '{product.NameEn}'.");
                     
                     // Validate cost
                     if (item.UnitCost < 0 || item.UnitCost > 10000000)
@@ -406,10 +432,14 @@ namespace HexaBill.Api.Modules.Purchases
                         VatAmount = itemVatAmount, // NEW: VAT amount per unit
                         LineTotal = lineTotal
                     };
+                    PurchaseCostBasis.Capture(purchaseItem, product, tenantId, capturePurchaseEvidence);
+                    var baseQty = PurchaseStockBasis.BaseQuantity(purchaseItem, product, item.Qty);
+                    if (baseQty <= 0)
+                        throw new InvalidOperationException($"Calculated base quantity is invalid. Please check conversion ratio for product '{product.NameEn}'.");
 
                     purchaseItems.Add(purchaseItem);
 
-                    // Calculate base quantity and update stock (reuse validated baseQty from above)
+                    // Calculate base quantity and update stock
                     // PROD-19: Atomic stock update; InventoryTransaction added below for reconciliation.
                     // If stock still shows 0 in UI, use Products page "Recompute Stock" to sync from InventoryTransactions.
                     var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
@@ -426,13 +456,9 @@ namespace HexaBill.Api.Modules.Purchases
                     await _context.Entry(product).ReloadAsync();
                     product.UpdatedAt = DateTime.UtcNow;
                     
-                    // CRITICAL: Update cost price with VAT-EXCLUDED cost
-                    // This ensures profit calculations are accurate (guard against ConversionToBase 0 to avoid DivideByZero)
-                    if (unitCostExclVat > 0 && conversionToBase > 0)
-                    {
-                        var costPerBaseUnit = unitCostExclVat / conversionToBase;
-                        product.CostPrice = costPerBaseUnit;
-                    }
+                    var costPerBaseUnit = PurchaseCostBasis.CostPerBaseUnitExclVat(purchaseItem, product, unitCostExclVat);
+                    if (costPerBaseUnit.HasValue)
+                        product.CostPrice = costPerBaseUnit.Value;
 
                     // Create inventory transaction (set tenant/owner for multi-tenant)
                     var inventoryTransaction = new InventoryTransaction
@@ -452,6 +478,8 @@ namespace HexaBill.Api.Modules.Purchases
                 var purchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : request.PurchaseDate.ToUtcKind();
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchaseDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot add or edit transactions in a locked period.");
+                var paymentType = NormalizePurchasePaymentType(request.PaymentType);
+                var amountPaidAtPurchase = ResolveAmountPaidAtPurchase(paymentType, totalAmount, request.AmountPaid);
                 var purchase = new Purchase
                 {
                     OwnerId = tenantId,
@@ -463,6 +491,8 @@ namespace HexaBill.Api.Modules.Purchases
                     Subtotal = subtotal, // NEW: Amount before VAT
                     VatTotal = vatTotal, // NEW: VAT amount
                     TotalAmount = totalAmount, // Grand total (for backward compatibility)
+                    PaymentType = paymentType,
+                    AmountPaid = amountPaidAtPurchase > 0 ? amountPaidAtPurchase : null,
                     IsTaxClaimable = request.IsTaxClaimable ?? (vatTotal > 0), // Default true when VAT > 0
                     CreatedBy = userId,
                     CreatedAt = DateTime.UtcNow
@@ -500,6 +530,22 @@ namespace HexaBill.Api.Modules.Purchases
 
                 _context.AuditLogs.Add(auditLog);
 
+                if (amountPaidAtPurchase > SettlementToleranceAed)
+                {
+                    _context.SupplierPayments.Add(new SupplierPayment
+                    {
+                        TenantId = tenantId,
+                        SupplierName = request.SupplierName,
+                        Amount = amountPaidAtPurchase,
+                        PaymentDate = purchaseDate,
+                        Mode = SupplierPaymentMode.Cash,
+                        Reference = request.InvoiceNo,
+                        Notes = "Recorded at purchase entry",
+                        CreatedBy = userId,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -533,15 +579,17 @@ namespace HexaBill.Api.Modules.Purchases
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                // Reverse old stock changes (guard ConversionToBase <= 0)
+                var previousItems = purchase.Items.ToList();
+                var capturePurchaseEvidence = await PurchaseCostSnapshotsEnabledAsync(tenantId);
+
+                // Reverse old stock changes using frozen conversion when present
                 foreach (var oldItem in purchase.Items)
                 {
                     var product = await _context.Products
                         .FirstOrDefaultAsync(p => p.Id == oldItem.ProductId && p.TenantId == tenantId);
                     if (product != null)
                     {
-                        var conv = product.ConversionToBase > 0 ? product.ConversionToBase : 1m;
-                        var oldBaseQty = oldItem.Qty * conv;
+                        var oldBaseQty = PurchaseStockBasis.BaseQuantity(oldItem, product, oldItem.Qty);
                         // PROD-19: Atomic stock reverse (remove old purchase stock)
                         var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                             $@"UPDATE ""Products"" 
@@ -587,9 +635,6 @@ namespace HexaBill.Api.Modules.Purchases
                         .FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
                     if (product == null)
                         throw new InvalidOperationException($"Product with ID {item.ProductId} not found or does not belong to your company");
-
-                    var conversionToBase = product.ConversionToBase > 0 ? product.ConversionToBase : 1m;
-                    var baseQty = item.Qty * conversionToBase;
                     
                     // CRITICAL VAT CALCULATION
                     decimal unitCostExclVat;
@@ -628,6 +673,8 @@ namespace HexaBill.Api.Modules.Purchases
                         VatAmount = itemVatAmount,
                         LineTotal = lineTotal
                     };
+                    PurchaseCostBasis.Capture(purchaseItem, product, tenantId, capturePurchaseEvidence, previousItems);
+                    var baseQty = PurchaseStockBasis.BaseQuantity(purchaseItem, product, item.Qty);
                     _context.PurchaseItems.Add(purchaseItem);
 
                     // Update stock with new quantity
@@ -648,10 +695,9 @@ namespace HexaBill.Api.Modules.Purchases
                     await _context.Entry(product).ReloadAsync();
                     product.UpdatedAt = DateTime.UtcNow;
                     
-                    if (unitCostExclVat > 0 && conversionToBase > 0)
-                    {
-                        product.CostPrice = unitCostExclVat / conversionToBase;
-                    }
+                    var costPerBaseUnit = PurchaseCostBasis.CostPerBaseUnitExclVat(purchaseItem, product, unitCostExclVat);
+                    if (costPerBaseUnit.HasValue)
+                        product.CostPrice = costPerBaseUnit.Value;
 
                     var inventoryTransaction = new InventoryTransaction
                     {

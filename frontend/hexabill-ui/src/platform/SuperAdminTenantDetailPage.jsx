@@ -2084,7 +2084,14 @@ const TenantFeaturesTab = ({ tenantId }) => {
     backup: 'backup',
     salesLedger: 'sales_ledger',
     priceList: 'price_list',
-    localBackupAgent: 'localBackupAgent'
+    localBackupAgent: 'localBackupAgent',
+    sharedLegalWorkspace: 'shared_legal_workspace',
+    receiptSnapshots: 'receipt_snapshots',
+    settlementAdjustments: 'settlement_adjustments',
+    dailyClose: 'daily_close',
+    saleCostSnapshots: 'sale_cost_snapshots',
+    purchaseCostSnapshots: 'purchase_cost_snapshots',
+    vatBasisEffectiveDating: 'vat_basis_effective_dating'
   }
 
   // Reverse mapping: backend key -> frontend key
@@ -2108,10 +2115,21 @@ const TenantFeaturesTab = ({ tenantId }) => {
     backup: true,
     salesLedger: true,
     priceList: true,
-    localBackupAgent: false
+    localBackupAgent: false,
+    sharedLegalWorkspace: false,
+    receiptSnapshots: false,
+    settlementAdjustments: false,
+    dailyClose: false,
+    saleCostSnapshots: false,
+    purchaseCostSnapshots: false,
+    vatBasisEffectiveDating: false
   })
   const [featuresLoading, setFeaturesLoading] = useState(false)
   const [featuresSaving, setFeaturesSaving] = useState(false)
+  const [vatBasis, setVatBasis] = useState('SalesBased')
+  const [vatBasisDraft, setVatBasisDraft] = useState('SalesBased')
+  const [vatEffectiveFrom, setVatEffectiveFrom] = useState(() => new Date().toISOString().slice(0, 10))
+  const [vatBasisSaving, setVatBasisSaving] = useState(false)
 
   // Define available system features
   const AVAILABLE_FEATURES = [
@@ -2129,6 +2147,12 @@ const TenantFeaturesTab = ({ tenantId }) => {
     { key: 'dataImport', label: 'Data Import', description: 'Import products, customers, invoices from CSV/Excel', icon: Download },
     { key: 'backup', label: 'Backup', description: 'Data backup and restore functionality', icon: Database },
     { key: 'localBackupAgent', label: 'Local PC backup', description: 'Scheduled backup to a paired PC. Off until enabled.', icon: HardDrive },
+    { key: 'receiptSnapshots', label: 'Saved receipt details', description: 'Preserve company, customer, invoice and payment details for future reprints. Enable after staging migration verification.', icon: FileText },
+    { key: 'settlementAdjustments', label: 'Invoice settlement adjustments', description: 'Allow explicit authorized shortfall (not cash) when closing an invoice, e.g. 1,330 cash on 1,331 invoice. Off until staged.', icon: DollarSign },
+    { key: 'dailyClose', label: 'Daily cash close', description: 'Expected vs counted cash, variance and close history. Off until migration and staging verification.', icon: DollarSign },
+    { key: 'saleCostSnapshots', label: 'Invoice cost snapshots', description: 'Freeze unit cost and conversion on each sale line for profit reports. Enable after staging migration verification.', icon: FileText },
+    { key: 'vatBasisEffectiveDating', label: 'VAT basis effective dating', description: 'Use TenantVatBasisHistory as-of period end for VAT return profit form (off = current tenant column only).', icon: FileText },
+    { key: 'sharedLegalWorkspace', label: 'Shared legal owner setup', description: 'Allow a new isolated owner workspace to reuse this company’s verified legal name, TRN and licence. Off until enabled.', icon: Building2 },
     { key: 'salesLedger', label: 'Sales Ledger', description: 'Sales ledger and transaction history', icon: BookOpen },
     { key: 'priceList', label: 'Price List', description: 'Price list management and bulk pricing', icon: List }
   ]
@@ -2136,8 +2160,52 @@ const TenantFeaturesTab = ({ tenantId }) => {
   useEffect(() => {
     if (tenantId) {
       fetchFeatures()
+      loadVatBasis()
     }
   }, [tenantId])
+
+  const loadVatBasis = async () => {
+    if (!tenantId) return
+    try {
+      const response = await superAdminAPI.getTenant(tenantId)
+      const data = response?.success && response?.data ? response.data : (response?.data ?? response)
+      const basis = String(data?.vatCalculationBasis ?? data?.VatCalculationBasis ?? 'SalesBased')
+      setVatBasis(basis)
+      setVatBasisDraft(basis === 'ProfitBased' ? 'ProfitBased' : 'SalesBased')
+    } catch (err) {
+      console.error('Failed to load VAT basis:', err)
+    }
+  }
+
+  const handleSaveVatBasis = async () => {
+    if (!tenantId) return
+    if (vatBasisDraft === 'ProfitBased') {
+      const ok = window.confirm(
+        'Profit-based VAT presentation applies only to the VAT return profit form after accountant approval. Statutory sales boxes are unchanged. Continue?'
+      )
+      if (!ok) return
+    }
+    if (vatBasisDraft === vatBasis) {
+      toast('VAT basis is already set to this value.')
+      return
+    }
+    try {
+      setVatBasisSaving(true)
+      const effectiveFrom = vatEffectiveFrom
+        ? new Date(`${vatEffectiveFrom}T00:00:00Z`).toISOString()
+        : undefined
+      await superAdminAPI.updateTenantVatCalculationBasis(tenantId, {
+        basis: vatBasisDraft,
+        effectiveFrom
+      })
+      toast.success('VAT calculation basis updated')
+      await loadVatBasis()
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not update VAT basis')
+    } finally {
+      setVatBasisSaving(false)
+    }
+  }
 
   const fetchFeatures = async () => {
     if (!tenantId) return
@@ -2169,7 +2237,14 @@ const TenantFeaturesTab = ({ tenantId }) => {
         backup: false,
         salesLedger: false,
         priceList: false,
-        localBackupAgent: false
+        localBackupAgent: false,
+        sharedLegalWorkspace: false,
+    receiptSnapshots: false,
+        settlementAdjustments: false,
+        dailyClose: false,
+        saleCostSnapshots: false,
+        purchaseCostSnapshots: false,
+        vatBasisEffectiveDating: false
       }
       
       // Set enabled features to true
@@ -2187,7 +2262,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
       if (!hasAnyEnabled && backendFeatures.length === 0) {
         // New tenant - enable all features by default
         Object.keys(featuresObj).forEach(key => {
-          if (key !== 'localBackupAgent') featuresObj[key] = true
+          if (key !== 'localBackupAgent' && key !== 'sharedLegalWorkspace' && key !== 'receiptSnapshots' && key !== 'settlementAdjustments' && key !== 'dailyClose') featuresObj[key] = true
         })
       }
       
@@ -2269,6 +2344,47 @@ const TenantFeaturesTab = ({ tenantId }) => {
         <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-amber-800">
           <strong>Super Admin Only:</strong> These toggles are Super Admin only. Company admin cannot override these settings.
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
+        <h2 className="text-xl font-semibold text-neutral-900 mb-2 flex items-center gap-2">
+          <Receipt className="h-6 w-6 text-amber-600" />
+          VAT profit-form basis
+        </h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Current: <strong>{vatBasis === 'ProfitBased' ? 'Profit-based (margin presentation)' : 'Sales-based'}</strong>.
+          Changes append an audited history row; they do not rewrite statutory VAT201 sales boxes.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">New basis</label>
+            <select
+              value={vatBasisDraft}
+              onChange={(e) => setVatBasisDraft(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base min-h-[44px]"
+            >
+              <option value="SalesBased">Sales-based (default)</option>
+              <option value="ProfitBased">Profit-based (accountant-approved margin)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Effective from (UTC date)</label>
+            <input
+              type="date"
+              value={vatEffectiveFrom}
+              onChange={(e) => setVatEffectiveFrom(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base min-h-[44px]"
+            />
+          </div>
+          <LoadingButton
+            type="button"
+            onClick={handleSaveVatBasis}
+            loading={vatBasisSaving}
+            className="w-full md:w-auto px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium min-h-[44px]"
+          >
+            Apply VAT basis
+          </LoadingButton>
         </div>
       </div>
 

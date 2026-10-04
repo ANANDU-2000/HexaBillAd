@@ -7,6 +7,7 @@ Date: 2025
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Sales;
 
 namespace HexaBill.Api.Modules.Reports
 {
@@ -465,19 +466,18 @@ namespace HexaBill.Api.Modules.Reports
         private async Task FillProfitFormAsync(VatReturn201Dto dto, int tenantId, DateTime from, DateTime to)
         {
             dto.VatCalculationBasis = nameof(VatCalculationBasis.SalesBased);
-            VatCalculationBasis? basis;
+            VatCalculationBasis basis;
             try
             {
-                basis = await _context.Tenants.AsNoTracking()
-                    .Where(t => t.Id == tenantId)
-                    .Select(t => (VatCalculationBasis?)t.VatCalculationBasis)
-                    .FirstOrDefaultAsync();
+                var asOfUtc = to > from ? to.AddTicks(-1) : from;
+                basis = await VatBasisResolver.ResolveProfitBasisAsync(_context, tenantId, asOfUtc);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "VAT profit basis could not be read for tenant {TenantId}. Sales boxes were left unchanged.", tenantId);
                 return;
             }
+            dto.VatCalculationBasis = basis.ToString();
             if (basis != VatCalculationBasis.ProfitBased)
                 return;
 
@@ -490,17 +490,14 @@ namespace HexaBill.Api.Modules.Reports
                 .Include(si => si.Product)
                 .Where(si => saleIds.Contains(si.SaleId))
                 .ToListAsync();
-            var cogs = saleItems.Sum(si =>
-            {
-                var factor = si.Product != null && si.Product.ConversionToBase > 0 ? si.Product.ConversionToBase : 1;
-                return si.Qty * factor * (si.Product?.CostPrice ?? 0);
-            });
+            var cogs = saleItems.Sum(SaleCostBasis.Calculate);
             var expenses = await _context.Expenses.AsNoTracking()
                 .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date < to)
                 .SumAsync(e => (decimal?)e.Amount) ?? 0;
             var profit = profitSales - cogs - expenses;
             dto.ProfitSales = VatCalculator.Round(profitSales);
             dto.ProfitCogs = VatCalculator.Round(cogs);
+            dto.EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si));
             dto.ProfitExpenses = VatCalculator.Round(expenses);
             dto.ProfitAmount = VatCalculator.Round(profit);
             dto.ProfitVat = profit > 0 ? VatCalculator.Round(profit * VatCalculator.StandardRate) : 0;

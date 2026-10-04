@@ -8,6 +8,7 @@ import {
   Calendar,
   RefreshCw,
   FileText,
+  Wallet,
   ChevronLeft,
   ChevronRight,
   X,
@@ -27,6 +28,8 @@ import { Input } from '../../components/Form'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { syncBillingHistorySearchParams } from '../../utils/billingHistoryUrl'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 
 const BillingHistoryPage = () => {
   const { user } = useAuth()
@@ -96,6 +99,29 @@ const BillingHistoryPage = () => {
 
   const fetchSalesRef = useRef(fetchSales)
   fetchSalesRef.current = fetchSales
+
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncBillingHistorySearchParams(params, {
+        search: debouncedSearch,
+        page: currentPage,
+        from: dateFilter.from,
+        to: dateFilter.to
+      })
+      return params
+    }, { replace: true })
+  }, [debouncedSearch, currentPage, dateFilter.from, dateFilter.to, setSearchParams])
+
+  useEffect(() => {
+    const page = Number(searchParams.get('page')) || 1
+    const from = searchParams.get('from') || ''
+    const to = searchParams.get('to') || ''
+    const search = searchParams.get('search') || ''
+    setCurrentPage((c) => (c === page ? c : page))
+    setDateFilter((d) => (d.from === from && d.to === to ? d : { from, to }))
+    setSearchTerm((s) => (s === search ? s : search))
+  }, [searchParams])
 
   // Live search + pagination + dates
   useEffect(() => {
@@ -168,15 +194,23 @@ const BillingHistoryPage = () => {
     }
   }
 
-  // Sync filter state to URL so filters survive navigation and browser back
-  useEffect(() => {
-    const params = new URLSearchParams()
-    if (searchTerm) params.set('search', searchTerm)
-    if (dateFilter.from) params.set('from', dateFilter.from)
-    if (dateFilter.to) params.set('to', dateFilter.to)
-    if (currentPage > 1) params.set('page', String(currentPage))
-    setSearchParams(params, { replace: true })
-  }, [searchTerm, dateFilter.from, dateFilter.to, currentPage])
+  const billingReturnTo = location.pathname + location.search
+
+  const openCustomerLedgerForSale = (sale) => {
+    const customerId = sale?.customerId ?? sale?.CustomerId
+    if (!customerId) {
+      toast.error('This invoice has no customer ledger')
+      return
+    }
+    const needsPayment = !isInvoiceFullySettled(sale)
+    navigate(
+      buildCustomerLedgerHref({
+        customerId,
+        recordPaymentSaleId: needsPayment ? sale.id : undefined
+      }),
+      { state: { returnTo: billingReturnTo } }
+    )
+  }
 
   const handleEditSale = (sale) => {
     navigate(`/pos?editId=${sale.id}`, { state: { returnTo: location.pathname + location.search } })
@@ -195,14 +229,13 @@ const BillingHistoryPage = () => {
     try {
       setLoadingReceiptSaleId(sale.id)
       toast.loading('Loading payment receipt...', { id: 'bh-receipt' })
-      const response = await paymentsAPI.getPayments({ page: 1, pageSize: 100, saleId: sale.id })
-      const items = response?.data?.items || response?.data || []
-      const ids = (Array.isArray(items) ? items : [])
-        .filter(p => String(p.status || '').toUpperCase() !== 'VOID')
-        .map(p => p.id)
-        .filter(Boolean)
+      const response = await paymentsAPI.getInvoiceReceiptPaymentIds(sale.id)
+      if (!response?.success || !Array.isArray(response.data)) {
+        throw new Error(response?.message || 'Invoice payments could not be loaded. Please try again.')
+      }
+      const ids = response.data
       if (ids.length === 0) {
-        toast.error('No payments found for this invoice', { id: 'bh-receipt' })
+        toast.error('No cleared incoming payments found for this invoice', { id: 'bh-receipt' })
         return
       }
       toast.dismiss('bh-receipt')
@@ -210,7 +243,9 @@ const BillingHistoryPage = () => {
       setShowReceiptPreviewModal(true)
     } catch (error) {
       if (!error?._handledByInterceptor) {
-        toast.error(error?.response?.data?.message || 'Failed to load payment receipt', { id: 'bh-receipt' })
+        toast.error(error?.response?.data?.message || error?.message || 'Failed to load payment receipt', { id: 'bh-receipt' })
+      } else {
+        toast.dismiss('bh-receipt')
       }
     } finally {
       setLoadingReceiptSaleId(null)
@@ -507,6 +542,17 @@ const BillingHistoryPage = () => {
                           >
                             <Eye className="h-4 w-4" />
                           </button>
+                          {sale.customerId && (
+                            <button
+                              type="button"
+                              onClick={() => openCustomerLedgerForSale(sale)}
+                              className="inline-flex h-8 w-8 items-center justify-center text-emerald-700 hover:bg-emerald-50 rounded-md"
+                              title={isInvoiceFullySettled(sale) ? 'Customer ledger' : 'Customer ledger — collect payment'}
+                              aria-label={isInvoiceFullySettled(sale) ? 'Customer ledger' : 'Collect payment in ledger'}
+                            >
+                              <Wallet className="h-4 w-4" />
+                            </button>
+                          )}
                           {saleHasReceipt(sale) && (
                             <button
                               onClick={() => handlePrintPaymentReceipt(sale)}
@@ -593,6 +639,16 @@ const BillingHistoryPage = () => {
                       <Eye className="h-4 w-4 mr-2" />
                       View
                     </button>
+                    {sale.customerId && (
+                      <button
+                        type="button"
+                        onClick={() => openCustomerLedgerForSale(sale)}
+                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-emerald-200 rounded-md text-sm font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
+                      >
+                        <Wallet className="h-4 w-4 mr-2" aria-hidden />
+                        {isInvoiceFullySettled(sale) ? 'Ledger' : 'Collect'}
+                      </button>
+                    )}
                     {saleHasReceipt(sale) && (
                       <button
                         onClick={() => handlePrintPaymentReceipt(sale)}

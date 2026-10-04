@@ -6,6 +6,7 @@
 using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Sales;
 
 namespace HexaBill.Api.Modules.Reports
 {
@@ -67,12 +68,7 @@ namespace HexaBill.Api.Modules.Reports
                 .ToListAsync();
             
             // COGS = SaleItems (Qty × conversion × CostPrice) — same as ReportService dashboard (no VAT on COGS for consistency)
-            var cogs = saleItems.Sum(si =>
-            {
-                var conversionFactor = si.Product.ConversionToBase > 0 ? si.Product.ConversionToBase : 1;
-                var baseQty = si.Qty * conversionFactor;
-                return baseQty * si.Product.CostPrice;
-            });
+            var cogs = saleItems.Sum(SaleCostBasis.Calculate);
 
             // CRITICAL: Total Expenses - filter by date range + OWNER FILTER
             // SUPER ADMIN (TenantId = 0): See ALL owners' data
@@ -132,10 +128,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
                 var daySaleItems = await daySaleItemsQuery.ToListAsync();
                 
-                var dayCogs = daySaleItems.Sum(si => {
-                    var baseQty = si.Qty * (si.Product.ConversionToBase > 0 ? si.Product.ConversionToBase : 1);
-                    return baseQty * si.Product.CostPrice;
-                });
+                var dayCogs = daySaleItems.Sum(SaleCostBasis.Calculate);
                 
                 var dayExpensesQuery = _context.Expenses
                     .Where(e => e.Date >= dayStart && e.Date <= dayEnd);
@@ -152,6 +145,7 @@ namespace HexaBill.Api.Modules.Reports
                     Date = currentDate,
                     Sales = daySales,
                     Expenses = dayExpenses,
+                    EstimatedCostLineCount = daySaleItems.Count(si => !SaleCostBasis.HasSnapshot(si)),
                     Profit = dayProfit
                 });
                 
@@ -168,6 +162,7 @@ namespace HexaBill.Api.Modules.Reports
                 TotalSales = totalSales, // Total Revenue (GrandTotal with VAT)
                 TotalSalesVat = totalSalesVat,
                 TotalSalesWithVat = totalSales, // Same as TotalSales (GrandTotal includes VAT)
+                EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si)),
                 CostOfGoodsSold = cogs, // UNIFIED: COGS from sale items (same as ReportService dashboard)
                 GrossProfit = grossProfit, // Sales (GrandTotal) - COGS
                 GrossProfitMargin = grossProfitMargin,
@@ -194,23 +189,27 @@ namespace HexaBill.Api.Modules.Reports
                 query = query.Where(si => si.Sale.TenantId == tenantId);
             }
             
-            var productProfits = await query
-                .GroupBy(si => new { si.ProductId, si.Product.NameEn, si.Product.CostPrice, si.Product.SellPrice })
-                .Select(g => new ProductProfitDto
+            var items = await query.AsNoTracking().ToListAsync();
+            var productProfits = items
+                .GroupBy(si => new { si.ProductId, si.Product.NameEn })
+                .Select(g =>
                 {
-                    ProductId = g.Key.ProductId,
-                    ProductName = g.Key.NameEn,
-                    QuantitySold = g.Sum(si => si.Qty),
-                    TotalSales = g.Sum(si => si.LineTotal),
-                    TotalCost = g.Sum(si => si.Qty * g.Key.CostPrice),
-                    Profit = g.Sum(si => si.LineTotal) - g.Sum(si => si.Qty * g.Key.CostPrice),
-                    ProfitMargin = g.Sum(si => si.LineTotal) > 0 
-                        ? ((g.Sum(si => si.LineTotal) - g.Sum(si => si.Qty * g.Key.CostPrice)) / g.Sum(si => si.LineTotal)) * 100 
-                        : 0
+                    var sales = g.Sum(si => si.LineTotal);
+                    var cost = g.Sum(SaleCostBasis.Calculate);
+                    return new ProductProfitDto
+                    {
+                        ProductId = g.Key.ProductId,
+                        ProductName = g.Key.NameEn,
+                        QuantitySold = g.Sum(si => si.Qty),
+                        TotalSales = sales,
+                        TotalCost = cost,
+                        EstimatedCostLineCount = g.Count(si => !SaleCostBasis.HasSnapshot(si)),
+                        Profit = sales - cost,
+                        ProfitMargin = sales > 0 ? (sales - cost) / sales * 100 : 0
+                    };
                 })
                 .OrderByDescending(p => p.Profit)
-                .ToListAsync();
-
+                .ToList();
             return productProfits;
         }
 
@@ -228,6 +227,7 @@ namespace HexaBill.Api.Modules.Reports
                 Date = date,
                 Sales = profitReport.TotalSales,
                 Expenses = profitReport.TotalExpenses,
+                EstimatedCostLineCount = profitReport.EstimatedCostLineCount,
                 Profit = profitReport.NetProfit
             };
         }
@@ -267,11 +267,7 @@ namespace HexaBill.Api.Modules.Reports
                     .Include(si => si.Product)
                     .Where(si => saleIdsQuery.Contains(si.SaleId));
                 var saleItems = await saleItemsQuery.ToListAsync();
-                var cogs = saleItems.Sum(si =>
-                {
-                    var conversionFactor = si.Product.ConversionToBase > 0 ? si.Product.ConversionToBase : 1;
-                    return si.Qty * conversionFactor * si.Product.CostPrice;
-                });
+                var cogs = saleItems.Sum(SaleCostBasis.Calculate);
 
                 var expensesQuery = _context.Expenses
                     .Where(e => e.TenantId == tenantId && e.BranchId == branch.Id && e.Date >= from && e.Date <= to);
@@ -287,6 +283,7 @@ namespace HexaBill.Api.Modules.Reports
                     BranchId = branch.Id,
                     BranchName = branch.Name,
                     Sales = branchSales,
+                    EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si)),
                     CostOfGoodsSold = cogs,
                     GrossProfit = grossProfit,
                     Expenses = branchExpenses,

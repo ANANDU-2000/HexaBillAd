@@ -12,6 +12,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
 import toast from 'react-hot-toast'
+import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
 
 const ProductsPage = () => {
   const navigate = useNavigate()
@@ -85,13 +86,29 @@ const ProductsPage = () => {
 
   // Sync filter state to URL so filters survive navigation and browser back
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (searchTerm) params.set('search', searchTerm)
-    if (activeTab && activeTab !== 'all') params.set('tab', activeTab)
-    if (currentPage > 1) params.set('page', String(currentPage))
-    if (activeFilters.categoryId) params.set('category', activeFilters.categoryId)
-    setSearchParams(params, { replace: true })
-  }, [searchTerm, activeTab, currentPage, activeFilters.categoryId])
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncProductsSearchParams(params, {
+        search: searchTerm,
+        activeTab,
+        currentPage,
+        categoryId: activeFilters.categoryId
+      })
+      return params
+    }, { replace: true })
+  }, [searchTerm, activeTab, currentPage, activeFilters.categoryId, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readProductsStateFromParams(searchParams)
+    setSearchTerm((s) => (s === parsed.search ? s : parsed.search))
+    setCurrentPage((p) => (p === parsed.currentPage ? p : parsed.currentPage))
+    setActiveTab((t) => (t === parsed.activeTab ? t : parsed.activeTab))
+    setActiveFilters((f) => {
+      const id = parsed.categoryId
+      if ((f.categoryId || '') === id) return f
+      return id ? { categoryId: id } : {}
+    })
+  }, [searchParams])
 
   const loadProducts = useCallback(async () => {
     try {

@@ -8,6 +8,7 @@ import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import Modal from '../../components/Modal'
 import { localDateString } from '../../utils/dateFormat'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
+import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-11 text-base md:min-h-9 md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
 const tallySelectClass = tallyInputClass
@@ -92,16 +93,31 @@ const PurchasesPage = () => {
 
   // Sync filter state to URL so filters survive navigation and browser back
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
-    if (filterPeriod && filterPeriod !== 'all') params.set('period', filterPeriod)
-    if (startDate) params.set('startDate', startDate)
-    if (endDate) params.set('endDate', endDate)
-    if (supplierSearch) params.set('supplier', supplierSearch)
-    if (categoryFilter) params.set('category', categoryFilter)
-    if (currentPage > 1) params.set('page', String(currentPage))
-    setSearchParams(params, { replace: true })
-  }, [statusFilter, filterPeriod, startDate, endDate, supplierSearch, categoryFilter, currentPage])
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncPurchasesSearchParams(params, {
+        statusFilter,
+        filterPeriod,
+        startDate,
+        endDate,
+        supplierSearch,
+        categoryFilter,
+        currentPage
+      })
+      return params
+    }, { replace: true })
+  }, [statusFilter, filterPeriod, startDate, endDate, supplierSearch, categoryFilter, currentPage, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readPurchasesStateFromParams(searchParams)
+    setCurrentPage((p) => (p === parsed.currentPage ? p : parsed.currentPage))
+    setFilterPeriod((v) => (v === parsed.filterPeriod ? v : parsed.filterPeriod))
+    setStartDate((v) => (v === parsed.startDate ? v : parsed.startDate))
+    setEndDate((v) => (v === parsed.endDate ? v : parsed.endDate))
+    setSupplierSearch((v) => (v === parsed.supplierSearch ? v : parsed.supplierSearch))
+    setCategoryFilter((v) => (v === parsed.categoryFilter ? v : parsed.categoryFilter))
+    setStatusFilter((v) => (v === parsed.statusFilter ? v : parsed.statusFilter))
+  }, [searchParams])
 
   useEffect(() => {
     loadPurchases()

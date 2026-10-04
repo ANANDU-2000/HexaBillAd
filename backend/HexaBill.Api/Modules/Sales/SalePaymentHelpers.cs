@@ -11,6 +11,9 @@ internal static class SalePaymentHelpers
     /// <summary>Max AED shortfall between GrandTotal and cleared sum to still treat invoice as fully paid (VAT/rounding).</summary>
     internal const decimal SettlementToleranceAed = 0.05m;
 
+    /// <summary>Max explicit settlement adjustment per invoice payment when flag is on (not tolerance auto-fill).</summary>
+    internal const decimal MaxExplicitSettlementAdjustmentAed = 50m;
+
     public static PaymentStatus GetPaymentLineStatus(PaymentMode mode)
     {
         return mode == PaymentMode.CHEQUE
@@ -28,22 +31,39 @@ internal static class SalePaymentHelpers
     public static (decimal PaidAmount, SalePaymentStatus Status, DateTime? LastPaymentDate) ComputeSalePaymentStateFromClearedTotal(
         decimal clearedSumTotal,
         decimal grandTotal,
+        DateTime? lastClearedPaymentDate) =>
+        ComputeSalePaymentStateFromClearedAndAdjustments(clearedSumTotal, 0m, grandTotal, lastClearedPaymentDate);
+
+    public static (decimal PaidAmount, SalePaymentStatus Status, DateTime? LastPaymentDate) ComputeSalePaymentStateFromClearedAndAdjustments(
+        decimal clearedCashTotal,
+        decimal clearedAdjustmentTotal,
+        decimal grandTotal,
         DateTime? lastClearedPaymentDate)
     {
-        clearedSumTotal = Math.Round(clearedSumTotal, 2, MidpointRounding.AwayFromZero);
+        clearedCashTotal = Math.Round(clearedCashTotal, 2, MidpointRounding.AwayFromZero);
+        clearedAdjustmentTotal = Math.Round(clearedAdjustmentTotal, 2, MidpointRounding.AwayFromZero);
         grandTotal = Math.Round(grandTotal, 2, MidpointRounding.AwayFromZero);
 
         if (grandTotal <= 0)
             return (0, SalePaymentStatus.Paid, lastClearedPaymentDate);
 
-        // Match ledger / VAT rounding: treat as fully settled when within small drift (avoids Partial/Pending on full cash)
-        var shortfall = grandTotal - clearedSumTotal;
+        var applied = clearedCashTotal + clearedAdjustmentTotal;
+
+        if (clearedAdjustmentTotal > 0)
+        {
+            if (applied >= grandTotal)
+                return (grandTotal, SalePaymentStatus.Paid, lastClearedPaymentDate);
+            if (applied > 0)
+                return (applied, SalePaymentStatus.Partial, lastClearedPaymentDate);
+            return (0, SalePaymentStatus.Pending, null);
+        }
+
+        var shortfall = grandTotal - clearedCashTotal;
         if (shortfall <= SettlementToleranceAed)
             return (grandTotal, SalePaymentStatus.Paid, lastClearedPaymentDate);
 
-        var paidAmount = Math.Min(clearedSumTotal, grandTotal);
-
-        if (clearedSumTotal >= grandTotal)
+        var paidAmount = Math.Min(clearedCashTotal, grandTotal);
+        if (clearedCashTotal >= grandTotal)
             return (paidAmount, SalePaymentStatus.Paid, lastClearedPaymentDate);
         if (paidAmount > 0)
             return (paidAmount, SalePaymentStatus.Partial, lastClearedPaymentDate);
