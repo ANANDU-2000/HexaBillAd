@@ -18,6 +18,18 @@ const PASS = process.env.HEXABILL_OWNER_PASSWORD || ''
 const OUT = process.env.HEXABILL_PHASE8_OUT
   || path.join(process.env.USERPROFILE || '.', 'Desktop', 'HexaBill_Backups', `phase8-shell-${Date.now()}`)
 const MANIFEST = path.join(process.cwd(), 'docs/plan/ROUTE-MANIFEST.json')
+const VIEWPORTS = (process.env.HEXABILL_VIEWPORTS || '360x800')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((name) => {
+    const [w, h] = name.split('x').map(Number)
+    return { name, width: w, height: h }
+  })
+const TENANT_FILTER = (process.env.HEXABILL_TENANTS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 const SKIP_PREFIX = ['/superadmin', '/Admin26', '/signup', '/login', '/onboarding']
 const SLUG_PREFIX = { frozenhub1: 'fh1', frozenhub2: 'fh2', gulfharvest: 'gh', zayoga: 'zy' }
@@ -81,7 +93,8 @@ function routeId (p) {
 async function main () {
   if (!PASS) throw new Error('Set HEXABILL_OWNER_PASSWORD')
   const routes = staticPaths()
-  const owners = loadOwners()
+  let owners = loadOwners()
+  if (TENANT_FILTER.length) owners = owners.filter((o) => TENANT_FILTER.includes(o.slug))
   if (!owners.length) throw new Error('No bootstrap owners')
   fs.mkdirSync(path.join(OUT, 'screenshots'), { recursive: true })
 
@@ -89,7 +102,7 @@ async function main () {
   const report = {
     at: new Date().toISOString(),
     out: OUT,
-    viewport: '360x800',
+    viewports: VIEWPORTS.map((v) => v.name),
     routes,
     routeCount: routes.length,
     cells: {},
@@ -107,7 +120,7 @@ async function main () {
       continue
     }
 
-    const context = await browser.newContext({ viewport: { width: 360, height: 800 } })
+    const context = await browser.newContext()
     const page = await context.newPage()
     await page.goto(`${FE}/login`, { waitUntil: 'domcontentloaded' })
     await page.evaluate(({ token, user, slug }) => {
@@ -117,32 +130,35 @@ async function main () {
       localStorage.setItem('hexabill_dev_edge_secret', 'dev-local-edge-secret')
     }, { token: session.token, user: session.user, slug: owner.slug })
 
-    for (const route of routes) {
-      const id = routeId(route)
-      const key = `${prefix}-owner-${id}-360x800`
-      const file = path.join(OUT, 'screenshots', `${key}.png`)
-      try {
-        const resp = await page.goto(`${FE}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-        await page.waitForTimeout(500)
-        const title = await page.title()
-        const bodyText = await page.locator('body').innerText().catch(() => '')
-        const denied = /access denied|forbidden|not found|page not found/i.test(bodyText)
-        const blank = bodyText.trim().length < 20
-        await page.screenshot({ path: file, fullPage: false })
-        const status = resp?.status() || 0
-        const cell = {
-          status: denied || blank ? 'fail' : 'captured',
-          http: status,
-          title,
-          denied,
-          blank,
-          bytes: fs.existsSync(file) ? fs.statSync(file).size : 0,
+    for (const vp of VIEWPORTS) {
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      for (const route of routes) {
+        const id = routeId(route)
+        const key = `${prefix}-owner-${id}-${vp.name}`
+        const file = path.join(OUT, 'screenshots', `${key}.png`)
+        try {
+          const resp = await page.goto(`${FE}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          await page.waitForTimeout(400)
+          const title = await page.title()
+          const bodyText = await page.locator('body').innerText().catch(() => '')
+          const denied = /access denied|forbidden|not found|page not found/i.test(bodyText)
+          const blank = bodyText.trim().length < 20
+          await page.screenshot({ path: file, fullPage: false })
+          const status = resp?.status() || 0
+          const cell = {
+            status: denied || blank ? 'fail' : 'captured',
+            http: status,
+            title,
+            denied,
+            blank,
+            bytes: fs.existsSync(file) ? fs.statSync(file).size : 0,
+          }
+          report.cells[key] = cell
+          console.log(cell.status === 'captured' ? 'OK' : 'FAIL', key, cell.http, cell.bytes)
+        } catch (e) {
+          report.cells[key] = { status: 'fail', error: String(e.message || e) }
+          console.error('FAIL', key, e.message || e)
         }
-        report.cells[key] = cell
-        console.log(cell.status === 'captured' ? 'OK' : 'FAIL', key, cell.http, cell.bytes)
-      } catch (e) {
-        report.cells[key] = { status: 'fail', error: String(e.message || e) }
-        console.error('FAIL', key, e.message || e)
       }
     }
     await context.close()

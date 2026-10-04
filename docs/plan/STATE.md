@@ -110,7 +110,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
 | 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 @360 (148) + superadmin 9 + param detail 20 (cust/prod/supplier/branch/DN ×4); platform metrics; route/quote/agreement/salary IDs + 5VP NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 tenants @360 + FH1×4 more VPs (148); params 36 (all 9 detail types×4); superadmin 9+tenant detail; platform metrics; other tenants 5VP NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 8 Phase 8 param complete + FH1 5VP static (PARTIAL)
+- **changed:** seeded routes/agreements/salary/quotations; param screenshots **36/36**; FH1 static routes at 390/768/1366/1440; phase8-route-shell viewport/tenant filters
+- **files:** phase8-route-shell.mjs, phase8-param-routes.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** param `ok=36`; FH1-vp report `ok=148`; prior static 148 + superadmin 9; Zayogya run this commit
+- **NOT RUN:** FH2/GH/ZY static @5VP; staff role; full §10 field/edge cells; push (git auth)
+- **flags+rollback:** synthetic seed only
+- **next:** remaining tenant 5VP optional; then Phases 9–11 still gated on 1–7 green + push
 
 ### 2026-10-04 — slice 7 cleanup scrub + Phase 8 params (PARTIAL)
 - **changed:** scrubbed local gitignored `appsettings.Development.json`; removed empty root `package.json`/`package-lock.json`; param-route screenshots for customers/products/delivery-notes × 4 tenants
