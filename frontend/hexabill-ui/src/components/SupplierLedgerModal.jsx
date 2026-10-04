@@ -3,11 +3,15 @@ import { X, DollarSign, Download, Calendar, Filter } from 'lucide-react'
 import Modal from './Modal'
 import ConfirmDangerModal from './ConfirmDangerModal'
 import { suppliersAPI } from '../services'
-import { formatCurrency } from '../utils/currency'
+import { formatCurrency, getCurrencySymbol } from '../utils/currency'
+import { useBranding } from '../tenant/TenantBrandingContext'
 import toast from 'react-hot-toast'
 import { localDateString } from '../utils/dateFormat'
 
 const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded, initialShowRecordPayment }) => {
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => money(value, tenantCurrency)
+  const cashUnit = getCurrencySymbol(tenantCurrency)
   const [loading, setLoading] = useState(false)
   const [balance, setBalance] = useState(null)
   const [transactions, setTransactions] = useState([])
@@ -134,19 +138,19 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                 <p className="text-xs text-blue-700 font-medium">Total Purchases</p>
-                <p className="text-lg font-bold text-blue-900">{formatCurrency(balance?.totalPurchases || 0)}</p>
+                <p className="text-lg font-bold text-blue-900">{money(balance?.totalPurchases || 0)}</p>
               </div>
               <div className="bg-green-50 rounded-lg p-3 border border-green-200">
                 <p className="text-xs text-green-700 font-medium">Total Payments</p>
-                <p className="text-lg font-bold text-green-900">{formatCurrency(balance?.totalPayments || 0)}</p>
+                <p className="text-lg font-bold text-green-900">{money(balance?.totalPayments || 0)}</p>
               </div>
               <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
                 <p className="text-xs text-amber-700 font-medium">Outstanding</p>
-                <p className="text-lg font-bold text-amber-900">{formatCurrency(balance?.netPayable || 0)}</p>
+                <p className="text-lg font-bold text-amber-900">{money(balance?.netPayable || 0)}</p>
               </div>
               <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
                 <p className="text-xs text-neutral-700 font-medium">Overdue</p>
-                <p className="text-lg font-bold text-neutral-900">{formatCurrency(0)}</p>
+                <p className="text-lg font-bold text-neutral-900">{money(0)}</p>
               </div>
             </div>
 
@@ -171,7 +175,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                 <h4 className="font-medium text-primary-800 mb-3">Record Payment</h4>
                 <form onSubmit={handleRecordPayment} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-primary-700 mb-1">Amount (AED) *</label>
+                    <label className="block text-xs font-medium text-primary-700 mb-1">Amount ({cashUnit}) *</label>
                     <input type="number" step="0.01" min="0.01" required value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} className="w-full border rounded px-3 py-2" />
                   </div>
                   <div>
@@ -202,7 +206,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                   </div>
                 </form>
                 {(balance?.netPayable > 0 && parseFloat(paymentForm.amount) > balance.netPayable) && (
-                  <p className="text-amber-600 text-xs mt-2">Amount exceeds outstanding ({formatCurrency(balance.netPayable)}). You may be overpaying.</p>
+                  <p className="text-amber-600 text-xs mt-2">Amount exceeds outstanding ({money(balance.netPayable)}). You may be overpaying.</p>
                 )}
               </div>
             )}
@@ -228,9 +232,9 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                         <td className="p-2">{new Date(t.date).toLocaleDateString('en-GB')}</td>
                         <td className="p-2 font-medium">{t.type}</td>
                         <td className="p-2">{t.reference || '-'}</td>
-                        <td className="p-2 text-right">{t.debit > 0 ? formatCurrency(t.debit) : '-'}</td>
-                        <td className="p-2 text-right">{t.credit > 0 ? formatCurrency(t.credit) : '-'}</td>
-                        <td className="p-2 text-right font-medium">{formatCurrency(t.balance)}</td>
+                        <td className="p-2 text-right">{t.debit > 0 ? money(t.debit) : '-'}</td>
+                        <td className="p-2 text-right">{t.credit > 0 ? money(t.credit) : '-'}</td>
+                        <td className="p-2 text-right font-medium">{money(t.balance)}</td>
                       </tr>
                     ))
                   )}
@@ -246,7 +250,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
       onClose={() => setShowOverpaymentConfirm(false)}
       onConfirm={() => submitRecordPayment()}
       title="Record overpayment?"
-      message={balance ? `Amount (${formatCurrency(parseFloat(paymentForm.amount) || 0)}) exceeds the outstanding balance (${formatCurrency(balance.netPayable)}). Are you sure you want to record this overpayment?` : ''}
+      message={balance ? `Amount (${money(parseFloat(paymentForm.amount) || 0)}) exceeds the outstanding balance (${money(balance.netPayable)}). Are you sure you want to record this overpayment?` : ''}
       confirmLabel="Record overpayment"
     />
   </>
