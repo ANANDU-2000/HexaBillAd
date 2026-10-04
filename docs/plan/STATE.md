@@ -145,6 +145,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 8c params 5VP all tenants + ledger 44px (PARTIAL)
+- **changed:** CustomerLedgerPage primary/tool actions → min-h-[44px]; FH2/GH/ZY param 5VP matrix
+- **files:** CustomerLedgerPage.jsx, EVIDENCE.md, STATE.md
+- **tests+evidence:** params rest **ok=135**; FH1 already 45 → **180 total**; field-edge ledger primaryMin44=true; Zayogya 3 passed
+- **NOT RUN / blocked:** PG 44; `git push`; full §10; Phases 9–11
+- **flags+rollback:** none
+- **next:** push `master-loop-2`; supply `HEXABILL_TEST_POSTGRES`
+
 ### 2026-10-04 — slice 3/8 popup fallback + params 5VP + §10 smoke (PARTIAL)
 - **changed:** PrintOptionsModal downloads PDF when pop-up blocked; param script multi-VP; field-edge smoke script
 - **files:** PrintOptionsModal.jsx, printOptionsPopupFallback.test.js, phase8-param-routes.mjs, phase7-field-edge-smoke.mjs, EVIDENCE.md, STATE.md
