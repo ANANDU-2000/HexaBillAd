@@ -45,6 +45,7 @@ const PaymentsPage = () => {
   const { user } = useAuth()
   const { currency: tenantCurrency = 'AED' } = useBranding()
   const money = (value) => formatCurrency(value, tenantCurrency)
+  const balance = (value) => formatBalance(value, tenantCurrency)
   const canEditPayments = canManagePayments(user)
   const location = useLocation()
   const navigate = useNavigate()
@@ -802,7 +803,7 @@ const PaymentsPage = () => {
                       <div className="text-sm text-gray-900">{payment.customerName || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payment.amount)}
+                      {money(payment.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -894,7 +895,7 @@ const PaymentsPage = () => {
       {receiptSelectedIds.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">
-            {receiptSelectedIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
+            {receiptSelectedIds.length} payment(s) selected — Total: {money(selectedTotal)}
           </span>
           <div className="flex gap-2">
             <button
@@ -946,7 +947,7 @@ const PaymentsPage = () => {
                   <p className="text-sm font-semibold text-gray-900">{payment.customerName || 'Unknown'}</p>
                   <p className="text-xs text-gray-500">{payment.invoiceNo || 'General Payment'}</p>
                 </div>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(payment.amount)}</p>
+                <p className="text-base font-bold text-gray-900">{money(payment.amount)}</p>
               </div>
               <div className="flex items-center gap-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center gap-1">
@@ -1044,7 +1045,7 @@ const PaymentsPage = () => {
                 { value: '', label: 'Select Customer' },
                 ...customers.map(customer => ({
                   value: customer.id,
-                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${formatBalance(customer.balance || 0)}`
+                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
                 }))
               ]}
               error={errors.customerId?.message}
@@ -1067,7 +1068,7 @@ const PaymentsPage = () => {
                 ...(selectedCustomerId && outstandingInvoices.length > 0
                   ? outstandingInvoices.map(inv => ({
                       value: inv.id,
-                      label: `${inv.invoiceNo} - Balance: ${formatCurrency(inv.balanceAmount)} ${inv.daysOverdue > 0 ? `(${inv.daysOverdue} days overdue)` : ''}`
+                      label: `${inv.invoiceNo} - Balance: ${money(inv.balanceAmount)} ${inv.daysOverdue > 0 ? `(${inv.daysOverdue} days overdue)` : ''}`
                     }))
                   : [])
               ]}
@@ -1129,10 +1130,10 @@ const PaymentsPage = () => {
                       return (
                         <div className="space-y-1 text-sm">
                           <p><span className="font-medium">Invoice:</span> {selectedInv.invoiceNo}</p>
-                          <p><span className="font-medium">Total:</span> {formatCurrency(selectedInv.grandTotal)}</p>
-                          <p><span className="font-medium">Paid:</span> {formatCurrency(selectedInv.paidAmount)}</p>
+                          <p><span className="font-medium">Total:</span> {money(selectedInv.grandTotal)}</p>
+                          <p><span className="font-medium">Paid:</span> {money(selectedInv.paidAmount)}</p>
                           <p className="text-red-600 font-semibold">
-                            <span className="font-medium">Balance Due:</span> {formatCurrency(selectedInv.balanceAmount)}
+                            <span className="font-medium">Balance Due:</span> {money(selectedInv.balanceAmount)}
                             {selectedInv.daysOverdue > 0 && (
                               <span className="ml-2 text-orange-600">({selectedInv.daysOverdue} days overdue)</span>
                             )}
@@ -1175,7 +1176,7 @@ const PaymentsPage = () => {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-red-600">{formatCurrency(inv.balanceAmount)}</p>
+                          <p className="text-sm font-semibold text-red-600">{money(inv.balanceAmount)}</p>
                           <button
                             type="button"
                             onClick={() => {
@@ -1277,7 +1278,7 @@ const PaymentsPage = () => {
                   <div>
                     <p className="text-xs text-gray-500">Account Balance</p>
                     <p className={`text-sm font-medium ${(selectedCustomerDetails.balance || 0) < 0 ? 'text-green-600' : (selectedCustomerDetails.balance || 0) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {formatBalance(selectedCustomerDetails.balance || 0)}
+                      {balance(selectedCustomerDetails.balance || 0)}
                     </p>
                   </div>
                 </div>
@@ -1332,7 +1333,7 @@ const PaymentsPage = () => {
         isOpen={!!paymentToDelete}
         title="DELETE PAYMENT"
         message={paymentToDelete
-          ? `Amount: ${formatCurrency(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
+          ? `Amount: ${money(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
           : ''}
         confirmLabel="Delete Payment"
         requireTypedText="DELETE"
@@ -1377,7 +1378,7 @@ const PaymentsPage = () => {
                     { value: '', label: 'Select Customer' },
                     ...customers.map(customer => ({
                       value: customer.id,
-                      label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${formatBalance(customer.balance || 0)}`
+                      label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
                     }))
                   ]}
                   value={payment.customerId}

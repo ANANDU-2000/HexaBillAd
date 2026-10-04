@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import Modal from './Modal'
 import { paymentsAPI, customersAPI } from '../services'
 import { formatCurrency } from '../utils/currency'
+import { useBranding } from '../tenant/TenantBrandingContext'
 import { localDateString } from '../utils/dateFormat'
 
 const MODES = ['CASH', 'CHEQUE', 'ONLINE', 'CREDIT']
@@ -73,6 +74,8 @@ export default function EditPaymentModal ({
   outstandingInvoices = [],
   allInvoices = []
 }) {
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => formatCurrency(value, tenantCurrency)
   const [saving, setSaving] = useState(false)
   const [fetchedOutstanding, setFetchedOutstanding] = useState([])
   const [form, setForm] = useState({
@@ -213,7 +216,7 @@ export default function EditPaymentModal ({
               <option value="">-- No Invoice (General Payment) --</option>
               {invoices.map((inv) => (
                 <option key={inv.id} value={String(inv.id)}>
-                  {inv.invoiceNo} - {formatCurrency(inv.grandTotal)} - {inv.balanceAmount > 0.005 ? `Balance: ${formatCurrency(inv.balanceAmount)}` : 'Paid'}
+                  {inv.invoiceNo} - {money(inv.grandTotal)} - {inv.balanceAmount > 0.005 ? `Balance: ${money(inv.balanceAmount)}` : 'Paid'}
                 </option>
               ))}
             </select>
@@ -265,8 +268,8 @@ export default function EditPaymentModal ({
           <div className={`border rounded-lg p-3 text-sm ${selectedInv.isOutstanding ? 'bg-blue-50 border-blue-200' : 'bg-neutral-50 border-neutral-200'}`}>
             <p className="font-medium">{selectedInv.invoiceNo}</p>
             <p className="text-neutral-600 mt-0.5">
-              Total {formatCurrency(selectedInv.grandTotal)}
-              {selectedInv.balanceAmount > 0.005 ? ` · Balance ${formatCurrency(selectedInv.balanceAmount)}` : ' · Paid'}
+              Total {money(selectedInv.grandTotal)}
+              {selectedInv.balanceAmount > 0.005 ? ` · Balance ${money(selectedInv.balanceAmount)}` : ' · Paid'}
             </p>
           </div>
         ) : (
