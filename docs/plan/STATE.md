@@ -145,6 +145,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice Tier0 backup restore PG COPY (PARTIAL)
+- **changed:** disposable `hexabill_restore_copy` via `pg_dump -Fc` + `pg_restore` from `hexabill_master_loop_test`; recorded EF migrate-to-head FAIL on PG
+- **files:** STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md
+- **tests+evidence:** dump/restore **67=67 tables**; post-restore isolation **8/8 PASS**; EF `database update` FAIL after `InitialPostgreSQL` (SQLite-shaped next migration / Customers 42P07); Zayogya 8
+- **NOT RUN / blocked:** EF migration *rollback-to-previous* (chain not PG-safe); `git push` (HTTPS prompt disabled); full §10; Phases 9–11
+- **flags+rollback:** none (disposable DBs only)
+- **next:** push `master-loop-2` from authenticated terminal; Phase 6–11 remain gated
+
 ### 2026-10-04 — slice 1 PG suite unblocked (PARTIAL)
 - **changed:** disposable DB `hexabill_master_loop_test` on local PostgreSQL **:5433** (`postgres`/`postgres`); ran full `~PostgreSql|~Postgres` filter
 - **files:** STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md, PHASE-TODO.md

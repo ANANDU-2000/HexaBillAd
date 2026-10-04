@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | PG dump/restore COPY | local PG :5433 | WIP | n/a | n/a | n/a | pg_dump Fc → restore_copy → isolation retest | 67 tables + tests green | src=dst 67; isolation **8/8**; EF migrate-to-head **FAIL** (Customers 42P07) | Desktop/HexaBill_Backups/pg-rollback-20261004 | tested |
 | 2026-10-04 | PG isolation suite | local PG :5433 | WIP | A/B | — | — | `dotnet test --filter ~PostgreSql\|~Postgres` + `HEXABILL_TEST_POSTGRES` | 55 green | **Passed 55 / Failed 0** (~12s) on `hexabill_master_loop_test` | disposable DB only (not committed) | tested |
 | 2026-10-04 | Clean verify non-PG | local | WIP | n/a | n/a | n/a | FE 82 + BE !~PostgreSql | green | FE 82; BE 558 passed / 0 failed; D8 empty-VAT Invoice PDF test aligned | SettingsHttpIsolationTests | tested |
 | 2026-10-04 | Pending-pages inventory | local | 19a581b | n/a | n/a | n/a | ROUTE-MANIFEST vs §10 completeness | list gaps | 60 routes shell/smoke-only; full §10 open | Desktop/HexaBill_Backups/pending-pages-61-20261004.json | implemented |

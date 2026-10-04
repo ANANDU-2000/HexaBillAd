@@ -17,8 +17,8 @@
 | Seven journeys (section 9) API ×4 | **PASS** | `master-loop-2-journeys-20261004-105936/api-journey-results.json` |
 | Shell routes ×4 | **PASS** | `shell-route-results.json` 33/33 |
 | Viewport screenshots / HAR | **PARTIAL** | login on 127.0.0.1; tenant host screenshots blocked |
-| Backup restore on copy | **PASS** (SQLite copy) | `sqlite-restore-copy.db` |
-| Migration rollback on PG COPY | **NOT RUN** | disposable test DB exists; explicit rollback rehearsal still open |
+| Backup restore on copy | **PASS** | SQLite copy + **PG** `pg_dump`/`pg_restore` → `hexabill_restore_copy` (67=67; isolation 8/8) |
+| Migration rollback on PG COPY | **FAIL / documented** | EF `database update` after `InitialPostgreSQL` hits SQLite-shaped `AddBranchAndRoute` (`Customers` 42P07); PG tests use `EnsureCreated`, not Migrate |
 | Sample/missing TRN print rules | **PROPOSED** | DECISIONS pending approval; code on branch |
 | D5 profit×5% not VAT | **PASS** | prior slice |
 | Zayogya tax/print unchanged | **PASS** | ZayogyaRegressionSnapshotTests (8) this slice |
