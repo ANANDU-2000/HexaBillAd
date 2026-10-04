@@ -47,6 +47,39 @@ public class ReturnStockTests
     }
 
     [Fact]
+    public async Task DeleteReturn_DoesNotDeleteLinkedRowsFromAnotherTenant()
+    {
+        await using var db = await Database(ReturnStatus.Pending);
+        var now = DateTime.UtcNow;
+        db.ChangeTracker.Clear();
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+        db.Tenants.Add(new Tenant { Id = 11, Name = "Other tenant", Subdomain = "other-return-fixture" });
+        db.Customers.Add(new Customer { Id = 2, TenantId = 11, OwnerId = 11, Name = "Other customer", CreatedAt = now, UpdatedAt = now });
+        db.Payments.Add(new Payment
+        {
+            Id = 2, OwnerId = 11, TenantId = 11, SaleReturnId = 1, CustomerId = 2, Amount = 15m,
+            Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED, PaymentDate = now, CreatedBy = 1, CreatedAt = now
+        });
+        db.CreditNotes.Add(new CreditNote
+        {
+            Id = 2, TenantId = 11, CustomerId = 2, LinkedReturnId = 1, Amount = 15m, AppliedAmount = 0m,
+            Currency = "AED", Status = "unused", CreatedAt = now, CreatedBy = 1
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new ReturnService(db, null!, null!, null!).DeleteSaleReturnAsync(1, 10));
+        Assert.Contains("linked payments or credit notes", error.Message);
+
+        db.ChangeTracker.Clear();
+        Assert.Equal(15m, (await db.Payments.IgnoreQueryFilters().SingleAsync(p => p.Id == 2)).Amount);
+        Assert.Equal("unused", (await db.CreditNotes.IgnoreQueryFilters().SingleAsync(c => c.Id == 2)).Status);
+        Assert.Single(await db.SaleReturns.IgnoreQueryFilters().Where(r => r.Id == 1).ToListAsync());
+    }
+
+    [Fact]
     public async Task DuplicateOrEmptyRequest_IsRejectedBeforeDatabaseAccess()
     {
         var service = new ReturnService(null!, null!, null!, null!);

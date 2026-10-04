@@ -1020,6 +1020,15 @@ namespace HexaBill.Api.Modules.Returns
                     if (ret.Status == ReturnStatus.Approved || ret.Status == ReturnStatus.Reversed)
                         throw new InvalidOperationException("Approved returns cannot be deleted. Use an audited reversal to correct posted return history.");
 
+                    // A malformed or legacy pending return may still have financial children. Never erase
+                    // posted ledger rows, or let a return delete cascade across tenant-owned children.
+                    var hasLinkedPayments = await _context.Payments.IgnoreQueryFilters()
+                        .AnyAsync(p => p.SaleReturnId == returnId);
+                    var hasLinkedCreditNotes = await _context.CreditNotes.IgnoreQueryFilters()
+                        .AnyAsync(cn => cn.LinkedReturnId == returnId);
+                    if (hasLinkedPayments || hasLinkedCreditNotes)
+                        throw new InvalidOperationException("Returns with linked payments or credit notes cannot be deleted. Use an audited reversal to correct posted return history.");
+
                     var customerId = ret.CustomerId;
                     var branchId = ret.BranchId;
 
@@ -1047,14 +1056,6 @@ namespace HexaBill.Api.Modules.Returns
                             }
                         }
                     }
-
-                    // Remove refund payment(s) linked to this return
-                    var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId).ToListAsync();
-                    _context.Payments.RemoveRange(refundPayments);
-
-                    // Remove linked credit note(s)
-                    var creditNotes = await _context.CreditNotes.Where(cn => cn.LinkedReturnId == returnId).ToListAsync();
-                    _context.CreditNotes.RemoveRange(creditNotes);
 
                     _context.SaleReturnItems.RemoveRange(ret.Items);
                     _context.SaleReturns.Remove(ret);
