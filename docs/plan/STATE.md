@@ -146,11 +146,11 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ## Slice log (newest first)
 
 ### 2026-10-04 — slice 7 cleanup scrub + Phase 8 params (PARTIAL)
-- **changed:** scrubbed real client fields from `appsettings.Development.json`; removed empty root `package.json`/`package-lock.json`; param-route screenshots for customers/products/delivery-notes × 4 tenants
-- **files:** appsettings.Development.json, CLEANUP-REPORT.md, phase8-param-routes.mjs, STATE.md
-- **tests+evidence:** Zayogya **8 PASS**; scrub grep clean for prior real licence/phone/email/TRN patterns; param report `ok=12 fail=0` under `phase8-shell-20261004/params/`
+- **changed:** scrubbed local gitignored `appsettings.Development.json`; removed empty root `package.json`/`package-lock.json`; param-route screenshots for customers/products/delivery-notes × 4 tenants
+- **files:** CLEANUP-REPORT.md, phase8-param-routes.mjs, STATE.md (+ local Dev json not committed)
+- **tests+evidence:** Zayogya **8 PASS**; param report `ok=12 fail=0` under `phase8-shell-20261004/params/`; tracked appsettings already synthetic
 - **NOT RUN:** supplier/branch/route/quotation/agreement/salary detail (no seed IDs); staff role; full 5VP for Phase 8 pages
-- **flags+rollback:** local DB may still hold pre-scrub owner email until reseed — config no longer contains it
+- **flags+rollback:** local DB may still hold pre-scrub owner email until reseed
 - **next:** seed missing masters for remaining param routes OR mark blocked; push when git auth available; Phases 9–11 still gated
 
 ### 2026-10-04 — slice 6 Phase 8 shell + platform metrics (PARTIAL)
