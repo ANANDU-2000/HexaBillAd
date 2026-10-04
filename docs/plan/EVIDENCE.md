@@ -5,6 +5,8 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 2026-10-04 | Phase8 params 5VP | local | WIP | FH1 | owner | 5 VPs | 9 detail routes ×5 | shell loads | ok=45 fail=0 | Desktop/HexaBill_Backups/phase8-params-5vp-20261004 | tested |
+| 2026-10-04 | Phase8 params 5VP rest | local | WIP | FH2/GH/ZY | owner | 5 VPs | 9 detail routes ×3×5 | shell loads | ok=135 fail=0 | Desktop/HexaBill_Backups/phase8-params-5vp-20261004-rest | tested |
+| 2026-10-04 | Ledger CTA ≥44px | local | WIP | FH1 | owner | 360 | field-edge after touch-target bump | primaryMin44 | true (ok=7) | Desktop/HexaBill_Backups/field-edge-ledger-44 | tested |
 | 2026-10-04 | Popup-denied PDF fallback | local | WIP | n/a | n/a | n/a | receipt + PrintOptions unit | blocked print → message/download | 8 passed (6 receipt + 2 print) | receiptPreview + printOptionsPopupFallback tests | tested |
 | 2026-10-04 | §10 field/edge smoke | local | WIP | FH1 | owner | 360 | 7 Phase-7 pages | non-blank + search/CTA checks | ok=4 fail=3 (then script hardened); under-44 CTA warns | Desktop/HexaBill_Backups/field-edge-20261004 | tested |
 | 2026-10-04 | Ledger 5VP + receipt HAR | local | 1cf2bdd | FH1 | owner | 5 VPs | `/ledger`+`/sales-ledger`; reprint click×2 | shells + ≤1 receipt POST | ledgerOk=10; receiptPosts=0; reprintSafe | Desktop/HexaBill_Backups/ledger-receipt-20261004 | tested |

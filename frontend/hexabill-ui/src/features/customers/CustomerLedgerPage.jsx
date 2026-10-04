@@ -2377,7 +2377,7 @@ const CustomerLedgerPage = () => {
               e.stopPropagation()
               setShowAddCustomerModal(true)
             }}
-            className="px-2.5 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 flex items-center space-x-1.5 transition-colors whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-9"
+            className="px-2.5 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 flex items-center space-x-1.5 transition-colors whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-[44px] min-w-[44px]"
             title="Add New Customer"
             type="button"
           >
@@ -2509,7 +2509,7 @@ const CustomerLedgerPage = () => {
                             customerForm.setValue('routeId', selectedCustomer.routeId || '')
                             setShowEditCustomerModal(true)
                           }}
-                          className={`${mobileActionBtnClass} min-h-11 bg-primary-600 text-white hover:bg-primary-700`}
+                          className={`${mobileActionBtnClass} min-h-[44px] bg-primary-600 text-white hover:bg-primary-700`}
                           title="Edit Customer (F3)"
                         >
                           <Edit className="h-3.5 w-3.5" />
@@ -2521,7 +2521,7 @@ const CustomerLedgerPage = () => {
                             setPaymentModalInvoiceId(null)
                             setShowPaymentModal(true)
                           }}
-                          className="min-h-11 px-3 py-2 bg-primary-600 text-white text-xs rounded-md hover:bg-primary-700 flex items-center gap-1 transition-colors"
+                          className="min-h-[44px] px-3 py-2 bg-primary-600 text-white text-xs rounded-md hover:bg-primary-700 flex items-center gap-1 transition-colors"
                           title="Add Payment (F4)"
                         >
                           <Plus className="h-3 w-3" />
@@ -2539,7 +2539,7 @@ const CustomerLedgerPage = () => {
                               setPaymentValue('method', 'CASH')
                               setShowPaymentModal(true)
                             }}
-                            className="min-h-11 px-3 py-2 bg-accent text-white text-xs rounded-md hover:bg-accent/90 flex items-center gap-1 transition-colors"
+                            className="min-h-[44px] px-3 py-2 bg-accent text-white text-xs rounded-md hover:bg-accent/90 flex items-center gap-1 transition-colors"
                             title="Pay all outstanding invoices in one payment"
                           >
                             <Wallet className="h-3 w-3" />
@@ -2551,7 +2551,7 @@ const CustomerLedgerPage = () => {
                     <button
                       onClick={handleExportStatement}
                       disabled={pdfLoading}
-                      className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="min-h-[44px] px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                       title="Ledger Statement (F5)"
                     >
                       <FileText className="h-3 w-3" />
@@ -2598,7 +2598,7 @@ const CustomerLedgerPage = () => {
                           setPdfLoading(false)
                         }
                       }}
-                      className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="min-h-[44px] px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                       title="Pending Bills PDF (Outstanding Invoices Only) - Uses Date Filter"
                     >
                       <DollarSign className="h-3 w-3" />
@@ -2607,7 +2607,7 @@ const CustomerLedgerPage = () => {
                     <button
                       onClick={handleExportPDF}
                       disabled={pdfLoading}
-                      className="px-2 py-1 bg-neutral-700 text-white text-xs rounded hover:bg-neutral-800 flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="min-h-[44px] px-2 py-1 bg-neutral-700 text-white text-xs rounded hover:bg-neutral-800 flex items-center gap-1 transition-colors disabled:opacity-50"
                       title="Full Ledger PDF (F7)"
                     >
                       <Download className="h-3 w-3" />
@@ -2615,7 +2615,7 @@ const CustomerLedgerPage = () => {
                     </button>
                     <button
                       onClick={handleShareWhatsApp}
-                      className="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center transition-colors"
+                      className="min-h-[44px] min-w-[44px] px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center justify-center transition-colors"
                       title="WhatsApp"
                     >
                       <Send className="h-3 w-3" />
@@ -2623,7 +2623,7 @@ const CustomerLedgerPage = () => {
                     <button
                       onClick={() => selectedCustomer && customerLedger.length > 0 && setShowSendStatementModal(true)}
                       disabled={!selectedCustomer || customerLedger.length === 0}
-                      className="px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="min-h-[44px] px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Send statement via WhatsApp, email, or download PDF"
                     >
                       <Send className="h-3 w-3" />
