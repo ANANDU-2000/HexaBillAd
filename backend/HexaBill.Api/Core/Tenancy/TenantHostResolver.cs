@@ -41,9 +41,34 @@ public sealed class TenantHostResolver : ITenantHostResolver
             .Select(t => new { t.Id, t.Subdomain, t.Status })
             .SingleOrDefaultAsync(cancellationToken);
 
+        string? requestedSlug = hostResolution.Slug;
+        string? canonicalSlug = null;
+        if (tenant is null)
+        {
+            // Controlled legacy-host migration: LEGACY_SUBDOMAIN setting on the canonical tenant.
+            var legacyTenantId = await _db.Settings.AsNoTracking()
+                .Where(s => s.Key == "LEGACY_SUBDOMAIN" && s.Value != null && s.Value.ToLower() == hostResolution.Slug)
+                .Select(s => s.TenantId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (legacyTenantId is > 0)
+            {
+                tenant = await _db.Tenants.AsNoTracking()
+                    .Where(t => t.Id == legacyTenantId.Value)
+                    .Select(t => new { t.Id, t.Subdomain, t.Status })
+                    .SingleOrDefaultAsync(cancellationToken);
+                if (tenant is not null)
+                    canonicalSlug = tenant.Subdomain;
+            }
+        }
+
         var resolved = tenant is null
             ? TenantHostResolution.Unknown()
-            : new TenantHostResolution(TenantHostKind.Tenant, tenant.Subdomain, tenant.Id, tenant.Status);
+            : new TenantHostResolution(
+                TenantHostKind.Tenant,
+                requestedSlug,
+                tenant.Id,
+                tenant.Status,
+                CanonicalSlug: canonicalSlug ?? tenant.Subdomain);
 
         _cache.Set(cacheKey, resolved, TimeSpan.FromSeconds(60));
         return resolved;

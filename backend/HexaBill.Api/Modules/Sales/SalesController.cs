@@ -185,6 +185,10 @@ namespace HexaBill.Api.Modules.Sales
                     Errors = new List<string> { ex.Message }
                 });
             }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 return BadRequest(new ApiResponse<SaleDto>
@@ -249,6 +253,10 @@ namespace HexaBill.Api.Modules.Sales
                     Message = "Sale created successfully with admin override",
                     Data = result
                 });
+            }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -396,6 +404,10 @@ namespace HexaBill.Api.Modules.Sales
                 Response.ContentType = "application/pdf";
                 return File(pdfBytes, "application/pdf", filename);
             }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning($"❌ PDF Generation Error (InvalidOperation): {ex.Message}");
@@ -477,6 +489,10 @@ namespace HexaBill.Api.Modules.Sales
                 Response.ContentType = "application/pdf";
                 return File(pdfBytes, "application/pdf", filename);
             }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
             catch (InvalidOperationException ex)
             {
                 _logger.LogWarning("Delivery note PDF error: {Message}", ex.Message);
@@ -555,6 +571,10 @@ namespace HexaBill.Api.Modules.Sales
                     Message = "Sale updated successfully",
                     Data = result
                 });
+            }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -662,6 +682,10 @@ namespace HexaBill.Api.Modules.Sales
                     Message = $"Invoice restored to version {versionNumber} successfully",
                     Data = result
                 });
+            }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {
@@ -875,6 +899,10 @@ namespace HexaBill.Api.Modules.Sales
                     Success = true,
                     Message = $"Invoice {sale.InvoiceNo} sent successfully to {request.Email}"
                 });
+            }
+            catch (TaxInvoiceSettingsException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {

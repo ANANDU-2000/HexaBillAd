@@ -57,7 +57,10 @@ window.$RefreshSig$ = () => (type) => type;`
     }
   },
   server: {
+    host: true,
     port: 5173,
+    // Allow *.localhost subdomain routing for Tier 0 local tenants.
+    allowedHosts: ['.localhost', 'localhost'],
     proxy: {
       '/api': {
         target: 'http://localhost:5000',

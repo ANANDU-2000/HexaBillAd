@@ -73,9 +73,11 @@ const SettingsPage = () => {
   const [logoPdfStatus, setLogoPdfStatus] = useState(null)
   const [logoPdfStatusLoading, setLogoPdfStatusLoading] = useState(false)
   const [settings, setSettings] = useState({
-    companyNameEn: 'HexaBill',
-    companyNameAr: 'هيكسابيل',
+    companyNameEn: '',
+    companyNameAr: '',
     companyTrn: '',
+    corporateTaxTrn: '',
+    invoiceHeaderStyle: 'Legacy',
     companyAddress: '',
     companyPhone: '',
     companyEmail: '',
@@ -414,7 +416,9 @@ const SettingsPage = () => {
         const mappedSettings = {
           companyNameEn: getSetting(d, 'COMPANY_NAME_EN') || getSetting(d, 'companyNameEn') || '',
           companyNameAr: getSetting(d, 'COMPANY_NAME_AR') || getSetting(d, 'companyNameAr') || '',
-          companyTrn: getSetting(d, 'COMPANY_TRN') || getSetting(d, 'companyTrn') || '',
+          invoiceHeaderStyle: getSetting(d, 'INVOICE_HEADER_STYLE') || 'Legacy',
+          corporateTaxTrn: getSetting(d, 'corporate_tax_trn') || getSetting(d, 'CORPORATE_TAX_TRN') || '',
+          companyTrn: getSetting(d, 'vat_trn') || getSetting(d, 'COMPANY_TRN') || getSetting(d, 'companyTrn') || '',
           companyAddress: getSetting(d, 'COMPANY_ADDRESS') || getSetting(d, 'companyAddress') || '',
           companyPhone: getSetting(d, 'COMPANY_PHONE') || getSetting(d, 'companyPhone') || '',
           companyEmail: getSetting(d, 'COMPANY_EMAIL') || getSetting(d, 'companyEmail') || '',
@@ -478,7 +482,9 @@ const SettingsPage = () => {
       const backendSettings = {
         COMPANY_NAME_EN: data.companyNameEn || '',
         COMPANY_NAME_AR: data.companyNameAr || '',
-        COMPANY_TRN: data.companyTrn || '',
+        vat_trn: data.companyTrn || '',
+        corporate_tax_trn: data.corporateTaxTrn || '',
+        INVOICE_HEADER_STYLE: data.invoiceHeaderStyle || 'Legacy',
         COMPANY_ADDRESS: data.companyAddress || '',
         COMPANY_PHONE: data.companyPhone || '',
         COMPANY_EMAIL: data.companyEmail || '',
@@ -815,11 +821,11 @@ const SettingsPage = () => {
     
     // Sample data for preview
     const sampleData = {
-      company_name_en: settings.companyNameEn || 'HexaBill',
-      company_name_ar: settings.companyNameAr || 'هيكسابيل',
-      company_address: settings.companyAddress || 'Abu Dhabi, UAE',
-      company_phone: settings.companyPhone || '+971 56 955 22 52',
-      company_trn: settings.companyTrn || '105274438800003',
+      company_name_en: settings.companyNameEn || '',
+      company_name_ar: settings.companyNameAr || '',
+      company_address: settings.companyAddress || '',
+      company_phone: settings.companyPhone || '',
+      company_trn: settings.companyTrn || '',
       currency: settings.defaultCurrency || 'AED',
       invoice_no: 'INV-2026-001',
       invoiceNo: 'INV-2026-001',
@@ -919,6 +925,11 @@ const SettingsPage = () => {
                 <h2 className="text-lg font-semibold text-neutral-900">Company Information</h2>
               </div>
 
+              {!settings.companyTrn && (
+                <p role="status" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  Add VAT TRN in Settings. Tax Invoices cannot be finalized or printed until it is set.
+                </p>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Input
                   label="Company Name (English)"
@@ -936,10 +947,28 @@ const SettingsPage = () => {
                 />
 
                 <Input
-                  label="TRN Number"
-                  placeholder="TRN123456789"
+                  label="VAT TRN"
+                  placeholder="15 digits"
+                  inputMode="numeric"
+                  maxLength={15}
                   error={errors.companyTrn?.message}
-                  {...register('companyTrn')}
+                  {...register('companyTrn', { validate: value => !value || /^[0-9]{15}$/.test(value) || 'VAT TRN must contain exactly 15 digits' })}
+                />
+
+                <Select
+                  label="Document header"
+                  {...register('invoiceHeaderStyle')}
+                  options={[
+                    { value: 'Legacy', label: 'Existing layout' },
+                    { value: 'BilingualMonochrome', label: 'Centered bilingual, black and white' }
+                  ]}
+                />
+
+                <Input
+                  label="Corporate tax TRN (optional)"
+                  placeholder="Never printed as the VAT number"
+                  error={errors.corporateTaxTrn?.message}
+                  {...register('corporateTaxTrn')}
                 />
 
                 <Input

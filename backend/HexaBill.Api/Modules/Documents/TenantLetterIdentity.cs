@@ -48,13 +48,14 @@ namespace HexaBill.Api.Modules.Documents
                     AgreementTemplate.FirstPartyLicense);
             }
 
+            // Licence and VAT TRN are independent. Never fall back from licence → TRN (or the reverse).
             return new TenantLetterIdentity(
                 false,
                 companyName,
                 FirstNonEmpty(Value("COMPANY_PHONE"), tenant?.Phone),
                 FirstNonEmpty(Value("COMPANY_EMAIL"), tenant?.Email),
                 FirstNonEmpty(Value("COMPANY_ADDRESS"), tenant?.Address),
-                FirstNonEmpty(Value("COMPANY_LICENSE"), Value("COMPANY_TRN"), tenant?.VatNumber));
+                Value("COMPANY_LICENSE"));
         }
 
         private static bool ContainsZayoga(string? value) =>

@@ -146,7 +146,7 @@ public class TenantIsolationPostgreSqlTests
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);
         db.SetRequestTenantScope(tenantId, platformScope);
-        await db.Database.EnsureCreatedAsync();
+        await PostgresTestSchema.EnsureCreatedAsync(db);
         return db;
     }
 

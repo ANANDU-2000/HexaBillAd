@@ -56,6 +56,7 @@ public class SuperAdminProvisioningHttpTests
         {
             name = "Legal Trading Company",
             subdomain = "owner-two-http",
+            openingDataChoice = "Empty",
             ownerName = "Second Owner",
             email = "second-http@example.com",
             phone = "+971502222222",

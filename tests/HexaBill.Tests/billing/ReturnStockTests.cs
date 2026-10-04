@@ -22,7 +22,6 @@ public class ReturnStockTests
     [Theory]
     [InlineData(ReturnStatus.Pending, 8)]
     [InlineData(ReturnStatus.Rejected, 8)]
-    [InlineData(ReturnStatus.Approved, 8)]
     public async Task DeleteReturn_ReversesStockOnlyIfAppliedAndUsesOriginalConversion(ReturnStatus status, int expected)
     {
         await using var db = await Database(status);
@@ -30,6 +29,20 @@ public class ReturnStockTests
         db.ChangeTracker.Clear();
         Assert.Equal((decimal)expected, (await db.Products.SingleAsync()).StockQty);
         Assert.Empty(await db.SaleReturns.ToListAsync());
+        Assert.Single(await db.SaleItems.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ApprovedReturn_CannotBeDeleted_MustUseAuditedReversal()
+    {
+        await using var db = await Database(ReturnStatus.Approved);
+        var service = new ReturnService(db, null!, null!, null!);
+        var deleteError = await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteSaleReturnAsync(1, 10));
+        Assert.Contains("audited reversal", deleteError.Message);
+        await service.ReverseSaleReturnAsync(1, "Fixture correction", 1, 10);
+        db.ChangeTracker.Clear();
+        Assert.Equal(8m, (await db.Products.SingleAsync()).StockQty);
+        Assert.Equal(ReturnStatus.Reversed, (await db.SaleReturns.SingleAsync()).Status);
         Assert.Single(await db.SaleItems.ToListAsync());
     }
 

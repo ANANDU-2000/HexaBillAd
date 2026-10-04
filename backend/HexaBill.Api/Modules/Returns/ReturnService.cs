@@ -37,6 +37,8 @@ namespace HexaBill.Api.Modules.Returns
         Task<List<PurchaseReturnDto>> GetPurchaseReturnsAsync(int tenantId, int? purchaseId = null);
         Task<SaleReturnDto> ApproveSaleReturnAsync(int returnId, int tenantId);
         Task<SaleReturnDto> RejectSaleReturnAsync(int returnId, int tenantId);
+        /// <summary>Audited reversal of an approved return: restores stock, voids refund payments, cancels unused credit notes, keeps return history.</summary>
+        Task<SaleReturnDto> ReverseSaleReturnAsync(int returnId, string reason, int userId, int tenantId);
         Task<bool> GetReturnsRequireApprovalAsync(int tenantId);
         Task<bool> GetReturnsEnabledAsync(int tenantId);
         Task<byte[]> GenerateReturnBillPdfAsync(int returnId, int tenantId);
@@ -77,6 +79,8 @@ namespace HexaBill.Api.Modules.Returns
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                await AcquireReturnWorkspaceLockAsync(tenantId);
+                await LockSaleRowAsync(request.SaleId, tenantId);
                 var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
                 bool returnsEnabled = await GetReturnsEnabledAsync(tenantId);
                 if (!returnsEnabled)
@@ -108,7 +112,8 @@ namespace HexaBill.Api.Modules.Returns
 
                 // Already-returned qty per SaleItemId (all returns for this sale, tenant-scoped)
                 var alreadyReturnedBySaleItemId = await _context.SaleReturnItems
-                    .Where(sri => sri.SaleReturn.SaleId == request.SaleId && sri.SaleReturn.TenantId == tenantId && sri.SaleReturn.Status != ReturnStatus.Rejected)
+                    .Where(sri => sri.SaleReturn.SaleId == request.SaleId && sri.SaleReturn.TenantId == tenantId
+                        && sri.SaleReturn.Status != ReturnStatus.Rejected && sri.SaleReturn.Status != ReturnStatus.Reversed)
                     .GroupBy(sri => sri.SaleItemId)
                     .Select(g => new { SaleItemId = g.Key, Total = g.Sum(x => x.Qty) })
                     .ToDictionaryAsync(x => x.SaleItemId, x => x.Total);
@@ -288,54 +293,8 @@ namespace HexaBill.Api.Modules.Returns
                         invTx.RefId = saleReturn.Id;
                     _context.InventoryTransactions.AddRange(inventoryTransactions);
 
-                    // Damaged: add to DamageInventory (tenant, product, branch)
-                    foreach (var ri in returnItems.Where(r => r.Condition == "damaged"))
-                    {
-                        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == ri.ProductId && p.TenantId == tenantId);
-                        if (product == null) continue;
-                        var baseQty = SaleCostBasis.BaseQuantity(ri.SaleItem, ri.Qty);
-                        var inv = await _context.DamageInventories
-                            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == ri.ProductId && d.BranchId == saleInfo.BranchId);
-                        if (inv == null)
-                        {
-                            inv = new DamageInventory
-                            {
-                                TenantId = tenantId,
-                                ProductId = ri.ProductId,
-                                BranchId = saleInfo.BranchId,
-                                Quantity = 0,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow
-                            };
-                            _context.DamageInventories.Add(inv);
-                            await _context.SaveChangesAsync();
-                        }
-                        inv.Quantity += baseQty;
-                        inv.UpdatedAt = DateTime.UtcNow;
-                        inv.SourceReturnId = saleReturn.Id;
-                    }
-
-                    // Write-off: create Expense (Return Write-off category, tenant-scoped)
-                    var writeOffCategoryId = await GetOrCreateReturnWriteOffCategoryAsync(tenantId);
-                    foreach (var ri in returnItems.Where(r => r.Condition == "writeoff"))
-                    {
-                        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == ri.ProductId && p.TenantId == tenantId);
-                        var productName = product != null ? (product.NameEn ?? product.NameAr ?? "") : "Product";
-                        _context.Expenses.Add(new Expense
-                        {
-                            OwnerId = tenantId,
-                            TenantId = tenantId,
-                            BranchId = saleInfo.BranchId,
-                            RouteId = saleInfo.RouteId,
-                            CategoryId = writeOffCategoryId,
-                            Amount = ri.LineTotal,
-                            Date = DateTime.UtcNow.Date,
-                            Note = $"Return write-off: {returnNo} - {productName}",
-                            CreatedBy = userId,
-                            CreatedAt = DateTime.UtcNow,
-                            Status = ExpenseStatus.Approved
-                        });
-                    }
+                    await ApplyDamagedInventoryForReturnAsync(tenantId, saleReturn.Id, saleInfo.BranchId, returnItems);
+                    await ApplyWriteOffExpensesForReturnAsync(tenantId, userId, saleInfo.BranchId, saleInfo.RouteId, returnNo, returnItems);
 
                     if (saleInfo.CustomerId.HasValue)
                     {
@@ -628,6 +587,59 @@ namespace HexaBill.Api.Modules.Returns
 
         private const string ReturnWriteOffCategoryName = "Return Write-off";
 
+        private async Task ApplyDamagedInventoryForReturnAsync(int tenantId, int returnId, int? branchId, IReadOnlyList<SaleReturnItem> returnItems)
+        {
+            foreach (var ri in returnItems.Where(r => string.Equals(r.Condition, "damaged", StringComparison.OrdinalIgnoreCase)))
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == ri.ProductId && p.TenantId == tenantId);
+                if (product == null) continue;
+                var baseQty = SaleCostBasis.BaseQuantity(ri.SaleItem, ri.Qty);
+                var inv = await _context.DamageInventories
+                    .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == ri.ProductId && d.BranchId == branchId);
+                if (inv == null)
+                {
+                    inv = new DamageInventory
+                    {
+                        TenantId = tenantId,
+                        ProductId = ri.ProductId,
+                        BranchId = branchId,
+                        Quantity = 0,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.DamageInventories.Add(inv);
+                    await _context.SaveChangesAsync();
+                }
+                inv.Quantity += baseQty;
+                inv.UpdatedAt = DateTime.UtcNow;
+                inv.SourceReturnId = returnId;
+            }
+        }
+
+        private async Task ApplyWriteOffExpensesForReturnAsync(int tenantId, int userId, int? branchId, int? routeId, string returnNo, IReadOnlyList<SaleReturnItem> returnItems)
+        {
+            var writeOffCategoryId = await GetOrCreateReturnWriteOffCategoryAsync(tenantId);
+            foreach (var ri in returnItems.Where(r => string.Equals(r.Condition, "writeoff", StringComparison.OrdinalIgnoreCase)))
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == ri.ProductId && p.TenantId == tenantId);
+                var productName = product != null ? (product.NameEn ?? product.NameAr ?? "") : "Product";
+                _context.Expenses.Add(new Expense
+                {
+                    OwnerId = tenantId,
+                    TenantId = tenantId,
+                    BranchId = branchId,
+                    RouteId = routeId,
+                    CategoryId = writeOffCategoryId,
+                    Amount = ri.LineTotal,
+                    Date = DateTime.UtcNow.Date,
+                    Note = $"Return write-off: {returnNo} - {productName}",
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow,
+                    Status = ExpenseStatus.Approved
+                });
+            }
+        }
+
         private async Task<int> GetOrCreateReturnWriteOffCategoryAsync(int tenantId)
         {
             var cat = await _context.ExpenseCategories
@@ -736,20 +748,24 @@ namespace HexaBill.Api.Modules.Returns
 
         public async Task<SaleReturnDto> ApproveSaleReturnAsync(int returnId, int tenantId)
         {
-            var ret = await _context.SaleReturns
-                .Include(r => r.Sale)
-                .Include(r => r.Items).ThenInclude(i => i.Product)
-                .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
-                .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
-            if (ret == null) throw new InvalidOperationException("Return not found");
-            if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
-
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
+                SaleReturn? ret = null;
+                var attemptInventory = new List<InventoryTransaction>();
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    await AcquireReturnWorkspaceLockAsync(tenantId);
+                    await LockSaleReturnRowAsync(returnId, tenantId);
+                    ret = await _context.SaleReturns
+                        .Include(r => r.Sale)
+                        .Include(r => r.Items).ThenInclude(i => i.Product)
+                        .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
+                        .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+                    if (ret == null) throw new InvalidOperationException("Return not found");
+                    if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
+
                     var inventoryTransactions = new List<InventoryTransaction>();
                     foreach (var item in ret.Items.Where(i => i.StockEffect == true))
                     {
@@ -770,14 +786,17 @@ namespace HexaBill.Api.Modules.Returns
                             CreatedAt = DateTime.UtcNow
                         });
                     }
+                    attemptInventory.AddRange(inventoryTransactions);
                     _context.InventoryTransactions.AddRange(inventoryTransactions);
+                    await ApplyDamagedInventoryForReturnAsync(tenantId, ret.Id, ret.BranchId, ret.Items.ToList());
+                    await ApplyWriteOffExpensesForReturnAsync(tenantId, ret.CreatedBy, ret.BranchId, ret.RouteId, ret.ReturnNo, ret.Items.ToList());
                     ret.Status = ReturnStatus.Approved;
                     await _context.SaveChangesAsync();
 
                     if (ret.Sale?.CustomerId != null)
                     {
                         // Credit note for CreditIssued returns (deferred from creation until approval)
-                        if (ret.ReturnType == ReturnType.CreditIssued && ret.Sale.CustomerId.HasValue)
+                        if (string.Equals(ret.RefundStatus, "CreditIssued", StringComparison.OrdinalIgnoreCase) && ret.Sale.CustomerId.HasValue)
                         {
                             var totalPaidForSale = await _context.Payments
                                 .Where(p => p.SaleId == ret.SaleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
@@ -793,14 +812,14 @@ namespace HexaBill.Api.Modules.Returns
                                     Currency = "AED",
                                     Status = "unused",
                                     CreatedAt = DateTime.UtcNow,
-                                    CreatedBy = 0
+                                    CreatedBy = ret.CreatedBy
                                 });
                                 await _context.SaveChangesAsync();
                             }
                         }
 
                         // Refund Now on approval
-                        if (ret.ReturnType == ReturnType.RefundNow && ret.Sale.CustomerId.HasValue)
+                        if (string.Equals(ret.RefundStatus, "Refunded", StringComparison.OrdinalIgnoreCase) && ret.Sale.CustomerId.HasValue)
                         {
                             _context.Payments.Add(new Payment
                             {
@@ -812,7 +831,7 @@ namespace HexaBill.Api.Modules.Returns
                                 Status = PaymentStatus.CLEARED,
                                 PaymentDate = DateTime.UtcNow,
                                 Reference = $"Refund for return {ret.ReturnNo}",
-                                CreatedBy = 0,
+                                CreatedBy = ret.CreatedBy,
                                 CreatedAt = DateTime.UtcNow,
                                 OwnerId = tenantId
                             });
@@ -828,7 +847,8 @@ namespace HexaBill.Api.Modules.Returns
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    try { await transaction.RollbackAsync(); } catch { /* transaction may already be aborted */ }
+                    finally { DetachReturnAttempt(ret, attemptInventory); }
                     throw;
                 }
             });
@@ -836,12 +856,141 @@ namespace HexaBill.Api.Modules.Returns
 
         public async Task<SaleReturnDto> RejectSaleReturnAsync(int returnId, int tenantId)
         {
-            var ret = await _context.SaleReturns.FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
-            if (ret == null) throw new InvalidOperationException("Return not found");
-            if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending");
-            ret.Status = ReturnStatus.Rejected;
-            await _context.SaveChangesAsync();
-            return await GetSaleReturnByIdAsync(ret.Id);
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                SaleReturn? ret = null;
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await AcquireReturnWorkspaceLockAsync(tenantId);
+                    await LockSaleReturnRowAsync(returnId, tenantId);
+                    ret = await _context.SaleReturns.FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+                    if (ret == null) throw new InvalidOperationException("Return not found");
+                    if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending");
+                    ret.Status = ReturnStatus.Rejected;
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return await GetSaleReturnByIdAsync(ret.Id);
+                }
+                catch
+                {
+                    try { await transaction.RollbackAsync(); } catch { /* transaction may already be aborted */ }
+                    finally { DetachReturnAttempt(ret, null); }
+                    throw;
+                }
+            });
+        }
+
+        public async Task<SaleReturnDto> ReverseSaleReturnAsync(int returnId, string reason, int userId, int tenantId)
+        {
+            if (string.IsNullOrWhiteSpace(reason))
+                throw new ArgumentException("Reversal reason is required.", nameof(reason));
+
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                SaleReturn? ret = null;
+                var attemptInventory = new List<InventoryTransaction>();
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await AcquireReturnWorkspaceLockAsync(tenantId);
+                    await LockSaleReturnRowAsync(returnId, tenantId);
+                    ret = await _context.SaleReturns
+                        .Include(r => r.Sale)
+                        .Include(r => r.Items).ThenInclude(i => i.Product)
+                        .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
+                        .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
+                    if (ret == null) throw new InvalidOperationException("Return not found");
+                    if (ret.Status != ReturnStatus.Approved)
+                        throw new InvalidOperationException("Only approved returns can be reversed.");
+
+                    var branchId = ret.BranchId;
+                    var inventoryTransactions = new List<InventoryTransaction>();
+                    foreach (var item in ret.Items.Where(i => i.StockEffect == true))
+                    {
+                        var product = item.Product;
+                        if (product == null) continue;
+                        var baseQty = SaleCostBasis.BaseQuantity(item.SaleItem, item.Qty);
+                        await _context.Database.ExecuteSqlInterpolatedAsync(
+                            $@"UPDATE ""Products"" SET ""StockQty"" = ""StockQty"" - {baseQty}, ""UpdatedAt"" = {DateTime.UtcNow} WHERE ""Id"" = {product.Id} AND ""TenantId"" = {tenantId}");
+                        inventoryTransactions.Add(new InventoryTransaction
+                        {
+                            OwnerId = tenantId,
+                            TenantId = tenantId,
+                            ProductId = product.Id,
+                            ChangeQty = -baseQty,
+                            TransactionType = TransactionType.Return,
+                            Reason = $"Sale Return Reversed: {ret.ReturnNo}",
+                            RefId = ret.Id,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    foreach (var item in ret.Items.Where(i => string.Equals(i.Condition, "damaged", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var baseQty = SaleCostBasis.BaseQuantity(item.SaleItem, item.Qty);
+                        var inv = await _context.DamageInventories
+                            .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == item.ProductId && d.BranchId == branchId);
+                        if (inv != null)
+                        {
+                            inv.Quantity = Math.Max(0, inv.Quantity - baseQty);
+                            inv.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+                    attemptInventory.AddRange(inventoryTransactions);
+                    _context.InventoryTransactions.AddRange(inventoryTransactions);
+
+                    var writeOffNotePrefix = $"Return write-off: {ret.ReturnNo}";
+                    var writeOffExpenses = await _context.Expenses
+                        .Where(e => e.TenantId == tenantId && e.Note != null && e.Note.StartsWith(writeOffNotePrefix))
+                        .ToListAsync();
+                    foreach (var expense in writeOffExpenses.Where(e => e.Status == ExpenseStatus.Approved))
+                    {
+                        expense.Status = ExpenseStatus.Rejected;
+                        expense.Note = $"{expense.Note} [voided: return reversed]";
+                    }
+
+                    var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId && p.TenantId == tenantId).ToListAsync();
+                    foreach (var payment in refundPayments.Where(p => p.Status != PaymentStatus.VOID))
+                        payment.Status = PaymentStatus.VOID;
+
+                    var creditNotes = await _context.CreditNotes.Where(cn => cn.LinkedReturnId == returnId && cn.TenantId == tenantId).ToListAsync();
+                    foreach (var cn in creditNotes)
+                    {
+                        if (cn.AppliedAmount > 0)
+                            throw new InvalidOperationException("Cannot reverse return while linked credit note has been applied to invoices.");
+                        cn.Status = "cancelled";
+                    }
+
+                    ret.Status = ReturnStatus.Reversed;
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        OwnerId = tenantId,
+                        TenantId = tenantId,
+                        UserId = userId,
+                        Action = "Sale Return Reversed",
+                        Details = $"Return No: {ret.ReturnNo}, Sale ID: {ret.SaleId}, Reason: {reason.Trim()}",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    if (ret.Sale?.CustomerId != null)
+                    {
+                        var customer = await _context.Customers.FindAsync(ret.Sale.CustomerId.Value);
+                        if (customer != null)
+                            await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, customer.TenantId ?? 0);
+                    }
+                    return await GetSaleReturnByIdAsync(ret.Id);
+                }
+                catch
+                {
+                    try { await transaction.RollbackAsync(); } catch { /* transaction may already be aborted */ }
+                    finally { DetachReturnAttempt(ret, attemptInventory); }
+                    throw;
+                }
+            });
         }
 
         public async Task DeleteSaleReturnAsync(int returnId, int tenantId)
@@ -849,13 +998,18 @@ namespace HexaBill.Api.Modules.Returns
             var strategy = _context.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
             {
+                SaleReturn? ret = null;
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    var ret = await _context.SaleReturns
+                    await AcquireReturnWorkspaceLockAsync(tenantId);
+                    await LockSaleReturnRowAsync(returnId, tenantId);
+                    ret = await _context.SaleReturns
                         .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
                         .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
+                    if (ret.Status == ReturnStatus.Approved || ret.Status == ReturnStatus.Reversed)
+                        throw new InvalidOperationException("Approved returns cannot be deleted. Use an audited reversal to correct posted return history.");
 
                     var customerId = ret.CustomerId;
                     var branchId = ret.BranchId;
@@ -907,7 +1061,8 @@ namespace HexaBill.Api.Modules.Returns
                 }
                 catch
                 {
-                    await transaction.RollbackAsync();
+                    try { await transaction.RollbackAsync(); } catch { /* transaction may already be aborted */ }
+                    finally { DetachReturnAttempt(ret, null); }
                     throw;
                 }
             });
@@ -1271,6 +1426,35 @@ namespace HexaBill.Api.Modules.Returns
             });
 
             return document.GeneratePdf();
+        }
+
+        private async Task AcquireReturnWorkspaceLockAsync(int tenantId)
+        {
+            if (_context.Database.IsNpgsql())
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({726302}, {tenantId})");
+        }
+
+        private async Task LockSaleReturnRowAsync(int returnId, int tenantId)
+        {
+            if (_context.Database.IsNpgsql())
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $@"SELECT ""Id"" FROM ""SaleReturns"" WHERE ""Id"" = {returnId} AND ""TenantId"" = {tenantId} FOR UPDATE");
+        }
+
+        private async Task LockSaleRowAsync(int saleId, int tenantId)
+        {
+            if (_context.Database.IsNpgsql())
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $@"SELECT ""Id"" FROM ""Sales"" WHERE ""Id"" = {saleId} AND ""TenantId"" = {tenantId} FOR UPDATE");
+        }
+
+        private void DetachReturnAttempt(SaleReturn? ret, IEnumerable<InventoryTransaction>? inventory)
+        {
+            if (ret != null)
+                _context.Entry(ret).State = EntityState.Detached;
+            if (inventory == null) return;
+            foreach (var row in inventory)
+                _context.Entry(row).State = EntityState.Detached;
         }
 
         private async Task<PurchaseReturnDto> GetPurchaseReturnByIdAsync(int id)

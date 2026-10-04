@@ -15,7 +15,7 @@ internal static class PostgresIntegrationSkip
     }
 }
 
-[CollectionDefinition("HttpPostgresIntegration")]
+[CollectionDefinition("HttpPostgresIntegration", DisableParallelization = true)]
 public sealed class HttpPostgresIntegrationCollection : ICollectionFixture<HttpPostgresIntegrationFixture>;
 
 public sealed class HttpPostgresIntegrationFixture : IAsyncLifetime

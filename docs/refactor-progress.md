@@ -1,3 +1,23 @@
+## Tier 0 implementation evidence — 4 October 2026 (updated)
+
+- Active branch: `tier0-continuation` from `846ee95` (Codex WIP + main unique return-reversal merged). Backup: `Desktop/HexaBill_Backups/tier0-20261004-083307`.
+- Baseline after reconcile: backend **541 passed / 44 PostgreSQL skipped / 0 failed**; frontend **74 passed**; FE build OK; ESLint **0 errors / 235 warnings**. Evidence under the backup `baseline/` folder.
+- Docs repaired: `PAGE-SPECIFICATION.md` tracked in working tree; IMPLEMENTATION-PROMPT and PHASE-TODO rewritten for Tier 0 (GulfHarvest, frozenhub1/2, standard 5% VAT, current-settings reprints).
+- Implemented tenant-scoped settings reads with TenantId precedence over legacy OwnerId; removed request-time PostgreSQL DDL and swallowed read errors. Separate VAT/corporate-tax fields and aliases, 15 ASCII-digit VAT validation including atomic bulk prevalidation, blank allowed, no TRN uniqueness constraint added. Removed real-looking company/VAT fallback defaults from model/service/settings preview. Authenticated settings mutations write old/new audit records in the same SaveChanges operation with credential values redacted. Background provisioning continues its existing separate audit path.
+- Receipt reprints now resolve current company settings while retaining stored financial/issue-time receipt snapshots. Regression tests explicitly verify current company identity and unchanged financial evidence after changes/flag rollback.
+- Tax Invoice create/override/edit and single/bulk PDF paths reject missing/invalid VAT TRN. HTTP returns a controlled 400. New invoice issuance writes a company-identity snapshot into the existing audit trail. No invented backfill of historical issue-time identity. Current settings expose a deterministic header version; wiring this into every frontend/document cache remains TODO.
+- Verification: full backend **520 passed / 44 skipped / 0 failed**; frontend **72 passed**, production build successful; full lint **0 errors / 235 warnings**. The final strengthened HTTP settings test (also checks blocked invoice creation) passes **3/3**. Eight added settings tests cover invalid/Unicode VAT, shared VAT, independent header versions, foreign tracked records, conflicting aliases and redacted audit. Existing HTTP fixtures were corrected from nonnumeric placeholder TRNs to synthetic 15-digit identifiers. PostgreSQL fixtures use synthetic padded IDs; PostgreSQL execution remains NOT RUN.
+- Client folder inspected read-only: FrozenHub licence `Document_1789566763732.pdf`, GulfHarvest licence `license (15).pdf`, and GulfHarvest corporate-tax certificate. The corporate certificate is NOT VAT registration evidence; older notes incorrectly label its number as generic TRN. No VAT registration certificate found in the supplied four PDFs. Existing tenant mapping is documented outside the repo in the client folder. Passwords were not copied into source/config/artifacts. Owner-2 account/opening choice, VAT certificates, logos/Crystal Freeze sample remain inputs.
+- No production/main/deployment/domain/database mutation; no commit/push yet. Tier 0 remains incomplete. Next: shared-TRN admin warning; header-only A4/thermal/receipt/browser parity + logo evidence; config-driven provisioning/host migration; legacy settings reconciliation; raw SQL/files/jobs isolation; PostgreSQL and seven browser journeys; backup/rollback proof and release handoff. No journey is marked PASS based only on unit/HTTP tests.
+
+## Tier 0 override — approved 4 October 2026
+
+This section supersedes conflicting historical requirements below. Two independent tenants use frozenhub1.<configured-domain> and frozenhub2.<configured-domain>; preserve owner 1 records and redirect the old host through a verified migration. GulfHarvest is the confirmed client name. Initially copy verified company identity only; future tenant settings changes are independent. Owner 2 opening data requires an explicit setup choice.
+
+Tier 0 uses standard 5% VAT prospectively; margin treatment is deferred. Every rendered invoice/receipt/PDF/print uses CURRENT tenant company settings, including reprints. Issue-time identity remains audit evidence, never a source for the displayed header. Financial snapshots remain immutable. VAT TRN is empty or 15 ASCII digits, non-unique across tenants; corporate-tax TRN is separate and never used as VAT. Empty VAT TRN blocks Tax Invoice finalization/printing, not ordinary work. Owner/admin settings changes must be audited. Only the top document header changes; preserve tables, totals and footer.
+
+Tier 0 gates: full builds/tests including PostgreSQL; two local tenant hosts; seven invoicing journeys with viewport screenshots/network evidence; A4/thermal/Arabic/grayscale headers; backup restore and migration/rollback rehearsal. Deadline: 4 October 2026 12:00 IST, evidence takes precedence. Commit/push current branch after verification; no main or production changes without explicit authorization. Tier 1 resumes only after Tier 0 sign-off. See repository docs/plan/PHASE-TODO.md for the active checklist. Earlier completion/production statements are historical evidence, not current certification.
+
 # Refactor implementation progress
 
 Updated: 3 October 2026. Baseline: `39ffafb897cb905c617135721ae0afacd038571d`.
@@ -13,7 +33,7 @@ The user authorized implementation of the full plan. Checked boxes mean verified
 - [Route manifest](plan/ROUTE-MANIFEST.json) — verified against `frontend/hexabill-ui/src/app/App.jsx` (60 paths); guarded by `frontend/hexabill-ui/tests/routeManifest.test.js`
 - Historical Codex plan PDFs/Markdown on the planning machine are not in git; do not treat missing files as completed work
 
-FrozenHub, GulfHub and Zayogya remain distinct clients. Proposed FrozenHub2 is a fourth operational workspace: same verified legal identity, separate owner and private operational data. Existing FrozenHub address is preserved. Opening imports are undecided until setup; copy no operational data by default. User confirmed UAE and accountant-approved margin treatment; actual eligibility/effective-date/calculation fixtures remain required. Zayogya tax behavior stays unchanged.
+FrozenHub, GulfHarvest and Zayogya remain distinct clients. FrozenHub owner 2 is a separate operational workspace (`frozenhub2`) with the same verified company identity initially; VAT TRN stays empty until entered; operational data starts empty unless an explicit opening-data choice is recorded. Old host `frozenhub` redirects to `frozenhub1`. Margin VAT is deferred out of Tier 0; Tier 0 uses standard 5% VAT prospectively. Zayogya tax behavior stays unchanged.
 
 ## Dependency-ordered implementation
 
@@ -22,7 +42,7 @@ FrozenHub, GulfHub and Zayogya remain distinct clients. Proposed FrozenHub2 is a
 - [ ] Phase 3: payments, receipts and invoices; historical data, PDF/print, retries and idempotency.
 - [ ] Phase 4: immutable cost/profit foundation; explicit authorized settlement adjustment and reversal.
 - [ ] Phase 5: counted cash, daily close/history, capital reconciliation, alerts and close locking.
-- [ ] Phase 6: approved margin-tax fixtures, history/effective dates, presentation and Zayogya regression.
+- [ ] Phase 6: **DEFERRED** — margin-tax fixtures (not Tier 0); keep Zayogya regression when resumed.
 - [ ] Phase 7: shared shell plus POS, ledger, purchases, suppliers, expenses and products on all viewports.
 - [ ] Phase 8: every remaining route/tab/dialog; truthful platform infrastructure/errors/usage/flags.
 - [ ] Phase 9: isolated AI text, invoice/PDF drafts, deterministic reports and provider usage/budgets.

@@ -19,179 +19,112 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public string OriginalName { get; set; } = "";
     }
 
-    public interface ISettingsService
-    {
-        Task<Dictionary<string, string>> GetOwnerSettingsAsync(int tenantId);
-        Task<string?> GetSettingValueAsync(int tenantId, string key);
-        Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value);
-        Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings);
-        Task<CompanySettings> GetCompanySettingsAsync(int tenantId);
-        Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId);
-        Task ClearLogoAsync(int tenantId);
-        Task ClearStampAsync(int tenantId);
-        Task ClearSignatureAsync(int tenantId);
-    }
+        public interface ISettingsService
+        {
+            Task<Dictionary<string, string>> GetOwnerSettingsAsync(int tenantId);
+            Task<string?> GetSettingValueAsync(int tenantId, string key);
+            Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value);
+            Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings);
+            Task<CompanySettings> GetCompanySettingsAsync(int tenantId);
+            Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId);
+            Task ClearLogoAsync(int tenantId);
+            Task ClearStampAsync(int tenantId);
+            Task ClearSignatureAsync(int tenantId);
+            /// <summary>Count other tenants that store the same VAT TRN (shared TRNs are allowed).</summary>
+            Task<int> CountOtherTenantsSharingVatTrnAsync(int tenantId, string? vatTrn);
+        }
 
     public class SettingsService : ISettingsService
     {
         private readonly AppDbContext _context;
+        private readonly IHttpContextAccessor? _http;
 
-        public SettingsService(AppDbContext context)
+        public SettingsService(AppDbContext context, IHttpContextAccessor? http = null)
         {
             _context = context;
+            _http = http;
         }
 
-        /// <summary>
-        /// Get all settings for a specific owner/tenant.
-        /// Settings table has composite PK (Key, OwnerId); we also store TenantId. Query by OwnerId or TenantId so legacy and new rows both work.
-        /// ROBUST FIX: Check for Value column first, add if missing, then use raw SQL to avoid EF Core issues
-        /// </summary>
+        private void EnsureTenant(int tenantId)
+        {
+            if (tenantId <= 0 || (_context.RequestScopeEstablished && !_context.RequestIsPlatformScope && _context.RequestTenantId != tenantId))
+                throw new UnauthorizedAccessException("Settings require a verified workspace.");
+        }
+
         public async Task<Dictionary<string, string>> GetOwnerSettingsAsync(int tenantId)
         {
-            // CRITICAL: Check if Value column exists BEFORE attempting EF Core query
-            // This prevents EF Core from generating invalid SQL
-            if (_context.Database.IsNpgsql())
+            EnsureTenant(tenantId);
+            // TenantId is authoritative; OwnerId is only a fallback for unmigrated rows.
+            // Reads must never alter schema or hide a database failure behind defaults.
+            var rows = await _context.Settings.AsNoTracking()
+                .Where(s => s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId))
+                .ToListAsync();
+            var settings = GetDefaultSettings();
+            foreach (var group in rows.GroupBy(s => s.Key))
+                settings[group.Key] = group.OrderByDescending(s => s.TenantId == tenantId)
+                    .ThenByDescending(s => s.OwnerId == tenantId).First().Value ?? "";
+            settings["vat_trn"] = settings["COMPANY_TRN"];
+            settings["corporate_tax_trn"] = settings.GetValueOrDefault("CORPORATE_TAX_TRN", "");
+            EnsureCompanyLogoFromLogoUrl(settings);
+            return settings;
+        }
+
+        private static string NormalizeKey(string key) => key.Trim() switch
+        {
+            "vat_trn" => "COMPANY_TRN",
+            "corporate_tax_trn" => "CORPORATE_TAX_TRN",
+            var other => other
+        };
+
+        private static Dictionary<string, string> ValidateSettings(Dictionary<string, string> settings)
+        {
+            var result = new Dictionary<string, string>();
+            foreach (var pair in settings)
             {
-                var connection = _context.Database.GetDbConnection();
-                var wasOpen = connection.State == System.Data.ConnectionState.Open;
-                if (!wasOpen) await connection.OpenAsync();
-                try
+                if (string.IsNullOrWhiteSpace(pair.Key) || pair.Key.Trim().Length > 100)
+                    throw new ArgumentException("Setting name is invalid.");
+                var key = NormalizeKey(pair.Key);
+                var value = pair.Value ?? "";
+                if (key == "COMPANY_TRN")
                 {
-                    // Check if Value column exists
-                    using var checkCmd = connection.CreateCommand();
-                    checkCmd.CommandText = @"
-                        SELECT EXISTS (
-                            SELECT 1 FROM information_schema.columns 
-                            WHERE table_schema = 'public' 
-                            AND table_name = 'Settings' 
-                            AND column_name IN ('Value', 'value')
-                        )";
-                    bool hasValueColumn = false;
-                    using (var checkReader = await checkCmd.ExecuteReaderAsync())
-                    {
-                        if (await checkReader.ReadAsync())
-                        {
-                            hasValueColumn = checkReader.GetBoolean(0);
-                        }
-                    }
-                    
-                    // If column doesn't exist, try to add it
-                    if (!hasValueColumn)
-                    {
-                        try
-                        {
-                            using var addCmd = connection.CreateCommand();
-                            addCmd.CommandText = @"ALTER TABLE ""Settings"" ADD COLUMN IF NOT EXISTS ""Value"" character varying(2000) NULL;";
-                            await addCmd.ExecuteNonQueryAsync();
-                            hasValueColumn = true; // Assume it was added successfully
-                        }
-                        catch (Exception addEx)
-                        {
-                            // Column may already exist or permission issue - continue with raw SQL
-                        }
-                    }
-                    
-                    // Always use raw SQL to avoid EF Core column name issues
-                    string? valueColumnName = null;
-                    using var findColumnCmd = connection.CreateCommand();
-                    findColumnCmd.CommandText = @"
-                        SELECT column_name 
-                        FROM information_schema.columns 
-                        WHERE table_schema = 'public' 
-                        AND table_name = 'Settings' 
-                        AND column_name IN ('Value', 'value')
-                        LIMIT 1";
-                    using (var findReader = await findColumnCmd.ExecuteReaderAsync())
-                    {
-                        if (await findReader.ReadAsync())
-                        {
-                            valueColumnName = findReader.GetString(0);
-                        }
-                    }
-                    
-                    // Use raw SQL with correct column name. Include OwnerId so we prefer OwnerId=tenantId when duplicate keys exist (logo persistence).
-                    using var command = connection.CreateCommand();
-                    if (!string.IsNullOrEmpty(valueColumnName))
-                    {
-                        var quotedColumn = valueColumnName == "Value" ? @"""Value""" : "value";
-                        command.CommandText = $@"
-                            SELECT ""Key"", {quotedColumn}, ""OwnerId""
-                            FROM ""Settings""
-                            WHERE ""OwnerId"" = @tenantId OR ""TenantId"" = @tenantId
-                            ORDER BY (""OwnerId"" = @tenantId) DESC";
-                        var param = command.CreateParameter();
-                        param.ParameterName = "@tenantId";
-                        param.Value = tenantId;
-                        command.Parameters.Add(param);
-
-                        var settings = new Dictionary<string, string>();
-                        using var reader = await command.ExecuteReaderAsync();
-                        while (await reader.ReadAsync())
-                        {
-                            var key = reader.GetString(0);
-                            var value = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
-                            var ownerId = reader.GetInt32(2);
-                            // Prefer OwnerId=tenantId when it has a value; never overwrite non-empty with empty (fixes production logo lost when owner row was empty and legacy row had URL)
-                            if (!settings.TryGetValue(key, out var existing) || string.IsNullOrWhiteSpace(existing))
-                                settings[key] = value;
-                            else if (ownerId == tenantId && !string.IsNullOrWhiteSpace(value))
-                                settings[key] = value;
-                        }
-
-                        if (settings.Any())
-                        {
-                            // Merge in any missing default keys so newly-added settings are available
-                            foreach (var kvp in GetDefaultSettings())
-                            {
-                                if (!settings.ContainsKey(kvp.Key))
-                                    settings[kvp.Key] = kvp.Value;
-                            }
-                            EnsureCompanyLogoFromLogoUrl(settings);
-                            return settings;
-                        }
-                    }
-                    
-                    // No Value column or no settings found - return defaults
-                    return GetDefaultSettings();
+                    value = value.Trim();
+                    if (value.Length != 0 && (value.Length != 15 || value.Any(c => c < '0' || c > '9')))
+                        throw new ArgumentException("VAT TRN must contain exactly 15 digits, or be empty.");
                 }
-                finally
-                {
-                    if (!wasOpen && connection.State == System.Data.ConnectionState.Open)
-                        await connection.CloseAsync();
-                }
+                if (key == "INVOICE_HEADER_STYLE" && value != "Legacy" && value != "BilingualMonochrome")
+                    throw new ArgumentException("Select a supported document header style.");
+                if (result.TryGetValue(key, out var existing) && existing != value)
+                    throw new ArgumentException("Conflicting values supplied for the same setting.");
+                result[key] = value;
             }
-            
-            // For non-PostgreSQL databases, use EF Core normally
-            try
+            return result;
+        }
+
+        private void AuditSetting(int tenantId, string key, string? oldValue, string newValue)
+        {
+            if (oldValue == newValue) return;
+            var principal = _http?.HttpContext?.User;
+            var id = principal?.FindFirst("UserId")?.Value
+                ?? principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? principal?.FindFirst("sub")?.Value ?? principal?.FindFirst("id")?.Value;
+            if (!int.TryParse(id, out var actor) || actor <= 0)
             {
-                var list = await _context.Settings
-                    .Where(s => s.OwnerId == tenantId || s.TenantId == tenantId)
-                    .ToListAsync();
-
-                var settings = list
-                    .GroupBy(s => s.Key)
-                    .ToDictionary(g => g.Key, g =>
-                    {
-                        var ordered = g.OrderByDescending(s => s.OwnerId == tenantId).ThenByDescending(s => !string.IsNullOrWhiteSpace(s.Value)).ToList();
-                        return ordered.First().Value ?? string.Empty;
-                    });
-
-                if (settings.Any())
-                {
-                    foreach (var kvp in GetDefaultSettings())
-                    {
-                        if (!settings.ContainsKey(kvp.Key))
-                            settings[kvp.Key] = kvp.Value;
-                    }
-                    EnsureCompanyLogoFromLogoUrl(settings);
-                    return settings;
-                }
-                return GetDefaultSettings();
+                if (_http?.HttpContext != null)
+                    throw new UnauthorizedAccessException("An authenticated user is required to change settings.");
+                return; // Internal provisioning has its own provisioning audit.
             }
-            catch (Exception ex)
-            {
-                return GetDefaultSettings();
-            }
+            // Never copy credentials or token values into the audit trail.
+            var sensitive = key.Contains("SECRET", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("TOKEN", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("PASSWORD", StringComparison.OrdinalIgnoreCase)
+                || key.Contains("API_KEY", StringComparison.OrdinalIgnoreCase);
+            _context.AuditLogs.Add(new AuditLog {
+                TenantId = tenantId, OwnerId = tenantId, UserId = actor,
+                Action = "SettingsChanged", EntityType = "Setting", CreatedAt = DateTime.UtcNow,
+                Details = key,
+                OldValues = System.Text.Json.JsonSerializer.Serialize(new { key, value = sensitive ? "[redacted]" : oldValue }),
+                NewValues = System.Text.Json.JsonSerializer.Serialize(new { key, value = sensitive ? "[redacted]" : newValue })
+            });
         }
 
         /// <summary>Get a single setting value by key for the tenant. Returns null if not found.</summary>
@@ -205,50 +138,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// <summary>
         /// Update a single setting. Table PK is (Key, OwnerId). Find by OwnerId first, then TenantId; when adding use OwnerId = tenantId.
         /// </summary>
-        public async Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value)
-        {
-            try
-            {
-                var setting = await _context.Settings
-                    .FirstOrDefaultAsync(s => s.Key == key && s.OwnerId == tenantId);
-                if (setting == null)
-                    setting = await _context.Settings
-                        .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == tenantId);
-
-                if (setting != null)
-                {
-                    setting.Value = value;
-                    setting.UpdatedAt = DateTime.UtcNow;
-                }
-                else
-                {
-                    _context.Settings.Add(new Setting
-                    {
-                        Key = key,
-                        OwnerId = tenantId,
-                        TenantId = tenantId,
-                        Value = value,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    });
-                }
-
-                await _context.SaveChangesAsync();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                return false;
-            }
-        }
+        public Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value) =>
+            UpdateOwnerSettingsBulkAsync(tenantId, new Dictionary<string, string> { [key] = value });
 
         /// <summary>
         /// Update multiple settings in bulk. PK is (Key, OwnerId). Find by OwnerId then TenantId; when adding set OwnerId = tenantId to avoid duplicate key.
         /// </summary>
         public async Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings)
         {
-            if (settings == null || settings.Count == 0)
-                return true;
+            EnsureTenant(tenantId);
+            if (settings == null || settings.Count == 0) return true;
+            settings = ValidateSettings(settings);
 
             // Logo keys: do not overwrite with empty when user saves other company settings (e.g. name only) so logo persists after refresh
             var logoKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -267,11 +167,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     continue; // preserve existing logo when bulk update sends empty
 
                 var setting = await _context.Settings
-                    .FirstOrDefaultAsync(s => s.Key == key && s.OwnerId == tenantId);
+                    .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == tenantId);
                 if (setting == null)
                     setting = await _context.Settings
-                        .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == tenantId);
+                        .FirstOrDefaultAsync(s => s.Key == key && s.TenantId == null && s.OwnerId == tenantId);
 
+                AuditSetting(tenantId, key, setting?.Value, value);
                 if (setting != null)
                 {
                     setting.Value = value;
@@ -295,6 +196,17 @@ namespace HexaBill.Api.Modules.SuperAdmin
             return true;
         }
 
+        public async Task<int> CountOtherTenantsSharingVatTrnAsync(int tenantId, string? vatTrn)
+        {
+            if (string.IsNullOrWhiteSpace(vatTrn) || vatTrn.Length != 15)
+                return 0;
+            return await _context.Settings.AsNoTracking()
+                .Where(s => s.Key == "COMPANY_TRN" && s.Value == vatTrn && s.TenantId != null && s.TenantId != tenantId)
+                .Select(s => s.TenantId!.Value)
+                .Distinct()
+                .CountAsync();
+        }
+
         /// <summary>
         /// Get company settings as CompanySettings object for invoice generation. Data isolation: settings (including logo key) are for the given tenantId only.
         /// </summary>
@@ -303,27 +215,39 @@ namespace HexaBill.Api.Modules.SuperAdmin
             var settingsDict = await GetOwnerSettingsAsync(tenantId);
             
 
+            var logoKey = GetLogoStorageKeyForInvoice(settingsDict);
+            ValidateAssetKey(logoKey, tenantId, "logos");
+            var stampKey = NullIfEmpty(settingsDict.GetValueOrDefault("STAMP_STORAGE_KEY", ""));
+            var signatureKey = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_STORAGE_KEY", ""));
+            ValidateAssetKey(stampKey, tenantId, "stamps");
+            ValidateAssetKey(signatureKey, tenantId, "signatures");
             return new CompanySettings
             {
-                LegalNameEn = settingsDict.GetValueOrDefault("COMPANY_NAME_EN", "HexaBill"),
-                LegalNameAr = settingsDict.GetValueOrDefault("COMPANY_NAME_AR", "فروزن ماجيك لتجارة العامة - ذ.م.م - ش.ش.و"),
-                VatNumber = settingsDict.GetValueOrDefault("COMPANY_TRN", "105274438800003"),
-                Address = settingsDict.GetValueOrDefault("COMPANY_ADDRESS", "Abu Dhabi, United Arab Emirates"),
-                Mobile = settingsDict.GetValueOrDefault("COMPANY_PHONE", "+971 56 955 22 52"),
+                LegalNameEn = settingsDict.GetValueOrDefault("COMPANY_NAME_EN", ""),
+                LegalNameAr = settingsDict.GetValueOrDefault("COMPANY_NAME_AR", ""),
+                VatNumber = settingsDict.GetValueOrDefault("COMPANY_TRN", ""),
+                CorporateTaxTrn = settingsDict.GetValueOrDefault("CORPORATE_TAX_TRN", ""),
+                Email = settingsDict.GetValueOrDefault("COMPANY_EMAIL", ""),
+                Website = settingsDict.GetValueOrDefault("COMPANY_WEBSITE", ""),
+                LogoDataUri = NullIfEmpty(settingsDict.GetValueOrDefault("LOGO_BASE64_DATA_URI", "")),
+                BilingualMonochromeHeader = settingsDict.GetValueOrDefault("INVOICE_HEADER_STYLE", "") == "BilingualMonochrome",
+                SettingsVersion = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(System.Text.Json.JsonSerializer.Serialize(settingsDict.Where(p => p.Key.StartsWith("COMPANY_") || p.Key.StartsWith("LOGO_") || p.Key == "INVOICE_HEADER_STYLE").OrderBy(p => p.Key))))),
+                Address = settingsDict.GetValueOrDefault("COMPANY_ADDRESS", ""),
+                Mobile = settingsDict.GetValueOrDefault("COMPANY_PHONE", ""),
                 VatEffectiveDate = settingsDict.GetValueOrDefault("VAT_EFFECTIVE_DATE", "01-01-2026"),
                 VatLegalText = settingsDict.GetValueOrDefault("VAT_LEGAL_TEXT", "VAT registered under Federal Decree-Law No. 8 of 2017, UAE"),
                 Currency = settingsDict.GetValueOrDefault("CURRENCY", "AED"),
                 VatPercent = decimal.TryParse(settingsDict.GetValueOrDefault("VAT_PERCENT", "5"), out var vat) ? vat : 5.0m,
                 InvoicePrefix = settingsDict.GetValueOrDefault("INVOICE_PREFIX", "FM"),
-                LogoPath = settingsDict.GetValueOrDefault("LOGO_PUBLIC_URL", settingsDict.GetValueOrDefault("COMPANY_LOGO", settingsDict.GetValueOrDefault("LOGO_PATH", "/uploads/logo.png"))),
-                LogoStorageKey = GetLogoStorageKeyForInvoice(settingsDict),
+                LogoPath = string.IsNullOrEmpty(logoKey) ? "" : $"/api/storage/{logoKey}",
+                LogoStorageKey = logoKey,
                 LetterheadOnlyPrint = IsTruthy(settingsDict.GetValueOrDefault("Feature_LetterheadOnlyPrint", "false")),
                 DocumentStampSignatureEnabled = IsTruthy(settingsDict.GetValueOrDefault("Feature_DocumentStampSignature", "false")),
                 PrintMarginTopMm = ParseFloatSetting(settingsDict, "PRINT_MARGIN_TOP_MM", 5f),
                 PrintMarginBottomMm = ParseFloatSetting(settingsDict, "PRINT_MARGIN_BOTTOM_MM", 5f),
-                StampStorageKey = NullIfEmpty(settingsDict.GetValueOrDefault("STAMP_STORAGE_KEY", "")),
+                StampStorageKey = stampKey,
                 StampPublicUrl = NullIfEmpty(settingsDict.GetValueOrDefault("STAMP_PUBLIC_URL", "")),
-                SignatureStorageKey = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_STORAGE_KEY", "")),
+                SignatureStorageKey = signatureKey,
                 SignaturePublicUrl = NullIfEmpty(settingsDict.GetValueOrDefault("SIGNATURE_PUBLIC_URL", "")),
                 StampWidthMm = ParseFloatSetting(settingsDict, "STAMP_WIDTH_MM", 38f),
                 SignatureWidthMm = ParseFloatSetting(settingsDict, "SIGNATURE_WIDTH_MM", 42f),
@@ -333,6 +257,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 SignatureOffsetRightMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_RIGHT_MM", 12f),
                 SignatureOffsetBottomMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_BOTTOM_MM", 14f),
             };
+        }
+
+        private static void ValidateAssetKey(string? key, int tenantId, string folder)
+        {
+            if (string.IsNullOrEmpty(key)) return;
+            if (!key.StartsWith($"tenants/{tenantId}/{folder}/", StringComparison.Ordinal)
+                || key.Contains('\\') || key.Split('/').Any(segment => segment is "." or ".."))
+                throw new InvalidOperationException("A document image is unavailable in this workspace. Upload it again in Settings.");
         }
 
         private static bool IsTruthy(string? raw)
@@ -406,12 +338,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
         private async Task ClearSettingKeysAsync(int tenantId, IEnumerable<string> keys)
         {
+            EnsureTenant(tenantId);
             foreach (var key in keys)
             {
                 var setting = await _context.Settings
-                    .FirstOrDefaultAsync(s => s.Key == key && (s.OwnerId == tenantId || s.TenantId == tenantId));
+                    .FirstOrDefaultAsync(s => s.Key == key && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)));
                 if (setting != null)
                 {
+                    AuditSetting(tenantId, key, setting.Value, "");
                     setting.Value = "";
                     setting.UpdatedAt = DateTime.UtcNow;
                 }
@@ -439,6 +373,9 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 { "COMPANY_NAME_EN", "" },
                 { "COMPANY_NAME_AR", "" },
                 { "COMPANY_TRN", "" },
+                { "CORPORATE_TAX_TRN", "" },
+                { "COMPANY_EMAIL", "" },
+                { "INVOICE_HEADER_STYLE", "Legacy" },
                 { "COMPANY_ADDRESS", "" },
                 { "COMPANY_PHONE", "" },
                 { "VAT_PERCENT", "5" },

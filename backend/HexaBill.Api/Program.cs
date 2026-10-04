@@ -359,6 +359,7 @@ builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.IDocumentAssetUploadS
 builder.Services.AddSingleton<ITimeZoneService, TimeZoneService>(); // Gulf Standard Time (GST, UTC+4)
 builder.Services.AddScoped<IStartupDiagnosticsService, StartupDiagnosticsService>(); // CRITICAL: Startup diagnostics
 builder.Services.AddScoped<ISuperAdminTenantService, SuperAdminTenantService>(); // Super Admin tenant management
+builder.Services.AddScoped<HexaBill.Api.Modules.Tenants.Tier0TenantProvisioning>(); // Idempotent Tier 0 identity provisioning
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>(); // Subscription management
 builder.Services.AddScoped<ISignupService, SignupService>(); // Public signup service
 builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.IDemoRequestService, HexaBill.Api.Modules.SuperAdmin.DemoRequestService>(); // Demo request approval flow
@@ -2243,6 +2244,7 @@ _ = Task.Run(async () =>
                         Role = UserRole.Owner,
                         OwnerId = null, // Super admin has no owner restriction
                         TenantId = null, // CRITICAL: Super admin has no tenant restriction (null = SystemAdmin)
+                        IsPlatformAdmin = true,
                         Phone = "+971 56 955 22 52",
                         CreatedAt = DateTime.UtcNow
                     };
@@ -2291,6 +2293,12 @@ _ = Task.Run(async () =>
                     {
                         adminUser.OwnerId = null;
                         initLogger.LogInformation("Updated admin user OwnerId to null (Super Admin)");
+                    }
+
+                    if (!adminUser.IsPlatformAdmin)
+                    {
+                        adminUser.IsPlatformAdmin = true;
+                        initLogger.LogInformation("Updated admin user IsPlatformAdmin=true (Super Admin)");
                     }
                     
                     if (testPassword && !adminUser.TenantId.HasValue && !adminUser.OwnerId.HasValue)

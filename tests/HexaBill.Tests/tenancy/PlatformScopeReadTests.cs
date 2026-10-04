@@ -208,6 +208,7 @@ public class PlatformScopeReadTests
         public Task ClearLogoAsync(int tenantId) => throw new NotSupportedException();
         public Task ClearStampAsync(int tenantId) => throw new NotSupportedException();
         public Task ClearSignatureAsync(int tenantId) => throw new NotSupportedException();
+        public Task<int> CountOtherTenantsSharingVatTrnAsync(int tenantId, string? vatTrn) => Task.FromResult(0);
     }
 
     private sealed class TenantCustomerService : InterfaceStub<ICustomerService>

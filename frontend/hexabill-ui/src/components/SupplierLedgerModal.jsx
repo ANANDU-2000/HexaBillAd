@@ -10,7 +10,7 @@ import { localDateString } from '../utils/dateFormat'
 
 const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded, initialShowRecordPayment }) => {
   const { currency: tenantCurrency = 'AED' } = useBranding()
-  const money = (value) => money(value, tenantCurrency)
+  const money = (value) => formatCurrency(value, tenantCurrency)
   const cashUnit = getCurrencySymbol(tenantCurrency)
   const [loading, setLoading] = useState(false)
   const [balance, setBalance] = useState(null)

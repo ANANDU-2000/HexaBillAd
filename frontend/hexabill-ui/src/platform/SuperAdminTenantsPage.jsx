@@ -256,7 +256,7 @@ const SuperAdminTenantsPage = () => {
         companyNameEn: source.companyNameEn || source.name, companyNameAr: source.companyNameAr || '',
         vatNumber: source.vatNumber, companyLicense: source.companyLicense,
         country: source.country, currency: source.currency, ownerName: '', email: '', phone: '', address: '',
-        status: 'Trial', trialDays: '14' })
+        status: 'Trial', trialDays: '14', openingDataChoice: '' })
       setSharedLegalSource(source)
       setLegalIdentityConfirmed(false)
       setCreateError('')
@@ -334,6 +334,11 @@ const SuperAdminTenantsPage = () => {
         {tenant.companyNameAr && tenant.companyNameAr.trim() && (
           <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl" title={tenant.companyNameAr}>{tenant.companyNameAr}</span>
         )}
+        {tenant.sharedVatTenantCount > 1 && (
+          <span className="text-xs text-amber-800" title="Shared VAT registration is allowed. Each workspace retains its own data and reports.">
+            Shared VAT TRN · {tenant.sharedVatTenantCount} workspaces
+          </span>
+        )}
       </div>
     ),
     select: (
@@ -370,6 +375,9 @@ const SuperAdminTenantsPage = () => {
           )}
           {tenant.companyNameAr && (
             <span className="text-xs text-neutral-400 truncate max-w-[160px]" dir="rtl">{tenant.companyNameAr}</span>
+          )}
+          {tenant.sharedVatTenantCount > 1 && (
+            <span className="text-xs text-amber-800">Shared VAT TRN · {tenant.sharedVatTenantCount} workspaces</span>
           )}
         </div>
       </div>
@@ -753,6 +761,10 @@ const SuperAdminTenantsPage = () => {
             setCreateError('Review and confirm the shared legal details before creating the workspace.')
             return
           }
+          if (sharedLegalSource && createFormData.openingDataChoice !== 'Empty') {
+            setCreateError('Choose an empty workspace, or complete the approved import review before creating it.')
+            return
+          }
           if (!createFormData.name.trim()) {
             setCreateError('Company name is required')
             return
@@ -855,7 +867,14 @@ const SuperAdminTenantsPage = () => {
             <section className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm">
               <p className="font-semibold text-neutral-900">Shared legal company: {sharedLegalSource.companyNameEn || sharedLegalSource.name}</p>
               <p className="mt-1 text-neutral-700">TRN: {sharedLegalSource.vatNumber} · Licence: {sharedLegalSource.companyLicense}</p>
-              <p className="mt-2 text-neutral-700">The new owner gets a separate login, phone, stock, customers, invoices and balances. Opening data starts empty; decide any import during setup.</p>
+              <p className="mt-2 text-neutral-700">The new owner gets a separate login, phone, stock, customers, invoices and balances. Select the opening data before creating this workspace.</p>
+              <Select label="Opening data" required value={createFormData.openingDataChoice || ''}
+                onChange={(e) => setCreateFormData({ ...createFormData, openingDataChoice: e.target.value })}>
+                <option value="">Choose opening data</option>
+                <option value="Empty">Empty workspace</option>
+                <option value="Import">Approved import — review required</option>
+              </Select>
+              {createFormData.openingDataChoice === 'Import' && <p className="mt-2 text-neutral-700">Provisioning stays pending until the import source, opening balances and stock are reviewed.</p>}
               <label className="mt-3 flex min-h-11 items-center gap-2 font-medium">
                 <input type="checkbox" className="h-4 w-4 shrink-0" checked={legalIdentityConfirmed} onChange={(e) => setLegalIdentityConfirmed(e.target.checked)} />
                 I have verified this company name, TRN and licence for the new owner.

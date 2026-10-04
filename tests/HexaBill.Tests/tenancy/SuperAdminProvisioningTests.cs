@@ -13,6 +13,29 @@ namespace HexaBill.Tests;
 
 public class SuperAdminProvisioningTests
 {
+    [Fact]
+    public async Task SharedVatWarning_UsesCurrentSettingsAcrossPages_AndClearedVatOverridesLegacy()
+    {
+        await using var db = await CreateDbAsync();
+        foreach (var id in new[] { 5, 6 })
+        {
+            db.Tenants.Add(new Tenant { Id = id, Name = $"Company {id}", Subdomain = $"company-{id}",
+                Country = "AE", Currency = "AED", VatNumber = "999999999999999", CreatedAt = DateTime.UtcNow });
+            db.Settings.Add(new Setting { TenantId = id, OwnerId = id, Key = "COMPANY_TRN", Value = "123456789012345" });
+        }
+        await db.SaveChangesAsync();
+        var firstPage = await CreateService(db).GetTenantsAsync(pageSize: 1);
+        Assert.Single(firstPage.Items);
+        Assert.Equal("123456789012345", firstPage.Items.Single().VatNumber);
+        Assert.Equal(2, firstPage.Items.Single().SharedVatTenantCount);
+        db.Settings.Single(s => s.TenantId == 6).Value = "";
+        await db.SaveChangesAsync();
+        var directory = await CreateService(db).GetTenantsAsync();
+        Assert.Equal(1, directory.Items.Single(t => t.Id == 5).SharedVatTenantCount);
+        Assert.Equal("", directory.Items.Single(t => t.Id == 6).VatNumber);
+        Assert.Equal(0, directory.Items.Single(t => t.Id == 6).SharedVatTenantCount);
+    }
+
     [Theory]
     [InlineData("admin")]
     [InlineData("api")]
@@ -146,6 +169,7 @@ public class SuperAdminProvisioningTests
         Assert.Equal(tenant.Id, owner.OwnerId);
         var settings = await db.Settings.Where(s => s.TenantId == tenant.Id).ToDictionaryAsync(s => s.Key, s => s.Value);
         Assert.Equal("LIC-123", settings["COMPANY_LICENSE"]);
+        Assert.Equal("Empty", settings["OPENING_DATA_CHOICE"]);
         Assert.Equal("+971502222222", settings["COMPANY_PHONE"]);
         Assert.Equal("INV", settings["INVOICE_PREFIX"]);
         Assert.False(settings.ContainsKey("BANK_ACCOUNT"));
@@ -191,7 +215,7 @@ public class SuperAdminProvisioningTests
         licence.Value = "";
         await db.SaveChangesAsync();
         var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateTenantAsync(request, 1));
-        Assert.Contains("TRN and licence", error.Message);
+        Assert.Contains("licence before owner setup", error.Message);
         Assert.Single(await db.Tenants.ToListAsync());
     }
 
@@ -228,8 +252,26 @@ public class SuperAdminProvisioningTests
     {
         Name = "Legal Trading Company", Subdomain = "owner-two", OwnerName = "Second Owner",
         Email = "second@example.com", Phone = "+971502222222",
-        SharedLegalIdentityFromTenantId = 5, ConfirmSharedLegalIdentity = true
+        SharedLegalIdentityFromTenantId = 5, ConfirmSharedLegalIdentity = true, OpeningDataChoice = "Empty"
     };
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("Import")]
+    [InlineData("unexpected")]
+    public async Task SharedOwnerSetup_DoesNotProvisionWithoutExplicitSupportedOpeningChoice(string? choice)
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db);
+        var service = CreateService(db);
+        var request = SharedOwnerRequest();
+        request.ExpectedLegalIdentityFingerprint = (await service.GetTenantByIdAsync(5))!.LegalIdentityFingerprint;
+        request.OpeningDataChoice = choice;
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateTenantAsync(request, 1));
+        Assert.Contains("Choose an empty workspace explicitly", error.Message);
+        Assert.Single(await db.Tenants.ToListAsync());
+        Assert.Empty(await db.TenantInvites.ToListAsync());
+    }
 
     private static async Task SeedLegalSourceAsync(AppDbContext db,
         string? flags = "[\"shared_legal_workspace\"]")
