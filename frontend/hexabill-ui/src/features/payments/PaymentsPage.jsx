@@ -39,9 +39,12 @@ import { readPaymentsStateFromParams, syncPaymentsSearchParams } from '../../uti
 import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
 import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
 import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason } from '../../utils/receiptEligibility'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const PaymentsPage = () => {
   const { user } = useAuth()
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => formatCurrency(value, tenantCurrency)
   const canEditPayments = canManagePayments(user)
   const location = useLocation()
   const navigate = useNavigate()
@@ -360,14 +363,14 @@ const PaymentsPage = () => {
       // If invoice is selected, validate against invoice outstanding balance
       const selectedInvoice = outstandingInvoices.find(inv => inv.id === parseInt(data.saleId, 10))
       if (selectedInvoice && paymentAmount > selectedInvoice.balanceAmount + 0.01) {
-        toast.error(`Payment amount (${paymentAmount.toFixed(2)} AED) exceeds outstanding balance (${selectedInvoice.balanceAmount.toFixed(2)} AED). Maximum allowed: ${selectedInvoice.balanceAmount.toFixed(2)} AED`)
+        toast.error(`Payment amount (${money(paymentAmount)}) exceeds outstanding balance (${money(selectedInvoice.balanceAmount)}). Maximum allowed: ${money(selectedInvoice.balanceAmount)}`)
         return
       }
     } else if (data.customerId && selectedCustomerDetails) {
       // If only customer is selected (no invoice), validate against customer balance
       const customerBalance = Math.abs(selectedCustomerDetails.balance || 0)
       if (customerBalance > 0 && paymentAmount > customerBalance + 0.01) {
-        toast.error(`Payment amount (${paymentAmount.toFixed(2)} AED) exceeds customer outstanding balance (${customerBalance.toFixed(2)} AED). Maximum allowed: ${customerBalance.toFixed(2)} AED`)
+        toast.error(`Payment amount (${money(paymentAmount)}) exceeds customer outstanding balance (${money(customerBalance)}). Maximum allowed: ${money(customerBalance)}`)
         return
       }
     }
