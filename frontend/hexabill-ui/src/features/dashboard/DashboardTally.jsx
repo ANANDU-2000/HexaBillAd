@@ -521,7 +521,7 @@ const DashboardTally = () => {
                     )}
                     <Button
                         variant="secondary"
-                        className="!h-11 !w-11 !min-h-11 !min-w-11 !p-0 md:!h-9 md:!w-9 md:!min-h-9 md:!min-w-9"
+                        className="!h-11 !w-11 !min-h-[44px] !min-w-[44px] !p-0"
                         onClick={handleRefresh}
                         disabled={refreshing}
                         aria-label="Refresh"
@@ -669,28 +669,28 @@ const DashboardTally = () => {
             {canShow('quickActions') && (
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:flex lg:flex-row">
                     {canOpenPos && (
-                        <Button className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/pos')} aria-keyshortcuts="F3">
+                        <Button className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/pos')} aria-keyshortcuts="F3">
                             <ShoppingCart className="h-4 w-4" aria-hidden />
                             New invoice
                             <span className="hidden text-xs font-normal text-white/80 lg:inline">F3</span>
                         </Button>
                     )}
                     {isAdminOrOwner(user) && (
-                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/purchases?action=create')} aria-keyshortcuts="F4">
+                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/purchases?action=create')} aria-keyshortcuts="F4">
                             <Truck className="h-4 w-4" aria-hidden />
                             New purchase
                             <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F4</span>
                         </Button>
                     )}
                     {canAccessPage(user, 'invoices') && (
-                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/ledger')} aria-keyshortcuts="F10">
+                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/ledger')} aria-keyshortcuts="F10">
                             <FileText className="h-4 w-4" aria-hidden />
                             Customer ledger
                             <span className="hidden text-xs font-normal text-[var(--text-tertiary)] lg:inline">F10</span>
                         </Button>
                     )}
                     {canAccessPage(user, 'expenses') && (
-                        <Button variant="secondary" className="!min-h-11 w-full lg:!min-h-9 lg:w-auto" onClick={() => navigate('/expenses')}>
+                        <Button variant="secondary" className="!min-h-[44px] w-full lg:w-auto" onClick={() => navigate('/expenses')}>
                             <Wallet className="h-4 w-4" aria-hidden />
                             {isAdminOrOwner(user) ? 'Expenses' : 'Add expense'}
                         </Button>

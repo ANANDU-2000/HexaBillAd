@@ -146,6 +146,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice flags-OFF live + dashboard CTA recheck (PARTIAL)
+- **changed:** DashboardTally remove `lg:!min-h-9` on New invoice/purchase/ledger/expenses; Layout nav keep 44px; live flag inventory
+- **files:** DashboardTally.jsx, Layout.jsx, STATE.md, EVIDENCE.md, PHASE-TODO.md
+- **tests+evidence:** flags OFF ×4 tenants ×5 keys (`data:false`); TenantFeatureFlags/Subscription tests **7 PASS**; field-edge FH1 10p×2VP **ok=20 warn=1** then dashboard@1440 fix **ok=1 warn=0**; Zayogya **8 PASS**
+- **NOT RUN / blocked:** Phase 6 accountant fixtures; Phases 9–11; full §10 field-by-field; production deploy
+- **flags+rollback:** confirmed OFF by default (no flag changes)
+- **next:** Phase 6 waits on fixtures; Phases 9–11 gated
+
 ### 2026-10-04 — slice Phase 3 live ledger+receipt re-verify (PARTIAL)
 - **changed:** docs only; ran `phase3-ledger-receipt-evidence.mjs` against live API:5000 + Vite:5173
 - **files:** STATE.md, EVIDENCE.md, PHASE-TODO.md

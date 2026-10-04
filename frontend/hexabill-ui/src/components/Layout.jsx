@@ -422,7 +422,7 @@ const Layout = () => {
           <div className="shrink-0 space-y-1 border-t border-primary-800 p-2">
             <Link
               to="/profile"
-              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${location.pathname === '/profile' ? 'bg-primary-800 text-white' : ''}`}
+              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${location.pathname === '/profile' ? 'bg-primary-800 text-white' : ''}`}
               aria-label="My profile"
               aria-current={location.pathname === '/profile' ? 'page' : undefined}
               onMouseEnter={(event) => showNavTip(event, user?.name || 'Profile')}
@@ -435,7 +435,7 @@ const Layout = () => {
             </Link>
             <Link
               to="/help"
-              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
+              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
               aria-label="Help"
               onMouseEnter={(event) => showNavTip(event, 'Help')}
               onMouseLeave={() => setNavTip(null)}
@@ -448,7 +448,7 @@ const Layout = () => {
             <button
               type="button"
               onClick={logout}
-              className={`group/nav relative flex min-h-11 w-full items-center rounded-md text-sm text-red-200 transition-colors duration-150 hover:bg-red-950/40 hover:text-white lg:min-h-9 ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
+              className={`group/nav relative flex min-h-11 w-full items-center rounded-md text-sm text-red-200 transition-colors duration-150 hover:bg-red-950/40 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
               aria-label="Log out"
               onMouseEnter={(event) => showNavTip(event, 'Log out')}
               onMouseLeave={() => setNavTip(null)}
