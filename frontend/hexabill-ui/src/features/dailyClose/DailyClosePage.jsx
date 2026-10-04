@@ -4,7 +4,8 @@ import { ArrowLeft } from 'lucide-react'
 import { getReturnLabel } from '../../utils/returnNavigation'
 import toast from 'react-hot-toast'
 import { dailyCloseAPI, subscriptionAPI } from '../../services'
-import { formatCurrency } from '../../utils/currency'
+import { formatCurrency, getCurrencySymbol } from '../../utils/currency'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 import { localDateString } from '../../utils/dateFormat'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { useAuth } from '../../hooks/useAuth'
@@ -16,6 +17,9 @@ const FEATURE = 'daily_close'
 
 const DailyClosePage = () => {
   const { user } = useAuth()
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => formatCurrency(value, tenantCurrency)
+  const cashUnit = getCurrencySymbol(tenantCurrency)
   const { branches } = useBranchesRoutes()
   const location = useLocation()
   const navigate = useNavigate()
@@ -277,7 +281,7 @@ const DailyClosePage = () => {
           <input type="date" className="mt-1 w-full min-h-[44px] border rounded-lg px-3" value={businessDate} onChange={(e) => setBusinessDate(e.target.value)} />
         </label>
         <label className="block text-sm">
-          <span className="font-medium text-gray-700">Opening cash (AED)</span>
+          <span className="font-medium text-gray-700">Opening cash ({cashUnit})</span>
           <input type="number" step="0.01" className="mt-1 w-full min-h-[44px] border rounded-lg px-3" value={openingCash} onChange={(e) => setOpeningCash(e.target.value)} />
         </label>
         {branches?.length > 0 && (
@@ -296,24 +300,24 @@ const DailyClosePage = () => {
 
       {loading ? <LoadingCard message="Calculating expected cash…" /> : preview && (
         <div className="border rounded-xl p-4 bg-gray-50 space-y-2 text-sm">
-          <div className="flex justify-between"><span>Customer cash (cleared)</span><strong>{formatCurrency(preview.collectionsCashReceived ?? preview.cashReceived)}</strong></div>
-          <div className="flex justify-between"><span>Operating cash paid out</span><strong>{formatCurrency(preview.collectionsCashPaidOut ?? preview.cashPaidOut)}</strong></div>
-          <div className="flex justify-between pt-2 border-t font-semibold text-base"><span>Expected in drawer</span><span>{formatCurrency(preview.expectedCash)}</span></div>
+          <div className="flex justify-between"><span>Customer cash (cleared)</span><strong>{money(preview.collectionsCashReceived ?? preview.cashReceived)}</strong></div>
+          <div className="flex justify-between"><span>Operating cash paid out</span><strong>{money(preview.collectionsCashPaidOut ?? preview.cashPaidOut)}</strong></div>
+          <div className="flex justify-between pt-2 border-t font-semibold text-base"><span>Expected in drawer</span><span>{money(preview.expectedCash)}</span></div>
           <p className="text-xs text-gray-500">{preview.cashReceiptCount} cash receipt(s), {preview.expenseCount} expense(s), {preview.supplierCashPaymentCount} supplier cash payment(s)</p>
           {(preview.ownerCapitalIn > 0 || preview.ownerDrawing > 0 || preview.bankToDrawer > 0 || preview.drawerToBank > 0) && (
             <div className="pt-2 mt-2 border-t border-dashed space-y-1 text-xs text-gray-600">
               <p className="font-medium text-gray-700">Capital &amp; drawer transfers</p>
-              {preview.ownerCapitalIn > 0 && <div className="flex justify-between"><span>Owner capital in</span><span>{formatCurrency(preview.ownerCapitalIn)}</span></div>}
-              {preview.ownerDrawing > 0 && <div className="flex justify-between"><span>Owner drawing</span><span>{formatCurrency(preview.ownerDrawing)}</span></div>}
-              {preview.bankToDrawer > 0 && <div className="flex justify-between"><span>Bank → drawer</span><span>{formatCurrency(preview.bankToDrawer)}</span></div>}
-              {preview.drawerToBank > 0 && <div className="flex justify-between"><span>Drawer → bank</span><span>{formatCurrency(preview.drawerToBank)}</span></div>}
+              {preview.ownerCapitalIn > 0 && <div className="flex justify-between"><span>Owner capital in</span><span>{money(preview.ownerCapitalIn)}</span></div>}
+              {preview.ownerDrawing > 0 && <div className="flex justify-between"><span>Owner drawing</span><span>{money(preview.ownerDrawing)}</span></div>}
+              {preview.bankToDrawer > 0 && <div className="flex justify-between"><span>Bank → drawer</span><span>{money(preview.bankToDrawer)}</span></div>}
+              {preview.drawerToBank > 0 && <div className="flex justify-between"><span>Drawer → bank</span><span>{money(preview.drawerToBank)}</span></div>}
             </div>
           )}
           {(preview.bankReceived > 0 || preview.bankPaidOut > 0) && (
             <div className="pt-2 mt-2 border-t border-dashed space-y-1 text-xs text-gray-600">
               <p className="font-medium text-gray-700">Bank / transfer (not in drawer count)</p>
-              <div className="flex justify-between"><span>Received</span><span>{formatCurrency(preview.bankReceived)}</span></div>
-              <div className="flex justify-between"><span>Paid out</span><span>{formatCurrency(preview.bankPaidOut)}</span></div>
+              <div className="flex justify-between"><span>Received</span><span>{money(preview.bankReceived)}</span></div>
+              <div className="flex justify-between"><span>Paid out</span><span>{money(preview.bankPaidOut)}</span></div>
             </div>
           )}
         </div>
@@ -334,7 +338,7 @@ const DailyClosePage = () => {
               </select>
             </label>
             <label className="block text-sm">
-              <span className="font-medium text-gray-700">Amount (AED)</span>
+              <span className="font-medium text-gray-700">Amount ({cashUnit})</span>
               <input type="number" step="0.01" inputMode="decimal" className="mt-1 w-full min-h-[44px] border rounded-lg px-3" value={movementAmount} onChange={(e) => setMovementAmount(e.target.value)} />
             </label>
             <label className="block text-sm sm:col-span-3">
@@ -347,7 +351,7 @@ const DailyClosePage = () => {
             <ul className="text-sm divide-y border rounded-lg">
               {movements.map((m) => (
                 <li key={m.id} className="px-3 py-2 flex justify-between gap-2 items-center">
-                  <span>{m.kind} · {formatCurrency(m.amount)}</span>
+                  <span>{m.kind} · {money(m.amount)}</span>
                   <button type="button" className="text-red-700 text-xs min-h-[44px] px-2" onClick={() => removeMovement(m.id)}>Remove</button>
                 </li>
               ))}
@@ -358,12 +362,12 @@ const DailyClosePage = () => {
 
       <div className="space-y-3">
         <label className="block text-sm">
-          <span className="font-medium text-gray-700">Counted cash (AED)</span>
+          <span className="font-medium text-gray-700">Counted cash ({cashUnit})</span>
           <input type="number" step="0.01" inputMode="decimal" className="mt-1 w-full min-h-[48px] border rounded-lg px-3 text-base" value={countedCash} onChange={(e) => setCountedCash(e.target.value)} placeholder="Physical count" />
         </label>
         {variance != null && Math.abs(variance) > 0.01 && (
           <p className={`text-sm font-medium ${variance < 0 ? 'text-red-700' : 'text-amber-700'}`}>
-            Variance: {formatCurrency(variance)} — reason required to close
+            Variance: {money(variance)} — reason required to close
           </p>
         )}
         <label className="block text-sm">
@@ -419,7 +423,7 @@ const DailyClosePage = () => {
             {history.slice(0, 10).map((row) => (
               <li key={row.id} className="px-3 py-2 flex justify-between gap-2">
                 <span>{new Date(row.businessDate).toLocaleDateString('en-GB')} · v{row.version} · {row.status}</span>
-                <span>{formatCurrency(row.countedCash)} / {formatCurrency(row.expectedCash)}</span>
+                <span>{money(row.countedCash)} / {money(row.expectedCash)}</span>
               </li>
             ))}
           </ul>
