@@ -147,9 +147,9 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ## Slice log (newest first)
 
 ### 2026-10-04 — slice §10 under-44 CTA touch targets (PARTIAL)
-- **changed:** min-h-[44px] on Users Add User/Sessions, Profile Save/Change password, Branches Add Branch/Add Route
-- **files:** UsersPage.jsx, ProfilePage.jsx, BranchesPage.jsx, STATE.md, PHASE-TODO.md
-- **tests+evidence:** field-edge FH1 @360 on users/profile/branches/routes; Zayogya 8; Phase 6 still BLOCKED (accountant fixtures)
+- **changed:** min-h-[44px] on Users/Profile/Branches + Quotation/Agreement/Salary editor toolbars
+- **files:** UsersPage.jsx, ProfilePage.jsx, BranchesPage.jsx, QuotationEditorPage.jsx, AgreementEditorPage.jsx, SalaryCertificateEditorPage.jsx, STATE.md, EVIDENCE.md
+- **tests+evidence:** FH1 @360 users/profile/branches/routes **ok=4 warn=0**; docs editors **ok=3 warn=0**; Zayogya 8; Phase 6 still BLOCKED (accountant fixtures)
 - **NOT RUN / blocked:** Phase 6 margin VAT fixtures; Phases 9–11; full §10 field-by-field; production deploy
 - **flags+rollback:** none (CSS touch targets only)
 - **next:** Phases 9–11 gated; Phase 6 waits on accountant written fixtures

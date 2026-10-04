@@ -289,19 +289,19 @@ export default function AgreementEditorPage() {
             type="button"
             onClick={save}
             disabled={saving || !isDirty}
-            className={`inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md disabled:opacity-50 ${
+            className={`inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm rounded-md disabled:opacity-50 ${
               isDirty ? 'bg-primary-600 hover:bg-primary-700 text-white' : 'border text-text-secondary bg-slate-50'
             }`}
           >
             <Save className="w-4 h-4" /> {saving ? 'Saving…' : isDirty ? 'Save changes' : 'Saved'}
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'download', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50">
+          <button type="button" onClick={() => handlePdf('A4', 'download', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm border rounded-md disabled:opacity-50">
             <Download className="w-4 h-4" /> Download PDF
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'print', 'body')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Body only — for pre-printed letterhead paper">
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'body')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm border rounded-md disabled:opacity-50" title="Body only — for pre-printed letterhead paper">
             <Printer className="w-4 h-4" /> Print Letterhead
           </button>
-          <button type="button" onClick={() => handlePdf('A4', 'print', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm border rounded-md disabled:opacity-50" title="Full document with header and footer">
+          <button type="button" onClick={() => handlePdf('A4', 'print', 'full')} disabled={saving} className="inline-flex items-center gap-1 px-3 py-1.5 min-h-[44px] text-sm border rounded-md disabled:opacity-50" title="Full document with header and footer">
             <Printer className="w-4 h-4" /> Print Full
           </button>
         </div>
