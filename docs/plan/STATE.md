@@ -146,6 +146,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice §10 CustomerDetail/Products/Payments CTA ≥44px (PARTIAL)
+- **changed:** CustomerDetail header CTAs; Products toolbar (drop `sm:min-h-0`); Payments primary outline → `min-h-[44px]`
+- **files:** CustomerDetailPage.jsx, ProductsPage.jsx, PaymentsPage.jsx, STATE/EVIDENCE/TIER0/PHASE-TODO
+- **tests+evidence:** Zayogya **8 PASS**; tip pushed through `3d0ddad` then this commit
+- **NOT RUN / blocked:** Phase 6 accountant fixtures; Phases 9–11; full §10 field-by-field; production deploy
+- **flags+rollback:** none (CSS touch targets only)
+- **next:** remaining `md:min-h-9`/`sm:min-h-0` secondary controls; Phase 6 waits on fixtures
+
 ### 2026-10-04 — slice §10 under-44 CTA touch targets (PARTIAL)
 - **changed:** min-h-[44px] on Users/Profile/Branches + doc editors + Purchases/Expenses (removed md:min-h-9 shrink)
 - **files:** UsersPage, ProfilePage, BranchesPage, Quotation/Agreement/Salary editors, PurchasesPage, ExpensesPage, STATE.md, EVIDENCE.md
