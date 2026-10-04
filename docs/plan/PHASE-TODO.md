@@ -1,10 +1,10 @@
 # Grounded phase to-do (do not skip order)
 
-Update evidence in `docs/refactor-progress.md`. Implementation continues on **uncommitted** work atop baseline `39ffafb`.
+Update evidence in `docs/refactor-progress.md`. Implementation branch **`refactor-handoff-20261004`** @ `e41b7ab` (pushed); `main` still @ `39ffafb`.
 
 | Phase | Focus | Status | Next action |
 |---|---|---|---|
-| 1 | FE/BE build, deploy parity | **PARTIAL** | `deployVersion` on health endpoints; `/api/health` allowed on Render upstream (smoke was 403); prod unverified until deploy; billing workflow **79**; FE **72**; Vercel SHA unverified |
+| 1 | FE/BE build, deploy parity | **PARTIAL** | Local FE **build OK** (4 Oct); BE **511** pass / **44** PG skip; merge PR + deploy for `deployVersion` + `/api/health`; Vercel/Render SHA parity unverified |
 | 2 | Tenant isolation, 2nd owner | **PARTIAL** | PostgreSQL + R2 + job isolation tests; TEN01–TEN06 staging |
 | 3 | Payments, receipts, invoices | **PARTIAL** | Receipt + snapshots; `PaymentSettlementReceiptFlowTests` also asserts daily-close cash **1330** (adj excluded); staging FIN04–FIN07 |
 | 4 | Cost/profit, reversals | **PARTIAL** | Return approve uses `RefundStatus`; super-admin `sale_cost_snapshots` toggle; staging flag pilot |
