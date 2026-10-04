@@ -24,9 +24,17 @@ public static class DailyClosePostingGuard
         if (!context.Database.IsNpgsql()) return;
 
         var normalized = NormalizeBusinessDate(businessDate);
-        var scope = $"daily-close:{tenantId}:{normalized:yyyy-MM-dd}:{branchId?.ToString() ?? "all"}";
+        // A tenant-wide close aggregates every branch, so every branch writer
+        // first serializes on the tenant-wide key and then its branch key.
+        var allBranchesScope = $"daily-close:{tenantId}:{normalized:yyyy-MM-dd}:all";
         await context.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({scope}, 0))");
+            $"SELECT pg_advisory_xact_lock(hashtextextended({allBranchesScope}, 0))");
+        if (branchId.HasValue)
+        {
+            var branchScope = $"daily-close:{tenantId}:{normalized:yyyy-MM-dd}:{branchId.Value}";
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtextextended({branchScope}, 0))");
+        }
     }
 
     public static async Task EnsureOpenAsync(AppDbContext context, int tenantId, DateTime transactionDateUtc, int? branchId)
@@ -55,14 +63,18 @@ public static class DailyClosePostingGuard
         foreach (var scope in scopes)
         {
             await AcquireBusinessDayLockAsync(context, tenantId, scope.BusinessDate, scope.BranchId);
-            var latestStatus = await context.DailyCashCloses.AsNoTracking()
-                .Where(c => c.TenantId == tenantId && c.BusinessDate == scope.BusinessDate && c.BranchId == scope.BranchId)
-                .OrderByDescending(c => c.Version)
-                .Select(c => (DailyCashCloseStatus?)c.Status)
-                .FirstOrDefaultAsync();
+            var closeScopes = scope.BranchId.HasValue ? new int?[] { null, scope.BranchId } : new int?[] { null };
+            foreach (var closeBranchId in closeScopes)
+            {
+                var latestStatus = await context.DailyCashCloses.AsNoTracking()
+                    .Where(c => c.TenantId == tenantId && c.BusinessDate == scope.BusinessDate && c.BranchId == closeBranchId)
+                    .OrderByDescending(c => c.Version)
+                    .Select(c => (DailyCashCloseStatus?)c.Status)
+                    .FirstOrDefaultAsync();
 
-            if (latestStatus == DailyCashCloseStatus.Closed)
-                throw new InvalidOperationException("This business day is closed. Reopen with a reason before making changes.");
+                if (latestStatus == DailyCashCloseStatus.Closed)
+                    throw new InvalidOperationException("This business day is closed. Reopen with a reason before making changes.");
+            }
         }
     }
 
