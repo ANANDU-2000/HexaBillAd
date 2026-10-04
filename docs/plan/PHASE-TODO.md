@@ -40,7 +40,7 @@ Migration inventory: **47** additive migrations (latest `20261003190000_AddPayme
 | T0-10 | F19/F20 + settlement cash rule | **PASS** | Settlement/receipt/daily-close 1330/1331 fixtures; local 1330/500 |
 | T0-11 | Standard 5% VAT prospective (no historic recalc) | **IMPLEMENTED** | Default VAT_PERCENT=5; margin deferred |
 | T0-12 | Seven journeys × FrozenHub owners + GH header | **PASS** (local) | API amounts + browser screenshots; see VERDICT.md |
-| T0-13 | Commit/push `tier0-continuation` + merge to `main` | **PASS** | `tier0-continuation` @ `11d1f90` on GitHub; FF into `main` authorized. Production deploy still **BLOCKED** |
+| T0-13 | Commit/push `tier0-continuation` + merge to `main` | **PASS** | GitHub [PR #3](https://github.com/ANANDU-2000/HexaBillAd/pull/3) merged Tier0 into `main`; local handoff docs synced. Production deploy still **BLOCKED** |
 
 ## Open inputs (non-blocking for local; still required before Production)
 

@@ -4,8 +4,9 @@
 
 | Item | Value |
 |---|---|
-| Branch | `tier0-continuation` → FF into `main` |
-| Tip | `11d1f90` (+ docs handoff commit) |
+| Branch | `tier0-continuation` → merged to `main` via PR #3 |
+| Tip | `11d1f90` (+ handoff docs on main) |
+| GitHub | https://github.com/ANANDU-2000/HexaBillAd |
 | Baseline | `846ee95` |
 | Local verification | 2026-10-04 — evidence `Desktop/HexaBill_Backups/tier0-local-browser-20261004-091255/` |
 | Backend tests | **555 passed** / 44 PG skipped / 0 failed |
