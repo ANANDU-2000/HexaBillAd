@@ -4,18 +4,26 @@
  *
  * Usage:
  *   HEXABILL_OWNER_PASSWORD=... node scripts/phase7-capture-screens.mjs
+ *   HEXABILL_ROLE=staff HEXABILL_STAFF_PASSWORD=... node scripts/phase7-capture-screens.mjs
  * Env: HEXABILL_API, HEXABILL_FE, HEXABILL_EDGE_PROXY_SECRET, HEXABILL_OWNER_PASSWORD
  *      HEXABILL_PHASE7_OUT (screenshot dir; ignores stale HEXABILL_EVIDENCE_DIR)
  *      HEXABILL_TENANTS=frozenhub1,frozenhub2,gulfharvest,zayoga
+ *      HEXABILL_ROLE=owner|staff (default owner). Staff emails: staff@{slug}.hexabill.local
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { chromium } from 'playwright'
+import { createRequire } from 'node:module'
+
+const require = createRequire(path.join(process.cwd(), 'frontend/hexabill-ui/package.json'))
+const { chromium } = require('playwright')
 
 const API = process.env.HEXABILL_API || 'http://127.0.0.1:5000'
 const FE = process.env.HEXABILL_FE || 'http://127.0.0.1:5173'
 const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
-const PASS = process.env.HEXABILL_OWNER_PASSWORD || ''
+const ROLE = (process.env.HEXABILL_ROLE || 'owner').toLowerCase()
+const PASS = ROLE === 'staff'
+  ? (process.env.HEXABILL_STAFF_PASSWORD || '')
+  : (process.env.HEXABILL_OWNER_PASSWORD || '')
 const OUT = process.env.HEXABILL_PHASE7_OUT
   || path.join(process.env.USERPROFILE || '.', 'Desktop', 'HexaBill_Backups', 'phase7-matrix-20261004-111213', 'screenshots')
 
@@ -88,27 +96,31 @@ async function login (slug, email) {
 }
 
 async function main () {
-  if (!PASS) throw new Error('Set HEXABILL_OWNER_PASSWORD')
+  if (!PASS) {
+    throw new Error(ROLE === 'staff' ? 'Set HEXABILL_STAFF_PASSWORD' : 'Set HEXABILL_OWNER_PASSWORD')
+  }
   const want = (process.env.HEXABILL_TENANTS || 'frozenhub1,frozenhub2,gulfharvest,zayoga')
     .split(',').map((s) => s.trim()).filter(Boolean)
   const owners = loadOwners().filter((o) => want.includes(o.slug))
   if (!owners.length) throw new Error('No owners from bootstrap report')
+  const roleLabel = ROLE === 'staff' ? 'staff' : 'owner'
 
   fs.mkdirSync(OUT, { recursive: true })
   const browser = await chromium.launch({ headless: true })
-  const report = { at: new Date().toISOString(), out: OUT, cells: {}, tenants: [] }
+  const report = { at: new Date().toISOString(), out: OUT, role: roleLabel, cells: {}, tenants: [] }
 
   for (const owner of owners) {
     const prefix = SLUG_PREFIX[owner.slug] || owner.slug
+    const email = ROLE === 'staff' ? `staff@${owner.slug}.hexabill.local` : owner.email
     let session
     try {
-      session = await login(owner.slug, owner.email)
+      session = await login(owner.slug, email)
     } catch (e) {
-      report.tenants.push({ slug: owner.slug, status: 'login_fail', error: String(e.message || e) })
-      console.error('LOGIN_FAIL', owner.slug, e.message || e)
+      report.tenants.push({ slug: owner.slug, status: 'login_fail', email, error: String(e.message || e) })
+      console.error('LOGIN_FAIL', owner.slug, email, e.message || e)
       continue
     }
-    report.tenants.push({ slug: owner.slug, status: 'ok', email: owner.email })
+    report.tenants.push({ slug: owner.slug, status: 'ok', email, role: session.user.role })
 
     const context = await browser.newContext()
     const page = await context.newPage()
@@ -123,7 +135,7 @@ async function main () {
     for (const vp of VIEWPORTS) {
       await page.setViewportSize({ width: vp.width, height: vp.height })
       for (const route of PAGES) {
-        const key = `${prefix}-owner-${route.id}-${vp.name}`
+        const key = `${prefix}-${roleLabel}-${route.id}-${vp.name}`
         const file = path.join(OUT, `${key}.png`)
         try {
           await page.goto(`${FE}${route.path}`, { waitUntil: 'networkidle', timeout: 45000 })
@@ -135,9 +147,17 @@ async function main () {
               await page.waitForTimeout(250)
             }
           }
+          const bodyText = await page.locator('body').innerText().catch(() => '')
+          const denied = /access denied|forbidden|not authorized/i.test(bodyText)
           await page.screenshot({ path: file, fullPage: false })
-          report.cells[key] = { status: 'captured', bytes: fs.statSync(file).size }
-          console.log('OK', key, fs.statSync(file).size)
+          // Staff denial on admin pages is valid evidence (still captured).
+          report.cells[key] = {
+            status: 'captured',
+            bytes: fs.statSync(file).size,
+            denied,
+            role: session.user.role,
+          }
+          console.log(denied ? 'DENY' : 'OK', key, fs.statSync(file).size)
         } catch (e) {
           report.cells[key] = { status: 'fail', error: String(e.message || e) }
           console.error('FAIL', key, e.message || e)
@@ -148,11 +168,12 @@ async function main () {
   }
 
   await browser.close()
-  const reportPath = path.join(path.dirname(OUT), 'phase7-screens-report.json')
+  const reportPath = path.join(path.dirname(OUT), `phase7-screens-report-${roleLabel}.json`)
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2))
   const ok = Object.values(report.cells).filter((c) => c.status === 'captured').length
   const fail = Object.values(report.cells).filter((c) => c.status === 'fail').length
-  console.log('Wrote', reportPath, `ok=${ok} fail=${fail}`)
+  const denied = Object.values(report.cells).filter((c) => c.denied).length
+  console.log('Wrote', reportPath, `ok=${ok} fail=${fail} denied=${denied}`)
 }
 
 main().catch((e) => {

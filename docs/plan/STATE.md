@@ -109,7 +109,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
-| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
+| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner+staff screenshots 4 tenants × 6 pages × 5 VPs (240 PNGs); §10 field/edge NOT RUN |
 | 8 Remaining routes matrix | **PARTIAL** | Static 37×4 tenants ×5 VPs (owner shell); params 36 @360; superadmin 10; platform metrics; staff role + §10 field/edge NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 5c Phase 7 staff matrix (PARTIAL)
+- **changed:** created synthetic `staff@{slug}.hexabill.local` on 4 tenants; `phase7-capture-screens.mjs` supports `HEXABILL_ROLE=staff`
+- **files:** phase7-capture-screens.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** staff report `ok=120 fail=0` (fh1/fh2/gh/zy × 6 × 5); Zayogya this slice
+- **NOT RUN:** staff §10 field/edge interactions; financial denial assertions beyond shell load
+- **flags+rollback:** local staff passwords only in Desktop backups JSON (not committed)
+- **next:** push `master-loop-2`; Phases 9–11 still gated
 
 ### 2026-10-04 — slice 8 Phase 8 owner shell matrix (PARTIAL)
 - **changed:** seeded routes/agreements/salary/quotations; param **36/36** @360; static **37×4 tenants×5 VPs** owner shell; superadmin tenant detail; phase8-route-shell viewport/tenant filters
