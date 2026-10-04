@@ -17,6 +17,24 @@ namespace HexaBill.Tests;
 
 public class SaleCostBasisTests
 {
+    [Fact]
+    public async Task FinancialReportQueryFailure_PropagatesUnavailableInsteadOfEmptySuccess()
+    {
+        await using var db = Database();
+        await db.DisposeAsync();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var reports = new ReportService(db, null!, null!, null!, new Schema(), cache,
+            NullLogger<ReportService>.Instance, new TimeZoneService());
+
+        var products = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            reports.GetProductSalesReportAsync(10, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow));
+        var outstanding = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            reports.GetOutstandingCustomersAsync(10));
+
+        Assert.Equal("Product sales report is unavailable. Please retry.", products.Message);
+        Assert.Equal("Outstanding customer report is unavailable. Please retry.", outstanding.Message);
+    }
+
     [Fact(DisplayName = "FIN11_ProductCostEdit_DoesNotRewriteSavedHistoricMargin")]
     public async Task ProductCostAndConversionEdit_DoesNotRewriteSavedProfit()
     {

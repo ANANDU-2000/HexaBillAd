@@ -4562,11 +4562,16 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
 // Payments Tab Component
 const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePayment, onGenerateReceiptBatch }) => {
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
+  const [modeFilter, setModeFilter] = useState('ALL')
   const userRole = user?.role?.toLowerCase()
   const canEditDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'manager'
 
   const isVoided = (payment) => String(payment.status ?? payment.Status ?? '').toUpperCase() === 'VOID'
+  const modeOf = (payment) => String(payment.mode ?? payment.Mode ?? 'UNSPECIFIED').toUpperCase()
+  const availableModes = [...new Set(payments.map(modeOf))].sort()
+  const visiblePayments = modeFilter === 'ALL' ? payments : payments.filter(payment => modeOf(payment) === modeFilter)
   const eligiblePayments = canEditDelete && !user?.supportReadOnly ? payments.filter(canReceivePaymentReceipt) : []
+  const visibleEligiblePayments = visiblePayments.filter(canReceivePaymentReceipt)
   const currentSelectedIds = currentReceiptSelection(eligiblePayments, selectedPaymentIds)
   const togglePaymentSelection = (id) => {
     if (!eligiblePayments.some(payment => payment.id === id)) return
@@ -4577,22 +4582,35 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
     setSelectedPaymentIds(currentSelectedIds.includes(id) ? currentSelectedIds.filter(value => value !== id) : [...currentSelectedIds, id])
   }
   const toggleSelectAllPayments = () => {
-    if (eligiblePayments.length > 500) {
+    if (visibleEligiblePayments.length > 500) {
       toast.error('Select up to 500 eligible payments at a time.')
       return
     }
-    if (currentSelectedIds.length === eligiblePayments.length) setSelectedPaymentIds([])
-    else setSelectedPaymentIds(eligiblePayments.map(payment => payment.id))
+    const visibleIds = visibleEligiblePayments.map(payment => payment.id)
+    const allVisibleSelected = visibleIds.every(id => currentSelectedIds.includes(id))
+    if (allVisibleSelected) setSelectedPaymentIds(selectedPaymentIds.filter(id => !visibleIds.includes(id)))
+    else {
+      const nextIds = [...new Set([...currentSelectedIds, ...visibleIds])]
+      if (nextIds.length > 500) {
+        toast.error('Select up to 500 payments per receipt.')
+        return
+      }
+      setSelectedPaymentIds(nextIds)
+    }
   }
   const selectedTotal = payments.filter(p => currentSelectedIds.includes(p.id)).reduce((sum, p) => sum + Number(p.amount || 0), 0)
 
   return (
     <div className="w-full h-full flex flex-col">
       <div className="mb-4 flex justify-end flex-shrink-0">
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center space-x-2" aria-label="Filter by mode">
-          <Filter className="h-4 w-4" />
-          <span>Filter by Mode</span>
-        </button>
+        <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700">
+          <Filter className="h-4 w-4" aria-hidden="true" />
+          <span>Filter by mode</span>
+          <select aria-label="Filter payments by mode" value={modeFilter} onChange={event => setModeFilter(event.target.value)} className="min-h-[44px] bg-transparent font-medium">
+            <option value="ALL">All modes</option>
+            {availableModes.map(mode => <option key={mode} value={mode}>{mode.replaceAll('_', ' ')}</option>)}
+          </select>
+        </label>
       </div>
 
       <p className="mb-3 text-xs text-gray-600">Receipts are available for cleared incoming payments only. Select up to 500 payments.</p>
@@ -4607,8 +4625,8 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                   <th className="px-4 py-3 text-left">
                     <input
                       type="checkbox"
-                      checked={eligiblePayments.length > 0 && currentSelectedIds.length === eligiblePayments.length}
-                      disabled={eligiblePayments.length === 0}
+                      checked={visibleEligiblePayments.length > 0 && visibleEligiblePayments.every(payment => currentSelectedIds.includes(payment.id))}
+                      disabled={visibleEligiblePayments.length === 0}
                       aria-label="Select all eligible payments"
                       onChange={toggleSelectAllPayments}
                       className="rounded border-gray-300"
@@ -4624,14 +4642,14 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payments.length === 0 ? (
+              {visiblePayments.length === 0 ? (
                 <tr>
                   <td colSpan={onGenerateReceiptBatch ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
-                    No payments found
+                    {payments.length === 0 ? 'No payments found' : 'No payments match this mode.'}
                   </td>
                 </tr>
               ) : (
-                payments.map((payment) => (
+                visiblePayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
                     {onGenerateReceiptBatch && (
                       <td className="px-4 py-3 whitespace-nowrap">
@@ -4743,7 +4761,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
             No payments found
           </div>
         ) : (
-          payments.map((payment) => (
+          visiblePayments.map((payment) => (
             <div key={payment.id} className="bg-white rounded-lg border border-neutral-200 p-4">
               {onGenerateReceiptBatch && (
                 <label className="flex min-h-[44px] items-center gap-2 text-sm mb-2">

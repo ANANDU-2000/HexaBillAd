@@ -1272,8 +1272,7 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
-                // Return empty list instead of throwing
-                return new List<ProductSalesDto>();
+                throw new InvalidOperationException("Product sales report is unavailable. Please retry.", ex);
             }
         }
 
@@ -1352,15 +1351,7 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
-                // Return empty paged response instead of throwing
-                return new PagedResponse<CustomerDto>
-                {
-                    Items = new List<CustomerDto>(),
-                    TotalCount = 0,
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalPages = 0
-                };
+                throw new InvalidOperationException("Outstanding customer report is unavailable. Please retry.", ex);
             }
         }
 

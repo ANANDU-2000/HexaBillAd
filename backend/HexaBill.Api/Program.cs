@@ -1296,8 +1296,10 @@ app.MapGet("/health/ready", async (HttpContext ctx) =>
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        _ = await db.Database.CanConnectAsync();
-        return Results.Ok(new { status = "Ready", database = "Connected", timestamp = DateTime.UtcNow, deployVersion });
+        var connected = await db.Database.CanConnectAsync();
+        return connected
+            ? Results.Ok(new { status = "Ready", database = "Connected", timestamp = DateTime.UtcNow, deployVersion })
+            : Results.Json(new { status = "Unhealthy", database = "Disconnected", timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
     catch (Exception ex)
     {
@@ -1809,20 +1811,7 @@ _ = Task.Run(async () =>
                 }
                 
                 var pending = context.Database.GetPendingMigrations().ToList();
-                // PostgreSQL: AddBranchAndRoute is a duplicate full schema (SQLite-oriented). InitialPostgreSQL already created everything. Skip AddBranchAndRoute to avoid 42P07 (already exists) and 42704 (blob).
-                const string AddBranchAndRouteMigrationId = "20260214173227_AddBranchAndRoute";
-                const string InitialPostgreSQLMigrationId = "20260214070330_InitialPostgreSQL";
-                if (context.Database.IsNpgsql() && pending.Contains(AddBranchAndRouteMigrationId))
-                {
-                    initLogger.LogInformation("PostgreSQL: applying InitialPostgreSQL only, then marking AddBranchAndRoute as applied (schema already exists).");
-                    await context.Database.MigrateAsync(InitialPostgreSQLMigrationId);
-                    await context.Database.ExecuteSqlRawAsync(
-                        "INSERT INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") SELECT {0}, '9.0.0' WHERE NOT EXISTS (SELECT 1 FROM \"__EFMigrationsHistory\" WHERE \"MigrationId\" = {0})",
-                        AddBranchAndRouteMigrationId, AddBranchAndRouteMigrationId);
-                    await HexaBill.Api.Core.Infrastructure.PostgresBranchesRoutesSchema.EnsureBranchesAndRoutesSchemaAsync(context, initLogger);
-                    initLogger.LogInformation("Database migrations applied successfully (AddBranchAndRoute skipped for PostgreSQL).");
-                }
-                else if (pending.Any())
+                if (pending.Any())
                 {
                     initLogger.LogInformation("Found {Count} pending migration(s): {Migrations}", pending.Count, string.Join(", ", pending));
                     // PRODUCTION FIX: Skip EF MigrateAsync() on PostgreSQL in production to avoid exit 139 (migrations touch ErrorLogs and can crash).
@@ -1851,25 +1840,11 @@ _ = Task.Run(async () =>
                         
                         if (isColumnExistsError && context.Database.IsNpgsql())
                         {
-                            // Column already exists - mark migration as applied manually and continue
-                            initLogger.LogWarning("Migration failed due to existing columns (non-fatal). Marking migrations as applied and continuing...");
-                            try
-                            {
-                                // Mark all pending migrations as applied in history table
-                                foreach (var migrationId in pending)
-                                {
-                                    await context.Database.ExecuteSqlRawAsync(
-                                        @"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
-                                          SELECT {0}, '9.0.0' 
-                                          WHERE NOT EXISTS (SELECT 1 FROM ""__EFMigrationsHistory"" WHERE ""MigrationId"" = {0})",
-                                        migrationId);
-                                }
-                                initLogger.LogInformation("Migrations marked as applied (columns already exist from previous runs)");
-                            }
-                            catch (Exception markEx)
-                            {
-                                initLogger.LogWarning(markEx, "Failed to mark migrations as applied, but continuing anyway");
-                            }
+                            // A duplicate-column/relation failure proves only that one operation
+                            // already exists. It does not prove the remaining migration operations
+                            // or later migrations ran. Never fabricate EF migration history here.
+                            initLogger.LogError(migEx,
+                                "PostgreSQL migration stopped on an existing schema object. Migration history was left unchanged; reconcile this database before retrying.");
                         }
                         else
                         {
