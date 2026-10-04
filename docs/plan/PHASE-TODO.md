@@ -39,7 +39,7 @@ Migration inventory: **47** additive migrations (latest `20261003190000_AddPayme
 | T0-10 | F19/F20 + settlement cash rule | **PASS** | Settlement/receipt/daily-close 1330/1331 fixtures |
 | T0-11 | Standard 5% VAT prospective (no historic recalc) | **IMPLEMENTED** | Default VAT_PERCENT=5; margin deferred |
 | T0-12 | Seven journeys × FrozenHub owners + GH header | **BLOCKED** | Needs local hosts, staging, screenshots, owner-2 emails |
-| T0-13 | Commit/push `tier0-continuation` + deploy/rollback commands | **PARTIAL** | Local commit `4950348`; push **BLOCKED** (GitHub auth/prompt hang). See TIER0-RELEASE.md |
+| T0-13 | Commit/push `tier0-continuation` + deploy/rollback commands | **PARTIAL** | Local HEAD `a70d3b1` (feat `4950348`); push **BLOCKED** — `fatal: could not read Username for https://github.com`. Run `git push -u origin tier0-continuation` after auth. |
 
 ## Open inputs (remain BLOCKED — never fabricated)
 

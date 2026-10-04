@@ -6,7 +6,7 @@
 |---|---|
 | Branch | `tier0-continuation` |
 | Baseline | `846ee95` |
-| Tier 0 commit | `4950348` (local; push blocked pending GitHub credentials) |
+| Tier 0 commit | `a70d3b1` (includes feat `4950348`; push blocked — GitHub HTTPS credentials missing) |
 | Backend tests | 553 passed / 44 PostgreSQL skipped / 0 failed |
 | Frontend tests | 74 passed |
 | Migrations | 47 (latest `20261003190000_AddPaymentParentPaymentId`) |
