@@ -18,9 +18,16 @@
 | Unused Lucide imports (lint warnings) | safe | eslint unused-vars | gradual fix in UI slices |
 | `crystal-freeze-header-reference.png` | keep | branding reference; TRN forbidden in code | keep |
 
-## Removals performed this slice
+## Removals performed
 
-None (dry run only).
+| Commit / date | Item | Grep proof |
+|---|---|---|
+| 2026-10-04 master-loop-2 | Root `package.json` + `package-lock.json` (empty `{}` / empty packages) | No workspace consumers; FE lives under `frontend/hexabill-ui` |
+| 2026-10-04 master-loop-2 | Real licence / phone / personal email / corporate-tax TRN / street address scrubbed from tracked `appsettings.Development.json` → synthetic placeholders matching `appsettings.example.json` | `rg CN-6774701\|frozenhubfoods\|971555298878\|105543085200001\|Musaffah` → no tracked hits |
+
+## Removals performed (prior dry-run note)
+
+None in the original dry-run commit.
 
 ## Ignore tightening (applied)
 
