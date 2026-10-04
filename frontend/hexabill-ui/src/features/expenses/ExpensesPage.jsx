@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
@@ -311,7 +311,7 @@ const ExpensesPage = () => {
   }, [])
 
   const categoryOptions = [
-    { value: '', label: categories.length === 0 ? 'No categories – add one first' : 'Select category...' },
+    { value: '', label: categories.length === 0 ? 'No categories â€“ add one first' : 'Select category...' },
     ...categories.map(cat => ({
       value: String(cat.id),
       label: cat.name,
@@ -984,7 +984,7 @@ const ExpensesPage = () => {
   }
   const presetActive = (next) => dateRange.from === next.from && dateRange.to === next.to
   const presetChip = (active) =>
-    `min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${active ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'}`
+    `min-h-[44px] rounded-md px-3 text-sm font-medium ${active ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'}`
   const todayDate = new Date()
   const quarterYear = todayDate.getFullYear()
   const presetRanges = {
@@ -1043,10 +1043,10 @@ const ExpensesPage = () => {
                 {moreOpen && (
                   <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportCsv() }}>
-                      {exportingCsv ? 'Exporting…' : 'Export CSV'}
+                      {exportingCsv ? 'Exportingâ€¦' : 'Export CSV'}
                     </button>
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportPdf() }}>
-                      {exportingPdf ? 'Exporting…' : 'Export PDF'}
+                      {exportingPdf ? 'Exportingâ€¦' : 'Export PDF'}
                     </button>
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50" onClick={() => { setMoreOpen(false); setShowCategorySettingsModal(true) }}>
                       Category VAT
@@ -1082,11 +1082,11 @@ const ExpensesPage = () => {
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
             <label className="text-xs font-medium text-neutral-500">
               From
-              <input type="date" value={pendingDateRange.from} aria-label="From" onChange={(e) => applyRange({ ...pendingDateRange, from: e.target.value })} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" />
+              <input type="date" value={pendingDateRange.from} aria-label="From" onChange={(e) => applyRange({ ...pendingDateRange, from: e.target.value })} className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" />
             </label>
             <label className="text-xs font-medium text-neutral-500">
               To
-              <input type="date" value={pendingDateRange.to} aria-label="To" onChange={(e) => applyRange({ ...pendingDateRange, to: e.target.value })} className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" />
+              <input type="date" value={pendingDateRange.to} aria-label="To" onChange={(e) => applyRange({ ...pendingDateRange, to: e.target.value })} className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" />
             </label>
             <label className="text-xs font-medium text-neutral-500">
               Branch
@@ -1095,7 +1095,7 @@ const ExpensesPage = () => {
                 value={selectedBranchId || ''}
                 disabled={user && !isAdminOrOwner(user) && (branches || []).length <= 1}
                 onChange={(e) => { setCurrentPage(1); setSelectedBranchId(e.target.value) }}
-                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2 text-sm"
               >
                 {isAdminOrOwner(user) && <option value="">All branches</option>}
                 {(branches || []).map((branch) => (
@@ -1113,7 +1113,7 @@ const ExpensesPage = () => {
                   setShowAggregated(e.target.value !== '')
                   if (e.target.value !== '') setSelectedExpenseIds([])
                 }}
-                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2 text-sm"
               >
                 <option value="">None</option>
                 <option value="weekly">Weekly</option>
@@ -1128,7 +1128,7 @@ const ExpensesPage = () => {
                 value={searchDraft}
                 onChange={(e) => setSearchDraft(e.target.value)}
                 placeholder="Search this page"
-                className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm"
+                className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm"
               />
             </label>
             {isAdminOrOwner(user) && (
@@ -1136,7 +1136,7 @@ const ExpensesPage = () => {
                 type="button"
                 aria-pressed={filterNoVatOnly}
                 onClick={() => setFilterNoVatOnly((prev) => !prev)}
-                className={`min-h-11 rounded-md border px-3 text-sm md:min-h-9 ${filterNoVatOnly ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
+                className={`min-h-[44px] rounded-md border px-3 text-sm ${filterNoVatOnly ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
               >
                 VAT missing
               </button>
@@ -1159,15 +1159,15 @@ const ExpensesPage = () => {
                 <Link
                   to={buildDailyCloseHref({ businessDate: dateRange.to, branchId: selectedBranchId || undefined })}
                   state={{ returnTo: location.pathname + location.search }}
-                  className="inline-flex min-h-11 items-center font-medium text-primary-700 underline-offset-2 hover:underline md:min-h-9"
+                  className="inline-flex min-h-[44px] items-center font-medium text-primary-700 underline-offset-2 hover:underline"
                 >
                   Daily close for {dateRange.to}
                 </Link>
               )}
             </p>
             <div className="mt-3 flex gap-2" role="tablist" aria-label="Expense view">
-              <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
-              <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
+              <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
+              <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
             </div>
             {expenseView === 'category' && (
               <ul className="mt-3 space-y-2">
@@ -1202,10 +1202,10 @@ const ExpensesPage = () => {
         )}
         {noVatCount > 0 && isAdminOrOwner(user) && (
           <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-600 bg-white px-3">
-            <p className="text-sm text-amber-700">Missing VAT · {noVatCount} expenses need VAT</p>
+            <p className="text-sm text-amber-700">Missing VAT Â· {noVatCount} expenses need VAT</p>
             <span className="flex gap-2">
-              <button type="button" className="min-h-11 rounded-md px-3 text-sm text-amber-800 hover:bg-amber-50 md:min-h-9" onClick={() => setFilterNoVatOnly(true)}>Review</button>
-              <button type="button" className="min-h-11 rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50 md:min-h-9" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
+              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-amber-50" onClick={() => setFilterNoVatOnly(true)}>Review</button>
+              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
             </span>
           </div>
         )}
@@ -1438,7 +1438,7 @@ const ExpensesPage = () => {
         })()}
         </div>
 
-        {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
+        {/* Expenses Table - Tally Ledger Style â€” grows to fill remaining viewport */}
         {!showAggregated && expenseView === 'ledger' && (
           <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
             <div className="shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
@@ -1481,7 +1481,7 @@ const ExpensesPage = () => {
                     <tr>
                       <td colSpan="14" className="px-6 py-8 text-center text-gray-500">
                         {loading && displayExpenses.length === 0 && !listError
-                          ? 'Loading expenses…'
+                          ? 'Loading expensesâ€¦'
                           : listError
                           ? 'Unable to load expenses.'
                           : user && !isAdminOrOwner(user)
@@ -1674,7 +1674,7 @@ const ExpensesPage = () => {
                         {(expense.branchName || expense.routeName) && (
                           <p className="text-xs text-blue-600 mt-1">
                             {expense.branchName && `Branch: ${expense.branchName}`}
-                            {expense.branchName && expense.routeName && ' · '}
+                            {expense.branchName && expense.routeName && ' Â· '}
                             {expense.routeName && `Route: ${expense.routeName}`}
                           </p>
                         )}
@@ -1854,7 +1854,7 @@ const ExpensesPage = () => {
                 <div className="rounded bg-gray-50 border border-gray-200 px-2 py-1 text-xs col-span-2 lg:col-span-4 flex flex-wrap gap-x-3 gap-y-0.5">
                   <span><span className="text-gray-600">Net:</span> <span className="font-medium">{formatCurrency(net)}</span></span>
                   <span><span className="text-gray-600">VAT:</span> <span className="font-medium">{formatCurrency(vat)}</span></span>
-                  <span><span className="text-gray-600">Total:</span> <span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</span>
+                  <span><span className="text-gray-600">Total:</span> <span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' âœ“' : ''}</span>
                 </div>
               )
             })()}
@@ -2077,7 +2077,7 @@ const ExpensesPage = () => {
                 <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm space-y-0.5">
                   <p><span className="text-gray-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
                   <p><span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
-                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</p>
+                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' âœ“' : ''}</p>
                 </div>
               )
             })()}
@@ -2288,7 +2288,7 @@ const ExpensesPage = () => {
                         <p className="font-semibold text-gray-900">{recurring.categoryName}</p>
                         <p className="text-sm text-gray-600">{formatCurrency(recurring.amount)}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {recurring.frequency} • {recurring.isActive ? 'Active' : 'Inactive'}
+                          {recurring.frequency} â€¢ {recurring.isActive ? 'Active' : 'Inactive'}
                         </p>
                       </div>
                     </div>

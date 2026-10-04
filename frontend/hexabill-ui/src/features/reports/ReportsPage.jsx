@@ -3451,7 +3451,7 @@ const ReportsPage = () => {
                                     buildCustomerLedgerHref({ customerId: c.id, tab: 'payments', openPayment: true }),
                                     { state: { returnTo: ledgerReturnTo } }
                                   )}
-                                  className="min-h-11 px-3 text-sm font-medium text-primary-700 hover:underline md:min-h-9"
+                                  className="min-h-[44px] px-3 text-sm font-medium text-primary-700 hover:underline"
                                 >
                                   Collect
                                 </button>

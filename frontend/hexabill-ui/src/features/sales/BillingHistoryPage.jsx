@@ -376,14 +376,14 @@ const BillingHistoryPage = () => {
             type="date"
             value={dateFilter.from}
             onChange={(e) => { setDateFilter({ ...dateFilter, from: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-2 min-h-11 md:min-h-9 text-sm md:text-xs w-[8.5rem]"
+            className="border border-gray-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
             title="From"
           />
           <input
             type="date"
             value={dateFilter.to}
             onChange={(e) => { setDateFilter({ ...dateFilter, to: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-2 min-h-11 md:min-h-9 text-sm md:text-xs w-[8.5rem]"
+            className="border border-gray-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
             title="To"
           />
           {(searchTerm || dateFilter.from || dateFilter.to) && (

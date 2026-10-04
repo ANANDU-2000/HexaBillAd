@@ -652,7 +652,7 @@ const RouteDetailPage = () => {
                         <button
                           type="button"
                           onClick={() => navigate(buildCustomerLedgerHref({ customerId: rc.customerId }), { state: { returnTo: ledgerReturnTo } })}
-                          className="min-h-11 text-sm text-primary-600 hover:underline sm:min-h-0"
+                          className="min-h-[44px] text-sm text-primary-600 hover:underline"
                         >
                           Ledger
                         </button>

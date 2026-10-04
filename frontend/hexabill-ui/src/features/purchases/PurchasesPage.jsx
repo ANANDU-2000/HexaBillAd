@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services/index'
@@ -11,7 +11,7 @@ import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import { ListSkeleton } from '../../components/mobile/index'
 import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
 
-const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-11 text-base md:min-h-9 md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
+const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
 const tallySelectClass = tallyInputClass
 const tallyLabelClass = 'block text-xs font-medium text-neutral-600 mb-1'
 const tallySectionClass = 'mb-4 w-full max-w-full'
@@ -148,7 +148,7 @@ const PurchasesPage = () => {
     return () => window.removeEventListener('keydown', handler)
   }, [showForm])
 
-  // Supplier autocomplete — require ≥2 chars (match backend), debounce
+  // Supplier autocomplete â€” require â‰¥2 chars (match backend), debounce
   useEffect(() => {
     const q = (formData.supplierName || '').trim()
     if (!q || q.length < 2) {
@@ -192,7 +192,7 @@ const PurchasesPage = () => {
     return () => clearTimeout(t)
   }, [formData.supplierName])
 
-  // Fetch VAT from company settings (no hardcoded 5% — TODO #5)
+  // Fetch VAT from company settings (no hardcoded 5% â€” TODO #5)
   useEffect(() => {
     const fetchVat = async () => {
       try {
@@ -713,7 +713,7 @@ const PurchasesPage = () => {
         type="button"
         onClick={() => { setCurrentPage(1); setStatusFilter(active ? 'all' : id) }}
         aria-pressed={active}
-        className={`min-h-11 md:min-h-9 rounded-md border px-3 text-left ${active ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}
+        className={`min-h-[44px] rounded-md border px-3 text-left ${active ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}
       >
         <span className="block text-xs text-neutral-500">{label}</span>
         <span className={`block text-sm font-semibold tabular-nums ${tone}`}>{count}</span>
@@ -761,11 +761,11 @@ const PurchasesPage = () => {
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
             <label className="text-xs font-medium text-neutral-500 lg:col-span-2">
               Supplier
-              <input type="search" aria-label="Search supplier" placeholder="Search supplier or invoice" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={supplierSearch} onChange={(e) => { setCurrentPage(1); setSupplierSearch(e.target.value) }} />
+              <input type="search" aria-label="Search supplier" placeholder="Search supplier or invoice" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" value={supplierSearch} onChange={(e) => { setCurrentPage(1); setSupplierSearch(e.target.value) }} />
             </label>
             <label className="text-xs font-medium text-neutral-500">
               Status
-              <select aria-label="Status" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={statusFilter} onChange={(e) => { setCurrentPage(1); setStatusFilter(e.target.value) }}>
+              <select aria-label="Status" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:text-sm" value={statusFilter} onChange={(e) => { setCurrentPage(1); setStatusFilter(e.target.value) }}>
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="unpaid">Unpaid</option>
@@ -776,7 +776,7 @@ const PurchasesPage = () => {
             </label>
             <label className="text-xs font-medium text-neutral-500">
               Period
-              <select aria-label="Period" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={filterPeriod} onChange={(e) => { setCurrentPage(1); setFilterPeriod(e.target.value) }}>
+              <select aria-label="Period" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:text-sm" value={filterPeriod} onChange={(e) => { setCurrentPage(1); setFilterPeriod(e.target.value) }}>
                 <option value="all">All time</option>
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
@@ -788,7 +788,7 @@ const PurchasesPage = () => {
             </label>
             <label className="text-xs font-medium text-neutral-500">
               Category
-              <select aria-label="Category" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:min-h-9 md:text-sm" value={categoryFilter} onChange={(e) => { setCurrentPage(1); setCategoryFilter(e.target.value) }}>
+              <select aria-label="Category" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 bg-white px-2 text-base md:text-sm" value={categoryFilter} onChange={(e) => { setCurrentPage(1); setCategoryFilter(e.target.value) }}>
                 <option value="">All categories</option>
                 <option value="Inventory">Inventory</option>
                 <option value="Supplies">Supplies</option>
@@ -798,26 +798,26 @@ const PurchasesPage = () => {
               </select>
             </label>
             <div className="flex gap-2">
-              <button type="button" onClick={handleExportCsv} disabled={exportingCsv} className="min-h-11 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9">{exportingCsv ? 'Exporting…' : 'Export'}</button>
-              <button type="button" onClick={clearPurchaseFilters} className="min-h-11 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm md:min-h-9">Clear</button>
+              <button type="button" onClick={handleExportCsv} disabled={exportingCsv} className="min-h-[44px] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm">{exportingCsv ? 'Exportingâ€¦' : 'Export'}</button>
+              <button type="button" onClick={clearPurchaseFilters} className="min-h-[44px] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm">Clear</button>
             </div>
           </div>
           {filterPeriod === 'custom' && (
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               <label className="text-xs font-medium text-neutral-500">From
-                <input type="date" aria-label="From" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" aria-label="From" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </label>
               <label className="text-xs font-medium text-neutral-500">To
-                <input type="date" aria-label="To" className="mt-1 block min-h-11 w-full rounded-md border border-neutral-300 px-2 text-base md:min-h-9 md:text-sm" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <input type="date" aria-label="To" className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </label>
             </div>
           )}
-          {loading && <p className="mt-2 text-xs text-neutral-500">Loading…</p>}
+          {loading && <p className="mt-2 text-xs text-neutral-500">Loadingâ€¦</p>}
         </div>
 
         {pendingSummary && (
           <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending') }} aria-pressed={statusFilter === 'pending'} className={`min-h-11 rounded-md border px-3 text-left md:min-h-9 ${statusFilter === 'pending' ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}>
+            <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending') }} aria-pressed={statusFilter === 'pending'} className={`min-h-[44px] rounded-md border px-3 text-left ${statusFilter === 'pending' ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}>
               <span className="block text-xs text-neutral-500">Pending</span>
               <span className="block text-sm font-semibold tabular-nums text-amber-800">{formatCurrency(pendingSummary.totalPendingToPay ?? 0)}</span>
             </button>
@@ -875,7 +875,7 @@ const PurchasesPage = () => {
                           })
                           if (!exact && supplierSuggestions.length > 0) {
                             // Keep typed free-text for legacy name-only purchases; only clear if partial match clutter
-                            // Do not wipe — balance lookup still works by exact name.
+                            // Do not wipe â€” balance lookup still works by exact name.
                           }
                         }
                       }, 200)
@@ -1105,7 +1105,7 @@ const PurchasesPage = () => {
                           onChange={(e) => setFormData({ ...formData, isTaxClaimable: e.target.checked })}
                           className="rounded border-neutral-200 text-green-600"
                         />
-                        <span>Tax claimable (ITC) – include in VAT Return Box 9b</span>
+                        <span>Tax claimable (ITC) â€“ include in VAT Return Box 9b</span>
                       </label>
                     </div>
                   )}
@@ -1146,7 +1146,7 @@ const PurchasesPage = () => {
                             </td>
                             <td className="px-2 py-2 border-r border-neutral-100">
                               <select
-                                className="w-full min-h-11 px-1 border border-neutral-200 rounded text-sm uppercase md:min-h-9"
+                                className="w-full min-h-[44px] px-1 border border-neutral-200 rounded text-sm uppercase"
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateItem(index, 'unitType', e.target.value)}
                               >
@@ -1169,7 +1169,7 @@ const PurchasesPage = () => {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="w-20 min-h-11 md:min-h-9 px-1 border border-neutral-200 rounded text-sm"
+                                className="w-20 min-h-[44px] px-1 border border-neutral-200 rounded text-sm"
                                 value={item.qty === '' ? '' : item.qty}
                                 onChange={(e) => updateItem(index, 'qty', e.target.value)}
                               />
@@ -1179,7 +1179,7 @@ const PurchasesPage = () => {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                className="w-20 min-h-11 md:min-h-9 px-1 border border-neutral-200 rounded text-sm"
+                                className="w-20 min-h-[44px] px-1 border border-neutral-200 rounded text-sm"
                                 value={item.unitCost === '' ? '' : item.unitCost}
                                 onChange={(e) => updateItem(index, 'unitCost', e.target.value)}
                               />
@@ -1242,7 +1242,7 @@ const PurchasesPage = () => {
               <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
-                  <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}
+                  <Save className="h-4 w-4 mr-2" /> {submitting ? 'Savingâ€¦' : 'Save Purchase'}
                 </button>
               </div>
             </form>
@@ -1259,7 +1259,7 @@ const PurchasesPage = () => {
                   type="button"
                   onClick={() => navigate('/vat-return')}
                   className="px-2 py-1 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 flex items-center gap-1"
-                  title="VAT Return – track and fix zero values"
+                  title="VAT Return â€“ track and fix zero values"
                 >
                   <ExternalLink className="h-3 w-3" /> VAT Return
                 </button>
@@ -1270,7 +1270,7 @@ const PurchasesPage = () => {
                   className="px-2 py-1 rounded text-xs font-medium bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-800 disabled:opacity-50"
                   title="Mark all purchases with VAT as Tax claimable (ITC) for VAT Return"
                 >
-                  {bulkFixingItc ? 'Updating…' : 'Mark all with VAT as claimable'}
+                  {bulkFixingItc ? 'Updatingâ€¦' : 'Mark all with VAT as claimable'}
                 </button>
               </div>
             </div>
@@ -1379,7 +1379,7 @@ const PurchasesPage = () => {
                               {(canPayPurchase(purchase) && (
                                 <button
                                   onClick={() => openPay(purchase)}
-                                  className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                                   title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
                                 >
                                   <CreditCard className="h-3.5 w-3.5" /> Pay
@@ -1387,14 +1387,14 @@ const PurchasesPage = () => {
                               ))}
                               <button
                                 onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                                 title="Supplier Ledger (full page)"
                               >
                                 <Eye className="h-3.5 w-3.5" /> Ledger
                               </button>
                               <button
                                 onClick={() => handleEditPurchase(purchase)}
-                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                                 title="Edit Purchase"
                                 aria-label="Edit Purchase"
                               >
@@ -1403,7 +1403,7 @@ const PurchasesPage = () => {
                               </button>
                               <button
                                 onClick={() => handleDeletePurchase(purchase)}
-                                className="inline-flex min-h-11 items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700 md:min-h-9"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700"
                                 title="Delete Purchase"
                                 aria-label="Delete Purchase"
                               >
@@ -1481,7 +1481,7 @@ const PurchasesPage = () => {
                           {purchase.items.map((item, idx) => (
                             <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 text-xs py-1">
                               <span className="text-primary-700 min-w-0 break-words">{item.productName || item.product?.nameEn || 'Item'}</span>
-                              <span>{item.qty} × {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
+                              <span>{item.qty} Ã— {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
                             </div>
                           ))}
                         </div>
@@ -1527,7 +1527,7 @@ const PurchasesPage = () => {
                         {canPayPurchase(purchase) && (
                           <button
                             onClick={() => openPay(purchase)}
-                            className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                            className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                             title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
                           >
                             <CreditCard className="h-3.5 w-3.5" /> Pay
@@ -1535,14 +1535,14 @@ const PurchasesPage = () => {
                         )}
                         <button
                           onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                           title="Supplier Ledger"
                         >
                           <Eye className="h-3.5 w-3.5" /> Ledger
                         </button>
                         <button
                           onClick={() => handleEditPurchase(purchase)}
-                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800 md:min-h-9"
+                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
                           title="Edit Purchase"
                         >
                           <Edit className="h-3.5 w-3.5" />
@@ -1550,7 +1550,7 @@ const PurchasesPage = () => {
                         </button>
                         <button
                           onClick={() => handleDeletePurchase(purchase)}
-                          className="inline-flex min-h-11 items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700 md:min-h-9"
+                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700"
                           title="Delete Purchase"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

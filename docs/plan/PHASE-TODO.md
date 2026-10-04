@@ -42,8 +42,8 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | 4 Cost snapshots / D9 | **PARTIAL** | flags OFF; unit PASS |
 | 5 Daily Close | **PARTIAL** | flag OFF; unit PASS |
 | 6 Margin VAT | **BLOCKED** | **missing input:** accountant written fixtures (eligible txns, effective date, invoice/return rules, expected figures); D5 stop-gap done |
-| 7 Shell UX | **PARTIAL** | shells 4×6×5 + §10 static-36×4@360 + owner static-36×4×5VP (720); full field matrix open |
-| 8 Remaining routes | **PARTIAL** | static/param shells + §10 static-36 smoke@5VP; full field matrix open |
+| 7 Shell UX | **PARTIAL** | shells 4×6×5 + §10 static-36×4@360 + owner static-36×4×5VP (720); CTA shrink classes cleared in src jsx; full field matrix open |
+| 8 Remaining routes | **PARTIAL** | static/param shells + §10 static-36 smoke@5VP; branch/route link CTAs 44px; full field matrix open |
 | 9 AI | **TODO** | |
 | 10 Voice/driver/maps | **TODO** | |
 | 11 Staging/pilot | **BLOCKED** | production auth |

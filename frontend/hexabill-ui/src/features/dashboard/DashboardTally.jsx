@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+﻿import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import {
@@ -403,7 +403,7 @@ const DashboardTally = () => {
     }
 
     const periodChip = (active) =>
-        `min-h-11 rounded-md px-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none md:min-h-9 ${focusClass} ${
+        `min-h-[44px] rounded-md px-3 text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${focusClass} ${
             active
                 ? 'bg-primary-600 text-white'
                 : 'border border-[var(--border)] bg-[var(--bg-base)] text-[var(--text-primary)] hover:bg-[var(--bg-raised)]'
@@ -419,7 +419,7 @@ const DashboardTally = () => {
     const trendHasSales = trendSales > 0
     const periodName = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : dateRange === 'month' ? 'This month' : 'Period'
     const rangeLabel = dateRange === 'custom' && customFromDate && customToDate
-        ? `${formatDisplayDate(customFromDate)} – ${formatDisplayDate(customToDate)}`
+        ? `${formatDisplayDate(customFromDate)} â€“ ${formatDisplayDate(customToDate)}`
         : periodName
 
     const attention = []
@@ -483,7 +483,7 @@ const DashboardTally = () => {
     const profitHelper = [
         canShow('purchasesToday') !== false ? `Purchases ${formatCurrency(stats.purchasesToday)}` : null,
         showExpenses ? `Expenses ${formatCurrency(stats.expensesToday)}` : null
-    ].filter(Boolean).join(' · ')
+    ].filter(Boolean).join(' Â· ')
 
     const setupSteps = [
         { done: setupStatus?.hasBranch, label: 'Add branch', path: '/branches' },
@@ -510,7 +510,7 @@ const DashboardTally = () => {
                         <select
                             value={selectedBranchId || ''}
                             onChange={(e) => setSelectedBranchId(e.target.value ? parseInt(e.target.value, 10) : null)}
-                            className={`min-h-11 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] md:min-h-9 ${focusClass}`}
+                            className={`min-h-[44px] rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-3 text-sm text-[var(--text-primary)] ${focusClass}`}
                             aria-label="Branch"
                         >
                             <option value="">All branches</option>
@@ -537,15 +537,15 @@ const DashboardTally = () => {
                         value={customFromDate}
                         onChange={(e) => applyPeriod('custom', e.target.value, customToDate)}
                         aria-label="From"
-                        className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
+                        className={`min-h-[44px] min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
                     />
-                    <span className="text-sm text-[var(--text-tertiary)]" aria-hidden>–</span>
+                    <span className="text-sm text-[var(--text-tertiary)]" aria-hidden>â€“</span>
                     <input
                         type="date"
                         value={customToDate}
                         onChange={(e) => applyPeriod('custom', customFromDate, e.target.value)}
                         aria-label="To"
-                        className={`min-h-11 min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:min-h-9 md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
+                        className={`min-h-[44px] min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
                     />
                 </div>
             )}
@@ -572,7 +572,7 @@ const DashboardTally = () => {
                                 key={step.label}
                                 type="button"
                                 onClick={() => navigate(step.path)}
-                                className={`inline-flex min-h-11 items-center gap-1.5 text-[var(--text-primary)] hover:underline md:min-h-9 ${focusClass}`}
+                                className={`inline-flex min-h-[44px] items-center gap-1.5 text-[var(--text-primary)] hover:underline ${focusClass}`}
                             >
                                 {step.done
                                     ? <CheckCircle className="h-4 w-4 shrink-0 text-[var(--success)]" aria-hidden />
@@ -603,7 +603,7 @@ const DashboardTally = () => {
                     <MetricCard
                         label="Net sales"
                         value={stats.netSalesToday}
-                        helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
+                        helper={`Gross ${formatCurrency(stats.salesToday)} Â· Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
                         icon={DollarSign}
                         emphasis
                         loading={showSkeleton}

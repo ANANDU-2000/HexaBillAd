@@ -1,5 +1,5 @@
-/*
- * Return Create Page – ERP-style sales return from an invoice.
+﻿/*
+ * Return Create Page â€“ ERP-style sales return from an invoice.
  * Route: /returns/create?saleId=...
  */
 import { useState, useEffect } from 'react'
@@ -165,7 +165,7 @@ export default function ReturnCreatePage() {
           window.open(url, '_blank')
           setTimeout(() => URL.revokeObjectURL(url), 100)
         } catch {
-          toast.success('Return saved. Open Reports → Returns to print credit note.')
+          toast.success('Return saved. Open Reports â†’ Returns to print credit note.')
         }
       }
       navigate(returnTo || '/reports?tab=returns')
@@ -189,7 +189,7 @@ export default function ReturnCreatePage() {
   }
 
   if (loading) {
-    return <p className="p-4 text-sm text-neutral-500">Loading return…</p>
+    return <p className="p-4 text-sm text-neutral-500">Loading returnâ€¦</p>
   }
 
   if (loadError || !sale) {
@@ -203,7 +203,7 @@ export default function ReturnCreatePage() {
   }
 
   const invoiceNo = sale.invoiceNo ?? sale.invoiceNumber ?? sale.id
-  const customerName = sale.customerName ?? sale.customer?.name ?? '—'
+  const customerName = sale.customerName ?? sale.customer?.name ?? 'â€”'
 
   return (
     <div className="p-3 sm:p-6">
@@ -243,9 +243,9 @@ export default function ReturnCreatePage() {
                 const cat = damageCategories.find(c => c.id === id)
                 if (cat) setReason(cat.name)
               }}
-              className="mt-1 block w-full min-h-11 md:min-h-9 rounded-md border border-neutral-300 px-3 text-sm"
+              className="mt-1 block w-full min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm"
             >
-              <option value="">— Select —</option>
+              <option value="">â€” Select â€”</option>
               {damageCategories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -280,7 +280,7 @@ export default function ReturnCreatePage() {
                         max={line.maxReturnable}
                         value={line.returnQty}
                         onChange={e => updateLine(idx, 'returnQty', e.target.value)}
-                        className="w-24 min-h-11 md:min-h-9 rounded-md border border-neutral-300 px-2 text-sm text-right tabular-nums"
+                        className="w-24 min-h-[44px] rounded-md border border-neutral-300 px-2 text-sm text-right tabular-nums"
                       />
                       {line.alreadyReturned > 0 && (
                         <span className="ml-1 text-xs text-amber-600">(max {line.maxReturnable})</span>
@@ -290,7 +290,7 @@ export default function ReturnCreatePage() {
                       <select
                         value={line.condition}
                         onChange={e => updateLine(idx, 'condition', e.target.value)}
-                        className="min-h-11 md:min-h-9 rounded-md border border-neutral-300 px-2 text-sm"
+                        className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-sm"
                       >
                         {CONDITION_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -322,7 +322,7 @@ export default function ReturnCreatePage() {
             className="inline-flex min-h-11 items-center gap-2 px-4 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 text-sm font-medium"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'Saving…' : 'Save Return'}
+            {saving ? 'Savingâ€¦' : 'Save Return'}
           </button>
           <button
             type="button"

@@ -1172,7 +1172,7 @@ const ProductsPage = () => {
                 e.stopPropagation()
                 navigate(`/products/${product.id}`)
               }}
-              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
               title="View product"
               aria-label="View product"
             >
@@ -1185,7 +1185,7 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   navigate(`/products/${product.id}?edit=1`)
                 }}
-                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                 title="Edit Product"
                 aria-label="Edit Product"
               >
@@ -1199,7 +1199,7 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   handleBarcodePdfForProducts([product.id], { share: false })
                 }}
-                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                 title="Print barcode PDF"
                 aria-label="Print barcode"
               >
@@ -1213,7 +1213,7 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   handleStockAdjustment(product)
                 }}
-                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                 title="Adjust Stock"
                 aria-label="Adjust Stock"
               >
@@ -1225,7 +1225,7 @@ const ProductsPage = () => {
               <Link
                 to={`/stock-adjustments?productId=${product.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                 title="Stock adjustment history for this product"
                 aria-label="Stock adjustment history"
               >
@@ -1240,7 +1240,7 @@ const ProductsPage = () => {
                     e.stopPropagation()
                     handleActivateProduct(product.id)
                   }}
-                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[36px] sm:min-h-0"
+                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                   title="Activate Product"
                   aria-label="Activate Product"
                 >

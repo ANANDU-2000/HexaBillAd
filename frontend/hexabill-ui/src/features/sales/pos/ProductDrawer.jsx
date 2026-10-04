@@ -176,7 +176,7 @@ export default function ProductDrawer({
               type="button"
               disabled={page <= 0}
               onClick={() => onPageChange?.(page - 1)}
-              className="inline-flex items-center gap-0.5 px-3 py-2 text-xs font-medium border border-neutral-300 rounded-lg min-h-[44px] md:min-h-9 disabled:opacity-40"
+              className="inline-flex items-center gap-0.5 px-3 py-2 text-xs font-medium border border-neutral-300 rounded-lg min-h-[44px] disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" /> Back
             </button>
@@ -187,7 +187,7 @@ export default function ProductDrawer({
               type="button"
               disabled={page >= totalPages - 1}
               onClick={() => onPageChange?.(page + 1)}
-              className="inline-flex items-center gap-0.5 px-3 py-2 text-xs font-medium border border-neutral-300 rounded-lg min-h-[44px] md:min-h-9 disabled:opacity-40"
+              className="inline-flex items-center gap-0.5 px-3 py-2 text-xs font-medium border border-neutral-300 rounded-lg min-h-[44px] disabled:opacity-40"
             >
               Next <ChevronRight className="h-4 w-4" />
             </button>
