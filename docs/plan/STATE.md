@@ -110,7 +110,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
 | 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Shell check 25 routes×4 tenants; full 61×5 viewports NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Static tenant routes 37×4 owners @360 shell PASS (148); platform metrics source/unit/asOf added; param+superadmin+5VP matrix NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 6 Phase 8 shell + platform metrics (PARTIAL)
+- **changed:** `phase8-route-shell.mjs` (37 static tenant routes × 4 owners); `PlatformMetrics` source/unit/asOf; Super Admin UI shows as-of + unavailable DB pool honesty
+- **files:** PlatformMetrics.cs, PlatformMetricsTests.cs, DiagnosticsController.cs, SuperAdminDashboard.jsx, phase8-route-shell.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** PlatformMetrics+Zayogya **11 PASS**; shell report `ok=148 fail=0` under `Desktop/HexaBill_Backups/phase8-shell-20261004/`
+- **NOT RUN:** param routes; `/superadmin/*` browser matrix; remaining 4 viewports for non–Phase-7 pages; error-logs as-of wiring
+- **flags+rollback:** none (additive JSON fields)
+- **next:** param/superadmin evidence; CLEANUP safe deletes after second proof; push when git auth available
 
 ### 2026-10-04 — slice 5b Phase 7 all-tenant owner viewports (PARTIAL)
 - **changed:** `phase7-capture-screens.mjs` multi-tenant login + loopback override (uses `HEXABILL_PHASE7_OUT`, not stale evidence dir)

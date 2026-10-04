@@ -251,6 +251,14 @@ const SuperAdminDashboard = () => {
               <p className="text-xs text-neutral-500 mt-2">
                 If memory or connections are often &gt;75%, consider upgrading the Render plan. For live CPU/RAM, check Render dashboard → your service → Metrics.
               </p>
+              {platformHealth.resourceUsage.asOf && (
+                <p className="text-xs text-neutral-500 mt-1">
+                  As of {new Date(platformHealth.resourceUsage.asOf).toLocaleString()} · heap vs working set (process), DB pool from pg_stat_activity when available
+                </p>
+              )}
+              {platformHealth.resourceUsage.connectionStatsAvailable === false && (
+                <p className="text-xs text-amber-700 mt-1">DB connection stats unavailable (not PostgreSQL or query failed) — not shown as zero.</p>
+              )}
             </div>
           )}
         </div>

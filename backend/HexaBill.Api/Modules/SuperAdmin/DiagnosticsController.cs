@@ -156,31 +156,27 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     var memoryUsed = GC.GetTotalMemory(false);
                     var memoryMB = memoryUsed / (1024.0 * 1024.0);
                     var workingSetMB = Environment.WorkingSet / (1024.0 * 1024.0);
-                    var memoryUsagePercent = workingSetMB > 0 ? (memoryMB / workingSetMB) * 100 : 0;
-                    int activeConnections = 0;
-                    int maxConnections = 100;
-                    double connectionPoolUsage = 0;
+                    int? activeConnections = null;
+                    const int maxConnections = 100;
+                    var connectionStatsAvailable = false;
                     if (_db.Database.IsNpgsql())
                     {
                         try
                         {
                             activeConnections = await _db.Database.SqlQueryRaw<int>(
-                                "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()"
+                                "SELECT count(*)::int AS \"Value\" FROM pg_stat_activity WHERE datname = current_database()"
                             ).FirstOrDefaultAsync();
-                            connectionPoolUsage = maxConnections > 0 ? (double)activeConnections / maxConnections * 100 : 0;
+                            connectionStatsAvailable = true;
                         }
-                        catch { /* ignore */ }
+                        catch { /* leave unavailable — do not invent a green zero */ }
                     }
-                    resourceUsage = new
-                    {
-                        memoryUsedMb = Math.Round(memoryMB, 2),
-                        workingSetMb = Math.Round(workingSetMB, 2),
-                        memoryUsagePercent = Math.Round(memoryUsagePercent, 2),
+                    resourceUsage = HexaBill.Api.Core.Platform.PlatformMetrics.BuildResourceUsage(
+                        ts,
+                        memoryMB,
+                        workingSetMB,
                         activeConnections,
                         maxConnections,
-                        connectionPoolUsagePercent = Math.Round(connectionPoolUsage, 2),
-                        limitsHint = memoryUsagePercent > 90 || connectionPoolUsage > 90 ? "critical" : memoryUsagePercent > 75 || connectionPoolUsage > 75 ? "warning" : "ok"
-                    };
+                        connectionStatsAvailable);
                 }
             }
             catch (Exception ex)
