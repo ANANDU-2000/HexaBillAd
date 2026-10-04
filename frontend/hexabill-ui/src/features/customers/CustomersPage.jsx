@@ -687,7 +687,7 @@ const CustomersPage = () => {
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <button
               onClick={() => fetchCustomers()}
-              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-gray-300 rounded-lg shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] border border-gray-300 rounded-lg shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
               Refresh
