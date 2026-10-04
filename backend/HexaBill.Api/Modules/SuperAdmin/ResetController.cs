@@ -5,6 +5,7 @@ Date: 2025
 */
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Models;
 
@@ -16,10 +17,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
     public class ResetController : TenantScopedController
     {
         private readonly IResetService _resetService;
+        private readonly IHostEnvironment _hostEnvironment;
 
-        public ResetController(IResetService resetService)
+        public ResetController(IResetService resetService, IHostEnvironment hostEnvironment)
         {
             _resetService = resetService;
+            _hostEnvironment = hostEnvironment;
         }
 
         [HttpGet("summary")]
@@ -57,8 +60,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 return Forbid();
 
             // PRODUCTION SAFETY: Disable reset in production
-            var environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            if (environment == "Production")
+            if (_hostEnvironment.IsProduction())
             {
                 return BadRequest(new ApiResponse<ResetResult>
                 {
@@ -158,6 +160,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public async Task<ActionResult<ApiResponse<ResetResult>>> ResetOwnerData(
             [FromBody] OwnerResetRequest request)
         {
+            if (!User.IsInRole("Owner"))
+                return Forbid();
+
+            if (_hostEnvironment.IsProduction())
+            {
+                return BadRequest(new ApiResponse<ResetResult>
+                {
+                    Success = false,
+                    Message = "Owner data reset is disabled in production to protect posted financial history."
+                });
+            }
+
             try
             {
                 var userIdClaim = User.FindFirst("UserId") ?? 
@@ -229,4 +243,3 @@ namespace HexaBill.Api.Modules.SuperAdmin
         public string ConfirmationText { get; set; } = string.Empty;
     }
 }
-

@@ -223,6 +223,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 var summaryBefore = await GetOwnerSummaryAsync(tenantId);
                 _logger.LogInformation($"   Before: {summaryBefore.TotalSales} sales, {summaryBefore.TotalPayments} payments");
 
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+
                 // Delete all transactional data for this owner
                 // Sales and Sale Items - get sale IDs first
                 var saleIds = await _context.Sales.Where(s => s.TenantId == tenantId).Select(s => s.Id).ToListAsync();
@@ -259,12 +261,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     .Where(c => c.TenantId == tenantId && c.Balance != 0)
                     .ExecuteUpdateAsync(c => c.SetProperty(x => x.Balance, 0));
 
-                // Clear alerts for this owner
-                var alertsCleared = await _context.Alerts.Where(a => a.TenantId == tenantId || a.TenantId == 0).ExecuteDeleteAsync();
+                // Clear this tenant's alerts only; TenantId 0 contains shared platform alerts.
+                var alertsCleared = await _context.Alerts.Where(a => a.TenantId == tenantId).ExecuteDeleteAsync();
 
                 // Create audit log entry
                 var resetAuditLog = new AuditLog
                 {
+                    TenantId = tenantId,
+                    OwnerId = tenantId,
                     UserId = userId,
                     Action = "OWNER_DATA_RESET",
                     Details = $"Owner data reset for tenantId={tenantId}. Deleted: {salesCount} sales, {paymentsCount} payments, {expensesCount} expenses, {purchasesCount} purchases. Reset: {productsUpdated} products, {customersUpdated} customers.",
@@ -272,6 +276,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 };
                 _context.AuditLogs.Add(resetAuditLog);
                 await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
 
                 result.Success = true;
                 result.Message = $"Owner data reset completed. Deleted: {salesCount} sales, {saleItemsCount} sale items, {paymentsCount} payments, {expensesCount} expenses, " +
