@@ -123,8 +123,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 |---|---|---|
 | Vercel production (`hexabill-ui`) | — | **UNVERIFIED** (project found `prj_GRooh8ebxo33R0uy5EspPoe5HmAo`; deployment list 403) |
 | Render backend (`HexaBill` / `srv-d68jpdvpm1nc7393q4d0`) | `39ffafb` | **VERIFIED** live; `autoDeploy=no`; older than local `master-loop-2` tip |
-| GitHub `origin/main` | (update after this push) | Owner-authorized sync requested 2026-10-04 |
-| GitHub `origin/master-loop-2` | (update after this push) | Same tip as main after FF |
+| GitHub `origin/main` | `80998f1` | Owner-authorized sync 2026-10-04 (RTL shell slice) |
+| GitHub `origin/master-loop-2` | `80998f1` | Same tip as main |
 
 ---
 
