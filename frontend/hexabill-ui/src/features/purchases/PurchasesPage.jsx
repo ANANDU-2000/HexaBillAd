@@ -731,7 +731,7 @@ const PurchasesPage = () => {
             <button
               type="button"
               onClick={() => { loadPurchases(); loadAnalytics(); loadPendingSummary() }}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 bg-white md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-neutral-300 bg-white"
               aria-label="Refresh"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -739,7 +739,7 @@ const PurchasesPage = () => {
             <button
               type="button"
               onClick={() => navigate('/suppliers')}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 md:min-h-9 md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 md:flex-none"
             >
               <Users className="h-4 w-4" />
               Add Supplier
@@ -747,7 +747,7 @@ const PurchasesPage = () => {
             <button
               type="button"
               onClick={handleNewPurchase}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-md bg-primary-600 px-3 text-sm font-medium text-white md:min-h-9 md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-md bg-primary-600 px-3 text-sm font-medium text-white md:flex-none"
             >
               <Plus className="h-4 w-4" />
               New Purchase

@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 purch/exp CTA ≥44px | local | WIP | FH1 | owner | 360+1440 | purchases + expenses | primaryMin44 | ok=4 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-purch-exp-cta44-20261004 | tested |
 | 2026-10-04 | §10 docs editor CTA ≥44px | local | WIP | FH1 | owner | 360 | quotation/agreement/salary new | primaryMin44 | ok=3 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-docs-cta44-20261004 | tested |
 | 2026-10-04 | §10 CTA ≥44px fix | local | WIP | FH1 | owner | 360 | users/profile/branches/routes | primaryMin44 | ok=4 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-cta44-20261004 | tested |
 | 2026-10-04 | §10 static-36 rest 5VP | local | WIP | FH2/GH/ZY | owner | 5 VPs | 36 static ×3×5 | non-blank shells | ok=540 fail=0 warn=171 | Desktop/HexaBill_Backups/field-edge-static36-rest-5vp-20261004 | tested |

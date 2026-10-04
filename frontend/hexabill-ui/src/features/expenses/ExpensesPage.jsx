@@ -1017,14 +1017,14 @@ const ExpensesPage = () => {
               onClick={() => handleRefresh()}
               disabled={refreshing}
               aria-label="Refresh"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40 md:h-9 md:w-9"
+              className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-md border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-40"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'motion-safe:animate-spin' : ''}`} aria-hidden />
             </button>
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700 md:min-h-9 md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700 md:flex-none"
             >
               <Plus className="h-4 w-4" aria-hidden />
               Add expense
