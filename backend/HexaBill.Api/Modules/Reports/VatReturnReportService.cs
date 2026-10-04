@@ -227,8 +227,8 @@ namespace HexaBill.Api.Modules.Reports
             box1b = Math.Max(0, box1b - returnsVat);
 
             // Box 4: Reverse charge base (purchases) - use calendar date comparison to avoid timezone edge cases
-            var fromDateOnly = DateOnly.FromDateTime(from);
-            var toDateOnly = DateOnly.FromDateTime(to.AddDays(-1));
+            var fromDateOnly = DateOnly.FromDateTime((fromCalendarInclusive ?? from).Date);
+            var toDateOnly = DateOnly.FromDateTime((toCalendarInclusive ?? to.AddDays(-1)).Date);
             var purchasesInPeriod = await _context.Purchases
                 .Include(p => p.Supplier)
                 .Include(p => p.Items)
@@ -370,8 +370,9 @@ namespace HexaBill.Api.Modules.Reports
             var box13b = Math.Max(0, box12 - box1b);
 
             // to is exclusive end; last day of period for display is to - 1 day
-            var periodEndInclusive = to.AddDays(-1).Date;
-            var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate.Date, periodEndInclusive);
+            var periodEndInclusive = (toCalendarInclusive ?? to.AddDays(-1)).Date;
+            var periodStartCalendarDate = (fromCalendarInclusive ?? fromDate).Date;
+            var (periodLabel, dueDate) = GetPeriodLabelAndDue(periodStartCalendarDate, periodEndInclusive);
             int txCount = salesInPeriod.Count + returnsInPeriod.Count + purchasesInPeriod.Count + expensesInPeriod.Count;
             _logger.LogInformation("VAT return: tenant {TenantId}, period {From} to {To}: Sales={Sales}, Purchases={Purchases}, Expenses={Expenses}, TotalLines={Total}.",
                 tenantId, fromDate.ToString("yyyy-MM-dd"), periodEndInclusive.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count, txCount);

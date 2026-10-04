@@ -24,7 +24,7 @@ public class SaleCostBasisTests
         await db.DisposeAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var reports = new ReportService(db, null!, null!, null!, new Schema(), cache,
-            NullLogger<ReportService>.Instance, new TimeZoneService());
+            NullLogger<ReportService>.Instance, new TimeZoneService(), new VatReturnReportService(db, NullLogger<VatReturnReportService>.Instance));
 
         var products = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             reports.GetProductSalesReportAsync(10, DateTime.UtcNow.AddDays(-1), DateTime.UtcNow));
@@ -103,7 +103,7 @@ public class SaleCostBasisTests
         var schema = new Schema();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var dashboard = new ReportService(db, null!, null!, null!, schema, cache,
-            NullLogger<ReportService>.Instance, new TimeZoneService());
+            NullLogger<ReportService>.Instance, new TimeZoneService(), new VatReturnReportService(db, NullLogger<VatReturnReportService>.Instance));
         var result = await dashboard.GetSummaryReportAsync(10, date, date, skipCache: true);
         var branch = await new BranchService(db, schema, null!, NullLogger<BranchService>.Instance).GetBranchSummaryAsync(1, 10, date, date);
         var route = await new RouteService(db, schema, new ConfigurationBuilder().Build(), NullLogger<RouteService>.Instance).GetRouteSummaryAsync(1, 10, date, date);
@@ -119,6 +119,43 @@ public class SaleCostBasisTests
         var productReport = Assert.Single(await dashboard.GetEnhancedProductSalesReportAsync(10, date, date.AddDays(1)));
         Assert.Equal(expectedCost, productReport.CostValue);
         Assert.Equal(estimated, productReport.EstimatedCostLineCount);
+    }
+
+    [Fact]
+    public async Task DashboardVat_MatchesVatReturn_WhenPurchaseAndPetroleumVatAreNotClaimable()
+    {
+        await using var db = Database();
+        var date = new DateTime(2026, 10, 3, 0, 0, 0, DateTimeKind.Utc);
+        db.Sales.Add(new Sale
+        {
+            Id = 1, TenantId = 10, OwnerId = 10, InvoiceNo = "VAT-SALE-1", InvoiceDate = date,
+            Subtotal = 100m, VatTotal = 5m, GrandTotal = 105m, VatScenario = "Standard"
+        });
+        db.Purchases.Add(new Purchase
+        {
+            Id = 1, TenantId = 10, OwnerId = 10, SupplierName = "Synthetic supplier", InvoiceNo = "VAT-BILL-1",
+            PurchaseDate = date, Subtotal = 100m, VatTotal = 5m, TotalAmount = 105m, IsTaxClaimable = false
+        });
+        db.ExpenseCategories.Add(new ExpenseCategory { Id = 1, TenantId = 10, Name = "Fuel", DefaultTaxType = TaxTypes.Petroleum });
+        db.Expenses.Add(new Expense
+        {
+            Id = 1, TenantId = 10, OwnerId = 10, CategoryId = 1, Amount = 100m, Date = date,
+            CreatedBy = 10, CreatedAt = date, Status = ExpenseStatus.Approved, IsTaxClaimable = true,
+            TaxType = TaxTypes.Petroleum, VatAmount = 5m, ClaimableVat = 5m
+        });
+        await db.SaveChangesAsync();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var summaryService = new ReportService(db, null!, null!, null!, new Schema(), cache,
+            NullLogger<ReportService>.Instance, new TimeZoneService(), new VatReturnReportService(db, NullLogger<VatReturnReportService>.Instance));
+        var vatService = new VatReturnReportService(db, NullLogger<VatReturnReportService>.Instance);
+
+        var dashboard = await summaryService.GetSummaryReportAsync(10, date, date, skipCache: true);
+        var vatReturn = await vatService.GetVatReturn201Async(
+            10, date.AddHours(-4), date.AddDays(1).AddHours(-4), date, date);
+
+        Assert.Equal(1, vatReturn.PurchaseCountInPeriod);
+        Assert.Equal(1, vatReturn.ExpenseCountInPeriod);
+        Assert.Equal(vatReturn.Box13a - vatReturn.Box13b, dashboard.NetVatPayablePeriod);
     }
 
     [Fact]
@@ -170,7 +207,8 @@ public class SaleCostBasisTests
         db.SaleItems.Add(line);
         await db.SaveChangesAsync();
         using var cache = new MemoryCache(new MemoryCacheOptions());
-        var reports = new ReportService(db, null!, null!, null!, new Schema(), cache, NullLogger<ReportService>.Instance, new TimeZoneService());
+        var reports = new ReportService(db, null!, null!, null!, new Schema(), cache, NullLogger<ReportService>.Instance,
+            new TimeZoneService(), new VatReturnReportService(db, NullLogger<VatReturnReportService>.Instance));
         await Assert.ThrowsAsync<InvalidOperationException>(() => reports.GetSummaryReportAsync(10, date, date, skipCache: true));
         await Assert.ThrowsAsync<InvalidOperationException>(() => reports.GetEnhancedProductSalesReportAsync(10, date, date.AddDays(1)));
     }

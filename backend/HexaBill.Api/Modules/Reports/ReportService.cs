@@ -49,11 +49,12 @@ namespace HexaBill.Api.Modules.Reports
         private readonly IMemoryCache _cache;
         private readonly ILogger<ReportService> _logger;
         private readonly ITimeZoneService _timeZoneService;
+        private readonly IVatReturnReportService _vatReturnReportService;
         private static readonly TimeSpan SummaryReportCacheDuration = TimeSpan.FromMinutes(5);
         /// <summary>Short cache for "today" so dashboard Refresh and auto-refresh show live data.</summary>
         private static readonly TimeSpan SummaryReportTodayCacheDuration = TimeSpan.FromSeconds(30);
 
-        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger, ITimeZoneService timeZoneService)
+        public ReportService(AppDbContext context, IRouteScopeService routeScopeService, ISettingsService settingsService, IProductService productService, ISalesSchemaService salesSchema, IMemoryCache cache, ILogger<ReportService> logger, ITimeZoneService timeZoneService, IVatReturnReportService vatReturnReportService)
         {
             _context = context;
             _routeScopeService = routeScopeService;
@@ -63,6 +64,7 @@ namespace HexaBill.Api.Modules.Reports
             _cache = cache;
             _logger = logger;
             _timeZoneService = timeZoneService;
+            _vatReturnReportService = vatReturnReportService;
         }
 
         /// <summary>True if the exception (or inner) is PostgreSQL 42703 undefined_column. Handles wrapped exceptions from EF/Npgsql and message-based detection.</summary>
@@ -139,10 +141,6 @@ namespace HexaBill.Api.Modules.Reports
                 decimal salesToday = 0;
                 decimal purchasesToday = 0;
                 decimal expensesToday = 0;
-                decimal periodOutputVat = 0;
-                decimal periodReturnsVat = 0;
-                decimal periodPurchaseInputVat = 0;
-                decimal periodExpenseInputVat = 0;
 
                 try
                 {
@@ -177,14 +175,12 @@ namespace HexaBill.Api.Modules.Reports
                     var salesCount = await salesQuery.CountAsync();
                     _logger.LogDebug("Found {SalesCount} sales records in date range (SuperAdmin: {IsSuperAdmin})", salesCount, tenantId == 0);
                     salesToday = await salesQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
-                    periodOutputVat = await salesQuery.SumAsync(s => (decimal?)s.VatTotal) ?? 0;
                     _logger.LogDebug("Total sales today: {SalesToday}", salesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating salesToday: {Message}", ex.Message);
                     salesToday = 0;
-                    periodOutputVat = 0;
                 }
 
                 decimal returnsToday = 0;
@@ -220,7 +216,6 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     returnsCountToday = await returnsQuery.CountAsync();
                     returnsToday = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0;
-                    periodReturnsVat = await returnsQuery.SumAsync(r => (decimal?)r.VatTotal) ?? 0;
                     _logger.LogDebug("Returns today: count={Count}, total={Total}", returnsCountToday, returnsToday);
                 }
                 catch (Exception ex)
@@ -228,7 +223,6 @@ namespace HexaBill.Api.Modules.Reports
                     _logger.LogError(ex, "Error calculating returnsToday: {Message}", ex.Message);
                     returnsToday = 0;
                     returnsCountToday = 0;
-                    periodReturnsVat = 0;
                 }
 
                 decimal damageLossToday = 0;
@@ -274,16 +268,12 @@ namespace HexaBill.Api.Modules.Reports
                     var purchasesCount = await purchasesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} purchase records in date range (SuperAdmin: {IsSuperAdmin})", purchasesCount, tenantId == 0);
                     purchasesToday = await purchasesQuery.SumAsync(p => (decimal?)p.TotalAmount) ?? 0;
-                    var pv = await purchasesQuery.SumAsync(p => (decimal?)p.VatTotal) ?? 0;
-                    var prv = await purchasesQuery.SumAsync(p => (decimal?)p.ReverseChargeVat) ?? 0;
-                    periodPurchaseInputVat = pv + prv;
                     _logger.LogDebug("Total purchases today: {PurchasesToday}", purchasesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating purchasesToday: {Message}", ex.Message);
                     purchasesToday = 0;
-                    periodPurchaseInputVat = 0;
                 }
 
                 try
@@ -301,14 +291,12 @@ namespace HexaBill.Api.Modules.Reports
                     var expensesCount = await expensesQuery.CountAsync();
                     _logger.LogDebug("Found {Count} expense records in date range (SuperAdmin: {IsSuperAdmin})", expensesCount, tenantId == 0);
                     expensesToday = await expensesQuery.SumAsync(e => (decimal?)e.Amount) ?? 0;
-                    periodExpenseInputVat = await expensesQuery.SumAsync(e => (decimal?)(e.ClaimableVat ?? e.VatAmount ?? 0m)) ?? 0;
                     _logger.LogDebug("Total expenses today: {ExpensesToday}", expensesToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating expensesToday: {Message}", ex.Message);
                     expensesToday = 0;
-                    periodExpenseInputVat = 0;
                 }
 
                 // CRITICAL FIX: Calculate COGS (Cost of Goods Sold) from actual sales, not purchases
@@ -865,7 +853,19 @@ namespace HexaBill.Api.Modules.Reports
                     topProducts = new List<TopProductDto>();
                 }
 
-                var netVatPayablePeriod = (periodOutputVat - periodReturnsVat) - (periodPurchaseInputVat + periodExpenseInputVat);
+                // The owner dashboard's VAT figure must use the same tenant/date calculation as the VAT page.
+                // Keep the calendar bounds explicit because summary's UTC interval is timezone-converted.
+                var vatCalendarFrom = (fromDate ?? today).Date;
+                var vatCalendarTo = (toDate ?? today).Date;
+                var vatReturn = await _vatReturnReportService.GetVatReturn201Async(
+                    tenantId, startDate, endDate, vatCalendarFrom, vatCalendarTo);
+                if (vatReturn.ValidationIssues.Any(issue =>
+                    string.Equals(issue.RuleId, "SYS001", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(issue.Severity, "Blocking", StringComparison.OrdinalIgnoreCase)))
+                {
+                    throw new InvalidOperationException("VAT estimate is unavailable because the VAT calculation could not be completed.");
+                }
+                var netVatPayablePeriod = vatReturn.Box13a - vatReturn.Box13b;
 
                 var result = new SummaryReportDto
                 {
