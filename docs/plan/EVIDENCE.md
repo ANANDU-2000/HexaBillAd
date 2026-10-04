@@ -2,6 +2,9 @@
 
 One row per verified check. Newest first. Status: `planned | implemented | tested | blocked`.
 
+| 2026-10-04 | Header PDFs | local | 6dc8d9c | fixture | n/a | n/a | DocumentHeaderTests | A4/A5/80/58/receipt | generated | Desktop/HexaBill_Backups/master-loop-header-20261004-102752 | tested |
+| 2026-10-04 | D5+sample TRN | local | 6dc8d9c | FH/GH/ZY | owner | n/a | unit+UI | Standard VAT; samples OK; ZY excluded | PASS | VatProfitEstimateD5 / SampleVatTrn / Zayogya tests | tested |
+| 2026-10-04 | Seed dry-run | local | 6dc8d9c | 4 | n/a | n/a | seed-dev-synthetic | refuse prod | dry-run OK | scripts/seed-dev-synthetic.mjs | implemented |
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 2026-10-04 | Step 0 build | local | a958394+docs | n/a | n/a | n/a | BE+FE clean gate | 0 fail | BE 555p/44sk; FE 74p; lint 0e; build OK | STATE.md §2 | tested |
@@ -15,3 +18,4 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 | — | D5 profit VAT label | local | — | GH/FH | owner | desktop | stop profit×5% as VAT | Standard VAT + Estimate | NOT RUN | — | planned |
 
 Client document contents: **not recorded** (gitignored; field names only if needed).
+

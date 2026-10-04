@@ -1,0 +1,14 @@
+﻿# Keep agent context light (Master Loop)
+**/node_modules/
+**/bin/
+**/obj/
+**/dist/
+**/.git/
+**/HexaBill_Backups/
+**/clients/
+**/*.pdf
+**/*.png
+**/*.jpg
+**/publish/
+**/wwwroot/uploads/
+backend/**/hexabill*.db

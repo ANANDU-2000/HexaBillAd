@@ -3,7 +3,7 @@
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  
-**Branch:** `main` @ `a958394` (= `origin/main`)  
+**Branch:** `main` @ `6dc8d9c` (= `origin/main`)  
 **Baseline for diff:** `39ffafb`  
 **Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp` @ `846ee95` + **uncommitted** Tier 0 WIP (33 modified / 5 untracked) — to be ported in next slice.
 
@@ -16,7 +16,7 @@
 ?? docs/plan/MASTER-LOOP.md   (and Step 0 artifacts in this commit)
 ```
 
-`git log --oneline -30` (newest first): starts at `a958394` docs(tier0) PR #3 note → Tier0 merge → `846ee95` currency fixes → `e41b7ab` refactor handoff → `39ffafb` backup agent.
+`git log --oneline -30` (newest first): starts at `6dc8d9c` docs(tier0) PR #3 note → Tier0 merge → `846ee95` currency fixes → `e41b7ab` refactor handoff → `39ffafb` backup agent.
 
 `git diff --stat 39ffafb..HEAD`: **256 files**, +23224 / −1523.
 
@@ -113,7 +113,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 |---|---|---|
 | Vercel production | — | **UNVERIFIED** (not queried this session) |
 | Render backend | — | **UNVERIFIED** (not queried this session) |
-| GitHub `origin/main` | `a958394` | Verified local = remote |
+| GitHub `origin/main` | `6dc8d9c` | Verified local = remote |
 
 ---
 
@@ -135,6 +135,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slices 3–10 (sample TRN, D5, evidence, seed, cleanup dry-run)
+- **changed:** SampleVatTrn prod-allow + auto-fill; Zayogya snapshot; D5 profit estimate; isolation/cleanup/seed/signoff docs
+- **files:** SampleVatTrn.cs, SettingsService.cs, VatReturn*, tests, scripts/seed-dev-synthetic.mjs, ISOLATION-AUDIT, CLEANUP-REPORT, TIER0-SIGNOFF, PHASE-MATRIX, .gitignore, .cursorignore
+- **tests+evidence:** BE 564p/44sk; FE 74; header PDFs in Desktop/HexaBill_Backups/master-loop-header-20261004-102752
+- **NOT RUN:** PG 44; live seven journeys this session; backup restore; full 61×5 matrix; Vercel/Render SHA
+- **flags+rollback:** no flag defaults changed (still OFF)
+- **next:** PG when available; live journey re-run; Phase 7–8 matrix fill
 ### 2026-10-04 — Codex WIP port (no-op)
 - **changed:** REVIEW-INBOX port decision; no product code
 - **files:** REVIEW-INBOX.md, STATE.md
@@ -150,4 +157,5 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 - **NOT RUN:** Vercel/Render SHA verify; PG suite; full page×viewport matrix
 - **flags+rollback:** none changed
 - **next:** Port Codex worktree WIP onto master-loop / main
+
 

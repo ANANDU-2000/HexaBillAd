@@ -131,3 +131,12 @@ backend/data/*.json
 **/exports/
 **/Export*/
 .vercel
+
+# Master Loop local evidence / agent patches (never commit binaries)
+**/HexaBill_Backups/
+**/.git/COMMIT_MSG_TMP.txt
+**/codex-wip*.patch
+backend/**/hexabill*.db
+backend/**/hexabill*.db-*
+frontend/hexabill-ui/dist/
+*.pdf.evidence/
