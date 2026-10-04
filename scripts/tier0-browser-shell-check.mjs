@@ -5,12 +5,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const FE = process.env.HEXABILL_FE || 'http://127.0.0.1:5174';
+const FE = process.env.HEXABILL_FE || 'http://127.0.0.1:5173';
 const API = process.env.HEXABILL_API || 'http://localhost:5000';
 const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret';
 const PASS = process.env.HEXABILL_OWNER_PASSWORD || '';
 const OUT = process.env.HEXABILL_EVIDENCE_DIR
   || path.join(process.env.USERPROFILE, 'OneDrive', 'Desktop', 'HexaBill_Backups', 'tier0-shell');
+const FE_PORT = new URL(FE).port || '5173';
 
 const CORE = ['/dashboard', '/pos', '/customers', '/products', '/purchases', '/ledger', '/reports', '/settings'];
 const EXTRA = [
@@ -21,11 +22,20 @@ const EXTRA = [
   '/reports/outstanding',
 ];
 
-const TENANTS = [
-  { slug: 'frozenhub1', email: 'frozenhub1@hexabill.company' },
-  { slug: 'frozenhub2', email: 'frozenhub2@hexabill.company' },
-  { slug: 'gulfharvest', email: 'gulfharvest@hexabill.company' },
-  { slug: 'zayoga', email: 'zayoga@hexabill.company' },
+function loadTenantsFromBootstrap() {
+  const dir = path.join(process.env.USERPROFILE || '', 'OneDrive', 'Desktop', 'HexaBill_Backups');
+  if (!fs.existsSync(dir)) return null;
+  const files = fs.readdirSync(dir).filter((f) => f.startsWith('tier0-local-bootstrap-') && f.endsWith('.json')).sort();
+  if (!files.length) return null;
+  const report = JSON.parse(fs.readFileSync(path.join(dir, files[files.length - 1]), 'utf8'));
+  return (report.owners || []).map((o) => ({ slug: o.slug, email: o.email }));
+}
+
+const TENANTS = loadTenantsFromBootstrap() || [
+  { slug: 'frozenhub1', email: process.env.HEXABILL_FH1_EMAIL || 'frozenhub1@hexabill.company' },
+  { slug: 'frozenhub2', email: process.env.HEXABILL_FH2_EMAIL || 'frozenhub2@hexabill.company' },
+  { slug: 'gulfharvest', email: process.env.HEXABILL_GH_EMAIL || 'gulfharvest@hexabill.company' },
+  { slug: 'zayoga', email: process.env.HEXABILL_ZY_EMAIL || 'zayoga@hexabill.company' },
 ];
 
 function headers(host, token) {
@@ -51,12 +61,12 @@ async function login(slug, email) {
 }
 
 async function checkHtml(slug, route) {
-  // Prefer IPv4 loopback â€” *.localhost often resolves to ::1 where another Vite app may bind.
-  const url = `http://127.0.0.1:5174${route}`;
+  // Prefer IPv4 loopback — *.localhost often resolves to ::1 where another Vite app may bind.
+  const url = `http://127.0.0.1:${FE_PORT}${route}`;
   try {
     const res = await fetch(url, {
       redirect: 'follow',
-      headers: { Host: `${slug}.localhost:5174` },
+      headers: { Host: `${slug}.localhost:${FE_PORT}` },
     });
     const text = await res.text();
     const ok = res.ok && (text.includes('HexaBill') || text.includes('root') || text.includes('vite') || text.includes('id="root"'));

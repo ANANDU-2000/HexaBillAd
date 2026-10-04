@@ -145,6 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 2 journeys (PARTIAL)
+- **changed:** bootstrap/journey/shell scripts resolve real owner emails from last bootstrap report; FE port 5173
+- **files:** tier0-local-bootstrap.mjs, tier0-local-journey-verify.mjs, tier0-browser-shell-check.mjs, STATE, TIER0-SIGNOFF
+- **tests+evidence:** API journeys 4× tenants all J1–J7 PASS; shell 33/33×4 PASS; SQLite restore-copy PASS; Zayogya 3 PASS; evidence `Desktop/HexaBill_Backups/master-loop-2-journeys-20261004-105936`
+- **NOT RUN:** tenant-host browser screenshots (*.localhost wrong app); browser HAR; PG migration rollback
+- **flags+rollback:** daily_close still OFF (expected)
+- **next:** slice 3 ledger context; push `4ac380e`+ when GitHub git credentials available
 ### 2026-10-04 — slice 1 PG 44 (BLOCKED)
 - **changed:** none product; scrub follow-up emptied remaining tracked TRN/phone/password seeds
 - **files:** appsettings.json, appsettings.Production.json, Program.cs, CompanySettings.cs, STATE.md

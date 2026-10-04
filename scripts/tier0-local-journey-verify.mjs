@@ -10,9 +10,31 @@ const PASS = process.env.HEXABILL_OWNER_PASSWORD || '';
 const OUT = process.env.HEXABILL_EVIDENCE_DIR
   || path.join(process.env.USERPROFILE, 'OneDrive', 'Desktop', 'HexaBill_Backups', `tier0-api-journeys-${Date.now()}`);
 
-const TENANTS = [
-  { slug: 'frozenhub1', email: 'frozenhub1@hexabill.company', sampleTrn: '900000000000001' },
-  { slug: 'frozenhub2', email: 'frozenhub2@hexabill.company', sampleTrn: '900000000000002' },
+const SAMPLE_TRN = {
+  frozenhub1: '900000000000001',
+  frozenhub2: '900000000000002',
+  gulfharvest: '900000000000003',
+  zayoga: null,
+};
+
+function loadTenantsFromBootstrap() {
+  const dir = path.join(process.env.USERPROFILE || '', 'OneDrive', 'Desktop', 'HexaBill_Backups');
+  if (!fs.existsSync(dir)) return null;
+  const files = fs.readdirSync(dir).filter((f) => f.startsWith('tier0-local-bootstrap-') && f.endsWith('.json')).sort();
+  if (!files.length) return null;
+  const report = JSON.parse(fs.readFileSync(path.join(dir, files[files.length - 1]), 'utf8'));
+  return (report.owners || []).map((o) => ({
+    slug: o.slug,
+    email: o.email,
+    sampleTrn: SAMPLE_TRN[o.slug] ?? null,
+  }));
+}
+
+const TENANTS = loadTenantsFromBootstrap() || [
+  { slug: 'frozenhub1', email: process.env.HEXABILL_FH1_EMAIL || 'frozenhub1@hexabill.company', sampleTrn: SAMPLE_TRN.frozenhub1 },
+  { slug: 'frozenhub2', email: process.env.HEXABILL_FH2_EMAIL || 'frozenhub2@hexabill.company', sampleTrn: SAMPLE_TRN.frozenhub2 },
+  { slug: 'gulfharvest', email: process.env.HEXABILL_GH_EMAIL || 'gulfharvest@hexabill.company', sampleTrn: SAMPLE_TRN.gulfharvest },
+  { slug: 'zayoga', email: process.env.HEXABILL_ZY_EMAIL || 'zayoga@hexabill.company', sampleTrn: null },
 ];
 
 function headers(host, token) {
@@ -66,9 +88,9 @@ async function runTenant(slug, email, sampleTrn) {
   const blob = JSON.stringify(settings);
   results.push({
     journey: 1,
-    name: 'settings header + sample VAT',
-    pass: blob.includes(sampleTrn),
-    detail: { trn: sampleTrn, found: blob.includes(sampleTrn) },
+    name: sampleTrn ? 'settings header + sample VAT' : 'settings header (Zayogya no sample TRN)',
+    pass: sampleTrn ? blob.includes(sampleTrn) : !blob.includes('90000000000000'),
+    detail: { trn: sampleTrn, found: sampleTrn ? blob.includes(sampleTrn) : 'no-sample-expected' },
   });
 
   const products = listItems(await api(host, 'GET', '/api/products?page=1&pageSize=20', null, token));
@@ -143,8 +165,8 @@ async function runTenant(slug, email, sampleTrn) {
 
   results.push({
     journey: 4,
-    name: 'Tax Invoice VAT sample allowed locally',
-    pass: blob.includes(sampleTrn),
+    name: sampleTrn ? 'sample VAT present (SAMPLE INVOICE path)' : 'Zayogya no sample VAT',
+    pass: sampleTrn ? blob.includes(sampleTrn) : !blob.includes('90000000000000'),
     detail: { sampleTrn, saleId },
   });
 

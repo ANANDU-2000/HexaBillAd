@@ -1,33 +1,29 @@
 # Tier 0 sign-off table (Master Loop)
 
 **As of:** 2026-10-04  
-**Code SHA:** `6dc8d9c` on `main`
+**Code SHA:** `4ac380e` on `master-loop-2` (local; push pending GitHub git auth)  
+**Baseline main:** `7edb29b`
 
 | Gate | Status | Evidence |
 |---|---|---|
 | Shared-TRN admin warning | **PASS** | `SharedVatTenantCount` UI + settings PUT warning |
-| Header parity A4/A5/80/58/receipt/mono/AR | **PASS** (unit + PDFs) | `Desktop/HexaBill_Backups/master-loop-header-20261004-102752/` |
-| Browser print live | **NOT RUN** | needs Vite session |
-| Provisioning + legacy redirect | **PASS** (local prior + unit) | Tier0ProvisioningTests; prior local browser |
+| Header parity A4/A5/80/58/receipt/mono/AR/logo | **PASS** | `Desktop/HexaBill_Backups/master-loop-2-headers-20261004-104308` + VERDICT |
+| Browser print live | **NOT RUN** | needs tenant-host Vite session |
+| Provisioning + legacy redirect | **PASS** (local) | `tier0-local-bootstrap` 4 tenants |
 | Legacy settings TenantId | **PASS** | SettingsService TenantId-over-OwnerId |
 | Isolation audit | **PARTIAL** | `docs/plan/ISOLATION-AUDIT.md` |
-| PostgreSQL 44 | **NOT RUN** | no `HEXABILL_TEST_POSTGRES` / docker |
-| Seven journeys (section 9) | **PASS** (prior local) / re-run **NOT RUN** this session | `tier0-local-browser-20261004-091255` |
-| Backup restore on copy | **NOT RUN** | no staging DB copy |
-| Sample TRN never blocks (FH/GH) | **PASS** | SampleVatTrn + Settings auto-fill; Zayogya excluded |
-| D5 profit×5% not VAT | **PASS** | VatReturnReportService + VatReturnPage + FIN12/FIN13 |
-| Zayogya tax/print unchanged | **PASS** | ZayogyaRegressionSnapshotTests |
+| PostgreSQL 44 | **FAIL/BLOCKED** | missing `HEXABILL_TEST_POSTGRES` / postgres password (Docker CLI absent; PG services up on 5432) |
+| Seven journeys (section 9) API ×4 | **PASS** | `master-loop-2-journeys-20261004-105936/api-journey-results.json` |
+| Shell routes ×4 | **PASS** | `shell-route-results.json` 33/33 |
+| Viewport screenshots / HAR | **PARTIAL** | login on 127.0.0.1; tenant host screenshots blocked |
+| Backup restore on copy | **PASS** (SQLite copy) | `sqlite-restore-copy.db` |
+| Migration rollback on PG COPY | **NOT RUN** | no PG test DB |
+| Sample/missing TRN print rules | **PROPOSED** | DECISIONS pending approval; code on branch |
+| D5 profit×5% not VAT | **PASS** | prior slice |
+| Zayogya tax/print unchanged | **PASS** | ZayogyaRegressionSnapshotTests (3) this slice |
 | Production deploy | **BLOCKED** | needs separate Anandu auth |
 
-## Journey re-run checklist (when API+Vite up)
-
-1. Sale → credit/partial → PDF → ledger → payment → receipt → Back  
-2. Purchase → stock → supplier ledger  
-3. Petrol expense → daily close  
-4. Product cost change → historic profit unchanged  
-5. Owner A ↛ Owner B  
-6. Header change → reprint header only  
-7. Empty VAT: Zayogya still blocked for Tax Invoice; FH/GH auto-sample  
+## Commands used
 
 ```bash
 node scripts/tier0-local-bootstrap.mjs

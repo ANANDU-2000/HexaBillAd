@@ -59,15 +59,16 @@ async function login(host, email, password) {
   return token;
 }
 
-async function ensureOwnerPassword(adminToken, tenantId, email) {
+async function ensureOwnerPassword(adminToken, tenantId, preferredEmail) {
   const detail = await api(ADMIN_HOST, 'GET', `/api/superadmin/tenant/${tenantId}`, null, adminToken);
   const data = detail?.data || detail?.Data;
   const users = data?.users || data?.Users || [];
-  const owner = users.find((u) => (u.email || u.Email || '').toLowerCase() === email.toLowerCase())
+  const owner = users.find((u) => (u.email || u.Email || '').toLowerCase() === preferredEmail.toLowerCase())
     || users.find((u) => (u.role || u.Role) === 'Owner')
     || users[0];
   if (!owner) throw new Error(`No users on tenant ${tenantId}`);
   const userId = owner.id ?? owner.Id;
+  const ownerEmail = owner.email || owner.Email || preferredEmail;
   await api(
     ADMIN_HOST,
     'PUT',
@@ -75,7 +76,7 @@ async function ensureOwnerPassword(adminToken, tenantId, email) {
     { newPassword: OWNER_PASSWORD, NewPassword: OWNER_PASSWORD },
     adminToken
   );
-  return userId;
+  return { userId, ownerEmail };
 }
 
 async function seedCommerce(slug, email) {
@@ -171,10 +172,10 @@ async function main() {
       continue;
     }
     const id = row.id ?? row.Id;
-    await ensureOwnerPassword(adminToken, id, t.email);
-    report.owners.push({ slug: t.slug, tenantId: id, email: t.email, password: OWNER_PASSWORD });
-    console.log(`Owner password set for ${t.slug} (${t.email})`);
-    const seed = await seedCommerce(t.slug, t.email);
+    const { ownerEmail } = await ensureOwnerPassword(adminToken, id, t.email);
+    report.owners.push({ slug: t.slug, tenantId: id, email: ownerEmail, preferredEmail: t.email });
+    console.log(`Owner password set for ${t.slug} (login email configured)`);
+    const seed = await seedCommerce(t.slug, ownerEmail);
     report.seeds.push({ slug: t.slug, ...seed });
     console.log(`Seeded commerce for ${t.slug}`);
   }
