@@ -10,6 +10,10 @@ Current release review: [RELEASE-AUDIT-20261004.md](RELEASE-AUDIT-20261004.md), 
 
 **Severity: S1.** `DiagnosticsController.FixMissingColumns` was authorized to tenant Admin/Owner roles. Although SQLite-only, its raw `UPDATE Sales` initialization had no tenant predicate, so one tenant owner could mutate all tenants' `TotalAmount`/`PaidAmount` values. It also performed schema changes outside EF migrations. Retired the endpoint with HTTP 410, restricted access to SystemAdmin, and directed operators to versioned migrations. HTTP integration coverage proves a tenant owner receives 403, SystemAdmin receives 410, and a synthetic tenant-B sale in a repair-triggering state remains untouched. Full PostgreSQL test suite passed after the change. The fix does not close the independent startup migration/readiness risk (REL-011).
 
+## 2026-10-04 — SQL console query literal retention (REL-019)
+
+**Severity: S2.** The SystemAdmin SQL console stored up to 200 characters of successful query text in application logs and audit details and reflected provider exception messages to the caller. Query text can contain literal credentials or client data. Replaced query snippets with a random per-execution ID in both log and audit records, and made failure responses generic. A PostgreSQL-backed controller regression executes a synthetic literal and confirms the literal is not present in persisted audit details. Full backend PostgreSQL suite passed **635/635**, zero skipped; API build passed with zero warnings/errors. Log-provider output is not separately captured in the regression, but code now logs only the random query ID.
+
 ## 2026-10-04 — Codex worktree uncommitted WIP (inventory)
 
 **Path:** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`  

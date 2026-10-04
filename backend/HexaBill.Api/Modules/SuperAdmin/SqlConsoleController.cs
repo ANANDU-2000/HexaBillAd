@@ -69,6 +69,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
 
             // BUG #2.3 FIX: Get admin user ID for AuditLog
             var adminUserId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+            var queryAuditId = Guid.NewGuid().ToString("N");
 
             var rateKey = $"sql_console_rl_{adminUserId}";
             var count = _cache.Get<int>(rateKey);
@@ -144,8 +145,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     sw.Stop();
 
                     _logger.LogWarning(
-                        "SQL console query by user {UserId}: rows={RowCount} ms={Ms} snippet={Snippet}",
-                        adminUserId, rows.Count, sw.ElapsedMilliseconds, query.Substring(0, Math.Min(200, query.Length)));
+                        "SQL console query by user {UserId}: rows={RowCount} ms={Ms} queryId={QueryId}",
+                        adminUserId, rows.Count, sw.ElapsedMilliseconds, queryAuditId);
 
                     // BUG #2.3 FIX: Log every SQL query execution to AuditLog for security auditing
                     try
@@ -156,7 +157,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                             TenantId = 0, // SystemAdmin operations
                             UserId = adminUserId,
                             Action = "SQL Console Query",
-                            Details = $"Executed SQL query: {query.Substring(0, Math.Min(200, query.Length))}... (Rows: {rows.Count}, Time: {sw.ElapsedMilliseconds}ms)",
+                            Details = $"Executed SQL query id: {queryAuditId} (Rows: {rows.Count}, Time: {sw.ElapsedMilliseconds}ms)",
                             CreatedAt = DateTime.UtcNow
                         };
                         _db.AuditLogs.Add(auditLog);
@@ -193,7 +194,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 return Ok(new ApiResponse<SqlConsoleResultDto>
                 {
                     Success = false,
-                    Message = ex.Message,
+                    Message = "Query failed. Check the SQL and database schema.",
                     Data = new SqlConsoleResultDto
                     {
                         Columns = new List<string>(),

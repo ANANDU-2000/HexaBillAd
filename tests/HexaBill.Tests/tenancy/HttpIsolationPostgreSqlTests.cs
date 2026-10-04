@@ -1,8 +1,14 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using HexaBill.Api.Data;
+using HexaBill.Api.Modules.SuperAdmin;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace HexaBill.Tests;
 
@@ -79,6 +85,43 @@ public class HttpIsolationPostgreSqlTests
         using var client = HttpIntegrationClient.Create(factory, factory.TenantAId, factory.TenantAId, factory.SlugA);
         var response = await client.GetAsync($"/api/payments/{factory.PaymentBId}");
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task SqlConsoleAudit_DoesNotPersistQueryLiterals_OnPostgreSql()
+    {
+        var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);
+        const string queryLiteral = "hexabill-synthetic-sensitive-marker";
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        var controller = new SqlConsoleController(db, cache, NullLogger<SqlConsoleController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                    {
+                        new Claim(ClaimTypes.NameIdentifier, factory.TenantAId.ToString()),
+                        new Claim(ClaimTypes.Role, "SystemAdmin")
+                    }, "synthetic-test"))
+                }
+            }
+        };
+        var response = await controller.ExecuteQuery(new SqlConsoleRequest
+        {
+            Query = $"SELECT '{queryLiteral}' AS \"Synthetic\""
+        });
+
+        Assert.IsType<OkObjectResult>(response.Result);
+        var audit = await db.AuditLogs.IgnoreQueryFilters()
+            .Where(a => a.TenantId == 0 && a.UserId == factory.TenantAId && a.Action == "SQL Console Query" && a.Details != null
+                && a.Details.Contains("query id:"))
+            .OrderByDescending(a => a.Id)
+            .FirstAsync();
+        Assert.DoesNotContain(queryLiteral, audit.Details, StringComparison.Ordinal);
     }
 
     [SkippableFact]
