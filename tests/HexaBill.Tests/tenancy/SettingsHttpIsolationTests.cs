@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using HexaBill.Api.Core.Tenancy;
 
 namespace HexaBill.Tests;
 
@@ -30,8 +31,9 @@ public class SettingsHttpIsolationTests
     }
 
     [Fact]
-    public async Task MissingVat_BlocksTaxInvoicePdf_WithoutBlockingSettings_AndDoesNotChangeTenantB()
+    public async Task MissingVat_AllowsOrdinaryInvoicePdf_AndDoesNotChangeTenantB()
     {
+        // D8 / SampleVatTrn: empty VAT blocks Tax Invoice semantics only — ordinary Invoice PDF + sales stay allowed.
         using var a = HttpIntegrationClient.Create(_factory, 1, "tenanta");
         using var b = HttpIntegrationClient.Create(_factory, 2, "tenantb");
         try
@@ -41,15 +43,22 @@ public class SettingsHttpIsolationTests
             (await a.PutAsJsonAsync("/api/settings", new { vat_trn = "", corporate_tax_trn = "100000000000009" })).EnsureSuccessStatusCode();
             var own = await a.GetFromJsonAsync<ServiceResponseStub<CompanySettingsStub>>("/api/settings/company");
             Assert.Equal("", own?.Data?.VatNumber);
-            var blocked = await a.GetAsync("/api/sales/1/pdf");
-            Assert.Equal(HttpStatusCode.BadRequest, blocked.StatusCode);
-            Assert.Contains("VAT TRN", await blocked.Content.ReadAsStringAsync());
+            Assert.Equal("INVOICE", SampleVatTrn.DocumentTitle(own?.Data?.VatNumber));
+
+            var pdf = await a.GetAsync("/api/sales/1/pdf");
+            Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+            var bytes = await pdf.Content.ReadAsByteArrayAsync();
+            Assert.True(bytes.Length > 4);
+            Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+            var pdfText = System.Text.Encoding.Latin1.GetString(bytes);
+            Assert.DoesNotContain("TAX INVOICE", pdfText, StringComparison.OrdinalIgnoreCase);
+
             var create = await a.PostAsJsonAsync("/api/sales", new {
                 customerId = 1,
                 items = new[] { new { productId = 1, unitType = "PIECE", qty = 1m, unitPrice = 10m } }
             });
-            Assert.Equal(HttpStatusCode.BadRequest, create.StatusCode);
-            Assert.Contains("VAT TRN", await create.Content.ReadAsStringAsync());
+            Assert.True(create.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created, $"create={(int)create.StatusCode}");
+
             var other = await b.GetFromJsonAsync<ServiceResponseStub<CompanySettingsStub>>("/api/settings/company");
             Assert.Equal("100000000000002", other?.Data?.VatNumber);
             Assert.Equal(HttpStatusCode.OK, (await b.GetAsync("/api/sales/2/pdf")).StatusCode);

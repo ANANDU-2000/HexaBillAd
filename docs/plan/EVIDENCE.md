@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | Clean verify non-PG | local | WIP | n/a | n/a | n/a | FE 82 + BE !~PostgreSql | green | FE 82; BE 558 passed / 0 failed; D8 empty-VAT Invoice PDF test aligned | SettingsHttpIsolationTests | tested |
 | 2026-10-04 | Pending-pages inventory | local | 19a581b | n/a | n/a | n/a | ROUTE-MANIFEST vs §10 completeness | list gaps | 60 routes shell/smoke-only; full §10 open | Desktop/HexaBill_Backups/pending-pages-61-20261004.json | implemented |
 | 2026-10-04 | §10 field-edge owner ext | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 12 pages ×4 | non-blank shells | ok=48 fail=0 warn=4 | Desktop/HexaBill_Backups/field-edge-owner-ext-final-20261004 | tested |
 | 2026-10-04 | §10 field-edge staff | local | WIP | FH1/FH2/GH/ZY | staff | 360 | 12 pages ×4 | non-blank shells | ok=48 fail=0 warn=16 | Desktop/HexaBill_Backups/field-edge-staff-final-20261004 | tested |
