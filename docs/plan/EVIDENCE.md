@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | Phase3 live ledger+receipt | local Vite+API | 9b84799 | FH1 | owner | 5 VPs | `/ledger`+`/sales-ledger` + reprint HAR | shells + ≤1 receipt POST | ledgerOk=10 fail=0; receiptPosts=0 reprintSafe | Desktop/HexaBill_Backups/ledger-receipt-live-reverify-20261004 | tested |
 | 2026-10-04 | §10 clear md:min-h-9/sm:min-h-0 | local | WIP | n/a | n/a | n/a | rg + code force min-h-[44px] on remaining Phase7/8 controls | 0 shrink hits in src jsx | 0 hits; Zayogya 8 | DashboardTally/Expenses/Purchases/… | implemented |
 | 2026-10-04 | Push main + master-loop-2 | github | 60cdc51 | n/a | n/a | n/a | DailyClose/AuditLog/Products delete CTAs | remote tip = local | both at `60cdc51` | https://github.com/ANANDU-2000/HexaBillAd | tested |
 | 2026-10-04 | Push main + master-loop-2 | github | a1161e7 | n/a | n/a | n/a | push CTA commits to both tips | remote tip = local | both at `a1161e7` | https://github.com/ANANDU-2000/HexaBillAd | tested |

@@ -146,6 +146,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice Phase 3 live ledger+receipt re-verify (PARTIAL)
+- **changed:** docs only; ran `phase3-ledger-receipt-evidence.mjs` against live API:5000 + Vite:5173
+- **files:** STATE.md, EVIDENCE.md, PHASE-TODO.md
+- **tests+evidence:** FH1 owner 5VP ledger+sales-ledger **ledgerOk=10 fail=0**; reprint HAR **receiptPosts=0 reprintSafe=true**; artifact `Desktop/HexaBill_Backups/ledger-receipt-live-reverify-20261004`
+- **NOT RUN / blocked:** Phase 6 accountant fixtures; Phases 9–11; full §10 field-by-field; production deploy
+- **flags+rollback:** none
+- **next:** Phase 6 waits on fixtures; Phases 9–11 gated
+
 ### 2026-10-04 — slice §10 clear remaining md:min-h-9 / sm:min-h-0 (PARTIAL)
 - **changed:** force `min-h-[44px]` across Billing History, Reports, POS drawer, Products row actions, Branch/Route links, Expenses/Purchases filters, DashboardTally, Return create; DailyClose/AuditLog already at tip
 - **files:** BillingHistoryPage, ReportsPage, ProductDrawer, ProductsPage, BranchDetailPage, RouteDetailPage, ExpensesPage, PurchasesPage, DashboardTally, ReturnCreatePage, STATE.md, EVIDENCE.md

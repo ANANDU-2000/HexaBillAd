@@ -38,7 +38,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 |---|---|---|
 | 1 Clean build / versions | **PASS** | `6dc8d9c`; deploy SHAs UNVERIFIED |
 | 2 Isolation hardening | **PASS** | SQLite + PG 55/55 |
-| 3 Payments/receipts | **PARTIAL** | code+unit; live re-verify NOT RUN |
+| 3 Payments/receipts | **PARTIAL** | code+unit; live re-verify **PASS** (ledgerOk=10; receiptPosts=0 reprintSafe) 2026-10-04 |
 | 4 Cost snapshots / D9 | **PARTIAL** | flags OFF; unit PASS |
 | 5 Daily Close | **PARTIAL** | flag OFF; unit PASS |
 | 6 Margin VAT | **BLOCKED** | **missing input:** accountant written fixtures (eligible txns, effective date, invoice/return rules, expected figures); D5 stop-gap done |
