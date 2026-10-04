@@ -110,7 +110,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
 | 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 @360 (148) + superadmin 9 + param detail 12 (cust/prod/DN); platform metrics metadata; remaining param IDs + 5VP NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 @360 (148) + superadmin 9 + param detail 20 (cust/prod/supplier/branch/DN ×4); platform metrics; route/quote/agreement/salary IDs + 5VP NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -148,8 +148,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ### 2026-10-04 — slice 7 cleanup scrub + Phase 8 params (PARTIAL)
 - **changed:** scrubbed local gitignored `appsettings.Development.json`; removed empty root `package.json`/`package-lock.json`; param-route screenshots for customers/products/delivery-notes × 4 tenants
 - **files:** CLEANUP-REPORT.md, phase8-param-routes.mjs, STATE.md (+ local Dev json not committed)
-- **tests+evidence:** Zayogya **8 PASS**; param report `ok=12 fail=0` under `phase8-shell-20261004/params/`; tracked appsettings already synthetic
-- **NOT RUN:** supplier/branch/route/quotation/agreement/salary detail (no seed IDs); staff role; full 5VP for Phase 8 pages
+- **tests+evidence:** Zayogya **8 PASS**; param report `ok=20 fail=0` (cust/prod/supplier/branch/DN ×4) under `phase8-shell-20261004/params/`; tracked appsettings already synthetic
+- **NOT RUN:** routes/quotations/agreements/salary detail (no seed IDs); staff role; full 5VP for Phase 8 pages
 - **flags+rollback:** local DB may still hold pre-scrub owner email until reseed
 - **next:** seed missing masters for remaining param routes OR mark blocked; push when git auth available; Phases 9–11 still gated
 

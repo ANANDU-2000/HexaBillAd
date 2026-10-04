@@ -100,8 +100,8 @@ async function resolveIds (slug, token) {
     api(slug, token, '/api/agreements?page=1&pageSize=5'),
     api(slug, token, '/api/salary-certificates?page=1&pageSize=5'),
   ])
-  const supplier = firstItem(sup.json) || (Array.isArray(sup.json?.data) ? sup.json.data[0] : null)
-  const supplierName = supplier?.name || supplier?.Name || null
+  const supplier = firstItem(sup.json) || (Array.isArray(sup.json?.data) ? sup.json.data[0] : Array.isArray(sup.json?.Data) ? sup.json.Data[0] : null)
+  const supplierName = supplier?.supplierName || supplier?.SupplierName || supplier?.name || supplier?.Name || null
   return {
     customerId: idOf(firstItem(cust.json)),
     productId: idOf(firstItem(prod.json)),
