@@ -41,7 +41,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | 3 Payments/receipts | **PARTIAL** | code+unit; live re-verify NOT RUN |
 | 4 Cost snapshots / D9 | **PARTIAL** | flags OFF; unit PASS |
 | 5 Daily Close | **PARTIAL** | flag OFF; unit PASS |
-| 6 Margin VAT | **BLOCKED** | accountant fixtures; D5 stop-gap done |
+| 6 Margin VAT | **BLOCKED** | **missing input:** accountant written fixtures (eligible txns, effective date, invoice/return rules, expected figures); D5 stop-gap done |
 | 7 Shell UX | **PARTIAL** | shells 4×6×5 + §10 static-36×4@360 + owner static-36×4×5VP (720); full field matrix open |
 | 8 Remaining routes | **PARTIAL** | static/param shells + §10 static-36 smoke@5VP; full field matrix open |
 | 9 AI | **TODO** | |

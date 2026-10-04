@@ -13,9 +13,9 @@ import { readSuppliersStateFromParams, syncSuppliersSearchParams } from '../../u
 
 const PAGE_SIZE = 25
 const fieldClass = 'w-full h-11 sm:h-9 px-3 text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500'
-const btnPrimary = 'inline-flex items-center justify-center gap-1.5 h-11 sm:h-9 px-3 text-sm font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-60'
-const btnOutline = 'inline-flex items-center justify-center h-11 sm:h-9 px-3 text-sm font-medium border border-neutral-300 rounded-md text-neutral-800 bg-white hover:bg-neutral-50'
-const iconBtn = 'inline-flex items-center justify-center h-11 w-11 sm:h-9 sm:w-9 rounded-md text-neutral-700 hover:bg-neutral-100'
+const btnPrimary = 'inline-flex items-center justify-center gap-1.5 min-h-[44px] h-11 px-3 text-sm font-semibold bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-60'
+const btnOutline = 'inline-flex items-center justify-center min-h-[44px] h-11 px-3 text-sm font-medium border border-neutral-300 rounded-md text-neutral-800 bg-white hover:bg-neutral-50'
+const iconBtn = 'inline-flex items-center justify-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-md text-neutral-700 hover:bg-neutral-100'
 
 const emptyForm = { name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' }
 
