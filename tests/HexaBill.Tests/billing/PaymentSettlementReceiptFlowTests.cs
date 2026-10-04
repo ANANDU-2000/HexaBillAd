@@ -16,6 +16,42 @@ namespace HexaBill.Tests;
 public class PaymentSettlementReceiptFlowTests
 {
     [Fact]
+    public async Task PaymentMutations_OnClosedBusinessDay_AreRejected()
+    {
+        await using var db = await DatabaseAsync();
+        var paymentDate = new DateTime(2026, 10, 4, 20, 30, 0, DateTimeKind.Utc);
+        var businessDate = DailyClosePostingGuard.ToBusinessDate(paymentDate);
+        db.DailyCashCloses.Add(new DailyCashClose
+        {
+            TenantId = 10, OwnerId = 10, BusinessDate = businessDate, Version = 1,
+            Status = DailyCashCloseStatus.Closed, CreatedByUserId = 1,
+            CreatedAt = paymentDate, UpdatedAt = paymentDate, ClosedAt = paymentDate, ClosedByUserId = 1
+        });
+        db.Payments.Add(new Payment
+        {
+            OwnerId = 10, TenantId = 10, SaleId = 1, CustomerId = 1, Amount = 10m,
+            Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED, PaymentDate = paymentDate,
+            CreatedBy = 1, CreatedAt = paymentDate
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var validation = new ValidationService(db);
+        var payments = new PaymentService(db, NullLogger<PaymentService>.Instance, validation, null!, null!);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => payments.CreatePaymentAsync(
+            new CreatePaymentRequest { SaleId = 1, CustomerId = 1, Amount = 11m, Mode = "CASH", PaymentDate = paymentDate }, 1, 10));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => payments.UpdatePaymentStatusAsync(1, PaymentStatus.VOID, 1, 10));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => payments.UpdatePaymentAsync(1,
+            new UpdatePaymentRequest { Amount = 5m, PaymentDate = paymentDate }, 1, 10));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => payments.DeletePaymentAsync(1, 1, 10));
+
+        db.ChangeTracker.Clear();
+        var retained = await db.Payments.IgnoreQueryFilters().SingleAsync(p => p.Id == 1);
+        Assert.Equal(10m, retained.Amount);
+        Assert.Equal(PaymentStatus.CLEARED, retained.Status);
+    }
+
+    [Fact]
     public async Task CreatePaymentWithAdjustment_ReceiptOnCashLine_IncludesPairedShortfall()
     {
         await using var db = await DatabaseAsync();

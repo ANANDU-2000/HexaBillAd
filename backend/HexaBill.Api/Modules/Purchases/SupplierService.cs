@@ -10,6 +10,7 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.DailyClose;
 
 namespace HexaBill.Api.Modules.Purchases
 {
@@ -272,39 +273,47 @@ namespace HexaBill.Api.Modules.Purchases
         {
             if (amount <= 0)
                 throw new ArgumentException("Payment amount must be positive.", nameof(amount));
+            var effectivePaymentDate = paymentDate == default ? DateTime.UtcNow : paymentDate.ToUtcKind();
             // Phase 11.2: Validate PaymentDate not future
             var today = DateTime.UtcNow.Date;
-            var payDate = paymentDate.ToUtcKind().Date;
+            var payDate = effectivePaymentDate.Date;
             if (payDate > today)
                 throw new ArgumentException("Payment date cannot be in the future. Please use today's date or earlier.", nameof(paymentDate));
 
-            var payment = new SupplierPayment
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                TenantId = tenantId,
-                SupplierName = supplierName,
-                Amount = amount,
-                PaymentDate = paymentDate == default ? DateTime.UtcNow : paymentDate.ToUtcKind(),
-                Mode = mode,
-                Reference = reference,
-                Notes = notes,
-                CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, effectivePaymentDate, branchId: null);
 
-            _context.SupplierPayments.Add(payment);
-            await _context.SaveChangesAsync();
+                var payment = new SupplierPayment
+                {
+                    TenantId = tenantId,
+                    SupplierName = supplierName,
+                    Amount = amount,
+                    PaymentDate = effectivePaymentDate,
+                    Mode = mode,
+                    Reference = reference,
+                    Notes = notes,
+                    CreatedBy = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            return new SupplierPaymentDto
-            {
-                Id = payment.Id,
-                SupplierName = payment.SupplierName,
-                Amount = payment.Amount,
-                PaymentDate = payment.PaymentDate,
-                Mode = payment.Mode.ToString(),
-                Reference = payment.Reference,
-                Notes = payment.Notes,
-                CreatedAt = payment.CreatedAt
-            };
+                _context.SupplierPayments.Add(payment);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return new SupplierPaymentDto
+                {
+                    Id = payment.Id,
+                    SupplierName = payment.SupplierName,
+                    Amount = payment.Amount,
+                    PaymentDate = payment.PaymentDate,
+                    Mode = payment.Mode.ToString(),
+                    Reference = payment.Reference,
+                    Notes = payment.Notes,
+                    CreatedAt = payment.CreatedAt
+                };
+            });
         }
 
         public async Task<SupplierLedgerCreditDto> CreateLedgerCreditAsync(int tenantId, string supplierName, decimal amount, DateTime creditDate, string creditType, string? notes, int userId)
@@ -353,39 +362,57 @@ namespace HexaBill.Api.Modules.Purchases
             if (payDate > DateTime.UtcNow.Date)
                 throw new ArgumentException("Payment date cannot be in the future.", nameof(paymentDate));
 
-            var payment = await _context.SupplierPayments
-                .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
-            if (payment == null) return null;
-
-            payment.Amount = amount;
-            payment.PaymentDate = payDate;
-            payment.Mode = mode;
-            payment.Reference = reference;
-            payment.Notes = notes;
-            await _context.SaveChangesAsync();
-
-            return new SupplierPaymentDto
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                Id = payment.Id,
-                SupplierName = payment.SupplierName,
-                Amount = payment.Amount,
-                PaymentDate = payment.PaymentDate,
-                Mode = payment.Mode.ToString(),
-                Reference = payment.Reference,
-                Notes = payment.Notes,
-                CreatedAt = payment.CreatedAt
-            };
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                var payment = await _context.SupplierPayments
+                    .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
+                if (payment == null) return null;
+
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, new[]
+                {
+                    (payment.PaymentDate, (int?)null),
+                    (payDate, (int?)null)
+                });
+
+                payment.Amount = amount;
+                payment.PaymentDate = payDate;
+                payment.Mode = mode;
+                payment.Reference = reference;
+                payment.Notes = notes;
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return new SupplierPaymentDto
+                {
+                    Id = payment.Id,
+                    SupplierName = payment.SupplierName,
+                    Amount = payment.Amount,
+                    PaymentDate = payment.PaymentDate,
+                    Mode = payment.Mode.ToString(),
+                    Reference = payment.Reference,
+                    Notes = payment.Notes,
+                    CreatedAt = payment.CreatedAt
+                };
+            });
         }
 
         /// <summary>Delete a supplier payment. Does not affect stock; balance is recalculated from remaining purchases and payments on next read.</summary>
         public async Task<bool> DeleteSupplierPaymentAsync(int tenantId, int paymentId)
         {
-            var payment = await _context.SupplierPayments
-                .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
-            if (payment == null) return false;
-            _context.SupplierPayments.Remove(payment);
-            await _context.SaveChangesAsync();
-            return true;
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                var payment = await _context.SupplierPayments
+                    .FirstOrDefaultAsync(p => p.Id == paymentId && p.TenantId == tenantId);
+                if (payment == null) return false;
+
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, payment.PaymentDate, branchId: null);
+                _context.SupplierPayments.Remove(payment);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            });
         }
 
         public async Task<List<string>> SearchSupplierNamesAsync(int tenantId, string query, int limit = 20)

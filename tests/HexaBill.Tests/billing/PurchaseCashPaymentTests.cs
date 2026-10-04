@@ -127,6 +127,88 @@ public class PurchaseCashPaymentTests
         Assert.Equal(500m - dto.TotalAmount, preview.ExpectedCash);
     }
 
+    [Fact]
+    public async Task CreatePurchase_OnClosedBusinessDay_IsRejectedWithoutStockOrSupplierPaymentChanges()
+    {
+        await using var db = await DatabaseAsync(enableDailyClose: true);
+        var businessDate = new DateTime(2026, 10, 5, 0, 0, 0, DateTimeKind.Utc);
+        var close = new DailyCloseService(db, new TimeZoneService(), new AuditNoop(), new AlertNoop(), new SalesSchemaNoBranch());
+        await close.SaveCloseAsync(new SaveDailyCloseRequest
+        {
+            BusinessDate = businessDate,
+            OpeningCash = 500m,
+            CountedCash = 500m,
+            SubmitClose = true
+        }, 10, 1, canSubmitClose: true);
+
+        var service = new PurchaseService(db, new VatStub().Object);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreatePurchaseAsync(
+            new CreatePurchaseRequest
+            {
+                SupplierName = "Closed-day supplier",
+                InvoiceNo = "CLOSED-CLOSE-1",
+                PurchaseDate = new DateTime(2026, 10, 5, 12, 0, 0, DateTimeKind.Utc),
+                PaymentType = "Cash",
+                Items = [new PurchaseItemRequest { ProductId = 1, UnitType = "PIECE", Qty = 1m, UnitCost = 10m }]
+            }, userId: 1, tenantId: 10));
+
+        Assert.Empty(await db.Purchases.IgnoreQueryFilters().Where(p => p.TenantId == 10).ToListAsync());
+        Assert.Empty(await db.SupplierPayments.IgnoreQueryFilters().Where(p => p.TenantId == 10).ToListAsync());
+        Assert.Equal(0m, await db.Products.Where(p => p.Id == 1 && p.TenantId == 10).Select(p => p.StockQty).SingleAsync());
+    }
+
+    [Fact]
+    public async Task CreateSupplierPayment_OnClosedBusinessDay_IsRejected()
+    {
+        await using var db = await DatabaseAsync(enableDailyClose: true);
+        var paymentDate = DateTime.UtcNow;
+        var businessDate = DailyClosePostingGuard.ToBusinessDate(paymentDate);
+        var service = new SupplierService(db);
+        var existingPayment = await service.CreateSupplierPaymentAsync(
+            tenantId: 10,
+            supplierName: "Closed-day supplier",
+            amount: 25m,
+            paymentDate: paymentDate,
+            mode: SupplierPaymentMode.Cash,
+            reference: "BEFORE-CLOSE",
+            notes: null,
+            userId: 1);
+        var close = new DailyCloseService(db, new TimeZoneService(), new AuditNoop(), new AlertNoop(), new SalesSchemaNoBranch());
+        await close.SaveCloseAsync(new SaveDailyCloseRequest
+        {
+            BusinessDate = businessDate,
+            OpeningCash = 500m,
+            CountedCash = 475m,
+            SubmitClose = true
+        }, 10, 1, canSubmitClose: true);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateSupplierPaymentAsync(
+            tenantId: 10,
+            supplierName: "Closed-day supplier",
+            amount: 25m,
+            paymentDate: paymentDate,
+            mode: SupplierPaymentMode.Cash,
+            reference: "CLOSED-1",
+            notes: null,
+            userId: 1));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.UpdateSupplierPaymentAsync(
+            tenantId: 10,
+            paymentId: existingPayment.Id,
+            amount: 30m,
+            paymentDate: paymentDate,
+            mode: SupplierPaymentMode.Cash,
+            reference: "AFTER-CLOSE",
+            notes: null));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.DeleteSupplierPaymentAsync(10, existingPayment.Id));
+
+        var remaining = await db.SupplierPayments.IgnoreQueryFilters().Where(p => p.TenantId == 10).ToListAsync();
+        var retainedPayment = Assert.Single(remaining);
+        Assert.Equal(25m, retainedPayment.Amount);
+        Assert.Equal("BEFORE-CLOSE", retainedPayment.Reference);
+    }
+
     private static async Task<AppDbContext> DatabaseAsync(bool enableDailyClose = false)
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=:memory:").Options);

@@ -101,7 +101,6 @@ public class DailyCloseService : IDailyCloseService
         if (request.Amount <= 0)
             throw new ArgumentException("Amount must be greater than zero.");
         var businessDate = NormalizeBusinessDate(request.BusinessDate);
-        await EnsureDayUnlockedAsync(tenantId, businessDate, request.BranchId);
 
         var kind = ParseMovementKind(request.Kind);
         var (start, end) = GstDayRange(businessDate);
@@ -125,8 +124,22 @@ public class DailyCloseService : IDailyCloseService
             CreatedByUserId = userId,
             CreatedAt = DateTime.UtcNow
         };
-        _context.CashDrawerMovements.Add(row);
-        await _context.SaveChangesAsync();
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, movementAt, request.BranchId);
+                _context.CashDrawerMovements.Add(row);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
         await _audit.LogAsync("Cash drawer movement recorded", "CashDrawerMovement", row.Id,
             details: $"{kind} {row.Amount:F2} AED", actingUserId: userId);
         return MapMovement(row);
@@ -137,13 +150,25 @@ public class DailyCloseService : IDailyCloseService
         await EnsureFeatureEnabledAsync(tenantId);
         if (!canManage)
             throw new UnauthorizedAccessException("Only an owner or admin can delete capital or transfer movements.");
-        var row = await _context.CashDrawerMovements.FirstOrDefaultAsync(m => m.Id == movementId && m.TenantId == tenantId);
-        if (row == null)
-            throw new InvalidOperationException("Movement not found.");
-        var businessDate = NormalizeBusinessDate(row.MovementDate);
-        await EnsureDayUnlockedAsync(tenantId, businessDate, row.BranchId);
-        _context.CashDrawerMovements.Remove(row);
-        await _context.SaveChangesAsync();
+        await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var row = await _context.CashDrawerMovements.FirstOrDefaultAsync(m => m.Id == movementId && m.TenantId == tenantId);
+                if (row == null)
+                    throw new InvalidOperationException("Movement not found.");
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, row.MovementDate, row.BranchId);
+                _context.CashDrawerMovements.Remove(row);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        });
         await _audit.LogAsync("Cash drawer movement deleted", "CashDrawerMovement", movementId, actingUserId: userId);
     }
 
@@ -476,13 +501,6 @@ public class DailyCloseService : IDailyCloseService
             bankToDrawer,
             drawerToBank,
             drawerRows.Count);
-    }
-
-    private async Task EnsureDayUnlockedAsync(int tenantId, DateTime businessDate, int? branchId)
-    {
-        var status = await GetStatusAsync(tenantId, businessDate, branchId);
-        if (status.IsLocked)
-            throw new InvalidOperationException("This business day is closed. Reopen it before changing capital or transfer movements.");
     }
 
     private static CashDrawerMovementKind ParseMovementKind(string? value)

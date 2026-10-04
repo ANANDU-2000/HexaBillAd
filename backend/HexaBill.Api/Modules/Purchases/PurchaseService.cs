@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.DailyClose;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.SuperAdmin;
 
@@ -364,6 +365,9 @@ namespace HexaBill.Api.Modules.Purchases
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                var purchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : request.PurchaseDate.ToUtcKind();
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, purchaseDate, branchId: null);
+
                 // VAT CALCULATION LOGIC
                 // CRITICAL: Purchase bills show Unit Cost EXCLUDING VAT (like sales invoices)
                 // Default: Costs EXCLUDE VAT (matching real purchase invoices)
@@ -475,7 +479,6 @@ namespace HexaBill.Api.Modules.Purchases
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                var purchaseDate = request.PurchaseDate == default ? DateTime.UtcNow : request.PurchaseDate.ToUtcKind();
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchaseDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot add or edit transactions in a locked period.");
                 var paymentType = NormalizePurchasePaymentType(request.PaymentType);
@@ -579,6 +582,12 @@ namespace HexaBill.Api.Modules.Purchases
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                var targetPurchaseDate = request.PurchaseDate == default ? purchase.PurchaseDate : request.PurchaseDate.ToUtcKind();
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, new[]
+                {
+                    (purchase.PurchaseDate, (int?)null),
+                    (targetPurchaseDate, (int?)null)
+                });
                 var previousItems = purchase.Items.ToList();
                 var capturePurchaseEvidence = await PurchaseCostSnapshotsEnabledAsync(tenantId);
 
@@ -615,7 +624,7 @@ namespace HexaBill.Api.Modules.Purchases
                 // Update purchase details
                 purchase.SupplierName = request.SupplierName;
                 purchase.InvoiceNo = request.InvoiceNo ?? purchase.InvoiceNo;
-                purchase.PurchaseDate = request.PurchaseDate == default ? purchase.PurchaseDate : request.PurchaseDate.ToUtcKind();
+                purchase.PurchaseDate = targetPurchaseDate;
                 purchase.ExpenseCategory = request.ExpenseCategory;
 
                 // VAT CALCULATION LOGIC (same as CreatePurchase)

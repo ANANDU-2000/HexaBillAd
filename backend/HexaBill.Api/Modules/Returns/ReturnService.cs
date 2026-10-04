@@ -9,6 +9,7 @@ using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Purchases;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Modules.DailyClose;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -95,6 +96,10 @@ namespace HexaBill.Api.Modules.Returns
                     .FirstOrDefaultAsync();
                 if (header == null || header.IsDeleted)
                     throw new InvalidOperationException("Original sale not found");
+                int? saleBranchId = null;
+                if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
+                    saleBranchId = await _context.Sales.Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
+                        .Select(s => s.BranchId).FirstOrDefaultAsync();
                 var items = await _context.SaleItems
                     .Where(si => si.SaleId == request.SaleId)
                     .Include(si => si.Product)
@@ -105,10 +110,11 @@ namespace HexaBill.Api.Modules.Returns
                     TenantId = header.TenantId ?? tenantId,
                     CustomerId = header.CustomerId,
                     GrandTotal = header.GrandTotal,
-                    BranchId = null,
+                    BranchId = saleBranchId,
                     RouteId = null,
                     Items = items
                 };
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, DateTime.UtcNow, saleInfo.BranchId);
 
                 // Already-returned qty per SaleItemId (all returns for this sale, tenant-scoped)
                 var alreadyReturnedBySaleItemId = await _context.SaleReturnItems
@@ -765,6 +771,7 @@ namespace HexaBill.Api.Modules.Returns
                         .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
                     if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, DateTime.UtcNow, ret.BranchId);
 
                     var inventoryTransactions = new List<InventoryTransaction>();
                     foreach (var item in ret.Items.Where(i => i.StockEffect == true))
@@ -952,6 +959,8 @@ namespace HexaBill.Api.Modules.Returns
                     }
 
                     var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId && p.TenantId == tenantId).ToListAsync();
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId,
+                        refundPayments.Select(p => (p.PaymentDate, ret.BranchId)).DefaultIfEmpty((DateTime.UtcNow, ret.BranchId)));
                     foreach (var payment in refundPayments.Where(p => p.Status != PaymentStatus.VOID))
                         payment.Status = PaymentStatus.VOID;
 

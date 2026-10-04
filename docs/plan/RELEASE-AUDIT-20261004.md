@@ -112,6 +112,12 @@ Reviewed the daily-close service and ordinary sale, payment, purchase, and expen
 
 After this expense guard, the full backend suite passed 577, failed 0, and skipped 45 PostgreSQL-only tests because `HEXABILL_TEST_POSTGRES` was not configured. The earlier 618/0/0 PostgreSQL-enabled baseline predates this code change and is not treated as proof of its advisory-lock behavior.
 
+## Stage A iteration: daily-close money-path expansion
+
+Extended `DailyClosePostingGuard` into sale create/update/delete and generated receipt paths, invoice payment create/status/edit/delete/allocation, purchase create/update, supplier payment create/update/delete, and sale-return create/approve/refund-reversal. Cash-drawer movement create/delete now hold the same advisory lock through their database write, closing the previous check-then-write race. The close uses the shared advisory key as well. The focused close/payment/purchase/return run passed 57, failed 0, with 4 PostgreSQL-only skips. The full backend run passed 580, failed 0, and skipped 45 PostgreSQL-only tests because `HEXABILL_TEST_POSTGRES` was not configured.
+
+REL-010 remains PARTIAL: credit-note application/refund paths and some return reversal/deletion paths still need review and guards, sale-wide branch/date scenarios need direct regressions, and the PostgreSQL close-vs-post race is not proven. This slice is local only; no production write, feature enablement, push, merge or deploy occurred.
+
 ## Stage A iteration: owner-reset tenant/data safety
 
 Static review found `ResetController.owner-reset` allowed any tenant owner to request a hard reset in production even though system reset was disabled there. `ResetOwnerDataAsync` also deleted global (`TenantId=0`) alerts from one tenant's request, emitted an audit row without TenantId (which the request-tenant write guard rejects), and did not wrap the destructive batch in a transaction. Added a production refusal using `IHostEnvironment`, restricted access to the Owner role, restricted alert deletion to the requested tenant, attached tenant/owner identity to the reset audit, and wrapped the deletion/reset/audit operations in one DB transaction. Synthetic tests verify production refusal occurs before service invocation, Admin access is refused, and SQLite reset preserves platform + other-tenant alerts while removing only the target tenant's alert. Targeted tests: 3 passed, 0 failed, 0 skipped. REL-017 implemented locally; no production write/deploy occurred.

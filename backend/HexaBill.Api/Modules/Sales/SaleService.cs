@@ -12,6 +12,7 @@ using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Modules.DailyClose;
 using Npgsql;
 
 namespace HexaBill.Api.Modules.Sales
@@ -705,6 +706,10 @@ namespace HexaBill.Api.Modules.Sales
                 var invoiceDate = (request.InvoiceDate ?? _timeZoneService.GetDefaultInvoiceDateUtc()).ToUtcKind();
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, invoiceDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.");
+                var salePostingScopes = new List<(DateTime TransactionDateUtc, int? BranchId)> { (invoiceDate, request.BranchId) };
+                if (!request.CustomerId.HasValue || request.Payments?.Any(p => p.Amount > 0) == true)
+                    salePostingScopes.Add((DateTime.UtcNow, request.BranchId));
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, salePostingScopes);
 
                 // CRITICAL MULTI-TENANT FIX: Validate customer belongs to this owner and load customer
                 Customer? customer = null;
@@ -1676,6 +1681,17 @@ namespace HexaBill.Api.Modules.Sales
                 if (saleForUpdate == null)
                     throw new InvalidOperationException("Sale not found or does not belong to your tenant");
 
+                var oldPayments = await _context.Payments.Where(p => p.SaleId == saleId && p.TenantId == tenantId).ToListAsync();
+                var updatePostingScopes = new List<(DateTime TransactionDateUtc, int? BranchId)>
+                {
+                    (existingSale.InvoiceDate, existingSale.BranchId),
+                    (request.InvoiceDate ?? existingSale.InvoiceDate, request.BranchId ?? existingSale.BranchId)
+                };
+                updatePostingScopes.AddRange(oldPayments.Select(p => (p.PaymentDate, existingSale.BranchId)));
+                if (!request.CustomerId.HasValue || request.Payments?.Any(p => p.Amount > 0) == true)
+                    updatePostingScopes.Add((DateTime.UtcNow, request.BranchId ?? existingSale.BranchId));
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, updatePostingScopes);
+
                 if (saleForUpdate == null)
                     throw new InvalidOperationException("Sale not found");
 
@@ -2056,8 +2072,6 @@ namespace HexaBill.Api.Modules.Sales
                     grandTotal);
                 
                 // Get old payments to properly reverse their effects
-                var oldPayments = await _context.Payments.Where(p => p.SaleId == saleId).ToListAsync();
-                
                 // STEP 1: Reverse ALL old invoice effects (balance + payments)
                 if (oldCustomerId.HasValue)
                 {
@@ -2401,6 +2415,13 @@ namespace HexaBill.Api.Modules.Sales
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, sale.InvoiceDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot delete transactions in a locked period.");
 
+                var relatedPayments = await _context.Payments
+                    .Where(p => p.SaleId == saleId && p.TenantId == tenantId)
+                    .ToListAsync();
+                var deletePostingScopes = new List<(DateTime TransactionDateUtc, int? BranchId)> { (sale.InvoiceDate, sale.BranchId) };
+                deletePostingScopes.AddRange(relatedPayments.Select(p => (p.PaymentDate, sale.BranchId)));
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, deletePostingScopes);
+
                 // REVERSE TRANSACTIONS: Restore stock when invoice is canceled/deleted
                 // Only restore if invoice was finalized (stock was decremented)
                 if (sale.IsFinalized)
@@ -2442,10 +2463,6 @@ namespace HexaBill.Api.Modules.Sales
                 }
 
                 // CRITICAL: Delete or void all related payments
-                var relatedPayments = await _context.Payments
-                    .Where(p => p.SaleId == saleId)
-                    .ToListAsync();
-
                 foreach (var payment in relatedPayments)
                 {
                     // If payment was cleared, reverse its effects before deletion

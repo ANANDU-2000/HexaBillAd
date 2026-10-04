@@ -12,6 +12,7 @@ using HexaBill.Api.Modules.Notifications;
 using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Sales;
 using HexaBill.Api.Modules.SuperAdmin;
+using HexaBill.Api.Modules.DailyClose;
 
 namespace HexaBill.Api.Modules.Payments
 {
@@ -316,6 +317,7 @@ namespace HexaBill.Api.Modules.Payments
                         : (request.Mode == "CASH" || request.Mode == "ONLINE" ? PaymentStatus.CLEARED : PaymentStatus.PENDING);
                     var paymentMode = Enum.Parse<PaymentMode>(request.Mode);
                     var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, paymentDate, invoiceSale?.BranchId);
 
                     var payment = new Payment
                     {
@@ -482,6 +484,7 @@ namespace HexaBill.Api.Modules.Payments
                 var oldStatus = payment.Status;
                 if (oldStatus == PaymentStatus.VOID && status != PaymentStatus.VOID)
                     throw new ArgumentException("A voided payment cannot be reactivated. Record a new payment with a new request key.");
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, payment.PaymentDate, payment.Sale?.BranchId);
                 payment.Status = status;
                 payment.UpdatedAt = DateTime.UtcNow;
 
@@ -638,6 +641,15 @@ namespace HexaBill.Api.Modules.Payments
                     newInvoiceNo = null;
                 }
             }
+
+            var targetSaleForClose = payment.SaleId.HasValue
+                ? await _context.Sales.FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId)
+                : null;
+            await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, new[]
+            {
+                (payment.PaymentDate, payment.Sale?.BranchId),
+                (payment.PaymentDate, targetSaleForClose?.BranchId)
+            });
 
             var newAmount = payment.Amount;
             var newStatus = payment.Status;
@@ -796,6 +808,7 @@ namespace HexaBill.Api.Modules.Payments
                     var payment = await GetPaymentForMutationAsync(paymentId, tenantId);
                     if (payment == null) return false;
                     if (payment.Status == PaymentStatus.VOID) return true;
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, payment.PaymentDate, payment.Sale?.BranchId);
 
                     var affected = new List<Payment> { payment };
                     if (!payment.IsSettlementAdjustment)
@@ -952,6 +965,15 @@ namespace HexaBill.Api.Modules.Payments
                 // Get outstanding invoices ordered by date (oldest first)
                 var outstandingInvoices = await GetOutstandingInvoicesAsync(request.CustomerId.Value, tenantId);
                 outstandingInvoices = outstandingInvoices.OrderBy(i => i.InvoiceDate).ToList();
+                var paymentDate = (request.PaymentDate ?? DateTime.UtcNow).ToUtcKind();
+                var allocationInvoiceIds = (request.Allocations ?? new List<AllocationItem>())
+                    .Where(a => a.Amount > 0 && outstandingInvoices.Any(i => i.Id == a.InvoiceId))
+                    .Select(a => a.InvoiceId).Distinct().ToList();
+                var allocationSales = allocationInvoiceIds.Count == 0
+                    ? new List<Sale>()
+                    : await _context.Sales.Where(s => allocationInvoiceIds.Contains(s.Id) && s.TenantId == tenantId).ToListAsync();
+                var allocationScopes = allocationSales.Select(s => (paymentDate, s.BranchId)).ToList();
+                await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, allocationScopes);
 
                 decimal remainingAmount = request.Amount;
                 var allocatedPayments = new List<Payment>();
@@ -990,8 +1012,6 @@ namespace HexaBill.Api.Modules.Payments
                         _ => "Pending"
                     };
 
-                    var paymentDate = request.PaymentDate ?? DateTime.UtcNow;
-                    
                     // Create payment using EF Core (will handle Mode/Status columns)
                     var payment = new Payment
                     {
