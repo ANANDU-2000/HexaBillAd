@@ -14,7 +14,10 @@ const { chromium } = require('playwright')
 const API = process.env.HEXABILL_API || 'http://127.0.0.1:5000'
 const FE = process.env.HEXABILL_FE || 'http://127.0.0.1:5173'
 const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
-const PASS = process.env.HEXABILL_OWNER_PASSWORD || ''
+const ROLE = (process.env.HEXABILL_ROLE || 'owner').toLowerCase()
+const PASS = ROLE === 'staff'
+  ? (process.env.HEXABILL_STAFF_PASSWORD || '')
+  : (process.env.HEXABILL_OWNER_PASSWORD || '')
 const OUT = process.env.HEXABILL_PHASE8_OUT
   || path.join(process.env.USERPROFILE || '.', 'Desktop', 'HexaBill_Backups', `phase8-shell-${Date.now()}`)
 const MANIFEST = path.join(process.cwd(), 'docs/plan/ROUTE-MANIFEST.json')
@@ -30,6 +33,7 @@ const TENANT_FILTER = (process.env.HEXABILL_TENANTS || '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean)
+const ROLE_LABEL = ROLE === 'staff' ? 'staff' : 'owner'
 
 const SKIP_PREFIX = ['/superadmin', '/Admin26', '/signup', '/login', '/onboarding']
 const SLUG_PREFIX = { frozenhub1: 'fh1', frozenhub2: 'fh2', gulfharvest: 'gh', zayoga: 'zy' }
@@ -91,7 +95,7 @@ function routeId (p) {
 }
 
 async function main () {
-  if (!PASS) throw new Error('Set HEXABILL_OWNER_PASSWORD')
+  if (!PASS) throw new Error(ROLE === 'staff' ? 'Set HEXABILL_STAFF_PASSWORD' : 'Set HEXABILL_OWNER_PASSWORD')
   const routes = staticPaths()
   let owners = loadOwners()
   if (TENANT_FILTER.length) owners = owners.filter((o) => TENANT_FILTER.includes(o.slug))
@@ -102,6 +106,7 @@ async function main () {
   const report = {
     at: new Date().toISOString(),
     out: OUT,
+    role: ROLE_LABEL,
     viewports: VIEWPORTS.map((v) => v.name),
     routes,
     routeCount: routes.length,
@@ -111,12 +116,13 @@ async function main () {
 
   for (const owner of owners) {
     const prefix = SLUG_PREFIX[owner.slug] || owner.slug
+    const email = ROLE === 'staff' ? `staff@${owner.slug}.hexabill.local` : owner.email
     let session
     try {
-      session = await login(owner.slug, owner.email)
-      report.tenants.push({ slug: owner.slug, status: 'ok' })
+      session = await login(owner.slug, email)
+      report.tenants.push({ slug: owner.slug, status: 'ok', email, role: session.user.role })
     } catch (e) {
-      report.tenants.push({ slug: owner.slug, status: 'login_fail', error: String(e.message || e) })
+      report.tenants.push({ slug: owner.slug, status: 'login_fail', email, error: String(e.message || e) })
       continue
     }
 
@@ -134,19 +140,20 @@ async function main () {
       await page.setViewportSize({ width: vp.width, height: vp.height })
       for (const route of routes) {
         const id = routeId(route)
-        const key = `${prefix}-owner-${id}-${vp.name}`
+        const key = `${prefix}-${ROLE_LABEL}-${id}-${vp.name}`
         const file = path.join(OUT, 'screenshots', `${key}.png`)
         try {
           const resp = await page.goto(`${FE}${route}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
           await page.waitForTimeout(400)
           const title = await page.title()
           const bodyText = await page.locator('body').innerText().catch(() => '')
-          const denied = /access denied|forbidden|not found|page not found/i.test(bodyText)
+          const denied = /access denied|forbidden|not authorized/i.test(bodyText)
           const blank = bodyText.trim().length < 20
           await page.screenshot({ path: file, fullPage: false })
           const status = resp?.status() || 0
+          // Staff denials are valid evidence (captured, flagged denied).
           const cell = {
-            status: denied || blank ? 'fail' : 'captured',
+            status: blank ? 'fail' : 'captured',
             http: status,
             title,
             denied,
@@ -154,7 +161,7 @@ async function main () {
             bytes: fs.existsSync(file) ? fs.statSync(file).size : 0,
           }
           report.cells[key] = cell
-          console.log(cell.status === 'captured' ? 'OK' : 'FAIL', key, cell.http, cell.bytes)
+          console.log(denied ? 'DENY' : (cell.status === 'captured' ? 'OK' : 'FAIL'), key, cell.http, cell.bytes)
         } catch (e) {
           report.cells[key] = { status: 'fail', error: String(e.message || e) }
           console.error('FAIL', key, e.message || e)

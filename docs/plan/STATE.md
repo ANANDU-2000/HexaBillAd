@@ -110,7 +110,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
 | 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner+staff screenshots 4 tenants × 6 pages × 5 VPs (240 PNGs); §10 field/edge NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 tenants ×5 VPs (owner shell); params 36 @360; superadmin 10; platform metrics; staff role + §10 field/edge NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Owner static 37×4×5VP; staff static 37×4@360; params 36@360; superadmin 10; platform metrics; §10 field/edge NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 8b Phase 8 staff shell + push bundle (PARTIAL)
+- **changed:** phase8-route-shell supports staff; staff static 37×4@360; EVIDENCE.md refreshed; git bundle for offline push
+- **files:** phase8-route-shell.mjs, EVIDENCE.md, STATE.md
+- **tests+evidence:** staff phase8 `ok=148`; bundle `Desktop/HexaBill_Backups/master-loop-2-ahead13.bundle` (requires base `4ac380e`)
+- **NOT RUN / blocked:** `git push` (agent HTTPS credential); PG 44; §10 field/edge; Phases 9–11
+- **flags+rollback:** none
+- **next:** you push branch from HexaBilngApp folder; then decide Phases 9–11
 
 ### 2026-10-04 — slice 5c Phase 7 staff matrix (PARTIAL)
 - **changed:** created synthetic `staff@{slug}.hexabill.local` on 4 tenants; `phase7-capture-screens.mjs` supports `HEXABILL_ROLE=staff`
