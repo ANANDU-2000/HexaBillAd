@@ -805,7 +805,8 @@ namespace HexaBill.Api.Modules.Tenants
                 {
                     Id = t.Id,
                     Name = t.Name,
-                    Subdomain = t.Subdomain,
+                    // Legacy demo rows may have NULL Subdomain; SQLite GetString throws otherwise.
+                    Subdomain = t.Subdomain ?? string.Empty,
                     CompanyNameEn = t.CompanyNameEn,
                     CompanyNameAr = t.CompanyNameAr,
                     Country = t.Country,
@@ -1584,6 +1585,8 @@ namespace HexaBill.Api.Modules.Tenants
             if (user == null) return false;
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            user.MustChangePassword = false;
+            user.SessionVersion++;
             await _context.SaveChangesAsync();
             return true;
         }

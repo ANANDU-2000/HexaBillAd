@@ -2244,6 +2244,7 @@ _ = Task.Run(async () =>
                         Role = UserRole.Owner,
                         OwnerId = null, // Super admin has no owner restriction
                         TenantId = null, // CRITICAL: Super admin has no tenant restriction (null = SystemAdmin)
+                        IsPlatformAdmin = true,
                         Phone = "+971 56 955 22 52",
                         CreatedAt = DateTime.UtcNow
                     };
@@ -2292,6 +2293,12 @@ _ = Task.Run(async () =>
                     {
                         adminUser.OwnerId = null;
                         initLogger.LogInformation("Updated admin user OwnerId to null (Super Admin)");
+                    }
+
+                    if (!adminUser.IsPlatformAdmin)
+                    {
+                        adminUser.IsPlatformAdmin = true;
+                        initLogger.LogInformation("Updated admin user IsPlatformAdmin=true (Super Admin)");
                     }
                     
                     if (testPassword && !adminUser.TenantId.HasValue && !adminUser.OwnerId.HasValue)
