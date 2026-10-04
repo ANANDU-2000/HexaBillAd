@@ -287,7 +287,7 @@ const AuditLogPage = () => {
             type="button"
             onClick={() => fetchLogs(page)}
             disabled={loading}
-            className="inline-flex items-center justify-center gap-2 min-h-11 md:min-h-9 px-3 rounded-md border border-neutral-200 bg-white text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 shrink-0"
+            className="inline-flex items-center justify-center gap-2 min-h-[44px] px-3 rounded-md border border-neutral-200 bg-white text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 shrink-0"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span className="hidden sm:inline">Refresh</span>
@@ -366,7 +366,7 @@ const AuditLogPage = () => {
             <button
               type="button"
               onClick={() => fetchLogs(page)}
-              className="inline-flex items-center gap-2 min-h-11 md:min-h-9 px-3 rounded-md bg-primary-600 text-white text-sm font-medium"
+              className="inline-flex items-center gap-2 min-h-[44px] px-3 rounded-md bg-primary-600 text-white text-sm font-medium"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Retry
@@ -479,7 +479,7 @@ const AuditLogPage = () => {
                     type="button"
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page <= 1 || loading}
-                    className="inline-flex items-center gap-1 min-h-11 md:min-h-9 px-3 rounded-md border border-neutral-200 bg-white text-sm disabled:opacity-50"
+                    className="inline-flex items-center gap-1 min-h-[44px] px-3 rounded-md border border-neutral-200 bg-white text-sm disabled:opacity-50"
                   >
                     <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                     Previous
@@ -489,7 +489,7 @@ const AuditLogPage = () => {
                     type="button"
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page >= totalPages || loading}
-                    className="inline-flex items-center gap-1 min-h-11 md:min-h-9 px-3 rounded-md border border-neutral-200 bg-white text-sm disabled:opacity-50"
+                    className="inline-flex items-center gap-1 min-h-[44px] px-3 rounded-md border border-neutral-200 bg-white text-sm disabled:opacity-50"
                   >
                     Next
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />

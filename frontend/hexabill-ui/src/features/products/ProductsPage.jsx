@@ -1253,7 +1253,7 @@ const ProductsPage = () => {
                     e.stopPropagation()
                     handleDeleteClick(product)
                   }}
-                  className="bg-error/10 text-error hover:text-white hover:bg-error border border-error/30 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px] sm:min-h-0"
+                  className="bg-error/10 text-error hover:text-white hover:bg-error border border-error/30 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px]"
                   title="Deactivate Product"
                   aria-label="Deactivate Product"
                 >

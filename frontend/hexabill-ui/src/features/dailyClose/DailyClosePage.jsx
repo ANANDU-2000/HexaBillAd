@@ -265,7 +265,7 @@ const DailyClosePage = () => {
           <button
             type="button"
             onClick={() => navigate(returnTo)}
-            className="mb-2 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-primary-700 md:min-h-9"
+            className="mb-2 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-primary-700"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
             Back to {getReturnLabel(returnTo)}
