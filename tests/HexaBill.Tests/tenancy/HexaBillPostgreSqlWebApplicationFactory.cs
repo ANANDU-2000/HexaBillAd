@@ -113,7 +113,7 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
         using var scope = services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.SetRequestTenantScope(null, true);
-        _ = db.Database.EnsureCreated();
+        PostgresTestSchema.EnsureCreated(db);
 
         var now = DateTime.UtcNow;
         db.Tenants.AddRange(
@@ -127,7 +127,7 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
             },
             new Setting
             {
-                TenantId = TenantAId, OwnerId = TenantAId, Key = "COMPANY_TRN", Value = $"TRN-PG-{TenantAId}",
+                TenantId = TenantAId, OwnerId = TenantAId, Key = "COMPANY_TRN", Value = $"{TenantAId:D15}",
                 CreatedAt = now, UpdatedAt = now
             },
             new Setting
@@ -137,7 +137,7 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
             },
             new Setting
             {
-                TenantId = TenantBId, OwnerId = TenantBId, Key = "COMPANY_TRN", Value = $"TRN-PG-{TenantBId}",
+                TenantId = TenantBId, OwnerId = TenantBId, Key = "COMPANY_TRN", Value = $"{TenantBId:D15}",
                 CreatedAt = now, UpdatedAt = now
             });
 

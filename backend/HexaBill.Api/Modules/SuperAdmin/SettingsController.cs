@@ -159,20 +159,36 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 }
 
                 await _settingsService.UpdateOwnerSettingsBulkAsync(tenantId, settings);
+                string? vatTrn = null;
+                if (settings.TryGetValue("vat_trn", out var alias) && !string.IsNullOrWhiteSpace(alias))
+                    vatTrn = alias.Trim();
+                else if (settings.TryGetValue("COMPANY_TRN", out var companyTrn) && !string.IsNullOrWhiteSpace(companyTrn))
+                    vatTrn = companyTrn.Trim();
+                var sharedCount = await _settingsService.CountOtherTenantsSharingVatTrnAsync(tenantId, vatTrn);
+                var message = "Settings updated successfully";
+                if (sharedCount > 0)
+                {
+                    message += $". Warning: this VAT TRN is also used by {sharedCount} other workspace(s). Shared TRNs are allowed; confirm this is intentional.";
+                    _logger.LogWarning("Shared VAT TRN saved for tenant {TenantId}; also used by {Count} other tenant(s)", tenantId, sharedCount);
+                }
                 return Ok(new ServiceResponse<object>
                 {
                     Success = true,
-                    Message = "Settings updated successfully"
+                    Message = message
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating settings: {Message}", ex.Message);
                 return StatusCode(500, new ServiceResponse<object>
                 {
                     Success = false,
-                    Message = ex.Message ?? "An error occurred while updating settings",
-                    Errors = ex.InnerException != null ? new List<string> { ex.InnerException.Message } : null
+                    Message = "Failed to update settings"
                 });
             }
         }
@@ -218,6 +234,11 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     });
                 }
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = ex.Message });
+            }
+            catch (UnauthorizedAccessException) { return Forbid(); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating setting {Key}: {Message}", key, ex.Message);

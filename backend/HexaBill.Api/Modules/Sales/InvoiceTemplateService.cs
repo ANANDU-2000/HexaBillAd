@@ -263,12 +263,13 @@ namespace HexaBill.Api.Modules.Sales
             // Replace company placeholders
             var hasLogoPlaceholder = htmlTemplate.Contains("{{company_logo_img}}") || htmlTemplate.Contains("{{company_logo_data_uri}}");
             var processedHtml = htmlTemplate
-                .Replace("{{company_name_en}}", settings.CompanyNameEn ?? "")
-                .Replace("{{company_name_ar}}", settings.CompanyNameAr ?? "")
-                .Replace("{{company_address}}", settings.CompanyAddress ?? "")
-                .Replace("{{company_phone}}", settings.CompanyPhone ?? "")
-                .Replace("{{company_trn}}", settings.CompanyTrn ?? "")
-                .Replace("{{currency}}", settings.Currency ?? "AED");
+                .Replace("{{company_name_en}}", System.Net.WebUtility.HtmlEncode(settings.CompanyNameEn ?? ""))
+                .Replace("{{company_name_ar}}", System.Net.WebUtility.HtmlEncode(settings.CompanyNameAr ?? ""))
+                .Replace("{{company_address}}", System.Net.WebUtility.HtmlEncode(settings.CompanyAddress ?? ""))
+                .Replace("{{company_phone}}", System.Net.WebUtility.HtmlEncode(settings.CompanyPhone ?? ""))
+                .Replace("{{company_trn}}", System.Net.WebUtility.HtmlEncode(settings.CompanyTrn ?? ""))
+                .Replace("{{company_email}}", System.Net.WebUtility.HtmlEncode(settings.CompanyEmail ?? ""))
+                .Replace("{{currency}}", System.Net.WebUtility.HtmlEncode(settings.Currency ?? "AED"));
 
             // Logo: from company Settings (tenant-scoped). Top-left placeholder 120x56, object-fit contain so no crop.
             var logoImgTag = "";
@@ -277,9 +278,11 @@ namespace HexaBill.Api.Modules.Sales
             {
                 try
                 {
-                    var b64 = Convert.ToBase64String(settings.LogoImageBytes);
+                    var logoBytes = settings.BilingualMonochromeHeader ? PdfService.MonochromeLogo(settings.LogoImageBytes)! : settings.LogoImageBytes;
+                    var b64 = Convert.ToBase64String(logoBytes);
                     logoDataUri = "data:image/png;base64," + b64;
-                    logoImgTag = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;display:block;\" />";
+                    var logoStyle = settings.BilingualMonochromeHeader ? "margin:0 auto;" : "";
+                    logoImgTag = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"{logoStyle}max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;display:block;\" />";
                 }
                 catch { /* ignore */ }
             }
@@ -289,7 +292,10 @@ namespace HexaBill.Api.Modules.Sales
             // inject a top-left logo into the <body> so invoices always show the company logo.
             if (!hasLogoPlaceholder && !string.IsNullOrEmpty(logoDataUri))
             {
-                var injectedLogo = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"position:absolute;top:8px;left:8px;max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;z-index:10;\" />";
+                var injectedStyle = settings.BilingualMonochromeHeader
+                    ? "display:block;margin:0 auto;max-height:56px;max-width:120px;object-fit:contain;"
+                    : "position:absolute;top:8px;left:8px;max-height:56px;max-width:120px;width:auto;height:auto;object-fit:contain;z-index:10;";
+                var injectedLogo = $"<img src=\"{logoDataUri}\" alt=\"\" style=\"{injectedStyle}\" />";
 
                 if (Regex.IsMatch(processedHtml, "<body[^>]*>", RegexOptions.IgnoreCase))
                 {
@@ -389,6 +395,7 @@ namespace HexaBill.Api.Modules.Sales
             public string CompanyTrn { get; set; } = "";
             public string CompanyEmail { get; set; } = "";
             public string CompanyWebsite { get; set; } = "";
+            public bool BilingualMonochromeHeader { get; set; }
             public string Currency { get; set; } = "AED";
             public decimal VatPercent { get; set; } = 5.0m;
             public string InvoicePrefix { get; set; } = "INV";

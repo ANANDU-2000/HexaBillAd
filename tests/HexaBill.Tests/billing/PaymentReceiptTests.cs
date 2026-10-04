@@ -82,9 +82,9 @@ public class PaymentReceiptTests
         Assert.Equal(first.ReceiptNumber, reprint.ReceiptNumber);
         Assert.Equal(100m, reprint.AmountReceived);
         Assert.Equal("Receipt fixture company", reprint.CompanyName);
-        Assert.Null(reprint.CompanyTrn);
-        Assert.Null(reprint.CompanyNameAr);
-        Assert.Null(reprint.CompanyPhone);
+        Assert.Equal("", reprint.CompanyTrn);
+        Assert.Equal("", reprint.CompanyNameAr);
+        Assert.Equal("", reprint.CompanyPhone);
         Assert.Null(reprint.PreviousBalance);
         Assert.Null(reprint.RemainingBalance);
         Assert.Single(db.PaymentReceipts);
@@ -155,7 +155,7 @@ public class PaymentReceiptTests
     }
 
     [Fact]
-    public async Task Snapshot_PreservesDocumentAfterCompanyCustomerInvoiceAndPaymentEdits()
+    public async Task Snapshot_PreservesFinancialEvidenceButReprintsCurrentCompanyDetails()
     {
         await using var db = await CreateDbAsync();
         await EnableSnapshots(db);
@@ -172,7 +172,7 @@ public class PaymentReceiptTests
         Assert.True(reprint.IsHistoricalSnapshot);
         Assert.False(reprint.LegacyReconstruction);
         Assert.True(reprint.PaymentChangedSinceSnapshot);
-        Assert.Equal(first.CompanyName, reprint.CompanyName);
+        Assert.Equal("Changed company name", reprint.CompanyName);
         Assert.Equal(first.ReceivedFrom, reprint.ReceivedFrom);
         Assert.Equal("FIXTURE-1", reprint.Invoices.Single().InvoiceNo);
         Assert.Equal(1000m, reprint.Invoices.Single().InvoiceTotal);
@@ -196,7 +196,7 @@ public class PaymentReceiptTests
         db.Settings.Single().Value = "Changed after flag rollback";
         await db.SaveChangesAsync();
         var reprint = await Service(db).GenerateReceiptAsync(10, 1, 1);
-        Assert.Equal(captured.CompanyName, reprint.CompanyName);
+        Assert.Equal("Changed after flag rollback", reprint.CompanyName);
         Assert.True(reprint.LegacyReconstruction);
     }
 

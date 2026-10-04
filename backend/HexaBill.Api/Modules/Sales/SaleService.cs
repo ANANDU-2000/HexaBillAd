@@ -722,6 +722,8 @@ namespace HexaBill.Api.Modules.Sales
                 await ValidateSaleBranchAndRouteForRequestAsync(request, tenantId, userId, customer);
 
                 // Calculate totals — VAT% from company settings (tenant-scoped), not hardcoded. PRODUCTION_MASTER_TODO #37
+                var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
+                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 var allowNegativeStock = await IsNegativeStockAllowedAsync(tenantId);
@@ -987,6 +989,18 @@ namespace HexaBill.Api.Modules.Sales
                 };
 
                 _context.Sales.Add(sale);
+                await _context.SaveChangesAsync();
+                _context.AuditLogs.Add(new AuditLog {
+                    TenantId = tenantId, OwnerId = tenantId, UserId = userId,
+                    Action = "InvoiceIssuedCompanyIdentity", EntityType = "Sale", EntityId = sale.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    NewValues = System.Text.Json.JsonSerializer.Serialize(new {
+                        documentCompany.LegalNameEn, documentCompany.LegalNameAr,
+                        VatTrn = documentCompany.VatNumber, documentCompany.Address,
+                        documentCompany.Mobile, documentCompany.Email,
+                        documentCompany.LogoStorageKey, documentCompany.SettingsVersion
+                    })
+                });
                 await _context.SaveChangesAsync();
 
                 // Update sale items with sale ID
@@ -1260,6 +1274,8 @@ namespace HexaBill.Api.Modules.Sales
             {
                 // Similar to CreateSaleAsync but without stock validation
                 var invoiceNo = await GenerateInvoiceNumberAsync(tenantId);
+                var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
+                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 decimal subtotal = 0;
@@ -1376,6 +1392,18 @@ namespace HexaBill.Api.Modules.Sales
                 };
 
                 _context.Sales.Add(sale);
+                await _context.SaveChangesAsync();
+                _context.AuditLogs.Add(new AuditLog {
+                    TenantId = tenantId, OwnerId = tenantId, UserId = userId,
+                    Action = "InvoiceIssuedCompanyIdentity", EntityType = "Sale", EntityId = sale.Id,
+                    CreatedAt = DateTime.UtcNow,
+                    NewValues = System.Text.Json.JsonSerializer.Serialize(new {
+                        documentCompany.LegalNameEn, documentCompany.LegalNameAr,
+                        VatTrn = documentCompany.VatNumber, documentCompany.Address,
+                        documentCompany.Mobile, documentCompany.Email,
+                        documentCompany.LogoStorageKey, documentCompany.SettingsVersion
+                    })
+                });
                 await _context.SaveChangesAsync();
 
                 foreach (var item in saleItems)
@@ -1781,6 +1809,8 @@ namespace HexaBill.Api.Modules.Sales
                 // REVERSE customer balance will be recalculated after new amounts are set
 
                 // Calculate new totals — VAT% from company settings (tenant-scoped)
+                var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
+                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var isZeroInvoice = request.IsZeroInvoice;
                 decimal subtotal = 0;

@@ -68,6 +68,37 @@ test('same selected payment IDs do not repeatedly mint or fetch on parent rerend
   assert.equal(requests, 1)
 })
 
+test('printing refreshes the receipt and requires review when current company details changed', async () => {
+  await mount()
+  const original = globalThis.__receiptTestAPI.generateReceipt
+  const calls = []
+  globalThis.window.open = () => ({ close() { calls.push('close') } })
+  globalThis.__receiptTestAPI.generateReceipt = async () => ({ success: true, data: { detail: {
+    ...detail, documentFingerprint: 'current-company-2', companyName: 'Updated company name',
+    bilingualMonochromeHeader: true, companyTrn: '123456789012345'
+  } } })
+  try {
+    await act(async () => { await button('Print receipt').props.onClick() })
+    assert.deepEqual(calls, ['close'])
+    assert.match(renderer.root.findByProps({ role: 'alert' }).props.children, /Review the updated preview/)
+    assert.match(JSON.stringify(renderer.toJSON()), /Updated company name/)
+    assert.equal(button('Print receipt').props.disabled, false)
+  } finally { globalThis.__receiptTestAPI.generateReceipt = original }
+})
+
+test('printing rejects a receipt that becomes unavailable after preview', async () => {
+  await mount()
+  const original = globalThis.__receiptTestAPI.generateReceipt
+  let closed = false
+  globalThis.window.open = () => ({ close() { closed = true } })
+  globalThis.__receiptTestAPI.generateReceipt = async () => { throw new Error('Payment is no longer cleared.') }
+  try {
+    await act(async () => { await button('Print receipt').props.onClick() })
+    assert.equal(closed, true)
+    assert.match(renderer.root.findByProps({ role: 'alert' }).props.children, /no longer cleared/)
+  } finally { globalThis.__receiptTestAPI.generateReceipt = original }
+})
+
 test('PDF download sends reviewed IDs and fingerprint and cleans up its object URL', async (context) => {
   context.mock.timers.enable({ apis: ['setTimeout'] })
   const originalDocument = globalThis.document

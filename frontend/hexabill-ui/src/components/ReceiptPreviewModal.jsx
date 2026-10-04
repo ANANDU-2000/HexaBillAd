@@ -30,6 +30,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
   const printRef = useRef(null)
   const [outputError, setOutputError] = useState(null)
   const [downloading, setDownloading] = useState(false)
+  const [printing, setPrinting] = useState(false)
   const [retry, setRetry] = useState(0)
   const paymentKey = JSON.stringify(paymentIds)
   const activePreview = useRef(null)
@@ -102,7 +103,9 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
     } finally { setDownloading(false) }
   }
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
+    if (printing) return
+    const preview = paymentKey
     if (!printRef.current) return
     const win = window.open('', '_blank')
     setOutputError(null)
@@ -110,11 +113,35 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
       setOutputError('The print window was blocked. Allow pop-ups for this site and try again, or download the PDF.')
       return
     }
+    setPrinting(true)
+    try {
+      const selectedIds = JSON.parse(preview)
+      const res = selectedIds.length === 1
+        ? await paymentsAPI.generateReceipt(selectedIds[0])
+        : await paymentsAPI.generateReceiptBatch(selectedIds)
+      if (activePreview.current !== preview) { win.close(); return }
+      const payload = res?.data
+      const fresh = payload?.detail ?? (payload?.receiptNumber ? payload : null)
+      if (!res?.success || !fresh) throw new Error(res?.message || 'Receipt could not be refreshed. Try again.')
+      if (fresh.documentFingerprint !== data.detail.documentFingerprint) {
+        setData({ ...payload, detail: fresh })
+        setOutputError('Receipt details changed. Review the updated preview, then print again.')
+        win.close()
+        return
+      }
+    } catch (err) {
+      win.close()
+      if (activePreview.current === preview) setOutputError(err?.message || 'Receipt could not be refreshed. Try again.')
+      return
+    } finally { setPrinting(false) }
     win.document.write(`
       <!DOCTYPE html><html><head><title>Payment Receipt</title>
       <style>
         body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; max-width: 520px; margin: 0 auto; font-size: 14px; color: #111; }
         .receipt-preview { padding: 16px; }
+        .company-document-header { text-align:center; margin-bottom:16px; color:#000; }
+        .company-document-header p { margin:2px 0; overflow-wrap:anywhere; }
+        .company-document-header img { display:block; margin:0 auto 8px; max-width:120px; height:56px; object-fit:contain; filter:grayscale(1); }
         .receipt-preview h1 { font-size: 20px; margin: 0 0 12px; font-weight: 700; }
         .receipt-separator { border-top: 1px solid #333 !important; }
         .receipt-table { width: 100%; border-collapse: collapse; margin: 8px 0; }
@@ -154,7 +181,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
     const printWhenReady = async () => {
       try {
         if (win.document.fonts?.ready) await win.document.fonts.ready
-        if (win.closed) return
+        if (win.closed || activePreview.current !== preview) { closePrintWindow(); return }
         win.print()
       } catch (_) {
         setOutputError('Printing could not start. Please try again or download the PDF.')
@@ -193,7 +220,17 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
       )}
       {!loading && !error && data?.detail && (
         <>
+          {!detail.companyTrn && <p role="status" className="mb-3 text-sm text-amber-800">Add VAT TRN in Settings. This payment receipt is not a Tax Invoice.</p>}
           <div ref={printRef} className="receipt-preview rounded-lg border border-gray-200 bg-white p-6 text-left receipt-print-styles">
+            {detail.bilingualMonochromeHeader && (
+              <header className="company-document-header mb-4 text-center text-black">
+                {detail.companyLogoDataUri && <img src={detail.companyLogoDataUri} alt="Company logo" className="mx-auto mb-2 h-14 max-w-[120px] object-contain" style={{ filter: 'grayscale(1)' }} />}
+                <p className="text-lg font-semibold">{detail.companyName}</p>
+                {detail.companyNameAr && <p dir="rtl" lang="ar">{detail.companyNameAr}</p>}
+                <p className="text-sm">VAT TRN / <span lang="ar" dir="rtl">رقم التسجيل الضريبي</span>: {detail.companyTrn || ''}</p>
+                {[detail.companyPhone, detail.companyEmail, detail.companyAddress].filter(Boolean).map((value, index) => <p key={index} className="text-sm break-words">{value}</p>)}
+              </header>
+            )}
             <h1 className="text-xl font-bold text-gray-900 mb-2">PAYMENT RECEIPT</h1>
             <p className="text-sm text-gray-700">Receipt No: {detail.receiptNumber}</p>
             <p className="text-sm text-gray-700">Date: {toReceiptDate(detail.receiptDate)}</p>
@@ -278,6 +315,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
             <button
               type="button"
               onClick={handlePrint}
+              disabled={printing}
               className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
               title="Print when customer requests"
             >

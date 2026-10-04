@@ -166,6 +166,15 @@ public class DailyCloseService : IDailyCloseService
             DateTime businessDate;
             try
             {
+                // Serialize the business-day scope, including the first close when
+                // there is no row to lock. PostgreSQL unique indexes treat NULL
+                // BranchId values as distinct, so the index alone is insufficient.
+                if (_context.Database.IsNpgsql())
+                {
+                    var closeScope = $"daily-close:{tenantId}:{NormalizeBusinessDate(request.BusinessDate):yyyy-MM-dd}:{request.BranchId?.ToString() ?? "all"}";
+                    await _context.Database.ExecuteSqlInterpolatedAsync(
+                        $"SELECT pg_advisory_xact_lock(hashtextextended({closeScope}, 0))");
+                }
                 (row, preview, variance, businessDate) = await PersistCloseAsync(request, tenantId, userId);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

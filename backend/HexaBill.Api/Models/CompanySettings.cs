@@ -14,37 +14,49 @@ namespace HexaBill.Api.Models
     /// Company settings for invoice generation and branding
     /// These values are loaded from appsettings.json or environment variables
     /// </summary>
+    public sealed class TaxInvoiceSettingsException(string message) : InvalidOperationException(message);
+
     public class CompanySettings
     {
         /// <summary>
         /// Legal company name in English (as registered)
         /// Example: "HexaBill"
         /// </summary>
-        public string LegalNameEn { get; set; } = "HexaBill";
+        public string LegalNameEn { get; set; } = "";
         
         /// <summary>
         /// Legal company name in Arabic (as registered)
         /// Example: "فروزن ماجيك لتجارة العامة - ذ.م.م - ش.ش.و"
         /// </summary>
-        public string LegalNameAr { get; set; } = "هيكسابيل";
+        public string LegalNameAr { get; set; } = "";
         
         /// <summary>
         /// VAT Registration Number (TRN)
         /// Example: "105274438800003"
         /// </summary>
-        public string VatNumber { get; set; } = "105274438800003";
+        public string VatNumber { get; set; } = "";
+        public string CorporateTaxTrn { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string SettingsVersion { get; set; } = "";
+        public string Website { get; set; } = "";
+        public string? LogoDataUri { get; set; }
+        public bool BilingualMonochromeHeader { get; set; }
+
+        public static void RequireTaxInvoiceVatTrn(string? vatTrn, string? environmentName = null) =>
+            HexaBill.Api.Core.Tenancy.SampleVatTrn.RequireTaxInvoiceVatTrn(vatTrn, environmentName);
+
         
         /// <summary>
         /// Registered business address
         /// Example: "Abu Dhabi, United Arab Emirates"
         /// </summary>
-        public string Address { get; set; } = "Abu Dhabi, United Arab Emirates";
+        public string Address { get; set; } = "";
         
         /// <summary>
         /// Contact mobile number
         /// Example: "+971 56 955 22 52"
         /// </summary>
-        public string Mobile { get; set; } = "+971 56 955 22 52";
+        public string Mobile { get; set; } = "";
         
         /// <summary>
         /// VAT effective date (for legal compliance)

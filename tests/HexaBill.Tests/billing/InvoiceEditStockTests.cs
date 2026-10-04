@@ -196,11 +196,12 @@ public class InvoiceEditStockTests
             Task.FromResult<string?>(string.Equals(key, "ALLOW_NEGATIVE_STOCK", StringComparison.OrdinalIgnoreCase) ? "false" : null);
         public Task<bool> UpdateOwnerSettingAsync(int tenantId, string key, string value) => throw new NotSupportedException();
         public Task<bool> UpdateOwnerSettingsBulkAsync(int tenantId, Dictionary<string, string> settings) => throw new NotSupportedException();
-        public Task<CompanySettings> GetCompanySettingsAsync(int tenantId) => throw new NotSupportedException();
+        public Task<CompanySettings> GetCompanySettingsAsync(int tenantId) => Task.FromResult(new CompanySettings { VatNumber = "123456789012345" });
         public Task<LogoMetadata?> GetLogoMetadataAsync(int tenantId) => throw new NotSupportedException();
         public Task ClearLogoAsync(int tenantId) => throw new NotSupportedException();
         public Task ClearStampAsync(int tenantId) => throw new NotSupportedException();
         public Task ClearSignatureAsync(int tenantId) => throw new NotSupportedException();
+        public Task<int> CountOtherTenantsSharingVatTrnAsync(int tenantId, string? vatTrn) => Task.FromResult(0);
     }
 
     private sealed class VatValidation : InterfaceStub<IVatReturnValidationService>
