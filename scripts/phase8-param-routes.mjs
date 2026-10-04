@@ -15,6 +15,18 @@ const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
 const PASS = process.env.HEXABILL_OWNER_PASSWORD || ''
 const OUT = process.env.HEXABILL_PHASE8_OUT
   || path.join(process.env.USERPROFILE || '.', 'Desktop', 'HexaBill_Backups', 'phase8-shell-20261004', 'params')
+const VIEWPORTS = (process.env.HEXABILL_VIEWPORTS || '360x800')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
+  .map((name) => {
+    const [w, h] = name.split('x').map(Number)
+    return { name, width: w, height: h }
+  })
+const TENANT_FILTER = (process.env.HEXABILL_TENANTS || '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean)
 
 const SLUG_PREFIX = { frozenhub1: 'fh1', frozenhub2: 'fh2', gulfharvest: 'gh', zayoga: 'zy' }
 
@@ -139,7 +151,11 @@ async function main () {
   const browser = await chromium.launch({ headless: true })
   const report = { at: new Date().toISOString(), out: OUT, cells: {}, tenants: [] }
 
-  for (const owner of owners) {
+  const selectedOwners = TENANT_FILTER.length
+    ? owners.filter((o) => TENANT_FILTER.includes(o.slug))
+    : owners
+
+  for (const owner of selectedOwners) {
     const prefix = SLUG_PREFIX[owner.slug] || owner.slug
     let session
     try {
@@ -150,42 +166,44 @@ async function main () {
     }
     const ids = await resolveIds(owner.slug, session.token)
     const routes = buildRoutes(ids)
-    report.tenants.push({ slug: owner.slug, status: 'ok', ids, routeCount: routes.length })
+    report.tenants.push({ slug: owner.slug, status: 'ok', ids, routeCount: routes.length, viewports: VIEWPORTS.map((v) => v.name) })
 
-    const context = await browser.newContext({ viewport: { width: 360, height: 800 } })
-    const page = await context.newPage()
-    await page.goto(`${FE}/login`, { waitUntil: 'domcontentloaded' })
-    await page.evaluate(({ token, user, slug }) => {
-      localStorage.setItem('token', token)
-      localStorage.setItem('user', JSON.stringify(user))
-      localStorage.setItem('hexabill_dev_tenant_host', `${slug}.localhost`)
-      localStorage.setItem('hexabill_dev_edge_secret', 'dev-local-edge-secret')
-    }, { token: session.token, user: session.user, slug: owner.slug })
+    for (const vp of VIEWPORTS) {
+      const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } })
+      const page = await context.newPage()
+      await page.goto(`${FE}/login`, { waitUntil: 'domcontentloaded' })
+      await page.evaluate(({ token, user, slug }) => {
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+        localStorage.setItem('hexabill_dev_tenant_host', `${slug}.localhost`)
+        localStorage.setItem('hexabill_dev_edge_secret', 'dev-local-edge-secret')
+      }, { token: session.token, user: session.user, slug: owner.slug })
 
-    for (const route of routes) {
-      const key = `${prefix}-owner-${route.id}-360x800`
-      const file = path.join(OUT, 'screenshots', `${key}.png`)
-      try {
-        await page.goto(`${FE}${route.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
-        await page.waitForTimeout(500)
-        const text = await page.locator('body').innerText().catch(() => '')
-        const denied = /access denied|forbidden/i.test(text)
-        const blank = text.trim().length < 20
-        await page.screenshot({ path: file, fullPage: false })
-        report.cells[key] = {
-          status: denied || blank ? 'fail' : 'captured',
-          path: route.path,
-          denied,
-          blank,
-          bytes: fs.statSync(file).size,
+      for (const route of routes) {
+        const key = `${prefix}-owner-${route.id}-${vp.name}`
+        const file = path.join(OUT, 'screenshots', `${key}.png`)
+        try {
+          await page.goto(`${FE}${route.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 })
+          await page.waitForTimeout(500)
+          const text = await page.locator('body').innerText().catch(() => '')
+          const denied = /access denied|forbidden/i.test(text)
+          const blank = text.trim().length < 20
+          await page.screenshot({ path: file, fullPage: false })
+          report.cells[key] = {
+            status: denied || blank ? 'fail' : 'captured',
+            path: route.path,
+            denied,
+            blank,
+            bytes: fs.statSync(file).size,
+          }
+          console.log(report.cells[key].status === 'captured' ? 'OK' : 'FAIL', key, route.path)
+        } catch (e) {
+          report.cells[key] = { status: 'fail', path: route.path, error: String(e.message || e) }
+          console.error('FAIL', key, e.message || e)
         }
-        console.log(report.cells[key].status === 'captured' ? 'OK' : 'FAIL', key, route.path)
-      } catch (e) {
-        report.cells[key] = { status: 'fail', path: route.path, error: String(e.message || e) }
-        console.error('FAIL', key, e.message || e)
       }
+      await context.close()
     }
-    await context.close()
   }
 
   await browser.close()

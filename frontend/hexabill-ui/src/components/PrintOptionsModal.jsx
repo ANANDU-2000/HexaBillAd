@@ -22,28 +22,47 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
   const [printing, setPrinting] = useState(false)
   const printHandledRef = useRef(false)
 
+  const downloadPdfBlob = (blob, filename) => {
+    const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
+    try {
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      toast.success('Pop-up blocked — PDF downloaded instead.')
+    } finally {
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+    }
+  }
+
   const handlePrint = async () => {
     if (!saleId) {
       toast.error('Invalid invoice. Cannot print.')
       return
     }
     const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      toast.error('Pop-up blocked. Allow pop-ups for this site.')
-      return
-    }
-    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing document…</p>')
     printHandledRef.current = false
     setPrinting(true)
     try {
       const pdfOptions = { format, layout: 'body' }
       const blob = await salesAPI.getInvoicePdf(saleId, pdfOptions)
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
-        printWindow.close()
+        if (printWindow) printWindow.close()
         toast.error('PDF could not be generated')
         setPrinting(false)
         return
       }
+      if (!printWindow) {
+        downloadPdfBlob(blob, `invoice-${String(invoiceNo || saleId).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`)
+        setPrinting(false)
+        if (onPrint) onPrint()
+        onClose()
+        try { localStorage.setItem(DEFAULT_PRINT_FORMAT_KEY, format) } catch (_) {}
+        return
+      }
+      printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing document…</p>')
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       printWindow.location.href = blobUrl
       printWindow.onload = () => {
@@ -63,7 +82,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
       }
     } catch (error) {
-      printWindow.close()
+      if (printWindow) printWindow.close()
       console.error('Print error:', error)
       setPrinting(false)
       if (!error?._handledByInterceptor) toast.error('Failed to generate PDF')
@@ -76,20 +95,22 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
       return
     }
     const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      toast.error('Pop-up blocked. Allow pop-ups for this site.')
-      return
-    }
-    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing delivery note…</p>')
     setPrinting(true)
     try {
       const blob = await salesAPI.getDeliveryNotePdf(saleId, { format: format === 'A5' ? 'A5' : 'A4', layout: 'body' })
       if (!blob || (blob instanceof Blob && blob.size === 0)) {
-        printWindow.close()
+        if (printWindow) printWindow.close()
         toast.error('Delivery note could not be generated')
         setPrinting(false)
         return
       }
+      if (!printWindow) {
+        downloadPdfBlob(blob, `delivery-note-${String(invoiceNo || saleId).replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`)
+        setPrinting(false)
+        onClose()
+        return
+      }
+      printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing delivery note…</p>')
       const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
       printWindow.location.href = blobUrl
       printWindow.onload = () => {
@@ -105,7 +126,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
       }
     } catch (error) {
-      printWindow.close()
+      if (printWindow) printWindow.close()
       setPrinting(false)
       if (!error?._handledByInterceptor) toast.error('Failed to generate delivery note')
     }
