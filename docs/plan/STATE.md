@@ -145,6 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 4 receipts/docs (PARTIAL)
+- **changed:** none product (existing ReceiptPreviewModal already has popup-denied → download message, PDF download+retry, preview without remint storm)
+- **files:** STATE.md only this slice
+- **tests+evidence:** receiptPreview/eligibility/offer **15 passed**
+- **NOT RUN:** live browser popup-denied + reprint never-reposts HAR; save≠PDF independence browser proof
+- **flags+rollback:** receipt_snapshots still OFF
+- **next:** Phase 7 page matrix; push branch
 ### 2026-10-04 — slice 3 ledger context (PARTIAL)
 - **changed:** returnNavigation + Record Payment deep-link tests; gitignore local sqlite bak copies
 - **files:** returnNavigation.test.js, .gitignore, STATE.md
