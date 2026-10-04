@@ -784,7 +784,7 @@ namespace HexaBill.Api.Modules.Customers
                     .CountAsync(s => s.CustomerId == id && s.TenantId == tenantId);
                 var paymentsCount = await _context.Payments.IgnoreQueryFilters()
                     .CountAsync(p => p.CustomerId == id && p.TenantId == tenantId);
-                return (false, $"Cannot delete customer. Customer has {salesCount} sale(s) and {paymentsCount} payment(s). Please delete related transactions first or use force delete with all data.");
+                return (false, $"Cannot delete customer. Customer has {salesCount} sale(s) and {paymentsCount} payment(s). Preserve financial history and use audited void or reversal flows to correct transactions.");
             }
 
             // Safe to delete - no related transactions
@@ -793,162 +793,41 @@ namespace HexaBill.Api.Modules.Customers
             return (true, "Customer deleted successfully");
         }
 
-        /// <summary>
-        /// Force delete customer and ALL associated data (Admin only)
-        /// This will delete: Sales, Payments, Sale Returns, and restore stock
-        /// </summary>
+        /// <summary>Compatibility entry point: a force flag never erases financial history.</summary>
         public async Task<(bool Success, string Message, DeleteCustomerSummary? Summary)> ForceDeleteCustomerWithAllDataAsync(int customerId, int userId, int tenantId)
         {
-            var strategy = _context.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync<(bool Success, string Message, DeleteCustomerSummary? Summary)>(async () =>
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync<(bool Success, string Message, DeleteCustomerSummary? Summary)>(async () =>
             {
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                // CRITICAL: Filter by both customerId and tenantId
+                await using var transaction = await _context.Database.BeginTransactionAsync();
                 var customer = await _context.Customers
-                    .Where(c => c.Id == customerId && c.TenantId == tenantId)
-                    .FirstOrDefaultAsync();
-                if (customer == null)                 return (false, "Customer not found", null);
+                    .FirstOrDefaultAsync(c => c.Id == customerId && c.TenantId == tenantId);
+                if (customer == null) return (false, "Customer not found", null);
+                var hasFinancialHistory = await _context.Sales.IgnoreQueryFilters()
+                    .AnyAsync(s => s.CustomerId == customerId && s.TenantId == tenantId)
+                    || await _context.Payments.IgnoreQueryFilters()
+                    .AnyAsync(p => p.CustomerId == customerId && p.TenantId == tenantId)
+                    || await _context.SaleReturns.IgnoreQueryFilters()
+                    .AnyAsync(r => r.CustomerId == customerId && r.TenantId == tenantId);
+                if (hasFinancialHistory)
+                    return (false, "This customer has financial history and cannot be permanently deleted. Deactivate the customer and use audited transaction reversals.", null);
 
-                var summary = new DeleteCustomerSummary
-                {
-                    CustomerName = customer.Name,
-                    SalesDeleted = 0,
-                    PaymentsDeleted = 0,
-                    SaleReturnsDeleted = 0,
-                    StockRestored = false
-                };
-
-                // 1. Get all sales for this customer
-                var sales = await _context.Sales.IgnoreQueryFilters()
-                    .Include(s => s.Items)
-                    .ThenInclude(i => i.Product)
-                    .Where(s => s.CustomerId == customerId && s.TenantId == tenantId)
-                    .ToListAsync();
-
-                // 2. For each sale, restore stock and delete sale items
-                foreach (var sale in sales)
-                {
-                    // Restore stock for each item
-                    foreach (var item in sale.Items)
-                    {
-                        var product = item.Product;
-                        if (product != null)
-                        {
-                            var baseQty = item.Qty * product.ConversionToBase;
-                            // PROD-19: Atomic stock restore
-                            var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
-                                $@"UPDATE ""Products"" 
-                                   SET ""StockQty"" = ""StockQty"" + {baseQty}, 
-                                       ""UpdatedAt"" = {DateTime.UtcNow}
-                                   WHERE ""Id"" = {product.Id} 
-                                     AND ""TenantId"" = {tenantId}");
-                            
-                            if (rowsAffected > 0)
-                            {
-                                await _context.Entry(product).ReloadAsync();
-                            }
-
-                            // Create inventory transaction for audit
-                            _context.InventoryTransactions.Add(new InventoryTransaction
-                            {
-                                OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                                TenantId = tenantId, // CRITICAL: Set new TenantId
-                                ProductId = product.Id,
-                                ChangeQty = baseQty,
-                                TransactionType = TransactionType.Adjustment,
-                                Reason = $"Customer Deleted: {customer.Name} - Sale {sale.InvoiceNo}",
-                                CreatedAt = DateTime.UtcNow
-                            });
-                        }
-                    }
-
-                    // Delete sale items
-                    _context.SaleItems.RemoveRange(sale.Items);
-                    summary.StockRestored = true;
-                }
-
-                var inventoryLogs = _context.ChangeTracker.Entries<InventoryTransaction>()
-                    .Where(e => e.State == EntityState.Added)
-                    .Select(e => e.Entity)
-                    .ToList();
-
-                // Hard-delete payments before sales so FK_Sales_Customers is not hit while payments remain.
-                var payments = await _context.Payments.IgnoreQueryFilters()
-                    .Where(p => p.CustomerId == customerId && p.TenantId == tenantId)
-                    .ToListAsync();
-                summary.SalesDeleted = sales.Count;
-                summary.PaymentsDeleted = payments.Count;
-                _context.Payments.RemoveRange(payments);
-                foreach (var sale in sales)
-                    _context.SaleItems.RemoveRange(sale.Items);
-                _context.Sales.RemoveRange(sales);
-                if (inventoryLogs.Count > 0 && !_context.ChangeTracker.Entries<InventoryTransaction>().Any())
-                    _context.InventoryTransactions.AddRange(inventoryLogs);
-
-                // 5. Delete all sale returns
-                var saleReturns = await _context.SaleReturns
-                    .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId)
-                    .ToListAsync();
-                summary.SaleReturnsDeleted = saleReturns.Count;
-                
-                // Delete sale return items first
-                foreach (var saleReturn in saleReturns)
-                {
-                    var returnItems = await _context.SaleReturnItems
-                        .Where(sri => sri.SaleReturnId == saleReturn.Id)
-                        .ToListAsync();
-                    _context.SaleReturnItems.RemoveRange(returnItems);
-                }
-                
-                _context.SaleReturns.RemoveRange(saleReturns);
-
-                // 6. Delete customer
+                // Delete only an unused master record. Foreign keys reject a concurrent posting;
+                // no follow-up transaction deletion or stock restoration is attempted.
+                var summary = new DeleteCustomerSummary { CustomerName = customer.Name };
                 _context.Customers.Remove(customer);
-
-                // 7. Create audit log
-                var auditLog = new AuditLog
+                _context.AuditLogs.Add(new AuditLog
                 {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
-                    UserId = userId,
-                    Action = "Customer Force Deleted",
-                    Details = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        CustomerId = customerId,
-                        CustomerName = customer.Name,
-                        SalesDeleted = summary.SalesDeleted,
-                        PaymentsDeleted = summary.PaymentsDeleted,
-                        SaleReturnsDeleted = summary.SaleReturnsDeleted,
-                        StockRestored = summary.StockRestored
-                    }),
+                    OwnerId = tenantId, TenantId = tenantId, UserId = userId,
+                    Action = "Unused Customer Deleted",
+                    Details = System.Text.Json.JsonSerializer.Serialize(new { CustomerId = customerId, customer.Name }),
                     CreatedAt = DateTime.UtcNow
-                };
-                _context.AuditLogs.Add(auditLog);
-
+                });
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                var message = $"Customer '{customer.Name}' and all associated data deleted successfully. " +
-                             $"Deleted: {summary.SalesDeleted} sales, {summary.PaymentsDeleted} payments, {summary.SaleReturnsDeleted} returns." +
-                             (summary.StockRestored ? " Stock restored." : "");
-
-                return (true, message, summary);
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return (false, $"Error deleting customer: {ex.Message}", null);
-            }
+                return (true, "Unused customer deleted successfully", summary);
             });
         }
 
-
-        /// <summary>
-        /// Get unified customer ledger - Tally-style single-entry flow without duplicates.
-        /// Optional filters: branchId, routeId, staffId (CreatedBy), fromDate, toDate.
-        /// </summary>
         public async Task<List<CustomerLedgerEntry>> GetCustomerLedgerAsync(int customerId, int tenantId, int? branchId = null, int? routeId = null, int? staffId = null, DateTime? fromDate = null, DateTime? toDate = null)
         {
             try

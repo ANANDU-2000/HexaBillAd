@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using HexaBill.Api.Data;
+using HexaBill.Api.Modules.Customers;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HexaBill.Tests;
 
@@ -699,8 +702,19 @@ public class PaymentsHttpIsolationTests
         var created = await createResponse.Content.ReadFromJsonAsync<ApiEnvelope<CreatePaymentResponseStub>>();
         var cashId = created!.Data!.Payment!.Id;
 
+        // This shared fixture seeds invoices independently of its cached customer balance.
+        // Establish the ledger baseline before exercising the HTTP edit.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.SetRequestTenantScope(1, false);
+            await new CustomerService(db).RecalculateCustomerBalanceAsync(1, 1);
+        }
+        var balanceBefore = (await client.GetFromJsonAsync<ApiEnvelope<CustomerBalanceStub>>("/api/customers/1"))!.Data!.Balance;
         var update = await client.PutAsJsonAsync($"/api/payments/{cashId}", new { amount = 1320m, mode = "CASH" });
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        var balanceAfter = (await client.GetFromJsonAsync<ApiEnvelope<CustomerBalanceStub>>("/api/customers/1"))!.Data!.Balance;
+        Assert.Equal(balanceBefore + 10m, balanceAfter);
 
         var saleResponse = await client.GetAsync("/api/sales/9");
         var saleJson = await saleResponse.Content.ReadFromJsonAsync<ApiEnvelope<SaleSummaryStub>>();
@@ -708,8 +722,10 @@ public class PaymentsHttpIsolationTests
         Assert.Equal("Partial", saleJson?.Data?.PaymentStatus, StringComparer.OrdinalIgnoreCase);
     }
 
-    [Fact]
-    public async Task DeletePayment_AfterFin01CashPayment_ReopensInvoiceAndRemovesPairedAdjustment()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task VoidPayment_AfterFin01CashPayment_VoidsBothRowsAndRetainsRetryIdentity(bool viaStatus)
     {
         using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
         var body = new
@@ -722,17 +738,44 @@ public class PaymentsHttpIsolationTests
             mode = "CASH",
             reference = "http-fin01-del"
         };
-        var createResponse = await PostPaymentAsync(client, body, $"fin01-del-{Guid.NewGuid():N}");
+        var requestKey = $"fin01-del-{Guid.NewGuid():N}";
+        var createResponse = await PostPaymentAsync(client, body, requestKey);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<ApiEnvelope<CreatePaymentResponseStub>>();
         var cashId = created!.Data!.Payment!.Id;
         var adjId = created.Data.SettlementAdjustment!.Id;
 
-        var deleteResponse = await client.DeleteAsync($"/api/payments/{cashId}");
+        var deleteResponse = viaStatus
+            ? await client.PutAsJsonAsync($"/api/payments/{cashId}/status", new { status = "VOID" })
+            : await client.DeleteAsync($"/api/payments/{cashId}");
         Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
 
         var getAdj = await client.GetAsync($"/api/payments/{adjId}");
-        Assert.Equal(HttpStatusCode.NotFound, getAdj.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, getAdj.StatusCode);
+        var adjustment = await getAdj.Content.ReadFromJsonAsync<ApiEnvelope<PaymentDtoStub>>();
+        Assert.Equal("VOID", adjustment?.Data?.Status, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(1m, adjustment?.Data?.Amount);
+
+        var getCash = await client.GetAsync($"/api/payments/{cashId}");
+        var cash = await getCash.Content.ReadFromJsonAsync<ApiEnvelope<PaymentDtoStub>>();
+        Assert.Equal("VOID", cash?.Data?.Status, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal(1330m, cash?.Data?.Amount);
+
+        // A lost-response retry after void must return the original outcome, never repost money.
+        var retryResponse = await PostPaymentAsync(client, body, requestKey);
+        Assert.Equal(HttpStatusCode.Created, retryResponse.StatusCode);
+        var retried = await retryResponse.Content.ReadFromJsonAsync<ApiEnvelope<CreatePaymentResponseStub>>();
+        Assert.Equal(cashId, retried?.Data?.Payment?.Id);
+        Assert.Equal("VOID", retried?.Data?.Payment?.Status, StringComparer.OrdinalIgnoreCase);
+
+        var repeatedVoid = await client.DeleteAsync($"/api/payments/{cashId}");
+        Assert.Equal(HttpStatusCode.OK, repeatedVoid.StatusCode);
+        var editVoided = await client.PutAsJsonAsync($"/api/payments/{cashId}", new { amount = 1m, status = "CLEARED" });
+        Assert.Equal(HttpStatusCode.BadRequest, editVoided.StatusCode);
+        var reactivate = await client.PutAsJsonAsync($"/api/payments/{cashId}/status", new { status = "CLEARED" });
+        Assert.Equal(HttpStatusCode.BadRequest, reactivate.StatusCode);
+        var receipt = await client.PostAsJsonAsync($"/api/payments/{cashId}/receipt", new { });
+        Assert.Equal(HttpStatusCode.BadRequest, receipt.StatusCode);
 
         var saleResponse = await client.GetAsync("/api/sales/8");
         var saleJson = await saleResponse.Content.ReadFromJsonAsync<ApiEnvelope<SaleSummaryStub>>();

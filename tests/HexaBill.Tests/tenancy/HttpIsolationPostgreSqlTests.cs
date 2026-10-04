@@ -1,5 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using HexaBill.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HexaBill.Tests;
 
@@ -12,6 +15,38 @@ public class HttpIsolationPostgreSqlTests
     private readonly HttpPostgresIntegrationFixture _fixture;
 
     public HttpIsolationPostgreSqlTests(HttpPostgresIntegrationFixture fixture) => _fixture = fixture;
+
+    [SkippableFact]
+    public async Task ConcurrentVoid_RetainsPaymentAndRetryIdentity_AndAuditsOnce_OnPostgreSql()
+    {
+        var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);
+        using var client = HttpIntegrationClient.Create(factory, factory.TenantAId, factory.TenantAId, factory.SlugA);
+        var key = $"pg-concurrent-void-{Guid.NewGuid():N}";
+        var body = new { customerId = factory.CustomerAId, amount = 7m, mode = "CASH", reference = key };
+        var created = await PostPaymentAsync(client, body, key);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var payload = await created.Content.ReadFromJsonAsync<ApiEnvelope<CreatePaymentResponseStub>>();
+        var id = payload!.Data!.Payment!.Id;
+
+        var responses = await Task.WhenAll(client.DeleteAsync($"/api/payments/{id}"), client.DeleteAsync($"/api/payments/{id}"));
+        Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
+        var retained = await client.GetFromJsonAsync<ApiEnvelope<PaymentStub>>($"/api/payments/{id}");
+        Assert.Equal(7m, retained!.Data!.Amount);
+        Assert.Equal("VOID", retained.Data.Status, StringComparer.OrdinalIgnoreCase);
+        var retry = await PostPaymentAsync(client, body, key);
+        Assert.Equal(HttpStatusCode.Created, retry.StatusCode);
+        var retried = await retry.Content.ReadFromJsonAsync<ApiEnvelope<CreatePaymentResponseStub>>();
+        Assert.Equal(id, retried!.Data!.Payment!.Id);
+        Assert.Equal("VOID", retried.Data.Payment.Status, StringComparer.OrdinalIgnoreCase);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var marker = $"\"PaymentId\":{id},";
+        Assert.Equal(1, await db.AuditLogs.IgnoreQueryFilters().CountAsync(a => a.TenantId == factory.TenantAId
+            && a.Action == "Payment Voided" && a.Details != null && a.Details.Contains(marker)));
+        using var other = HttpIntegrationClient.Create(factory, factory.TenantBId, factory.TenantBId, factory.SlugB);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync($"/api/payments/{id}")).StatusCode);
+    }
 
     [SkippableFact]
     public async Task GetCustomer_OwnTenant_ReturnsSuccess_OnPostgreSql()

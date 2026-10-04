@@ -462,6 +462,8 @@ namespace HexaBill.Api.Modules.Payments
 
         public async Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId)
         {
+            if (status == PaymentStatus.VOID)
+                return await DeletePaymentAsync(paymentId, userId, tenantId);
             // NpgsqlRetryingExecutionStrategy requires transactions inside CreateExecutionStrategy
             return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
@@ -469,11 +471,7 @@ namespace HexaBill.Api.Modules.Payments
             try
             {
                 // Add owner filter to the query
-                var payment = await _context.Payments
-                    .Where(p => p.Id == paymentId && p.TenantId == tenantId)
-                    .Include(p => p.Sale)
-                    .Include(p => p.Customer)
-                    .FirstOrDefaultAsync();
+                var payment = await GetPaymentForMutationAsync(paymentId, tenantId);
                 
                 if (payment == null)
                 {
@@ -482,6 +480,8 @@ namespace HexaBill.Api.Modules.Payments
                 }
 
                 var oldStatus = payment.Status;
+                if (oldStatus == PaymentStatus.VOID && status != PaymentStatus.VOID)
+                    throw new ArgumentException("A voided payment cannot be reactivated. Record a new payment with a new request key.");
                 payment.Status = status;
                 payment.UpdatedAt = DateTime.UtcNow;
 
@@ -565,11 +565,7 @@ namespace HexaBill.Api.Modules.Payments
             try
             {
                 // Add owner filter
-                var payment = await _context.Payments
-                    .Where(p => p.Id == paymentId && p.TenantId == tenantId)
-                    .Include(p => p.Sale)
-                    .Include(p => p.Customer)
-                    .FirstOrDefaultAsync();
+                var payment = await GetPaymentForMutationAsync(paymentId, tenantId);
                 
                 if (payment == null)
                 {
@@ -579,6 +575,8 @@ namespace HexaBill.Api.Modules.Payments
 
             var oldAmount = payment.Amount;
             var oldStatus = payment.Status;
+            if (oldStatus == PaymentStatus.VOID)
+                throw new ArgumentException("A voided payment cannot be edited. Its original details must remain in history.");
             var wasCleared = oldStatus == PaymentStatus.CLEARED;
             var oldSaleId = payment.SaleId;
             var oldInvoiceNo = payment.Sale?.InvoiceNo;
@@ -730,8 +728,9 @@ namespace HexaBill.Api.Modules.Payments
                 _logger.LogWarning("UpdatePayment: skip AuditLog — UserId {UserId} not found", userId);
             }
 
-                // CRITICAL FIX: Recalculate customer balance BEFORE SaveChangesAsync
-                // This ensures balance is always accurate after payment update
+                // Aggregate queries read stored rows, not tracked edits. Persist the edited
+                // payment first; both saves remain inside this transaction.
+                await _context.SaveChangesAsync();
                 if (payment.CustomerId.HasValue)
                 {
                     var customerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
@@ -739,7 +738,7 @@ namespace HexaBill.Api.Modules.Payments
                         .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
                     if (customer != null)
                     {
-                        await customerService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, customer.TenantId ?? 0);
+                        await customerService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, tenantId);
                         _logger.LogInformation("Customer balance recalculated after payment update. CustomerId {CustomerId} NewBalance {Balance}", customer.Id, customer.Balance);
                     }
                 }
@@ -763,138 +762,93 @@ namespace HexaBill.Api.Modules.Payments
             });
         }
 
+        // Called inside a transaction. Match creation's sale-first lock order, then reload
+        // the payment under its own lock so a waiting edit/void sees the committed status.
+        private async Task<Payment?> GetPaymentForMutationAsync(int paymentId, int tenantId)
+        {
+            IQueryable<Payment> query = _context.Payments;
+            if (_context.Database.IsNpgsql())
+            {
+                var identity = await _context.Payments.AsNoTracking()
+                    .Where(p => p.Id == paymentId && p.TenantId == tenantId)
+                    .Select(p => new { p.SaleId, p.CustomerId }).FirstOrDefaultAsync();
+                if (identity == null) return null;
+                if (identity.SaleId.HasValue)
+                    await _context.Sales.FromSqlInterpolated($"SELECT * FROM \"Sales\" WHERE \"Id\" = {identity.SaleId.Value} AND \"TenantId\" = {tenantId} FOR UPDATE")
+                        .FirstOrDefaultAsync();
+                if (identity.CustomerId.HasValue)
+                    await _context.Customers.FromSqlInterpolated($"SELECT * FROM \"Customers\" WHERE \"Id\" = {identity.CustomerId.Value} AND \"TenantId\" = {tenantId} FOR UPDATE")
+                        .FirstOrDefaultAsync();
+                query = _context.Payments.FromSqlInterpolated($"SELECT * FROM \"Payments\" WHERE \"Id\" = {paymentId} AND \"TenantId\" = {tenantId} FOR UPDATE");
+            }
+            return await query.Where(p => p.Id == paymentId && p.TenantId == tenantId)
+                .Include(p => p.Sale).Include(p => p.Customer).FirstOrDefaultAsync();
+        }
+
+        /// <summary>Legacy DELETE contract: void the posted payment without erasing its history.</summary>
         public async Task<bool> DeletePaymentAsync(int paymentId, int userId, int tenantId)
         {
-            // NpgsqlRetryingExecutionStrategy requires transactions inside CreateExecutionStrategy
             return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                var payment = await _context.Payments
-                    .Where(p => p.Id == paymentId && p.TenantId == tenantId)
-                    .Include(p => p.Sale)
-                    .Include(p => p.Customer)
-                    .FirstOrDefaultAsync();
-                
-                if (payment == null)
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var payment = await GetPaymentForMutationAsync(paymentId, tenantId);
+                    if (payment == null) return false;
+                    if (payment.Status == PaymentStatus.VOID) return true;
+
+                    var affected = new List<Payment> { payment };
+                    if (!payment.IsSettlementAdjustment)
+                    {
+                        var paired = await _context.Payments
+                            .Where(p => p.TenantId == tenantId && p.IsSettlementAdjustment
+                                && p.ParentPaymentId == paymentId && p.Status != PaymentStatus.VOID)
+                            .ToListAsync();
+                        affected.AddRange(paired);
+                        // Timing/amount proximity is not evidence that an adjustment belongs to this payment.
+                        // Legacy unlinked adjustments require an explicit, separately reviewed correction.
+                    }
+                    var oldStatus = payment.Status;
+                    var now = DateTime.UtcNow;
+                    foreach (var row in affected)
+                    {
+                        row.Status = PaymentStatus.VOID;
+                        row.UpdatedAt = now;
+                    }
+                    if (payment.SaleId.HasValue)
+                    {
+                        var sale = await _context.Sales
+                            .FirstOrDefaultAsync(s => s.Id == payment.SaleId && s.TenantId == tenantId);
+                        if (sale != null)
+                            await RefreshSalePaymentStateAsync(sale, tenantId,
+                                omitPaymentIds: affected.Select(p => p.Id).ToList());
+                    }
+                    _context.AuditLogs.Add(new AuditLog
+                    {
+                        OwnerId = tenantId, TenantId = tenantId, UserId = userId,
+                        Action = "Payment Voided",
+                        Details = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            PaymentId = paymentId, OriginalStatus = oldStatus.ToString(),
+                            payment.Amount, payment.SaleId, payment.CustomerId,
+                            LinkedAdjustmentIds = affected.Skip(1).Select(p => p.Id).ToArray()
+                        }),
+                        CreatedAt = now
+                    });
+                    // Keep idempotency records and original amounts/references for delayed retries and audit.
+                    // Persist VOID before the balance aggregate reads the database in this transaction.
+                    await _context.SaveChangesAsync();
+                    if (payment.CustomerId.HasValue)
+                        await new HexaBill.Api.Modules.Customers.CustomerService(_context)
+                            .RecalculateCustomerBalanceAsync(payment.CustomerId.Value, tenantId);
+                    await transaction.CommitAsync();
+                    return true;
+                }
+                catch
                 {
                     await transaction.RollbackAsync();
-                    return false;
+                    throw;
                 }
-
-            var wasCleared = payment.Status == PaymentStatus.CLEARED;
-            var wasNonVoid = payment.Status != PaymentStatus.VOID;
-
-            var removingPaymentIds = new List<int> { paymentId };
-            if (!payment.IsSettlementAdjustment)
-            {
-                var pairedAdjustments = await _context.Payments
-                    .Where(p => p.TenantId == tenantId && p.IsSettlementAdjustment && p.ParentPaymentId == paymentId && p.Status != PaymentStatus.VOID)
-                    .ToListAsync();
-                if (pairedAdjustments.Count == 0 && payment.SaleId.HasValue)
-                {
-                    pairedAdjustments = await _context.Payments
-                        .Where(p => p.SaleId == payment.SaleId && p.TenantId == tenantId && p.IsSettlementAdjustment
-                            && p.Status != PaymentStatus.VOID
-                            && p.CreatedAt >= payment.CreatedAt.AddSeconds(-2)
-                            && p.CreatedAt <= payment.CreatedAt.AddSeconds(2))
-                        .ToListAsync();
-                }
-                foreach (var adj in pairedAdjustments)
-                {
-                    removingPaymentIds.Add(adj.Id);
-                    _context.Payments.Remove(adj);
-                }
-            }
-
-            if (payment.SaleId.HasValue)
-            {
-                var sale = await _context.Sales
-                    .FirstOrDefaultAsync(s => s.Id == payment.SaleId.Value && s.TenantId == tenantId);
-                if (sale != null)
-                {
-                    await RefreshSalePaymentStateAsync(sale, tenantId, omitPaymentIds: removingPaymentIds);
-                    _logger.LogInformation("DeletePayment: Sale {InvoiceNo} PaidAmount now {PaidAmount} Status {Status}", sale.InvoiceNo, sale.PaidAmount, sale.PaymentStatus);
-                }
-            }
-            if (wasNonVoid)
-            {
-
-                // Only reverse Customer.Balance for CLEARED payments (balance is only affected by cleared payments)
-                if (wasCleared && payment.CustomerId.HasValue)
-                {
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        customer.Balance += payment.Amount; // Reverse: customer owes more
-                        customer.LastActivity = DateTime.UtcNow;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                    }
-                }
-            }
-
-            // Delete idempotency records
-            var idempotencies = await _context.PaymentIdempotencies
-                .Where(pi => pi.PaymentId == paymentId)
-                .ToListAsync();
-            _context.PaymentIdempotencies.RemoveRange(idempotencies);
-
-            // Delete payment
-            _context.Payments.Remove(payment);
-
-            var userExists = await _context.Users.AsNoTracking().AnyAsync(u => u.Id == userId);
-            if (userExists)
-            {
-                var auditLog = new AuditLog
-                {
-                    OwnerId = tenantId,
-                    TenantId = tenantId,
-                    UserId = userId,
-                    Action = "Payment Deleted",
-                    Details = System.Text.Json.JsonSerializer.Serialize(new
-                    {
-                        PaymentId = paymentId,
-                        Amount = payment.Amount,
-                        Mode = payment.Mode.ToString(),
-                        Status = payment.Status.ToString(),
-                        SaleId = payment.SaleId,
-                        CustomerId = payment.CustomerId
-                    }),
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.AuditLogs.Add(auditLog);
-            }
-            else
-            {
-                _logger.LogWarning("DeletePayment: skip AuditLog — UserId {UserId} not found", userId);
-            }
-
-                // CRITICAL FIX: Recalculate customer balance BEFORE SaveChangesAsync
-                // This ensures balance is always accurate after payment deletion
-                if (payment.CustomerId.HasValue)
-                {
-                    var customerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
-                    var customer = await _context.Customers
-                        .FirstOrDefaultAsync(c => c.Id == payment.CustomerId.Value && c.TenantId == tenantId);
-                    if (customer != null)
-                    {
-                        await customerService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, customer.TenantId ?? 0);
-                        _logger.LogInformation("Customer balance recalculated after payment deletion. CustomerId {CustomerId} NewBalance {Balance}", customer.Id, customer.Balance);
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                try { await transaction.RollbackAsync(); } catch { }
-                _logger.LogError(ex, "Error deleting payment");
-                throw;
-            }
             });
         }
 

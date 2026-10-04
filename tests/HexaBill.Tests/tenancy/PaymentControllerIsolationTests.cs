@@ -13,6 +13,54 @@ namespace HexaBill.Tests;
 public class PaymentControllerIsolationTests
 {
     [Fact]
+    public async Task CleanupEqualAmountPayments_RefusesMutationAndPreservesLegitimateReceipts()
+    {
+        await using var db = await SeedAsync();
+        db.SetRequestTenantScope(1, false);
+        db.Payments.Add(new Payment
+        {
+            Id = 3, TenantId = 1, OwnerId = 1, CustomerId = 1, SaleId = 1, Amount = 50,
+            Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED, CreatedBy = 1,
+            PaymentDate = DateTime.UtcNow.AddDays(1), CreatedAt = DateTime.UtcNow.AddDays(1)
+        });
+        var sale = await db.Sales.SingleAsync(s => s.Id == 1);
+        sale.PaidAmount = 100;
+        sale.PaymentStatus = SalePaymentStatus.Paid;
+        await db.SaveChangesAsync();
+        var payments = new PaymentService(db, NullLogger<PaymentService>.Instance, null!, null!, null!);
+        var controller = Controller(db, TenantUser(1, "Owner"), payments, ReceiptProbeService.NeverCalled);
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(services, db);
+        Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton<HexaBill.Api.Modules.Customers.ICustomerService>(services, new HexaBill.Api.Modules.Customers.CustomerService(db));
+        using var provider = Microsoft.Extensions.DependencyInjection.ServiceCollectionContainerBuilderExtensions.BuildServiceProvider(services);
+        controller.HttpContext.RequestServices = provider;
+
+        var action = await controller.CleanupDuplicatePayments(1);
+
+        Assert.IsType<ConflictObjectResult>(action.Result);
+        db.ChangeTracker.Clear();
+        Assert.Equal(2, await db.Payments.CountAsync(p => p.SaleId == 1));
+        Assert.Equal(100, (await db.Sales.SingleAsync(s => s.Id == 1)).PaidAmount);
+    }
+
+    [Fact]
+    public async Task ForceDeleteCustomer_WithPostedHistory_RefusesAndPreservesRows()
+    {
+        await using var db = await SeedAsync();
+        db.SetRequestTenantScope(1, false);
+        var customers = new HexaBill.Api.Modules.Customers.CustomerService(db);
+
+        var result = await customers.ForceDeleteCustomerWithAllDataAsync(1, 1, 1);
+
+        Assert.False(result.Success);
+        Assert.Contains("financial history", result.Message, StringComparison.OrdinalIgnoreCase);
+        db.ChangeTracker.Clear();
+        Assert.True(await db.Customers.AnyAsync(c => c.Id == 1));
+        Assert.True(await db.Sales.AnyAsync(s => s.Id == 1));
+        Assert.True(await db.Payments.AnyAsync(p => p.Id == 1));
+    }
+
+    [Fact]
     public async Task GetPayment_OtherTenantsPayment_ReturnsNotFound()
     {
         await using var db = await SeedAsync();

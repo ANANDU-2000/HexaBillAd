@@ -459,20 +459,20 @@ const PaymentsPage = () => {
   const confirmDeletePayment = async () => {
     if (!paymentToDelete?.id) return
     try {
-      toast.loading('Deleting payment...', { id: 'delete-payment' })
+      toast.loading('Voiding payment...', { id: 'delete-payment' })
       const response = await paymentsAPI.deletePayment(paymentToDelete.id)
       if (response?.success) {
-        toast.success('Payment deleted successfully', { id: 'delete-payment' })
+        toast.success('Payment voided; history retained', { id: 'delete-payment' })
         setPaymentToDelete(null)
         await fetchData()
         window.dispatchEvent(new CustomEvent('dataUpdated'))
       } else {
-        toast.error(response?.message || 'Failed to delete payment', { id: 'delete-payment' })
+        toast.error(response?.message || 'Failed to void payment', { id: 'delete-payment' })
       }
     } catch (error) {
-      console.error('Failed to delete payment:', error)
+      console.error('Failed to void payment:', error)
       if (!error?._handledByInterceptor) {
-        toast.error(error?.response?.data?.message || 'Failed to delete payment', { id: 'delete-payment' })
+        toast.error(error?.response?.data?.message || 'Failed to void payment', { id: 'delete-payment' })
       }
     }
   }
@@ -842,7 +842,8 @@ const PaymentsPage = () => {
                             type="button"
                             onClick={() => handleDeletePayment(payment)}
                             className="text-red-600 hover:text-red-900"
-                            title="Delete Payment"
+                            title="Void payment"
+                            aria-label="Void payment"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -985,7 +986,8 @@ const PaymentsPage = () => {
                       type="button"
                       onClick={() => handleDeletePayment(payment)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      title="Delete"
+                      title="Void payment"
+                      aria-label="Void payment"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -1331,12 +1333,11 @@ const PaymentsPage = () => {
 
       <ConfirmDangerModal
         isOpen={!!paymentToDelete}
-        title="DELETE PAYMENT"
+        title="VOID PAYMENT"
         message={paymentToDelete
-          ? `Amount: ${money(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
+          ? `Amount: ${money(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance. The original payment and linked adjustment stay in history.\n\nVoid this payment?`
           : ''}
-        confirmLabel="Delete Payment"
-        requireTypedText="DELETE"
+        confirmLabel="Void payment"
         onConfirm={confirmDeletePayment}
         onClose={() => setPaymentToDelete(null)}
       />

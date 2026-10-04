@@ -2983,27 +2983,26 @@ const CustomerLedgerPage = () => {
                       onDeletePayment={(payment) => {
                         setDangerModal({
                           isOpen: true,
-                          title: 'DELETE PAYMENT',
-                          message: `Amount: ${formatCurrency(payment.amount)}\nMode: ${payment.method || payment.mode || 'N/A'}\nDate: ${new Date(payment.paymentDate).toLocaleDateString('en-GB')}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`,
-                          confirmLabel: 'Delete Payment',
-                          requireTypedText: 'DELETE',
+                          title: 'VOID PAYMENT',
+                          message: `Amount: ${formatCurrency(payment.amount)}\nMode: ${payment.method || payment.mode || 'N/A'}\nDate: ${new Date(payment.paymentDate).toLocaleDateString('en-GB')}\n\nThis reverses the payment effects on the invoice and customer balance. The original payment and linked adjustment stay in history.\n\nVoid this payment?`,
+                          confirmLabel: 'Void payment',
                           onConfirm: async () => {
                             try {
-                              toast.loading('Deleting payment...', { id: 'delete-payment' })
+                              toast.loading('Voiding payment...', { id: 'delete-payment' })
                               const response = await paymentsAPI.deletePayment(payment.id)
                               if (response?.success) {
-                                toast.success('Payment deleted successfully', { id: 'delete-payment' })
+                                toast.success('Payment voided; history retained', { id: 'delete-payment' })
                                 if (selectedCustomer) {
                                   await loadCustomerData(selectedCustomer.id)
                                   await fetchCustomers()
                                   window.dispatchEvent(new CustomEvent('dataUpdated'))
                                 }
                               } else {
-                                toast.error(response?.message || 'Failed to delete payment', { id: 'delete-payment' })
+                                toast.error(response?.message || 'Failed to void payment', { id: 'delete-payment' })
                               }
                             } catch (error) {
-                              console.error('Error deleting payment:', error)
-                              const errorMsg = error?.response?.data?.message || 'Failed to delete payment'
+                              console.error('Error voiding payment:', error)
+                              const errorMsg = error?.response?.data?.message || 'Failed to void payment'
                               if (!error?._handledByInterceptor) toast.error(errorMsg, { id: 'delete-payment' })
                             }
                           }
@@ -4566,6 +4565,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
   const userRole = user?.role?.toLowerCase()
   const canEditDelete = userRole === 'admin' || userRole === 'owner' || userRole === 'manager'
 
+  const isVoided = (payment) => String(payment.status ?? payment.Status ?? '').toUpperCase() === 'VOID'
   const eligiblePayments = canEditDelete && !user?.supportReadOnly ? payments.filter(canReceivePaymentReceipt) : []
   const currentSelectedIds = currentReceiptSelection(eligiblePayments, selectedPaymentIds)
   const togglePaymentSelection = (id) => {
@@ -4650,6 +4650,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                       {payment.method || payment.mode || '-'}
+                      {isVoided(payment) && <span className="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">VOID — history retained</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900">
                       {formatCurrency(payment.amount)}
@@ -4672,13 +4673,13 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                             }
                             onViewReceipt(payment.id)
                           }}
-                          disabled={!canEditDelete || user?.supportReadOnly}
+                          disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
                           className="text-blue-600 hover:text-blue-900 p-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                         >
                           <Printer className="h-4 w-4" />
                         </button>
-                        {canEditDelete && onEditPayment && (
+                        {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onEditPayment && (
                           <button
                             type="button"
                             onClick={() => onEditPayment(payment)}
@@ -4688,12 +4689,13 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                             <Edit className="h-4 w-4" />
                           </button>
                         )}
-                        {canEditDelete && onDeletePayment && (
+                        {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onDeletePayment && (
                           <button
                             type="button"
                             onClick={() => onDeletePayment(payment)}
-                            className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1 rounded transition-colors"
-                            title="Delete Payment"
+                            className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1 rounded transition-colors min-h-[44px] min-w-[44px]"
+                            title="Void payment"
+                            aria-label="Void payment"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -4754,6 +4756,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                 <div>
                   <p className="font-semibold text-neutral-900">{formatCurrency(payment.amount)}</p>
                   <p className="text-xs text-neutral-500">{payment.method || payment.mode || '-'}</p>
+                  {isVoided(payment) && <p className="text-xs font-medium text-gray-700">VOID — history retained</p>}
                   <p className="text-xs text-neutral-600 mt-0.5">
                     {new Date(payment.paymentDate).toLocaleDateString('en-GB')}
                   </p>
@@ -4778,14 +4781,14 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     }
                     onViewReceipt(payment.id)
                   }}
-                  disabled={!canEditDelete || user?.supportReadOnly}
+                  disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
                   className="min-h-[44px] px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                   aria-label="Print receipt (optional)"
                   title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                 >
                   <Printer className="h-3.5 w-3.5" /> Receipt
                 </button>
-                {canEditDelete && onEditPayment && (
+                {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onEditPayment && (
                   <button
                     onClick={() => onEditPayment(payment)}
                     className="px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-md text-xs"
@@ -4794,13 +4797,13 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     <Edit className="h-3.5 w-3.5" /> Edit
                   </button>
                 )}
-                {canEditDelete && onDeletePayment && (
+                {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onDeletePayment && (
                   <button
                     onClick={() => onDeletePayment(payment)}
-                    className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md text-xs"
-                    aria-label="Delete payment"
+                    className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md text-xs min-h-[44px]"
+                    aria-label="Void payment"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
+                    <Trash2 className="h-3.5 w-3.5" /> Void
                   </button>
                 )}
               </div>

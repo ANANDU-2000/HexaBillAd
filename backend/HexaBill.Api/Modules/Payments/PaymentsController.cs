@@ -260,6 +260,10 @@ namespace HexaBill.Api.Modules.Payments
                     Message = $"Payment status updated to {request.Status}"
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message });
+            }
             catch (Exception ex)
             {
                 return StatusCode(500, new ApiResponse<object>
@@ -474,7 +478,7 @@ namespace HexaBill.Api.Modules.Payments
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Message = "Payment deleted successfully"
+                    Message = "Payment voided successfully. The original payment remains in history."
                 });
             }
             catch (Exception ex)
@@ -490,141 +494,23 @@ namespace HexaBill.Api.Modules.Payments
         }
 
         /// <summary>
-        /// CRITICAL: Clean up duplicate payments for an invoice
-        /// Keeps the first payment, deletes duplicates, fixes balances
-        /// </summary>
+        // Amount equality does not prove that two independently posted payments are duplicates.
+        // Keep the legacy route as a safe refusal so old clients cannot erase financial history.
         [HttpPost("cleanup-duplicates/{invoiceId}")]
         [Authorize(Roles = "Admin,Owner")]
         public async Task<ActionResult<ApiResponse<DuplicateCleanupResult>>> CleanupDuplicatePayments(int invoiceId)
         {
-            try
-            {
-                var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)
-                    ?? User.FindFirst("UserId")
-                    ?? User.FindFirst("sub");
-                
-                if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
-                {
-                    return Unauthorized(new ApiResponse<DuplicateCleanupResult>
-                    {
-                        Success = false,
-                        Message = "Invalid user"
-                    });
-                }
+            if (CurrentTenantId <= 0) return Forbid();
+            var exists = await _context.Sales.AsNoTracking()
+                .AnyAsync(s => s.Id == invoiceId && s.TenantId == CurrentTenantId && !s.IsDeleted);
+            if (!exists)
+                return NotFound(new ApiResponse<DuplicateCleanupResult> { Success = false, Message = "Invoice not found" });
 
-                var tenantId = CurrentTenantId;
-                var context = HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Data.AppDbContext>();
-                
-                // Get invoice
-                var invoice = await context.Sales
-                    .FirstOrDefaultAsync(s => s.Id == invoiceId && s.TenantId == tenantId && !s.IsDeleted);
-                
-                if (invoice == null)
-                {
-                    return NotFound(new ApiResponse<DuplicateCleanupResult>
-                    {
-                        Success = false,
-                        Message = "Invoice not found"
-                    });
-                }
-                
-                // Get all payments for this invoice
-                var payments = await context.Payments
-                    .Where(p => p.SaleId == invoiceId && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
-                    .OrderBy(p => p.CreatedAt)
-                    .ToListAsync();
-                
-                var result = new DuplicateCleanupResult
-                {
-                    InvoiceNo = invoice.InvoiceNo,
-                    InvoiceTotal = invoice.GrandTotal,
-                    OriginalPaymentCount = payments.Count,
-                    DeletedPayments = new List<DeletedPaymentInfo>()
-                };
-                
-                // Group by amount to find duplicates
-                var grouped = payments.GroupBy(p => p.Amount).ToList();
-                var paymentsToDelete = new List<Payment>();
-                
-                foreach (var group in grouped)
-                {
-                    if (group.Count() > 1)
-                    {
-                        // Keep first, mark rest for deletion
-                        var toDelete = group.Skip(1).ToList();
-                        paymentsToDelete.AddRange(toDelete);
-                        
-                        foreach (var payment in toDelete)
-                        {
-                            result.DeletedPayments.Add(new DeletedPaymentInfo
-                            {
-                                PaymentId = payment.Id,
-                                Amount = payment.Amount,
-                                Mode = payment.Mode.ToString(),
-                                CreatedAt = payment.CreatedAt
-                            });
-                        }
-                    }
-                }
-                
-                // Calculate what the new paid amount should be
-                var keptPayments = payments.Except(paymentsToDelete).ToList();
-                var newPaidAmount = keptPayments.Sum(p => p.Amount);
-                
-                // Delete duplicate payments
-                foreach (var payment in paymentsToDelete)
-                {
-                    context.Payments.Remove(payment);
-                }
-                
-                // Update invoice
-                invoice.PaidAmount = newPaidAmount;
-                invoice.PaymentStatus = newPaidAmount >= invoice.GrandTotal 
-                    ? SalePaymentStatus.Paid 
-                    : newPaidAmount > 0 
-                        ? SalePaymentStatus.Partial 
-                        : SalePaymentStatus.Pending;
-                
-                result.NewPaymentCount = keptPayments.Count;
-                result.NewPaidAmount = newPaidAmount;
-                result.NewStatus = invoice.PaymentStatus.ToString();
-                
-                // Create audit log
-                var auditLog = new AuditLog
-                {
-                    UserId = userId,
-                    Action = "Duplicate Payments Cleanup",
-                    Details = System.Text.Json.JsonSerializer.Serialize(result),
-                    CreatedAt = DateTime.UtcNow
-                };
-                context.AuditLogs.Add(auditLog);
-                
-                await context.SaveChangesAsync();
-                
-                // Recalculate customer balance
-                if (invoice.CustomerId.HasValue)
-                {
-                    var customerService = HttpContext.RequestServices.GetRequiredService<ICustomerService>();
-                    await customerService.RecalculateCustomerBalanceAsync(invoice.CustomerId.Value, tenantId);
-                }
-                
-                return Ok(new ApiResponse<DuplicateCleanupResult>
-                {
-                    Success = true,
-                    Message = $"Cleanup complete: Deleted {result.DeletedPayments.Count} duplicate payment(s). Invoice {invoice.InvoiceNo} now shows {newPaidAmount:F2} AED paid.",
-                    Data = result
-                });
-            }
-            catch (Exception ex)
+            return Conflict(new ApiResponse<DuplicateCleanupResult>
             {
-                _logger.LogError(ex, "CleanupDuplicatePayments error");
-                return StatusCode(500, new ApiResponse<DuplicateCleanupResult>
-                {
-                    Success = false,
-                    Message = $"An error occurred: {ex.Message}",
-                    Errors = new List<string> { ex.Message }
-                });
-            }
+                Success = false,
+                Message = "Automatic payment cleanup is unavailable. Equal amounts may be separate receipts. Review each payment and use an audited void or reversal."
+            });
         }
 
         [HttpGet("receipt/invoice/{saleId}/payment-ids")]
