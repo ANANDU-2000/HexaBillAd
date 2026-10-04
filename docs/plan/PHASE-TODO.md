@@ -1,42 +1,61 @@
-# Grounded phase to-do (do not skip order)
+# Tier 0 execution board (authoritative)
 
-Update evidence in `docs/refactor-progress.md`. Implementation branch **`refactor-handoff-20261004`** @ `e41b7ab` (pushed); `main` still @ `39ffafb`.
+**Branch:** `tier0-continuation`  
+**Baseline commit:** `846ee95` (+ Tier 0 WIP commits)  
+**Backup:** `Desktop/HexaBill_Backups/tier0-20261004-083307`  
+**Deadline:** 4 October 2026 12:00 IST — evidence takes precedence over the clock.  
+**Rule:** no `main` / production changes without explicit authorization.
 
-| Phase | Focus | Status | Next action |
+Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED**
+
+## Baseline evidence (2026-10-04)
+
+| Gate | Status | Evidence |
+|---|---|---|
+| Backend Release build | **PASS** | 0 errors |
+| Frontend production build | **PASS** | Vite build OK |
+| Frontend lint | **PASS** | 0 errors, 235 warnings |
+| Frontend unit tests | **PASS** | 74/74 |
+| Backend unit/integration tests | **PASS** | **553 passed**, 0 failed (after Tier 0 work) |
+| PostgreSQL HTTP isolation suite | **BLOCKED** | 44 skipped — need `HEXABILL_TEST_POSTGRES` |
+| Staging / production deploy | **BLOCKED** | No authorization |
+| Backup restore proof | **BLOCKED** | No staging DB access |
+
+Migration inventory: **47** additive migrations (latest `20261003190000_AddPaymentParentPaymentId`).
+
+## Tier 0 checklist
+
+| ID | Item | Status | Notes |
 |---|---|---|---|
-| 1 | FE/BE build, deploy parity | **PARTIAL** | Local FE **build OK** (4 Oct); BE **511** pass / **44** PG skip; merge PR + deploy for `deployVersion` + `/api/health`; Vercel/Render SHA parity unverified |
-| 2 | Tenant isolation, 2nd owner | **PARTIAL** | PostgreSQL + R2 + job isolation tests; TEN01–TEN06 staging |
-| 3 | Payments, receipts, invoices | **PARTIAL** | Receipt + snapshots; `PaymentSettlementReceiptFlowTests` also asserts daily-close cash **1330** (adj excluded); staging FIN04–FIN07 |
-| 4 | Cost/profit, reversals | **PARTIAL** | Return approve uses `RefundStatus`; super-admin `sale_cost_snapshots` toggle; staging flag pilot |
-| 5 | Daily close | **PARTIAL** | SQLite daily-close suite in billing workflow; PG `HttpIsolationPostgreSqlTests` daily-close/FIN09 in postgres job; staging UI NOT RUN |
-| 6 | VAT margin + Zayogya | **TODO** | FIN12–FIN13 fixtures |
-| 7 | Shell + core commerce UX | **PARTIAL** | Phase-7 pages C03–C13 viewport QA (UX01–UX03) |
-| 8 | Remaining routes/tabs/dialogs | **TODO** | Walk PAGE-SPECIFICATION IDs; no PASS without evidence |
-| 9 | AI | **TODO** | AI01–AI04 behind flags |
-| 10 | Voice + maps | **TODO** | N03–N04, MAP gates |
-| 11 | Staging rollout | **BLOCKED** | User-authorized pilot only |
+| T0-01 | Preserve both trees + create `tier0-continuation` from 846ee95 | **PASS** | Backup + Codex WIP + return reversal merged |
+| T0-02 | Full builds/tests/lint baseline | **PASS** | 553 BE / 74 FE; 44 PG skipped |
+| T0-03 | Docs: PAGE-SPEC, prompt, tracker aligned | **PASS** | IMPLEMENTATION-PROMPT rewritten; PAGE-SPECIFICATION in tree |
+| T0-04 | Idempotent frozenhub1/frozenhub2 + GH provisioning | **IMPLEMENTED** | `Tier0TenantProvisioning` + `POST /api/superadmin/tier0/provision`; owner-2 create still needs emails + OpeningDataChoice |
+| T0-05 | VAT resolver + corporate_tax_trn + audit + no licence→TRN fallback | **PASS** | Settings aliases; letter identity fixed; shared-TRN warning on PUT |
+| T0-06 | Sample VAT TRNs non-prod only; Production rejects samples | **PASS** | `SampleVatTrn` + tests; Crystal Freeze TRN forbidden |
+| T0-07 | Document header resolver (A4/thermal/grayscale/Arabic) | **PASS** | DocumentHeaderTests (A4/A5/80mm/58mm + monochrome) |
+| T0-08 | Tax Invoice finalize/print requires valid VAT TRN | **PASS** | SaleService + PdfService gates with env |
+| T0-09 | Tenant isolation negative tests | **PASS** (SQLite/HTTP) / **BLOCKED** (PG) | Existing suite green; PG skipped |
+| T0-10 | F19/F20 + settlement cash rule | **PASS** | Settlement/receipt/daily-close 1330/1331 fixtures |
+| T0-11 | Standard 5% VAT prospective (no historic recalc) | **IMPLEMENTED** | Default VAT_PERCENT=5; margin deferred |
+| T0-12 | Seven journeys × FrozenHub owners + GH header | **BLOCKED** | Needs local hosts, staging, screenshots, owner-2 emails |
+| T0-13 | Commit/push `tier0-continuation` + deploy/rollback commands | **TODO** | See TIER0-RELEASE.md |
 
-## Immediate implementation queue (code)
+## Open inputs (remain BLOCKED — never fabricated)
 
-1. ~~Audited reversal for approved sale returns (replaces delete)~~ — **done** (API + UI + refund/credit/write-off reversal tests)
-2. ~~PostgreSQL concurrent return approval test~~ — `ReturnConcurrencyPostgreSqlTests` (run with `HEXABILL_TEST_POSTGRES`; skips if unset)
-3. ~~`sale_cost_snapshots` / `receipt_snapshots` staging migration rehearsal~~ — `StagingSnapshotMigrationsTests` (local SQLite legacy apply); **staging `ef database update` still user-gated**
-4. ~~Purchase-return conversion parity~~ — `ConversionAtPurchase` + `PurchaseStockBasis`
-5. ~~Tenant feature-flag unit coverage~~ — `TenantFeatureFlagsTests` + super-admin `sale_cost_snapshots` toggle; **staging QA still user-gated**
-6. ~~Full `dotnet test`~~ — **508+** pass (+44 PG skip); invoice-stock tests + petrol→close journey; `billing-return-release-fix.yml` (62-test slice)
-7. ~~Purchase `ConversionAtPurchase` immutability~~ — `AppDbContext` guard + `PurchaseReturnStockTests`; `StagingSnapshotMigrationsTests` applies `20261003120000`
-8. ~~Purchase-line unit cost snapshot parity~~ — `purchase_cost_snapshots`, `PurchaseCostBasis`, migration `20261003130000`, super-admin toggle; **staging apply user-gated**
+- Real VAT TRNs for FrozenHub 1/2 and GulfHarvest
+- Owner 2 login email / contact + OpeningDataChoice confirmation
+- GulfHarvest logo file + email choice (licence vs tenant email)
+- PostgreSQL / staging access for the 44 skipped checks
+- Production deploy authorization
 
-## Immediate QA queue (evidence)
+## Confirmed decisions
 
-1. A01 tenant login — desktop/tablet/phone signed-in
-2. P02 owner setup — browser → API → DB journey
-3. C03 POS — stock + receipt path smoke on staging
+- Separate tenants: `frozenhub1` / `frozenhub2`; legacy `frozenhub` → redirect via `LEGACY_SUBDOMAIN`
+- **GulfHarvest** name; CT TRN `105543085200001` is not VAT
+- Tier 0 = standard **5% VAT**; margin deferred
+- Reprints use **current** header settings; financial snapshots immutable
 
-## Artifacts checklist
+## Post Tier 0 phase order
 
-- [x] `docs/plan/IMPLEMENTATION-PROMPT.txt` (copy into agents)
-- [x] `docs/plan/ROUTE-MANIFEST.json` + test
-- [x] `docs/plan/PAGE-SPECIFICATION.md` (this spec)
-- [x] `docs/refactor-progress.md` (live tracker)
-- [ ] Staging evidence JSON per page (create as QA runs)
+1 FE/BE deploy parity → 2 Isolation → 3 Payments/receipts → 4 Cost/profit → 5 Daily close → **6 Margin VAT (deferred)** → 7 Shell UX → 8 Remaining routes → 9 AI → 10 Voice/maps → 11 Staging pilot.

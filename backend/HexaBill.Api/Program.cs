@@ -359,6 +359,7 @@ builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.IDocumentAssetUploadS
 builder.Services.AddSingleton<ITimeZoneService, TimeZoneService>(); // Gulf Standard Time (GST, UTC+4)
 builder.Services.AddScoped<IStartupDiagnosticsService, StartupDiagnosticsService>(); // CRITICAL: Startup diagnostics
 builder.Services.AddScoped<ISuperAdminTenantService, SuperAdminTenantService>(); // Super Admin tenant management
+builder.Services.AddScoped<HexaBill.Api.Modules.Tenants.Tier0TenantProvisioning>(); // Idempotent Tier 0 identity provisioning
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>(); // Subscription management
 builder.Services.AddScoped<ISignupService, SignupService>(); // Public signup service
 builder.Services.AddScoped<HexaBill.Api.Modules.SuperAdmin.IDemoRequestService, HexaBill.Api.Modules.SuperAdmin.DemoRequestService>(); // Demo request approval flow

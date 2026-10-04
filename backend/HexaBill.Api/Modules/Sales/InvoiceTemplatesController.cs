@@ -6,6 +6,7 @@ Date: 2024
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.SuperAdmin;
 
 namespace HexaBill.Api.Modules.Sales
 {
@@ -15,10 +16,14 @@ namespace HexaBill.Api.Modules.Sales
     public class InvoiceTemplatesController : TenantScopedController // MULTI-TENANT: Owner-scoped templates
     {
         private readonly IInvoiceTemplateService _templateService;
+        private readonly ISettingsService _settingsService;
+        private readonly IStorageService _storageService;
 
-        public InvoiceTemplatesController(IInvoiceTemplateService templateService)
+        public InvoiceTemplatesController(IInvoiceTemplateService templateService, ISettingsService settingsService, IStorageService storageService)
         {
             _templateService = templateService;
+            _settingsService = settingsService;
+            _storageService = storageService;
         }
 
         [HttpGet]
@@ -317,16 +322,14 @@ namespace HexaBill.Api.Modules.Sales
         {
             try
             {
-                var userIdClaim = User.FindFirst("UserId") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("id");
-                var userId = (userIdClaim != null && int.TryParse(userIdClaim.Value, out var uid)) ? uid : 1;
-
                 // Create a sample sale DTO for preview
                 var sampleSale = new SaleDto
                 {
-                    Id = 1,
+                    Id = 0,
+                    OwnerId = CurrentTenantId,
                     InvoiceNo = "INV-0001",
                     InvoiceDate = DateTime.UtcNow,
-                    CustomerId = 1,
+                    CustomerId = null,
                     CustomerName = "Sample Customer",
                     Subtotal = 1736.00m,
                     VatTotal = 86.80m,
@@ -358,14 +361,22 @@ namespace HexaBill.Api.Modules.Sales
                     }
                 };
 
+                var company = await _settingsService.GetCompanySettingsAsync(CurrentTenantId);
+                byte[]? logo = null;
+                if (!string.IsNullOrEmpty(company.LogoDataUri))
+                {
+                    var parts = company.LogoDataUri.Split(',', 2);
+                    if (parts.Length == 2) logo = Convert.FromBase64String(parts[1]);
+                }
+                else if (!string.IsNullOrEmpty(company.LogoStorageKey))
+                    logo = await _storageService.ReadBytesAsync(company.LogoStorageKey);
                 var sampleSettings = new InvoiceTemplateService.CompanySettings
                 {
-                    CompanyNameEn = "HexaBill",
-                    CompanyNameAr = "ستار بلس لتجارة المواد الغذائية",
-                    CompanyAddress = "Mussafah 44, Industrial Area",
-                    CompanyPhone = "+971 555298878",
-                    CompanyTrn = "100366253100003",
-                    Currency = "AED"
+                    CompanyNameEn = company.LegalNameEn, CompanyNameAr = company.LegalNameAr,
+                    CompanyAddress = company.Address, CompanyPhone = company.Mobile,
+                    CompanyTrn = company.VatNumber, CompanyEmail = company.Email,
+                    Currency = company.Currency, LogoImageBytes = logo,
+                    BilingualMonochromeHeader = company.BilingualMonochromeHeader
                 };
 
                 string renderedHtml;
@@ -375,19 +386,7 @@ namespace HexaBill.Api.Modules.Sales
                 }
                 else if (!string.IsNullOrEmpty(request.HtmlCode))
                 {
-                    // Create a temporary template for preview (tenant-scoped)
-                    var tempTemplate = await _templateService.CreateTemplateAsync(
-                        new CreateInvoiceTemplateRequest
-                        {
-                            Name = "Preview Template",
-                            HtmlCode = request.HtmlCode,
-                            IsActive = false
-                        },
-                        userId,
-                        CurrentTenantId
-                    );
-                    renderedHtml = await _templateService.RenderTemplateAsync(tempTemplate.Id, CurrentTenantId, sampleSale, sampleSettings);
-                    await _templateService.DeleteTemplateAsync(tempTemplate.Id, CurrentTenantId);
+                    renderedHtml = await _templateService.RenderTemplateHtmlAsync(request.HtmlCode, sampleSale, sampleSettings);
                 }
                 else
                 {

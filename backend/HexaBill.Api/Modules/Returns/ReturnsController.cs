@@ -196,6 +196,27 @@ namespace HexaBill.Api.Modules.Returns
             }
         }
 
+        [HttpPatch("sales/{id}/reverse")]
+        [Authorize(Policy = "AdminOrOwner")]
+        public async Task<ActionResult<ApiResponse<SaleReturnDto>>> ReverseSaleReturn(int id, [FromBody] ReverseSaleReturnRequest request)
+        {
+            try
+            {
+                if (request == null || string.IsNullOrWhiteSpace(request.Reason))
+                    return BadRequest(new ApiResponse<SaleReturnDto> { Success = false, Message = "Reversal reason is required." });
+                var userId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+                var result = await _returnService.ReverseSaleReturnAsync(id, request.Reason, userId, CurrentTenantId);
+                return Ok(new ApiResponse<SaleReturnDto> { Success = true, Message = "Return reversed", Data = result });
+            }
+            catch (Exception ex)
+            {
+                var status = ex is InvalidOperationException or ArgumentException
+                    ? StatusCodes.Status400BadRequest
+                    : StatusCodes.Status500InternalServerError;
+                return StatusCode(status, new ApiResponse<SaleReturnDto> { Success = false, Message = ex.Message });
+            }
+        }
+
         [HttpDelete("sales/{id}")]
         [Authorize(Policy = "AdminOrOwner")]
         public async Task<ActionResult<ApiResponse<object>>> DeleteSaleReturn(int id)

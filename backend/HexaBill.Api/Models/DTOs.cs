@@ -461,6 +461,10 @@ namespace HexaBill.Api.Models
         public string? CompanyTrn { get; set; }
         public string? CompanyAddress { get; set; }
         public string? CompanyPhone { get; set; }
+        public string? CompanyEmail { get; set; }
+        public string? CompanyLogoDataUri { get; set; }
+        public string CompanySettingsVersion { get; set; } = "";
+        public bool BilingualMonochromeHeader { get; set; }
         public string ReceivedFrom { get; set; } = string.Empty;
         public string? CustomerTrn { get; set; }
         public decimal AmountReceived { get; set; }
@@ -629,6 +633,8 @@ namespace HexaBill.Api.Models
         public int? PaymentId { get; set; } // For linking to payments
         public int? ReturnId { get; set; } // For linking to returns (delete action)
         public string? Status { get; set; } // Paid, Partial, Unpaid; for returns: Refunded, Credit Issued, Pending Refund
+        /// <summary>When Type is Sale Return: Pending, Approved, Rejected, Reversed (workflow; distinct from refund Status).</summary>
+        public string? ReturnWorkflowStatus { get; set; }
         public decimal PaidAmount { get; set; } // Amount paid for invoice
     }
 
@@ -1248,6 +1254,13 @@ namespace HexaBill.Api.Models
         public const string RefundNow = "RefundNow";
         public const string CreditIssued = "CreditIssued";
         public const string AdjustNextInvoice = "AdjustNextInvoice";
+    }
+
+    public class ReverseSaleReturnRequest
+    {
+        [Required]
+        [MaxLength(500)]
+        public string Reason { get; set; } = string.Empty;
     }
 
     public class CreateSaleReturnRequest

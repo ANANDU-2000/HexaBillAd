@@ -60,7 +60,7 @@ public class ReturnConcurrencyPostgreSqlTests
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);
         db.SetRequestTenantScope(tenantId, false);
-        await db.Database.EnsureCreatedAsync();
+        await PostgresTestSchema.EnsureCreatedAsync(db);
         return db;
     }
 

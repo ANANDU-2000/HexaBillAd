@@ -114,7 +114,7 @@ public class HttpIsolationPostgreSqlTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var json = await response.Content.ReadFromJsonAsync<ServiceResponseStub<CompanyStub>>();
         Assert.True(json?.Success);
-        Assert.Equal($"TRN-PG-{factory.TenantAId}", json?.Data?.VatNumber);
+        Assert.Equal($"{factory.TenantAId:D15}", json?.Data?.VatNumber);
         Assert.DoesNotContain(factory.TenantBId.ToString(), json?.Data?.VatNumber ?? string.Empty);
     }
 

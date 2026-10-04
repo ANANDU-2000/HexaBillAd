@@ -141,7 +141,8 @@ namespace HexaBill.Api.Models
     {
         Pending,
         Approved,
-        Rejected
+        Rejected,
+        Reversed
     }
 }
 

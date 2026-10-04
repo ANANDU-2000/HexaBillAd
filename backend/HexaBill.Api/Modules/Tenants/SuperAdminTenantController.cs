@@ -27,8 +27,16 @@ namespace HexaBill.Api.Modules.Tenants
         private readonly AppDbContext _context;
         private readonly ITenantActivityService _activityService;
         private readonly ILoginLockoutService _lockoutService;
+        private readonly Tier0TenantProvisioning _tier0Provisioning;
 
-        public TenantController(ISuperAdminTenantService tenantService, ILogger<TenantController> logger, IConfiguration configuration, AppDbContext context, ITenantActivityService activityService, ILoginLockoutService lockoutService)
+        public TenantController(
+            ISuperAdminTenantService tenantService,
+            ILogger<TenantController> logger,
+            IConfiguration configuration,
+            AppDbContext context,
+            ITenantActivityService activityService,
+            ILoginLockoutService lockoutService,
+            Tier0TenantProvisioning tier0Provisioning)
         {
             _tenantService = tenantService;
             _logger = logger;
@@ -36,6 +44,35 @@ namespace HexaBill.Api.Modules.Tenants
             _context = context;
             _activityService = activityService;
             _lockoutService = lockoutService;
+            _tier0Provisioning = tier0Provisioning;
+        }
+
+        /// <summary>
+        /// Idempotent Tier 0 identity provisioning (frozenhub1/2 + GulfHarvest). Never resets credentials or overwrites established settings.
+        /// </summary>
+        [HttpPost("/api/superadmin/tier0/provision")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<string>>>> ProvisionTier0(CancellationToken cancellationToken)
+        {
+            if (!IsSystemAdmin) return Forbid();
+            try
+            {
+                var log = await _tier0Provisioning.ApplyAsync(cancellationToken);
+                await WriteSuperAdminAuditAsync("Tier0Provision", null, string.Join("; ", log));
+                return Ok(new ApiResponse<IReadOnlyList<string>>
+                {
+                    Success = true,
+                    Message = "Tier 0 provisioning applied (idempotent).",
+                    Data = log
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiResponse<IReadOnlyList<string>> { Success = false, Message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new ApiResponse<IReadOnlyList<string>> { Success = false, Message = ex.Message });
+            }
         }
 
         /// <summary>

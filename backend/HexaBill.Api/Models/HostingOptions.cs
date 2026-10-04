@@ -23,9 +23,16 @@ public sealed record TenantHostResolution(
     string? Slug = null,
     int? TenantId = null,
     TenantStatus? Status = null,
-    bool HeaderMismatch = false)
+    bool HeaderMismatch = false,
+    /// <summary>When set and different from <see cref="Slug"/>, browsers should be redirected to this canonical subdomain.</summary>
+    string? CanonicalSlug = null)
 {
     public static TenantHostResolution Platform() => new(TenantHostKind.Platform);
     public static TenantHostResolution Marketing() => new(TenantHostKind.Marketing);
     public static TenantHostResolution Unknown() => new(TenantHostKind.Unknown);
+
+    public bool RequiresCanonicalRedirect =>
+        Kind == TenantHostKind.Tenant
+        && !string.IsNullOrWhiteSpace(CanonicalSlug)
+        && !string.Equals(Slug, CanonicalSlug, StringComparison.OrdinalIgnoreCase);
 }

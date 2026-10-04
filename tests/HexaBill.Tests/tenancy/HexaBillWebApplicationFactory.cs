@@ -346,7 +346,7 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
         db.Settings.AddRange(
             new Setting
             {
-                TenantId = 1, OwnerId = 1, Key = "COMPANY_TRN", Value = "TRN-TENANT-A-HTTP",
+                TenantId = 1, OwnerId = 1, Key = "COMPANY_TRN", Value = "100000000000001",
                 CreatedAt = now, UpdatedAt = now
             },
             new Setting
@@ -356,7 +356,7 @@ public class HexaBillWebApplicationFactory : WebApplicationFactory<Program>
             },
             new Setting
             {
-                TenantId = 2, OwnerId = 2, Key = "COMPANY_TRN", Value = "TRN-TENANT-B-HTTP",
+                TenantId = 2, OwnerId = 2, Key = "COMPANY_TRN", Value = "100000000000002",
                 CreatedAt = now, UpdatedAt = now
             },
             new Setting

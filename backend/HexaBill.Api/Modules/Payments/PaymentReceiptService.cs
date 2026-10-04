@@ -31,11 +31,13 @@ namespace HexaBill.Api.Modules.Payments
     {
         private readonly AppDbContext _context;
         private readonly ILogger<PaymentReceiptService> _logger;
+        private readonly ISettingsService _settings;
 
-        public PaymentReceiptService(AppDbContext context, ILogger<PaymentReceiptService> logger)
+        public PaymentReceiptService(AppDbContext context, ILogger<PaymentReceiptService> logger, ISettingsService? settings = null)
         {
             _context = context;
             _logger = logger;
+            _settings = settings ?? new SettingsService(context);
         }
 
         public async Task<PaymentReceiptDetailDto> GenerateReceiptAsync(int tenantId, int paymentId, int userId)
@@ -105,24 +107,9 @@ namespace HexaBill.Api.Modules.Payments
                             throw new InvalidOperationException("Selected payments belong to different customers. Generate a receipt per customer.");
                     }
 
-                    // Receipt identity must come from this workspace, never shared hardcoded company defaults.
-                    var legalKeys = new[] { "COMPANY_NAME_EN", "COMPANY_NAME_AR", "COMPANY_TRN", "COMPANY_ADDRESS", "COMPANY_PHONE" };
-                    var legalRows = await _context.Settings.AsNoTracking()
-                        .Where(s => s.TenantId == tenantId && legalKeys.Contains(s.Key))
-                        .ToListAsync();
-                    var legalSettings = legalRows.GroupBy(s => s.Key).ToDictionary(group => group.Key,
-                        group => group.OrderByDescending(s => s.OwnerId == tenantId).ThenBy(s => s.OwnerId).First().Value);
+                    var settings = await _settings.GetCompanySettingsAsync(tenantId);
+                    var companyName = settings.LegalNameEn;
                     var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
-                    var companyName = legalSettings.GetValueOrDefault("COMPANY_NAME_EN");
-                    if (string.IsNullOrWhiteSpace(companyName)) companyName = tenant?.CompanyNameEn ?? tenant?.Name;
-                    var settings = new CompanySettings
-                    {
-                        LegalNameEn = companyName,
-                        LegalNameAr = legalSettings.GetValueOrDefault("COMPANY_NAME_AR") ?? tenant?.CompanyNameAr,
-                        VatNumber = legalSettings.GetValueOrDefault("COMPANY_TRN") ?? tenant?.VatNumber,
-                        Address = legalSettings.GetValueOrDefault("COMPANY_ADDRESS") ?? tenant?.Address,
-                        Mobile = legalSettings.GetValueOrDefault("COMPANY_PHONE") ?? tenant?.Phone,
-                    };
                     var captureEnabled = TenantFeatureFlags.IsEnabled(tenant?.FeaturesJson, TenantFeatureFlags.ReceiptSnapshots);
                     var existingRows = await _context.PaymentReceipts
                         .Where(r => r.TenantId == tenantId && distinctIds.Contains(r.PaymentId))
@@ -168,6 +155,9 @@ namespace HexaBill.Api.Modules.Payments
                                 CompanyTrn = settings.VatNumber,
                                 CompanyAddress = settings.Address,
                                 CompanyPhone = settings.Mobile,
+                                CompanyEmail = settings.Email,
+                                CompanySettingsVersion = settings.SettingsVersion,
+                                BilingualMonochromeHeader = settings.BilingualMonochromeHeader,
                                 Currency = string.IsNullOrWhiteSpace(tenant?.Currency) ? "AED" : tenant.Currency,
                                 ReceivedFrom = pay.Customer?.Name ?? "Cash customer",
                                 CustomerTrn = pay.Customer?.Trn,
@@ -190,9 +180,8 @@ namespace HexaBill.Api.Modules.Payments
                         }
                         plans.Add((pay, existing, document));
                     }
-                    // Never merge historical receipts from different legal identities/currencies.
+                    // Financial/customer snapshots must agree; company identity is resolved at render time.
                     var identities = plans.Select(p => JsonSerializer.Serialize(new {
-                        p.Detail.CompanyName, p.Detail.CompanyNameAr, p.Detail.CompanyTrn,
                         p.Detail.Currency, p.Detail.ReceivedFrom, p.Detail.CustomerTrn
                     })).Distinct().Count();
                     if (identities != 1)
@@ -227,6 +216,16 @@ namespace HexaBill.Api.Modules.Payments
                         await _context.SaveChangesAsync();
                         receipts.Add(new PaymentReceiptDto { Id = rec.Id, ReceiptNumber = rec.ReceiptNumber,
                             PaymentId = rec.PaymentId, GeneratedAt = rec.GeneratedAt });
+                        // Preserve the stored issue-time snapshot; update only the returned header.
+                        plan.Detail.CompanyName = settings.LegalNameEn;
+                        plan.Detail.CompanyNameAr = settings.LegalNameAr;
+                        plan.Detail.CompanyTrn = settings.VatNumber;
+                        plan.Detail.CompanyAddress = settings.Address;
+                        plan.Detail.CompanyPhone = settings.Mobile;
+                        plan.Detail.CompanyEmail = settings.Email;
+                        plan.Detail.CompanyLogoDataUri = settings.LogoDataUri;
+                        plan.Detail.CompanySettingsVersion = settings.SettingsVersion;
+                        plan.Detail.BilingualMonochromeHeader = settings.BilingualMonochromeHeader;
                         details.Add(plan.Detail);
                     }
                     await transaction.CommitAsync();

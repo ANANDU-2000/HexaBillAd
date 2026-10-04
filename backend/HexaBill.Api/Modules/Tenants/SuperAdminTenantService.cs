@@ -825,6 +825,26 @@ namespace HexaBill.Api.Modules.Tenants
             foreach (var tenant in tenants)
                 tenant.LoginUrl = BuildLoginUrl(tenant.Subdomain);
 
+            // Evaluate the full company directory so duplicates on another page are visible.
+            // Explicit tenant settings (including a cleared TRN) override legacy Tenant.VatNumber.
+            var vatRows = await _context.Settings.AsNoTracking()
+                .Where(s => s.Key == "COMPANY_TRN" && s.TenantId.HasValue)
+                .Select(s => new { TenantId = s.TenantId!.Value, s.OwnerId, s.Value })
+                .ToListAsync();
+            var configuredVat = vatRows.GroupBy(s => s.TenantId).ToDictionary(g => g.Key,
+                g => g.OrderByDescending(s => s.OwnerId == g.Key).ThenBy(s => s.OwnerId).First().Value ?? "");
+            var directoryVat = await _context.Tenants.AsNoTracking()
+                .Select(t => new { t.Id, t.VatNumber }).ToListAsync();
+            var effectiveVat = directoryVat.ToDictionary(t => t.Id,
+                t => configuredVat.GetValueOrDefault(t.Id, t.VatNumber ?? "").Trim());
+            var sharedVatCounts = effectiveVat.Values.Where(v => v.Length == 15 && v.All(c => c >= '0' && c <= '9'))
+                .GroupBy(v => v).ToDictionary(g => g.Key, g => g.Count());
+            foreach (var tenant in tenants)
+            {
+                tenant.VatNumber = effectiveVat.GetValueOrDefault(tenant.Id, "");
+                tenant.SharedVatTenantCount = sharedVatCounts.GetValueOrDefault(tenant.VatNumber, 0);
+            }
+
             // BUG #2.1 FIX: Replace N+1 queries with batch GROUP BY queries (600 queries → 6 queries)
             var tenantIds = tenants.Select(t => t.Id).ToList();
             if (tenantIds.Any())
@@ -1025,11 +1045,17 @@ namespace HexaBill.Api.Modules.Tenants
                 legalSettings = await _context.Settings.AsNoTracking()
                     .Where(s => s.TenantId == legalSource.Id && legalKeys.Contains(s.Key))
                     .ToDictionaryAsync(s => s.Key, s => s.Value);
-                if (string.IsNullOrWhiteSpace(legalSettings.GetValueOrDefault("COMPANY_TRN", legalSource.VatNumber ?? "")) ||
-                    string.IsNullOrWhiteSpace(legalSettings.GetValueOrDefault("COMPANY_LICENSE")))
-                    throw new InvalidOperationException("Complete and verify the source company's TRN and licence before owner setup.");
+                // VAT TRN may be empty until the client enters it. Licence must be present.
+                // Never treat corporate-tax TRN as VAT.
+                if (string.IsNullOrWhiteSpace(legalSettings.GetValueOrDefault("COMPANY_LICENSE")))
+                    throw new InvalidOperationException("Complete and verify the source company's licence before owner setup.");
+                var sourceVat = legalSettings.GetValueOrDefault("COMPANY_TRN", legalSource.VatNumber ?? "")?.Trim() ?? "";
+                if (sourceVat.Length != 0 && (sourceVat.Length != 15 || sourceVat.Any(c => c < '0' || c > '9')))
+                    throw new InvalidOperationException("Source company VAT TRN must be empty or exactly 15 ASCII digits before owner setup.");
                 if (!string.Equals(request.ExpectedLegalIdentityFingerprint, LegalIdentityFingerprint(legalSource, legalSettings), StringComparison.Ordinal))
                     throw new InvalidOperationException("The source company's legal details changed or were not reviewed. Reload owner setup and confirm the current details.");
+                if (request.OpeningDataChoice != "Empty")
+                    throw new InvalidOperationException("Choose an empty workspace explicitly, or complete the approved import review before provisioning. No opening data is copied automatically.");
             }
 
             // A reviewed shared legal identity may use the same display name.
@@ -1151,6 +1177,8 @@ namespace HexaBill.Api.Modules.Tenants
                     ["COMPANY_LICENSE"] = legalSource == null ? request.CompanyLicense?.Trim() ?? ""
                         : legalSettings.GetValueOrDefault("COMPANY_LICENSE", "")
                 };
+                if (legalSource != null)
+                    branding["OPENING_DATA_CHOICE"] = request.OpeningDataChoice!;
                 foreach (var item in branding)
                 {
                     _context.Settings.Add(new Setting
@@ -2267,6 +2295,8 @@ namespace HexaBill.Api.Modules.Tenants
         public string? Email { get; set; }
         public string? Phone { get; set; }
         public string? VatNumber { get; set; }
+        /// <summary>Platform warning only; shared VAT registrations do not grant cross-tenant access.</summary>
+        public int SharedVatTenantCount { get; set; }
         public string? LogoPath { get; set; }
         /// <summary>SalesBased or ProfitBased — VAT return profit-form presentation only; statutory boxes unchanged.</summary>
         public string VatCalculationBasis { get; set; } = "SalesBased";
@@ -2352,6 +2382,7 @@ namespace HexaBill.Api.Modules.Tenants
         public string? CompanyLicense { get; set; }
         public int? SharedLegalIdentityFromTenantId { get; set; }
         public bool ConfirmSharedLegalIdentity { get; set; }
+        public string? OpeningDataChoice { get; set; }
         public string? ExpectedLegalIdentityFingerprint { get; set; }
         public string? Address { get; set; }
         public string? Phone { get; set; }

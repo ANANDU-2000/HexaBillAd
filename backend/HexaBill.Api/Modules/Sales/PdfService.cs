@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using System.IO;
+using SixLabors.ImageSharp.Processing;
 using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Hosting;
@@ -74,12 +75,30 @@ namespace HexaBill.Api.Modules.Sales
                 page.DefaultTextStyle(style => style.FontFamily(_englishFont).FontSize(10));
                 page.Header().Column(column =>
                 {
+                    if (receipt.BilingualMonochromeHeader)
+                    {
+                        byte[]? logo = null;
+                        if (!string.IsNullOrEmpty(receipt.CompanyLogoDataUri))
+                        {
+                            var parts = receipt.CompanyLogoDataUri.Split(',', 2);
+                            if (parts.Length == 2) logo = Convert.FromBase64String(parts[1]);
+                        }
+                        RenderCompanyHeader(column.Item(), new InvoiceTemplateService.CompanySettings {
+                            CompanyNameEn = receipt.CompanyName, CompanyNameAr = receipt.CompanyNameAr ?? "",
+                            CompanyTrn = receipt.CompanyTrn ?? "", CompanyAddress = receipt.CompanyAddress ?? "",
+                            CompanyPhone = receipt.CompanyPhone ?? "", CompanyEmail = receipt.CompanyEmail ?? "",
+                            LogoImageBytes = logo
+                        }, 14);
+                    }
+                    else
+                    {
                     column.Item().Text(receipt.CompanyName).Bold().FontSize(16);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyNameAr))
                         column.Item().AlignRight().Text(receipt.CompanyNameAr).FontFamily(_arabicFont);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyAddress)) column.Item().Text(receipt.CompanyAddress);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyPhone)) column.Item().Text(receipt.CompanyPhone);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyTrn)) column.Item().Text($"TRN: {receipt.CompanyTrn}");
+                    }
                     column.Item().PaddingTop(12).Text("PAYMENT RECEIPT").Bold().FontSize(14);
                     column.Item().Text("Proof of payment — not a tax invoice").FontSize(9);
                     column.Item().Text($"Receipt: {receipt.ReceiptNumber}");
@@ -148,6 +167,7 @@ namespace HexaBill.Api.Modules.Sales
                 }
                 
                 var settings = await GetCompanySettingsAsync(sale.OwnerId); // Use OwnerId from SaleDto
+                HexaBill.Api.Models.CompanySettings.RequireTaxInvoiceVatTrn(settings.CompanyTrn, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 ApplyInvoiceLayoutOverride(settings, layout);
                 
                 // CRITICAL: Get customer's pending balance for invoice footer acknowledgment (A4 only)
@@ -235,7 +255,7 @@ namespace HexaBill.Api.Modules.Sales
                             .FontFamily(_arabicFont)
                         );
 
-                        var useOrangeLetterhead = !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
+                        var useOrangeLetterhead = !settings.BilingualMonochromeHeader && !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
                         RenderFullPageLetterheadChrome(page, settings);
                         // Body print: overlay stamp on letterhead paper. Full Zayoga: stamp near sign-off (avoids blank page).
                         if (!useOrangeLetterhead)
@@ -253,7 +273,12 @@ namespace HexaBill.Api.Modules.Sales
                                 var hasLogo = !settings.LetterheadOnlyPrint && !useOrangeLetterhead && settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
                                 var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
 
-                                if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
+                                if (settings.BilingualMonochromeHeader)
+                                {
+                                    RenderCompanyHeader(innerColumn.Item(), settings, 14);
+                                    innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(10);
+                                }
+                                else if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
                                 // Row 1: Logo | Company block (name EN, AR, address) | Date
                                 innerColumn.Item().Row(headerRow =>
@@ -521,7 +546,7 @@ namespace HexaBill.Api.Modules.Sales
                     pdfBytes = document.GeneratePdf();
                     _logger.LogInformation($"\u2705 PDF generated: {pdfBytes.Length} bytes");
                 }
-                catch (Exception pdfEx) when (pdfEx.Message.Contains("conflicting size constraints") || pdfEx.Message.Contains("more space"))
+                catch (Exception pdfEx) when (!settings.BilingualMonochromeHeader && (pdfEx.Message.Contains("conflicting size constraints") || pdfEx.Message.Contains("more space")))
                 {
                     // FALLBACK: Layout overflow - retry without customer balance
                     _logger.LogInformation($"\u26a0\ufe0f PDF layout overflow, retrying without customer balance...");
@@ -636,7 +661,7 @@ namespace HexaBill.Api.Modules.Sales
                             page.DefaultTextStyle(x => x.FontSize(10f).FontFamily(_arabicFont));
                         }
                         page.PageColor(Colors.White);
-                        var useOrangeLetterhead = !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
+                        var useOrangeLetterhead = !settings.BilingualMonochromeHeader && !settings.LetterheadOnlyPrint && IsZayogaBrand(settings);
                         RenderFullPageLetterheadChrome(page, settings, compact: isA5);
                         if (!useOrangeLetterhead)
                             RenderStampSignatureFooter(page, settings);
@@ -786,7 +811,7 @@ namespace HexaBill.Api.Modules.Sales
         {
             var invoiceDateStr = FormatInvoiceDate(sale.InvoiceDate, settings);
             var letterheadOnly = settings.LetterheadOnlyPrint;
-            var useOrangeLetterhead = !letterheadOnly && IsZayogaBrand(settings);
+            var useOrangeLetterhead = !settings.BilingualMonochromeHeader && !letterheadOnly && IsZayogaBrand(settings);
             var document = Document.Create(container =>
             {
                 container.Page(page =>
@@ -806,7 +831,9 @@ namespace HexaBill.Api.Modules.Sales
                         column.Item().PaddingVertical(2).Column(inner =>
                         {
                             inner.Spacing(0);
-                            if (!letterheadOnly && !useOrangeLetterhead)
+                            if (settings.BilingualMonochromeHeader)
+                                RenderCompanyHeader(inner.Item(), settings, 10);
+                            else if (!letterheadOnly && !useOrangeLetterhead)
                             {
                                 inner.Item().AlignCenter().Column(c =>
                                 {
@@ -902,9 +929,14 @@ namespace HexaBill.Api.Modules.Sales
                     page.Content().Column(column =>
                     {
                         column.Spacing(0);
-                        column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
-                        column.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}").FontSize(6);
-                        column.Item().AlignCenter().Text(settings.CompanyAddress ?? "").FontSize(5);
+                        if (settings.BilingualMonochromeHeader)
+                            RenderCompanyHeader(column.Item(), settings, 9);
+                        else
+                        {
+                            column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
+                            column.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}").FontSize(6);
+                            column.Item().AlignCenter().Text(settings.CompanyAddress ?? "").FontSize(5);
+                        }
                         column.Item().AlignCenter().Text("TAX INVOICE").FontSize(8).Bold();
                         column.Item().AlignCenter().Text($"#{sale.InvoiceNo} | {invoiceDateStr}").FontSize(6);
                         column.Item().Text($"Customer: {sale.CustomerName ?? "Cash"}").FontSize(6);
@@ -968,8 +1000,13 @@ namespace HexaBill.Api.Modules.Sales
                     page.Content().Column(column =>
                     {
                         column.Spacing(0);
-                        column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7).Bold();
-                        column.Item().AlignCenter().Text($"TRN:{settings.CompanyTrn}").FontSize(5);
+                        if (settings.BilingualMonochromeHeader)
+                            RenderCompanyHeader(column.Item(), settings, 7);
+                        else
+                        {
+                            column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7).Bold();
+                            column.Item().AlignCenter().Text($"TRN:{settings.CompanyTrn}").FontSize(5);
+                        }
                         column.Item().AlignCenter().Text("TAX INV").FontSize(6).Bold();
                         column.Item().AlignCenter().Text($"{sale.InvoiceNo} {invoiceDateStr}").FontSize(5);
                         column.Item().Text($"Cust:{sale.CustomerName ?? "Cash"}").FontSize(5);
@@ -1028,7 +1065,10 @@ namespace HexaBill.Api.Modules.Sales
                     throw new InvalidOperationException("No sales provided for combined PDF generation.");
                 }
                 
-                var settings = await GetCompanySettingsAsync(sales[0].OwnerId); // All sales belong to same owner
+                if (sales.Any(s => s.OwnerId != sales[0].OwnerId))
+                    throw new InvalidOperationException("Invoices from different workspaces cannot be combined.");
+                var settings = await GetCompanySettingsAsync(sales[0].OwnerId);
+                HexaBill.Api.Models.CompanySettings.RequireTaxInvoiceVatTrn(settings.CompanyTrn, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 
                 // PROD-10: Pre-fetch all customer TRNs to avoid blocking .Result calls in synchronous context
                 var customerTrnMap = new Dictionary<int?, string>();
@@ -1100,6 +1140,42 @@ namespace HexaBill.Api.Modules.Sales
             }
         }
 
+        internal static byte[]? MonochromeLogo(byte[]? bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return null;
+            using var image = SixLabors.ImageSharp.Image.Load(bytes);
+            image.Mutate(x => x.Grayscale());
+            using var output = new MemoryStream();
+            SixLabors.ImageSharp.ImageExtensions.SaveAsPng(image, output);
+            return output.ToArray();
+        }
+
+        private void RenderCompanyHeader(IContainer container, InvoiceTemplateService.CompanySettings settings, float fontSize)
+        {
+            container.DefaultTextStyle(x => x.FontColor(Colors.Black)).Column(column =>
+            {
+                column.Spacing(1);
+                var logo = MonochromeLogo(settings.LogoImageBytes);
+                if (logo != null)
+                    column.Item().AlignCenter().Width(fontSize <= 9 ? 45 : 90).Height(fontSize <= 9 ? 24 : 42).Image(logo).FitArea();
+                column.Item().AlignCenter().Text(settings.CompanyNameEn).FontFamily(_englishFont).FontSize(fontSize).SemiBold();
+                if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
+                    column.Item().AlignCenter().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
+                        .FontSize(fontSize).DirectionFromRightToLeft();
+                column.Item().AlignCenter().Text($"VAT TRN / رقم التسجيل الضريبي: {settings.CompanyTrn}")
+                    .FontFamily(_arabicFont).FontSize(Math.Max(5, fontSize - 3));
+                foreach (var contact in new[] { settings.CompanyPhone, settings.CompanyEmail, settings.CompanyAddress })
+                    if (!string.IsNullOrWhiteSpace(contact))
+                    {
+                        var containsArabic = contact.Any(c => c >= '\u0600' && c <= '\u06ff');
+                        var line = column.Item().AlignCenter().Text(contact)
+                            .FontFamily(containsArabic ? _arabicFont : _englishFont).FontSize(Math.Max(5, fontSize - 3));
+                        if (containsArabic) line.DirectionFromRightToLeft();
+                        else line.DirectionFromLeftToRight();
+                    }
+            });
+        }
+
         private void RenderInvoiceContent(ColumnDescriptor column, SaleDto sale, InvoiceTemplateService.CompanySettings settings, string? customerTrn = null)
         {
             var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
@@ -1109,6 +1185,13 @@ namespace HexaBill.Api.Modules.Sales
             {
                 innerColumn.Spacing(0);
 
+                if (settings.BilingualMonochromeHeader)
+                {
+                    RenderCompanyHeader(innerColumn.Item(), settings, 14);
+                    innerColumn.Item().AlignRight().Text($"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
+                }
+                else
+                {
                 // Starplus-style header: 3 columns when logo present, else centred text
                 var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
 if (hasLogo)
@@ -1146,6 +1229,8 @@ if (hasLogo)
                         trnDateRow.RelativeItem().Text($"TRN : No : {settings.CompanyTrn}").FontSize(9);
                         trnDateRow.RelativeItem().AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
                     });
+                }
+
                 }
 
                 innerColumn.Item().PaddingTop(6).BorderTop(2).BorderBottom(2).PaddingVertical(4).Text("TAX INVOICE")
@@ -1396,6 +1481,9 @@ if (hasLogo)
                 CompanyAddress = companySettings.Address ?? "",
                 CompanyTrn = companySettings.VatNumber ?? "",
                 CompanyPhone = companySettings.Mobile ?? "",
+                CompanyEmail = companySettings.Email,
+                CompanyWebsite = companySettings.Website,
+                BilingualMonochromeHeader = companySettings.BilingualMonochromeHeader,
                 Currency = companySettings.Currency ?? "AED",
                 VatPercent = companySettings.VatPercent,
                 InvoicePrefix = companySettings.InvoicePrefix ?? "INV",
@@ -1413,16 +1501,6 @@ if (hasLogo)
                 SignatureOffsetRightMm = companySettings.SignatureOffsetRightMm,
                 SignatureOffsetBottomMm = companySettings.SignatureOffsetBottomMm,
             };
-            try { dto.CompanyEmail = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_EMAIL") ?? ""; } catch { /* optional */ }
-            try { dto.CompanyWebsite = await _settingsService.GetSettingValueAsync(tenantId, "COMPANY_WEBSITE") ?? ""; } catch { /* optional */ }
-            if (string.IsNullOrWhiteSpace(dto.CompanyWebsite) && !string.IsNullOrWhiteSpace(dto.CompanyEmail)
-                && dto.CompanyEmail.Contains('@', StringComparison.Ordinal))
-            {
-                // Letterhead sample often shows web as domain; fall back to email host
-                var at = dto.CompanyEmail.IndexOf('@');
-                if (at > 0 && at < dto.CompanyEmail.Length - 1)
-                    dto.CompanyWebsite = "www." + dto.CompanyEmail[(at + 1)..];
-            }
             // Logo: read from storage using key stored in Settings (uploaded in Settings page). Per-tenant isolation via tenantId.
             if (!string.IsNullOrWhiteSpace(companySettings.LogoStorageKey))
             {
@@ -1471,7 +1549,7 @@ if (hasLogo)
             // Fallback: logo from base64 in DB (survives container restarts)
             if (dto.LogoImageBytes == null || dto.LogoImageBytes.Length == 0)
             {
-                var base64Setting = await _settingsService.GetSettingValueAsync(tenantId, "LOGO_BASE64_DATA_URI");
+                var base64Setting = companySettings.LogoDataUri;
                 if (!string.IsNullOrWhiteSpace(base64Setting) && base64Setting.Contains(",", StringComparison.Ordinal))
                 {
                     var parts = base64Setting.Split(",", 2, StringSplitOptions.None);
@@ -1708,7 +1786,7 @@ if (hasLogo)
         /// <summary>Page header/footer chrome for full layout. Zayoga → orange stationery; others unchanged (content branding).</summary>
         private void RenderFullPageLetterheadChrome(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, bool compact = false)
         {
-            if (settings.LetterheadOnlyPrint || !IsZayogaBrand(settings)) return;
+            if (settings.BilingualMonochromeHeader || settings.LetterheadOnlyPrint || !IsZayogaBrand(settings)) return;
             page.Header().Column(col => RenderOrangeLetterheadHeader(col, settings, compact));
             page.Footer().Column(col => RenderOrangeLetterheadFooter(col, settings));
         }
@@ -2747,7 +2825,7 @@ if (hasLogo)
             var intro = string.IsNullOrWhiteSpace(quotation.IntroLine) ? QuotationDefaults.IntroLine : quotation.IntroLine;
             var closing = string.IsNullOrWhiteSpace(quotation.ClosingLine) ? QuotationDefaults.ClosingLine : quotation.ClosingLine;
             var letterheadOnly = settings.LetterheadOnlyPrint;
-            var useOrangeLetterhead = !letterheadOnly && IsZayogaBrand(settings);
+            var useOrangeLetterhead = !settings.BilingualMonochromeHeader && !letterheadOnly && IsZayogaBrand(settings);
             try
             {
                 var document = Document.Create(container =>
