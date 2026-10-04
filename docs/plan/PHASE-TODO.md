@@ -30,7 +30,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | T0-S7 | Backup restore copy | **PARTIAL** | SQLite + PG dump/restore PASS; EF migrate-rollback FAIL (chain); R2/agent zip NOT RUN |
 | T0-S8 | Sample TRN never blocks | **PASS** | prod samples allowed; Zayogya excluded |
 | T0-S9 | D5 profit VAT | **PASS** | Standard VAT + Estimate not for filing |
-| T0-13 | Push main | **PASS** | `6dc8d9c` on origin/main |
+| T0-13 | Push main | **PASS** | `7d109e8` on origin/main (= master-loop-2) |
 
 ## Phases 1–11
 

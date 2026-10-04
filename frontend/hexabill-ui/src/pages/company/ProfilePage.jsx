@@ -291,7 +291,7 @@ const ProfilePage = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {loading ? 'Saving…' : 'Save changes'}
@@ -299,7 +299,7 @@ const ProfilePage = () => {
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(true)}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
               >
                 <Lock className="h-4 w-4" />
                 Change password

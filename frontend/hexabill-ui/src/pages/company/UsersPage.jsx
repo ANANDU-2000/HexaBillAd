@@ -566,14 +566,14 @@ const UsersPage = () => {
                   else setSessions([])
                 }).catch(() => setSessions([])).finally(() => setSessionsLoading(false))
               }}
-              className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition flex items-center"
+              className="px-4 py-2 min-h-[44px] bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition flex items-center"
             >
               <Monitor className="h-4 w-4 mr-2" />
               Sessions
             </button>
             <button
               onClick={openAddModal}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center"
+              className="px-4 py-2 min-h-[44px] bg-green-600 hover:bg-green-700 text-white rounded-lg transition flex items-center"
             >
               <UserPlus className="h-4 w-4 mr-2" />
               Add User

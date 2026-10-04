@@ -275,7 +275,7 @@ const BranchesPage = () => {
               <button
                 type="button"
                 onClick={() => setShowBranchModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
               >
                 <Plus className="h-4 w-4" />
                 Add Branch
@@ -291,7 +291,7 @@ const BranchesPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowBranchModal(true)}
-                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
                 >
                   <Plus className="h-4 w-4" />
                   Add Branch
@@ -346,7 +346,7 @@ const BranchesPage = () => {
               <button
                 type="button"
                 onClick={openAddRouteModal}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                className="inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
               >
                 <Plus className="h-4 w-4" />
                 Add Route
@@ -369,7 +369,7 @@ const BranchesPage = () => {
                     <button
                       type="button"
                       onClick={() => { setRouteForm(prev => ({ ...prev, branchId: branches[0]?.id || '', name: '', assignedStaffIds: [] })); setEditingRoute(null); setShowRouteModal(true) }}
-                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
+                      className="mt-4 inline-flex items-center gap-2 px-4 py-2 min-h-[44px] bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm font-medium"
                     >
                       <Plus className="h-4 w-4" />
                       Add Route
