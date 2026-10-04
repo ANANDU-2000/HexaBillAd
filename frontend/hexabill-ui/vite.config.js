@@ -64,7 +64,7 @@ window.$RefreshSig$ = () => (type) => type;`
     allowedHosts: ['.localhost', 'localhost'],
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.HEXABILL_DEV_API_ORIGIN || 'http://localhost:5000',
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {

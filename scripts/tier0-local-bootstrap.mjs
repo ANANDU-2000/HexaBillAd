@@ -131,6 +131,10 @@ async function seedCommerce(slug, email) {
 }
 
 async function main() {
+  const host = new URL(API).hostname;
+  if (!['localhost', '127.0.0.1', '[::1]'].includes(host)) {
+    throw new Error('REFUSED: local bootstrap requires a loopback API host.');
+  }
   console.log(`API=${API}`);
   const health = await fetch(`${API}/health`).catch(() => null);
   if (!health?.ok) {
@@ -191,7 +195,7 @@ async function main() {
   const outFile = path.join(outDir, `tier0-local-bootstrap-${stamp}.json`);
   fs.writeFileSync(outFile, JSON.stringify(report, null, 2));
   console.log(`Wrote ${outFile}`);
-  console.log('Done. Local owner password for all four tenants:', OWNER_PASSWORD);
+  console.log('Done. Synthetic owner passwords were supplied at runtime and are not logged.');
 }
 
 main().catch((err) => {
