@@ -1,6 +1,9 @@
+using System.Text.Json;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.DailyClose;
 using HexaBill.Api.Modules.Reports;
+using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -44,6 +47,44 @@ public class ReturnStockTests
         Assert.Equal(8m, (await db.Products.SingleAsync()).StockQty);
         Assert.Equal(ReturnStatus.Reversed, (await db.SaleReturns.SingleAsync()).Status);
         Assert.Single(await db.SaleItems.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ReverseReturn_OnClosedWriteOffExpenseDay_IsRejectedAtomically()
+    {
+        await using var db = await Database(ReturnStatus.Approved);
+        var expenseDate = new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc);
+        var tenant = await db.Tenants.SingleAsync(t => t.Id == 10);
+        tenant.FeaturesJson = JsonSerializer.Serialize(new[] { TenantFeatureFlags.DailyClose });
+        db.ExpenseCategories.Add(new ExpenseCategory { Id = 1, TenantId = 10, Name = "Return write-off" });
+        db.Expenses.Add(new Expense
+        {
+            Id = 1, TenantId = 10, OwnerId = 10, CategoryId = 1, Amount = 25m, Date = expenseDate,
+            Note = "Return write-off: RETURN-1 - damaged item", CreatedBy = 1, CreatedAt = expenseDate,
+            Status = ExpenseStatus.Approved
+        });
+        db.DailyCashCloses.Add(new DailyCashClose
+        {
+            Id = 1, TenantId = 10, OwnerId = 10,
+            BusinessDate = DailyClosePostingGuard.ToBusinessDate(expenseDate),
+            Status = DailyCashCloseStatus.Closed, CreatedByUserId = 1,
+            CreatedAt = expenseDate, UpdatedAt = expenseDate
+        });
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        Assert.True(TenantFeatureFlags.IsEnabled((await db.Tenants.SingleAsync(t => t.Id == 10)).FeaturesJson, TenantFeatureFlags.DailyClose));
+        Assert.Single(await db.Expenses.Where(e => e.TenantId == 10 && e.Note!.StartsWith("Return write-off: RETURN-1")).ToListAsync());
+        Assert.Single(await db.DailyCashCloses.Where(c => c.TenantId == 10 && c.BusinessDate == DailyClosePostingGuard.ToBusinessDate(expenseDate)).ToListAsync());
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            new ReturnService(db, null!, null!, null!).ReverseSaleReturnAsync(1, "Fixture correction", 1, 10));
+
+        Assert.Contains("business day is closed", error.Message);
+        db.ChangeTracker.Clear();
+        Assert.Equal(ExpenseStatus.Approved, (await db.Expenses.SingleAsync(e => e.Id == 1)).Status);
+        Assert.Equal(ReturnStatus.Approved, (await db.SaleReturns.SingleAsync(r => r.Id == 1)).Status);
+        Assert.Equal(20m, (await db.Products.SingleAsync()).StockQty);
+        Assert.Empty(await db.InventoryTransactions.ToListAsync());
     }
 
     [Fact]

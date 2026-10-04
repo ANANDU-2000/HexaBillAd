@@ -952,15 +952,18 @@ namespace HexaBill.Api.Modules.Returns
                     var writeOffExpenses = await _context.Expenses
                         .Where(e => e.TenantId == tenantId && e.Note != null && e.Note.StartsWith(writeOffNotePrefix))
                         .ToListAsync();
+                    var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId && p.TenantId == tenantId).ToListAsync();
+                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId,
+                        refundPayments.Select(p => (p.PaymentDate, ret.BranchId))
+                            .Concat(writeOffExpenses
+                                .Where(e => e.Status == ExpenseStatus.Approved)
+                                .Select(e => (e.Date, e.BranchId)))
+                            .DefaultIfEmpty((DateTime.UtcNow, ret.BranchId)));
                     foreach (var expense in writeOffExpenses.Where(e => e.Status == ExpenseStatus.Approved))
                     {
                         expense.Status = ExpenseStatus.Rejected;
                         expense.Note = $"{expense.Note} [voided: return reversed]";
                     }
-
-                    var refundPayments = await _context.Payments.Where(p => p.SaleReturnId == returnId && p.TenantId == tenantId).ToListAsync();
-                    await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId,
-                        refundPayments.Select(p => (p.PaymentDate, ret.BranchId)).DefaultIfEmpty((DateTime.UtcNow, ret.BranchId)));
                     foreach (var payment in refundPayments.Where(p => p.Status != PaymentStatus.VOID))
                         payment.Status = PaymentStatus.VOID;
 
