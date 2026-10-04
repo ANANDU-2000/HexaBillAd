@@ -135,6 +135,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — Codex WIP port (no-op)
+- **changed:** REVIEW-INBOX port decision; no product code
+- **files:** REVIEW-INBOX.md, STATE.md
+- **tests+evidence:** review only (prior BE 555 / FE 74 still valid)
+- **NOT RUN:** n/a
+- **flags+rollback:** none
+- **next:** Zayogya regression snapshot test
+
 ### 2026-10-04 — Step 0 reconciliation
 - **changed:** plan docs scaffold; no product code
 - **files:** MASTER-LOOP.md, STATE.md, DECISIONS.md, EVIDENCE.md, REVIEW-INBOX.md
@@ -142,3 +150,4 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 - **NOT RUN:** Vercel/Render SHA verify; PG suite; full page×viewport matrix
 - **flags+rollback:** none changed
 - **next:** Port Codex worktree WIP onto master-loop / main
+

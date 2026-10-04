@@ -33,3 +33,19 @@ Anandu approved sample VAT TRNs on Tax Invoices in Production until clients upda
 ## 2026-10-04 — D8 conflict
 
 MASTER-LOOP D8 says empty VAT blocks Tax Invoice. DECISIONS 2026-10-04 sample-TRN override wins for FrozenHub1/2 and GulfHarvest. Zayogya stays D6 unchanged (may remain empty/no sample).
+
+## 2026-10-04 — Codex WIP port decision: DO NOT APPLY
+
+Compared worktree dirty tree vs `main` @ `a958394` / `master-loop`.
+
+**Content-identical (line-ending noise only):** SettingsPage, ReceiptPreviewModal, InvoiceTemplateService, PaymentReceiptService, DocumentHeaderTests, SalesController, InvoiceTemplatesController, PaymentReceiptTests, web factories, SuperAdminTenantsPage, SettingsHttpIsolationTests, TenantCompanySettingsTests, PostgresTestSchema, receiptPreview.test.js, DailyCloseService.
+
+**Regressive vs main (do not port):**
+- Removes `CountOtherTenantsSharingVatTrnAsync` + shared-TRN warning on settings PUT
+- Reverts `RequireTaxInvoiceVatTrn` to ignore Production sample guard (partially aligned with later Anandu sample-in-prod decision, but main already has SampleVatTrn helper)
+- Removes `Subdomain ?? string.Empty` null-coalesce (GetTenants 500 fix)
+- Requires source COMPANY_TRN before shared-legal owner setup (blocks empty/sample flow)
+- Removes `MustChangePassword=false` / `SessionVersion++` on password reset
+- Strips audited `ReverseSaleReturnAsync` (~254 lines) back to inline damage inventory
+
+**Conclusion:** Main Tier0 commits already contain the valuable Codex intent. Port = no file copies. Backup patch kept at `Desktop/HexaBill_Backups/codex-wip-port-20261004-101602/`.
