@@ -3,7 +3,7 @@
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  
-**Branch:** `master-loop-2` (= `main` @ `3d0ddad` on origin after owner push 2026-10-04)  
+**Branch:** `master-loop-2` (= `main` @ `a1161e7` on origin after owner push 2026-10-04)  
 **Baseline for diff:** `39ffafb`  
 **Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`
 
@@ -123,8 +123,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 |---|---|---|
 | Vercel production (`hexabill-ui`) | — | **UNVERIFIED** (project found `prj_GRooh8ebxo33R0uy5EspPoe5HmAo`; deployment list 403) |
 | Render backend (`HexaBill` / `srv-d68jpdvpm1nc7393q4d0`) | `39ffafb` | **VERIFIED** live; `autoDeploy=no`; older than local `master-loop-2` tip |
-| GitHub `origin/main` | `3d0ddad` | Verified local = remote (owner push master-loop-2 → main) |
-| GitHub `origin/master-loop-2` | `3d0ddad` | Same tip as main |
+| GitHub `origin/main` | `a1161e7` | Verified local = remote (owner push master-loop-2 → main) |
+| GitHub `origin/master-loop-2` | `a1161e7` | Same tip as main |
 
 ---
 
