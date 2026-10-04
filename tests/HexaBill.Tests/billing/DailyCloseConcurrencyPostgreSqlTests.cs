@@ -63,6 +63,81 @@ public class DailyCloseConcurrencyPostgreSqlTests
         }
     }
 
+    [Fact]
+    public async Task TenantWideClose_WaitsForBranchPosting_AndIncludesCommittedMovement()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("HEXABILL_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return;
+
+        var tenantId = 930_000 + Random.Shared.Next(1, 50_000);
+        var businessDate = new DateTime(2026, 10, 3, 0, 0, 0, DateTimeKind.Utc);
+        var movementAt = new DateTime(2026, 10, 3, 10, 0, 0, DateTimeKind.Utc);
+        await using (var seed = await OpenPostgresAsync(connectionString, tenantId))
+            await SeedDailyCloseTenantAsync(seed, tenantId);
+
+        var postingEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releasePosting = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        try
+        {
+            var postingTask = Task.Run(async () =>
+            {
+                await using var db = await OpenPostgresAsync(connectionString, tenantId);
+                await using var transaction = await db.Database.BeginTransactionAsync();
+                await DailyClosePostingGuard.EnsureOpenAsync(db, tenantId, movementAt, branchId: 7);
+                db.CashDrawerMovements.Add(new CashDrawerMovement
+                {
+                    TenantId = tenantId,
+                    OwnerId = tenantId,
+                    BranchId = 7,
+                    MovementDate = movementAt,
+                    Kind = CashDrawerMovementKind.OwnerCapitalIn,
+                    Amount = 25m,
+                    Note = "Synthetic lock-order regression",
+                    CreatedByUserId = tenantId,
+                    CreatedAt = movementAt
+                });
+                await db.SaveChangesAsync();
+                postingEntered.TrySetResult();
+                await releasePosting.Task;
+                await transaction.CommitAsync();
+            });
+
+            await postingEntered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var closeTask = Task.Run(async () =>
+            {
+                await using var db = await OpenPostgresAsync(connectionString, tenantId);
+                return await CreateService(db).SaveCloseAsync(new SaveDailyCloseRequest
+                {
+                    BusinessDate = businessDate,
+                    OpeningCash = 0m,
+                    CountedCash = 25m,
+                    SubmitClose = true
+                }, tenantId, tenantId, canSubmitClose: true);
+            });
+
+            var firstCompletion = await Task.WhenAny(closeTask, Task.Delay(TimeSpan.FromMilliseconds(300)));
+            var closeWaitedForPosting = firstCompletion != closeTask;
+            releasePosting.TrySetResult();
+            await postingTask;
+            var closed = await closeTask;
+
+            Assert.True(closeWaitedForPosting, "Tenant-wide close completed while a branch posting still held the shared transaction lock.");
+            Assert.Equal(25m, closed.CashReceived);
+            Assert.Equal(25m, closed.ExpectedCash);
+            Assert.Equal("Closed", closed.Status, StringComparer.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            releasePosting.TrySetResult();
+            await using var cleanup = await OpenPostgresAsync(connectionString, tenantId);
+            await cleanup.CashDrawerMovements.Where(m => m.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.DailyCashCloses.Where(c => c.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Users.Where(u => u.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Tenants.Where(t => t.Id == tenantId).ExecuteDeleteAsync();
+        }
+    }
+
     private static DailyCloseService CreateService(AppDbContext db) =>
         new(db, new TimeZoneService(), new AuditNoop(), new AlertNoop(), new SalesSchemaBranchesEnabled());
 

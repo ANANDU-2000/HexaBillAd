@@ -1168,14 +1168,14 @@ namespace HexaBill.Api.Modules.Returns
             }).ToList();
         }
 
-        public async Task ApplyCreditNoteAsync(int creditNoteId, int saleId, decimal amountToApply, int userId, int tenantId)
+        public Task ApplyCreditNoteAsync(int creditNoteId, int saleId, decimal amountToApply, int userId, int tenantId) =>
+            RunInTransactionAsync(() => ApplyCreditNoteCoreAsync(creditNoteId, saleId, amountToApply, userId, tenantId));
+
+        private async Task ApplyCreditNoteCoreAsync(int creditNoteId, int saleId, decimal amountToApply, int userId, int tenantId)
         {
             if (amountToApply <= 0)
                 throw new InvalidOperationException("Amount to apply must be greater than zero.");
-            var cn = await _context.CreditNotes
-                .Include(c => c.Customer)
-                .Include(c => c.LinkedReturn)
-                .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.TenantId == tenantId);
+            var cn = await GetCreditNoteForUpdateAsync(creditNoteId, tenantId);
             if (cn == null)
                 throw new InvalidOperationException("Credit note not found.");
             if (cn.Status == "Refunded" || cn.Status == "used")
@@ -1183,7 +1183,11 @@ namespace HexaBill.Api.Modules.Returns
             var remaining = cn.Amount - cn.AppliedAmount;
             if (amountToApply > remaining)
                 throw new InvalidOperationException($"Amount to apply ({amountToApply:N2}) exceeds remaining credit ({remaining:N2}).");
-            var sale = await _context.Sales
+            IQueryable<Sale> saleQuery = _context.Sales;
+            if (_context.Database.IsNpgsql())
+                saleQuery = _context.Sales.FromSqlInterpolated(
+                    $"SELECT * FROM \"Sales\" WHERE \"Id\" = {saleId} AND \"TenantId\" = {tenantId} AND NOT \"IsDeleted\" FOR UPDATE");
+            var sale = await saleQuery
                 .Include(s => s.Customer)
                 .FirstOrDefaultAsync(s => s.Id == saleId && s.TenantId == tenantId);
             if (sale == null)
@@ -1192,6 +1196,8 @@ namespace HexaBill.Api.Modules.Returns
                 throw new InvalidOperationException("Sale does not belong to the same customer as the credit note.");
             if (sale.IsDeleted)
                 throw new InvalidOperationException("Cannot apply credit to a deleted sale.");
+            var paymentDate = DateTime.UtcNow;
+            await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, paymentDate, sale.BranchId);
             var paidSoFar = await _context.Payments
                 .Where(p => p.SaleId == saleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED && p.SaleReturnId == null)
                 .SumAsync(p => (decimal?)p.Amount) ?? 0;
@@ -1211,9 +1217,9 @@ namespace HexaBill.Api.Modules.Returns
                 Mode = PaymentMode.CREDIT,
                 Reference = $"Credit applied from return {returnNo}",
                 Status = PaymentStatus.CLEARED,
-                PaymentDate = DateTime.UtcNow,
+                PaymentDate = paymentDate,
                 CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = paymentDate
             });
             cn.AppliedAmount += applyAmount;
             cn.Status = cn.AppliedAmount >= cn.Amount ? "used" : "partial";
@@ -1223,12 +1229,12 @@ namespace HexaBill.Api.Modules.Returns
                 await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
         }
 
-        public async Task RefundCreditNoteAsync(int creditNoteId, int userId, int tenantId)
+        public Task RefundCreditNoteAsync(int creditNoteId, int userId, int tenantId) =>
+            RunInTransactionAsync(() => RefundCreditNoteCoreAsync(creditNoteId, userId, tenantId));
+
+        private async Task RefundCreditNoteCoreAsync(int creditNoteId, int userId, int tenantId)
         {
-            var cn = await _context.CreditNotes
-                .Include(c => c.Customer)
-                .Include(c => c.LinkedReturn)
-                .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.TenantId == tenantId);
+            var cn = await GetCreditNoteForUpdateAsync(creditNoteId, tenantId);
             if (cn == null)
                 throw new InvalidOperationException("Credit note not found.");
             if (cn.Status == "Refunded")
@@ -1245,6 +1251,9 @@ namespace HexaBill.Api.Modules.Returns
                     .FirstOrDefaultAsync(sr => sr.Id == cn.LinkedReturnId && sr.TenantId == tenantId);
             }
 
+            var paymentDate = DateTime.UtcNow;
+            await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, paymentDate, linkedReturn?.BranchId);
+
             var returnNo = cn.LinkedReturn?.ReturnNo ?? $"RET-{cn.LinkedReturnId}";
             _context.Payments.Add(new Payment
             {
@@ -1257,9 +1266,9 @@ namespace HexaBill.Api.Modules.Returns
                 Mode = PaymentMode.CASH,
                 Reference = $"Refund for credit note (return {returnNo})",
                 Status = PaymentStatus.CLEARED,
-                PaymentDate = DateTime.UtcNow,
+                PaymentDate = paymentDate,
                 CreatedBy = userId,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = paymentDate
             });
             cn.Status = "Refunded";
             cn.AppliedAmount = cn.Amount;
@@ -1272,6 +1281,39 @@ namespace HexaBill.Api.Modules.Returns
             var customer = await _context.Customers.FindAsync(cn.CustomerId);
             if (customer != null)
                 await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
+        }
+
+        private async Task RunInTransactionAsync(Func<Task> action)
+        {
+            await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+            {
+                await using var transaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    await action();
+                    await transaction.CommitAsync();
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+        }
+
+        private async Task<CreditNote?> GetCreditNoteForUpdateAsync(int creditNoteId, int tenantId)
+        {
+            IQueryable<CreditNote> query = _context.CreditNotes;
+            if (_context.Database.IsNpgsql())
+            {
+                query = _context.CreditNotes.FromSqlInterpolated(
+                    $"SELECT * FROM \"CreditNotes\" WHERE \"Id\" = {creditNoteId} AND \"TenantId\" = {tenantId} FOR UPDATE");
+            }
+
+            return await query
+                .Include(c => c.Customer)
+                .Include(c => c.LinkedReturn)
+                .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.TenantId == tenantId);
         }
 
         public async Task<List<DamageReportEntryDto>> GetDamageReportAsync(int tenantId, DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null, int? routeId = null)
