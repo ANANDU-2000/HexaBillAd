@@ -110,7 +110,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
 | 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner screenshots 4 tenants × 6 pages × 5 VPs (120 PNGs); staff role NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 tenants @360 + FH1×4 more VPs (148); params 36 (all 9 detail types×4); superadmin 9+tenant detail; platform metrics; other tenants 5VP NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Static 37×4 tenants ×5 VPs (owner shell); params 36 @360; superadmin 10; platform metrics; staff role + §10 field/edge NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -145,13 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
-### 2026-10-04 — slice 8 Phase 8 param complete + FH1 5VP static (PARTIAL)
-- **changed:** seeded routes/agreements/salary/quotations; param screenshots **36/36**; FH1 static routes at 390/768/1366/1440; phase8-route-shell viewport/tenant filters
-- **files:** phase8-route-shell.mjs, phase8-param-routes.mjs, STATE.md, PHASE-MATRIX.md
-- **tests+evidence:** param `ok=36`; FH1-vp report `ok=148`; prior static 148 + superadmin 9; Zayogya run this commit
-- **NOT RUN:** FH2/GH/ZY static @5VP; staff role; full §10 field/edge cells; push (git auth)
+### 2026-10-04 — slice 8 Phase 8 owner shell matrix (PARTIAL)
+- **changed:** seeded routes/agreements/salary/quotations; param **36/36** @360; static **37×4 tenants×5 VPs** owner shell; superadmin tenant detail; phase8-route-shell viewport/tenant filters
+- **files:** phase8-route-shell.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** param `ok=36`; FH1/FH2/GH/ZY vp reports each `ok=148`; base static `ok=148` @360; superadmin 10 PNGs; Zayogya **8 PASS**
+- **NOT RUN:** staff role; param @5VP; full §10 field/edge; push (no `gh` / git credentials)
 - **flags+rollback:** synthetic seed only
-- **next:** remaining tenant 5VP optional; then Phases 9–11 still gated on 1–7 green + push
+- **next:** staff matrix if accounts exist; Phases 9–11 gated until Tier0/1–7 green + your push auth
 
 ### 2026-10-04 — slice 7 cleanup scrub + Phase 8 params (PARTIAL)
 - **changed:** scrubbed local gitignored `appsettings.Development.json`; removed empty root `package.json`/`package-lock.json`; param-route screenshots for customers/products/delivery-notes × 4 tenants

@@ -25,7 +25,7 @@ Roles: `owner | staff | platform`
 | 5 Daily close | unit PASS; flag OFF | **implemented** |
 | 6 Margin VAT | accountant fixtures | **blocked** (D5 stop-gap shipped) |
 | 7 Shell UX | Tally + 4 mobile tabs + 6 pages × 5 VPs | **partial** (owner 4×6×5 = 120 screenshots; staff not-run) |
-| 8 Remaining routes | all 61 | **partial** (static×4@360 + FH1×5VP; all param types×4@360; superadmin shells; other tenants 5VP not-run) |
+| 8 Remaining routes | all 61 | **partial** (owner: static×4×5VP + params×4@360 + superadmin; staff/§10 field-edge not-run) |
 | 9 AI | — | **not-run** |
 | 10 Voice/driver/maps | — | **not-run** |
 | 11 Staging/pilot | — | **blocked** |
