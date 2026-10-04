@@ -9,6 +9,15 @@ import toast, { Toaster, useToasterStore } from 'react-hot-toast'
 import App from './app/App.jsx'
 import './index.css'
 
+// Apply saved language preference before first paint (RTL for Arabic).
+try {
+  const lang = localStorage.getItem('hexabill_lang') || 'en'
+  document.documentElement.lang = lang === 'ar' ? 'ar' : 'en'
+  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+} catch {
+  /* ignore private-mode / SSR */
+}
+
 const TOAST_LIMIT = 3
 
 const LimitedToaster = () => {

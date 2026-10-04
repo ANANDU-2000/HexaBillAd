@@ -3,7 +3,7 @@
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  
-**Branch:** `master-loop-2` @ `60cdc51` (tip advancing this slice; push branch only per Master Loop)  
+**Branch:** `master-loop-2` (tip advancing; owner authorized push main+branch this slice)  
 **Baseline for diff:** `39ffafb`  
 **Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`
 
@@ -123,8 +123,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 |---|---|---|
 | Vercel production (`hexabill-ui`) | — | **UNVERIFIED** (project found `prj_GRooh8ebxo33R0uy5EspPoe5HmAo`; deployment list 403) |
 | Render backend (`HexaBill` / `srv-d68jpdvpm1nc7393q4d0`) | `39ffafb` | **VERIFIED** live; `autoDeploy=no`; older than local `master-loop-2` tip |
-| GitHub `origin/main` | `60cdc51` | Prior owner-authorized sync; further Master Loop pushes prefer branch-only |
-| GitHub `origin/master-loop-2` | `60cdc51` | Same tip pre-slice; update after push |
+| GitHub `origin/main` | (update after this push) | Owner-authorized sync requested 2026-10-04 |
+| GitHub `origin/master-loop-2` | (update after this push) | Same tip as main after FF |
 
 ---
 
@@ -145,6 +145,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice §10 Arabic RTL shell smoke (PARTIAL)
+- **changed:** boot `hexabill_lang` → `html lang/dir` in `main.jsx`; new Playwright RTL smoke script
+- **files:** `frontend/hexabill-ui/src/main.jsx`, `scripts/phase7-rtl-shell-smoke.mjs`, STATE.md, EVIDENCE.md, PHASE-TODO.md
+- **tests+evidence:** FH1 owner ar RTL 9 pages × 360+1440 **ok=18 fail=0 warn=0** (`Desktop/HexaBill_Backups/rtl-shell-20261004`); Zayogya **8 PASS**
+- **NOT RUN / blocked:** Phase 6 accountant fixtures; Phases 9–11; full §10 field-by-field (offline/Malayalam/…); production deploy
+- **flags+rollback:** none (lang/dir boot only; default remains `en`/`ltr`)
+- **next:** Phase 6 waits on fixtures; Phases 9–11 gated; expand RTL to FH2/GH/ZY if needed
 
 ### 2026-10-04 — slice flags-OFF live + dashboard CTA recheck (PARTIAL)
 - **changed:** DashboardTally remove `lg:!min-h-9` on New invoice/purchase/ledger/expenses; Layout nav keep 44px; live flag inventory

@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 Arabic RTL shell | local Vite+API | WIP | FH1 | owner | 360+1440 | 9 core pages dir=rtl lang=ar | non-blank + dirRtl | ok=18 fail=0 warn=0 | Desktop/HexaBill_Backups/rtl-shell-20261004 | tested |
 | 2026-10-04 | Dashboard CTA ≥44px @1440 | local | WIP | FH1 | owner | 1440 | field-edge after remove lg:!min-h-9 | primaryMin44 | true (New purchase F4); ok=1 warn=0 | Desktop/HexaBill_Backups/field-edge-dashboard-cta-fix-20261004 | tested |
 | 2026-10-04 | §10 CTA recheck 10p×2VP | local | WIP | FH1 | owner | 360+1440 | field-edge after shrink clear | ok shells; primaryMin44 | ok=20 fail=0 warn=1 (dashboard New purchase) | Desktop/HexaBill_Backups/field-edge-cta-recheck-20261004 | tested |
 | 2026-10-04 | Flags OFF live ×4 | local API | a4c80f7 | FH1/FH2/GH/ZY | owner | n/a | GET `/api/subscription/features/{flag}` ×5 | all false | all `data:false` | Desktop/HexaBill_Backups/flags-off-live-20261004 | tested |
