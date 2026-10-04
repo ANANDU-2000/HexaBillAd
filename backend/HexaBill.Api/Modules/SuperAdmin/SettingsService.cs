@@ -5,6 +5,7 @@
  * Date: 2024-12-24
  */
 
+using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using Microsoft.EntityFrameworkCore;
@@ -212,8 +213,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// </summary>
         public async Task<CompanySettings> GetCompanySettingsAsync(int tenantId)
         {
+            await EnsureSampleVatTrnIfMissingAsync(tenantId);
             var settingsDict = await GetOwnerSettingsAsync(tenantId);
-            
 
             var logoKey = GetLogoStorageKeyForInvoice(settingsDict);
             ValidateAssetKey(logoKey, tenantId, "logos");
@@ -257,6 +258,32 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 SignatureOffsetRightMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_RIGHT_MM", 12f),
                 SignatureOffsetBottomMm = ParseFloatSetting(settingsDict, "SIGNATURE_OFFSET_BOTTOM_MM", 14f),
             };
+        }
+
+        /// <summary>
+        /// When COMPANY_TRN is empty, assign the tenant's sample TRN (FrozenHub/GulfHarvest).
+        /// Zayogya and unknown slugs are never auto-filled (D6 / SampleForSlug null).
+        /// </summary>
+        private async Task EnsureSampleVatTrnIfMissingAsync(int tenantId)
+        {
+            EnsureTenant(tenantId);
+            var current = await GetSettingValueAsync(tenantId, "COMPANY_TRN");
+            if (!string.IsNullOrWhiteSpace(current)) return;
+
+            var slug = await _context.Tenants.AsNoTracking()
+                .Where(t => t.Id == tenantId)
+                .Select(t => t.Subdomain)
+                .FirstOrDefaultAsync();
+            var sample = SampleVatTrn.SampleForSlug(slug);
+            if (sample is null) return;
+
+            await UpdateOwnerSettingAsync(tenantId, "COMPANY_TRN", sample);
+            var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
+            if (tenant is not null && string.IsNullOrWhiteSpace(tenant.VatNumber))
+            {
+                tenant.VatNumber = sample;
+                await _context.SaveChangesAsync();
+            }
         }
 
         private static void ValidateAssetKey(string? key, int tenantId, string folder)

@@ -134,7 +134,10 @@ public class VatBasisIsolationTests
         Assert.Equal(before[3].Box1a, afterChanged.Box1a);
         Assert.Equal(before[3].Box1b, afterChanged.Box1b);
         Assert.Equal(nameof(VatCalculationBasis.ProfitBased), afterChanged.VatCalculationBasis);
-        Assert.True(afterChanged.ProfitVat > 0);
+        // D5: ProfitVat is never filing VAT; estimate flag + ProfitAmount carry the operating view.
+        Assert.Equal(0, afterChanged.ProfitVat);
+        Assert.True(afterChanged.ProfitEstimateNotForFiling);
+        Assert.True(afterChanged.ProfitAmount != 0 || afterChanged.ProfitSales > 0);
         Assert.Equal(historyBefore[3] + 1, await context.TenantVatBasisHistory.CountAsync(h => h.TenantId == 3));
     }
 
@@ -347,10 +350,12 @@ public class VatBasisIsolationTests
         var h2To = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         var h2 = await service.GetVatReturn201Async(1, h2From, h2To);
         Assert.Equal(nameof(VatCalculationBasis.ProfitBased), h2.VatCalculationBasis);
-        Assert.True(h2.ProfitVat > 0);
+        Assert.Equal(0, h2.ProfitVat);
+        Assert.True(h2.ProfitEstimateNotForFiling);
+        Assert.True(h2.ProfitAmount != 0 || h2.ProfitSales > 0);
     }
 
-    [Fact(DisplayName = "FIN12_ProfitVat_IsFivePercentOfPositiveMargin_NotOutputTaxOnSales")]
+    [Fact(DisplayName = "FIN12_ProfitEstimate_NotFivePercentVat_StandardBoxesRemain")]
     public async Task ProfitVat_UsesSalesMinusCogsMinusExpenses()
     {
         await using var context = await CreateProfitTenantContextAsync();
@@ -402,8 +407,11 @@ public class VatBasisIsolationTests
 
         const decimal expectedProfit = 105m - 80m - 15m;
         Assert.Equal(VatCalculator.Round(expectedProfit), dto.ProfitAmount);
-        Assert.Equal(VatCalculator.Round(expectedProfit * VatCalculator.StandardRate), dto.ProfitVat);
-        Assert.NotEqual(VatCalculator.Round(dto.Box1a * VatCalculator.StandardRate), dto.ProfitVat);
+        // D5: never treat profit × 5% as VAT. Standard boxes remain the filing figures.
+        Assert.Equal(0m, dto.ProfitVat);
+        Assert.True(dto.ProfitEstimateNotForFiling);
+        Assert.True(dto.Box1b > 0);
+        Assert.NotEqual(VatCalculator.Round(expectedProfit * VatCalculator.StandardRate), dto.ProfitVat);
     }
 
     [Fact(DisplayName = "FIN12_ZeroOrNegativeMargin_ProfitVatIsZero")]

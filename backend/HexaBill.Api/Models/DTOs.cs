@@ -1763,7 +1763,10 @@ namespace HexaBill.Api.Models
         public int EstimatedCostLineCount { get; set; }
         public decimal ProfitExpenses { get; set; }
         public decimal ProfitAmount { get; set; }
+        /// <summary>Deprecated for filing. Always 0 after D5 — use Standard VAT boxes (Box1b/12/13).</summary>
         public decimal ProfitVat { get; set; }
+        /// <summary>When true, ProfitAmount is an operating estimate only and must not be labelled as VAT.</summary>
+        public bool ProfitEstimateNotForFiling { get; set; }
         public DateTime? CalculatedAt { get; set; }
         public int? PeriodId { get; set; }
         public decimal Box1a { get; set; }

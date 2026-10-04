@@ -500,7 +500,10 @@ namespace HexaBill.Api.Modules.Reports
             dto.EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si));
             dto.ProfitExpenses = VatCalculator.Round(expenses);
             dto.ProfitAmount = VatCalculator.Round(profit);
-            dto.ProfitVat = profit > 0 ? VatCalculator.Round(profit * VatCalculator.StandardRate) : 0;
+            // D5: never present (sales - COGS - expenses) × 5% as VAT. Statutory boxes remain Standard VAT.
+            // ProfitAmount is an operating estimate only — not for FTA filing. Margin VAT waits for accountant fixtures.
+            dto.ProfitVat = 0;
+            dto.ProfitEstimateNotForFiling = true;
         }
 
         private static bool IsStandardRated(Sale s)

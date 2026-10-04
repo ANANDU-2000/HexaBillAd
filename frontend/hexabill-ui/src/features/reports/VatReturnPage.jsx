@@ -381,11 +381,13 @@ const VatReturnPage = () => {
   const [activeTab, setActiveTab] = useState('overview') // overview | transactions | sales | purchases | expenses | creditNotes | validation
   const v = vatReturn
   const isProfitBasis = String(v?.vatCalculationBasis ?? v?.VatCalculationBasis ?? 'SalesBased') === 'ProfitBased'
+  const profitEstimateNotForFiling = Boolean(v?.profitEstimateNotForFiling ?? v?.ProfitEstimateNotForFiling ?? isProfitBasis)
   const profitSales = Number(v?.profitSales ?? v?.ProfitSales ?? 0)
   const profitCogs = Number(v?.profitCogs ?? v?.ProfitCogs ?? 0)
   const profitExpenses = Number(v?.profitExpenses ?? v?.ProfitExpenses ?? 0)
   const profitAmount = Number(v?.profitAmount ?? v?.ProfitAmount ?? 0)
-  const profitVat = Number(v?.profitVat ?? v?.ProfitVat ?? 0)
+  // D5: never treat profit × 5% as VAT. Keep reading profitVat only as a discarded legacy field.
+  const profitVat = 0
   useEffect(() => {
     if (isProfitBasis && !['overview', 'profit', 'validation'].includes(activeTab)) setActiveTab('overview')
   }, [isProfitBasis, activeTab])
@@ -1144,9 +1146,9 @@ const VatReturnPage = () => {
             aria-hidden={activeTab !== 'overview'}
           >
             <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">{isProfitBasis ? 'Profit VAT' : 'VAT Return Summary'}</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Standard VAT Return Summary</h2>
               <p className="text-xs text-gray-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
-              {!isProfitBasis && !outputLines.length && !inputLines.length && !creditNoteLines.length && (
+              {!outputLines.length && !inputLines.length && !creditNoteLines.length && (
                 <p className="text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4 mb-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto">
@@ -1160,38 +1162,9 @@ const VatReturnPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {isProfitBasis ? (
-                      <>
-                        <tr>
-                          <td className="px-3 py-2 font-medium">1</td>
-                          <td className="px-3 py-2 text-gray-700">Sales</td>
-                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitSales)}</td>
-                          <td className="px-3 py-2 text-right font-medium">—</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium">2</td>
-                          <td className="px-3 py-2 text-gray-700">Cost of goods</td>
-                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitCogs)}</td>
-                          <td className="px-3 py-2 text-right font-medium">—</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium">3</td>
-                          <td className="px-3 py-2 text-gray-700">Expenses</td>
-                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitExpenses)}</td>
-                          <td className="px-3 py-2 text-right font-medium">—</td>
-                        </tr>
-                        <tr>
-                          <td className="px-3 py-2 font-medium">4</td>
-                          <td className="px-3 py-2 text-gray-700">Profit</td>
-                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td>
-                          <td className="px-3 py-2 text-right font-medium">{formatCurrency(profitVat)}</td>
-                        </tr>
-                      </>
-                    ) : (
-                      <>
                     <tr>
                       <td className="px-3 py-2 font-medium">1</td>
-                      <td className="px-3 py-2 text-gray-700">Total Sales</td>
+                      <td className="px-3 py-2 text-gray-700">Total Sales (Standard VAT)</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox1a)}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox1b)}</td>
                     </tr>
@@ -1211,24 +1184,34 @@ const VatReturnPage = () => {
                         </span>
                       </td>
                     </tr>
-                      </>
-                    )}
                   </tbody>
                 </table>
               </div>
-              {!isProfitBasis && <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
-                <p className="font-medium text-gray-800">Overview totals are correct.</p>
+              {profitEstimateNotForFiling && (
+                <div className="mt-4 p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm text-amber-950">
+                  <p className="font-semibold">Estimate, not for filing</p>
+                  <p className="mt-1 text-xs">Operating profit view only. This is not UAE VAT and must not be filed with the FTA. Margin-scheme VAT waits for accountant fixtures.</p>
+                  <ul className="mt-2 grid grid-cols-2 gap-1 text-xs">
+                    <li>Sales: {formatCurrency(profitSales)}</li>
+                    <li>COGS: {formatCurrency(profitCogs)}</li>
+                    <li>Expenses: {formatCurrency(profitExpenses)}</li>
+                    <li className="font-medium">Profit estimate: {formatCurrency(profitAmount)}</li>
+                  </ul>
+                </div>
+              )}
+              <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
+                <p className="font-medium text-gray-800">Standard VAT totals are authoritative for filing.</p>
                 <p className="mt-1">Net VAT to Pay = Sales VAT (Box 1b) − Input VAT (Box 12: purchases + claimable expenses). If Expense VAT shows 0, only expenses marked <strong>Tax claimable (ITC)</strong> on the Expenses page with VAT in this period are included. After adding or editing expenses, click <strong>Refresh</strong> or <strong>Recalculate</strong> to update.</p>
-              </div>}
-              {!isProfitBasis && (v?.petroleumExcluded ?? 0) > 0 && (
+              </div>
+              {(v?.petroleumExcluded ?? 0) > 0 && (
                 <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
               )}
             </div>
-            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${(isProfitBasis ? profitVat > 0 : displayBox13a > 0) ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${displayBox13a > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <div>
-                <p className="text-sm font-medium text-gray-700">{isProfitBasis ? 'Profit VAT' : displayBox13a > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
-                <p className={`text-2xl font-bold mt-0.5 ${(isProfitBasis ? profitVat > 0 : displayBox13a > 0) ? 'text-red-700' : 'text-green-700'}`}>
-                  {isProfitBasis ? formatCurrency(profitVat) : displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
+                <p className="text-sm font-medium text-gray-700">{displayBox13a > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${displayBox13a > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                  {displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
                 </p>
               </div>
               <div className="text-right">
@@ -1515,16 +1498,15 @@ const VatReturnPage = () => {
           )}
 
           {isProfitBasis && activeTab === 'profit' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Profit Calculation</h2>
-              <p className="text-xs text-gray-500 mt-1 mb-3">Sales minus cost of goods minus expenses. VAT is 5% of a positive profit.</p>
-              <table className="min-w-full text-sm border border-gray-200 rounded-lg">
-                <tbody className="divide-y divide-gray-100">
+            <div className="mt-4 bg-white rounded-lg border border-amber-300 p-4">
+              <h2 className="text-sm font-semibold text-amber-950">Estimate, not for filing</h2>
+              <p className="text-xs text-amber-900 mt-1 mb-3">Sales minus cost of goods minus expenses. This is an operating estimate only — not UAE VAT. Use the Standard VAT boxes for filing.</p>
+              <table className="min-w-full text-sm border border-amber-200 rounded-lg">
+                <tbody className="divide-y divide-amber-100">
                   <tr><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right">{formatCurrency(profitSales)}</td></tr>
                   <tr><td className="px-3 py-2">Cost of goods</td><td className="px-3 py-2 text-right">{formatCurrency(profitCogs)}</td></tr>
                   <tr><td className="px-3 py-2">Expenses</td><td className="px-3 py-2 text-right">{formatCurrency(profitExpenses)}</td></tr>
-                  <tr><td className="px-3 py-2 font-medium">Profit</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td></tr>
-                  <tr><td className="px-3 py-2 font-medium">Profit VAT</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitVat)}</td></tr>
+                  <tr><td className="px-3 py-2 font-medium">Profit estimate</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td></tr>
                 </tbody>
               </table>
             </div>

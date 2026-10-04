@@ -10,19 +10,18 @@ public class SampleVatTrnTests
     [InlineData(SampleVatTrn.FrozenHub2)]
     [InlineData(SampleVatTrn.GulfHarvest)]
     [InlineData(SampleVatTrn.UnitFixture)]
-    [InlineData("104825619000003")] // Crystal Freeze — forbidden
-    public void Production_RejectsSampleAndCrystalFreezeTrn(string trn)
+    public void Production_AllowsHexaBillSampleTrn(string trn)
     {
-        var ex = Assert.Throws<TaxInvoiceSettingsException>(() =>
-            SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Production"));
-        Assert.Contains("Sample VAT", ex.Message);
+        SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Production");
+        SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Development");
     }
 
     [Fact]
-    public void NonProduction_AllowsSampleFixtureTrn()
+    public void Production_RejectsCrystalFreezeReferenceTrn()
     {
-        SampleVatTrn.RequireTaxInvoiceVatTrn(SampleVatTrn.UnitFixture, "Development");
-        SampleVatTrn.RequireTaxInvoiceVatTrn(SampleVatTrn.FrozenHub1, "Staging");
+        var ex = Assert.Throws<TaxInvoiceSettingsException>(() =>
+            SampleVatTrn.RequireTaxInvoiceVatTrn(SampleVatTrn.CrystalFreezeForbidden, "Production"));
+        Assert.Contains("layout reference", ex.Message);
     }
 
     [Theory]
@@ -34,5 +33,16 @@ public class SampleVatTrnTests
     {
         Assert.Throws<TaxInvoiceSettingsException>(() =>
             SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Development"));
+    }
+
+    [Theory]
+    [InlineData("frozenhub1", SampleVatTrn.FrozenHub1)]
+    [InlineData("frozenhub2", SampleVatTrn.FrozenHub2)]
+    [InlineData("gulfharvest", SampleVatTrn.GulfHarvest)]
+    [InlineData("zayoga", null)]
+    [InlineData("zayogya", null)]
+    public void SampleForSlug_MapsKnownTenants_ExcludesZayogya(string slug, string? expected)
+    {
+        Assert.Equal(expected, SampleVatTrn.SampleForSlug(slug));
     }
 }

@@ -927,7 +927,12 @@ const SettingsPage = () => {
 
               {!settings.companyTrn && (
                 <p role="status" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                  Add VAT TRN in Settings. Tax Invoices cannot be finalized or printed until it is set.
+                  VAT TRN is empty. Provisioning will assign a sample TRN for FrozenHub/GulfHarvest so Tax Invoices are not blocked. Replace it with your real TRN when ready. Zayogya is not auto-filled.
+                </p>
+              )}
+              {!!settings.companyTrn && ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321'].includes(String(settings.companyTrn).trim()) && (
+                <p role="status" className="mb-4 rounded border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+                  Sample TRN in use: update in Settings &gt; Company when you have the real VAT registration. Shared TRNs across workspaces are allowed and show a warning on save.
                 </p>
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

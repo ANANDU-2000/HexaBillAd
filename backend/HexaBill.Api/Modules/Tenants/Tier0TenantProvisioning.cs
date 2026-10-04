@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Json;
 using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
@@ -95,7 +95,7 @@ public sealed class Tier0TenantProvisioning
             tenant = await _db.Tenants.FirstAsync(t => t.Id == created.Tenant.Id, ct);
             _logger.LogInformation("Created FrozenHub owner 1 tenantId={TenantId} for local bootstrap", tenant.Id);
             // Continue through rename + identity below; invite URL appended after save.
-            await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.FrozenHub1, ct);
+            await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub1, ct);
             await EnsureSharedLegalWorkspaceFeatureAsync(tenant, ct);
             if (!string.IsNullOrWhiteSpace(spec.LegacySlug) &&
                 string.Equals(tenant.Subdomain, spec.LegacySlug, StringComparison.OrdinalIgnoreCase) &&
@@ -104,7 +104,7 @@ public sealed class Tier0TenantProvisioning
             {
                 var slugTaken = await _db.Tenants.AnyAsync(t => t.Id != tenant.Id && t.Subdomain.ToLower() == spec.Slug!.ToLower(), ct);
                 if (slugTaken)
-                    throw new InvalidOperationException($"Cannot rename FrozenHub to '{spec.Slug}' — subdomain already in use.");
+                    throw new InvalidOperationException($"Cannot rename FrozenHub to '{spec.Slug}' â€” subdomain already in use.");
                 var oldSlug = tenant.Subdomain;
                 tenant.Subdomain = spec.Slug!;
                 await UpsertSettingIfEmptyAsync(tenant.Id, "LEGACY_SUBDOMAIN", spec.LegacySlug!, ct);
@@ -125,20 +125,20 @@ public sealed class Tier0TenantProvisioning
         {
             var slugTaken = await _db.Tenants.AnyAsync(t => t.Id != tenant.Id && t.Subdomain.ToLower() == spec.Slug!.ToLower(), ct);
             if (slugTaken)
-                throw new InvalidOperationException($"Cannot rename FrozenHub to '{spec.Slug}' — subdomain already in use.");
+                throw new InvalidOperationException($"Cannot rename FrozenHub to '{spec.Slug}' â€” subdomain already in use.");
             var old = tenant.Subdomain;
             tenant.Subdomain = spec.Slug!;
             await UpsertSettingIfEmptyAsync(tenant.Id, "LEGACY_SUBDOMAIN", spec.LegacySlug!, ct);
             await UpsertSettingIfEmptyAsync(tenant.Id, "CANONICAL_HOST", $"{spec.Slug}.{options.Domain}", ct);
             await RealignInviteHostAsync(tenant.Id, old, tenant.Subdomain, ct);
-            _logger.LogInformation("FrozenHub owner 1 subdomain {Old} → {New}; LEGACY_SUBDOMAIN redirect recorded", old, spec.Slug);
+            _logger.LogInformation("FrozenHub owner 1 subdomain {Old} â†’ {New}; LEGACY_SUBDOMAIN redirect recorded", old, spec.Slug);
         }
         else if (!string.IsNullOrWhiteSpace(spec.LegacySlug))
         {
             await UpsertSettingIfEmptyAsync(tenant.Id, "LEGACY_SUBDOMAIN", spec.LegacySlug!, ct);
         }
 
-        await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.FrozenHub1, ct);
+        await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub1, ct);
         await EnsureSharedLegalWorkspaceFeatureAsync(tenant, ct);
         await _db.SaveChangesAsync(ct);
         return $"frozenhub1 tenantId={tenant.Id} slug={tenant.Subdomain}";
@@ -154,7 +154,7 @@ public sealed class Tier0TenantProvisioning
         if (existing is not null)
         {
             await UpsertSettingIfEmptyAsync(existing.Id, "OPENING_DATA_CHOICE", "Empty", ct);
-            await ApplyVerifiedIdentityAsync(existing, MergeFrozenHubIdentity(options, spec), allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.FrozenHub2, ct);
+            await ApplyVerifiedIdentityAsync(existing, MergeFrozenHubIdentity(options, spec), allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub2, ct);
             await _db.SaveChangesAsync(ct);
             return $"frozenhub2 already exists tenantId={existing.Id} slug={existing.Subdomain} (settings preserved)";
         }
@@ -167,7 +167,7 @@ public sealed class Tier0TenantProvisioning
 
         var identity = MergeFrozenHubIdentity(options, spec);
         // Ensure source has licence + shared-legal flag before CreateTenantAsync validation.
-        await ApplyVerifiedIdentityAsync(owner1, options.FrozenHub1 ?? identity, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.FrozenHub1, ct);
+        await ApplyVerifiedIdentityAsync(owner1, options.FrozenHub1 ?? identity, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub1, ct);
         await EnsureSharedLegalWorkspaceFeatureAsync(owner1, ct);
         await _db.SaveChangesAsync(ct);
 
@@ -194,7 +194,7 @@ public sealed class Tier0TenantProvisioning
         }, actorId);
 
         var createdTenant = await _db.Tenants.FirstAsync(t => t.Id == created.Tenant.Id, ct);
-        await ApplyVerifiedIdentityAsync(createdTenant, identity, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.FrozenHub2, ct);
+        await ApplyVerifiedIdentityAsync(createdTenant, identity, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub2, ct);
         await UpsertSettingIfEmptyAsync(createdTenant.Id, "OPENING_DATA_CHOICE", "Empty", ct);
         await _db.SaveChangesAsync(ct);
 
@@ -230,14 +230,14 @@ public sealed class Tier0TenantProvisioning
                 ClientAppBaseUrl = $"http://{spec.Slug}.{options.Domain}:5173"
             }, ResolvePlatformActorId());
             tenant = await _db.Tenants.FirstAsync(t => t.Id == created.Tenant.Id, ct);
-            await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.GulfHarvest, ct);
+            await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.GulfHarvest, ct);
             if (!string.IsNullOrWhiteSpace(spec.CorporateTaxTrn))
                 await UpsertSettingIfEmptyAsync(tenant.Id, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
             await _db.SaveChangesAsync(ct);
             return FormatCreateLog("gulfharvest", tenant, created.InviteUrl);
         }
 
-        await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: !_env.IsProduction(), sampleVat: SampleVatTrn.GulfHarvest, ct);
+        await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.GulfHarvest, ct);
         if (!string.IsNullOrWhiteSpace(spec.CorporateTaxTrn))
             await UpsertSettingIfEmptyAsync(tenant.Id, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
         await _db.SaveChangesAsync(ct);
@@ -412,7 +412,7 @@ public sealed class Tier0TenantProvisioning
             {
                 await UpsertSettingIfEmptyAsync(tenant.Id, "COMPANY_TRN", sampleVat, ct);
                 tenant.VatNumber = sampleVat;
-                _logger.LogWarning("Seeded sample VAT TRN for tenant {TenantId} (non-Production only)", tenant.Id);
+                _logger.LogWarning("Seeded sample VAT TRN for tenant {TenantId} (replace with real TRN in Settings)", tenant.Id);
             }
             else if (string.IsNullOrWhiteSpace(current) && !string.IsNullOrWhiteSpace(tenant.VatNumber)
                      && SampleVatTrn.IsSample(tenant.VatNumber))
@@ -426,12 +426,12 @@ public sealed class Tier0TenantProvisioning
             }
             else if (string.IsNullOrWhiteSpace(current))
             {
-                // Empty settings row but tenant row already has a value — mirror without inventing.
+                // Empty settings row but tenant row already has a value â€” mirror without inventing.
                 await UpsertSettingIfEmptyAsync(tenant.Id, "COMPANY_TRN", tenant.VatNumber!.Trim(), ct);
             }
             else if (SampleVatTrn.IsSample(current) && !string.Equals(current, sampleVat, StringComparison.Ordinal))
             {
-                // Shared-legal clone left the source sample TRN — give this tenant its own fixture.
+                // Shared-legal clone left the source sample TRN â€” give this tenant its own fixture.
                 await ForceSettingAsync(tenant.Id, "COMPANY_TRN", sampleVat, ct);
                 tenant.VatNumber = sampleVat;
                 _logger.LogWarning("Realigned sample VAT TRN for tenant {TenantId} to tenant-specific fixture", tenant.Id);
