@@ -8,6 +8,12 @@ namespace HexaBill.Api.Modules.SuperAdmin;
 public static class TenantFeatureFlags
 {
     public const string LocalBackupAgent = "localBackupAgent";
+    public const string ReceiptSnapshots = "receipt_snapshots";
+    public const string SaleCostSnapshots = "sale_cost_snapshots";
+    public const string PurchaseCostSnapshots = "purchase_cost_snapshots";
+    public const string SettlementAdjustments = "settlement_adjustments";
+    public const string DailyClose = "daily_close";
+    public const string VatBasisEffectiveDating = "vat_basis_effective_dating";
 
     public static bool IsEnabled(string? featuresJson, string key)
     {

@@ -80,6 +80,12 @@ namespace HexaBill.Api.Models
         
         public decimal LineTotal { get; set; } // Total INCLUDING VAT (for backward compatibility)
 
+        /// <summary>Unit conversion to base qty frozen at purchase posting (for returns/stock parity).</summary>
+        public decimal? ConversionAtPurchase { get; set; }
+
+        /// <summary>When set with conversion, line cost evidence is immutable (purchase_cost_snapshots).</summary>
+        public DateTime? CostCapturedAt { get; set; }
+
         // Navigation properties
         public virtual Purchase Purchase { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;

@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { 
   Plus, 
   Search, 
   Filter, 
   RefreshCw,
+  ArrowLeft,
   CheckCircle,
   XCircle,
   Clock,
@@ -34,18 +35,30 @@ import { canManagePayments } from '../../utils/roles'
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 import { localDateString } from '../../utils/dateFormat'
+import { readPaymentsStateFromParams, syncPaymentsSearchParams } from '../../utils/paymentsUrl'
+import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
+import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
+import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason } from '../../utils/receiptEligibility'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const PaymentsPage = () => {
   const { user } = useAuth()
+  const { currency: tenantCurrency = 'AED' } = useBranding()
+  const money = (value) => formatCurrency(value, tenantCurrency)
+  const balance = (value) => formatBalance(value, tenantCurrency)
   const canEditPayments = canManagePayments(user)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : null
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false) // Separate state for form submission
   const [payments, setPayments] = useState([])
   const [filteredPayments, setFilteredPayments] = useState([])
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterMethod, setFilterMethod] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
+  const [filterMethod, setFilterMethod] = useState(() => searchParams.get('method') || '')
+  const [filterStatus, setFilterStatus] = useState(() => searchParams.get('status') || '')
+  const openedCustomerFromUrlRef = useRef(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingPayment, setEditingPayment] = useState(null)
   const [selectedPayment, setSelectedPayment] = useState(null)
@@ -75,6 +88,48 @@ const PaymentsPage = () => {
   const paymentMethod = watch('method')
   const selectedSaleId = watch('saleId')
   const selectedCustomerId = watch('customerId')
+
+  const clearPaymentCustomerIdFromUrl = useCallback(() => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('customerId')
+      return next
+    }, { replace: true })
+  }, [setSearchParams])
+
+  const closeAddPaymentModal = useCallback(() => {
+    setShowAddModal(false)
+    reset()
+    clearPaymentCustomerIdFromUrl()
+  }, [reset, clearPaymentCustomerIdFromUrl])
+
+  useEffect(() => {
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncPaymentsSearchParams(params, {
+        search: searchTerm,
+        method: filterMethod,
+        status: filterStatus,
+        customerId: showAddModal ? prev.get('customerId') : null
+      })
+      return params
+    }, { replace: true })
+  }, [searchTerm, filterMethod, filterStatus, showAddModal, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readPaymentsStateFromParams(searchParams)
+    setSearchTerm((s) => (s === parsed.search ? s : parsed.search))
+    setFilterMethod((m) => (m === parsed.method ? m : parsed.method))
+    setFilterStatus((st) => (st === parsed.status ? st : parsed.status))
+  }, [searchParams])
+
+  useEffect(() => {
+    const customerIdParam = searchParams.get('customerId')
+    if (!customerIdParam || openedCustomerFromUrlRef.current || loading) return
+    openedCustomerFromUrlRef.current = true
+    setShowAddModal(true)
+    setValue('customerId', parseInt(customerIdParam, 10))
+  }, [loading, searchParams, setValue])
 
   // Load customer details and outstanding invoices when selected
   useEffect(() => {
@@ -171,19 +226,9 @@ const PaymentsPage = () => {
     // Auto-refresh DISABLED - prevents UI interruption during user actions
     // User can manually refresh with refresh button
     
-    // Check for customerId in URL params (from quick payment entry)
-    const customerIdParam = searchParams.get('customerId')
-    if (customerIdParam && isMounted) {
-      setShowAddModal(true)
-      setValue('customerId', parseInt(customerIdParam))
-      // Clear URL param
-      setSearchParams({})
-    }
-    
     return () => {
       isMounted = false
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // Only run once on mount
 
   useEffect(() => {
@@ -319,14 +364,14 @@ const PaymentsPage = () => {
       // If invoice is selected, validate against invoice outstanding balance
       const selectedInvoice = outstandingInvoices.find(inv => inv.id === parseInt(data.saleId, 10))
       if (selectedInvoice && paymentAmount > selectedInvoice.balanceAmount + 0.01) {
-        toast.error(`Payment amount (${paymentAmount.toFixed(2)} AED) exceeds outstanding balance (${selectedInvoice.balanceAmount.toFixed(2)} AED). Maximum allowed: ${selectedInvoice.balanceAmount.toFixed(2)} AED`)
+        toast.error(`Payment amount (${money(paymentAmount)}) exceeds outstanding balance (${money(selectedInvoice.balanceAmount)}). Maximum allowed: ${money(selectedInvoice.balanceAmount)}`)
         return
       }
     } else if (data.customerId && selectedCustomerDetails) {
       // If only customer is selected (no invoice), validate against customer balance
       const customerBalance = Math.abs(selectedCustomerDetails.balance || 0)
       if (customerBalance > 0 && paymentAmount > customerBalance + 0.01) {
-        toast.error(`Payment amount (${paymentAmount.toFixed(2)} AED) exceeds customer outstanding balance (${customerBalance.toFixed(2)} AED). Maximum allowed: ${customerBalance.toFixed(2)} AED`)
+        toast.error(`Payment amount (${money(paymentAmount)}) exceeds customer outstanding balance (${money(customerBalance)}). Maximum allowed: ${money(customerBalance)}`)
         return
       }
     }
@@ -349,7 +394,7 @@ const PaymentsPage = () => {
         saleId: data.saleId ? parseInt(data.saleId, 10) : null,
         customerId: data.customerId ? parseInt(data.customerId, 10) : null,
         amount: parseFloat(data.amount),
-        mode: data.method, // Backend expects 'Mode' not 'method'
+        mode: String(data.method || 'CASH').toUpperCase(),
         reference: data.ref || null, // Backend expects 'Reference' not 'ref'
         paymentDate: paymentDate
       }
@@ -358,6 +403,12 @@ const PaymentsPage = () => {
       
       if (response.success) {
         toast.success('Payment added successfully!')
+        const paymentResult = response?.data?.payment || response?.data
+        offerReceiptPreviewAfterPayment(paymentResult, (paymentId) => {
+          setReceiptPreviewPaymentIds([paymentId])
+          setShowReceiptPreviewModal(true)
+        })
+        showReturnToPrompt(navigate, returnTo)
         // Reload data by calling the API directly (fetchData is now inline in useEffect)
         try {
           setLoading(true)
@@ -381,7 +432,7 @@ const PaymentsPage = () => {
           setLoading(false)
         }
         reset()
-        setShowAddModal(false)
+        closeAddPaymentModal()
         setSelectedPayment(null)
         // Trigger global update event
         window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
@@ -426,30 +477,76 @@ const PaymentsPage = () => {
     }
   }
 
+  const eligibleReceiptPayments = useMemo(
+    () => (canEditPayments && !user?.supportReadOnly ? payments.filter(canReceivePaymentReceipt) : []),
+    [payments, canEditPayments, user?.supportReadOnly]
+  )
+
+  const receiptSelectedIds = useMemo(
+    () => currentReceiptSelection(eligibleReceiptPayments, selectedPaymentIds),
+    [eligibleReceiptPayments, selectedPaymentIds]
+  )
+
+  useEffect(() => {
+    setSelectedPaymentIds((prev) => currentReceiptSelection(eligibleReceiptPayments, prev))
+  }, [eligibleReceiptPayments])
+
   const openReceiptPreview = (ids) => {
-    setReceiptPreviewPaymentIds(Array.isArray(ids) ? ids : [ids])
+    const list = Array.isArray(ids) ? ids : [ids]
+    if (list.length === 1) {
+      const payment = payments.find((p) => Number(p.id) === Number(list[0]))
+      if (payment && !canReceivePaymentReceipt(payment)) {
+        toast.error(receiptIneligibilityReason(payment))
+        return
+      }
+    }
+    const eligible = currentReceiptSelection(payments, list)
+    if (eligible.length === 0) {
+      toast.error('Select cleared incoming payments to generate a receipt.')
+      return
+    }
+    if (eligible.length !== list.length) {
+      toast.error('One or more selected payments cannot produce a receipt.')
+      return
+    }
+    setReceiptPreviewPaymentIds(eligible)
     setShowReceiptPreviewModal(true)
   }
 
   const handleGenerateReceiptFromBar = () => {
-    if (selectedPaymentIds.length === 0) return
-    openReceiptPreview(selectedPaymentIds)
+    if (receiptSelectedIds.length === 0) {
+      toast.error('Select cleared incoming payments to generate a receipt.')
+      return
+    }
+    openReceiptPreview(receiptSelectedIds)
   }
 
   const togglePaymentSelection = (id) => {
+    const payment = payments.find((p) => Number(p.id) === Number(id))
+    if (payment && !canReceivePaymentReceipt(payment)) {
+      toast.error(receiptIneligibilityReason(payment))
+      return
+    }
     setSelectedPaymentIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
+  const eligibleFilteredReceiptIds = useMemo(
+    () => filteredPayments.filter(canReceivePaymentReceipt).map((p) => p.id),
+    [filteredPayments]
+  )
+
   const toggleSelectAllPayments = () => {
-    if (selectedPaymentIds.length === filteredPayments.length) {
+    if (eligibleFilteredReceiptIds.length === 0) return
+    if (receiptSelectedIds.length === eligibleFilteredReceiptIds.length &&
+      eligibleFilteredReceiptIds.every((id) => receiptSelectedIds.includes(id))) {
       setSelectedPaymentIds([])
     } else {
-      setSelectedPaymentIds(filteredPayments.map(p => p.id))
+      setSelectedPaymentIds(eligibleFilteredReceiptIds)
     }
   }
 
   const selectedTotal = filteredPayments
-    .filter(p => selectedPaymentIds.includes(p.id))
+    .filter(p => receiptSelectedIds.includes(p.id))
     .reduce((sum, p) => sum + (p.amount || 0), 0)
 
   const handleChequeStatusUpdate = async (paymentId, status) => {
@@ -534,6 +631,16 @@ const PaymentsPage = () => {
 
   return (
     <div className="space-y-6">
+      {returnTo && (
+        <button
+          type="button"
+          onClick={() => navigate(returnTo)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
+          Back to {getReturnLabel(returnTo)}
+        </button>
+      )}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -618,6 +725,8 @@ const PaymentsPage = () => {
         </div>
       </div>
 
+      <p className="text-xs text-gray-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
+
       {/* Payments Table - Desktop */}
       <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
@@ -627,9 +736,12 @@ const PaymentsPage = () => {
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={filteredPayments.length > 0 && selectedPaymentIds.length === filteredPayments.length}
+                    checked={eligibleFilteredReceiptIds.length > 0 &&
+                      receiptSelectedIds.length === eligibleFilteredReceiptIds.length}
+                    disabled={eligibleFilteredReceiptIds.length === 0}
                     onChange={toggleSelectAllPayments}
-                    className="rounded border-gray-300"
+                    className="rounded border-gray-300 disabled:opacity-40"
+                    aria-label="Select all eligible payments for receipt"
                   />
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -677,9 +789,11 @@ const PaymentsPage = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <input
                         type="checkbox"
-                        checked={selectedPaymentIds.includes(payment.id)}
+                        checked={receiptSelectedIds.includes(payment.id)}
+                        disabled={!canReceivePaymentReceipt(payment)}
                         onChange={() => togglePaymentSelection(payment.id)}
-                        className="rounded border-gray-300"
+                        className="rounded border-gray-300 disabled:opacity-40"
+                        aria-label={`Select payment ${payment.id} for receipt`}
                       />
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -689,7 +803,7 @@ const PaymentsPage = () => {
                       <div className="text-sm text-gray-900">{payment.customerName || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatCurrency(payment.amount)}
+                      {money(payment.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -736,8 +850,9 @@ const PaymentsPage = () => {
                         <button
                           type="button"
                           onClick={() => openReceiptPreview([payment.id])}
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Print payment receipt"
+                          disabled={!canReceivePaymentReceipt(payment)}
+                          className="text-indigo-600 hover:text-indigo-900 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={canReceivePaymentReceipt(payment) ? 'Print payment receipt' : receiptIneligibilityReason(payment)}
                         >
                           <Printer className="h-4 w-4" />
                         </button>
@@ -777,10 +892,10 @@ const PaymentsPage = () => {
       </div>
 
       {/* Selection action bar - Generate Receipt */}
-      {selectedPaymentIds.length > 0 && (
+      {receiptSelectedIds.length > 0 && (
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-700">
-            {selectedPaymentIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
+            {receiptSelectedIds.length} payment(s) selected — Total: {money(selectedTotal)}
           </span>
           <div className="flex gap-2">
             <button
@@ -832,7 +947,7 @@ const PaymentsPage = () => {
                   <p className="text-sm font-semibold text-gray-900">{payment.customerName || 'Unknown'}</p>
                   <p className="text-xs text-gray-500">{payment.invoiceNo || 'General Payment'}</p>
                 </div>
-                <p className="text-base font-bold text-gray-900">{formatCurrency(payment.amount)}</p>
+                <p className="text-base font-bold text-gray-900">{money(payment.amount)}</p>
               </div>
               <div className="flex items-center gap-3 mb-3 text-xs text-gray-500">
                 <div className="flex items-center gap-1">
@@ -878,8 +993,9 @@ const PaymentsPage = () => {
                   <button
                     type="button"
                     onClick={() => openReceiptPreview([payment.id])}
-                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"
-                    title="Print payment receipt"
+                    disabled={!canReceivePaymentReceipt(payment)}
+                    className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px] min-w-[44px]"
+                    title={canReceivePaymentReceipt(payment) ? 'Print payment receipt' : receiptIneligibilityReason(payment)}
                   >
                     <Printer className="h-4 w-4" />
                   </button>
@@ -917,10 +1033,7 @@ const PaymentsPage = () => {
       {/* Add Payment Modal */}
       <Modal
         isOpen={showAddModal}
-        onClose={() => {
-          setShowAddModal(false)
-          reset()
-        }}
+        onClose={closeAddPaymentModal}
         title="Add New Payment"
         size="lg"
       >
@@ -932,7 +1045,7 @@ const PaymentsPage = () => {
                 { value: '', label: 'Select Customer' },
                 ...customers.map(customer => ({
                   value: customer.id,
-                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${formatBalance(customer.balance || 0)}`
+                  label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
                 }))
               ]}
               error={errors.customerId?.message}
@@ -955,7 +1068,7 @@ const PaymentsPage = () => {
                 ...(selectedCustomerId && outstandingInvoices.length > 0
                   ? outstandingInvoices.map(inv => ({
                       value: inv.id,
-                      label: `${inv.invoiceNo} - Balance: ${formatCurrency(inv.balanceAmount)} ${inv.daysOverdue > 0 ? `(${inv.daysOverdue} days overdue)` : ''}`
+                      label: `${inv.invoiceNo} - Balance: ${money(inv.balanceAmount)} ${inv.daysOverdue > 0 ? `(${inv.daysOverdue} days overdue)` : ''}`
                     }))
                   : [])
               ]}
@@ -1017,10 +1130,10 @@ const PaymentsPage = () => {
                       return (
                         <div className="space-y-1 text-sm">
                           <p><span className="font-medium">Invoice:</span> {selectedInv.invoiceNo}</p>
-                          <p><span className="font-medium">Total:</span> {formatCurrency(selectedInv.grandTotal)}</p>
-                          <p><span className="font-medium">Paid:</span> {formatCurrency(selectedInv.paidAmount)}</p>
+                          <p><span className="font-medium">Total:</span> {money(selectedInv.grandTotal)}</p>
+                          <p><span className="font-medium">Paid:</span> {money(selectedInv.paidAmount)}</p>
                           <p className="text-red-600 font-semibold">
-                            <span className="font-medium">Balance Due:</span> {formatCurrency(selectedInv.balanceAmount)}
+                            <span className="font-medium">Balance Due:</span> {money(selectedInv.balanceAmount)}
                             {selectedInv.daysOverdue > 0 && (
                               <span className="ml-2 text-orange-600">({selectedInv.daysOverdue} days overdue)</span>
                             )}
@@ -1063,7 +1176,7 @@ const PaymentsPage = () => {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-red-600">{formatCurrency(inv.balanceAmount)}</p>
+                          <p className="text-sm font-semibold text-red-600">{money(inv.balanceAmount)}</p>
                           <button
                             type="button"
                             onClick={() => {
@@ -1165,7 +1278,7 @@ const PaymentsPage = () => {
                   <div>
                     <p className="text-xs text-gray-500">Account Balance</p>
                     <p className={`text-sm font-medium ${(selectedCustomerDetails.balance || 0) < 0 ? 'text-green-600' : (selectedCustomerDetails.balance || 0) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
-                      {formatBalance(selectedCustomerDetails.balance || 0)}
+                      {balance(selectedCustomerDetails.balance || 0)}
                     </p>
                   </div>
                 </div>
@@ -1185,10 +1298,7 @@ const PaymentsPage = () => {
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={() => {
-                setShowAddModal(false)
-                reset()
-              }}
+              onClick={closeAddPaymentModal}
               disabled={submitting}
               className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -1223,7 +1333,7 @@ const PaymentsPage = () => {
         isOpen={!!paymentToDelete}
         title="DELETE PAYMENT"
         message={paymentToDelete
-          ? `Amount: ${formatCurrency(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
+          ? `Amount: ${money(paymentToDelete.amount)}\nMode: ${getPaymentMethod(paymentToDelete)}\nDate: ${formatDate(paymentToDelete.paymentDate)}\n\nThis will reverse the payment effects on the invoice and customer balance.\n\nAre you sure you want to delete this payment?`
           : ''}
         confirmLabel="Delete Payment"
         requireTypedText="DELETE"
@@ -1268,7 +1378,7 @@ const PaymentsPage = () => {
                     { value: '', label: 'Select Customer' },
                     ...customers.map(customer => ({
                       value: customer.id,
-                      label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${formatBalance(customer.balance || 0)}`
+                      label: `${customer.name} ${customer.phone ? `(${customer.phone})` : ''} - Balance: ${balance(customer.balance || 0)}`
                     }))
                   ]}
                   value={payment.customerId}
@@ -1360,7 +1470,7 @@ const PaymentsPage = () => {
                         const paymentData = {
                           customerId: parseInt(payment.customerId, 10),
                           amount: parseFloat(payment.amount),
-                          mode: payment.method,
+                          mode: String(payment.method || 'CASH').toUpperCase(),
                           paymentDate: paymentDate
                         }
                         const response = await paymentsAPI.createPayment(paymentData)

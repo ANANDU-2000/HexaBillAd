@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useId } from 'react'
 import { AlertCircle } from 'lucide-react'
 
 const Input = forwardRef(({
@@ -8,12 +8,17 @@ const Input = forwardRef(({
   className = '',
   required = false,
   icon,
+  id,
   ...props
 }, ref) => {
+  const generatedId = useId()
+  const inputId = id || generatedId
+  const errorId = `${inputId}-error`
+  const helperId = `${inputId}-helper`
   return (
     <div className="space-y-1 text-left">
       {label && (
-        <label className="block text-sm font-semibold text-neutral-700">
+        <label htmlFor={inputId} className="block text-sm font-semibold text-neutral-700">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -26,6 +31,10 @@ const Input = forwardRef(({
         )}
         <input
           ref={ref}
+          id={inputId}
+          required={required}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : helperText ? helperId : undefined}
           className={`block w-full ${icon ? 'pl-10' : 'px-3'} py-2.5 bg-white border rounded-xl shadow-sm placeholder-gray-400 text-neutral-900 transition-all focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm ${error
             ? 'border-red-300 focus:ring-red-50'
             : 'border-neutral-200'
@@ -39,10 +48,10 @@ const Input = forwardRef(({
         )}
       </div>
       {error && (
-        <p className="text-sm font-medium text-red-600 mt-1">{error}</p>
+        <p id={errorId} role="alert" className="text-sm font-medium text-red-600 mt-1">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{helperText}</p>
+        <p id={helperId} className="text-sm text-neutral-500 mt-1">{helperText}</p>
       )}
     </div>
   )
@@ -61,8 +70,10 @@ const Select = forwardRef(({
   icon,
   ...props
 }, ref) => {
-  const selectId = id || props.name || `select-${Math.random().toString(36).substr(2, 9)}`
+  const generatedId = useId()
+  const selectId = id || generatedId
   const errorId = `${selectId}-error`
+  const helperId = `${selectId}-helper`
 
   return (
     <div className="space-y-1 text-left">
@@ -81,8 +92,9 @@ const Select = forwardRef(({
         <select
           ref={ref}
           id={selectId}
+          required={required}
           aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? errorId : helperText ? helperId : undefined}
           className={`block w-full ${icon ? 'pl-10' : 'px-3'} py-2.5 bg-white border rounded-xl shadow-sm text-neutral-900 transition-all focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm appearance-none ${error
             ? 'border-red-300 focus:ring-red-50'
             : 'border-neutral-200'
@@ -108,7 +120,7 @@ const Select = forwardRef(({
         <p id={errorId} role="alert" className="text-sm font-medium text-red-600 mt-1">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{helperText}</p>
+        <p id={helperId} className="text-sm text-neutral-500 mt-1">{helperText}</p>
       )}
     </div>
   )
@@ -124,8 +136,10 @@ const TextArea = forwardRef(({
   id,
   ...props
 }, ref) => {
-  const textareaId = id || props.name || `textarea-${Math.random().toString(36).substr(2, 9)}`
+  const generatedId = useId()
+  const textareaId = id || generatedId
   const errorId = `${textareaId}-error`
+  const helperId = `${textareaId}-helper`
 
   return (
     <div className="space-y-1 text-left">
@@ -139,9 +153,10 @@ const TextArea = forwardRef(({
         <textarea
           ref={ref}
           id={textareaId}
+          required={required}
           rows={rows}
           aria-invalid={!!error}
-          aria-describedby={error ? errorId : undefined}
+          aria-describedby={error ? errorId : helperText ? helperId : undefined}
           className={`block w-full px-3 py-2.5 bg-white border rounded-xl shadow-sm placeholder-gray-400 text-neutral-900 transition-all focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500 sm:text-sm ${error
             ? 'border-red-300 focus:ring-red-50'
             : 'border-neutral-200'
@@ -158,7 +173,7 @@ const TextArea = forwardRef(({
         <p id={errorId} role="alert" className="text-sm font-medium text-red-600 mt-1">{error}</p>
       )}
       {helperText && !error && (
-        <p className="text-sm text-neutral-500 mt-1">{helperText}</p>
+        <p id={helperId} className="text-sm text-neutral-500 mt-1">{helperText}</p>
       )}
     </div>
   )

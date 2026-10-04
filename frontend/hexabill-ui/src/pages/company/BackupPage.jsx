@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { backupAPI } from '../../services'
 import { useAuth } from '../../hooks/useAuth'
 import {
-  CircleAlert, CircleCheck, Clock, Cloud, Download, Eye, Folder, HardDrive, Laptop, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload
+  AlertCircle, CheckCircle, Clock, Cloud, Download, Eye, Folder, HardDrive, Laptop, RefreshCw, RotateCcw, ShieldCheck, Trash2, Upload
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -32,8 +32,8 @@ const formatBytes = (bytes) => {
 const zoneLabel = (id) => ZONES.find((zone) => zone.id === id)?.label || id || 'UTC'
 
 const StatusIcon = ({ status }) => {
-  if (status === 'Automatic backup active' || status === 'Connected') return <CircleCheck className="h-5 w-5 text-green-600" aria-hidden="true" />
-  if (status === 'Needs attention' || status === 'Configured, device offline' || status === 'Disconnected') return <CircleAlert className="h-5 w-5 text-amber-600" aria-hidden="true" />
+  if (status === 'Automatic backup active' || status === 'Connected') return <CheckCircle className="h-5 w-5 text-green-600" aria-hidden="true" />
+  if (status === 'Needs attention' || status === 'Configured, device offline' || status === 'Disconnected') return <AlertCircle className="h-5 w-5 text-amber-600" aria-hidden="true" />
   if (status === 'Running') return <RefreshCw className="h-5 w-5 text-blue-600 animate-spin motion-reduce:animate-none" aria-hidden="true" />
   return <ShieldCheck className="h-5 w-5 text-neutral-500" aria-hidden="true" />
 }

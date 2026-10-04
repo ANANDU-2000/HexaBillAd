@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Modules.Sales;
 
 namespace HexaBill.Api.Modules.Branches
 {
@@ -230,7 +231,7 @@ namespace HexaBill.Api.Modules.Branches
 
             var saleIdsInBranch = await salesInBranchFilter.Select(s => s.Id).ToListAsync();
 
-            var cogsByRouteList = new List<(int RouteId, decimal Cogs)>();
+            var cogsByRouteList = new List<(int? RouteId, decimal Cogs, int Estimated)>();
             if (saleIdsInBranch.Count > 0)
             {
                 try
@@ -238,30 +239,32 @@ namespace HexaBill.Api.Modules.Branches
                     // Use explicit Select to only get CostPrice (avoid loading entire Product entity with missing columns)
                     var cogsQuery = await (from si in _context.SaleItems
                         join s in _context.Sales on si.SaleId equals s.Id
-                        where saleIdsInBranch.Contains(si.SaleId) && s.RouteId != null
-                        select new { si.SaleId, si.Qty, si.ProductId, s.RouteId })
+                        where saleIdsInBranch.Contains(si.SaleId)
+                        select new { Item = si, s.RouteId })
+                        .AsNoTracking()
                         .ToListAsync();
                     
                     // Get CostPrice separately to avoid loading entire Product entity
-                    var productIds = cogsQuery.Select(x => x.ProductId).Distinct().ToList();
+                    var productIds = cogsQuery.Select(x => x.Item.ProductId).Distinct().ToList();
                     var productCosts = await _context.Products
-                        .Where(p => productIds.Contains(p.Id))
-                        .Select(p => new { p.Id, p.CostPrice })
-                        .ToDictionaryAsync(p => p.Id, p => p.CostPrice);
+                        .Where(p => productIds.Contains(p.Id) && (tenantId <= 0 || p.TenantId == tenantId))
+                        .Select(p => new Product { Id = p.Id, CostPrice = p.CostPrice, ConversionToBase = p.ConversionToBase })
+                        .ToDictionaryAsync(p => p.Id);
+
+                    foreach (var row in cogsQuery)
+                        row.Item.Product = productCosts.GetValueOrDefault(row.Item.ProductId)!;
                     
                     var cogsByRoute = cogsQuery
-                        .Where(x => x.RouteId.HasValue && productCosts.ContainsKey(x.ProductId))
-                        .GroupBy(x => x.RouteId!.Value)
-                        .Select(g => new { RouteId = g.Key, Cogs = g.Sum(x => x.Qty * productCosts[x.ProductId]) })
+                        .GroupBy(x => x.RouteId)
+                        .Select(g => new { RouteId = g.Key, Cogs = g.Sum(x => SaleCostBasis.Calculate(x.Item)), Estimated = g.Count(x => !SaleCostBasis.HasSnapshot(x.Item)) })
                         .ToList();
                     
-                    cogsByRouteList = cogsByRoute.Select(x => (x.RouteId, x.Cogs)).ToList();
+                    cogsByRouteList = cogsByRoute.Select(x => (x.RouteId, x.Cogs, x.Estimated)).ToList();
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError($"❌ Error calculating branch COGS: {ex.Message}");
-                    // Return empty list - COGS will be 0 for all routes
-                    cogsByRouteList = new List<(int RouteId, decimal Cogs)>();
+                    throw;
                 }
             }
             List<(int RouteId, decimal Total)> expensesByRouteList;
@@ -369,6 +372,7 @@ namespace HexaBill.Api.Modules.Branches
                     NetSales = routeNetSales,
                     TotalExpenses = expenses,
                     CostOfGoodsSold = cogs,
+                    EstimatedCostLineCount = cogsEntry.Estimated,
                     Profit = routeNetSales - cogs - expenses,
                     InvoiceCount = routeSales?.Count ?? 0,
                     TotalPayments = routePayments,
@@ -382,7 +386,7 @@ namespace HexaBill.Api.Modules.Branches
             var totalSales = saleIdsInBranch.Count > 0
                 ? await _context.Sales.Where(s => saleIdsInBranch.Contains(s.Id)).SumAsync(s => s.GrandTotal)
                 : routes.Sum(r => r.TotalSales);
-            var totalCogs = routes.Sum(r => r.CostOfGoodsSold);
+            var totalCogs = cogsByRouteList.Sum(r => r.Cogs);
             var netSales = totalSales - branchReturnsTotal;
 
             // Performance metrics
@@ -439,6 +443,7 @@ namespace HexaBill.Api.Modules.Branches
                 NetSales = netSales,
                 TotalExpenses = totalExpenses,
                 CostOfGoodsSold = totalCogs,
+                EstimatedCostLineCount = cogsByRouteList.Sum(r => r.Estimated),
                 Profit = netSales - totalCogs - totalExpenses,
                 Routes = routes,
                 GrowthPercent = growthPercent,
@@ -470,6 +475,9 @@ namespace HexaBill.Api.Modules.Branches
             var totalSales = await _context.Sales.Where(s => saleIds.Contains(s.Id)).SumAsync(s => s.GrandTotal);
             var invoiceCount = saleIds.Count;
             var averageInvoiceSize = invoiceCount > 0 ? totalSales / invoiceCount : 0m;
+            var items = await _context.SaleItems.AsNoTracking().Include(i => i.Product)
+                .Where(i => saleIds.Contains(i.SaleId)).ToListAsync();
+            var cogs = items.Sum(SaleCostBasis.Calculate);
 
             return new BranchSummaryDto
             {
@@ -477,8 +485,9 @@ namespace HexaBill.Api.Modules.Branches
                 BranchName = "Unassigned",
                 TotalSales = totalSales,
                 TotalExpenses = 0,
-                CostOfGoodsSold = 0,
-                Profit = totalSales,
+                CostOfGoodsSold = cogs,
+                EstimatedCostLineCount = items.Count(i => !SaleCostBasis.HasSnapshot(i)),
+                Profit = totalSales - cogs,
                 Routes = new List<RouteSummaryDto>(),
                 GrowthPercent = null,
                 CollectionsRatio = null,

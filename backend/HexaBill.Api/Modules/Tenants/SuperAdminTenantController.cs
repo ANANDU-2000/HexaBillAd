@@ -10,6 +10,7 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
 using HexaBill.Api.Modules.Auth;
+using HexaBill.Api.Modules.Reports;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
@@ -405,7 +406,7 @@ namespace HexaBill.Api.Modules.Tenants
                     return Unauthorized(new ApiResponse<CreateTenantResponseDto> { Success = false, Message = "Invalid platform session" });
 
                 var (tenant, generatedPassword, inviteUrl) = await _tenantService.CreateTenantAsync(request, createdByUserId);
-                await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Subdomain: {tenant.Subdomain}, Email: {tenant.Email ?? request.Email ?? "N/A"}");
+                await WriteSuperAdminAuditAsync("CreateTenant", tenant.Id, $"Tenant: {tenant.Name}, Subdomain: {tenant.Subdomain}, Email: {tenant.Email ?? request.Email ?? "N/A"}, Legal identity source: {request.SharedLegalIdentityFromTenantId?.ToString() ?? "new"}; operational data starts empty");
 
                 var clientAppLink = tenant.LoginUrl;
                 var clientEmail = tenant.Email ?? request.Email ?? "";
@@ -1072,6 +1073,62 @@ namespace HexaBill.Api.Modules.Tenants
             }
         }
 
+        /// <summary>Set VAT profit-form calculation basis with audited effective-dated history. SystemAdmin only.</summary>
+        [HttpPut("{id}/vat-calculation-basis")]
+        public async Task<ActionResult<ApiResponse<object>>> UpdateTenantVatCalculationBasis(
+            int id,
+            [FromBody] UpdateTenantVatBasisRequest request)
+        {
+            if (!IsSystemAdmin)
+                return Forbid();
+
+            if (request == null || !VatBasisResolver.TryParseBasis(request.Basis, out var basis))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "basis must be SalesBased or ProfitBased"
+                });
+            }
+
+            try
+            {
+                var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == id);
+                if (tenant == null)
+                    return NotFound(new ApiResponse<object> { Success = false, Message = "Tenant not found" });
+
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("UserId")?.Value
+                    ?? User.FindFirst("sub")?.Value;
+                if (!int.TryParse(userIdClaim, out var setByUserId) || setByUserId <= 0)
+                    setByUserId = 1;
+
+                var effectiveFrom = request.EffectiveFrom ?? DateTime.UtcNow;
+                var changed = await VatBasisResolver.ApplyTenantBasisChangeAsync(
+                    _context, tenant, basis, effectiveFrom, setByUserId);
+
+                if (changed)
+                {
+                    await WriteSuperAdminAuditAsync(
+                        "UpdateVatCalculationBasis",
+                        id,
+                        $"VAT basis set to {basis} effective {effectiveFrom:O}");
+                }
+
+                return Ok(new ApiResponse<object>
+                {
+                    Success = true,
+                    Message = changed ? "VAT calculation basis updated" : "No change",
+                    Data = new { basis = basis.ToString(), changed }
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateTenantVatCalculationBasis failed for tenant {TenantId}", id);
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "An error occurred" });
+            }
+        }
+
         /// <summary>Get tenant's enabled features (feature flags). SystemAdmin only.</summary>
         [HttpGet("{id}/features")]
         public async Task<ActionResult<ApiResponse<object>>> GetTenantFeatures(int id)
@@ -1124,6 +1181,12 @@ namespace HexaBill.Api.Modules.Tenants
                 return StatusCode(500, new ApiResponse<object> { Success = false, Message = ex.Message });
             }
         }
+    }
+
+    public class UpdateTenantVatBasisRequest
+    {
+        public string Basis { get; set; } = "";
+        public DateTime? EffectiveFrom { get; set; }
     }
 
     public class DuplicateDataRequest

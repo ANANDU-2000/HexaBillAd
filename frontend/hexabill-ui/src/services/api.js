@@ -5,6 +5,26 @@ import toast from 'react-hot-toast'
 import { connectionManager } from './connectionManager'
 import { showMaintenanceOverlay } from '../components/MaintenanceOverlay'
 import { setSubscriptionGraceFromResponse } from '../components/SubscriptionGraceBanner'
+import { createRequestSession } from './requestSession.js'
+
+const requestSession = createRequestSession(() => ({
+  host: typeof window !== 'undefined' ? window.location.hostname : 'server',
+  token: typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null,
+}))
+const sessionChangedError = (config) => {
+  const error = new axios.CanceledError('Your session changed. Please retry in the current workspace.', config)
+  error._handledByInterceptor = true
+  error.sessionChanged = true
+  return error
+}
+const scheduleLoginRedirect = () => {
+  const loggedOutScope = requestSession.current()
+  setTimeout(() => {
+    if (requestSession.isCurrent(loggedOutScope) && !localStorage.getItem('token')) {
+      window.location.href = '/login'
+    }
+  }, 1500)
+}
 
 // API base URL: single source of truth so production never uses localhost
 import { getApiBaseUrl } from './apiConfig'
@@ -24,12 +44,14 @@ const clientErrorQueue = []
 const MAX_QUEUED_CLIENT_ERRORS = 50
 function queueClientError(message, path) {
   const p = path || (typeof window !== 'undefined' ? window.location?.pathname : '') || ''
-  clientErrorQueue.push({ message, path: p })
+  clientErrorQueue.push({ message, path: p, scope: requestSession.current() })
   if (clientErrorQueue.length > MAX_QUEUED_CLIENT_ERRORS) clientErrorQueue.shift()
 }
 function flushClientErrorsToBackend() {
   if (clientErrorQueue.length === 0) return
-  const items = clientErrorQueue.splice(0, clientErrorQueue.length)
+  const scope = requestSession.current()
+  const items = clientErrorQueue.splice(0, clientErrorQueue.length).filter((item) => item.scope === scope)
+  if (items.length === 0) return
   const message = items[0]?.message || 'Service temporarily unavailable'
   const path = items.length === 1 ? (items[0]?.path || '') : `multiple (${items.length} requests failed)`
   api.post('/error-logs/client', { message, path, count: items.length }).catch(() => {})
@@ -79,17 +101,23 @@ const clearAllCache = () => {
   responseCache.clear()
 }
 
+// Authentication transitions invalidate requests; ordinary settings refreshes only clear cache.
+const resetRequestSession = () => {
+  clearAllCache()
+  requestThrottle.clear()
+  pendingRequests.clear()
+  clientErrorQueue.length = 0
+  requestSession.reset()
+}
+
 // Generate request key for deduplication (never call toUpperCase on undefined)
-// Include tenant ID so Super Admin impersonation does not serve one tenant's cached data to another
+// Scope to the exact browser login session; host alone cannot separate owners or support sessions.
 const getRequestKey = (config) => {
   if (!config) {
     return `UNKNOWN_${Date.now()}_${Math.random()}`
   }
-  const method = config.method != null && config.method !== '' ? String(config.method).toUpperCase() : 'GET'
-  const url = config.url != null ? String(config.url) : ''
-  const params = config.params || {}
-  const host = typeof window !== 'undefined' ? window.location.hostname : 'server'
-  return `${method}_${url}_${JSON.stringify(params)}_host:${host}`
+  return requestSession.key({ ...config, baseURL: config.baseURL ?? api.defaults.baseURL ?? API_BASE_URL },
+    config._sessionScope || requestSession.current())
 }
 
 /** Human-readable message from non-standard API / ProblemDetails / HTML error bodies (avoids generic "An error occurred"). */
@@ -210,11 +238,12 @@ api.request = function(configOrUrl, config) {
   let finalConfig
   if (typeof configOrUrl === 'string') {
     // axios.request(url, config) signature
-    finalConfig = config || {}
+    finalConfig = { ...(config || {}) }
     finalConfig.url = configOrUrl
   } else {
     // axios.request(config) signature
-    finalConfig = configOrUrl || {}
+    finalConfig = configOrUrl && typeof configOrUrl === 'object' && !Array.isArray(configOrUrl)
+      ? { ...configOrUrl } : {}
   }
   
   // CRITICAL: Normalize config IMMEDIATELY - before axios processes it
@@ -288,6 +317,10 @@ api.request = function(configOrUrl, config) {
   }
 
   // Response cache check - BEFORE calling axios (prevents toUpperCase bug from returning response as config)
+  if (finalConfig._sessionScope && !requestSession.isCurrent(finalConfig._sessionScope)) {
+    return Promise.reject(sessionChangedError(finalConfig))
+  }
+  finalConfig._sessionScope = requestSession.current()
   const method = (finalConfig.method && typeof finalConfig.method === 'string')
     ? String(finalConfig.method).toUpperCase() : 'GET'
   // Never serve PDF/blob from JSON cache — JSON.stringify destroys Blob (breaks repeat exports/prints)
@@ -311,7 +344,12 @@ api.request = function(configOrUrl, config) {
           headers: cached.response.headers || {},
           config: cachedConfig
         }
-        return Promise.resolve(cachedResponse)
+        return Promise.resolve().then(() => {
+          if (!requestSession.isCurrent(finalConfig._sessionScope)) {
+            throw sessionChangedError(finalConfig)
+          }
+          return cachedResponse
+        })
       }
       responseCache.delete(cacheKey)
     }
@@ -494,6 +532,12 @@ api.interceptors.request.use(
     plainConfig.method = String(plainConfig.method || 'GET').trim().toUpperCase() || 'GET'
     config = plainConfig
 
+    // A delayed retry must never run with a replacement owner's credentials.
+    if (config._sessionScope && !requestSession.isCurrent(config._sessionScope)) {
+      return Promise.reject(sessionChangedError(config))
+    }
+    config._sessionScope = requestSession.current()
+
     // Check if we should allow this request
     if (!connectionManager.shouldAllowRequest()) {
       const error = new Error('Server connection unavailable. Please wait...')
@@ -613,6 +657,10 @@ const transformResponseKeys = (obj) => {
 // Offline detection and error handling
 api.interceptors.response.use(
   (response) => {
+    // Drop old-session responses before delivering data or changing connection/cache state.
+    if (response.config?._sessionScope && !requestSession.isCurrent(response.config._sessionScope)) {
+      return Promise.reject(sessionChangedError(response.config))
+    }
     // Mark connection as successful on any successful response
     connectionManager.markConnected()
     // Send any client-reported errors (e.g. connection refused) to backend so Super Admin can see them
@@ -672,6 +720,11 @@ api.interceptors.response.use(
     return response
   },
   async (error) => {
+    // In particular, an old 401 must not log out the replacement login.
+    if (error.sessionChanged) return Promise.reject(error)
+    if (error.config?._sessionScope && !requestSession.isCurrent(error.config._sessionScope)) {
+      return Promise.reject(sessionChangedError(error.config))
+    }
     // Handle connection blocked errors
     if (error.isConnectionBlocked) {
       return Promise.reject(error)
@@ -928,9 +981,7 @@ api.interceptors.response.use(
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         toast.error('Authentication failed. Please login again.', { duration: 3000 })
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1500)
+        scheduleLoginRedirect()
         return Promise.reject(error)
       }
 
@@ -961,9 +1012,7 @@ api.interceptors.response.use(
         toast.error(message, { duration: 3000 })
 
         // Small delay to let the toast show before redirect
-        setTimeout(() => {
-          window.location.href = '/login'
-        }, 1500)
+        scheduleLoginRedirect()
       } else if (hadToken) {
         // Had token but 401 - for POST/PUT/DELETE, likely session expired; for GET, permission issue
         const msg = isMutating
@@ -1043,4 +1092,4 @@ api.interceptors.response.use(
 export default api
 
 // Export cache utilities for manual cache invalidation
-export { clearCache, clearAllCache }
+export { clearCache, clearAllCache, resetRequestSession }

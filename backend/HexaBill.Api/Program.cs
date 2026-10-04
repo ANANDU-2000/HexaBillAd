@@ -303,6 +303,7 @@ builder.Services.AddScoped<ICustomerMergeService, CustomerMergeService>();
 builder.Services.AddScoped<ISupplierMergeService, SupplierMergeService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IPaymentReceiptService, PaymentReceiptService>();
+builder.Services.AddScoped<HexaBill.Api.Modules.DailyClose.IDailyCloseService, HexaBill.Api.Modules.DailyClose.DailyCloseService>();
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IBranchService, HexaBill.Api.Modules.Branches.BranchService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Branches.IRouteService, HexaBill.Api.Modules.Branches.RouteService>();
@@ -1270,34 +1271,36 @@ app.MapGet("/api/cors-check", (HttpContext context) =>
 // cannot reach its database so Render does not route traffic to a broken instance.
 app.MapGet("/health", async () =>
 {
+    var deployVersion = HexaBill.Api.Core.Infrastructure.DeployVersionResolver.Resolve();
     try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var connected = await db.Database.CanConnectAsync();
         return connected
-            ? Results.Ok(new { status = "ok", database = "Connected", timestamp = DateTime.UtcNow })
-            : Results.Json(new { status = "Unhealthy", database = "Disconnected", timestamp = DateTime.UtcNow }, statusCode: 503);
+            ? Results.Ok(new { status = "ok", database = "Connected", timestamp = DateTime.UtcNow, deployVersion })
+            : Results.Json(new { status = "Unhealthy", database = "Disconnected", timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
     catch (Exception ex)
     {
-        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message, timestamp = DateTime.UtcNow }, statusCode: 503);
+        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
 }).AllowAnonymous();
 
 // PROD-1: Readiness check with DB (for k8s/Render advanced checks)
 app.MapGet("/health/ready", async (HttpContext ctx) =>
 {
+    var deployVersion = HexaBill.Api.Core.Infrastructure.DeployVersionResolver.Resolve();
     try
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         _ = await db.Database.CanConnectAsync();
-        return Results.Ok(new { status = "Ready", database = "Connected", timestamp = DateTime.UtcNow });
+        return Results.Ok(new { status = "Ready", database = "Connected", timestamp = DateTime.UtcNow, deployVersion });
     }
     catch (Exception ex)
     {
-        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message }, statusCode: 503);
+        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
 }).AllowAnonymous();
 app.MapGet("/", () => Results.Ok(new { service = "HexaBill.Api", status = "Running", version = "2.0" })).AllowAnonymous();
@@ -1408,6 +1411,9 @@ _ = Task.Run(async () =>
 {
     try
     {
+        if (string.Equals(Environment.GetEnvironmentVariable("HEXABILL_HTTP_INTEGRATION_TEST"), "1", StringComparison.Ordinal))
+            return;
+
         await Task.Delay(3000); // Wait 3 seconds for server to start responding to health checks
         var isProdEnv = !string.Equals(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), "Development", StringComparison.OrdinalIgnoreCase);
         var dbUrlBg = Environment.GetEnvironmentVariable("DATABASE_URL") ?? "";
@@ -2671,4 +2677,6 @@ if (app.Environment.IsDevelopment())
 }
 app.Run(); // Blocks here - server runs until SIGTERM/SIGINT received
 
+// Exposed for integration tests (WebApplicationFactory).
+public partial class Program;
 

@@ -30,7 +30,10 @@ namespace HexaBill.Api.Core.Storage
         {
             _context = context;
             _environment = environment;
-            _uploadPath = Path.Combine(_environment.WebRootPath, "uploads");
+            var webRoot = string.IsNullOrWhiteSpace(_environment.WebRootPath)
+                ? Path.Combine(_environment.ContentRootPath ?? AppContext.BaseDirectory, "wwwroot")
+                : _environment.WebRootPath;
+            _uploadPath = Path.Combine(webRoot, "uploads");
             
             // Ensure upload directory exists
             if (!Directory.Exists(_uploadPath))

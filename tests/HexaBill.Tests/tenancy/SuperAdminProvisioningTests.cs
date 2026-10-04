@@ -119,6 +119,142 @@ public class SuperAdminProvisioningTests
         Assert.False(tenantAdmin.IsPlatformScope(TenantHostResolution.Platform()));
     }
 
+    [Fact]
+    public async Task SharedOwnerSetup_CopiesOnlyLegalIdentityAndCreatesAnIsolatedOwner()
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db);
+        var request = SharedOwnerRequest();
+        // Browser edits cannot replace the approved source identity.
+        request.ExpectedLegalIdentityFingerprint = (await CreateService(db).GetTenantByIdAsync(5))!.LegalIdentityFingerprint;
+        request.Name = "Tampered name";
+        request.CompanyNameEn = "Tampered legal name";
+        request.VatNumber = "Tampered TRN";
+        request.CompanyLicense = "Tampered licence";
+        var (tenant, _, invite) = await CreateService(db).CreateTenantAsync(request, 1);
+
+        Assert.NotEqual(5, tenant.Id);
+        Assert.Equal("Legal Trading Company", tenant.Name);
+        Assert.Equal("Registered Trading LLC", tenant.CompanyNameEn);
+        Assert.Equal("100123456789012", tenant.VatNumber);
+        Assert.Equal("owner-two", tenant.Subdomain);
+        Assert.StartsWith("https://owner-two.hexabill.company/login?invite=", invite);
+        var owner = await db.Users.SingleAsync(u => u.TenantId == tenant.Id);
+        Assert.Equal("Second Owner", owner.Name);
+        Assert.Equal("second@example.com", owner.Email);
+        Assert.Equal("+971502222222", owner.Phone);
+        Assert.Equal(tenant.Id, owner.OwnerId);
+        var settings = await db.Settings.Where(s => s.TenantId == tenant.Id).ToDictionaryAsync(s => s.Key, s => s.Value);
+        Assert.Equal("LIC-123", settings["COMPANY_LICENSE"]);
+        Assert.Equal("+971502222222", settings["COMPANY_PHONE"]);
+        Assert.Equal("INV", settings["INVOICE_PREFIX"]);
+        Assert.False(settings.ContainsKey("BANK_ACCOUNT"));
+        Assert.False(settings.ContainsKey("AI_PROVIDER_KEY"));
+        Assert.Null((await db.Tenants.SingleAsync(t => t.Id == tenant.Id)).FeaturesJson);
+        Assert.Equal("owner-one", (await db.Tenants.SingleAsync(t => t.Id == 5)).Subdomain);
+
+        db.SetRequestTenantScope(tenant.Id, isPlatformScope: false);
+        Assert.Empty(await db.Products.ToListAsync());
+        Assert.Empty(await db.Customers.ToListAsync());
+        Assert.Empty(await db.Sales.ToListAsync());
+        Assert.Empty(await db.Payments.ToListAsync());
+        Assert.All(await db.Settings.ToListAsync(), s => Assert.Equal(tenant.Id, s.TenantId));
+        db.SetRequestTenantScope(5, isPlatformScope: false);
+        Assert.Single(await db.Products.ToListAsync());
+        Assert.Single(await db.Customers.ToListAsync());
+        Assert.DoesNotContain(await db.Users.ToListAsync(), u => u.Id == owner.Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("[]")]
+    [InlineData("{broken")]
+    public async Task SharedOwnerSetup_IsOffWithoutAnExplicitSourceFlag(string? flags)
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db, flags);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateTenantAsync(SharedOwnerRequest(), 1));
+        Assert.Contains("Enable shared legal owner setup", error.Message);
+        Assert.Single(await db.Tenants.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SharedOwnerSetup_RequiresReviewedIdentityAndCompleteLicence()
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db);
+        var request = SharedOwnerRequest();
+        request.ConfirmSharedLegalIdentity = false;
+        await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateTenantAsync(request, 1));
+        request.ConfirmSharedLegalIdentity = true;
+        var licence = await db.Settings.SingleAsync(s => s.TenantId == 5 && s.Key == "COMPANY_LICENSE");
+        licence.Value = "";
+        await db.SaveChangesAsync();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateService(db).CreateTenantAsync(request, 1));
+        Assert.Contains("TRN and licence", error.Message);
+        Assert.Single(await db.Tenants.ToListAsync());
+    }
+
+    [Fact]
+    public async Task CompanySetup_RejectsTenantScopedCallerEvenWithSourceId()
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db);
+        db.SetRequestTenantScope(5, isPlatformScope: false);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() => CreateService(db).CreateTenantAsync(SharedOwnerRequest(), 1));
+        Assert.Single(await db.Tenants.ToListAsync());
+    }
+
+    [Fact]
+    public async Task SharedOwnerSetup_RejectsAStaleLegalReview()
+    {
+        await using var db = await CreateDbAsync();
+        await SeedLegalSourceAsync(db);
+        var service = CreateService(db);
+        var preview = await service.GetTenantByIdAsync(5);
+        Assert.True(preview!.SharedLegalWorkspaceEnabled);
+        Assert.Equal("LIC-123", preview.CompanyLicense);
+        var request = SharedOwnerRequest();
+        request.ExpectedLegalIdentityFingerprint = preview.LegalIdentityFingerprint;
+        var licence = await db.Settings.SingleAsync(s => s.TenantId == 5 && s.Key == "COMPANY_LICENSE");
+        licence.Value = "LIC-UPDATED";
+        await db.SaveChangesAsync();
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreateTenantAsync(request, 1));
+        Assert.Contains("legal details changed", error.Message);
+        Assert.Single(await db.Tenants.ToListAsync());
+    }
+
+    private static CreateTenantRequest SharedOwnerRequest() => new()
+    {
+        Name = "Legal Trading Company", Subdomain = "owner-two", OwnerName = "Second Owner",
+        Email = "second@example.com", Phone = "+971502222222",
+        SharedLegalIdentityFromTenantId = 5, ConfirmSharedLegalIdentity = true
+    };
+
+    private static async Task SeedLegalSourceAsync(AppDbContext db,
+        string? flags = "[\"shared_legal_workspace\"]")
+    {
+        db.Tenants.Add(new Tenant
+        {
+            Id = 5, Name = "Legal Trading Company", CompanyNameEn = "Registered Trading LLC",
+            Subdomain = "owner-one", Country = "AE", Currency = "AED", VatNumber = "100123456789012",
+            Email = "first@example.com", Phone = "+971501111111", Status = TenantStatus.Active, FeaturesJson = flags
+        });
+        var sourceSettings = new Dictionary<string, string>
+        {
+            ["COMPANY_NAME_EN"] = "Registered Trading LLC", ["COMPANY_TRN"] = "100123456789012",
+            ["COMPANY_LICENSE"] = "LIC-123", ["BANK_ACCOUNT"] = "Owner one private bank",
+            ["AI_PROVIDER_KEY"] = "test-only-private-value", ["INVOICE_PREFIX"] = "OWNER1"
+        };
+        foreach (var entry in sourceSettings)
+            db.Settings.Add(new Setting { TenantId = 5, OwnerId = 5, Key = entry.Key, Value = entry.Value });
+        db.Products.Add(new Product { TenantId = 5, OwnerId = 5, NameEn = "Source private stock", Sku = "SOURCE", StockQty = 8 });
+        db.Customers.Add(new Customer { TenantId = 5, OwnerId = 5, Name = "Source private customer" });
+        db.Users.Add(new User { TenantId = 5, OwnerId = 5, Name = "First Owner", Email = "first@example.com", Role = UserRole.Owner, PasswordHash = "test-only" });
+        db.Sales.Add(new Sale { TenantId = 5, OwnerId = 5, InvoiceNo = "OWNER1-1", GrandTotal = 1331m, CreatedAt = DateTime.UtcNow, InvoiceDate = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+    }
+
     private static SuperAdminTenantService CreateService(AppDbContext db)
     {
         var hosting = Options.Create(new HostingOptions

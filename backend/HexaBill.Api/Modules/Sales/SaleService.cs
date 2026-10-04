@@ -723,6 +723,7 @@ namespace HexaBill.Api.Modules.Sales
 
                 // Calculate totals — VAT% from company settings (tenant-scoped), not hardcoded. PRODUCTION_MASTER_TODO #37
                 var vatPercent = await GetVatPercentAsync(tenantId);
+                var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 var allowNegativeStock = await IsNegativeStockAllowedAsync(tenantId);
                 var isZeroInvoice = request.IsZeroInvoice;
                 decimal subtotal = 0;
@@ -843,6 +844,7 @@ namespace HexaBill.Api.Modules.Sales
                         VatScenario = isZeroInvoice ? VatScenarios.OutOfScope : VatScenarios.Standard
                     };
 
+                    SaleCostBasis.Capture(saleItem, product, tenantId, captureCosts);
                     saleItems.Add(saleItem);
 
                     // PROD-19: Atomic stock update to prevent race conditions
@@ -1259,6 +1261,7 @@ namespace HexaBill.Api.Modules.Sales
                 // Similar to CreateSaleAsync but without stock validation
                 var invoiceNo = await GenerateInvoiceNumberAsync(tenantId);
                 var vatPercent = await GetVatPercentAsync(tenantId);
+                var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 decimal subtotal = 0;
                 decimal vatTotal = 0;
 
@@ -1293,6 +1296,7 @@ namespace HexaBill.Api.Modules.Sales
                         LineTotal = lineAmount
                     };
 
+                    SaleCostBasis.Capture(saleItem, product, tenantId, captureCosts);
                     saleItems.Add(saleItem);
 
                     // PROD-19: Atomic stock update (admin override allows negative stock)
@@ -1649,6 +1653,9 @@ namespace HexaBill.Api.Modules.Sales
                 if (saleForUpdate == null)
                     throw new InvalidOperationException("Sale not found");
 
+                if (await _context.SaleReturns.AnyAsync(r => r.SaleId == saleId && r.TenantId == tenantId))
+                    throw new InvalidOperationException("This invoice has return history and cannot be edited. Review the return history.");
+
                 // Create version snapshot before editing
                 var versionSnapshot = new
                 {
@@ -1674,7 +1681,10 @@ namespace HexaBill.Api.Modules.Sales
                         i.UnitPrice,
                         i.Discount,
                         i.VatAmount,
-                        i.LineTotal
+                        i.LineTotal,
+                        i.UnitCostAtSale,
+                        i.ConversionAtSale,
+                        i.CostCapturedAt
                     }).ToList()
                 };
 
@@ -1683,6 +1693,7 @@ namespace HexaBill.Api.Modules.Sales
                 var oldTotalsForAudit = new { GrandTotal = saleForUpdate.GrandTotal, Subtotal = saleForUpdate.Subtotal, Discount = saleForUpdate.Discount, VatTotal = saleForUpdate.VatTotal };
 
                 var allowNegativeStock = await IsNegativeStockAllowedAsync(tenantId);
+                var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
 
                 // Use validation service for robust validation (stock checks skipped if negative stock allowed)
                 if (!allowNegativeStock)
@@ -1711,10 +1722,11 @@ namespace HexaBill.Api.Modules.Sales
                             continue;
                         }
 
-                        var baseQty = item.Qty * product.ConversionToBase;
+                        var checkedCost = new SaleItem { ProductId = item.ProductId, UnitType = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpperInvariant() };
+                        SaleCostBasis.Capture(checkedCost, product, tenantId, captureCosts, saleForUpdate.Items);
+                        var baseQty = item.Qty * (checkedCost.ConversionAtSale ?? product.ConversionToBase);
                         
-                        var oldItem = saleForUpdate.Items?.FirstOrDefault(i => i != null && i.ProductId == item.ProductId);
-                        var oldBaseQty = (oldItem != null && product != null) ? oldItem.Qty * product.ConversionToBase : 0;
+                        var oldBaseQty = saleForUpdate.Items.Where(i => i.ProductId == item.ProductId).Sum(i => i.Qty * (i.ConversionAtSale ?? product.ConversionToBase));
                         var availableAfterRestore = (product?.StockQty ?? 0) + oldBaseQty;
 
                         if (availableAfterRestore < baseQty)
@@ -1749,7 +1761,7 @@ namespace HexaBill.Api.Modules.Sales
                             if (product != null)
                             {
                                 // PROD-19: Atomic stock restore
-                                var oldBaseQty = oldItem.Qty * product.ConversionToBase;
+                                var oldBaseQty = oldItem.Qty * (oldItem.ConversionAtSale ?? product.ConversionToBase);
                                 var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                                     $@"UPDATE ""Products"" 
                                        SET ""StockQty"" = ""StockQty"" + {oldBaseQty}, 
@@ -1809,13 +1821,15 @@ namespace HexaBill.Api.Modules.Sales
                     if (product == null)
                         throw new InvalidOperationException($"Product with ID {item.ProductId} not found for your account. Please verify the product exists.");
 
-                    var baseQty = item.Qty * product.ConversionToBase;
+                    var costLine = new SaleItem { ProductId = item.ProductId, UnitType = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpperInvariant() };
+                    SaleCostBasis.Capture(costLine, product, tenantId, captureCosts, saleForUpdate.Items);
+                    var baseQty = item.Qty * (costLine.ConversionAtSale ?? product.ConversionToBase);
 
                     if (!allowNegativeStock)
                     {
                         var qtyAlreadyProcessed = newSaleItems
                             .Where(si => si.ProductId == item.ProductId)
-                            .Sum(si => si.Qty * product.ConversionToBase);
+                            .Sum(si => si.Qty * (si.ConversionAtSale ?? product.ConversionToBase));
                         
                         var availableStock = product.StockQty - qtyAlreadyProcessed;
                         
@@ -1849,6 +1863,9 @@ namespace HexaBill.Api.Modules.Sales
                         VatRate = isZeroInvoice ? 0 : (vatPercent / 100m),
                         VatScenario = isZeroInvoice ? VatScenarios.OutOfScope : VatScenarios.Standard
                     };
+                    saleItem.UnitCostAtSale = costLine.UnitCostAtSale;
+                    saleItem.ConversionAtSale = costLine.ConversionAtSale;
+                    saleItem.CostCapturedAt = costLine.CostCapturedAt;
                     newSaleItems.Add(saleItem);
 
                     // PROD-19: Atomic stock update for edited invoice
@@ -2351,6 +2368,9 @@ namespace HexaBill.Api.Modules.Sales
                 if (sale.IsDeleted)
                     return true; // Already deleted
 
+                if (await _context.SaleReturns.AnyAsync(r => r.SaleId == saleId && r.TenantId == tenantId))
+                    throw new InvalidOperationException("This invoice has return history and cannot be deleted. Review the return history.");
+
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, sale.InvoiceDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot delete transactions in a locked period.");
 
@@ -2365,7 +2385,7 @@ namespace HexaBill.Api.Modules.Sales
                             .FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
                         if (product != null)
                         {
-                            var baseQty = item.Qty * product.ConversionToBase;
+                            var baseQty = item.Qty * (item.ConversionAtSale ?? product.ConversionToBase);
                             // PROD-19: Atomic stock restore
                             var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                                 $@"UPDATE ""Products"" 
@@ -2697,138 +2717,13 @@ namespace HexaBill.Api.Modules.Sales
             return summary;
         }
 
-        public async Task<SaleDto?> RestoreInvoiceVersionAsync(int saleId, int versionNumber, int userId, int tenantId)
+        public Task<SaleDto?> RestoreInvoiceVersionAsync(int saleId, int versionNumber, int userId, int tenantId)
         {
-            var strategyRestore = _context.Database.CreateExecutionStrategy();
-            return await strategyRestore.ExecuteAsync(async () =>
-            {
-            using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                // CRITICAL: Get the version to restore with owner verification
-                var version = await _context.InvoiceVersions
-                    .FirstOrDefaultAsync(v => v.SaleId == saleId && v.VersionNumber == versionNumber && v.TenantId == tenantId);
-                
-                if (version == null)
-                    throw new InvalidOperationException($"Version {versionNumber} not found for invoice {saleId}");
-                
-                // Deserialize the old version data
-                var oldData = JsonSerializer.Deserialize<dynamic>(version.DataJson);
-                if (oldData == null)
-                    throw new InvalidOperationException("Failed to deserialize version data");
-                
-                // Get current sale
-                // AUDIT-4 FIX: Add TenantId filter to prevent cross-tenant sale access
-                var currentSale = await _context.Sales
-                    .Include(s => s.Items)
-                    .FirstOrDefaultAsync(s => s.Id == saleId && s.TenantId == tenantId);
-                
-                if (currentSale == null)
-                    throw new InvalidOperationException("Sale not found or does not belong to your tenant");
-                
-                // Create version snapshot of current state before restore
-                var currentSnapshot = new
-                {
-                    Sale = new
-                    {
-                        currentSale.Id,
-                        currentSale.InvoiceNo,
-                        currentSale.InvoiceDate,
-                        currentSale.CustomerId,
-                        currentSale.Subtotal,
-                        currentSale.VatTotal,
-                        currentSale.Discount,
-                        currentSale.GrandTotal,
-                        currentSale.PaymentStatus,
-                        currentSale.Version
-                    },
-                    Items = currentSale.Items.Select(i => new
-                    {
-                        i.Id,
-                        i.ProductId,
-                        i.UnitType,
-                        i.Qty,
-                        i.UnitPrice,
-                        i.Discount,
-                        i.VatAmount,
-                        i.LineTotal
-                    }).ToList()
-                };
-                
-                var currentVersionJson = JsonSerializer.Serialize(currentSnapshot);
-                var newVersion = currentSale.Version + 1;
-                
-                // Restore old items - reverse current stock changes first
-                foreach (var item in currentSale.Items)
-                {
-                    // PROD-4: Filter by TenantId for tenant isolation
-                    var product = await _context.Products
-                        .FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
-                    if (product != null)
-                    {
-                        var baseQty = item.Qty * product.ConversionToBase;
-                        // PROD-19: Atomic stock restore
-                        var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
-                            $@"UPDATE ""Products"" 
-                               SET ""StockQty"" = ""StockQty"" + {baseQty}, 
-                                   ""UpdatedAt"" = {DateTime.UtcNow}
-                               WHERE ""Id"" = {product.Id} 
-                                 AND ""TenantId"" = {tenantId}");
-                        
-                        if (rowsAffected > 0)
-                        {
-                            await _context.Entry(product).ReloadAsync();
-                        }
-                    }
-                }
-                
-                // Delete current items
-                _context.SaleItems.RemoveRange(currentSale.Items);
-                
-                // TODO: Restore old items from version.DataJson
-                // This requires deserializing and recreating SaleItems
-                // For now, this is a placeholder - full implementation requires parsing the JSON structure
-                
-                // Save version snapshot
-                var restoreVersion = new InvoiceVersion
-                {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
-                    SaleId = saleId,
-                    VersionNumber = currentSale.Version,
-                    CreatedById = userId,
-                    CreatedAt = DateTime.UtcNow,
-                    DataJson = currentVersionJson,
-                    EditReason = $"Restored to version {versionNumber}",
-                    DiffSummary = $"Restored to version {versionNumber} by user {userId}"
-                };
-                _context.InvoiceVersions.Add(restoreVersion);
-                
-                // Create audit log
-                var auditLog = new AuditLog
-                {
-                    OwnerId = tenantId, // CRITICAL: Set legacy OwnerId
-                    TenantId = tenantId, // CRITICAL: Set new TenantId
-                    UserId = userId,
-                    Action = "Invoice Version Restored",
-                    Details = $"Invoice {currentSale.InvoiceNo} restored to version {versionNumber}",
-                    CreatedAt = DateTime.UtcNow
-                };
-                _context.AuditLogs.Add(auditLog);
-                
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-                
-                return await GetSaleByIdAsync(saleId, tenantId);
-            }
-            catch
-            {
-                try { await transaction.RollbackAsync(); } catch { /* transaction may already be aborted */ }
-                throw;
-            }
-            });
+            // The former placeholder removed current lines and restored stock without
+            // recreating the selected version. Fail before opening a transaction or
+            // loading mutable entities until restoration is implemented end to end.
+            throw new InvalidOperationException("Invoice version restoration is temporarily unavailable. Your invoice and stock have not been changed. Review version history and use the normal invoice edit process.");
         }
-
         /// <summary>VAT% from company settings (tenant-scoped). Fallback 5 when not set. PRODUCTION_MASTER_TODO #37.</summary>
         private async Task<decimal> GetVatPercentAsync(int tenantId)
         {

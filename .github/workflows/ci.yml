@@ -29,6 +29,39 @@ jobs:
       - name: Test
         run: dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-restore --verbosity normal
 
+  backend-postgres:
+    name: Backend PostgreSQL integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hexabill
+          POSTGRES_PASSWORD: hexabill_ci_test
+          POSTGRES_DB: hexabill_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hexabill -d hexabill_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      HEXABILL_TEST_POSTGRES: Host=127.0.0.1;Port=5432;Database=hexabill_test;Username=hexabill;Password=hexabill_ci_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore tests/HexaBill.Tests/HexaBill.Tests.csproj
+
+      - name: Test (PostgreSQL)
+        run: dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --configuration Release --no-restore --verbosity normal --filter "FullyQualifiedName~PostgreSql"
+
   frontend:
     name: Frontend install / lint / build
     runs-on: ubuntu-latest

@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Purchases;
 using HexaBill.Api.Modules.SuperAdmin;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
@@ -66,6 +67,10 @@ namespace HexaBill.Api.Modules.Returns
 
         public async Task<SaleReturnDto> CreateSaleReturnAsync(CreateSaleReturnRequest request, int userId, int tenantId)
         {
+            if (request.Items == null || request.Items.Count == 0 || request.Items.Count > 500)
+                throw new InvalidOperationException("Select between 1 and 500 invoice lines to return.");
+            if (request.Items.Select(i => i.SaleItemId).Distinct().Count() != request.Items.Count)
+                throw new InvalidOperationException("Select each invoice line once and combine its returned quantity.");
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
             {
@@ -82,9 +87,9 @@ namespace HexaBill.Api.Modules.Returns
                 var header = await _context.Sales
                     .AsNoTracking()
                     .Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
-                    .Select(s => new { s.Id, s.TenantId, s.CustomerId, s.GrandTotal })
+                    .Select(s => new { s.Id, s.TenantId, s.CustomerId, s.GrandTotal, s.IsDeleted })
                     .FirstOrDefaultAsync();
-                if (header == null)
+                if (header == null || header.IsDeleted)
                     throw new InvalidOperationException("Original sale not found");
                 var items = await _context.SaleItems
                     .Where(si => si.SaleId == request.SaleId)
@@ -103,7 +108,7 @@ namespace HexaBill.Api.Modules.Returns
 
                 // Already-returned qty per SaleItemId (all returns for this sale, tenant-scoped)
                 var alreadyReturnedBySaleItemId = await _context.SaleReturnItems
-                    .Where(sri => sri.SaleReturn.SaleId == request.SaleId && sri.SaleReturn.TenantId == tenantId)
+                    .Where(sri => sri.SaleReturn.SaleId == request.SaleId && sri.SaleReturn.TenantId == tenantId && sri.SaleReturn.Status != ReturnStatus.Rejected)
                     .GroupBy(sri => sri.SaleItemId)
                     .Select(g => new { SaleItemId = g.Key, Total = g.Sum(x => x.Qty) })
                     .ToDictionaryAsync(x => x.SaleItemId, x => x.Total);
@@ -178,6 +183,7 @@ namespace HexaBill.Api.Modules.Returns
                     var returnItem = new SaleReturnItem
                     {
                         SaleItemId = saleItem.Id,
+                        SaleItem = saleItem,
                         ProductId = product.Id,
                         UnitType = saleItem.UnitType,
                         Qty = item.Qty,
@@ -194,7 +200,7 @@ namespace HexaBill.Api.Modules.Returns
                     // Restore stock only when addToStock is true and not requiring approval (or we apply on approve)
                     if (addToStock && !requireApproval)
                     {
-                        var baseQty = item.Qty * product.ConversionToBase;
+                        var baseQty = SaleCostBasis.BaseQuantity(saleItem, item.Qty);
                         var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                             $@"UPDATE ""Products"" 
                                SET ""StockQty"" = ""StockQty"" + {baseQty}, 
@@ -287,7 +293,7 @@ namespace HexaBill.Api.Modules.Returns
                     {
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == ri.ProductId && p.TenantId == tenantId);
                         if (product == null) continue;
-                        var baseQty = ri.Qty * product.ConversionToBase;
+                        var baseQty = SaleCostBasis.BaseQuantity(ri.SaleItem, ri.Qty);
                         var inv = await _context.DamageInventories
                             .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == ri.ProductId && d.BranchId == saleInfo.BranchId);
                         if (inv == null)
@@ -468,8 +474,8 @@ namespace HexaBill.Api.Modules.Returns
                     };
                     returnItems.Add(returnItem);
 
-                    // Decrease stock (returning to supplier)
-                    var baseQty = item.Qty * product.ConversionToBase;
+                    // Decrease stock (returning to supplier) using conversion frozen at purchase when available
+                    var baseQty = PurchaseStockBasis.BaseQuantity(purchaseItem, product, item.Qty);
                     // PROD-19: Atomic stock decrease (returning to supplier)
                     var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
                         $@"UPDATE ""Products"" 
@@ -733,6 +739,7 @@ namespace HexaBill.Api.Modules.Returns
             var ret = await _context.SaleReturns
                 .Include(r => r.Sale)
                 .Include(r => r.Items).ThenInclude(i => i.Product)
+                .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
                 .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
             if (ret == null) throw new InvalidOperationException("Return not found");
             if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
@@ -748,7 +755,7 @@ namespace HexaBill.Api.Modules.Returns
                     {
                         var product = item.Product;
                         if (product == null) continue;
-                        var baseQty = item.Qty * product.ConversionToBase;
+                        var baseQty = SaleCostBasis.BaseQuantity(item.SaleItem, item.Qty);
                         await _context.Database.ExecuteSqlInterpolatedAsync(
                             $@"UPDATE ""Products"" SET ""StockQty"" = ""StockQty"" + {baseQty}, ""UpdatedAt"" = {DateTime.UtcNow} WHERE ""Id"" = {product.Id} AND ""TenantId"" = {tenantId}");
                         inventoryTransactions.Add(new InventoryTransaction
@@ -846,7 +853,7 @@ namespace HexaBill.Api.Modules.Returns
                 try
                 {
                     var ret = await _context.SaleReturns
-                        .Include(r => r.Items)
+                        .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
                         .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
 
@@ -854,13 +861,13 @@ namespace HexaBill.Api.Modules.Returns
                     var branchId = ret.BranchId;
 
                     // Reverse stock for items that had stock restored (StockEffect == true)
-                    foreach (var item in ret.Items)
+                    foreach (var item in ret.Items.Where(_ => ret.Status == ReturnStatus.Approved))
                     {
                         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId && p.TenantId == tenantId);
                         if (product == null) continue;
                         if (item.StockEffect == true)
                         {
-                            var baseQty = item.Qty * product.ConversionToBase;
+                            var baseQty = SaleCostBasis.BaseQuantity(item.SaleItem, item.Qty);
                             await _context.Database.ExecuteSqlInterpolatedAsync(
                                 $@"UPDATE ""Products"" SET ""StockQty"" = ""StockQty"" - {baseQty}, ""UpdatedAt"" = {DateTime.UtcNow} WHERE ""Id"" = {product.Id} AND ""TenantId"" = {tenantId}");
                         }
@@ -871,7 +878,7 @@ namespace HexaBill.Api.Modules.Returns
                                 .FirstOrDefaultAsync(d => d.TenantId == tenantId && d.ProductId == item.ProductId && d.BranchId == branchId);
                             if (inv != null)
                             {
-                                var baseQty = item.Qty * product.ConversionToBase;
+                                var baseQty = SaleCostBasis.BaseQuantity(item.SaleItem, item.Qty);
                                 inv.Quantity = Math.Max(0, inv.Quantity - baseQty);
                                 inv.UpdatedAt = DateTime.UtcNow;
                             }

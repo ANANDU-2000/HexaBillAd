@@ -50,4 +50,12 @@ const LoadingCard = ({ message = 'Loading...' }) => {
   )
 }
 
-export { LoadingSpinner, LoadingOverlay, LoadingButton, LoadingCard }
+const PageLoading = ({ navigationAvailable = false }) => (
+  <div role="status" aria-live="polite" className="flex min-h-[240px] flex-1 flex-col items-center justify-center gap-3 bg-[#F8FAFC] px-4 py-8 text-sm text-slate-600">
+    <LoadingSpinner size="lg" className="text-blue-600 motion-reduce:animate-none" />
+    <span>Loading this page…</span>
+    {navigationAvailable && <span className="text-xs text-slate-500">You can still use navigation.</span>}
+  </div>
+)
+
+export { LoadingSpinner, LoadingOverlay, LoadingButton, LoadingCard, PageLoading }

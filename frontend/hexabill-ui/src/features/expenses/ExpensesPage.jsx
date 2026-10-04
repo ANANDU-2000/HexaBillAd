@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import {
   Plus,
@@ -28,6 +28,7 @@ import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
 import { expensesAPI, reportsAPI } from '../../services/index'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
 
 function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
   const [interpretation, setInterpretation] = useState('add-on-top')
@@ -203,6 +204,7 @@ function localDateString(date) {
 const ExpensesPage = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
@@ -342,13 +344,23 @@ const ExpensesPage = () => {
     try { localStorage.setItem(EXPENSES_BRANCH_KEY, selectedBranchId) } catch {}
     setSearchParams((prev) => {
       const params = new URLSearchParams(prev)
-      if (dateRange.from) params.set('from', dateRange.from)
-      if (dateRange.to) params.set('to', dateRange.to)
-      if (selectedBranchId) params.set('branchId', selectedBranchId)
-      else params.delete('branchId')
+      syncExpensesSearchParams(params, { dateRange, branchId: selectedBranchId })
       return params
     }, { replace: true })
   }, [dateRange, selectedBranchId, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readExpensesStateFromParams(searchParams)
+    if (parsed.dateRange) {
+      setDateRange((d) => (
+        d.from === parsed.dateRange.from && d.to === parsed.dateRange.to ? d : parsed.dateRange
+      ))
+      setPendingDateRange((d) => (
+        d.from === parsed.dateRange.from && d.to === parsed.dateRange.to ? d : parsed.dateRange
+      ))
+    }
+    setSelectedBranchId((b) => (b === parsed.branchId ? b : parsed.branchId))
+  }, [searchParams])
 
   const fetchExpenses = useCallback(async (pageOverride) => {
     if (dateRange.from && dateRange.to && dateRange.to < dateRange.from) return
@@ -636,6 +648,7 @@ const ExpensesPage = () => {
         isTaxClaimable: true,
         isEntertainment: false,
         partialCreditPct: 100,
+        paidFrom: 'Cash',
         branchId: branches?.length > 0 ? String(branches[0].id) : '',
         routeId: '',
         recurringExpenseId: ''
@@ -678,7 +691,8 @@ const ExpensesPage = () => {
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
-          partialCreditPct
+          partialCreditPct,
+          paidFrom: data.paidFrom === 'Bank' ? 'Bank' : 'Cash'
         })
 
         if (response?.success) {
@@ -702,7 +716,8 @@ const ExpensesPage = () => {
           taxType: data.taxType || 'Standard',
           isTaxClaimable: !!data.isTaxClaimable,
           isEntertainment: !!data.isEntertainment,
-          partialCreditPct
+          partialCreditPct,
+          paidFrom: data.paidFrom === 'Bank' ? 'Bank' : 'Cash'
         })
         
         // Upload attachment after expense creation
@@ -726,7 +741,8 @@ const ExpensesPage = () => {
                 taxType: data.taxType || 'Standard',
                 isTaxClaimable: !!data.isTaxClaimable,
                 isEntertainment: !!data.isEntertainment,
-                partialCreditPct
+                partialCreditPct,
+                paidFrom: data.paidFrom === 'Bank' ? 'Bank' : 'Cash'
               })
             }
           } catch (error) {
@@ -779,6 +795,7 @@ const ExpensesPage = () => {
     setValue('isTaxClaimable', expense.isTaxClaimable !== false)
     setValue('isEntertainment', !!expense.isEntertainment)
     setValue('partialCreditPct', expense.partialCreditPct != null ? expense.partialCreditPct : 100)
+    setValue('paidFrom', (expense.paidFrom || expense.PaidFrom || 'Cash') === 'Bank' ? 'Bank' : 'Cash')
     setValue('vatInclusive', (expense.vatInclusive ?? expense.VatInclusive) === true) // use persisted flag when available; else default false for legacy
     setAttachmentPreview(expense.attachmentUrl ? `/uploads/${expense.attachmentUrl}` : null)
     setShowEditModal(true)
@@ -1135,7 +1152,18 @@ const ExpensesPage = () => {
               <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
               <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-emerald-700">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
             </p>
-            <p className="mt-1 text-xs text-neutral-500">Average per day {formatCurrency(averagePerDay)}</p>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+              <span>Average per day {formatCurrency(averagePerDay)}</span>
+              {isAdminOrOwner(user) && dateRange.to && (
+                <Link
+                  to={buildDailyCloseHref({ businessDate: dateRange.to, branchId: selectedBranchId || undefined })}
+                  state={{ returnTo: location.pathname + location.search }}
+                  className="inline-flex min-h-11 items-center font-medium text-primary-700 underline-offset-2 hover:underline md:min-h-9"
+                >
+                  Daily close for {dateRange.to}
+                </Link>
+              )}
+            </p>
             <div className="mt-3 flex gap-2" role="tablist" aria-label="Expense view">
               <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
               <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-11 rounded-md px-3 text-sm font-medium md:min-h-9 ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
@@ -1868,6 +1896,15 @@ const ExpensesPage = () => {
               {...register('date', { required: 'Date is required' })}
             />
 
+            <Select
+              label="Paid from"
+              options={[
+                { value: 'Cash', label: 'Cash drawer' },
+                { value: 'Bank', label: 'Bank / card' }
+              ]}
+              {...register('paidFrom')}
+            />
+
             {/* BRANCH/ROUTE ASSIGNMENT FIX: Add Branch and Route dropdowns */}
             <Select
               label="Branch (Optional)"
@@ -2017,6 +2054,14 @@ const ExpensesPage = () => {
                 {...register('date', { required: 'Date is required' })}
               />
             </div>
+            <Select
+              label="Paid from"
+              options={[
+                { value: 'Cash', label: 'Cash drawer' },
+                { value: 'Bank', label: 'Bank / card' }
+              ]}
+              {...register('paidFrom')}
+            />
             {watch('withVat') && Number(watch('amount')) > 0 && (() => {
               const amt = Number(watch('amount')) || 0
               const inclusive = !!watch('vatInclusive')

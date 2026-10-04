@@ -27,6 +27,8 @@ public class TenantIsolationTests
     [InlineData(nameof(TenantEntityAccess.PaymentBelongsToTenantAsync), 1)]
     [InlineData(nameof(TenantEntityAccess.PaymentReceiptBelongsToTenantAsync), 1)]
     [InlineData(nameof(TenantEntityAccess.QuotationBelongsToTenantAsync), 1)]
+    [InlineData(nameof(TenantEntityAccess.DailyCashCloseBelongsToTenantAsync), 1)]
+    [InlineData(nameof(TenantEntityAccess.CashDrawerMovementBelongsToTenantAsync), 1)]
     public async Task TenantA_CanAccessOwnEntity(string method, int entityId)
     {
         await using var db = await CreateIsolationDbAsync();
@@ -41,6 +43,8 @@ public class TenantIsolationTests
     [InlineData(nameof(TenantEntityAccess.PaymentBelongsToTenantAsync), 1)]
     [InlineData(nameof(TenantEntityAccess.PaymentReceiptBelongsToTenantAsync), 1)]
     [InlineData(nameof(TenantEntityAccess.QuotationBelongsToTenantAsync), 1)]
+    [InlineData(nameof(TenantEntityAccess.DailyCashCloseBelongsToTenantAsync), 1)]
+    [InlineData(nameof(TenantEntityAccess.CashDrawerMovementBelongsToTenantAsync), 1)]
     public async Task TenantA_CannotAccessTenantBEntity(string method, int entityId)
     {
         await using var db = await CreateIsolationDbAsync();
@@ -148,6 +152,8 @@ public class TenantIsolationTests
             nameof(TenantEntityAccess.PaymentBelongsToTenantAsync) => await TenantEntityAccess.PaymentBelongsToTenantAsync(db, entityId, tenantId),
             nameof(TenantEntityAccess.PaymentReceiptBelongsToTenantAsync) => await TenantEntityAccess.PaymentReceiptBelongsToTenantAsync(db, entityId, tenantId),
             nameof(TenantEntityAccess.QuotationBelongsToTenantAsync) => await TenantEntityAccess.QuotationBelongsToTenantAsync(db, entityId, tenantId),
+            nameof(TenantEntityAccess.DailyCashCloseBelongsToTenantAsync) => await TenantEntityAccess.DailyCashCloseBelongsToTenantAsync(db, entityId, tenantId),
+            nameof(TenantEntityAccess.CashDrawerMovementBelongsToTenantAsync) => await TenantEntityAccess.CashDrawerMovementBelongsToTenantAsync(db, entityId, tenantId),
             nameof(TenantEntityAccess.UserBelongsToTenantAsync) => await TenantEntityAccess.UserBelongsToTenantAsync(db, entityId, tenantId),
             _ => throw new ArgumentOutOfRangeException(nameof(method), method, null)
         };
@@ -189,6 +195,26 @@ public class TenantIsolationTests
         db.Users.AddRange(
             new User { Id = 10, TenantId = TenantAId, OwnerId = TenantAId, Name = "A Admin", Email = "a@test.com", PasswordHash = "x", Role = UserRole.Owner },
             new User { Id = 20, TenantId = TenantBId, OwnerId = TenantBId, Name = "B Admin", Email = "b@test.com", PasswordHash = "x", Role = UserRole.Owner });
+        var closeDate = new DateTime(2026, 10, 3, 0, 0, 0, DateTimeKind.Utc);
+        db.DailyCashCloses.AddRange(
+            new DailyCashClose
+            {
+                Id = 1, TenantId = TenantAId, OwnerId = TenantAId, BusinessDate = closeDate, Version = 1,
+                Status = DailyCashCloseStatus.Closed, OpeningCash = 0, CashReceived = 0, CashPaidOut = 0,
+                ExpectedCash = 0, CountedCash = 0, Variance = 0, CreatedByUserId = 10,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, ClosedAt = DateTime.UtcNow, ClosedByUserId = 10
+            },
+            new DailyCashClose
+            {
+                Id = 2, TenantId = TenantBId, OwnerId = TenantBId, BusinessDate = closeDate, Version = 1,
+                Status = DailyCashCloseStatus.Closed, OpeningCash = 0, CashReceived = 0, CashPaidOut = 0,
+                ExpectedCash = 0, CountedCash = 0, Variance = 0, CreatedByUserId = 20,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, ClosedAt = DateTime.UtcNow, ClosedByUserId = 20
+            });
+        var moveAt = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
+        db.CashDrawerMovements.AddRange(
+            new CashDrawerMovement { Id = 1, TenantId = TenantAId, OwnerId = TenantAId, MovementDate = moveAt, Kind = CashDrawerMovementKind.OwnerCapitalIn, Amount = 100m, CreatedByUserId = 10, CreatedAt = DateTime.UtcNow },
+            new CashDrawerMovement { Id = 2, TenantId = TenantBId, OwnerId = TenantBId, MovementDate = moveAt, Kind = CashDrawerMovementKind.OwnerCapitalIn, Amount = 50m, CreatedByUserId = 20, CreatedAt = DateTime.UtcNow });
 
         await db.SaveChangesAsync();
         return db;
@@ -291,6 +317,50 @@ internal static class TestJwtFactory
             issuer: "HexaBill.Api",
             audience: "HexaBill.Api",
             claims: new[] { new Claim("tid", tenantId.ToString()) },
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: creds);
+        return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public static string CreateAuthenticatedApiToken(int userId, int tenantId, string slug, int sessionVersion = 1)
+    {
+        var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(Secret));
+        var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim("UserId", userId.ToString()),
+            new Claim(ClaimTypes.Role, "Owner"),
+            new Claim("sv", sessionVersion.ToString()),
+            new Claim("plat", "false"),
+            new Claim("tid", tenantId.ToString()),
+            new Claim("tenant_id", tenantId.ToString()),
+            new Claim("tslug", slug),
+        };
+        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            issuer: "HexaBill.Api",
+            audience: "HexaBill.Api",
+            claims: claims,
+            expires: DateTime.UtcNow.AddHours(1),
+            signingCredentials: creds);
+        return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    public static string CreatePlatformAdminToken(int userId)
+    {
+        var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(Secret));
+        var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim(ClaimTypes.Role, "SystemAdmin"),
+            new Claim("plat", "true"),
+            new Claim("sv", "1"),
+        };
+        var token = new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(
+            issuer: "HexaBill.Api",
+            audience: "HexaBill.Api",
+            claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: creds);
         return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);

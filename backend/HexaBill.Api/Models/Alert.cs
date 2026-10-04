@@ -72,7 +72,8 @@ namespace HexaBill.Api.Models
         StockNegative,
         DatabaseError,
         ValidationError,
-        ProductExpiring
+        ProductExpiring,
+        DailyCloseVariance
     }
 
     public enum AlertSeverity

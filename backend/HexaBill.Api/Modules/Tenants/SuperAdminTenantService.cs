@@ -152,6 +152,30 @@ namespace HexaBill.Api.Modules.Tenants
 
     public class SuperAdminTenantService : ISuperAdminTenantService
     {
+        public const string SharedLegalWorkspaceFeature = "shared_legal_workspace";
+
+        private static bool AllowsSharedLegalWorkspace(Tenant tenant)
+        {
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<List<string>>(tenant.FeaturesJson ?? "[]")
+                    ?.Contains(SharedLegalWorkspaceFeature, StringComparer.Ordinal) == true;
+            }
+            catch (System.Text.Json.JsonException) { return false; }
+        }
+
+        private static string LegalIdentityFingerprint(Tenant tenant, IReadOnlyDictionary<string, string> settings)
+        {
+            var snapshot = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                tenant.Id, tenant.Name, tenant.Country, tenant.Currency,
+                NameEn = settings.GetValueOrDefault("COMPANY_NAME_EN", tenant.CompanyNameEn ?? tenant.Name),
+                NameAr = settings.GetValueOrDefault("COMPANY_NAME_AR", tenant.CompanyNameAr ?? ""),
+                Trn = settings.GetValueOrDefault("COMPANY_TRN", tenant.VatNumber ?? ""),
+                Licence = settings.GetValueOrDefault("COMPANY_LICENSE", "")
+            });
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(snapshot)));
+        }
         private readonly AppDbContext _context;
         private readonly ISubscriptionService _subscriptionService;
         private readonly HostingOptions _hostingOptions;
@@ -933,14 +957,18 @@ namespace HexaBill.Api.Modules.Tenants
             }
             catch { /* allow tenant detail to load without subscription */ }
 
+            var legalKeys = new[] { "COMPANY_NAME_EN", "COMPANY_NAME_AR", "COMPANY_TRN", "COMPANY_LICENSE" };
+            var legalIdentity = await _context.Settings.AsNoTracking()
+                .Where(s => s.TenantId == tenant.Id && legalKeys.Contains(s.Key))
+                .ToDictionaryAsync(s => s.Key, s => s.Value);
             return new TenantDetailDto
             {
                 Id = tenant.Id,
                 Name = tenant.Name,
                 Subdomain = tenant.Subdomain,
                 LoginUrl = BuildLoginUrl(tenant.Subdomain),
-                CompanyNameEn = tenant.CompanyNameEn,
-                CompanyNameAr = tenant.CompanyNameAr,
+                CompanyNameEn = legalIdentity.GetValueOrDefault("COMPANY_NAME_EN", tenant.CompanyNameEn ?? tenant.Name),
+                CompanyNameAr = legalIdentity.GetValueOrDefault("COMPANY_NAME_AR", tenant.CompanyNameAr ?? ""),
                 Country = tenant.Country,
                 Currency = tenant.Currency,
                 Status = tenant.Status.ToString(),
@@ -951,9 +979,13 @@ namespace HexaBill.Api.Modules.Tenants
                 Email = tenant.Email,
                 Phone = tenant.Phone,
                 Address = tenant.Address,
-                VatNumber = tenant.VatNumber,
+                VatNumber = legalIdentity.GetValueOrDefault("COMPANY_TRN", tenant.VatNumber ?? ""),
                 LogoPath = tenant.LogoPath,
+                VatCalculationBasis = tenant.VatCalculationBasis.ToString(),
                 UsageMetrics = metrics,
+                CompanyLicense = legalIdentity.GetValueOrDefault("COMPANY_LICENSE"),
+                SharedLegalWorkspaceEnabled = AllowsSharedLegalWorkspace(tenant),
+                LegalIdentityFingerprint = LegalIdentityFingerprint(tenant, legalIdentity),
                 Users = users,
                 Subscription = subscription
             };
@@ -961,6 +993,9 @@ namespace HexaBill.Api.Modules.Tenants
 
         public async Task<(TenantDto Tenant, string GeneratedPassword, string InviteUrl)> CreateTenantAsync(CreateTenantRequest request, int createdByUserId)
         {
+            if (!_context.RequestScopeEstablished || !_context.RequestIsPlatformScope)
+                throw new UnauthorizedAccessException("Company setup requires a verified platform session.");
+
             var subdomain = TenantSlugValidator.Normalize(request.Subdomain);
             if (subdomain is null)
                 throw new InvalidOperationException("A valid subdomain is required. Use lowercase letters, numbers, and hyphens only.");
@@ -971,12 +1006,39 @@ namespace HexaBill.Api.Modules.Tenants
             if (await _context.Tenants.AnyAsync(t => t.Subdomain.ToLower() == subdomain))
                 throw new InvalidOperationException($"The subdomain '{subdomain}' is already in use.");
 
-            // Check for duplicate tenant name
-            var normalizedName = request.Name.Trim();
+            Tenant? legalSource = null;
+            var legalSettings = new Dictionary<string, string>();
+            if (request.SharedLegalIdentityFromTenantId.HasValue)
+            {
+                if (string.IsNullOrWhiteSpace(request.OwnerName) || string.IsNullOrWhiteSpace(request.Phone))
+                    throw new InvalidOperationException("Enter the new owner's name and contact phone for this separate workspace.");
+                if (!request.ConfirmSharedLegalIdentity)
+                    throw new InvalidOperationException("Confirm the shared company name, TRN and licence before creating an owner workspace.");
+                legalSource = await _context.Tenants.AsNoTracking()
+                    .SingleOrDefaultAsync(t => t.Id == request.SharedLegalIdentityFromTenantId.Value)
+                    ?? throw new InvalidOperationException("The source company was not found.");
+                if (!AllowsSharedLegalWorkspace(legalSource))
+                    throw new InvalidOperationException("Enable shared legal owner setup for the source company before continuing.");
+                if (legalSource.Status is TenantStatus.Suspended or TenantStatus.Expired)
+                    throw new InvalidOperationException("The source company must be active or in trial.");
+                var legalKeys = new[] { "COMPANY_NAME_EN", "COMPANY_NAME_AR", "COMPANY_TRN", "COMPANY_LICENSE" };
+                legalSettings = await _context.Settings.AsNoTracking()
+                    .Where(s => s.TenantId == legalSource.Id && legalKeys.Contains(s.Key))
+                    .ToDictionaryAsync(s => s.Key, s => s.Value);
+                if (string.IsNullOrWhiteSpace(legalSettings.GetValueOrDefault("COMPANY_TRN", legalSource.VatNumber ?? "")) ||
+                    string.IsNullOrWhiteSpace(legalSettings.GetValueOrDefault("COMPANY_LICENSE")))
+                    throw new InvalidOperationException("Complete and verify the source company's TRN and licence before owner setup.");
+                if (!string.Equals(request.ExpectedLegalIdentityFingerprint, LegalIdentityFingerprint(legalSource, legalSettings), StringComparison.Ordinal))
+                    throw new InvalidOperationException("The source company's legal details changed or were not reviewed. Reload owner setup and confirm the current details.");
+            }
+
+            // A reviewed shared legal identity may use the same display name.
+            // Host + TenantId remain the workspace boundary, never the company name.
+            var normalizedName = legalSource?.Name ?? request.Name.Trim();
             var existingTenantByName = await _context.Tenants
                 .FirstOrDefaultAsync(t => t.Name.ToLower() == normalizedName.ToLower());
             
-            if (existingTenantByName != null)
+            if (existingTenantByName != null && legalSource == null)
             {
                 throw new InvalidOperationException($"Tenant with name '{normalizedName}' already exists");
             }
@@ -1036,11 +1098,14 @@ namespace HexaBill.Api.Modules.Tenants
                 {
                     Name = normalizedName,
                     Subdomain = subdomain,
-                    CompanyNameEn = request.CompanyNameEn ?? normalizedName,
-                    CompanyNameAr = request.CompanyNameAr,
-                    Country = request.Country ?? "AE",
-                    Currency = request.Currency ?? "AED",
-                    VatNumber = request.VatNumber,
+                    CompanyNameEn = legalSource == null ? request.CompanyNameEn ?? normalizedName
+                        : legalSettings.GetValueOrDefault("COMPANY_NAME_EN", legalSource.CompanyNameEn ?? normalizedName),
+                    CompanyNameAr = legalSource == null ? request.CompanyNameAr
+                        : legalSettings.GetValueOrDefault("COMPANY_NAME_AR", legalSource.CompanyNameAr ?? ""),
+                    Country = legalSource?.Country ?? request.Country ?? "AE",
+                    Currency = legalSource?.Currency ?? request.Currency ?? "AED",
+                    VatNumber = legalSource == null ? request.VatNumber
+                        : legalSettings.GetValueOrDefault("COMPANY_TRN", legalSource.VatNumber ?? ""),
                     Address = request.Address,
                     Phone = request.Phone,
                     Email = normalizedEmail,
@@ -1074,16 +1139,17 @@ namespace HexaBill.Api.Modules.Tenants
                 var branding = new Dictionary<string, string>
                 {
                     ["COMPANY_NAME_EN"] = tenant.CompanyNameEn ?? tenant.Name,
-                    ["COMPANY_NAME_AR"] = request.CompanyNameAr ?? "",
-                    ["COMPANY_TRN"] = request.VatNumber ?? "",
+                    ["COMPANY_NAME_AR"] = tenant.CompanyNameAr ?? "",
+                    ["COMPANY_TRN"] = tenant.VatNumber ?? "",
                     ["COMPANY_ADDRESS"] = request.Address ?? "",
                     ["COMPANY_PHONE"] = request.Phone ?? "",
                     ["COMPANY_EMAIL"] = normalizedEmail,
-                    ["CURRENCY"] = string.IsNullOrWhiteSpace(request.Currency) ? "AED" : request.Currency.Trim(),
+                    ["CURRENCY"] = tenant.Currency,
                     ["INVOICE_PREFIX"] = "INV",
                     ["VAT_PERCENT"] = "5",
                     ["LOGO_PATH"] = "",
-                    ["COMPANY_LICENSE"] = ""
+                    ["COMPANY_LICENSE"] = legalSource == null ? request.CompanyLicense?.Trim() ?? ""
+                        : legalSettings.GetValueOrDefault("COMPANY_LICENSE", "")
                 };
                 foreach (var item in branding)
                 {
@@ -2202,6 +2268,8 @@ namespace HexaBill.Api.Modules.Tenants
         public string? Phone { get; set; }
         public string? VatNumber { get; set; }
         public string? LogoPath { get; set; }
+        /// <summary>SalesBased or ProfitBased — VAT return profit-form presentation only; statutory boxes unchanged.</summary>
+        public string VatCalculationBasis { get; set; } = "SalesBased";
 
         // Metrics
         public int UserCount { get; set; }
@@ -2217,6 +2285,9 @@ namespace HexaBill.Api.Modules.Tenants
 
     public class TenantDetailDto : TenantDto
     {
+        public string? CompanyLicense { get; set; }
+        public bool SharedLegalWorkspaceEnabled { get; set; }
+        public string? LegalIdentityFingerprint { get; set; }
         public string? Address { get; set; }
         public new string? LogoPath { get; set; }
         public TenantUsageMetricsDto UsageMetrics { get; set; } = new();
@@ -2278,6 +2349,10 @@ namespace HexaBill.Api.Modules.Tenants
         public string? Country { get; set; }
         public string? Currency { get; set; }
         public string? VatNumber { get; set; }
+        public string? CompanyLicense { get; set; }
+        public int? SharedLegalIdentityFromTenantId { get; set; }
+        public bool ConfirmSharedLegalIdentity { get; set; }
+        public string? ExpectedLegalIdentityFingerprint { get; set; }
         public string? Address { get; set; }
         public string? Phone { get; set; }
         public string? Email { get; set; }

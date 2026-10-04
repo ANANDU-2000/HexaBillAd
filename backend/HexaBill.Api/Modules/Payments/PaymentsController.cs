@@ -10,6 +10,9 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Modules.Payments;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Sales;
+using HexaBill.Api.Data;
+using HexaBill.Api.Core.Tenancy;
 
 namespace HexaBill.Api.Modules.Payments
 {
@@ -21,12 +24,21 @@ namespace HexaBill.Api.Modules.Payments
         private readonly IPaymentService _paymentService;
         private readonly IPaymentReceiptService _receiptService;
         private readonly ILogger<PaymentsController> _logger;
+        private readonly IPdfService _pdfService;
+        private readonly AppDbContext _context;
 
-        public PaymentsController(IPaymentService paymentService, IPaymentReceiptService receiptService, ILogger<PaymentsController> logger)
+        public PaymentsController(
+            IPaymentService paymentService,
+            IPaymentReceiptService receiptService,
+            ILogger<PaymentsController> logger,
+            IPdfService pdfService,
+            AppDbContext context)
         {
             _paymentService = paymentService;
             _receiptService = receiptService;
             _logger = logger;
+            _pdfService = pdfService;
+            _context = context;
         }
 
         [HttpGet("duplicate-check")]
@@ -65,12 +77,13 @@ namespace HexaBill.Api.Modules.Payments
         public async Task<ActionResult<ApiResponse<PagedResponse<PaymentDto>>>> GetPayments(
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
-            [FromQuery] int? saleId = null)
+            [FromQuery] int? saleId = null,
+            [FromQuery] int? customerId = null)
         {
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize, saleId);
+                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize, saleId, customerId);
                 return Ok(new ApiResponse<PagedResponse<PaymentDto>>
                 {
                     Success = true,
@@ -78,13 +91,17 @@ namespace HexaBill.Api.Modules.Payments
                     Data = result
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<PagedResponse<PaymentDto>> { Success = false, Message = ex.Message });
+            }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Payment list retrieval failed");
                 return StatusCode(500, new ApiResponse<PagedResponse<PaymentDto>>
                 {
                     Success = false,
-                    Message = "An error occurred",
-                    Errors = new List<string> { ex.Message }
+                    Message = "Payments could not be loaded. Please try again."
                 });
             }
         }
@@ -213,12 +230,16 @@ namespace HexaBill.Api.Modules.Payments
                     });
                 }
 
-                if (!Enum.TryParse<PaymentStatus>(request.Status, out var status))
+                var statusText = request.Status;
+                if (string.Equals(statusText, "BOUNCED", StringComparison.OrdinalIgnoreCase))
+                    statusText = "RETURNED";
+
+                if (!Enum.TryParse<PaymentStatus>(statusText, ignoreCase: true, out var status))
                 {
                     return BadRequest(new ApiResponse<object>
                     {
                         Success = false,
-                        Message = "Invalid payment status. Must be PENDING, CLEARED, RETURNED, or VOID"
+                        Message = "Invalid payment status. Must be PENDING, CLEARED, RETURNED, BOUNCED, or VOID"
                     });
                 }
 
@@ -606,6 +627,25 @@ namespace HexaBill.Api.Modules.Payments
             }
         }
 
+        [HttpGet("receipt/invoice/{saleId}/payment-ids")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<List<int>>>> GetInvoiceReceiptPayments(int saleId)
+        {
+            try
+            {
+                if (CurrentTenantId <= 0) return Forbid();
+                var ids = await _receiptService.GetReceiptPaymentIdsForSaleAsync(CurrentTenantId, saleId);
+                return Ok(new ApiResponse<List<int>> { Success = true, Data = ids });
+            }
+            catch (ArgumentException ex) { return BadRequest(new ApiResponse<List<int>> { Success = false, Message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new ApiResponse<List<int>> { Success = false, Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Invoice receipt payment selection failed");
+                return StatusCode(500, new ApiResponse<List<int>> { Success = false, Message = "Payments could not be loaded. Please try again." });
+            }
+        }
+
         [HttpPost("{paymentId}/receipt")]
         [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<object>>> GeneratePaymentReceipt(int paymentId)
@@ -672,6 +712,40 @@ namespace HexaBill.Api.Modules.Payments
             }
         }
 
+        [HttpPost("receipt/pdf")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<IActionResult> DownloadReceiptPdf([FromBody] PaymentReceiptPdfRequest request)
+        {
+            try
+            {
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var claim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("UserId");
+                if (!int.TryParse(claim?.Value, out var userId) || userId <= 0) return Unauthorized();
+                if (request?.PaymentIds == null || request.PaymentIds.Count == 0 || request.PaymentIds.Count > 500 ||
+                    string.IsNullOrWhiteSpace(request.ExpectedDocumentFingerprint))
+                    return BadRequest(new ApiResponse<object> { Success = false, Message = "Preview the receipt before downloading it." });
+                foreach (var id in request.PaymentIds.Distinct())
+                    if (await _receiptService.GetReceiptByPaymentIdAsync(id, tenantId) == null)
+                        return BadRequest(new ApiResponse<object> { Success = false, Message = "Preview the receipt before downloading it." });
+                var (detail, _) = await _receiptService.GenerateBatchReceiptAsync(tenantId, request.PaymentIds, userId);
+                if (!detail.IsHistoricalSnapshot)
+                    return Conflict(new ApiResponse<object> { Success = false, Message = "PDF is available after receipt details have been saved. Use Print for this copy." });
+                if (!string.Equals(detail.DocumentFingerprint, request.ExpectedDocumentFingerprint, StringComparison.Ordinal))
+                    return Conflict(new ApiResponse<object> { Success = false, Message = "Receipt details changed. Reopen the preview before downloading." });
+                var bytes = await _pdfService.GeneratePaymentReceiptPdfAsync(detail);
+                Response.Headers.CacheControl = "no-store";
+                return File(bytes, "application/pdf", "payment-receipt.pdf");
+            }
+            catch (ArgumentException ex) { return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message }); }
+            catch (InvalidOperationException ex) { return BadRequest(new ApiResponse<object> { Success = false, Message = ex.Message }); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Payment receipt PDF generation failed");
+                return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Receipt PDF could not be generated. Please try again." });
+            }
+        }
+
         [HttpGet("receipt/by-payment/{paymentId}")]
         [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<PaymentReceiptDto>>> GetReceiptByPayment(int paymentId)
@@ -693,6 +767,10 @@ namespace HexaBill.Api.Modules.Payments
             try
             {
                 var tenantId = CurrentTenantId;
+                if (tenantId <= 0)
+                    return Forbid();
+                if (!await TenantEntityAccess.CustomerBelongsToTenantAsync(_context, customerId, tenantId))
+                    return NotFound(new ApiResponse<List<PaymentReceiptDto>> { Success = false, Message = "Customer not found" });
                 var list = await _receiptService.GetReceiptsByCustomerAsync(customerId, tenantId);
                 return Ok(new ApiResponse<List<PaymentReceiptDto>> { Success = true, Data = list });
             }

@@ -1,4 +1,4 @@
-import React, { useEffect, Suspense, lazy } from 'react'
+import { useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isSystemAdmin } from '../utils/superAdmin'
@@ -12,6 +12,7 @@ import { BranchesRoutesProvider } from '../contexts/BranchesRoutesContext'
 import SuperAdminLayout from '../components/SuperAdminLayout'
 import ConnectionStatus from '../components/ConnectionStatus'
 import ErrorBoundary from '../components/ErrorBoundary'
+import { PageLoading as RouteFallback } from '../components/Loading'
 import { MaintenanceOverlay } from '../components/MaintenanceOverlay'
 
 // Route-level code splitting. The initial bundle stays lean; each route chunk
@@ -54,6 +55,7 @@ const ReturnCreatePage = lazy(() => import('../features/returns/ReturnCreatePage
 const CustomersPage = lazy(() => import('../features/customers/CustomersPage'))
 const CustomerDetailPage = lazy(() => import('../features/customers/CustomerDetailPage'))
 const MorePage = lazy(() => import('../pages/company/MorePage'))
+const DailyClosePage = lazy(() => import('../features/dailyClose/DailyClosePage'))
 const QuotationsPage = lazy(() => import('../features/documents/QuotationsPage'))
 const QuotationEditorPage = lazy(() => import('../features/documents/QuotationEditorPage'))
 const AgreementsPage = lazy(() => import('../features/documents/AgreementsPage'))
@@ -67,13 +69,6 @@ const OnboardingWizard = lazy(() => import('../pages/OnboardingWizard'))
 const ErrorPage = lazy(() => import('../pages/ErrorPage'))
 const HelpPage = lazy(() => import('../pages/HelpPage'))
 const FeedbackPage = lazy(() => import('../pages/FeedbackPage'))
-
-/** Suspense fallback shown while a lazy route chunk loads. */
-const RouteFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" role="status" aria-label="Loading" />
-  </div>
-)
 
 function App() {
   const { user, loading, impersonatedTenantId } = useAuth()
@@ -270,6 +265,7 @@ function App() {
               <Route path="/delivery-notes/:saleId" element={<DeliveryNoteViewPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/reports/outstanding" element={<ReportsPage />} />
+              <Route path="/daily-close" element={<DailyClosePage />} />
               <Route path="/vat-return" element={<VatReturnPage />} />
               <Route path="/worksheet" element={<WorksheetPage />} />
               {/* Staff cannot access branches/routes — redirect (defense in depth with early return above) */}

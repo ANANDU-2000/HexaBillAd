@@ -31,4 +31,10 @@ public static class TenantEntityAccess
 
     public static Task<bool> UserBelongsToTenantAsync(AppDbContext db, int userId, int tenantId, CancellationToken ct = default)
         => db.Users.AnyAsync(u => u.Id == userId && u.TenantId == tenantId, ct);
+
+    public static Task<bool> DailyCashCloseBelongsToTenantAsync(AppDbContext db, int dailyCashCloseId, int tenantId, CancellationToken ct = default)
+        => db.DailyCashCloses.AnyAsync(c => c.Id == dailyCashCloseId && c.TenantId == tenantId, ct);
+
+    public static Task<bool> CashDrawerMovementBelongsToTenantAsync(AppDbContext db, int movementId, int tenantId, CancellationToken ct = default)
+        => db.CashDrawerMovements.AnyAsync(m => m.Id == movementId && m.TenantId == tenantId, ct);
 }

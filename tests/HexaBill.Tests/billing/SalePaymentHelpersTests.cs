@@ -38,6 +38,22 @@ public class SalePaymentHelpersTests
     }
 
     [Fact]
+    public void ComputeSalePaymentState_WithExplicitAdjustment_ClosesInvoiceWithoutToleranceInflation()
+    {
+        var (paid, status, _) = SalePaymentHelpers.ComputeSalePaymentStateFromClearedAndAdjustments(1330m, 1m, 1331m, DateTime.UtcNow);
+        Assert.Equal(1331m, paid);
+        Assert.Equal(SalePaymentStatus.Paid, status);
+    }
+
+    [Fact]
+    public void ComputeSalePaymentState_CashOnlyLargeShortfall_StaysPartial()
+    {
+        var (paid, status, _) = SalePaymentHelpers.ComputeSalePaymentStateFromClearedAndAdjustments(1330m, 0m, 1331m, DateTime.UtcNow);
+        Assert.Equal(1330m, paid);
+        Assert.Equal(SalePaymentStatus.Partial, status);
+    }
+
+    [Fact]
     public void GetPaymentLineStatus_ChequeIsPending_CashIsCleared()
     {
         Assert.Equal(PaymentStatus.PENDING, SalePaymentHelpers.GetPaymentLineStatus(PaymentMode.CHEQUE));

@@ -1,14 +1,30 @@
 /**
- * Sale invoice settlement rules — keep in sync with backend SalePaymentHelpers.SettlementToleranceAed.
+ * Sale invoice settlement rules — keep in sync with backend SalePaymentHelpers.
  * Use these helpers anywhere the UI shows Paid / Partial / Pending for sales (POS, Billing History, dashboards).
  */
 
 export const SETTLEMENT_TOLERANCE_AED = 0.05
+/** @see SalePaymentHelpers.MaxExplicitSettlementAdjustmentAed */
+export const MAX_SETTLEMENT_ADJUSTMENT_AED = 50
+export const TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS = 'settlement_adjustments'
 
 export function computeOutstanding(grandTotal, paidAmount) {
   const gt = Number(grandTotal) || 0
   const paid = Number(paidAmount) || 0
   return Math.max(0, gt - paid)
+}
+
+/**
+ * Shortfall after cash that may be closed with an explicit settlement adjustment (not tolerance auto-fill).
+ */
+export function computeInvoiceSettlementShortfall(outstandingAmount, cashAmount) {
+  const outstanding = Math.round((Number(outstandingAmount) || 0) * 100) / 100
+  const cash = Math.round((Number(cashAmount) || 0) * 100) / 100
+  if (outstanding <= 0 || cash <= 0 || cash >= outstanding) return 0
+  const shortfall = Math.round((outstanding - cash) * 100) / 100
+  if (shortfall <= SETTLEMENT_TOLERANCE_AED) return 0
+  if (shortfall > MAX_SETTLEMENT_ADJUSTMENT_AED) return 0
+  return shortfall
 }
 
 /**

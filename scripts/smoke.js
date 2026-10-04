@@ -15,11 +15,15 @@ async function check(name, url, options = {}) {
     const res = await fetch(url, { ...options, signal: AbortSignal.timeout(15000) });
     const ok = res.ok;
     const status = res.status;
+    const isJson = res.headers.get('content-type')?.includes('json');
+    const body = isJson ? await res.json().catch(() => ({})) : null;
     console.log(ok ? `[OK] ${name} -> ${status}` : `[FAIL] ${name} -> ${status}`);
-    if (!ok && res.headers.get('content-type')?.includes('json')) {
-      const body = await res.json().catch(() => ({}));
-      if (body.message) console.log('     ', body.message);
+    if (body?.deployVersion) {
+      console.log(`     deployVersion: ${body.deployVersion}`);
+    } else if (ok && name.includes('/health') && body && body.deployVersion == null) {
+      console.log('     deployVersion: (not set on server)');
     }
+    if (!ok && body?.message) console.log('     ', body.message);
     return ok;
   } catch (err) {
     console.log(`[FAIL] ${name} -> ${err.message || err}`);

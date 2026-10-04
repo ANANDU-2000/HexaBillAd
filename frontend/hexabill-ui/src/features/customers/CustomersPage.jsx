@@ -37,6 +37,8 @@ import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 import { localDateString } from '../../utils/dateFormat'
+import { readCustomersStateFromParams, syncCustomersSearchParams } from '../../utils/customersUrl'
+import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 
 /** wa.me URL with digits-only MSISDN; Gulf-oriented defaults for UAE-style local numbers. */
 function buildWhatsAppUrlFromPhone(phone) {
@@ -54,6 +56,7 @@ const CustomersPage = () => {
   const { branches, routes } = useBranchesRoutes()
   const navigate = useNavigate()
   const location = useLocation()
+  const listReturnTo = location.pathname + location.search
   const [searchParams, setSearchParams] = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [customers, setCustomers] = useState([])
@@ -119,30 +122,52 @@ const CustomersPage = () => {
       if (customerToEdit) {
         handleEdit(customerToEdit)
         // Remove the edit parameter from URL after opening modal
-        setSearchParams({})
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('edit')
+          return next
+        }, { replace: true })
       } else {
         // Customer not found - show error and remove param
         console.error(`Customer with ID ${editId} not found`)
         toast.error(`Customer with ID ${editId} not found. Showing all customers.`)
-        setSearchParams({})
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('edit')
+          return next
+        }, { replace: true })
       }
     } else if (editId && !loading && customers.length === 0) {
       // Customers loaded but empty - customer doesn't exist
       toast.error(`Customer with ID ${editId} not found.`)
-      setSearchParams({})
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('edit')
+        return next
+      }, { replace: true })
     }
   }, [customers, searchParams, loading, setSearchParams])
 
   // Sync filter state to URL so filters survive navigation and browser back
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (searchTerm) params.set('search', searchTerm)
-    if (activeTab && activeTab !== 'all') params.set('tab', activeTab)
-    if (currentPage > 1) params.set('page', String(currentPage))
-    const editParam = searchParams.get('edit')
-    if (editParam) params.set('edit', editParam)
-    setSearchParams(params, { replace: true })
-  }, [searchTerm, activeTab, currentPage])
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncCustomersSearchParams(params, {
+        search: searchTerm,
+        activeTab,
+        currentPage,
+        editId: params.get('edit')
+      })
+      return params
+    }, { replace: true })
+  }, [searchTerm, activeTab, currentPage, setSearchParams])
+
+  useEffect(() => {
+    const parsed = readCustomersStateFromParams(searchParams)
+    setSearchTerm((s) => (s === parsed.search ? s : parsed.search))
+    setActiveTab((t) => (t === parsed.activeTab ? t : parsed.activeTab))
+    setCurrentPage((p) => (p === parsed.currentPage ? p : parsed.currentPage))
+  }, [searchParams])
 
   useEffect(() => {
     filterCustomers()
@@ -551,6 +576,14 @@ const CustomersPage = () => {
     }
   }
 
+  const openCollectInLedger = (customer) => {
+    if (!customer?.id) return
+    navigate(
+      buildCustomerLedgerHref({ customerId: customer.id, tab: 'payments', openPayment: true }),
+      { state: { returnTo: listReturnTo } }
+    )
+  }
+
   const handleViewLedger = async (customer) => {
     setSelectedCustomer(customer)
     try {
@@ -839,6 +872,18 @@ const CustomersPage = () => {
                           <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           <span className="hidden sm:inline text-xs font-medium">View</span>
                         </button>
+                        {(Number(customer.balance) || 0) > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => openCollectInLedger(customer)}
+                            className="bg-amber-50 text-amber-800 hover:text-white hover:bg-amber-600 border border-amber-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            title="Collect payment in customer ledger"
+                            aria-label="Collect payment"
+                          >
+                            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            <span className="hidden sm:inline text-xs font-medium">Collect</span>
+                          </button>
+                        )}
                         {buildWhatsAppUrlFromPhone(customer.phone) ? (
                           <a
                             href={buildWhatsAppUrlFromPhone(customer.phone)}
@@ -913,6 +958,17 @@ const CustomersPage = () => {
                     <Eye className="h-3.5 w-3.5" />
                     View
                   </button>
+                  {(Number(customer.balance) || 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => openCollectInLedger(customer)}
+                      className="bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white border border-amber-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 min-h-11"
+                      title="Collect payment"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Collect
+                    </button>
+                  )}
                   {buildWhatsAppUrlFromPhone(customer.phone) ? (
                     <a
                       href={buildWhatsAppUrlFromPhone(customer.phone)}
@@ -1543,18 +1599,29 @@ const CustomersPage = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex justify-end gap-2 mb-4">
-            <button
-              onClick={() => {
-                // Use React Router navigation instead of full page reload
-                navigate(`/ledger?customerId=${selectedCustomer?.id}`, { state: { returnTo: location.pathname + location.search } })
-                setShowLedgerModal(false)
-              }}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+          <div className="flex flex-wrap justify-end gap-2 mb-4">
+            <Link
+              to={buildCustomerLedgerHref({
+                customerId: selectedCustomer?.id,
+                tab: 'payments',
+                openPayment: true
+              })}
+              state={{ returnTo: location.pathname + location.search }}
+              onClick={() => setShowLedgerModal(false)}
+              className="inline-flex min-h-11 items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
             >
-              <CreditCard className="h-4 w-4 mr-2" />
+              <DollarSign className="h-4 w-4 mr-2" aria-hidden />
+              Record payment
+            </Link>
+            <Link
+              to={buildCustomerLedgerHref({ customerId: selectedCustomer?.id })}
+              state={{ returnTo: location.pathname + location.search }}
+              onClick={() => setShowLedgerModal(false)}
+              className="inline-flex min-h-11 items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 md:min-h-9"
+            >
+              <CreditCard className="h-4 w-4 mr-2" aria-hidden />
               Open Ledger
-            </button>
+            </Link>
           </div>
 
           {/* Ledger Table */}

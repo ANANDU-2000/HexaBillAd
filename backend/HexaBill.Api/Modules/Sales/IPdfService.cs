@@ -5,6 +5,7 @@ namespace HexaBill.Api.Modules.Sales
 {
     public interface IPdfService
     {
+        Task<byte[]> GeneratePaymentReceiptPdfAsync(PaymentReceiptDetailDto receipt);
         Task<byte[]> GenerateInvoicePdfAsync(SaleDto sale, string format = "A4", string? layout = null);
         /// <summary>Packing-list delivery note from sale (no prices/VAT/totals).</summary>
         Task<byte[]> GenerateDeliveryNotePdfAsync(SaleDto sale, string format = "A4", string? layout = null);

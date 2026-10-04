@@ -11,6 +11,7 @@ using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Payments;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.Inventory;
+using HexaBill.Api.Modules.Sales;
 
 namespace HexaBill.Api.Modules.Reports
 {
@@ -313,17 +314,18 @@ namespace HexaBill.Api.Modules.Reports
                 // CRITICAL FIX: Calculate COGS (Cost of Goods Sold) from actual sales, not purchases
                 // COGS = Sum of (SaleItem.Qty × Product.ConversionToBase × Product.CostPrice) for all items sold in period
                 decimal cogsToday = 0;
+                int estimatedCostLineCount = 0;
                 try
                 {
                     // CRITICAL: Super admin (TenantId = 0) sees ALL owners
                     // When Sales has no BranchId/RouteId, project without them to avoid 42703
-                    List<(int SaleId, decimal Qty, int ProductId)> saleItemsData;
+                    List<SaleItem> saleItemsData;
                     if (hasSalesBranchRoute)
                     {
                         var saleItemsQuery = from si in _context.SaleItems
                                             join s in _context.Sales on si.SaleId equals s.Id
                                             where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
-                                            select new { si.SaleId, si.Qty, si.ProductId, s.TenantId, s.BranchId, s.RouteId };
+                                            select new { Item = si, s.TenantId, s.BranchId, s.RouteId };
                         saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
                         if (branchId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.BranchId == branchId.Value);
                         if (routeId.HasValue) saleItemsQuery = saleItemsQuery.Where(x => x.RouteId == routeId.Value);
@@ -335,45 +337,39 @@ namespace HexaBill.Api.Modules.Reports
                             else if (restrictedRouteIds != null && restrictedRouteIds.Length == 0)
                                 saleItemsQuery = saleItemsQuery.Where(x => false);
                         }
-                        var data = await saleItemsQuery.ToListAsync();
-                        saleItemsData = data.Select(x => (x.SaleId, x.Qty, x.ProductId)).ToList();
+                        var data = await saleItemsQuery.AsNoTracking().ToListAsync();
+                        saleItemsData = data.Select(x => x.Item).ToList();
                     }
                     else
                     {
                         var saleItemsQuery = from si in _context.SaleItems
                                             join s in _context.Sales on si.SaleId equals s.Id
                                             where s.InvoiceDate >= startDate && s.InvoiceDate < endDate && !s.IsDeleted
-                                            select new { si.SaleId, si.Qty, si.ProductId, s.TenantId };
+                                            select new { Item = si, s.TenantId };
                         saleItemsQuery = saleItemsQuery.Where(x => x.TenantId == tenantId);
-                        var data = await saleItemsQuery.ToListAsync();
-                        saleItemsData = data.Select(x => (x.SaleId, x.Qty, x.ProductId)).ToList();
+                        var data = await saleItemsQuery.AsNoTracking().ToListAsync();
+                        saleItemsData = data.Select(x => x.Item).ToList();
                     }
                     
                     // Get Product CostPrice and ConversionToBase separately (avoid loading entire entity)
                     var productIds = saleItemsData.Select(si => si.ProductId).Distinct().ToList();
                     var productData = await _context.Products
-                        .Where(p => productIds.Contains(p.Id))
-                        .Select(p => new { p.Id, p.CostPrice, p.ConversionToBase })
-                        .ToDictionaryAsync(p => p.Id, p => new { p.CostPrice, p.ConversionToBase });
+                        .Where(p => productIds.Contains(p.Id) && (tenantId <= 0 || p.TenantId == tenantId))
+                        .Select(p => new Product { Id = p.Id, CostPrice = p.CostPrice, ConversionToBase = p.ConversionToBase })
+                        .ToDictionaryAsync(p => p.Id);
                     
                     // Calculate COGS: Convert sale quantity to base units, then multiply by cost price per base unit
-                    cogsToday = saleItemsData
-                        .Where(si => productData.ContainsKey(si.ProductId))
-                        .Sum(si =>
-                        {
-                            var product = productData[si.ProductId];
-                            var conversionFactor = product.ConversionToBase > 0 ? product.ConversionToBase : 1m;
-                            var baseQty = si.Qty * conversionFactor;
-                            var cogs = baseQty * product.CostPrice;
-                            return cogs;
-                        });
+                    foreach (var item in saleItemsData)
+                        item.Product = productData.GetValueOrDefault(item.ProductId)!;
+                    cogsToday = saleItemsData.Sum(SaleCostBasis.Calculate);
+                    estimatedCostLineCount = saleItemsData.Count(si => !SaleCostBasis.HasSnapshot(si));
                     
                     _logger.LogDebug("Calculated COGS from {Count} sale items: {Cogs}", saleItemsData.Count, cogsToday);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error calculating COGS: {Message}", ex.Message);
-                    cogsToday = 0;
+                    throw;
                 }
 
                 // Profit = Net Sales (Sales - Returns) - COGS - Expenses. VendorDiscounts are not included in P&L.
@@ -881,6 +877,7 @@ namespace HexaBill.Api.Modules.Reports
                     PurchasesToday = purchasesToday,
                     ExpensesToday = expensesToday,
                     CogsToday = cogsToday,
+                    EstimatedCostLineCount = estimatedCostLineCount,
                     ProfitToday = profitToday,
                     LowStockProducts = lowStockProducts,
                     PendingInvoices = pendingInvoices,
@@ -914,33 +911,7 @@ namespace HexaBill.Api.Modules.Reports
                     _logger.LogError(ex.InnerException, "Inner exception: {Message}", ex.InnerException.Message);
                 }
                 
-                // Return a safe default response
-                return new SummaryReportDto
-                {
-                    SalesToday = 0,
-                    ReturnsToday = 0,
-                    NetSalesToday = 0,
-                    ReturnsCountToday = 0,
-                    DamageLossToday = 0,
-                    PurchasesToday = 0,
-                    ExpensesToday = 0,
-                    CogsToday = 0,
-                    ProfitToday = 0,
-                    CashCollectionsTotal = 0,
-                    CreditInvoicedTotal = 0,
-                    OverdueCustomersCount = 0,
-                    OverdueAmountTotal = 0,
-                    NetVatPayablePeriod = 0,
-                    LowStockProducts = new List<ProductDto>(),
-                    PendingInvoices = new List<SaleDto>(),
-                    PendingBills = 0,
-                    PendingBillsAmount = 0,
-                    PaidBills = 0,
-                    PaidBillsAmount = 0,
-                    InvoicesToday = 0,
-                    InvoicesWeekly = 0,
-                    InvoicesMonthly = 0
-                };
+                throw;
             }
         }
 
@@ -2091,6 +2062,12 @@ namespace HexaBill.Api.Modules.Reports
                 query = query.Where(x => x.p.UnitType == unitType);
             }
 
+            if (await query.AnyAsync(x =>
+                (x.si.UnitCostAtSale.HasValue || x.si.ConversionAtSale.HasValue || x.si.CostCapturedAt.HasValue) &&
+                (!x.si.UnitCostAtSale.HasValue || !x.si.ConversionAtSale.HasValue || !x.si.CostCapturedAt.HasValue ||
+                 x.si.UnitCostAtSale < 0 || x.si.ConversionAtSale <= 0)))
+                throw new InvalidOperationException("Saved invoice cost evidence is incomplete or invalid.");
+
             var grouped = await query
                 .GroupBy(x => x.p.Id)
                 .Select(g => new
@@ -2100,7 +2077,10 @@ namespace HexaBill.Api.Modules.Reports
                     TotalQty = g.Sum(x => x.si.Qty),
                     TotalAmount = g.Sum(x => x.si.LineTotal),
                     TotalSales = g.Count(),
-                    CostValue = g.Sum(x => x.p.CostPrice * x.si.Qty)
+                    Estimated = g.Count(x => !x.si.CostCapturedAt.HasValue),
+                    CostValue = g.Sum(x => x.si.CostCapturedAt.HasValue
+                        ? x.si.Qty * x.si.UnitCostAtSale!.Value * x.si.ConversionAtSale!.Value
+                        : x.si.Qty * x.p.CostPrice * (x.p.ConversionToBase > 0 ? x.p.ConversionToBase : 1))
                 })
                 .ToListAsync();
 
@@ -2113,6 +2093,7 @@ namespace HexaBill.Api.Modules.Reports
                 TotalQty = g.TotalQty,
                 TotalAmount = g.TotalAmount,
                 CostValue = g.CostValue,
+                EstimatedCostLineCount = g.Estimated,
                 GrossProfit = g.TotalAmount - g.CostValue,
                 MarginPercent = g.TotalAmount > 0 ? ((g.TotalAmount - g.CostValue) / g.TotalAmount) * 100 : 0,
                 TotalSales = g.TotalSales,
@@ -2908,6 +2889,7 @@ namespace HexaBill.Api.Modules.Reports
 
     public class ProductSalesDto
     {
+        public int EstimatedCostLineCount { get; set; }
         public int ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
         public string Sku { get; set; } = string.Empty;

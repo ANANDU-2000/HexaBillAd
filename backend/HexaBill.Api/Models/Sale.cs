@@ -92,6 +92,11 @@ namespace HexaBill.Api.Models
         [MaxLength(20)]
         public string? VatScenario { get; set; }
 
+        // Null means no contemporaneous cost evidence; never backfill from today's product cost.
+        public decimal? UnitCostAtSale { get; set; }
+        public decimal? ConversionAtSale { get; set; }
+        public DateTime? CostCapturedAt { get; set; }
+
         // Navigation properties
         public virtual Sale Sale { get; set; } = null!;
         public virtual Product Product { get; set; } = null!;

@@ -45,6 +45,36 @@ namespace HexaBill.Api.Data
 
         private void ValidateTenantWrites()
         {
+            foreach (var entry in ChangeTracker.Entries<SaleItem>().Where(e => e.State == EntityState.Modified))
+            {
+                if (entry.Property(i => i.CostCapturedAt).OriginalValue.HasValue &&
+                    (entry.Property(i => i.UnitCostAtSale).IsModified || entry.Property(i => i.ConversionAtSale).IsModified ||
+                     entry.Property(i => i.CostCapturedAt).IsModified || entry.Property(i => i.ProductId).IsModified ||
+                     entry.Property(i => i.SaleId).IsModified))
+                    throw new InvalidOperationException("Saved invoice cost evidence is immutable. Use an audited invoice correction.");
+            }
+            foreach (var entry in ChangeTracker.Entries<PurchaseItem>().Where(e => e.State == EntityState.Modified))
+            {
+                if (entry.Property(i => i.CostCapturedAt).OriginalValue.HasValue &&
+                    (entry.Property(i => i.UnitCost).IsModified || entry.Property(i => i.UnitCostExclVat).IsModified ||
+                     entry.Property(i => i.VatAmount).IsModified || entry.Property(i => i.ConversionAtPurchase).IsModified ||
+                     entry.Property(i => i.CostCapturedAt).IsModified || entry.Property(i => i.ProductId).IsModified ||
+                     entry.Property(i => i.PurchaseId).IsModified))
+                    throw new InvalidOperationException("Saved purchase cost evidence is immutable. Use an audited purchase correction.");
+                if (!entry.Property(i => i.CostCapturedAt).OriginalValue.HasValue &&
+                    entry.Property(i => i.ConversionAtPurchase).OriginalValue.HasValue &&
+                    (entry.Property(i => i.ConversionAtPurchase).IsModified || entry.Property(i => i.ProductId).IsModified ||
+                     entry.Property(i => i.PurchaseId).IsModified))
+                    throw new InvalidOperationException("Saved purchase conversion evidence is immutable. Use an audited purchase correction.");
+            }
+            foreach (var entry in ChangeTracker.Entries<PaymentReceipt>())
+            {
+                var snapshot = entry.Property(r => r.SnapshotJson);
+                if (entry.State == EntityState.Modified && !string.IsNullOrWhiteSpace(snapshot.OriginalValue) &&
+                    snapshot.CurrentValue != snapshot.OriginalValue)
+                    throw new InvalidOperationException("Saved receipt details are immutable. Issue a separately audited correction instead.");
+            }
+
             if (!RequestScopeEstablished || RequestIsPlatformScope || !RequestTenantId.HasValue)
                 return;
 
@@ -95,6 +125,8 @@ namespace HexaBill.Api.Data
         public DbSet<Customer> Customers { get; set; }
         public DbSet<CustomerItemPrice> CustomerItemPrices { get; set; }
         public DbSet<Payment> Payments { get; set; }
+        public DbSet<DailyCashClose> DailyCashCloses { get; set; }
+        public DbSet<CashDrawerMovement> CashDrawerMovements { get; set; }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
         public DbSet<RecurringExpense> RecurringExpenses { get; set; }
@@ -146,7 +178,7 @@ namespace HexaBill.Api.Data
 
             // PostgreSQL Sequences
             // All companies start at 0001; Zayorga exception handled in InvoiceNumberService
-            modelBuilder.HasSequence<int>("invoice_number_seq").StartsAt(1);
+            if (Database.IsNpgsql()) modelBuilder.HasSequence<int>("invoice_number_seq").StartsAt(1);
 
             // Tenant configuration
             modelBuilder.Entity<Tenant>(entity =>
@@ -313,6 +345,8 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.VatAmount).HasColumnType("decimal(18,2)").IsRequired(false);
                 
                 entity.Property(e => e.LineTotal).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.ConversionAtPurchase).HasColumnType("decimal(18,6)").IsRequired(false);
+                entity.Property(e => e.CostCapturedAt).IsRequired(false);
                 entity.HasOne(e => e.Purchase).WithMany(p => p.Items).HasForeignKey(e => e.PurchaseId);
                 entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
             });
@@ -416,6 +450,8 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.LineTotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.VatRate).HasColumnType("decimal(18,4)");
                 entity.Property(e => e.VatScenario).HasMaxLength(20);
+                entity.Property(e => e.UnitCostAtSale).HasColumnType("decimal(18,6)");
+                entity.Property(e => e.ConversionAtSale).HasColumnType("decimal(18,6)");
                 entity.HasOne(e => e.Sale).WithMany(s => s.Items).HasForeignKey(e => e.SaleId);
                 entity.HasOne(e => e.Product).WithMany().HasForeignKey(e => e.ProductId);
             });
@@ -488,6 +524,30 @@ namespace HexaBill.Api.Data
                 entity.HasOne(e => e.LastSale).WithMany().HasForeignKey(e => e.LastSaleId).OnDelete(DeleteBehavior.SetNull).IsRequired(false);
             });
 
+            modelBuilder.Entity<DailyCashClose>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.OpeningCash).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CashReceived).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CashPaidOut).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.BankReceived).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.BankPaidOut).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.ExpectedCash).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.CountedCash).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Variance).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Status).HasConversion<string>();
+                entity.HasIndex(e => new { e.TenantId, e.BusinessDate, e.BranchId, e.Version }).IsUnique();
+            });
+
+            modelBuilder.Entity<CashDrawerMovement>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Amount).HasColumnType("decimal(18,2)");
+                entity.Property(e => e.Kind).HasConversion<int>();
+                entity.Property(e => e.Note).HasMaxLength(500);
+                entity.HasIndex(e => new { e.TenantId, e.MovementDate });
+            });
+
             // Payment configuration
             modelBuilder.Entity<Payment>(entity =>
             {
@@ -496,6 +556,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.Mode).HasConversion<string>();
                 entity.Property(e => e.Status).HasConversion<string>();
                 entity.Property(e => e.Reference).HasMaxLength(200);
+                entity.Property(e => e.IsSettlementAdjustment).HasDefaultValue(false);
                 entity.Property(e => e.RowVersion)
                     .IsRowVersion()
                     .IsConcurrencyToken()
@@ -505,6 +566,8 @@ namespace HexaBill.Api.Data
                 entity.HasOne<SaleReturn>().WithMany().HasForeignKey(e => e.SaleReturnId).IsRequired(false);
                 entity.HasOne(e => e.Customer).WithMany().HasForeignKey(e => e.CustomerId);
                 entity.HasOne(e => e.CreatedByUser).WithMany().HasForeignKey(e => e.CreatedBy);
+                entity.HasOne<Payment>().WithMany().HasForeignKey(e => e.ParentPaymentId).IsRequired(false).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.ParentPaymentId);
             });
             
             // PaymentIdempotency configuration (idempotency)
@@ -523,6 +586,8 @@ namespace HexaBill.Api.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ReceiptNumber).HasMaxLength(30);
                 entity.HasIndex(e => new { e.TenantId, e.ReceiptNumber }).IsUnique();
+                entity.HasIndex(e => new { e.TenantId, e.PaymentId }).IsUnique()
+                    .HasFilter("\"SnapshotJson\" IS NOT NULL");
                 entity.HasOne(e => e.Payment).WithMany().HasForeignKey(e => e.PaymentId);
                 entity.HasOne(e => e.GeneratedByUser).WithMany().HasForeignKey(e => e.GeneratedByUserId);
             });
@@ -585,6 +650,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.AttachmentUrl).HasMaxLength(500);
                 entity.Property(e => e.RejectionReason).HasMaxLength(500);
                 entity.Property(e => e.Status).HasConversion<int>(); // Store enum as int
+                entity.Property(e => e.PaidFrom).HasConversion<int>();
                 // Migration added these as INTEGER; Npgsql reads as int, map to bool (fixes "Reading as Boolean not supported for integer")
                 if (Database.IsNpgsql())
                 {

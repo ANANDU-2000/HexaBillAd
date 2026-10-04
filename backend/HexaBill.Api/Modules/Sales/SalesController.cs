@@ -566,6 +566,14 @@ namespace HexaBill.Api.Modules.Sales
                         Message = ex.Message
                     });
                 }
+                if (ex.Message.Equals("Sale not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    return NotFound(new ApiResponse<SaleDto>
+                    {
+                        Success = false,
+                        Message = ex.Message
+                    });
+                }
                 return BadRequest(new ApiResponse<SaleDto>
                 {
                     Success = false,
@@ -695,11 +703,20 @@ namespace HexaBill.Api.Modules.Sales
                 
                 var tenantId = CurrentTenantId; // CRITICAL: Get from JWT
                 var result = await _saleService.DeleteSaleAsync(id, userId, tenantId);
+                if (!result)
+                {
+                    return NotFound(new ApiResponse<bool>
+                    {
+                        Success = false,
+                        Message = "Sale not found"
+                    });
+                }
+
                 return Ok(new ApiResponse<bool>
                 {
                     Success = true,
                     Message = "Sale deleted successfully",
-                    Data = result
+                    Data = true
                 });
             }
             catch (Exception ex)

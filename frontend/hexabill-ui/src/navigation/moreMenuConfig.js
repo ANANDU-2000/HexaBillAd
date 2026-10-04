@@ -33,6 +33,7 @@ import {
   Activity,
   Database,
   Inbox,
+  Wallet,
 } from 'lucide-react'
 import { canAccessPage, isAdminOrOwner, isOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'
@@ -105,6 +106,7 @@ export const MORE_MENU_GROUPS = [
     sidebar: true,
     items: [
       { id: 'reports', label: 'Reports', href: '/reports', icon: BarChart3, pageId: 'reports', sidebar: true },
+      { id: 'daily-close', label: 'Daily close', href: '/daily-close', icon: Wallet, adminOnly: true, sidebar: true },
       { id: 'vat-return', label: 'VAT Return', href: '/vat-return', icon: FileText, adminOnly: true, sidebar: true },
       { id: 'worksheet', label: 'Worksheet', href: '/worksheet', icon: FileText, ownerOnly: true, sidebar: true },
     ],

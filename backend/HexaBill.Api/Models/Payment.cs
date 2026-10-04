@@ -33,6 +33,12 @@ namespace HexaBill.Api.Models
         public DateTime? UpdatedAt { get; set; }
         public byte[]? RowVersion { get; set; } // For optimistic concurrency (nullable for PostgreSQL)
 
+        /// <summary>Authorized non-cash shortfall (e.g. 1 AED on a 1,331 invoice). Not counted as cash collected.</summary>
+        public bool IsSettlementAdjustment { get; set; }
+
+        /// <summary>When set on a settlement adjustment row, links to the cash payment it paired with at create time.</summary>
+        public int? ParentPaymentId { get; set; }
+
         // Navigation properties
         public virtual Sale? Sale { get; set; }
         public virtual Customer? Customer { get; set; }

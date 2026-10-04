@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
@@ -34,10 +35,12 @@ namespace HexaBill.Api.Modules.SuperAdmin
         [AllowAnonymous]
         public async Task<IActionResult> Health()
         {
+            var deployVersion = DeployVersionResolver.Resolve();
             var health = new
             {
                 status = "healthy",
                 timestamp = DateTime.UtcNow,
+                deployVersion,
                 checks = new Dictionary<string, object>()
             };
 
@@ -186,11 +189,13 @@ namespace HexaBill.Api.Modules.SuperAdmin
             }
 
             var backendUrl = $"{Request.Scheme}://{Request.Host}";
+            var deployVersion = DeployVersionResolver.Resolve();
             return Ok(new
             {
                 success = error == null,
                 timestamp = ts,
                 backendUrl,
+                deployVersion,
                 database = new { connected = dbOk, error },
                 migrations = new { lastApplied = lastMigration, pending },
                 companyCount,

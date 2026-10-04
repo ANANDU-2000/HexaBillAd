@@ -64,6 +64,9 @@ namespace HexaBill.Api.Models
         public decimal? ClaimableVat { get; set; }
         /// <summary>True = amount entered was VAT-inclusive (gross); false = net; null = legacy/unknown.</summary>
         public bool? VatInclusive { get; set; }
+
+        /// <summary>Cash drawer vs bank account used to pay this expense (daily close uses cash only).</summary>
+        public ExpensePaidFrom PaidFrom { get; set; } = ExpensePaidFrom.Cash;
         
         // Navigation properties
         public virtual ExpenseCategory Category { get; set; } = null!;
@@ -79,6 +82,12 @@ namespace HexaBill.Api.Models
         Pending = 0,
         Approved = 1,
         Rejected = 2
+    }
+
+    public enum ExpensePaidFrom
+    {
+        Cash = 0,
+        Bank = 1
     }
 }
 

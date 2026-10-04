@@ -25,6 +25,8 @@ import { getApiBaseUrl } from '../../services/apiConfig'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner, canManagePayments } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
+import { readSalesLedgerStateFromParams, syncSalesLedgerSearchParams } from '../../utils/salesLedgerUrl'
+import { canReceivePaymentReceipt, receiptIneligibilityReason } from '../../utils/receiptEligibility'
 
 const SHOW_FILTERS_KEY = 'hexabill_sales_ledger_show_filters'
 const SORT_ORDER_KEY = 'hexabill_sales_ledger_sort_order'
@@ -267,23 +269,37 @@ const SalesLedgerPage = () => {
 
   // Sync date range, filters, sort, overdue to URL (replace so history does not balloon)
   useEffect(() => {
-    const params = new URLSearchParams()
-    if (dateRange.from) params.set('from', dateRange.from)
-    if (dateRange.to) params.set('to', dateRange.to)
-    if (overdueOnly) params.set('overdue', '1')
-    if (sortOrder && sortOrder !== 'newest') params.set('sort', sortOrder)
-    else if (sortOrder === 'newest') params.set('sort', 'newest')
-    const filterKeys = [
-      'date', 'name', 'type', 'status', 'invoiceNo',
-      'branchId', 'routeId', 'staffId',
-      'realPendingMin', 'realPendingMax', 'realGotPaymentMin', 'realGotPaymentMax'
-    ]
-    for (const key of filterKeys) {
-      const v = filters[key]
-      if (v !== undefined && v !== null && String(v).trim() !== '') params.set(key, String(v))
-    }
-    setSearchParams(params, { replace: true })
+    setSearchParams((prev) => {
+      const params = new URLSearchParams(prev)
+      syncSalesLedgerSearchParams(params, {
+        dateRange,
+        overdueOnly,
+        sortOrder,
+        filters
+      })
+      return params
+    }, { replace: true })
   }, [dateRange.from, dateRange.to, overdueOnly, sortOrder, filters, setSearchParams])
+
+  // Browser Back/forward: restore applied filters from URL
+  useEffect(() => {
+    const parsed = readSalesLedgerStateFromParams(searchParams)
+    if (parsed.dateRange) {
+      setDateRange((d) => (
+        d.from === parsed.dateRange.from && d.to === parsed.dateRange.to ? d : parsed.dateRange
+      ))
+    }
+    setOverdueOnly((o) => (o === parsed.overdueOnly ? o : parsed.overdueOnly))
+    if (parsed.sortOrder) {
+      setSortOrder((s) => (s === parsed.sortOrder ? s : parsed.sortOrder))
+    }
+    setFilters((f) => {
+      const same = Object.keys(parsed.filters).every(
+        (k) => String(f[k] || '') === String(parsed.filters[k] || '')
+      )
+      return same ? f : { ...f, ...parsed.filters }
+    })
+  }, [searchParams])
 
   // Load staff users only (branches/routes from shared context)
   useEffect(() => {
@@ -699,12 +715,6 @@ const SalesLedgerPage = () => {
     setPaymentModal({ open: true, saleId: entry.saleId, customerId: cid })
   }
 
-  const openPaymentReceipt = (paymentId) => {
-    if (!paymentId) return
-    setReceiptPreviewPaymentIds([paymentId])
-    setShowReceiptPreviewModal(true)
-  }
-
   const paymentFromLedgerEntry = (entry) => ({
     id: entry.paymentId,
     amount: entry.realGotPayment ?? entry.amount,
@@ -717,8 +727,36 @@ const SalesLedgerPage = () => {
     customerId: entry.customerId,
     customerName: entry.customerName,
     saleId: entry.saleId,
-    status: entry.status
+    status: entry.status,
+    isRefund: entry.isRefund ?? entry.IsRefund,
+    saleReturnId: entry.saleReturnId ?? entry.SaleReturnId,
+    isSettlementAdjustment: entry.isSettlementAdjustment ?? entry.IsSettlementAdjustment
   })
+
+  const ledgerPaymentReceiptUi = (entry) => {
+    const payment = paymentFromLedgerEntry(entry)
+    const eligible = canReceivePaymentReceipt(payment)
+    return {
+      eligible,
+      title: eligible ? 'Print payment receipt' : receiptIneligibilityReason(payment)
+    }
+  }
+
+  const openPaymentReceipt = (paymentId) => {
+    if (!paymentId) return
+    const entry = reportData.salesLedger.find(
+      (e) => normalizeLedgerRowType(e.type) === 'Payment' && Number(e.paymentId) === Number(paymentId)
+    )
+    if (entry) {
+      const { eligible, title } = ledgerPaymentReceiptUi(entry)
+      if (!eligible) {
+        toast.error(title)
+        return
+      }
+    }
+    setReceiptPreviewPaymentIds([paymentId])
+    setShowReceiptPreviewModal(true)
+  }
 
   const handleEditLedgerPayment = (entry) => {
     if (!entry?.paymentId) return
@@ -1449,14 +1487,20 @@ const SalesLedgerPage = () => {
                             </div>
                           ) : entry.type === 'Payment' && entry.paymentId ? (
                             <div className="inline-flex items-center justify-center gap-0.5">
+                              {(() => {
+                                const receiptUi = ledgerPaymentReceiptUi(entry)
+                                return (
                               <button
                                 type="button"
                                 onClick={() => openPaymentReceipt(entry.paymentId)}
-                                className="inline-flex items-center justify-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50"
-                                title="Print payment receipt"
+                                disabled={!receiptUi.eligible}
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={receiptUi.title}
                               >
                                 <Printer className="w-4 h-4" />
                               </button>
+                                )
+                              })()}
                               {canEditPayments && (
                                 <button
                                   type="button"
@@ -1712,14 +1756,20 @@ const SalesLedgerPage = () => {
                         </div>
                       ) : entry.type === 'Payment' && entry.paymentId ? (
                         <div className="flex shrink-0 items-center gap-0.5">
+                          {(() => {
+                            const receiptUi = ledgerPaymentReceiptUi(entry)
+                            return (
                           <button
                             type="button"
                             onClick={() => openPaymentReceipt(entry.paymentId)}
-                            className="p-2 rounded-md text-blue-600 hover:bg-blue-50"
-                            title="Print receipt"
+                            disabled={!receiptUi.eligible}
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-md text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={receiptUi.title}
                           >
                             <Printer className="w-4 h-4" />
                           </button>
+                            )
+                          })()}
                           {canEditPayments && (
                             <button
                               type="button"
@@ -1874,6 +1924,10 @@ const SalesLedgerPage = () => {
         invoiceId={paymentModal.saleId}
         customerId={paymentModal.customerId}
         onClose={() => setPaymentModal({ open: false, saleId: null, customerId: null })}
+        onReceiptPreview={(paymentId) => {
+          setReceiptPreviewPaymentIds([paymentId])
+          setShowReceiptPreviewModal(true)
+        }}
         onPaymentSuccess={() => {
           setPaymentModal({ open: false, saleId: null, customerId: null })
           fetchSalesLedgerRef.current?.()

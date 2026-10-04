@@ -179,6 +179,7 @@ namespace HexaBill.Api.Core.Infrastructure
         private bool IsPublicEndpoint(string path)
         {
             return path.StartsWith("/api/auth") ||
+                   path.StartsWith("/api/health") ||
                    path.StartsWith("/health") ||
                    path == "/" ||
                    path.StartsWith("/swagger") ||
