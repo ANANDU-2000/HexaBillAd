@@ -1,5 +1,17 @@
 ﻿# STATE.md — HexaBill single source of truth
 
+## Current release override — 4 October 2026, Codex Stage A
+
+Read PRODUCTION-RELEASE-LOOP.md and RELEASE-AUDIT-20261004.md before historical entries below. Local branch `release-1` starts from `315c1c5`. Stage A **FAIL / IN PROGRESS**. Production merge/migrations/deploy and smoke-tenant creation are unchecked in the latest owner authorization; older push/main permissions below are superseded for this release.
+
+Fresh baseline: backend 569 pass / 44 skip; separate fresh disposable PG run 55 pass / 0 skip; frontend 82 pass, lint 0 errors / 237 warnings, build pass. After the money safety changes, full backend suite with local PostgreSQL enabled: **617 pass / 0 skip / 0 fail**; frontend 82 pass, lint 0 errors / 237 warnings, build pass. Fresh EF migration rehearsal fails 42P07 Customers already exists. Tests using EnsureCreated are not migration proof. No browser page is newly DONE (done 0 / partial 2: login and customer ledger / not run 59 for this session).
+
+REL-001/003 safety guards implemented with two tests observed failing before fixes. REL-002 DELETE and status VOID share audited reversal, retain source/exact linked adjustments and idempotency, and reject reactivation/edit. Concurrent PostgreSQL void reproduced duplicate audits before transaction row locks; after locks, two requests yield one audit. Payment-edit balance regression now passes with payment saved before aggregates. Chrome synthetic GulfHarvest: equal receipts retained, void changes balance 5 to 55, void receipt disabled, unsafe cleanup 409, force delete 400, reactivation/edit 400, cross-tenant payment 404. Five after screenshots inspected; mobile/header/table interactions remain partial. Detailed evidence in EVIDENCE.md; register remains open pending complete journeys. No production work, feature enablement, push or merge.
+
+Local checkpoints: `ba319df` money corrections and regression tests; `6bfa5a8` isolated synthetic fixture tooling. Both remain on `release-1`, unpushed. The required full data matrix, VAT reconciliation, migration strategy and complete browser journey gate remain outstanding.
+
+---
+
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  

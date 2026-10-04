@@ -1,6 +1,6 @@
 ﻿# REVIEW-INBOX.md
 
-Read-only findings for the executor. Second tools (Codex) append here; they do not edit product code.
+Current release review: [RELEASE-AUDIT-20261004.md](RELEASE-AUDIT-20261004.md), defects: [ERROR-REGISTER.md](ERROR-REGISTER.md). Nine initial findings cover money history, failed migration chain, VAT divergence, silent zero reports, incomplete golden regression evidence, dependencies and stale trackers. Current owner appoints Codex single executor for PRODUCTION-RELEASE-LOOP.md; prior read-only role is superseded for this release. Historical entries below are preserved. No production sign-off.
 
 ## 2026-10-04 — Codex worktree uncommitted WIP (inventory)
 
