@@ -24,7 +24,7 @@ Roles: `owner | staff | platform`
 | 4 Cost snapshots / D9 | unit PASS | **tested** (unit) |
 | 5 Daily close | unit PASS; flag OFF | **implemented** |
 | 6 Margin VAT | accountant fixtures | **blocked** (D5 stop-gap shipped) |
-| 7 Shell UX | Tally + 4 mobile tabs | **partial** |
+| 7 Shell UX | Tally + 4 mobile tabs + 6 pages × 5 VPs | **partial** (FH1 owner 30 screenshots; other tenants/roles not-run) |
 | 8 Remaining routes | all 61 | **partial** (shell only) |
 | 9 AI | — | **not-run** |
 | 10 Voice/driver/maps | — | **not-run** |

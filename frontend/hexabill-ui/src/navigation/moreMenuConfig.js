@@ -67,7 +67,8 @@ export const MORE_MENU_GROUPS = [
     defaultOpen: true,
     items: [
       { id: 'pos', label: 'POS', href: '/pos', icon: ShoppingCart, pageId: 'pos', sidebar: true, bottomNav: true },
-      { id: 'billing-history', label: 'Billing History', href: '/billing-history', icon: History, pageId: 'pos', sidebar: true, bottomNav: true },
+      // Not a BottomNav tab — keep in mobile More (bottomNav would hide it incorrectly).
+      { id: 'billing-history', label: 'Billing History', href: '/billing-history', icon: History, pageId: 'pos', sidebar: true },
       { id: 'sales-ledger', label: 'Sales Ledger', href: '/sales-ledger', icon: FileText, pageId: 'reports', sidebar: true },
       { id: 'ledger', label: 'Customer Ledger', href: '/ledger', icon: BookOpen, pageId: 'invoices', sidebar: true, bottomNav: true },
       { id: 'purchases', label: 'Purchases', href: '/purchases', icon: Truck, adminOnly: true, sidebar: true },

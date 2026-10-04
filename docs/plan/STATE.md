@@ -109,8 +109,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
-| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | BottomNav exists; matrix not complete |
-| 8 Remaining routes matrix | **PARTIAL** | Shell check 25 routes×4 tenants; full 60×5 viewports NOT RUN |
+| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; FH1 owner 6 pages × 5 VPs screenshots; other tenants/roles NOT RUN |
+| 8 Remaining routes matrix | **PARTIAL** | Shell check 25 routes×4 tenants; full 61×5 viewports NOT RUN |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -145,11 +145,19 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 5 Phase 7 matrix (PARTIAL)
+- **changed:** `ListSkeleton` on purchases/suppliers/expenses; Billing History no longer `bottomNav` (was hidden from More); loopback tenant override (`resolveDevTenantHeaders` + Vite proxy prefers `*.localhost` Original-Host)
+- **files:** PurchasesPage/SuppliersPage/ExpensesPage, moreMenuConfig.js, api.js, vite.config.js, devTenantHeaders.js (+tests), phase7-*.mjs, STATE.md, PHASE-MATRIX.md
+- **tests+evidence:** `node --test tests/devTenantHeaders.test.js tests/moreMenuConfig.test.js` 4 PASS; proxy override → `/api/customers` 200; FH1 owner screenshots 6×5 in `Desktop/HexaBill_Backups/phase7-matrix-20261004-111213/screenshots` (30 PNGs); expenses category bar UI already present (By category tab)
+- **NOT RUN:** FH2/GH/ZY + staff role viewport matrix; full §10 field/edge cells
+- **flags+rollback:** local-only headers; remove `hexabill_dev_tenant_host` to disable
+- **next:** finish Phase 7 other tenants; then Phase 8; push `master-loop-2` when git auth available
+
 ### 2026-10-04 — slice 5 Phase 7 skeletons (PARTIAL)
 - **changed:** Purchases/Suppliers/Expenses list loading → shared `ListSkeleton` (no blank spinner/white text-only cards)
 - **files:** PurchasesPage.jsx, SuppliersPage.jsx, ExpensesPage.jsx, STATE.md
 - **tests+evidence:** BottomNav already Home/Sale/Ledger/More; Zayogya 3 PASS earlier; shell 33 routes prior
-- **NOT RUN:** section-10 matrix 5 viewports × POS/ledger/purchases/suppliers/expenses/products
+- **NOT RUN:** (superseded — screenshots captured for FH1 owner)
 - **flags+rollback:** none
 - **next:** continue Phase 7 page-by-page matrix; push branch when git auth available
 ### 2026-10-04 — slice 4 receipts/docs (PARTIAL)

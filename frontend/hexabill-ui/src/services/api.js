@@ -28,6 +28,7 @@ const scheduleLoginRedirect = () => {
 
 // API base URL: single source of truth so production never uses localhost
 import { getApiBaseUrl } from './apiConfig'
+import { resolveDevTenantHeaders } from '../utils/devTenantHeaders.js'
 const API_BASE_URL = getApiBaseUrl()
 
 // Error throttling to prevent flooding
@@ -489,6 +490,14 @@ api.interceptors.request.use(
     // Step 4: Ensure headers object exists
     if (!config.headers || typeof config.headers !== 'object' || Array.isArray(config.headers)) {
       config.headers = {}
+    }
+
+    // Local matrix: loopback browser + stored *.localhost override (Vite proxy equivalent)
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const devHeaders = resolveDevTenantHeaders(window.location.hostname, (k) => localStorage.getItem(k))
+      if (devHeaders) {
+        Object.assign(config.headers, devHeaders)
+      }
     }
     
     // Step 5: CRITICAL - Final validation before returning (defensive programming)

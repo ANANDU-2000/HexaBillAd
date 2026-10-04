@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolveProxyOriginalHost } from './src/utils/devTenantHeaders.js'
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -67,9 +68,11 @@ window.$RefreshSig$ = () => (type) => type;`
         changeOrigin: true,
         configure: (proxy) => {
           proxy.on('proxyReq', (proxyReq, req) => {
-            const browserHost = (req.headers.host || '').split(':')[0].toLowerCase()
-            if (browserHost) {
-              proxyReq.setHeader('X-HexaBill-Original-Host', browserHost)
+            const browserHost = (req.headers.host || '').split(':')[0]
+            const override = req.headers['x-hexabill-original-host']
+            const originalHost = resolveProxyOriginalHost(browserHost, override)
+            if (originalHost) {
+              proxyReq.setHeader('X-HexaBill-Original-Host', originalHost)
               proxyReq.setHeader(
                 'X-HexaBill-Edge-Secret',
                 process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret'
