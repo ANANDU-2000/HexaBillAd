@@ -145,6 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 3 ledger context (PARTIAL)
+- **changed:** returnNavigation + Record Payment deep-link tests; gitignore local sqlite bak copies
+- **files:** returnNavigation.test.js, .gitignore, STATE.md
+- **tests+evidence:** ledger URL/scroll/returnTo unit **10 passed**; existing CustomerLedger URL sync + session scroll already wired
+- **NOT RUN:** 5-viewport browser matrix for ledger; live Back/save HAR on tenant host
+- **flags+rollback:** none
+- **next:** slice 4 receipts/docs; push branch when git auth available
 ### 2026-10-04 — slice 2 journeys (PARTIAL)
 - **changed:** bootstrap/journey/shell scripts resolve real owner emails from last bootstrap report; FE port 5173
 - **files:** tier0-local-bootstrap.mjs, tier0-local-journey-verify.mjs, tier0-browser-shell-check.mjs, STATE, TIER0-SIGNOFF

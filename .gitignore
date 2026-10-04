@@ -30,7 +30,9 @@ backups/
 Backups/
 *.zip
 *.bak
+*.bak-*
 *.backup
+hexabill.db*
 
 # Generated invoices (should not be in repo)
 invoices/
