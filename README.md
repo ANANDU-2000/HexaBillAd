@@ -67,9 +67,9 @@ npm run dev
 
 These accounts are seeded only when `ASPNETCORE_ENVIRONMENT=Development`. Production never resets the SystemAdmin password to a known value.
 
-- **SystemAdmin:** admin@hexabill.com / (set locally; never commit passwords)
-- **Tenant 1:** owner1@hexabill.com / Owner1@123
-- **Tenant 2:** owner2@hexabill.com / Owner2@123
+- **SystemAdmin:** admin@hexabill.com — password from `HEXABILL_DEV_ADMIN_PASSWORD` or `SEED_ADMIN_PASSWORD` (never commit)
+- **Tenant 1:** owner1@hexabill.com — password from `HEXABILL_DEV_OWNER1_PASSWORD`
+- **Tenant 2:** owner2@hexabill.com — password from `HEXABILL_DEV_OWNER2_PASSWORD`
 
 To create the first production SystemAdmin, set `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` once (only used if no SystemAdmin exists).
 

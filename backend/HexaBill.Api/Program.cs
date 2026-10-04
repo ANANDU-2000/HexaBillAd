@@ -2247,7 +2247,7 @@ _ = Task.Run(async () =>
                         OwnerId = null, // Super admin has no owner restriction
                         TenantId = null, // CRITICAL: Super admin has no tenant restriction (null = SystemAdmin)
                         IsPlatformAdmin = true,
-                        Phone = "+971 56 955 22 52",
+                        Phone = "",
                         CreatedAt = DateTime.UtcNow
                     };
                     context.Users.Add(adminUser);
@@ -2415,19 +2415,27 @@ _ = Task.Run(async () =>
 
                 if (owner1 == null)
                 {
+                    var owner1Password = Environment.GetEnvironmentVariable("HEXABILL_DEV_OWNER1_PASSWORD");
+                    if (string.IsNullOrWhiteSpace(owner1Password))
+                    {
+                        initLogger.LogWarning("owner1 not created. Set HEXABILL_DEV_OWNER1_PASSWORD in Development.");
+                    }
+                    else
+                    {
                     owner1 = new User
                     {
                         Name = "Tenant Owner 1",
                         Email = "owner1@hexabill.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Owner1@123"),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(owner1Password),
                         Role = UserRole.Owner,
                         OwnerId = tenant1Id,
                         TenantId = tenant1Id,
-                        Phone = "+971 56 955 22 52",
+                        Phone = "",
                         CreatedAt = DateTime.UtcNow
                     };
                     context.Users.Add(owner1);
                     initLogger.LogInformation("Created owner1 user (TenantId={TenantId})", tenant1Id);
+                    }
                 }
                 else if (!owner1.TenantId.HasValue || owner1.TenantId.Value != tenant1Id)
                 {
@@ -2438,19 +2446,27 @@ _ = Task.Run(async () =>
 
                 if (owner2 == null)
                 {
+                    var owner2Password = Environment.GetEnvironmentVariable("HEXABILL_DEV_OWNER2_PASSWORD");
+                    if (string.IsNullOrWhiteSpace(owner2Password))
+                    {
+                        initLogger.LogWarning("owner2 not created. Set HEXABILL_DEV_OWNER2_PASSWORD in Development.");
+                    }
+                    else
+                    {
                     owner2 = new User
                     {
                         Name = "Tenant Owner 2",
                         Email = "owner2@hexabill.com",
-                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("Owner2@123"),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(owner2Password),
                         Role = UserRole.Owner,
                         OwnerId = tenant2Id,
                         TenantId = tenant2Id,
-                        Phone = "+971 56 955 22 52",
+                        Phone = "",
                         CreatedAt = DateTime.UtcNow
                     };
                     context.Users.Add(owner2);
                     initLogger.LogInformation("Created owner2 user (TenantId={TenantId})", tenant2Id);
+                    }
                 }
                 else if (!owner2.TenantId.HasValue || owner2.TenantId.Value != tenant2Id)
                 {
@@ -2495,8 +2511,8 @@ _ = Task.Run(async () =>
                         new Setting { Key = "COMPANY_NAME_EN", OwnerId = 1, Value = "" }, // Tenant-specific, set via tenant settings
                         new Setting { Key = "COMPANY_NAME_AR", OwnerId = 1, Value = "هيكسابيل" },
                         new Setting { Key = "COMPANY_ADDRESS", OwnerId = 1, Value = "Abu Dhabi, United Arab Emirates" },
-                        new Setting { Key = "COMPANY_TRN", OwnerId = 1, Value = "105274438800003" },
-                        new Setting { Key = "COMPANY_PHONE", OwnerId = 1, Value = "+971 56 955 22 52" },
+                        new Setting { Key = "COMPANY_TRN", OwnerId = 1, Value = "" },
+                        new Setting { Key = "COMPANY_PHONE", OwnerId = 1, Value = "" },
                         new Setting { Key = "CURRENCY", OwnerId = 1, Value = "AED" },
                         new Setting { Key = "INVOICE_PREFIX", OwnerId = 1, Value = "HB" },
                         new Setting { Key = "VAT_EFFECTIVE_DATE", OwnerId = 1, Value = "01-01-2026" },
@@ -2507,8 +2523,8 @@ _ = Task.Run(async () =>
                         new Setting { Key = "COMPANY_NAME_EN", OwnerId = 2, Value = "" }, // Tenant-specific, set via tenant settings
                         new Setting { Key = "COMPANY_NAME_AR", OwnerId = 2, Value = "" }, // Tenant-specific
                         new Setting { Key = "COMPANY_ADDRESS", OwnerId = 2, Value = "Abu Dhabi, United Arab Emirates" },
-                        new Setting { Key = "COMPANY_TRN", OwnerId = 2, Value = "105274438800003" },
-                        new Setting { Key = "COMPANY_PHONE", OwnerId = 2, Value = "+971 56 955 22 52" },
+                        new Setting { Key = "COMPANY_TRN", OwnerId = 2, Value = "" },
+                        new Setting { Key = "COMPANY_PHONE", OwnerId = 2, Value = "" },
                         new Setting { Key = "CURRENCY", OwnerId = 2, Value = "AED" },
                         new Setting { Key = "INVOICE_PREFIX", OwnerId = 2, Value = "HB" },
                         new Setting { Key = "VAT_EFFECTIVE_DATE", OwnerId = 2, Value = "01-01-2026" },

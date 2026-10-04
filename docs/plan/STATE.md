@@ -145,6 +145,13 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice 1 PG 44 (BLOCKED)
+- **changed:** none product; scrub follow-up emptied remaining tracked TRN/phone/password seeds
+- **files:** appsettings.json, appsettings.Production.json, Program.cs, CompanySettings.cs, STATE.md
+- **tests+evidence:** PG suite **NOT RUN**
+- **NOT RUN / missing:** `HEXABILL_TEST_POSTGRES` unset; Docker CLI absent; local `postgresql-x64-17/18` listening on 5432 with scram-sha-256 but **no usable postgres password** in env (auth failed; empty password hung). Need disposable DB URL or password to create `hexabill_test`.
+- **flags+rollback:** none
+- **next:** unblock PG credentials, then re-run `dotnet test --filter FullyQualifiedName~PostgreSql`; else continue slice 2 with SQLite local API
 ### 2026-10-04 — master-loop-2 FIRST A–D
 - **changed:** (A) Render autoDeploy=no; Vercel UNVERIFIED; (B) scrubbed real TRN/password literals from tracked files; (C) missing→Invoice+banner, sample→SAMPLE INVOICE; (D) FH1/FH2/GH header PDFs + grayscale logo + Arabic bilingual settings proofs
 - **files:** SampleVatTrn.cs, PdfService.cs, SaleService.cs, SettingsService.cs, Program.cs, SettingsPage.jsx, TenantHeaderParityTests.cs, SampleVatTrnTests.cs, scripts, docs

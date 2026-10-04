@@ -32,7 +32,7 @@ namespace HexaBill.Api.Models
         
         /// <summary>
         /// VAT Registration Number (TRN)
-        /// Example: "105274438800003"
+        /// Example: 15-digit VAT TRN (never commit a real client TRN)
         /// </summary>
         public string VatNumber { get; set; } = "";
         public string CorporateTaxTrn { get; set; } = "";
@@ -54,7 +54,7 @@ namespace HexaBill.Api.Models
         
         /// <summary>
         /// Contact mobile number
-        /// Example: "+971 56 955 22 52"
+        /// Example: E.164 phone (never commit a real client number)
         /// </summary>
         public string Mobile { get; set; } = "";
         
