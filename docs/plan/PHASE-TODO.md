@@ -11,10 +11,10 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Backend Release + tests | **PASS** | 564 passed / 44 PG skipped / 0 failed |
-| Frontend lint/test/build | **PASS** | 0 lint errors; 74 tests; Vite build OK |
-| Zayogya regression | **PASS** | `ZayogyaRegressionSnapshotTests` |
-| PostgreSQL suite | **NOT RUN** | no usable HEXABILL_TEST_POSTGRES password |
+| Backend Release + tests | **PASS** | Non-PG 558; with PG env **55/55 PostgreSql PASS** |
+| Frontend lint/test/build | **PASS** | 0 lint errors; 82 tests (latest verify); Vite build OK |
+| Zayogya regression | **PASS** | `ZayogyaRegressionSnapshotTests` (8) |
+| PostgreSQL suite | **PASS** | disposable `hexabill_master_loop_test` @ `:5433` → 55/55 |
 | Production deploy | **BLOCKED** | needs separate auth; Render live `39ffafb` autoDeploy=no |
 
 ## Tier 0 remaining gates
@@ -25,7 +25,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | T0-S2 | Header parity evidence | **PASS** | master-loop-header-20261004-102752 |
 | T0-S3 | Provisioning + redirect | **PASS** | unit + prior local |
 | T0-S4 | Legacy settings TenantId | **PASS** | SettingsService |
-| T0-S5 | Isolation audit | **PARTIAL** | ISOLATION-AUDIT.md; PG NOT RUN |
+| T0-S5 | Isolation audit | **PASS** | ISOLATION-AUDIT.md + PG 55/55 on disposable DB |
 | T0-S6 | Seven journeys re-run | **PASS** | master-loop-2-journeys-20261004-105936 |
 | T0-S7 | Backup restore copy | **PARTIAL** | SQLite copy hash PASS; R2/agent zip NOT RUN |
 | T0-S8 | Sample TRN never blocks | **PASS** | prod samples allowed; Zayogya excluded |
@@ -37,7 +37,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED** | **NOT
 | Phase | Status | Commit / blocker |
 |---|---|---|
 | 1 Clean build / versions | **PASS** | `6dc8d9c`; deploy SHAs UNVERIFIED |
-| 2 Isolation hardening | **PARTIAL** | SQLite PASS; PG NOT RUN |
+| 2 Isolation hardening | **PASS** | SQLite + PG 55/55 |
 | 3 Payments/receipts | **PARTIAL** | code+unit; live re-verify NOT RUN |
 | 4 Cost snapshots / D9 | **PARTIAL** | flags OFF; unit PASS |
 | 5 Daily Close | **PARTIAL** | flag OFF; unit PASS |

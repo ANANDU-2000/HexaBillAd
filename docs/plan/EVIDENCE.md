@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | PG isolation suite | local PG :5433 | WIP | A/B | — | — | `dotnet test --filter ~PostgreSql\|~Postgres` + `HEXABILL_TEST_POSTGRES` | 55 green | **Passed 55 / Failed 0** (~12s) on `hexabill_master_loop_test` | disposable DB only (not committed) | tested |
 | 2026-10-04 | Clean verify non-PG | local | WIP | n/a | n/a | n/a | FE 82 + BE !~PostgreSql | green | FE 82; BE 558 passed / 0 failed; D8 empty-VAT Invoice PDF test aligned | SettingsHttpIsolationTests | tested |
 | 2026-10-04 | Pending-pages inventory | local | 19a581b | n/a | n/a | n/a | ROUTE-MANIFEST vs §10 completeness | list gaps | 60 routes shell/smoke-only; full §10 open | Desktop/HexaBill_Backups/pending-pages-61-20261004.json | implemented |
 | 2026-10-04 | §10 field-edge owner ext | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 12 pages ×4 | non-blank shells | ok=48 fail=0 warn=4 | Desktop/HexaBill_Backups/field-edge-owner-ext-final-20261004 | tested |
@@ -29,7 +30,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 | 2026-10-04 | Header PDFs | local | master-loop-2 | FH1/FH2/GH | owner | print | A4/thermal/receipt/gray/AR | SAMPLE/Invoice rules | PASS local | master-loop-2-headers-20261004-104308 | tested |
 | 2026-10-04 | Sample TRN + Zayogya | local | master-loop-2 | FH/GH/ZY | n/a | n/a | unit tests | ZY unchanged; SAMPLE invoice | PASS (Zayogya 8) | SampleVatTrn / ZayogyaRegression* | tested |
 | 2026-10-04 | Push branch | local | 92373e5 | n/a | n/a | n/a | `git push origin master-loop-2` | remote updated | BLOCKED (no HTTPS credential in agent) | Desktop/.../master-loop-2-ahead13.bundle | blocked |
-| 2026-10-04 | PG isolation 44 | PG | — | A/B | — | — | Cross-tenant HTTP | deny | NOT RUN (no disposable PG password/URL) | — | blocked |
+| 2026-10-04 | PG isolation 44→55 | PG | — | A/B | — | — | Cross-tenant HTTP + concurrency | deny / single-winner | superseded by 55/55 PASS row above | hexabill_master_loop_test@:5433 | tested |
 | — | Page §10 field/edge | local | — | 4 | multi | 360..1440 | interactive acceptance | all cells | NOT RUN | — | planned |
 | — | Phases 9–11 | — | — | — | — | — | AI/voice/driver/staging | flags OFF then staging | NOT STARTED (gated) | — | planned |
 

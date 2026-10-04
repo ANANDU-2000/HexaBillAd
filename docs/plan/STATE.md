@@ -49,7 +49,7 @@ Uncommitted **in Codex worktree only** (not yet on main): SettingsService reconc
 | Gate | Result | Evidence |
 |---|---|---|
 | Backend Release build | **PASS** | 0 warnings, 0 errors |
-| Backend tests | **PASS** | **555 passed**, **44 skipped** (PostgreSQL), **0 failed**, Total 599 |
+| Backend tests | **PASS** | Non-PG: **558 passed** / 0 failed. With `HEXABILL_TEST_POSTGRES` on local `:5433`: **55/55 PostgreSql PASS** (2026-10-04) |
 | Frontend `npm ci` | **PASS** | 430 packages |
 | Frontend lint | **PASS** | 0 errors, 235 warnings |
 | Frontend tests | **PASS** | **74/74** |
@@ -102,9 +102,9 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 | Phase | Status | Evidence |
 |---|---|---|
-| Tier 0 gates (pre-phase) | **PARTIAL** | T0-01..T0-13 mostly PASS local; PG 44, restore, production deploy BLOCKED; Codex WIP not on main; D5 profit-VAT UI still shows ProfitVat; sample-TRN policy changing per DECISIONS |
+| Tier 0 gates (pre-phase) | **PARTIAL** | T0-01..T0-13 mostly PASS local; **PG suite 55/55 PASS** on disposable `hexabill_master_loop_test` @ `:5433`; restore copy PASS; production deploy still blocked; D5 profit-VAT UI still shows ProfitVat |
 | 1 Clean build / version baseline | **PARTIAL** | Clean build PASS today; deployed SHAs UNVERIFIED |
-| 2 Isolation + FH2 provisioning | **PARTIAL** | SQLite/HTTP isolation PASS; FH2 provisioned locally; PG NOT RUN |
+| 2 Isolation + FH2 provisioning | **PARTIAL** | SQLite/HTTP isolation PASS; FH2 provisioned locally; **PG isolation 55/55 PASS** |
 | 3 Payments / invoices / receipts | **PARTIAL** | Unit tests + FH1 receipt HAR (0 POST on reprint×2); popup-denied path still NOT RUN |
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 1 PG suite unblocked (PARTIAL)
+- **changed:** disposable DB `hexabill_master_loop_test` on local PostgreSQL **:5433** (`postgres`/`postgres`); ran full `~PostgreSql|~Postgres` filter
+- **files:** STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md, PHASE-TODO.md
+- **tests+evidence:** **Passed 55 / Failed 0 / Skipped 0** (~12s); Zayogya **8 PASS**
+- **NOT RUN / blocked:** `git push` (retry after ConnectScm); full §10 all cells; Vercel SHA 403; Phases 9–11
+- **flags+rollback:** none (test DB only; no prod)
+- **next:** push `master-loop-2`; then Phases 9–11 gate decision
 
 ### 2026-10-04 — slice §10 owner+staff extended smoke (PARTIAL)
 - **changed:** field-edge supports staff + 12 routes; blank-only hard fail
