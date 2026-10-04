@@ -3,7 +3,7 @@
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  
-**Branch:** `master-loop-2` (off `main` @ `7edb29b`) — push branch only until owner says otherwise  
+**Branch:** `master-loop-2` (= `main` @ `3a44391` on origin after owner push auth 2026-10-04)  
 **Baseline for diff:** `39ffafb`  
 **Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`
 
@@ -123,7 +123,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 |---|---|---|
 | Vercel production (`hexabill-ui`) | — | **UNVERIFIED** (project found `prj_GRooh8ebxo33R0uy5EspPoe5HmAo`; deployment list 403) |
 | Render backend (`HexaBill` / `srv-d68jpdvpm1nc7393q4d0`) | `39ffafb` | **VERIFIED** live; `autoDeploy=no`; older than local `master-loop-2` tip |
-| GitHub `origin/main` | `7edb29b` | Verified local = remote |
+| GitHub `origin/main` | `3a44391` | Verified local = remote (owner authorized FF from master-loop-2) |
+| GitHub `origin/master-loop-2` | `3a44391` | Same tip as main |
 
 ---
 
@@ -145,13 +146,29 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice §10 static-36 rest tenants 5VP (PARTIAL)
+- **changed:** docs only; evidence artifact from Playwright run
+- **files:** STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md
+- **tests+evidence:** FH2/GH/ZY owner static-36 ×5VP **ok=540 fail=0 warn=171**; Zayogya **8 PASS**; with FH1 180 → **720** static-36@5VP owner cells
+- **NOT RUN / blocked:** full §10 field-by-field (Arabic/offline/RTL/…); Phases 9–11; production deploy
+- **flags+rollback:** none
+- **next:** Phases 9–11 gated; production needs separate deploy auth
+
+### 2026-10-04 — slice release handoff push main (PASS)
+- **changed:** pushed `master-loop-2` then FF-merged into `main` (owner explicit auth)
+- **files:** none (git only)
+- **tests+evidence:** `origin/main` = `origin/master-loop-2` = **`3a44391`**; GitHub commits API confirms tip
+- **NOT RUN / blocked:** production Render/Vercel deploy (autoDeploy=no; production boundary); Phases 9–11; full §10 field-by-field
+- **flags+rollback:** none
+- **next:** finish FH2/GH/ZY static-36 @5VP; Phases 9–11 remain gated
+
 ### 2026-10-04 — slice §10 static-36×4 owner+staff (PARTIAL)
 - **changed:** `phase7-field-edge-smoke.mjs` DEFAULT_PAGES → 36 static ROUTE-MANIFEST paths; multi-VP via `HEXABILL_VIEWPORTS`; dismiss notification overlay
 - **files:** phase7-field-edge-smoke.mjs, STATE.md, EVIDENCE.md, PHASE-TODO.md
 - **tests+evidence:** owner **ok=144** warn=36; staff **ok=144** warn=36 (@360); FH1 owner **ok=180** @5VP; Zayogya 8; coverage JSON `section10-coverage-20261004.json`
-- **NOT RUN / blocked:** full §10 field-by-field (Arabic/offline/RTL/…); static 5VP for FH2/GH/ZY; `git push`; Phases 9–11
+- **NOT RUN / blocked:** full §10 field-by-field (Arabic/offline/RTL/…); Phases 9–11
 - **flags+rollback:** none
-- **next:** push branch; Phases 9–11 gated until you authorize
+- **next:** Phases 9–11 gated
 
 ### 2026-10-04 — slice browser-print live (PARTIAL)
 - **changed:** `scripts/tier0-browser-print-evidence.mjs` — Billing History → Invoice Preview → Print Options (+ API A4 PDF)

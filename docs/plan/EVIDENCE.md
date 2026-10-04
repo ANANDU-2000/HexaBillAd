@@ -4,6 +4,8 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 static-36 rest 5VP | local | WIP | FH2/GH/ZY | owner | 5 VPs | 36 static ×3×5 | non-blank shells | ok=540 fail=0 warn=171 | Desktop/HexaBill_Backups/field-edge-static36-rest-5vp-20261004 | tested |
+| 2026-10-04 | Push main + master-loop-2 | github | 3a44391 | n/a | n/a | n/a | `git push` branch then FF main | remote tip = local | both at `3a44391` | https://github.com/ANANDU-2000/HexaBillAd | tested |
 | 2026-10-04 | §10 static-36 FH1 5VP | local | WIP | FH1 | owner | 5 VPs | 36 static routes ×5 | non-blank shells | ok=180 fail=0 warn=57 | Desktop/HexaBill_Backups/field-edge-static36-fh1-5vp-20261004 | tested |
 | 2026-10-04 | §10 static-36 owner×4 | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 36 static routes field-edge | non-blank shells | ok=144 fail=0 warn=36 | Desktop/HexaBill_Backups/field-edge-static36-owner-4t-20261004 | tested |
 | 2026-10-04 | §10 static-36 staff×4 | local | WIP | FH1/FH2/GH/ZY | staff | 360 | 36 static routes field-edge | non-blank shells | ok=144 fail=0 warn=36 | Desktop/HexaBill_Backups/field-edge-static36-4t-20261004 | tested |
