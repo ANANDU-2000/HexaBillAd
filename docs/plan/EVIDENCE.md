@@ -4,6 +4,9 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | Push main + master-loop-2 | github | 3d0ddad | n/a | n/a | n/a | push CTA commits to both tips | remote tip = local | both at `3d0ddad` | https://github.com/ANANDU-2000/HexaBillAd | tested |
+| 2026-10-04 | Zayogya regression | local | WIP | ZY | n/a | n/a | ZayogyaRegressionSnapshotTests | PASS | 8 passed | dotnet filter ~Zayogya | tested |
+| 2026-10-04 | §10 cust/prod/pay CTA ≥44px | local | WIP | n/a | n/a | n/a | CustomerDetail + Products toolbar + Payments CTA | no md:min-h-9 / sm:min-h-0 on those CTAs | code fixed | CustomerDetailPage / ProductsPage / PaymentsPage | implemented |
 | 2026-10-04 | §10 purch/exp CTA ≥44px | local | WIP | FH1 | owner | 360+1440 | purchases + expenses | primaryMin44 | ok=4 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-purch-exp-cta44-20261004 | tested |
 | 2026-10-04 | §10 docs editor CTA ≥44px | local | WIP | FH1 | owner | 360 | quotation/agreement/salary new | primaryMin44 | ok=3 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-docs-cta44-20261004 | tested |
 | 2026-10-04 | §10 CTA ≥44px fix | local | WIP | FH1 | owner | 360 | users/profile/branches/routes | primaryMin44 | ok=4 fail=0 warn=0 | Desktop/HexaBill_Backups/field-edge-cta44-20261004 | tested |

@@ -142,7 +142,7 @@ const CustomerDetailPage = () => {
           <Link
             to={buildCustomerLedgerHref({ customerId: customer.id, tab: 'payments', openPayment: true })}
             state={{ returnTo }}
-            className="inline-flex min-h-11 items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
           >
             <DollarSign className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Record payment
@@ -150,7 +150,7 @@ const CustomerDetailPage = () => {
           <Link
             to={buildCustomerLedgerHref({ customerId: customer.id })}
             state={{ returnTo }}
-            className="inline-flex min-h-11 items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 md:min-h-9"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
           >
             <CreditCard className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Open ledger
@@ -158,14 +158,14 @@ const CustomerDetailPage = () => {
           <button
             type="button"
             onClick={() => navigate(`/customers?edit=${customer.id}`)}
-            className="inline-flex min-h-11 items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 md:min-h-9"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
           >
             <Edit className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Edit
           </button>
           <Link
             to="/reports?tab=overdue"
-            className="inline-flex min-h-11 items-center rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100 md:min-h-9"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
           >
             Overdue report
           </Link>

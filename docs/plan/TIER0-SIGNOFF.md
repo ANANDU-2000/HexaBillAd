@@ -1,8 +1,8 @@
 # Tier 0 sign-off table (Master Loop)
 
 **As of:** 2026-10-04  
-**Code SHA:** `3a44391` on `master-loop-2` **and** `origin/main` (owner authorized push 2026-10-04)  
-**Baseline main (pre-loop):** `7edb29b` → now `3a44391`  
+**Code SHA:** `3d0ddad` on `master-loop-2` **and** `origin/main` (owner authorized push 2026-10-04)  
+**Baseline main (pre-loop):** `7edb29b` → now `3d0ddad`  
 **Render live:** `39ffafb` (`autoDeploy=no`) · **Vercel prod SHA:** UNVERIFIED (API 403)
 
 | Gate | Status | Evidence |

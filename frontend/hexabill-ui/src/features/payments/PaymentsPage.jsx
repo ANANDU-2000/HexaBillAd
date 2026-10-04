@@ -635,7 +635,7 @@ const PaymentsPage = () => {
         <button
           type="button"
           onClick={() => navigate(returnTo)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50 md:min-h-9"
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 shadow-sm hover:bg-neutral-50"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Back to {getReturnLabel(returnTo)}
