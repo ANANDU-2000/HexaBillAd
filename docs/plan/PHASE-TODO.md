@@ -16,7 +16,7 @@ Statuses: **TODO** | **IMPLEMENTED** | **PASS** | **FAIL** | **BLOCKED**
 | Frontend production build | **PASS** | Vite build OK |
 | Frontend lint | **PASS** | 0 errors, 235 warnings |
 | Frontend unit tests | **PASS** | 74/74 |
-| Backend unit/integration tests | **PASS** | Prior **553 passed**; Tier0Provisioning +2 |
+| Backend unit/integration tests | **PASS** | **555 passed**, 44 PG skipped, 0 failed (pre-main merge) |
 | PostgreSQL HTTP isolation suite | **BLOCKED** | 44 skipped — need `HEXABILL_TEST_POSTGRES` |
 | Local four-tenant browser verify | **PASS** | See `tier0-local-browser-20261004-091255/VERDICT.md` |
 | Staging / production deploy | **BLOCKED** | No authorization |
@@ -40,7 +40,7 @@ Migration inventory: **47** additive migrations (latest `20261003190000_AddPayme
 | T0-10 | F19/F20 + settlement cash rule | **PASS** | Settlement/receipt/daily-close 1330/1331 fixtures; local 1330/500 |
 | T0-11 | Standard 5% VAT prospective (no historic recalc) | **IMPLEMENTED** | Default VAT_PERCENT=5; margin deferred |
 | T0-12 | Seven journeys × FrozenHub owners + GH header | **PASS** (local) | API amounts + browser screenshots; see VERDICT.md |
-| T0-13 | Commit/push `tier0-continuation` + deploy/rollback commands | **PARTIAL** | Commit on branch; push **BLOCKED** until GitHub HTTPS auth |
+| T0-13 | Commit/push `tier0-continuation` + merge to `main` | **PASS** | `tier0-continuation` @ `11d1f90` on GitHub; FF into `main` authorized. Production deploy still **BLOCKED** |
 
 ## Open inputs (non-blocking for local; still required before Production)
 

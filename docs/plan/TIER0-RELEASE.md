@@ -4,11 +4,12 @@
 
 | Item | Value |
 |---|---|
-| Branch | `tier0-continuation` |
+| Branch | `tier0-continuation` → FF into `main` |
+| Tip | `11d1f90` (+ docs handoff commit) |
 | Baseline | `846ee95` |
 | Local verification | 2026-10-04 — evidence `Desktop/HexaBill_Backups/tier0-local-browser-20261004-091255/` |
-| Backend tests | Tier0Provisioning + SampleVat + prior suite (re-run on commit) |
-| Frontend tests | 74 passed (prior); shell HTML reachability 25/25 × 4 tenants |
+| Backend tests | **555 passed** / 44 PG skipped / 0 failed |
+| Frontend tests | **74 passed**; shell HTML reachability 25/25 × 4 tenants |
 | Migrations | 47 (latest `20261003190000_AddPaymentParentPaymentId`) |
 
 ## Per-flow status (local Development)
@@ -29,8 +30,7 @@
 2. Real VAT TRNs — clients replace samples in Settings before Production.
 3. GulfHarvest logo artwork not invented (empty logo OK).
 4. Staging backup/restore not rehearsed.
-5. GitHub push blocked until HTTPS credentials available.
-6. Production deploy not authorized.
+5. Production / Render / Vercel deploy not authorized (git `main` only).
 
 ## Local bootstrap
 
