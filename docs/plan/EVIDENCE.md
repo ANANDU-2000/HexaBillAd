@@ -4,6 +4,8 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | Ledger 5VP + receipt HAR | local | WIP | FH1 | owner | 5 VPs | `/ledger`+`/sales-ledger`; reprint click×2 | shells + ≤1 receipt POST | ledgerOk=10; receiptPosts=0; reprintSafe | Desktop/HexaBill_Backups/ledger-receipt-20261004 | tested |
+| 2026-10-04 | Zayogya regression | local | 68510fe | ZY | n/a | n/a | ZayogyaRegressionSnapshotTests | PASS | 3 passed | dotnet filter ~ZayogyaRegression | tested |
 | 2026-10-04 | Phase7 staff shell | local | 92373e5 | FH1/FH2/GH/ZY | staff | 5 VPs | 6 pages ×4×5 | shell loads | ok=120 | Desktop/HexaBill_Backups/phase7-matrix-20261004-111213 (staff PNGs) | tested |
 | 2026-10-04 | Phase7 owner shell | local | 446eb6a+ | FH1/FH2/GH/ZY | owner | 5 VPs | 6 pages ×4×5 | shell loads | ok=120 | same dir (owner PNGs) | tested |
 | 2026-10-04 | Phase8 owner static | local | 6a51a20 | FH1/FH2/GH/ZY | owner | 5 VPs | 37 routes ×4×5 | shell loads | 148/tenant-vp batch | phase8-shell-20261004* | tested |

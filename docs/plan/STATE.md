@@ -105,7 +105,7 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | Tier 0 gates (pre-phase) | **PARTIAL** | T0-01..T0-13 mostly PASS local; PG 44, restore, production deploy BLOCKED; Codex WIP not on main; D5 profit-VAT UI still shows ProfitVat; sample-TRN policy changing per DECISIONS |
 | 1 Clean build / version baseline | **PARTIAL** | Clean build PASS today; deployed SHAs UNVERIFIED |
 | 2 Isolation + FH2 provisioning | **PARTIAL** | SQLite/HTTP isolation PASS; FH2 provisioned locally; PG NOT RUN |
-| 3 Payments / invoices / receipts | **PARTIAL** | Code + unit tests; full journey evidence local only |
+| 3 Payments / invoices / receipts | **PARTIAL** | Unit tests + FH1 receipt HAR (0 POST on reprint×2); popup-denied path still NOT RUN |
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice 3/4 ledger viewports + receipt HAR (PARTIAL)
+- **changed:** added `phase3-ledger-receipt-evidence.mjs`; captured FH1 ledger/sales-ledger ×5 VP; receipt reprint HAR
+- **files:** scripts/phase3-ledger-receipt-evidence.mjs, EVIDENCE.md, STATE.md
+- **tests+evidence:** ledgerOk=10 fail=0; receiptPosts=0 reprintSafe=true; Zayogya 3 passed; artifacts `Desktop/HexaBill_Backups/ledger-receipt-20261004`
+- **NOT RUN / blocked:** PG 44 (`Password1` auth fail for local postgres); `git push` (agent HTTPS); popup-denied PDF fallback; §10 field/edge; Phases 9–11
+- **flags+rollback:** none
+- **next:** push `master-loop-2` from a logged-in terminal; supply disposable `HEXABILL_TEST_POSTGRES` URL
 
 ### 2026-10-04 — slice 8b Phase 8 staff shell + push bundle (PARTIAL)
 - **changed:** phase8-route-shell supports staff; staff static 37×4@360; EVIDENCE.md refreshed; git bundle for offline push
