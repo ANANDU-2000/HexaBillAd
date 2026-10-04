@@ -2,6 +2,10 @@
 
 Current release review: [RELEASE-AUDIT-20261004.md](RELEASE-AUDIT-20261004.md), defects: [ERROR-REGISTER.md](ERROR-REGISTER.md). Nine initial findings cover money history, failed migration chain, VAT divergence, silent zero reports, incomplete golden regression evidence, dependencies and stale trackers. Current owner appoints Codex single executor for PRODUCTION-RELEASE-LOOP.md; prior read-only role is superseded for this release. Historical entries below are preserved. No production sign-off.
 
+## 2026-10-04 — startup and schema-readiness review (REL-011)
+
+**Severity: S1.** `Program.cs` has two independent migration checks: a delayed task around lines 1350–1409 and database initialization around lines 1411 onward. Both suppress migration failures; the latter is background work and explicitly continues after failed DDL. Production PostgreSQL skips EF migrations but still attempts direct schema DDL helpers, whose failures are logged as warnings. The ready health check proves database connectivity, not that required schema initialization completed. Therefore a reachable/ready process can still serve against an incomplete schema. This finding expands REL-011; it does not resolve the historical migration collision. A safe fix needs one authoritative initialization/readiness lifecycle and tests proving pending or failed schema work prevents readiness and business requests. No schema initialization behavior changed in this review iteration.
+
 ## 2026-10-04 — Codex worktree uncommitted WIP (inventory)
 
 **Path:** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`  
