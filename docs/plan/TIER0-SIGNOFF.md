@@ -9,7 +9,7 @@
 |---|---|---|
 | Shared-TRN admin warning | **PASS** | `SharedVatTenantCount` UI + settings PUT warning |
 | Header parity A4/A5/80/58/receipt/mono/AR/logo | **PASS** | `Desktop/HexaBill_Backups/master-loop-2-headers-20261004-104308` + VERDICT |
-| Browser print live | **NOT RUN** | needs tenant-host Vite session |
+| Browser print live | **PASS** (local) | `browser-print-20261004` — Invoice Preview + Print Options + API A4 PDF 119298B |
 | Provisioning + legacy redirect | **PASS** (local) | `tier0-local-bootstrap` 4 tenants |
 | Legacy settings TenantId | **PASS** | SettingsService TenantId-over-OwnerId |
 | Isolation audit | **PASS** | `docs/plan/ISOLATION-AUDIT.md` + PG suite |

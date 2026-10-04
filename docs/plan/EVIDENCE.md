@@ -4,6 +4,7 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | Browser print live | local Vite+API | WIP | FH1 | owner | 1366 | Billing History → Preview → Print Options + API A4 PDF | modal + PDF bytes | sale 17; API PDF 119298; Print Options A4 selected | Desktop/HexaBill_Backups/browser-print-20261004 | tested |
 | 2026-10-04 | PG dump/restore COPY | local PG :5433 | WIP | n/a | n/a | n/a | pg_dump Fc → restore_copy → isolation retest | 67 tables + tests green | src=dst 67; isolation **8/8**; EF migrate-to-head **FAIL** (Customers 42P07) | Desktop/HexaBill_Backups/pg-rollback-20261004 | tested |
 | 2026-10-04 | PG isolation suite | local PG :5433 | WIP | A/B | — | — | `dotnet test --filter ~PostgreSql\|~Postgres` + `HEXABILL_TEST_POSTGRES` | 55 green | **Passed 55 / Failed 0** (~12s) on `hexabill_master_loop_test` | disposable DB only (not committed) | tested |
 | 2026-10-04 | Clean verify non-PG | local | WIP | n/a | n/a | n/a | FE 82 + BE !~PostgreSql | green | FE 82; BE 558 passed / 0 failed; D8 empty-VAT Invoice PDF test aligned | SettingsHttpIsolationTests | tested |

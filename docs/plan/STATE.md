@@ -145,6 +145,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — slice browser-print live (PARTIAL)
+- **changed:** `scripts/tier0-browser-print-evidence.mjs` — Billing History → Invoice Preview → Print Options (+ API A4 PDF)
+- **files:** scripts/tier0-browser-print-evidence.mjs, STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md
+- **tests+evidence:** FH1 sale 17; API PDF **119298** bytes; Print Options modal screenshot; Zayogya 8; artifact `Desktop/HexaBill_Backups/browser-print-20261004`
+- **NOT RUN / blocked:** `git push` (HTTPS credential prompt disabled in agent); full §10 all 60 routes; Phases 9–11; Vercel SHA 403
+- **flags+rollback:** none
+- **next:** push `master-loop-2` from HexaBilngApp folder (bundle `master-loop-2-ahead25.bundle`)
+
 ### 2026-10-04 — slice Tier0 backup restore PG COPY (PARTIAL)
 - **changed:** disposable `hexabill_restore_copy` via `pg_dump -Fc` + `pg_restore` from `hexabill_master_loop_test`; recorded EF migrate-to-head FAIL on PG
 - **files:** STATE.md, EVIDENCE.md, TIER0-SIGNOFF.md
