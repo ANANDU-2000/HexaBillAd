@@ -109,8 +109,8 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 | 4 Cost snapshots + settlement adj | **PARTIAL** | Flags OFF by default; tests exist |
 | 5 Daily Close | **PARTIAL** | API/UI wired; flag OFF; petrol journey tests |
 | 6 Margin VAT | **NOT STARTED** | Needs accountant fixtures; D5 stop-gap required |
-| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner+staff screenshots 4 tenants × 6 pages × 5 VPs (240 PNGs); §10 field/edge NOT RUN |
-| 8 Remaining routes matrix | **PARTIAL** | Owner static 37×4×5VP; staff static 37×4@360; params 36@360; superadmin 10; platform metrics; §10 field/edge NOT RUN |
+| 7 Shell UX (Tally / 4 tabs) | **PARTIAL** | ListSkeleton; Billing History bottomNav fix; owner+staff screenshots 4 tenants × 6 pages × 5 VPs (240 PNGs); §10 smoke owner+staff 12×4@360 |
+| 8 Remaining routes matrix | **PARTIAL** | Owner static 37×4×5VP; staff static 37×4@360; params 9×4×5VP; superadmin 10; platform metrics; §10 smoke only (not full matrix) |
 | 9 AI assistant | **NOT STARTED** | |
 | 10 Voice / driver / maps | **NOT STARTED** | |
 | 11 Staging / restore / pilot | **NOT STARTED** | Production BLOCKED |
@@ -144,6 +144,14 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 ---
 
 ## Slice log (newest first)
+
+### 2026-10-04 — slice §10 owner+staff extended smoke (PARTIAL)
+- **changed:** field-edge supports staff + 12 routes; blank-only hard fail
+- **files:** phase7-field-edge-smoke.mjs, EVIDENCE.md, STATE.md
+- **tests+evidence:** owner ok=48; staff ok=48 (warns for missing search / under-44); Zayogya 3; PG still blocked
+- **NOT RUN / blocked:** PG 44; `git push`; full §10 all cells; Phases 9–11
+- **flags+rollback:** none
+- **next:** push + HEXABILL_TEST_POSTGRES
 
 ### 2026-10-04 — slice deploy SHA + restore copy + §10×4 (PARTIAL)
 - **changed:** field-edge multi-tenant; SQLite copy restore rehearsal; Render/Vercel read-only deploy check

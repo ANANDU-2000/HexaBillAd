@@ -4,6 +4,8 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 | Date | Slice | Env | Commit | Tenant | Role | Viewport | Action | Expected | Actual | Artifact | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| 2026-10-04 | §10 field-edge owner ext | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 12 pages ×4 | non-blank shells | ok=48 fail=0 warn=4 | Desktop/HexaBill_Backups/field-edge-owner-ext-final-20261004 | tested |
+| 2026-10-04 | §10 field-edge staff | local | WIP | FH1/FH2/GH/ZY | staff | 360 | 12 pages ×4 | non-blank shells | ok=48 fail=0 warn=16 | Desktop/HexaBill_Backups/field-edge-staff-final-20261004 | tested |
 | 2026-10-04 | §10 field-edge ×4 | local | WIP | FH1/FH2/GH/ZY | owner | 360 | 7 Phase-7 pages ×4 | non-blank shells | ok=28 fail=0 warn=4 | Desktop/HexaBill_Backups/field-edge-4tenants-20261004 | tested |
 | 2026-10-04 | SQLite restore copy | local | WIP | n/a | n/a | n/a | copy→backup→restore hash | identical SHA256 | pass (live db locked by API) | Desktop/HexaBill_Backups/sqlite-restore-rehearsal-* | tested |
 | 2026-10-04 | Render live SHA | prod | 39ffafb | n/a | n/a | n/a | read-only list_deploys | autoDeploy=no + SHA | live `39ffafb` | Render HexaBill srv-d68jpdvpm1nc7393q4d0 | tested |
