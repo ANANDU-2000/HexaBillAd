@@ -1,4 +1,4 @@
-/*
+﻿/*
 Purpose: Sale service for POS billing and invoice management
 Author: AI Assistant
 Date: 2024
@@ -156,7 +156,7 @@ namespace HexaBill.Api.Modules.Sales
                     var modeFilter = Enum.TryParse<PaymentMode>(term, true, out var matchedMode);
                     if (!modeFilter)
                     {
-                        // Common aliases → PaymentMode
+                        // Common aliases â†’ PaymentMode
                         modeFilter = termLower switch
                         {
                             "cash" => Enum.TryParse("CASH", true, out matchedMode),
@@ -721,9 +721,8 @@ namespace HexaBill.Api.Modules.Sales
 
                 await ValidateSaleBranchAndRouteForRequestAsync(request, tenantId, userId, customer);
 
-                // Calculate totals — VAT% from company settings (tenant-scoped), not hardcoded. PRODUCTION_MASTER_TODO #37
+                // Calculate totals â€” VAT% from company settings (tenant-scoped), not hardcoded. PRODUCTION_MASTER_TODO #37
                 var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
-                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 var allowNegativeStock = await IsNegativeStockAllowedAsync(tenantId);
@@ -824,7 +823,7 @@ namespace HexaBill.Api.Modules.Sales
                     // Calculate base quantity
                     var baseQty = item.Qty * product.ConversionToBase;
 
-                    // Calculate line totals: Total = qty × price, VAT = Total × vatPercent%, Amount = Total + VAT. Zero invoice: force 0.
+                    // Calculate line totals: Total = qty Ã— price, VAT = Total Ã— vatPercent%, Amount = Total + VAT. Zero invoice: force 0.
                     var rowTotal = isZeroInvoice ? 0 : (item.UnitPrice * item.Qty);
                     var vatAmount = isZeroInvoice ? 0 : Math.Round(rowTotal * (vatPercent / 100), 2, MidpointRounding.AwayFromZero);
                     var lineAmount = rowTotal + vatAmount;
@@ -895,10 +894,10 @@ namespace HexaBill.Api.Modules.Sales
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Round-off: ±1.00 AED max; applied after VAT (VAT unchanged)
+                // Round-off: Â±1.00 AED max; applied after VAT (VAT unchanged)
                 var roundOff = request.RoundOff;
                 if (Math.Abs(roundOff) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
                 // Apply global discount and round-off: FinalTotal = SubTotal + VatTotal - Discount + RoundOff
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOff), 2);
 
@@ -1149,7 +1148,7 @@ namespace HexaBill.Api.Modules.Sales
 
                 _context.AuditLogs.Add(auditLog);
 
-                // Customer item last-price memory (VAT-exclusive UnitPrice). Same txn — sale fail ⇒ no upsert.
+                // Customer item last-price memory (VAT-exclusive UnitPrice). Same txn â€” sale fail â‡’ no upsert.
                 // Returns/voids intentionally do NOT roll this back.
                 if (request.CustomerId.HasValue && !isZeroInvoice && saleItems.Count > 0)
                 {
@@ -1275,7 +1274,6 @@ namespace HexaBill.Api.Modules.Sales
                 // Similar to CreateSaleAsync but without stock validation
                 var invoiceNo = await GenerateInvoiceNumberAsync(tenantId);
                 var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
-                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var captureCosts = TenantFeatureFlags.IsEnabled(await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(), TenantFeatureFlags.SaleCostSnapshots);
                 decimal subtotal = 0;
@@ -1293,7 +1291,7 @@ namespace HexaBill.Api.Modules.Sales
                         throw new InvalidOperationException($"Product with ID {item.ProductId} not found for your account. Please verify the product exists.");
 
                     var baseQty = item.Qty * product.ConversionToBase;
-                    // Calculate line totals: Total = qty × price, VAT = Total × vatPercent%, Amount = Total + VAT
+                    // Calculate line totals: Total = qty Ã— price, VAT = Total Ã— vatPercent%, Amount = Total + VAT
                     var rowTotal = item.UnitPrice * item.Qty;
                     var vatAmount = Math.Round(rowTotal * (vatPercent / 100), 2);
                     var lineAmount = rowTotal + vatAmount;
@@ -1345,10 +1343,10 @@ namespace HexaBill.Api.Modules.Sales
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Round-off: ±1.00 AED max
+                // Round-off: Â±1.00 AED max
                 var roundOffOverride = request.RoundOff;
                 if (Math.Abs(roundOffOverride) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffOverride), 2);
 
                 bool isCashCustomerOverride = !request.CustomerId.HasValue;
@@ -1808,9 +1806,8 @@ namespace HexaBill.Api.Modules.Sales
 
                 // REVERSE customer balance will be recalculated after new amounts are set
 
-                // Calculate new totals — VAT% from company settings (tenant-scoped)
+                // Calculate new totals â€” VAT% from company settings (tenant-scoped)
                 var documentCompany = await _settingsService.GetCompanySettingsAsync(tenantId);
-                CompanySettings.RequireTaxInvoiceVatTrn(documentCompany.VatNumber, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 var vatPercent = await GetVatPercentAsync(tenantId);
                 var isZeroInvoice = request.IsZeroInvoice;
                 decimal subtotal = 0;
@@ -1944,7 +1941,7 @@ namespace HexaBill.Api.Modules.Sales
 
                 var roundOffUpdate = request.RoundOff;
                 if (Math.Abs(roundOffUpdate) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffUpdate), 2);
 
                 // Delete old sale items
@@ -2039,7 +2036,7 @@ namespace HexaBill.Api.Modules.Sales
                 _context.InventoryTransactions.AddRange(inventoryTransactions);
 
                 // ============================================================
-                // CRITICAL FIX: Properly handle CASH ↔ CREDIT conversion
+                // CRITICAL FIX: Properly handle CASH â†” CREDIT conversion
                 // ============================================================
                 
                 // Determine if this is a CASH or CREDIT sale
@@ -2523,7 +2520,7 @@ namespace HexaBill.Api.Modules.Sales
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // ✅ REAL-TIME BALANCE UPDATE: Update customer balance after invoice deletion
+                // âœ… REAL-TIME BALANCE UPDATE: Update customer balance after invoice deletion
                 if (sale.CustomerId.HasValue)
                 {
                     try
@@ -2717,13 +2714,13 @@ namespace HexaBill.Api.Modules.Sales
             var newTotal = (newRequest.Items?.Sum(i => i.UnitPrice * i.Qty) ?? 0m) * 1.05m - newRequest.Discount;
             if (Math.Abs(oldTotal - newTotal) > 0.01m)
             {
-                changes.Add($"GrandTotal: {oldTotal:C} → {newTotal:C}");
+                changes.Add($"GrandTotal: {oldTotal:C} â†’ {newTotal:C}");
             }
             
             // Compare discount
             if (Math.Abs((oldSale.Discount) - newRequest.Discount) > 0.01m)
             {
-                changes.Add($"Discount: {oldSale.Discount:C} → {newRequest.Discount:C}");
+                changes.Add($"Discount: {oldSale.Discount:C} â†’ {newRequest.Discount:C}");
             }
             
             // Compare item counts
@@ -2731,7 +2728,7 @@ namespace HexaBill.Api.Modules.Sales
             var newItemCount = newRequest.Items?.Count ?? 0;
             if (oldItemCount != newItemCount)
             {
-                changes.Add($"Items: {oldItemCount} → {newItemCount}");
+                changes.Add($"Items: {oldItemCount} â†’ {newItemCount}");
             }
             
             // Compare customer
@@ -2841,7 +2838,7 @@ namespace HexaBill.Api.Modules.Sales
                 
                 if (sale == null) return false;
                 
-                // Cleared rows only — pending cheques do not count (same rule as list/detail DTOs)
+                // Cleared rows only â€” pending cheques do not count (same rule as list/detail DTOs)
                 var actualPaidAmount = await _context.Payments
                     .Where(p => p.SaleId == saleId && p.TenantId == tenantId && p.Status == PaymentStatus.CLEARED)
                     .SumAsync(p => p.Amount);
@@ -2911,7 +2908,7 @@ namespace HexaBill.Api.Modules.Sales
                 
                 result.TotalSales = sales.Count;
                 
-                // Cleared amounts only — must match SalePaymentHelpers / single-sale reconcile (pending cheques are not "paid" yet)
+                // Cleared amounts only â€” must match SalePaymentHelpers / single-sale reconcile (pending cheques are not "paid" yet)
                 var clearedTotalsBySaleId = await _context.Payments
                     .Where(p => p.TenantId == tenantId && p.SaleId.HasValue && p.Status == PaymentStatus.CLEARED)
                     .GroupBy(p => p.SaleId!.Value)
@@ -2959,7 +2956,7 @@ namespace HexaBill.Api.Modules.Sales
                         var correctedPaidAll = reconciledAll.PaidAmount;
                         var correctedLastAll = reconciledAll.LastPaymentDate;
 
-                        // Check for overpayment (cleared sum exceeds invoice — unusual)
+                        // Check for overpayment (cleared sum exceeds invoice â€” unusual)
                         if (actualPaidAmount > sale.GrandTotal + 0.01m)
                         {
                             result.SalesWithOverpayment.Add(new OverpaymentInfo

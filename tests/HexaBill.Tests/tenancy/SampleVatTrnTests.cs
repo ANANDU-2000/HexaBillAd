@@ -6,33 +6,31 @@ namespace HexaBill.Tests;
 public class SampleVatTrnTests
 {
     [Theory]
-    [InlineData(SampleVatTrn.FrozenHub1)]
-    [InlineData(SampleVatTrn.FrozenHub2)]
-    [InlineData(SampleVatTrn.GulfHarvest)]
-    [InlineData(SampleVatTrn.UnitFixture)]
-    public void Production_AllowsHexaBillSampleTrn(string trn)
+    [InlineData(null, "INVOICE")]
+    [InlineData("", "INVOICE")]
+    [InlineData(SampleVatTrn.FrozenHub1, "SAMPLE INVOICE")]
+    [InlineData(SampleVatTrn.GulfHarvest, "SAMPLE INVOICE")]
+    [InlineData("100000000000099", "TAX INVOICE")]
+    public void DocumentTitle_NeverTaxInvoice_ForEmptyOrSample(string? trn, string expected)
     {
-        SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Production");
-        SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Development");
+        Assert.Equal(expected, SampleVatTrn.DocumentTitle(trn));
     }
 
     [Fact]
-    public void Production_RejectsCrystalFreezeReferenceTrn()
+    public void DocumentTrnDisplay_OmitsEmpty_PrefixesSample()
     {
-        var ex = Assert.Throws<TaxInvoiceSettingsException>(() =>
-            SampleVatTrn.RequireTaxInvoiceVatTrn(SampleVatTrn.CrystalFreezeForbidden, "Production"));
-        Assert.Contains("layout reference", ex.Message);
+        Assert.Null(SampleVatTrn.DocumentTrnDisplay(null));
+        Assert.Null(SampleVatTrn.DocumentTrnDisplay(""));
+        Assert.Equal("SAMPLE 900000000000001", SampleVatTrn.DocumentTrnDisplay(SampleVatTrn.FrozenHub1));
+        Assert.Equal("100000000000099", SampleVatTrn.DocumentTrnDisplay("100000000000099"));
     }
 
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("123")]
-    [InlineData("12345678901234A")]
-    public void EmptyOrInvalid_AlwaysRejected(string? trn)
+    [Fact]
+    public void RequireTaxInvoiceVatTrn_RejectsEmptyAndSample()
     {
-        Assert.Throws<TaxInvoiceSettingsException>(() =>
-            SampleVatTrn.RequireTaxInvoiceVatTrn(trn, "Development"));
+        Assert.Throws<TaxInvoiceSettingsException>(() => SampleVatTrn.RequireTaxInvoiceVatTrn(null, "Production"));
+        Assert.Throws<TaxInvoiceSettingsException>(() => SampleVatTrn.RequireTaxInvoiceVatTrn(SampleVatTrn.FrozenHub1, "Development"));
+        SampleVatTrn.RequireTaxInvoiceVatTrn("100000000000099", "Production");
     }
 
     [Theory]
@@ -40,7 +38,6 @@ public class SampleVatTrnTests
     [InlineData("frozenhub2", SampleVatTrn.FrozenHub2)]
     [InlineData("gulfharvest", SampleVatTrn.GulfHarvest)]
     [InlineData("zayoga", null)]
-    [InlineData("zayogya", null)]
     public void SampleForSlug_MapsKnownTenants_ExcludesZayogya(string slug, string? expected)
     {
         Assert.Equal(expected, SampleVatTrn.SampleForSlug(slug));

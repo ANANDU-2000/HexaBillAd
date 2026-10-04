@@ -1,4 +1,4 @@
-/*Purpose: PDF service for generating invoices using QuestPDF
+﻿/*Purpose: PDF service for generating invoices using QuestPDF
 Author: AI Assistant
 Date: 2024
 */
@@ -100,7 +100,7 @@ namespace HexaBill.Api.Modules.Sales
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyTrn)) column.Item().Text($"TRN: {receipt.CompanyTrn}");
                     }
                     column.Item().PaddingTop(12).Text("PAYMENT RECEIPT").Bold().FontSize(14);
-                    column.Item().Text("Proof of payment — not a tax invoice").FontSize(9);
+                    column.Item().Text("Proof of payment â€” not a tax invoice").FontSize(9);
                     column.Item().Text($"Receipt: {receipt.ReceiptNumber}");
                 });
                 page.Content().PaddingTop(12).Column(column =>
@@ -167,7 +167,6 @@ namespace HexaBill.Api.Modules.Sales
                 }
                 
                 var settings = await GetCompanySettingsAsync(sale.OwnerId); // Use OwnerId from SaleDto
-                HexaBill.Api.Models.CompanySettings.RequireTaxInvoiceVatTrn(settings.CompanyTrn, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 ApplyInvoiceLayoutOverride(settings, layout);
                 
                 // CRITICAL: Get customer's pending balance for invoice footer acknowledgment (A4 only)
@@ -307,12 +306,16 @@ namespace HexaBill.Api.Modules.Sales
                                         .Text($"DATE: {invoiceDateStr}").FontSize(10).Bold();
                                 });
 
-                                // Row 2: TRN full width, then separator
-                                innerColumn.Item().PaddingTop(2).Row(trnRow =>
+                                // Row 2: TRN full width (omit when missing; SAMPLE-prefix when sample)
+                                var companyTrnLine = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
+                                if (!string.IsNullOrEmpty(companyTrnLine))
                                 {
-                                    trnRow.AutoItem().Text("TRN : No : ").FontSize(10).Bold();
-                                    trnRow.AutoItem().Text(settings.CompanyTrn).FontSize(10).Bold();
-                                });
+                                    innerColumn.Item().PaddingTop(2).Row(trnRow =>
+                                    {
+                                        trnRow.AutoItem().Text("TRN : No : ").FontSize(10).Bold();
+                                        trnRow.AutoItem().Text(companyTrnLine).FontSize(10).Bold();
+                                    });
+                                }
                                 }
                                 else
                                 {
@@ -321,7 +324,7 @@ namespace HexaBill.Api.Modules.Sales
 
                                 // TAX INVOICE title - compact with borders
                                 innerColumn.Item().PaddingTop(2).PaddingBottom(2).BorderTop(1f).BorderBottom(1f).PaddingVertical(2)
-                                    .Text("TAX INVOICE")
+                                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
                                     .FontSize(12)
                                     .Bold()
                                     .AlignCenter();
@@ -377,14 +380,14 @@ namespace HexaBill.Api.Modules.Sales
                                             });
                                         }
 
-                                        AddHeader("ر.م", "SL.No");
-                                        AddHeader("الوصف", "Description");
-                                        AddHeader("الوحدة", "Unit");
-                                        AddHeader("الكمية", "Qty");
-                                        AddHeader("سعر الوحدة", "Unit Price");
-                                        AddHeader("الإجمالي", "Total");
-                                        AddHeader("ض.ق.م ٥٪", "Vat:5%");
-                                        AddHeader("المبلغ", "Amount");
+                                        AddHeader("Ø±.Ù…", "SL.No");
+                                        AddHeader("Ø§Ù„ÙˆØµÙ", "Description");
+                                        AddHeader("Ø§Ù„ÙˆØ­Ø¯Ø©", "Unit");
+                                        AddHeader("Ø§Ù„ÙƒÙ…ÙŠØ©", "Qty");
+                                        AddHeader("Ø³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø©", "Unit Price");
+                                        AddHeader("Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ", "Total");
+                                        AddHeader("Ø¶.Ù‚.Ù… Ù¥Ùª", "Vat:5%");
+                                        AddHeader("Ø§Ù„Ù…Ø¨Ù„Øº", "Amount");
                                     });
 
                                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
@@ -412,7 +415,7 @@ namespace HexaBill.Api.Modules.Sales
                                         }
                                     }
 
-                                    // Cosmetic table fill for full/download only — never in body/print (letterhead margins
+                                    // Cosmetic table fill for full/download only â€” never in body/print (letterhead margins
                                     // already reserve space; filler + stamp clearance was forcing a blank page 2).
                                     if (!settings.LetterheadOnlyPrint)
                                     {
@@ -438,7 +441,7 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                         row.AutoItem().Text("INV.Amount").FontSize(10);
                                         row.RelativeItem();
-                                        row.AutoItem().Text("مبلغ الفاتورة").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        row.AutoItem().Text("Ù…Ø¨Ù„Øº Ø§Ù„ÙØ§ØªÙˆØ±Ø©").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(10);
                                     
@@ -446,7 +449,7 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                         row.AutoItem().Text("VAT 5%").FontSize(10);
                                         row.RelativeItem();
-                                        row.AutoItem().Text("ضريبة ٥٪").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        row.AutoItem().Text("Ø¶Ø±ÙŠØ¨Ø© Ù¥Ùª").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(10);
                                     
@@ -456,7 +459,7 @@ namespace HexaBill.Api.Modules.Sales
                                         table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                             row.AutoItem().Text("Round Off").FontSize(10);
                                             row.RelativeItem();
-                                            row.AutoItem().Text("تقريب").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                            row.AutoItem().Text("ØªÙ‚Ø±ÙŠØ¨").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                         });
                                         var roundOffText = sale.RoundOff > 0 ? "+" + sale.RoundOff.ToString("0.00") : sale.RoundOff.ToString("0.00");
                                         table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(roundOffText).FontSize(10);
@@ -475,7 +478,7 @@ namespace HexaBill.Api.Modules.Sales
                                         text.Span("............. ").FontSize(8);
                                         text.Span(amountInWords).FontSize(8).Italic();
                                         text.Span(" ............. ").FontSize(8);
-                                        text.Span(" درهم فقط").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        text.Span(" Ø¯Ø±Ù‡Ù… ÙÙ‚Ø·").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
@@ -496,7 +499,7 @@ namespace HexaBill.Api.Modules.Sales
                                             leftCol.Item().PaddingTop(1).Text("Receiver's Sign: " + new string('.', 30)).FontSize(8);
                                         });
                                         
-                                        // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
+                                        // Right column: Company name (skipped when letterhead-only â€” stamp/sig fills this zone)
                                         sigRow.RelativeItem().Column(rightCol => {
                                             if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
@@ -530,7 +533,7 @@ namespace HexaBill.Api.Modules.Sales
                                         footerCol.Item().PaddingTop(2).AlignRight().Text(text => {
                                             text.Span($"Pending: {customerPendingInfo.TotalPendingBills} | ").FontSize(7);
                                             text.Span($"Balance: {settings.Currency} {customerPendingInfo.TotalBalanceDue:N2}").FontSize(7).Bold().FontColor(Colors.Red.Medium);
-                                            text.Span(" الرصيد").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                            text.Span(" Ø§Ù„Ø±ØµÙŠØ¯").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                         });
                                     }
                                 });
@@ -840,7 +843,7 @@ namespace HexaBill.Api.Modules.Sales
                                     c.Item().Text(settings.CompanyNameEn.ToUpper()).FontSize(11).Bold().AlignCenter();
                                     if (!string.IsNullOrEmpty(settings.CompanyNameAr))
                                         c.Item().Text(settings.CompanyNameAr).FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft().AlignCenter();
-                                    c.Item().Text($"TRN: {settings.CompanyTrn}").FontSize(7);
+                                    c.Item().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(7);
                                     c.Item().Text($"Mob: {settings.CompanyPhone} | {settings.CompanyAddress}").FontSize(6);
                                 });
                             }
@@ -849,7 +852,7 @@ namespace HexaBill.Api.Modules.Sales
                                 inner.Item().AlignRight().Text($"Date: {invoiceDateStr}").FontSize(7);
                             }
                             inner.Item().PaddingVertical(1).BorderTop(0.5f).BorderBottom(0.5f)
-                                .Text("TAX INVOICE").FontSize(9).Bold().AlignCenter();
+                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn)).FontSize(9).Bold().AlignCenter();
                             inner.Item().PaddingTop(1).Row(r =>
                             {
                                 r.RelativeItem().Text($"Inv: {sale.InvoiceNo} | Date: {invoiceDateStr}").FontSize(7);
@@ -934,10 +937,10 @@ namespace HexaBill.Api.Modules.Sales
                         else
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(9).Bold();
-                            column.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}").FontSize(6);
+                            column.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(6);
                             column.Item().AlignCenter().Text(settings.CompanyAddress ?? "").FontSize(5);
                         }
-                        column.Item().AlignCenter().Text("TAX INVOICE").FontSize(8).Bold();
+                        column.Item().AlignCenter().Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn)).FontSize(8).Bold();
                         column.Item().AlignCenter().Text($"#{sale.InvoiceNo} | {invoiceDateStr}").FontSize(6);
                         column.Item().Text($"Customer: {sale.CustomerName ?? "Cash"}").FontSize(6);
                         if (!string.IsNullOrEmpty(trnDisplay))
@@ -1005,7 +1008,7 @@ namespace HexaBill.Api.Modules.Sales
                         else
                         {
                             column.Item().AlignCenter().Text(settings.CompanyNameEn).FontSize(7).Bold();
-                            column.Item().AlignCenter().Text($"TRN:{settings.CompanyTrn}").FontSize(5);
+                            column.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN:{HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(5);
                         }
                         column.Item().AlignCenter().Text("TAX INV").FontSize(6).Bold();
                         column.Item().AlignCenter().Text($"{sale.InvoiceNo} {invoiceDateStr}").FontSize(5);
@@ -1068,7 +1071,6 @@ namespace HexaBill.Api.Modules.Sales
                 if (sales.Any(s => s.OwnerId != sales[0].OwnerId))
                     throw new InvalidOperationException("Invoices from different workspaces cannot be combined.");
                 var settings = await GetCompanySettingsAsync(sales[0].OwnerId);
-                HexaBill.Api.Models.CompanySettings.RequireTaxInvoiceVatTrn(settings.CompanyTrn, Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
                 
                 // PROD-10: Pre-fetch all customer TRNs to avoid blocking .Result calls in synchronous context
                 var customerTrnMap = new Dictionary<int?, string>();
@@ -1162,7 +1164,7 @@ namespace HexaBill.Api.Modules.Sales
                 if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                     column.Item().AlignCenter().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
                         .FontSize(fontSize).DirectionFromRightToLeft();
-                column.Item().AlignCenter().Text($"VAT TRN / رقم التسجيل الضريبي: {settings.CompanyTrn}")
+                column.Item().AlignCenter().Text($"VAT TRN / Ø±Ù‚Ù… Ø§Ù„ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¶Ø±ÙŠØ¨ÙŠ: {settings.CompanyTrn}")
                     .FontFamily(_arabicFont).FontSize(Math.Max(5, fontSize - 3));
                 foreach (var contact in new[] { settings.CompanyPhone, settings.CompanyEmail, settings.CompanyAddress })
                     if (!string.IsNullOrWhiteSpace(contact))
@@ -1211,7 +1213,7 @@ if (hasLogo)
                         });
                         headerRow.ConstantItem(140).AlignRight().AlignMiddle().Column(col =>
                         {
-                            col.Item().Text($"TRN : No : {settings.CompanyTrn}").FontSize(9);
+                            col.Item().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN : No : {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(9);
                             col.Item().PaddingTop(2).AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
                         });
                     });
@@ -1226,14 +1228,14 @@ if (hasLogo)
                     innerColumn.Item().PaddingTop(2).Text(contactInfo).FontSize(9).AlignCenter();
                     innerColumn.Item().PaddingTop(2).Row(trnDateRow =>
                     {
-                        trnDateRow.RelativeItem().Text($"TRN : No : {settings.CompanyTrn}").FontSize(9);
+                        trnDateRow.RelativeItem().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN : No : {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(9);
                         trnDateRow.RelativeItem().AlignRight().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
                     });
                 }
 
                 }
 
-                innerColumn.Item().PaddingTop(6).BorderTop(2).BorderBottom(2).PaddingVertical(4).Text("TAX INVOICE")
+                innerColumn.Item().PaddingTop(6).BorderTop(2).BorderBottom(2).PaddingVertical(4).Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
                     .FontSize(14)
                     .Bold()
                     .AlignCenter();
@@ -1283,14 +1285,14 @@ if (hasLogo)
                             });
                         }
 
-                        AddHeader("SL.No", "ر.م");
-                        AddHeader("Description", "الوصف");
-                        AddHeader("Unit", "الوحدة");
-                        AddHeader("Qty", "الكمية");
-                        AddHeader("Unit Price", "سعر الوحدة");
-                        AddHeader("Total", "الإجمالي");
-                        AddHeader("Vat 5%", "ض.ق.م ٥٪");
-                        AddHeader("Amount", "المبلغ");
+                        AddHeader("SL.No", "Ø±.Ù…");
+                        AddHeader("Description", "Ø§Ù„ÙˆØµÙ");
+                        AddHeader("Unit", "Ø§Ù„ÙˆØ­Ø¯Ø©");
+                        AddHeader("Qty", "Ø§Ù„ÙƒÙ…ÙŠØ©");
+                        AddHeader("Unit Price", "Ø³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø©");
+                        AddHeader("Total", "Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ");
+                        AddHeader("Vat 5%", "Ø¶.Ù‚.Ù… Ù¥Ùª");
+                        AddHeader("Amount", "Ø§Ù„Ù…Ø¨Ù„Øº");
                     });
 
                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
@@ -1376,7 +1378,7 @@ if (hasLogo)
 
                     table.Cell().ColumnSpan(5).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
                         col.Item().Text("INV.Amount").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text("مبلغ الفاتورة").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                        col.Item().PaddingTop(1).Text("Ù…Ø¨Ù„Øº Ø§Ù„ÙØ§ØªÙˆØ±Ø©").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
                     table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
                         col.Item().AlignRight().Text(sale.Subtotal.ToString("N2")).FontSize(11).Bold();
@@ -1390,7 +1392,7 @@ if (hasLogo)
 
                     table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
                         col.Item().Text("VAT 5%").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text("ضريبة ٥٪").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                        col.Item().PaddingTop(1).Text("Ø¶Ø±ÙŠØ¨Ø© Ù¥Ùª").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
                     table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
                         col.Item().Text("");
@@ -1402,7 +1404,7 @@ if (hasLogo)
                     if (sale.RoundOff != 0)
                     {
                         table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
-                            col.Item().Text("Round Off / تقريب").FontSize(9).Bold();
+                            col.Item().Text("Round Off / ØªÙ‚Ø±ÙŠØ¨").FontSize(9).Bold();
                         });
                         table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => { col.Item().Text(""); });
                         table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
@@ -1412,7 +1414,7 @@ if (hasLogo)
 
                     table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
                         col.Item().Text("Total Amount").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text(new string('.', 45) + " درهم فقط").FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
+                        col.Item().PaddingTop(1).Text(new string('.', 45) + " Ø¯Ø±Ù‡Ù… ÙÙ‚Ø·").FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
                     table.Cell().Border(1).Height(20).PaddingVertical(2).PaddingHorizontal(1).Column(col => {
                         col.Item().Text("");
@@ -1430,7 +1432,7 @@ if (hasLogo)
                         .FontSize(9)
                         .Bold();
                     
-                    footerCol.Item().PaddingTop(2).AlignCenter().Text("استلمنا البضاعة أعلاه بحالة جيدة")
+                    footerCol.Item().PaddingTop(2).AlignCenter().Text("Ø§Ø³ØªÙ„Ù…Ù†Ø§ Ø§Ù„Ø¨Ø¶Ø§Ø¹Ø© Ø£Ø¹Ù„Ø§Ù‡ Ø¨Ø­Ø§Ù„Ø© Ø¬ÙŠØ¯Ø©")
                         .FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
 
                     footerCol.Item().PaddingTop(8).Table(sigTable =>
@@ -1620,8 +1622,8 @@ if (hasLogo)
         }
 
         /// <summary>
-        /// Unified print layout: layout=body → body only + letterhead clearances;
-        /// layout=full or null/missing → full digital header/footer + tight margins.
+        /// Unified print layout: layout=body â†’ body only + letterhead clearances;
+        /// layout=full or null/missing â†’ full digital header/footer + tight margins.
         /// </summary>
         private static void ApplyPrintLayout(InvoiceTemplateService.CompanySettings settings, string? layout)
         {
@@ -1643,13 +1645,13 @@ if (hasLogo)
             }
         }
 
-        /// <summary>Backward-compatible alias — prefers ApplyPrintLayout.</summary>
+        /// <summary>Backward-compatible alias â€” prefers ApplyPrintLayout.</summary>
         private static void ApplyInvoiceLayoutOverride(InvoiceTemplateService.CompanySettings settings, string? layout)
             => ApplyPrintLayout(settings, layout);
 
         private static void ApplyDocumentPageMargins(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, float fallbackMm = 5f)
         {
-            // Full digital: tight margins only — never apply letterhead 42/52mm top.
+            // Full digital: tight margins only â€” never apply letterhead 42/52mm top.
             // Body/letterhead: reserve stamp clearance so overlay does not collide with content.
             var top = settings.LetterheadOnlyPrint ? Math.Max(settings.PrintMarginTopMm, 5f) : fallbackMm;
             float stampClearance = 0f;
@@ -1679,7 +1681,7 @@ if (hasLogo)
             ((settings.StampImageBytes != null && settings.StampImageBytes.Length > 0)
              || (settings.SignatureImageBytes != null && settings.SignatureImageBytes.Length > 0));
 
-        /// <summary>Cap digital stamp size — allow readable ~44mm without crushing A4 or forcing blank page 2.</summary>
+        /// <summary>Cap digital stamp size â€” allow readable ~44mm without crushing A4 or forcing blank page 2.</summary>
         private static float CapStampMm(float mm) => Math.Min(Math.Max(mm, 8f), 44f);
 
         private static bool IsZayogaBrand(InvoiceTemplateService.CompanySettings? settings) =>
@@ -1741,7 +1743,7 @@ if (hasLogo)
                     else
                         c.Item().Height(compact ? 8 : 12);
                     if (!string.IsNullOrWhiteSpace(settings.CompanyTrn))
-                        c.Item().PaddingTop(2).AlignCenter().Text($"TRN: {settings.CompanyTrn}")
+                        c.Item().PaddingTop(2).AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}")
                             .FontColor(orange).FontSize(contactSize);
                 });
 
@@ -1767,7 +1769,7 @@ if (hasLogo)
             col.Item().PaddingTop(compact ? 2 : 4).LineHorizontal(1f).LineColor(orange);
         }
 
-        /// <summary>Orange “For ZAYOGA” footer block for full digital PDFs.</summary>
+        /// <summary>Orange â€œFor ZAYOGAâ€ footer block for full digital PDFs.</summary>
         private static void RenderOrangeLetterheadFooter(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings)
         {
             var orange = Color.FromHex("#E67E22");
@@ -1783,7 +1785,7 @@ if (hasLogo)
             });
         }
 
-        /// <summary>Page header/footer chrome for full layout. Zayoga → orange stationery; others unchanged (content branding).</summary>
+        /// <summary>Page header/footer chrome for full layout. Zayoga â†’ orange stationery; others unchanged (content branding).</summary>
         private void RenderFullPageLetterheadChrome(PageDescriptor page, InvoiceTemplateService.CompanySettings settings, bool compact = false)
         {
             if (settings.BilingualMonochromeHeader || settings.LetterheadOnlyPrint || !IsZayogaBrand(settings)) return;
@@ -1896,7 +1898,7 @@ if (hasLogo)
                     if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
                         centerCol.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(8);
                     if (!string.IsNullOrWhiteSpace(settings.CompanyTrn))
-                        centerCol.Item().AlignCenter().Text($"TRN: {settings.CompanyTrn}").FontSize(8);
+                        centerCol.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(8);
                 });
                 row.ConstantItem(100).AlignRight().AlignMiddle().Text(dateText).FontSize(9);
             });
@@ -2091,7 +2093,7 @@ if (hasLogo)
                     .Replace("{{company_name_ar}}", settings.CompanyNameAr)
                     .Replace("{{company_address}}", settings.CompanyAddress)
                     .Replace("{{company_phone}}", settings.CompanyPhone)
-                    .Replace("{{company_trn}}", settings.CompanyTrn)
+                    .Replace("{{company_trn}}", HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn) ?? "")
                     .Replace("{{currency}}", settings.Currency)
                     .Replace("{{SUBTOTAL}}", sale.Subtotal.ToString("N2"))
                     .Replace("{{subtotal}}", sale.Subtotal.ToString("N2"))
@@ -2304,7 +2306,7 @@ if (hasLogo)
             }
         }
 
-        // Gulf AED amount-in-words — shared helper
+        // Gulf AED amount-in-words â€” shared helper
         private static string ConvertToWords(decimal amount) => HexaBill.Api.Core.Infrastructure.AmountToWords.Dirhams(amount);
 
         public async Task<byte[]> GeneratePendingBillsPdfAsync(List<PendingBillDto> pendingBills, DateTime fromDate, DateTime toDate, int tenantId)
@@ -2557,7 +2559,7 @@ if (hasLogo)
                             contentCol.Item().PaddingBottom(4).Row(r =>
                             {
                                 r.RelativeItem().Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(8).FontColor(Colors.Grey.Medium);
-                                r.RelativeItem().AlignRight().Text($"{list.Count} line(s) · Currency: {currency}").FontSize(8);
+                                r.RelativeItem().AlignRight().Text($"{list.Count} line(s) Â· Currency: {currency}").FontSize(8);
                             });
 
                             if (list.Count == 0)
@@ -3099,7 +3101,7 @@ if (hasLogo)
                                 var clause = clauses[n];
                                 var isSub = n >= 2;
                                 col.Item().PaddingTop(isSub ? 6 : 10).PaddingBottom(5).PaddingLeft(isSub ? 14 : 0)
-                                    .Text(isSub ? $"❖ {clause}" : $"• {clause}")
+                                    .Text(isSub ? $"â– {clause}" : $"â€¢ {clause}")
                                     .FontSize(clauseFont).LineHeight(1.5f);
                             }
 

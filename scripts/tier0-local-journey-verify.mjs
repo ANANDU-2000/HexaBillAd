@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API-level amount checks for Tier 0 journeys on FH1/FH2 (local).
  */
 import fs from 'node:fs';
@@ -6,12 +6,12 @@ import path from 'node:path';
 
 const API = process.env.HEXABILL_API || 'http://localhost:5000';
 const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret';
-const PASS = process.env.HEXABILL_OWNER_PASSWORD || 'Owner123!';
+const PASS = process.env.HEXABILL_OWNER_PASSWORD || '';
 const OUT = process.env.HEXABILL_EVIDENCE_DIR
   || path.join(process.env.USERPROFILE, 'OneDrive', 'Desktop', 'HexaBill_Backups', `tier0-api-journeys-${Date.now()}`);
 
 const TENANTS = [
-  { slug: 'frozenhub1', email: 'frozenhubfoods@gmail.com', sampleTrn: '900000000000001' },
+  { slug: 'frozenhub1', email: 'frozenhub1@hexabill.company', sampleTrn: '900000000000001' },
   { slug: 'frozenhub2', email: 'frozenhub2@hexabill.company', sampleTrn: '900000000000002' },
 ];
 

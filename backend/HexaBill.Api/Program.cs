@@ -2228,19 +2228,21 @@ _ = Task.Run(async () =>
                 var adminUser = allUsers.FirstOrDefault(u => (u.Email ?? string.Empty).Trim().ToLowerInvariant() == adminEmail);
                 var isDevelopment = app.Environment.IsDevelopment();
                 var seedAdminEmail = Environment.GetEnvironmentVariable("SEED_ADMIN_EMAIL");
-                var seedAdminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD");
-                var correctAdminPasswordHash = isDevelopment
-                    ? BCrypt.Net.BCrypt.HashPassword("Admin123!")
+                var seedAdminPassword = Environment.GetEnvironmentVariable("SEED_ADMIN_PASSWORD")
+                    ?? Environment.GetEnvironmentVariable("HEXABILL_DEV_ADMIN_PASSWORD");
+                // Never embed a real/default password literal in source. Dev seed requires env.
+                var correctAdminPasswordHash = isDevelopment && !string.IsNullOrWhiteSpace(seedAdminPassword)
+                    ? BCrypt.Net.BCrypt.HashPassword(seedAdminPassword)
                     : null;
                 
-                if (adminUser == null && isDevelopment)
+                if (adminUser == null && isDevelopment && correctAdminPasswordHash is not null)
                 {
-                    // Create new super admin user (local/dev only)
+                    // Create new super admin user (local/dev only; password from env)
                     adminUser = new User
                     {
                         Name = "Super Admin",
                         Email = "admin@hexabill.com",
-                        PasswordHash = correctAdminPasswordHash!,
+                        PasswordHash = correctAdminPasswordHash,
                         Role = UserRole.Owner,
                         OwnerId = null, // Super admin has no owner restriction
                         TenantId = null, // CRITICAL: Super admin has no tenant restriction (null = SystemAdmin)
@@ -2250,6 +2252,10 @@ _ = Task.Run(async () =>
                     };
                     context.Users.Add(adminUser);
                     initLogger.LogInformation("Created default super admin user (Development)");
+                }
+                else if (adminUser == null && isDevelopment)
+                {
+                    initLogger.LogWarning("Development admin not created. Set HEXABILL_DEV_ADMIN_PASSWORD or SEED_ADMIN_PASSWORD.");
                 }
                 else if (adminUser == null && !string.IsNullOrWhiteSpace(seedAdminEmail) && !string.IsNullOrWhiteSpace(seedAdminPassword)
                     && !allUsers.Any(u => u.TenantId == null))
@@ -2274,10 +2280,11 @@ _ = Task.Run(async () =>
                 else if (isDevelopment)
                 {
                     // Update existing admin user to ensure it's configured as super admin
-                    var testPassword = BCrypt.Net.BCrypt.Verify("Admin123!", adminUser.PasswordHash);
-                    if (!testPassword)
+                    var testPassword = !string.IsNullOrWhiteSpace(seedAdminPassword)
+                        && BCrypt.Net.BCrypt.Verify(seedAdminPassword, adminUser.PasswordHash);
+                    if (!testPassword && correctAdminPasswordHash is not null)
                     {
-                        adminUser.PasswordHash = correctAdminPasswordHash!;
+                        adminUser.PasswordHash = correctAdminPasswordHash;
                         initLogger.LogInformation("Updated admin user password to ensure correct hash");
                     }
                     
@@ -2317,7 +2324,8 @@ _ = Task.Run(async () =>
                         (u.Email ?? string.Empty).Trim().ToLowerInvariant() == adminEmail);
                     if (verifyAdmin == null)
                         initLogger.LogWarning("Development admin user was not found after seed.");
-                    else if (!BCrypt.Net.BCrypt.Verify("Admin123!", verifyAdmin.PasswordHash))
+                    else if (!string.IsNullOrWhiteSpace(seedAdminPassword)
+                             && !BCrypt.Net.BCrypt.Verify(seedAdminPassword, verifyAdmin.PasswordHash))
                         initLogger.LogError("Development admin password verification failed.");
                 }
 

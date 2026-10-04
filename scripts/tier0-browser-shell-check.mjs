@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Lightweight shell route reachability via fetch of Vite HTML + API auth checks.
  * Browser screenshots are captured separately in Cursor browser.
  */
@@ -8,7 +8,7 @@ import path from 'node:path';
 const FE = process.env.HEXABILL_FE || 'http://127.0.0.1:5174';
 const API = process.env.HEXABILL_API || 'http://localhost:5000';
 const EDGE = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret';
-const PASS = process.env.HEXABILL_OWNER_PASSWORD || 'Owner123!';
+const PASS = process.env.HEXABILL_OWNER_PASSWORD || '';
 const OUT = process.env.HEXABILL_EVIDENCE_DIR
   || path.join(process.env.USERPROFILE, 'OneDrive', 'Desktop', 'HexaBill_Backups', 'tier0-shell');
 
@@ -22,7 +22,7 @@ const EXTRA = [
 ];
 
 const TENANTS = [
-  { slug: 'frozenhub1', email: 'frozenhubfoods@gmail.com' },
+  { slug: 'frozenhub1', email: 'frozenhub1@hexabill.company' },
   { slug: 'frozenhub2', email: 'frozenhub2@hexabill.company' },
   { slug: 'gulfharvest', email: 'gulfharvest@hexabill.company' },
   { slug: 'zayoga', email: 'zayoga@hexabill.company' },
@@ -51,7 +51,7 @@ async function login(slug, email) {
 }
 
 async function checkHtml(slug, route) {
-  // Prefer IPv4 loopback — *.localhost often resolves to ::1 where another Vite app may bind.
+  // Prefer IPv4 loopback â€” *.localhost often resolves to ::1 where another Vite app may bind.
   const url = `http://127.0.0.1:5174${route}`;
   try {
     const res = await fetch(url, {

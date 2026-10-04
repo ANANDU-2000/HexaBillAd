@@ -1,4 +1,4 @@
-using HexaBill.Api.Core.Tenancy;
+﻿using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.Subscription;
@@ -56,19 +56,19 @@ public class Tier0ProvisioningTests
             ["Tier0Provisioning:FrozenHub1:Slug"] = "frozenhub1",
             ["Tier0Provisioning:FrozenHub1:LegacySlug"] = "frozenhub",
             ["Tier0Provisioning:FrozenHub1:CompanyNameEn"] = "FROZENHUB FOODSTUFF TRADING - L.L.C - S.P.C",
-            ["Tier0Provisioning:FrozenHub1:License"] = "CN-6774701",
-            ["Tier0Provisioning:FrozenHub1:Phone"] = "971555298878",
+            ["Tier0Provisioning:FrozenHub1:License"] = "CN-0000001",
+            ["Tier0Provisioning:FrozenHub1:Phone"] = "971500000001",
             ["Tier0Provisioning:FrozenHub1:SeedSampleVatTrn"] = "true",
             ["Tier0Provisioning:FrozenHub2:Slug"] = "frozenhub2",
             ["Tier0Provisioning:FrozenHub2:OpeningDataChoice"] = "Empty",
             ["Tier0Provisioning:FrozenHub2:OwnerEmail"] = "frozenhub2@hexabill.company",
             ["Tier0Provisioning:FrozenHub2:OwnerName"] = "FrozenHub Owner 2",
-            ["Tier0Provisioning:FrozenHub2:Phone"] = "971555298878",
+            ["Tier0Provisioning:FrozenHub2:Phone"] = "971500000001",
             ["Tier0Provisioning:FrozenHub2:SeedSampleVatTrn"] = "true",
             ["Tier0Provisioning:GulfHarvest:ExistingTenantId"] = "22",
             ["Tier0Provisioning:GulfHarvest:Slug"] = "gulfharvest",
-            ["Tier0Provisioning:GulfHarvest:License"] = "CN-6659056",
-            ["Tier0Provisioning:GulfHarvest:CorporateTaxTrn"] = "105543085200001",
+            ["Tier0Provisioning:GulfHarvest:License"] = "CN-0000002",
+            ["Tier0Provisioning:GulfHarvest:CorporateTaxTrn"] = "200000000000001",
             ["Tier0Provisioning:GulfHarvest:SeedSampleVatTrn"] = "true",
         }).Build();
 
@@ -110,11 +110,11 @@ public class Tier0ProvisioningTests
         Assert.Equal(SampleVatTrn.FrozenHub2, await Setting(db, fh2.Id, "COMPANY_TRN"));
         Assert.Equal("Empty", await Setting(db, fh2.Id, "OPENING_DATA_CHOICE"));
         Assert.Equal("FROZENHUB FOODSTUFF TRADING - L.L.C - S.P.C", await Setting(db, fh2.Id, "COMPANY_NAME_EN"));
-        Assert.Equal("CN-6774701", await Setting(db, fh2.Id, "COMPANY_LICENSE"));
+        Assert.Equal("CN-0000001", await Setting(db, fh2.Id, "COMPANY_LICENSE"));
 
         var gh = await db.Tenants.SingleAsync(t => t.Id == 22);
         Assert.Equal(SampleVatTrn.GulfHarvest, await Setting(db, 22, "COMPANY_TRN"));
-        Assert.Equal("105543085200001", await Setting(db, 22, "CORPORATE_TAX_TRN"));
+        Assert.Equal("200000000000001", await Setting(db, 22, "CORPORATE_TAX_TRN"));
         Assert.NotEqual(await Setting(db, 22, "COMPANY_TRN"), await Setting(db, 22, "CORPORATE_TAX_TRN"));
 
         var again = await provisioner.ApplyAsync();
@@ -145,21 +145,21 @@ public class Tier0ProvisioningTests
             ["Tier0Provisioning:FrozenHub1:Slug"] = "frozenhub1",
             ["Tier0Provisioning:FrozenHub1:LegacySlug"] = "frozenhub",
             ["Tier0Provisioning:FrozenHub1:CompanyNameEn"] = "FROZENHUB FOODSTUFF TRADING - L.L.C - S.P.C",
-            ["Tier0Provisioning:FrozenHub1:License"] = "CN-6774701",
-            ["Tier0Provisioning:FrozenHub1:Email"] = "frozenhubfoods@gmail.com",
-            ["Tier0Provisioning:FrozenHub1:Phone"] = "971555298878",
+            ["Tier0Provisioning:FrozenHub1:License"] = "CN-0000001",
+            ["Tier0Provisioning:FrozenHub1:Email"] = "frozenhub1@hexabill.company",
+            ["Tier0Provisioning:FrozenHub1:Phone"] = "971500000001",
             ["Tier0Provisioning:FrozenHub1:SeedSampleVatTrn"] = "true",
             ["Tier0Provisioning:FrozenHub2:Slug"] = "frozenhub2",
             ["Tier0Provisioning:FrozenHub2:OpeningDataChoice"] = "Empty",
             ["Tier0Provisioning:FrozenHub2:OwnerEmail"] = "frozenhub2@hexabill.company",
             ["Tier0Provisioning:FrozenHub2:OwnerName"] = "FrozenHub Owner 2",
-            ["Tier0Provisioning:FrozenHub2:Phone"] = "971555298878",
+            ["Tier0Provisioning:FrozenHub2:Phone"] = "971500000001",
             ["Tier0Provisioning:FrozenHub2:SeedSampleVatTrn"] = "true",
             ["Tier0Provisioning:GulfHarvest:Slug"] = "gulfharvest",
             ["Tier0Provisioning:GulfHarvest:CompanyNameEn"] = "GULF HARVEST GENERAL TRADING - L.L.C - S.P.C",
-            ["Tier0Provisioning:GulfHarvest:License"] = "CN-6659056",
+            ["Tier0Provisioning:GulfHarvest:License"] = "CN-0000002",
             ["Tier0Provisioning:GulfHarvest:Email"] = "gulfharvest@hexabill.company",
-            ["Tier0Provisioning:GulfHarvest:CorporateTaxTrn"] = "105543085200001",
+            ["Tier0Provisioning:GulfHarvest:CorporateTaxTrn"] = "200000000000001",
             ["Tier0Provisioning:GulfHarvest:SeedSampleVatTrn"] = "true",
             ["Tier0Provisioning:Zayogya:Slug"] = "zayoga",
             ["Tier0Provisioning:Zayogya:CompanyNameEn"] = "Zayogya",

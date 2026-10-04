@@ -1,4 +1,18 @@
-﻿# DECISIONS.md
+﻿
+## 2026-10-04 — PROPOSED: Sample/missing TRN never prints as Tax Invoice (pending owner approval)
+
+**Status:** PROPOSED (master-loop-2) — supersedes prior "sample TRN allowed on Tax Invoice in Production" decision until approved.
+
+**Proposal:**
+- Empty VAT TRN → document title **INVOICE**, omit TRN line, owner banner "VAT TRN missing: update in Settings > Company".
+- Sample TRN kept in settings → document title **SAMPLE INVOICE**, TRN shown as `SAMPLE <digits>`. Never "TAX INVOICE".
+- Real 15-digit non-sample → **TAX INVOICE**.
+- Zayogya unchanged (no sample seeding).
+- Sale finalize is not blocked on missing TRN; print/PDF follows the titles above.
+- Auto-fill of sample TRN on settings read is removed.
+
+**Approved by:** pending Anandu
+# DECISIONS.md
 
 Newest first. Date = approval day. Approver = Anandu unless noted.
 
@@ -24,7 +38,7 @@ Newest first. Date = approval day. Approver = Anandu unless noted.
 
 ## 2026-10-04 — Client documents local-only
 
-**Decision:** Read `clients/documents of clents/` (gitignored) for legal name / licence / CT TRN only. Write into local DB / gitignored `appsettings.Development.json`. Never copy PDFs, passwords, or certificates into the repo, evidence folders, or prompts. GulfHarvest `105543085200001` is Corporate Tax, never VAT.  
+**Decision:** Read `clients/documents of clents/` (gitignored) for legal name / licence / CT TRN only. Write into local DB / gitignored `appsettings.Development.json`. Never copy PDFs, passwords, or certificates into the repo, evidence folders, or prompts. GulfHarvest `[CT-TRN-REDACTED]` is Corporate Tax, never VAT.  
 **Approved by:** Anandu ("use documents… sample TRN now, clients update later").
 
 ## Earlier Tier 0 (still in force unless overridden above)
@@ -32,3 +46,5 @@ Newest first. Date = approval day. Approver = Anandu unless noted.
 - D1–D7, D9–D13 from MASTER-LOOP §3 remain in force.
 - D5 profit×5% must not be shown as VAT.
 - D6 Zayogya byte-for-byte tax/print unchanged + regression snapshot every slice.
+
+

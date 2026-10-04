@@ -1,47 +1,47 @@
-# HexaBill - SaaS Billing System
+﻿# HexaBill - SaaS Billing System
 
 **Multi-tenant billing and invoicing platform**
 
 ---
 
-## 🏗️ Project Structure
+## ðŸ—ï¸ Project Structure
 
 **TWO SEPARATE APPLICATIONS:**
 
 ```
 HexaBill/
-├── backend/
-│   └── HexaBill.Api/              # ASP.NET Core 9 API (SaaS Backend)
-│       ├── Modules/            # Feature modules
-│       ├── Core/               # Tenancy, storage, auth, infrastructure
-│       ├── Data/               # Database context
-│       ├── Models/             # Entity models
-│       └── Migrations/         # Versioned EF schema
-│
-├── frontend/
-│   └── hexabill-ui/            # React SaaS App (app.hexabill.com)
-│       └── src/
-│           ├── pages/          # SaaS pages only (Login, Dashboard, POS, etc.)
-│           ├── components/
-│           └── services/
-│
-├── frontend-marketing/          # Marketing Site (hexabill.com) - Future
-│   └── .gitkeep                # Placeholder for separate marketing site
-│
-└── docs/
-    ├── RUN_LOCALLY.md
-    ├── database-schema.md
-    └── deployment.md
+â”œâ”€â”€ backend/
+â”‚   â””â”€â”€ HexaBill.Api/              # ASP.NET Core 9 API (SaaS Backend)
+â”‚       â”œâ”€â”€ Modules/            # Feature modules
+â”‚       â”œâ”€â”€ Core/               # Tenancy, storage, auth, infrastructure
+â”‚       â”œâ”€â”€ Data/               # Database context
+â”‚       â”œâ”€â”€ Models/             # Entity models
+â”‚       â””â”€â”€ Migrations/         # Versioned EF schema
+â”‚
+â”œâ”€â”€ frontend/
+â”‚   â””â”€â”€ hexabill-ui/            # React SaaS App (app.hexabill.com)
+â”‚       â””â”€â”€ src/
+â”‚           â”œâ”€â”€ pages/          # SaaS pages only (Login, Dashboard, POS, etc.)
+â”‚           â”œâ”€â”€ components/
+â”‚           â””â”€â”€ services/
+â”‚
+â”œâ”€â”€ frontend-marketing/          # Marketing Site (hexabill.com) - Future
+â”‚   â””â”€â”€ .gitkeep                # Placeholder for separate marketing site
+â”‚
+â””â”€â”€ docs/
+    â”œâ”€â”€ RUN_LOCALLY.md
+    â”œâ”€â”€ database-schema.md
+    â””â”€â”€ deployment.md
 ```
 
 **Key Separation:**
-- ✅ `frontend/hexabill-ui/` = **SaaS Application** (private, tenant-scoped)
-- ✅ `frontend-marketing/` = **Marketing Site** (public, demo requests)
-- ✅ **One SQL file** for all enterprise tables (no duplicates)
+- âœ… `frontend/hexabill-ui/` = **SaaS Application** (private, tenant-scoped)
+- âœ… `frontend-marketing/` = **Marketing Site** (public, demo requests)
+- âœ… **One SQL file** for all enterprise tables (no duplicates)
 
 ---
 
-## 🚀 Quick Start
+## ðŸš€ Quick Start
 
 ### Backend
 ```bash
@@ -63,11 +63,11 @@ npm run dev
 
 ---
 
-## 🔐 Default Login (Development only)
+## ðŸ” Default Login (Development only)
 
 These accounts are seeded only when `ASPNETCORE_ENVIRONMENT=Development`. Production never resets the SystemAdmin password to a known value.
 
-- **SystemAdmin:** admin@hexabill.com / Admin123!
+- **SystemAdmin:** admin@hexabill.com / (set locally; never commit passwords)
 - **Tenant 1:** owner1@hexabill.com / Owner1@123
 - **Tenant 2:** owner2@hexabill.com / Owner2@123
 
@@ -95,7 +95,7 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on `main` / `DEV`:
 3. Trivy filesystem scan
 4. Docker build of the API with **repository-root** context (`backend/HexaBill.Api/Dockerfile`)
 
-Frontend deploys via Vercel (`vercel.json` → `frontend/hexabill-ui`). Backend deploys via Render (`render.yaml`, health check `/health`).
+Frontend deploys via Vercel (`vercel.json` â†’ `frontend/hexabill-ui`). Backend deploys via Render (`render.yaml`, health check `/health`).
 
 ## Testing
 
@@ -106,7 +106,7 @@ cd frontend/hexabill-ui && npm run lint && npm run build
 
 ---
 
-## 📋 Tech Stack
+## ðŸ“‹ Tech Stack
 
 - **Backend:** ASP.NET Core 9, PostgreSQL, EF Core
 - **Frontend:** React 18, Vite, Tailwind CSS
@@ -115,7 +115,7 @@ cd frontend/hexabill-ui && npm run lint && npm run build
 
 ---
 
-## 🛡️ Security
+## ðŸ›¡ï¸ Security
 
 - Tenant isolation enforced at middleware level
 - PostgreSQL RLS support
@@ -126,3 +126,4 @@ cd frontend/hexabill-ui && npm run lint && npm run build
 
 **Status:** Active Development  
 **Version:** 2.0
+

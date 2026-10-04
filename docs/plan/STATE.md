@@ -3,9 +3,19 @@
 **As of:** 2026-10-04 (IST)  
 **Executor:** Cursor Agent on main repo  
 **Working tree:** `C:\Users\anand\OneDrive\Desktop\My StartUps Projects\HexaBilngApp`  
-**Branch:** `main` @ `6dc8d9c` (= `origin/main`)  
+**Branch:** `master-loop-2` (off `main` @ `7edb29b`) — push branch only until owner says otherwise  
 **Baseline for diff:** `39ffafb`  
-**Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp` @ `846ee95` + **uncommitted** Tier 0 WIP (33 modified / 5 untracked) — to be ported in next slice.
+**Codex worktree (read-only):** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`
+
+
+## Deploy auto-check (read-only, 2026-10-04 master-loop-2)
+
+| Platform | Resource | Auto-deploy from main? | Evidence |
+|---|---|---|---|
+| Render | HexaBill `srv-d68jpdvpm1nc7393q4d0` (repo HexaBillAd) | **NO** (`autoDeploy=no`, `autoDeployTrigger=off`) | Render list_services |
+| Vercel | Project linked to HexaBillAd | **UNVERIFIED** | `list_projects(repoUrl=HexaBillAd)` returned 0; `hexabill-ui` name lookup 404 for team |
+
+No settings were changed.
 
 ---
 
@@ -135,6 +145,20 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 ## Slice log (newest first)
 
+### 2026-10-04 — master-loop-2 FIRST A–D
+- **changed:** (A) Render autoDeploy=no; Vercel UNVERIFIED; (B) scrubbed real TRN/password literals from tracked files; (C) missing→Invoice+banner, sample→SAMPLE INVOICE; (D) FH1/FH2/GH header PDFs + grayscale logo + Arabic bilingual settings proofs
+- **files:** SampleVatTrn.cs, PdfService.cs, SaleService.cs, SettingsService.cs, Program.cs, SettingsPage.jsx, TenantHeaderParityTests.cs, SampleVatTrnTests.cs, scripts, docs
+- **tests+evidence:** TenantHeaderParity+DocumentHeader+SampleVatTrn+Zayogya **25 passed**; evidence `Desktop/HexaBill_Backups/master-loop-2-headers-20261004-104308` + VERDICT.md
+- **NOT RUN:** browser print live (Vite); Vercel project link; PG 44 (Docker missing)
+- **flags+rollback:** none; branch master-loop-2 only; DECISIONS sample-TRN print rules still PROPOSED
+- **next:** slice 1 local API+PG 44 tests
+### 2026-10-04 — master-loop-2 FIRST A–C
+- **changed:** deploy read-only report; scrub client PII from tracked files; sample/missing TRN → Invoice/SAMPLE INVOICE; banner; tests; DECISIONS proposed
+- **files:** SampleVatTrn.cs, PdfService.cs, SaleService.cs, SettingsService.cs, Program.cs, SettingsPage.jsx, tests, scripts, appsettings.example, docs
+- **tests+evidence:** SampleVatTrn/Zayogya/DocumentHeader/Tier0/LetterIdentity 25 passed
+- **NOT RUN:** browser print live; Vercel link confirmation
+- **flags+rollback:** none; branch master-loop-2 only
+- **next:** D header proofs for FH1/FH2/GH; then PG 44
 ### 2026-10-04 — slices 3–10 (sample TRN, D5, evidence, seed, cleanup dry-run)
 - **changed:** SampleVatTrn prod-allow + auto-fill; Zayogya snapshot; D5 profit estimate; isolation/cleanup/seed/signoff docs
 - **files:** SampleVatTrn.cs, SettingsService.cs, VatReturn*, tests, scripts/seed-dev-synthetic.mjs, ISOLATION-AUDIT, CLEANUP-REPORT, TIER0-SIGNOFF, PHASE-MATRIX, .gitignore, .cursorignore
@@ -157,5 +181,6 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 - **NOT RUN:** Vercel/Render SHA verify; PG suite; full page×viewport matrix
 - **flags+rollback:** none changed
 - **next:** Port Codex worktree WIP onto master-loop / main
+
 
 

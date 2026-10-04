@@ -1,4 +1,4 @@
-## HexaBill Tier 0 — authoritative implementation prompt (4 October 2026)
+﻿## HexaBill Tier 0 â€” authoritative implementation prompt (4 October 2026)
 
 This file replaces earlier conflicting handoff text. Work only on branch `tier0-continuation` in:
 `C:/Users/anand/OneDrive/Desktop/My StartUps Projects/HexaBilngApp`
@@ -7,10 +7,10 @@ Do not modify `main` or production without explicit user authorization.
 
 ### Planning artifacts (in-repo)
 
-1. `docs/plan/PHASE-TODO.md` — Tier 0 checklist (TODO / IMPLEMENTED / PASS / FAIL / BLOCKED)
-2. `docs/plan/PAGE-SPECIFICATION.md` — every-page route/tab/dialog evidence matrix
-3. `docs/plan/ROUTE-MANIFEST.json` — 60 routes guarded by frontend tests
-4. `docs/refactor-progress.md` — live evidence log
+1. `docs/plan/PHASE-TODO.md` â€” Tier 0 checklist (TODO / IMPLEMENTED / PASS / FAIL / BLOCKED)
+2. `docs/plan/PAGE-SPECIFICATION.md` â€” every-page route/tab/dialog evidence matrix
+3. `docs/plan/ROUTE-MANIFEST.json` â€” 60 routes guarded by frontend tests
+4. `docs/refactor-progress.md` â€” live evidence log
 
 External Codex visualization paths are historical only; do not treat them as the repository source of truth.
 
@@ -19,18 +19,18 @@ External Codex visualization paths are historical only; do not treat them as the
 - Tenants: `frozenhub1.<domain>` and `frozenhub2.<domain>` (independent owners and operational data).
 - Map existing FrozenHub (tenant 20 / host `frozenhub`) to owner 1 with a controlled redirect to `frozenhub1`.
 - GulfHarvest (not GulfHub) is the second client; Zayogya unchanged.
-- Initially copy verified company identity (EN/AR names, licence, address/contacts when known). VAT TRN stays empty until the client enters it in Settings. GulfHarvest corporate-tax TRN `105543085200001` is NOT VAT.
+- Initially copy verified company identity (EN/AR names, licence, address/contacts when known). VAT TRN stays empty until the client enters it in Settings. GulfHarvest corporate-tax TRN `[CT-TRN-REDACTED]` is NOT VAT.
 - Shared VAT TRNs across tenants are allowed (admin warning, no uniqueness constraint).
 - Tier 0 uses standard 5% VAT prospectively. Margin VAT is out of scope.
 - All document reprints use CURRENT tenant settings for the header. Issue-time company snapshots are audit-only. Financial amounts never change on reprint.
-- Empty VAT TRN allows ordinary work/drafts with “Add VAT TRN in Settings”; Tax Invoice finalize/print fails server-side until a valid 15-digit VAT TRN exists.
-- Sample VAT TRNs may be used only in local/test/staging fixtures. Production must reject samples for Tax Invoice. Never use Crystal Freeze TRN `104825619000003` as a sample or default.
+- Empty VAT TRN allows ordinary work/drafts with â€œAdd VAT TRN in Settingsâ€; Tax Invoice finalize/print fails server-side until a valid 15-digit VAT TRN exists.
+- Sample VAT TRNs may be used only in local/test/staging fixtures. Production must reject samples for Tax Invoice. Never use Crystal Freeze TRN `[LAYOUT-REF-TRN-FORBIDDEN]` as a sample or default.
 - Owner 2 opening-data choice is required before provisioning completes (`Empty` unless an approved import review exists).
 - Host + JWT agreement selects the workspace. Client-supplied tenant IDs never select a workspace.
 
 ### Delivery order
 
-Tier 0 first (see PHASE-TODO). After Tier 0 sign-off, resume phases 1→11 with Phase 6 margin deferred.
+Tier 0 first (see PHASE-TODO). After Tier 0 sign-off, resume phases 1â†’11 with Phase 6 margin deferred.
 
 ### Evidence rules
 

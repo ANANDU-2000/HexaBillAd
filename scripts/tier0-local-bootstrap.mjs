@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Local Tier 0 bootstrap: provision four tenants + seed minimal mock commerce per tenant.
  * Prerequisites: API on :5000 (Development), Vite optional.
  *
@@ -11,11 +11,11 @@ const API = process.env.HEXABILL_API || 'http://localhost:5000';
 const EDGE_SECRET = process.env.HEXABILL_EDGE_PROXY_SECRET || 'dev-local-edge-secret';
 const ADMIN_HOST = 'admin.localhost';
 const ADMIN_EMAIL = process.env.HEXABILL_ADMIN_EMAIL || 'admin@hexabill.com';
-const ADMIN_PASSWORD = process.env.HEXABILL_ADMIN_PASSWORD || 'Admin123!';
-const OWNER_PASSWORD = process.env.HEXABILL_OWNER_PASSWORD || 'Owner123!';
+const ADMIN_PASSWORD = process.env.HEXABILL_ADMIN_PASSWORD || '';
+const OWNER_PASSWORD = process.env.HEXABILL_OWNER_PASSWORD || '';
 
 const TENANTS = [
-  { slug: 'frozenhub1', email: 'frozenhubfoods@gmail.com', label: 'FH1' },
+  { slug: 'frozenhub1', email: 'frozenhub1@hexabill.company', label: 'FH1' },
   { slug: 'frozenhub2', email: 'frozenhub2@hexabill.company', label: 'FH2' },
   { slug: 'gulfharvest', email: 'gulfharvest@hexabill.company', label: 'GH' },
   { slug: 'zayoga', email: 'zayoga@hexabill.company', label: 'ZY' },
@@ -91,7 +91,7 @@ async function seedCommerce(slug, email) {
     const created = await api(`${slug}.localhost`, 'POST', '/api/products', {
       sku: `T0-${slug.toUpperCase()}-001`,
       nameEn: `${slug} Sample Chicken 1kg`,
-      nameAr: 'منتج تجريبي',
+      nameAr: 'Ù…Ù†ØªØ¬ ØªØ¬Ø±ÙŠØ¨ÙŠ',
       unitType: 'PCS',
       conversionToBase: 1,
       costPrice: 10,
@@ -135,7 +135,7 @@ async function main() {
   if (!health?.ok) {
     // Some builds expose /api/health
     const alt = await fetch(`${API}/api/health`).catch(() => null);
-    if (!alt?.ok) throw new Error('API not reachable on /health or /api/health — start HexaBill.Api first.');
+    if (!alt?.ok) throw new Error('API not reachable on /health or /api/health â€” start HexaBill.Api first.');
   }
 
   const adminToken = await login(ADMIN_HOST, ADMIN_EMAIL, ADMIN_PASSWORD);

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Settings Service - Owner-Specific Company Settings Management
  * Purpose: Allow each owner to configure their company details for invoices/statements
  * Author: AI Assistant
@@ -213,7 +213,6 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// </summary>
         public async Task<CompanySettings> GetCompanySettingsAsync(int tenantId)
         {
-            await EnsureSampleVatTrnIfMissingAsync(tenantId);
             var settingsDict = await GetOwnerSettingsAsync(tenantId);
 
             var logoKey = GetLogoStorageKeyForInvoice(settingsDict);
@@ -264,27 +263,6 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// When COMPANY_TRN is empty, assign the tenant's sample TRN (FrozenHub/GulfHarvest).
         /// Zayogya and unknown slugs are never auto-filled (D6 / SampleForSlug null).
         /// </summary>
-        private async Task EnsureSampleVatTrnIfMissingAsync(int tenantId)
-        {
-            EnsureTenant(tenantId);
-            var current = await GetSettingValueAsync(tenantId, "COMPANY_TRN");
-            if (!string.IsNullOrWhiteSpace(current)) return;
-
-            var slug = await _context.Tenants.AsNoTracking()
-                .Where(t => t.Id == tenantId)
-                .Select(t => t.Subdomain)
-                .FirstOrDefaultAsync();
-            var sample = SampleVatTrn.SampleForSlug(slug);
-            if (sample is null) return;
-
-            await UpdateOwnerSettingAsync(tenantId, "COMPANY_TRN", sample);
-            var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId);
-            if (tenant is not null && string.IsNullOrWhiteSpace(tenant.VatNumber))
-            {
-                tenant.VatNumber = sample;
-                await _context.SaveChangesAsync();
-            }
-        }
 
         private static void ValidateAssetKey(string? key, int tenantId, string folder)
         {
