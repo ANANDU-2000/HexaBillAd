@@ -6,6 +6,10 @@ Current release review: [RELEASE-AUDIT-20261004.md](RELEASE-AUDIT-20261004.md), 
 
 **Severity: S1.** `Program.cs` has two independent migration checks: a delayed task around lines 1350–1409 and database initialization around lines 1411 onward. Both suppress migration failures; the latter is background work and explicitly continues after failed DDL. Production PostgreSQL skips EF migrations but still attempts direct schema DDL helpers, whose failures are logged as warnings. The ready health check proves database connectivity, not that required schema initialization completed. Therefore a reachable/ready process can still serve against an incomplete schema. This finding expands REL-011; it does not resolve the historical migration collision. A safe fix needs one authoritative initialization/readiness lifecycle and tests proving pending or failed schema work prevents readiness and business requests. No schema initialization behavior changed in this review iteration.
 
+## 2026-10-04 — tenant-wide diagnostics write (REL-018)
+
+**Severity: S1.** `DiagnosticsController.FixMissingColumns` was authorized to tenant Admin/Owner roles. Although SQLite-only, its raw `UPDATE Sales` initialization had no tenant predicate, so one tenant owner could mutate all tenants' `TotalAmount`/`PaidAmount` values. It also performed schema changes outside EF migrations. Retired the endpoint with HTTP 410, restricted access to SystemAdmin, and directed operators to versioned migrations. HTTP integration coverage proves a tenant owner receives 403, SystemAdmin receives 410, and a synthetic tenant-B sale in a repair-triggering state remains untouched. Full PostgreSQL test suite passed after the change. The fix does not close the independent startup migration/readiness risk (REL-011).
+
 ## 2026-10-04 — Codex worktree uncommitted WIP (inventory)
 
 **Path:** `C:\Users\anand\.codex\worktrees\afa0\HexaBilngApp`  

@@ -626,87 +626,14 @@ namespace HexaBill.Api.Modules.SuperAdmin
         }
 
         [HttpPost("fix-columns")]
-        [Authorize(Roles = "Admin,Owner")]
-        public async Task<IActionResult> FixMissingColumns()
+        [Authorize(Roles = "SystemAdmin")]
+        public IActionResult FixMissingColumns()
         {
-            try
+            return StatusCode(StatusCodes.Status410Gone, new
             {
-                // PostgreSQL: migrations handle schema. This fix is SQLite-only (legacy).
-                if (_db.Database.IsNpgsql())
-                {
-                    return Ok(new { message = "fix-columns is SQLite-only; PostgreSQL uses migrations", results = Array.Empty<object>(), success = true });
-                }
-
-                var results = new List<object>();
-                
-                // Add missing columns using raw SQL (SQLite-safe)
-                var commands = new[]
-                {
-                    ("ALTER TABLE Sales ADD COLUMN LastPaymentDate TEXT NULL", "LastPaymentDate"),
-                    ("ALTER TABLE Sales ADD COLUMN PaidAmount decimal(18,2) DEFAULT 0", "PaidAmount"),
-                    ("ALTER TABLE Sales ADD COLUMN TotalAmount decimal(18,2) DEFAULT 0", "TotalAmount"),
-                    ("ALTER TABLE Customers ADD COLUMN LastActivity TEXT NULL", "LastActivity"),
-                    ("ALTER TABLE Payments ADD COLUMN Reference TEXT NULL", "Reference"),
-                    ("ALTER TABLE Payments ADD COLUMN CreatedBy INTEGER DEFAULT 1", "CreatedBy"),
-                    ("ALTER TABLE Payments ADD COLUMN UpdatedAt TEXT NULL", "UpdatedAt")
-                };
-
-                foreach (var (command, columnName) in commands)
-                {
-                    try
-                    {
-                        await _db.Database.ExecuteSqlRawAsync(command);
-                        results.Add(new { column = columnName, status = "added", success = true });
-                    }
-                    catch (Exception ex)
-                    {
-                        // Column may already exist
-                        if (ex.Message.Contains("duplicate column", StringComparison.OrdinalIgnoreCase) ||
-                            ex.Message.Contains("already exists", StringComparison.OrdinalIgnoreCase))
-                        {
-                            results.Add(new { column = columnName, status = "already exists", success = true });
-                        }
-                        else
-                        {
-                            results.Add(new { column = columnName, status = "error", error = ex.Message, success = false });
-                        }
-                    }
-                }
-
-                // Initialize values
-                try
-                {
-                    await _db.Database.ExecuteSqlRawAsync("UPDATE Sales SET TotalAmount = GrandTotal WHERE TotalAmount = 0 OR TotalAmount IS NULL");
-                    await _db.Database.ExecuteSqlRawAsync("UPDATE Sales SET PaidAmount = 0 WHERE PaidAmount IS NULL");
-                    results.Add(new { operation = "Initialize Sales columns", status = "completed", success = true });
-                }
-                catch (Exception ex)
-                {
-                    results.Add(new { operation = "Initialize Sales columns", status = "error", error = ex.Message, success = false });
-                }
-
-                // Create index
-                try
-                {
-                    await _db.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_Payments_CreatedBy ON Payments(CreatedBy)");
-                    results.Add(new { operation = "Create index", status = "completed", success = true });
-                }
-                catch (Exception ex)
-                {
-                    results.Add(new { operation = "Create index", status = "error", error = ex.Message, success = false });
-                }
-
-                return Ok(new
-                {
-                    message = "Column fix operation completed",
-                    results = results,
-                    success = results.All(r => r.GetType().GetProperty("success")?.GetValue(r)?.ToString() == "True")
-                });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { error = "An unexpected error occurred." });
-            }
+                success = false,
+                message = "Direct schema repair is retired. Apply the database's versioned EF migrations instead."
+            });
         }
 
         /// <summary>Unwrap nested exceptions to find PostgresException.SqlState (42P01, 42703) for missing table/column.</summary>
