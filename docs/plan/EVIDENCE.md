@@ -8,7 +8,9 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 **Decisions:** empty VAT → **INVOICE** + `VAT TRN: To be provided`; sample → **SAMPLE INVOICE**; real 15-digit → **TAX INVOICE**. Footer `For {tenant CompanyNameEn}` only.
 
-**Invoice print rebuild (2026-10-06 local):** QuestPDF bilingual A4 — CT then VAT lines (no `|`), ~100px logo, DATE once under header, Unit→Qty, blank pad rows, Pending/Balance black centered (A4 path), iframe print (PrintOptionsModal + PosEnterprise). Tests: TenantHeaderParity + GulfHarvestDocumentFamily + Zayogya + SampleVatTrn + DocumentHeader = **27 passed**. Text extract: `rebuild-verify/gulfharvest-CT-VAT-pending-A4.txt` (CT Reg + VAT pending + INVOICE + For GH). Zayoga path untouched. Live GH sale 0005 re-print needs deploy of this commit.
+**Invoice print rebuild (2026-10-06 local):** QuestPDF bilingual A4 — CT then VAT lines (no `|`), ~100px logo, DATE once under header, Unit→Qty, blank pad rows, Pending/Balance black centered (A4 path), iframe print (PrintOptionsModal + PosEnterprise). Tests: TenantHeaderParity + GulfHarvestDocumentFamily + Zayogya + SampleVatTrn + DocumentHeader = **27 passed**. Text extract: `rebuild-verify/gulfharvest-CT-VAT-pending-A4.txt` (CT Reg + VAT pending + INVOICE + For GH). Zayoga path untouched.
+
+**Live logos (2026-10-06):** Deploy `9630420` / `dep-db26ipei0phs73dgd7ag` **live**. SeedLogos B&W GH + FH. Settings: tenant22 GH + tenant20 frozenhub + tenant23 frozenhub2 → `LOGO_BASE64_DATA_URI` + `BilingualMonochrome`. GH owner upload + settings PUT; FH2 provisioned (owner temp password file local only); FH2 sale **1620** A4 PDF 86573 B; GH sale **1619** A4 87064 B (CT Reg + VAT pending + INVOICE). Artifacts: `gh-print-20261006/logo-live/`.
 
 
 | # | Family | Result | Artifact |
