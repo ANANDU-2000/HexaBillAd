@@ -1,5 +1,48 @@
 # Release audit — 4 October 2026
 
+## Latest iteration — REL-032, 5 October 2026 IST
+
+Stage / iteration: A / GulfHarvest Customer Ledger Bills summary (third authenticated money browser iteration).
+Gate result: **FAIL** overall; REL-032 local reproduce/fix/retest passes. Full page counter **0 DONE / 2 partial / 59 NOT RUN**.
+Versions: release-1 / HEAD9935fff + WIP; no commit/push. Production Render SHA, Vercel deployment ID and backup ID NOT RUN.
+Tested: GulfHarvest synthetic owner; Bills actual paid100 vs pre-fix footer0. Shared calculator sums actual amounts, independent of status; mobile summary added. Five viewports captured/inspected. Empty filtered list has0/0/0 and retains date/customer/tab after refresh. Row Pay5 creates only22, invoicePaid100→105 and BillsPaid/Pending100/105→105/100 without reload; receipt preview displays5 with legacy-reconstruction warning. UI void retains22VOID/receipt controls disabled, restores invoicePaid100 and Bills100/105; all four synthetic balances105 and original receipts unchanged. No Chrome page errors. Seven regressions: extracted original calculation5fail/2pass, after7/7. FullFE99passed/0failed/0skipped; lint236warnings0errors; build28.72sPASS; Zayogya3/3. Backend unchanged; previous full673/0/0 remains historical.
+Found: S1 **0 new**, S2 **0 new** (existing REL-032 corrected), S3/S4 **0 newly confirmed**. Existing incomplete money-page layout/interaction requirements are not signed off.
+Fixed: REL-032 actual paid totals with one shared calculator and mobile summary, seven regressions, inspected Chrome evidence. Local WIP only.
+Open top5: REL-004 migration-history/baseline strategy; REL-011 startup schema ownership; REL-015/016 accountant VAT mappings/fixtures; REL-007 approved Zayogya golden baseline; REL-025 document-title policy/browser paths.
+NOT RUN: full Customer Ledger/page acceptance, full error/role/back/scroll/long-text matrix, complete fixture data, other tenant journeys, actual receipt print/PDF/header proof, true migration initialization, production-copy rehearsal and B/C/D. Exact reason: this iteration verifies Bills summary and one invoice payment/void path; outstanding gate requirements still need dedicated evidence. Receipt preview does not certify original snapshots or PDF output.
+Rollback ready: **no**, production target IDs and hashed-key compatibility rehearsal unavailable. Test bridge migrationProof=false. FlagsOFF. Final reconciliation/owned-stack cleanup recorded below.
+Next: finish remaining Customer Ledger/receipt flows and fixture matrix; continue other pages/tenants and resolve migration/VAT/golden decisions before StageB. Evidence: EVIDENCE.md latest REL-032 rows; screenshots under C:\Users\anand\OneDrive\Desktop\HexaBill_Backups\stagea-bills-totals-20261005.
+
+Cleanup verified for REL-032: final-reconciliation.txt shows all four synthetic tenants sales205/salePaid100/clearedPayments100/balance105, original receipts1–8CLEARED and new22VOID. Browser storage cleared; owned Chrome/API/Vite and exact disposable PG cluster stopped; runtime secrets cleared and controlling shell exited. Ports5078/5184/55441 have no listener; pre-existing user services5000/5173 remain. Data/evidence preserved. No production/Zayogya financial writes, commits/pushes, deployment or flag changes. Diff check passes.
+
+## Historical iteration — REL-033/034, 5 October 2026 IST
+
+Stage / iteration: A / money form lost-response, reload and timeout recovery; mobile payment explanation.
+Gate result: **FAIL** overall; REL-033 and REL-034 reproduce/fix/retest pass locally. Browser counter remains **0 DONE / 2 partial / 59 NOT RUN**.
+Versions: release-1 / HEAD 9935fff plus WIP; no commit/push. Render SHA, Vercel deployment ID and production backup ID NOT RUN.
+Tested: GulfHarvest synthetic owner, Customer Ledger payment create/allocation. Before lost response: two 20 AED receipts under two keys. After: changed-form Save blocked, restored-form retry creates only one 21 AED receipt under the same key/body. Pay All105 reload retries frozen5/40/60 with no extra allocations despite empty outstanding list. Real30s UI timeout retries only one19 AED receipt, and late original resolution adds none. Additional lost-response/forced client403/success sequence originally discarded uncertainty and committed two23 receipts; after recovery retention it uses one key/body through all three attempts and confirms only one27 receipt. The403 is a simulated client error; actual role changes remain NOT RUN. Database and browser reconcile after application API voids: all new IDs12–21 VOID, original1–8 CLEARED; all four tenants sales205/paid100/balance105. No Chrome page errors. Payment modal overlap corrected and inspected at390x844 and360x800. Full frontend92passed/0failed/0skipped; lint236warnings/0errors; production buildPASS in41.83s (chunk-size/stale browser-data warnings remain). Zayogya snapshots3/3pass. Previous full backend673/0/0 is historical; backend unchanged this iteration.
+Found: **S1 1** (REL-033 duplicate committed payment after manual retry), **S2 0 new**, **S3 1** (REL-034 mobile text overlap), **S4 0 confirmed**.
+Fixed: REL-033 scoped same-tab recovery journal/frozen request/shared create-allocation execution; REL-034 responsive explanation. Eight new automated regressions; local WIP only.
+Open top5: REL-004 migration history/baseline strategy; REL-011 startup schema ownership; REL-015/016 accountant VAT mappings/fixtures; REL-007 approved Zayogya golden baseline; REL-025 document title policy/browser paths. REL-032 paid footer is next local correction.
+NOT RUN: all-page acceptance/full error-role-interaction matrix, complete fixture dataset, other tenant browser journeys, cross-tab/browser-close recovery, true migration initialization, production-copy rehearsal and B/C/D. Exact reason: this iteration exercised one money recovery group; other gate prerequisites remain unresolved. Test bridge reports migrationProof=false.
+Rollback ready: **no**; no production target/backup IDs or new hashed-key compatible rollback rehearsal. Feature flags OFF. Cleanup is recorded below. Evidence: EVIDENCE.md latest rows, inspected screenshots in C:\Users\anand\OneDrive\Desktop\HexaBill_Backups\stagea-browser-retry-20261005.
+Next: correct REL-032 with Chrome evidence, then continue money page acceptance and remaining tenant journeys; resolve migration/VAT/golden decisions before Stage B.
+
+Cleanup verified for REL-033/034: all new payment IDs12–21 retained VOID through application API; original receipts and all four tenant baselines preserved in final-reconciliation.txt. Browser storage cleared and both owned Chrome sessions closed. Owned synthetic API/Vite and exact disposable PostgreSQL cluster stopped; runtime secrets cleared and dedicated controlling shell exited. Ports5078/5184/55441 have no listener; pre-existing user ports5000/5173 remain running. Temp evidence and data retained. No production/Zayogya financial writes, push, merge, deployment or flag changes.
+
+## Historical iteration — REL-031, 5 October 2026 IST
+
+Stage / iteration: A / authenticated Chrome money journey and outstanding-invoice response contract.
+Gate result: **FAIL** overall; REL-031 local reproduce/fix/retest passes. Full page acceptance remains partial, migration/VAT/golden gates unresolved.
+Versions: local release-1 / HEAD 9935fff plus WIP; Render SHA, Vercel ID, production backup ID NOT RUN.
+Tested: GulfHarvest synthetic owner login/dashboard/ledger; Pay All posts 105 AED as 5 + 40 + 60, then all three are voided through UI. Browser/DB balances 105 → 0 → 105. Other synthetic tenant baselines preserved. Five ledger sizes captured and inspected; no Chrome page errors. Full backend 673 passed / 0 skipped / 0 failed (1m32s), focused isolation 16/16; Release API 43 warnings / 0 errors. Seed/bridge compile; JS wrapper syntax and production-host/environment refusal checks pass; diff check passes.
+Found: S1 0 newly confirmed, S2 2 (REL-031 hidden Pay All, REL-032 incorrect Bills paid footer), S3/S4 no new confirmed items. The DTO contract regression failed before the change.
+Fixed: REL-031 mapped customer identity; local WIP only, no commit/push. Added guarded test bridge, minimal outstanding invoice fixtures, guarded synthetic credential rotation, wrapper path and operational README.
+Open top 5: REL-004 migration chain; REL-011 startup/schema ownership; REL-015/016 accountant VAT mapping/fixtures; REL-007 approved Zayogya golden baseline; REL-025 document-title decision/browser paths. REL-032 and money UI lost-response/resubmission are next local work.
+NOT RUN: full interaction/error-state matrix, page acceptance beyond the exercised path, other synthetic tenant browser journeys, complete fixture data matrix, UI timeout/resubmission, true migration initialization, production copy rehearsal, Stages B/C/D. Exact reason: current iteration completed one authenticated money path; Stage A gate still fails. Counter 0 DONE / 2 partial / 59 NOT RUN. Earlier frontend 84/84 and build/lint evidence remains historical; frontend product code was not changed in this iteration.
+Rollback ready: **no**, production target IDs and new hashed-key compatibility rehearsal unavailable. Test bridge migrationProof=false, not migration proof. All flags OFF. No production/Zayogya writes or deployments. Owned stack stopped; temp data/evidence retained; pre-existing ports 5000/5173 untouched.
+Next: reproduce form lost-response/resubmission lifetime; correct REL-032 with Chrome evidence; continue page checks. Resolve release decisions before advancing stages. Evidence: EVIDENCE.md newest REL-031/032 rows and STATE.md latest checkpoint.
+
 Stage A is **FAIL / IN PROGRESS**. This is a code and local test audit, not browser sign-off or production certification.
 
 Baseline inspected: `39ffafb`; starting HEAD: `315c1c5fa9228a997557fd13ad3c9cc2a42cbfd1`; clean tree at entry; 303 changed files (+27,206 / -1,903). Work continues on local `release-1`. No push, merge, deploy, production SQL, or client writes occurred.
@@ -18,6 +61,8 @@ The owner's supplied E2E and production release documents are now saved beside t
 | `npm audit` | 28 affected packages: 22 high, 4 moderate, 2 low | Advisory counts are not proof of runtime exploitability; major-upgrade suggestions require separate review |
 | Fresh PostgreSQL EF migration-to-head | **FAIL**, SQLSTATE 42P07, Customers already exists | Disposable `hexabill_codex_migrations_20261004`; InitialPostgreSQL followed by AddBranchAndRoute recreates Customers |
 
+Follow-up static migration inventory: 50 handwritten migration files contain **30 repeated table-creation targets**. The first 27 are the known `InitialPostgreSQL`/`AddBranchAndRoute` overlap. Three additional overlapping names occur later in the supplier chain: `SupplierCategories` (`AddSuppliersAndSupplierPayments`, `AddVendorDiscountsTable`), `Suppliers` and `SupplierPayments` (`AddSuppliersAndSupplierPayments`, `AddSupplierAndSupplierPayment`). Thus a workaround that skips only `AddBranchAndRoute` still does not establish a valid fresh migration path. Startup also has multiple ad-hoc DDL helpers for supplier and branch/route schema. This is a static inventory; the confirmed live rehearsal fails at the earlier `Customers` collision and cannot reach the later failures. No historical migration was edited.
+
 No current browser, production version, backup, rollback, or all-page acceptance claim is made. Historical evidence remains historical. `npm ci` and clean Release build still need the release gate run.
 
 ## Urgent findings
@@ -35,9 +80,16 @@ No current browser, production version, backup, rollback, or all-page acceptance
 | REL-009 | S2 evidence/process | STATE/PHASE-TODO/PHASE-MATRIX/ISOLATION-AUDIT | Contradictory PASS/PARTIAL, old PG blockers, proposed sample rules versus implemented code, 74 versus 82 tests, claimed missing verify script. Reconcile latest evidence; do not count shell screenshots as interactive page completion. |
 | REL-015 | S1 legal/financial | VatReturnReportService.cs:245-260,365-446; VatReturnPage.jsx:469-471 | Reverse-charge output VAT is not included in output tax due/net payable; current guide requires output VAT due in Box 3 and separates eligible recovery in Box 10. |
 | REL-016 | S1 filing schema | VatReturnReportService.cs:245-260,365-446; DTOs.cs:1753-1795; VatReturnPeriod.cs; VatReturnValidationService.cs:205-263; VatReturnPage.jsx:395-471,1158-1185 | Local return DTO, stored boxes, validation and UI numbering do not match the current FTA guide. Current guide: Box 3 reverse charge (net and VAT), Box 4 zero-rated, Box 5 exempt, Box 10 eligible reverse-charge recovery, Box 12 output tax due, Box 13 recoverable input tax, Box 14 net. Local code assigns different meanings and calculates net from Box 1b only. |
+| REL-025 | S2 legal/document | PosEnterprisePage.jsx:2243; PosPageLegacy.jsx:2040; SampleVatTrn.cs; SimplePdfService.cs:64; invoice-template.html:289 | Both POS shells hardcode “Tax Invoice” irrespective of tenant TRN. Main PDF primary paths use `SampleVatTrn.DocumentTitle`, but older SimplePdfService/static template contain hardcoded titles; no DI registration/active route for SimplePdfService found, so runtime reachability is unproven. DECISIONS.md also has an unresolved same-day conflict: sample TRN use in Production was approved, while the newer SAMPLE INVOICE rendering safeguard remains proposed/pending. Resolve title policy and test every active POS/PDF path. |
 | REL-017 | S1 reset data safety | ResetController.cs:47-55,139-187; ResetService.cs:216-293 | Owner reset had no production refusal, included global alerts, omitted TenantId on the audit entry and lacked a transaction. Add production guard, tenant-only alert predicate, tenant-scoped audit and transaction. Regression tests cover production refusal and two-tenant/global alert isolation. |
 
 VAT report SYS001 already carries a Blocking issue and the UI displays it; this audit does not claim the report itself silently fails without warning. The dashboard and other report paths have separate silent fallbacks.
+
+## Follow-up Stage A findings (2026-10-04)
+
+REL-021 is fixed locally: `DatabaseInitializationGateMiddleware` blocks non-health requests while schema initialization is Pending or Failed, `/health` now includes initialization state, and HTTP regressions cover business and health routes. REL-022 is fixed locally: anonymous `RefundNow` flows persist the cleared cash refund and branch Daily Close associates return-linked payments with their source return/sale. The complete PostgreSQL-configured backend suite now passes **646/646 with zero skips or failures**; the Release API build passes with **43 warnings / 0 errors**. Both fixes have failing-before regression coverage.
+
+Stage A remains FAIL: migration chain still fails at `Customers` 42P07 and the full static scan found 30 repeated table creates; VAT REL-015/016 still require accountant-approved fixtures; full browser acceptance and tenant-by-tenant journeys remain incomplete. No Stage B–D work is authorized or started.
 
 ## Tenant review conclusions
 
@@ -68,13 +120,17 @@ Largest sources: CustomerLedgerPage 5,260 lines; enterprise POS 4,129; legacy PO
 | 4 Cost snapshots / adjustments | PARTIAL | Existing unit coverage; flag-OFF and pilot fixtures, return/unit/concurrency proof | High |
 | 5 Daily Close | PARTIAL, flag gated | Local counted-cash/late-entry/reopen audit; no real client close writes | High for money, medium for UI |
 | 6 VAT | Standard incomplete; Margin deferred | One canonical standard calculation; accountant fixtures before margin enablement | High |
-| 7 UI / forms | PARTIAL | Per-page 5 viewport interactions, states, navigation, roles; screenshots inspected | Medium |
+| 7 UI / forms | PARTIAL; REL-025 invoice-title label open | Resolve TRN document-title policy; verify POS invoice action and outputs, then per-page 5 viewport interactions, states, navigation, roles; screenshots inspected | Medium after S1 |
 | 8 Other routes / platform | PARTIAL | Full route/dialog/role interactions; truthful metrics and error states | Medium |
 | 9 AI | NOT STARTED for release | Keep OFF; only after core release gates | Deferred |
 | 10 Voice / driver / maps | NOT STARTED for release | Keep OFF; only after core release gates | Deferred |
 | 11 Release / pilot | BLOCKED by technical gates | Stage B backup/copy/baseline, then explicit unchecked authorizations | High |
 
 Execution: fix REL-001/003 safe rejection first; REL-002 reversal and retry preservation; REL-005/006 canonical totals and truthful failures; REL-004 migration strategy; Zayogya baselines and secrets; dependency triage; GulfHarvest browser page groups then FrozenHub1/FrozenHub2; cleanup only after Tier 0 sign-off. Use one cohesive commit per verified slice. No phase is DONE based solely on the tests above.
+
+## Stage A iteration: release policy and duplicate-code triage
+
+Tenant/group: shared release review; iteration: Stage A follow-up. Reviewed the supplied E2E rules and latest release state, audited money/VAT/isolation/migration gates and duplicate-code inventory, and traced sample-TRN print labels through active and legacy paths. Found one new S2 (REL-025): both POS shells hardcode “Tax Invoice”; the decision log conflicts on whether the proposed sample-rendering safeguard was approved. Main PDF primary paths use the shared TRN title helper; one legacy PDF service and static template remain hardcoded, with runtime reachability not established. No code or financial behavior changed. The exact-clone scan found no byte-identical source files; repeated windows are candidates only, and migration table collisions are schema defects, not cleanup candidates. Browser acceptance remains 0/61 complete, 2 partial, 59 not run. Not run: authenticated synthetic browser paths (credentials unavailable), VAT/accountant fixture reconciliation, migration baseline/copy upgrade/rollback, full route matrix, and production release checks. Next: owner/accountant-approved Form 201 fixtures and migration history strategy; resolve the TRN-title decision; then continue S1 isolation/money audits before medium-effort page-by-page UI and cleanup. Production remains untouched.
 
 ## Not run
 
@@ -149,3 +205,44 @@ Raw-SQL review found `POST /api/fix-columns` authorized for tenant Admin/Owner r
 ## Stage A iteration: tenant-filter bypass and SQL console secret retention
 
 Reviewed all 12 `IgnoreQueryFilters()` call sites in the API modules. The customer/return deletion checks include explicit tenant predicates; backup pairing constrains host tenant and then sets tenant scope; support-session lookup validates session and token tenant in middleware; login uses host resolution and tenant identity. No additional bypass was confirmed in those calls. The related SystemAdmin SQL console review found raw query literals persisted in application logs and AuditLog details, with provider errors echoed to the caller. Logging/audit now store a random per-execution query ID only, and failure output is generic. A PostgreSQL-backed regression uses a synthetic marker and verifies the marker is absent from persisted audit details. Full backend PostgreSQL suite passed **635/635**, zero skips; API build passed with zero warnings/errors. The disposable PostgreSQL server is stopped; temp data directory remains under `%TEMP%`. Log-provider output is verified by source change but not captured in the regression. REL-019 is implemented locally; Stage A and browser gate remain open. No production database or client data was used.
+
+## Stage A iteration: return-to-customer tenant boundary
+
+Tenant/group: cross-tenant isolation regression; iteration: next S1 fix. Reproduced that `ReverseSaleReturnAsync` could recalculate a foreign tenant's customer when a malformed cross-tenant Sale.CustomerId reference was processed with platform DbContext scope. Changed all seven return/credit-note balance-recalculation sites to keep the explicit operation `tenantId`. Before-fix test failed (other tenant balance 777→0); after-fix `ReturnStockTests` + `CreditNoteDailyCloseTests` passed 22/22. After-change full backend suite against a newly initialized disposable PostgreSQL 17 UTF-8 cluster passed **649 / 0 skipped / 0 failed**. Isolated Release API build: **43 warnings / 0 errors**. Browser journey and 0/61 page completion unchanged. Next: continue S1 money/isolation review, then address the migration and VAT owner/accountant gates before medium page work. The dedicated loopback cluster was stopped after the run and its temp directory preserved. No production or Zayogya writes.
+
+## Stage A iteration: shared balance service scope
+
+Tenant/group: balance recalculation and repair; iteration: follow-up S1 isolation hardening. Reviewed the callers of `IBalanceService` and found it derived tenant ownership from a customer fetched by primary key. Changed balance service contracts to require `tenantId`, scope the customer query by both customer ID and tenant ID, add tenant IDs to detected mismatches, and propagate tenant scope through sales/payment posting, payment-state changes, validation endpoints and scheduled reconciliation. Added a synthetic platform-scope tenant-A/B regression. Focused balance/return tests passed 22/22; after-change full PostgreSQL 17 UTF-8 suite passed **650 / 0 skipped / 0 failed**. Release API build passed with **43 warnings / 0 errors**. The test cluster is stopped; its temporary data is preserved. No browser pages were tested or counted. Still open: migration collision, VAT Form 201 mapping/accountant fixtures, REL-025 document-title decision/UI paths, and full tenant browser gate. Production and Zayogya untouched.
+
+## Stage A iteration: bulk allocation money integrity (REL-028)
+
+Tenant/group: synthetic payments/allocation; iteration: next S1 money correction.
+Tested: four new allocation regressions; complete backend PostgreSQL-enabled suite 654 passed / 0 skipped / 0 failed (1m21s); isolated incremental Release build passed, 0 warnings/errors. Browser pages remain 0 DONE / 2 partial / 59 NOT RUN.
+Found: S1 1 new — repeated invoice entries and concurrent requests could overpay the same invoice; a no-outstanding request committed a success audit before returning failure.
+Implemented locally: REL-028; reject duplicate IDs, lock tenant/customer-scoped invoice rows in sorted order before outstanding reads, derive cleared sale state from payments, reject empty allocation before commit, and return HTTP 400 for expected allocation failures. No commit/push.
+Still open: REL-004 migration collision, REL-011 startup lifecycle, REL-015/016 VAT mapping/fixtures, REL-007 Zayogya baseline, REL-025 invoice-title decision and browser paths.
+NOT RUN: browser allocation journey/viewport acceptance (isolated synthetic browser/API session unavailable); migration-copy rehearsal and Stages B/C/D (Stage A gate fails); frontend rerun (no frontend source changed; prior 82 tests/build/lint evidence retained).
+Flags/rollback: no feature flag changes; production and Zayogya untouched; dedicated PostgreSQL loopback test cluster stopped and temporary data preserved. Release rollback targets remain unverified until Stage B.
+Next: continue money idempotency/precision and tenant-scope review; resolve migration baseline and accountant fixture decisions; then resume synthetic browser journeys and proven duplicate-code cleanup. Migration history was neither edited nor deleted.
+
+## Stage A iteration: allocation precision and receipt budget (REL-029)
+
+Tenant/group: synthetic payments/allocation; iteration: precision follow-up to REL-028.
+Tested: seven allocation cases; full fresh PostgreSQL-enabled backend suite 658 passed / 0 skipped / 0 failed (1m18s); Release build 43 warnings / 0 errors; frontend test/lint/build commands passed, lint 237 warnings, Vite 32.78s. git diff --check passed.
+Found: S1 1 new — independent payment rounding exceeded receipt budget and could create a zero-value payment.
+Implemented locally: REL-029 rejects sub-cent receipt/allocation inputs before writes; ledger rounds the summed pay-all total using the existing shared money helper. Three failing-before cases reproduced actual posted amounts; valid cent split remains supported. No commit/push.
+Still open: REL-004 migration collision, REL-011 startup lifecycle, REL-015/016 VAT mapping/accountant fixtures, REL-007 Zayogya baseline, REL-025 invoice-title policy/browser paths.
+NOT RUN: real browser reproduction and viewport acceptance (a synthetic browser/authenticated stack was not established in this code-review iteration); migration-copy rehearsal and Stages B/C/D (Stage A gate fails). Browser counter unchanged: 0 DONE / 2 partial / 59 NOT RUN.
+Flags/rollback: no flag changes; production and Zayogya untouched; dedicated PostgreSQL loopback cluster stopped and temp data preserved. Existing release rollback targets still await Stage B.
+Next: add failing-before regressions for tenant-scoped idempotency and concurrent replay; wire the ledger allocation key through the API client, then resume browser journeys. Resolve migration baseline/accountant fixtures before release progression. No migration history or duplicate files were deleted.
+
+## Stage A iteration: payment key ownership and concurrent replay (REL-030)
+
+Tenant/group: synthetic payments/create + allocation; iteration: money retry integrity.
+Tested: final full PostgreSQL-enabled backend suite 672 passed / 0 skipped / 0 failed (1m20s); focused identity/void tests 17/17; frontend 84/84; lint 237 warnings / 0 errors; Vite build 33.59s; API Release build 43 warnings / 0 errors; git diff --check passed.
+Found: S1 1 new — global pre-transaction key lookup blocked foreign-tenant requests and simultaneous retries did not replay; allocation client omitted its header. The first implementation's full suite caught 3 stale VOID response failures; these were corrected, not waived.
+Implemented locally: REL-030; shared tenant-scoped transaction replay, request fingerprint with equivalent decimal scales, atomic complete response storage, current status/summaries after payment mutation, and client/ledger forwarding of the caller key. Retained old raw-key rows and both posted payment identities; no schema migration, deletion, commit or push.
+Still open: REL-004 migration chain, REL-011 startup/schema ownership, REL-015/016 accountant VAT mapping/fixtures, REL-007 Zayogya golden baseline, REL-025 document-title policy and browser paths.
+NOT RUN: authenticated real browser reproduction/viewport acceptance (synthetic browser stack not established this code-review iteration); UI timeout/resubmission-key lifetime; migration copy and Stages B/C/D (Stage A gate fails). Counter remains 0 DONE / 2 partial / 59 NOT RUN.
+Flags/rollback: no flags or production/Zayogya writes. Dedicated PG cluster stopped and temp data preserved. New hashed idempotency keys require a rollback build that recognizes them or a verified write/retry-freeze procedure; Stage B rollback compatibility is unverified. Legacy rows lack a full request hash and use tenant-scoped live replay.
+Next: establish isolated synthetic browser/API stack and exercise payment create/allocation/lost-response/void journeys, then continue page acceptance. Resolve migration baseline and accountant fixtures before release progression. Duplicate replay blocks were consolidated with behavioral coverage; other cleanup candidates remain pending proof.

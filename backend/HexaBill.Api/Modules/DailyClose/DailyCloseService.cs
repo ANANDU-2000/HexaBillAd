@@ -392,7 +392,12 @@ public class DailyCloseService : IDailyCloseService
             .Where(s => s.TenantId == tenantId && s.BranchId == branchFilter)
             .Select(s => s.Id)
             .ToListAsync();
-        return payments.Where(p => p.SaleId != null && saleIdsForBranch.Contains(p.SaleId.Value));
+        var returnIdsForBranch = _context.SaleReturns.AsNoTracking()
+            .Where(r => r.TenantId == tenantId && (r.BranchId == branchFilter || saleIdsForBranch.Contains(r.SaleId)))
+            .Select(r => r.Id);
+        return payments.Where(p =>
+            (p.SaleId != null && saleIdsForBranch.Contains(p.SaleId.Value))
+            || (p.SaleReturnId != null && returnIdsForBranch.Contains(p.SaleReturnId.Value)));
     }
 
     private async Task<CashMovementTotals> ComputeMovementsAsync(int tenantId, DateTime startUtc, DateTime endUtc, int? branchId)

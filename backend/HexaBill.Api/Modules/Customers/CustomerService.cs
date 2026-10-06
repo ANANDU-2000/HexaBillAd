@@ -2585,6 +2585,7 @@ namespace HexaBill.Api.Modules.Customers
                 outstandingInvoices.Add(new Models.OutstandingInvoiceDto
                 {
                     Id = sale.Id,
+                    CustomerId = sale.CustomerId,
                     InvoiceNo = sale.InvoiceNo,
                     InvoiceDate = sale.InvoiceDate,
                     GrandTotal = sale.GrandTotal,

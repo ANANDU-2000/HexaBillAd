@@ -49,13 +49,47 @@ public class BalanceRecalcTests
         await db.SaveChangesAsync();
 
         var service = new BalanceService(db, NullLogger<BalanceService>.Instance, new NoopAlertService());
-        await service.RecalculateCustomerBalanceAsync(1);
+        await service.RecalculateCustomerBalanceAsync(1, 8);
 
         var customer = await db.Customers.FindAsync(1);
         Assert.NotNull(customer);
         Assert.Equal(100m, customer!.TotalSales);
         Assert.Equal(40m, customer.TotalPayments);
         Assert.Equal(60m, customer.PendingBalance);
+    }
+
+    [Fact]
+    public async Task Recalculate_WithExplicitTenant_DoesNotRewriteForeignCustomerUnderPlatformScope()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase("BalIsolation_" + Guid.NewGuid())
+            .ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
+            .Options;
+        await using var db = new AppDbContext(options);
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+        await db.Database.EnsureCreatedAsync();
+
+        db.Customers.Add(new Customer
+        {
+            Id = 1, TenantId = 9, OwnerId = 9, Name = "Foreign customer",
+            Balance = 777m, PendingBalance = 777m, TotalSales = 500m
+        });
+        db.Sales.Add(new Sale
+        {
+            Id = 1, TenantId = 8, OwnerId = 8, CustomerId = 1, InvoiceNo = "CROSS-1",
+            InvoiceDate = DateTime.UtcNow, GrandTotal = 100m, TotalAmount = 100m,
+            CreatedBy = 1, CreatedAt = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var service = new BalanceService(db, NullLogger<BalanceService>.Instance, new NoopAlertService());
+        await service.RecalculateCustomerBalanceAsync(customerId: 1, tenantId: 8);
+
+        db.ChangeTracker.Clear();
+        var foreignCustomer = await db.Customers.SingleAsync(c => c.Id == 1);
+        Assert.Equal(777m, foreignCustomer.Balance);
+        Assert.Equal(777m, foreignCustomer.PendingBalance);
+        Assert.Equal(500m, foreignCustomer.TotalSales);
     }
 
     private sealed class NoopAlertService : IAlertService

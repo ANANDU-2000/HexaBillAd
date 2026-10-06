@@ -806,8 +806,9 @@ export const paymentsAPI = {
     return response.data
   },
 
-  allocatePayment: async (allocation) => {
-    const response = await api.post('/payments/allocate', allocation)
+  allocatePayment: async (allocation, idempotencyKey = null) => {
+    const key = idempotencyKey || crypto.randomUUID()
+    const response = await api.post('/payments/allocate', allocation, { headers: { 'Idempotency-Key': key } })
     return response.data
   },
 

@@ -1196,21 +1196,31 @@ namespace HexaBill.Api.Modules.Reports
 
         [HttpGet("export/pdf")]
         [Authorize(Roles = "Admin,Owner")] // MULTI-TENANT: Both Admin and Owner can export
-        public Task<ActionResult> ExportReportPdf(
+        public async Task<ActionResult> ExportReportPdf(
             [FromQuery] DateTime? fromDate = null,
             [FromQuery] DateTime? toDate = null)
         {
-            var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
-            var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
-
-            // Generate PDF report using existing PdfService or create summary
-            // For now, return a simple response - can be enhanced with QuestPDF
-            return Task.FromResult<ActionResult>(Ok(new ApiResponse<object>
+            try
             {
-                Success = true,
-                Message = "PDF export endpoint ready. Implementation requires PDF generation library.",
-                Data = new { fromDate = from, toDate = to, message = "Use GET /api/reports/summary for data" }
-            }));
+                var tenantId = CurrentTenantId;
+                if (tenantId <= 0) return Forbid();
+                var from = (fromDate ?? _timeZoneService.GetCurrentDate().AddDays(-30)).ToUtcKind();
+                var to = (toDate ?? _timeZoneService.GetCurrentDate()).ToUtcKind();
+                var summary = await _reportService.GetSummaryReportAsync(tenantId, from, to);
+                var pdfService = HttpContext.RequestServices.GetRequiredService<IPdfService>();
+                var pdfBytes = await pdfService.GenerateSummaryReportPdfAsync(summary, from, to, tenantId);
+                return File(pdfBytes, "application/pdf", $"report-summary_{from:yyyy-MM-dd}_{to:yyyy-MM-dd}.pdf");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Report summary PDF export failed");
+                return StatusCode(500, new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Report PDF could not be generated.",
+                    Errors = new List<string> { ex.Message }
+                });
+            }
         }
 
         [HttpGet("export/excel")]

@@ -45,7 +45,7 @@ namespace HexaBill.Api.Core.Infrastructure
             {
                 if (!await CanAccessCustomerAsync(customerId))
                     return NotFound(new ApiResponse<BalanceValidationResult> { Success = false, Message = "Customer not found" });
-                var result = await _balanceService.ValidateCustomerBalanceAsync(customerId);
+                var result = await _balanceService.ValidateCustomerBalanceAsync(customerId, CurrentTenantId);
                 return Ok(new ApiResponse<BalanceValidationResult>
                 {
                     Success = result.IsValid,
@@ -105,7 +105,7 @@ namespace HexaBill.Api.Core.Infrastructure
             {
                 if (!await CanAccessCustomerAsync(customerId))
                     return NotFound(new ApiResponse<bool> { Success = false, Message = "Customer not found" });
-                var success = await _balanceService.FixBalanceMismatchAsync(customerId);
+                var success = await _balanceService.FixBalanceMismatchAsync(customerId, CurrentTenantId);
                 return Ok(new ApiResponse<bool>
                 {
                     Success = success,
@@ -141,7 +141,7 @@ namespace HexaBill.Api.Core.Infrastructure
 
                 foreach (var mismatch in mismatches)
                 {
-                    var success = await _balanceService.FixBalanceMismatchAsync(mismatch.CustomerId);
+                    var success = await _balanceService.FixBalanceMismatchAsync(mismatch.CustomerId, mismatch.TenantId);
                     if (success) successCount++;
                     else failCount++;
                 }
@@ -179,7 +179,7 @@ namespace HexaBill.Api.Core.Infrastructure
             {
                 if (!await CanAccessCustomerAsync(customerId))
                     return NotFound(new ApiResponse<bool> { Success = false, Message = "Customer not found" });
-                await _balanceService.RecalculateCustomerBalanceAsync(customerId);
+                await _balanceService.RecalculateCustomerBalanceAsync(customerId, CurrentTenantId);
                 return Ok(new ApiResponse<bool>
                 {
                     Success = true,

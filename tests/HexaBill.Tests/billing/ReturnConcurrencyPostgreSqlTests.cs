@@ -56,6 +56,113 @@ public class ReturnConcurrencyPostgreSqlTests
         }
     }
 
+    [Fact]
+    public async Task ParallelPurchaseReturn_OnlyOneCanReturnPurchasedQuantity()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("HEXABILL_TEST_POSTGRES");
+        if (string.IsNullOrWhiteSpace(connectionString))
+            return;
+
+        var tenantId = 1_000_000 + Random.Shared.Next(1, 50_000);
+        await using (var seed = await OpenPostgresAsync(connectionString, tenantId))
+        {
+            var now = DateTime.UtcNow;
+            seed.Tenants.Add(new Tenant { Id = tenantId, Name = $"PG purchase return {tenantId}", Subdomain = $"pg-purch-ret-{tenantId}" });
+            seed.Users.Add(new User
+            {
+                Id = tenantId,
+                TenantId = tenantId,
+                OwnerId = tenantId,
+                Name = "PG purchase return fixture",
+                Email = $"pg-purch-ret-{tenantId}@example.test",
+                PasswordHash = "fixture",
+                Role = UserRole.Owner,
+                CreatedAt = now
+            });
+            seed.Products.Add(new Product
+            {
+                Id = tenantId,
+                TenantId = tenantId,
+                OwnerId = tenantId,
+                NameEn = "PG purchase return product",
+                Sku = $"PG-PURCH-RET-{tenantId}",
+                StockQty = 100,
+                CostPrice = 50,
+                ConversionToBase = 12,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            seed.Purchases.Add(new Purchase
+            {
+                Id = tenantId,
+                TenantId = tenantId,
+                OwnerId = tenantId,
+                CreatedBy = tenantId,
+                SupplierName = "Synthetic supplier",
+                InvoiceNo = $"PG-PO-{tenantId}",
+                PurchaseDate = now,
+                CreatedAt = now,
+                TotalAmount = 100
+            });
+            seed.PurchaseItems.Add(new PurchaseItem
+            {
+                Id = tenantId,
+                PurchaseId = tenantId,
+                ProductId = tenantId,
+                Qty = 2,
+                UnitCost = 50,
+                LineTotal = 100,
+                ConversionAtPurchase = 12
+            });
+            await seed.SaveChangesAsync();
+        }
+
+        var successCount = 0;
+        var rejectCount = 0;
+        var attempts = Enumerable.Range(0, 2).Select(_ => Task.Run(async () =>
+        {
+            await using var db = await OpenPostgresAsync(connectionString, tenantId);
+            var service = new ReturnService(db, null!, null!, null!);
+            try
+            {
+                await service.CreatePurchaseReturnAsync(new CreatePurchaseReturnRequest
+                {
+                    PurchaseId = tenantId,
+                    Items = [new PurchaseReturnItemRequest { PurchaseItemId = tenantId, Qty = 2 }]
+                }, tenantId, tenantId);
+                Interlocked.Increment(ref successCount);
+            }
+            catch (InvalidOperationException)
+            {
+                Interlocked.Increment(ref rejectCount);
+            }
+        }));
+
+        try
+        {
+            await Task.WhenAll(attempts);
+            await using var verify = await OpenPostgresAsync(connectionString, tenantId);
+            Assert.Equal(1, successCount);
+            Assert.Equal(1, rejectCount);
+            Assert.Single(await verify.PurchaseReturns.Where(r => r.TenantId == tenantId).ToListAsync());
+            Assert.Equal(76m, (await verify.Products.SingleAsync(p => p.TenantId == tenantId)).StockQty);
+            Assert.Single(await verify.InventoryTransactions.Where(t => t.TenantId == tenantId).ToListAsync());
+        }
+        finally
+        {
+            await using var cleanup = await OpenPostgresAsync(connectionString, tenantId);
+            await cleanup.PurchaseReturnItems.Where(i => i.PurchaseReturn.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.PurchaseReturns.Where(r => r.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.InventoryTransactions.Where(t => t.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.AuditLogs.Where(a => a.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.PurchaseItems.Where(i => i.PurchaseId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Purchases.Where(p => p.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Products.Where(p => p.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Users.Where(u => u.TenantId == tenantId).ExecuteDeleteAsync();
+            await cleanup.Tenants.Where(t => t.Id == tenantId).ExecuteDeleteAsync();
+        }
+    }
+
     private static async Task<AppDbContext> OpenPostgresAsync(string connectionString, int tenantId)
     {
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options);

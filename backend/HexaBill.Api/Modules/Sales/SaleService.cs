@@ -1180,7 +1180,8 @@ namespace HexaBill.Api.Modules.Sales
                         {
                             await _balanceService.UpdateCustomerBalanceOnInvoiceCreatedAsync(
                                 request.CustomerId.Value,
-                                grandTotal);
+                                grandTotal,
+                                tenantId);
 
                             if (request.Payments != null && request.Payments.Any())
                             {
@@ -1192,7 +1193,8 @@ namespace HexaBill.Api.Modules.Sales
                                 {
                                     await _balanceService.UpdateCustomerBalanceOnPaymentCreatedAsync(
                                         request.CustomerId.Value,
-                                        clearedAmount);
+                                        clearedAmount,
+                                        tenantId);
                                 }
                             }
                         }
@@ -2544,14 +2546,16 @@ namespace HexaBill.Api.Modules.Sales
                     {
                         await _balanceService.UpdateCustomerBalanceOnInvoiceDeletedAsync(
                             sale.CustomerId.Value,
-                            sale.GrandTotal);
+                            sale.GrandTotal,
+                            tenantId);
                         
                         // Reverse any cleared payments
                         foreach (var payment in relatedPayments.Where(p => p.Status == PaymentStatus.CLEARED))
                         {
                             await _balanceService.UpdateCustomerBalanceOnPaymentDeletedAsync(
                                 sale.CustomerId.Value,
-                                payment.Amount);
+                                payment.Amount,
+                                tenantId);
                         }
                     }
                     catch (Exception balanceEx)

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
+using HexaBill.Api.Core.Infrastructure;
 using HexaBill.Api.Modules.DailyClose;
+using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Reports;
 using HexaBill.Api.Modules.SuperAdmin;
 using Microsoft.EntityFrameworkCore;
@@ -121,6 +123,35 @@ public class ReturnStockTests
     }
 
     [Fact]
+    public async Task ReverseReturn_WithCrossTenantCustomerReference_DoesNotRecalculateOtherTenantCustomer()
+    {
+        await using var db = await Database(ReturnStatus.Approved);
+        db.ChangeTracker.Clear();
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+        db.Tenants.Add(new Tenant { Id = 11, Name = "Other tenant", Subdomain = "other-return-customer" });
+        db.Customers.Add(new Customer
+        {
+            Id = 2, TenantId = 11, OwnerId = 11, Name = "Other customer", Balance = 777m,
+            PendingBalance = 777m, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow
+        });
+        var sale = await db.Sales.IgnoreQueryFilters().SingleAsync(s => s.Id == 1);
+        sale.CustomerId = 2;
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        // Emulate a platform-scoped service context: the explicit tenantId passed to
+        // the operation must remain authoritative even when global query filters are broad.
+        db.SetRequestTenantScope(null, isPlatformScope: true);
+
+        var service = new ReturnService(db, new CustomerService(db), null!, null!);
+        await service.ReverseSaleReturnAsync(1, "Cross-tenant reference regression", 1, 10);
+
+        db.ChangeTracker.Clear();
+        var otherCustomer = await db.Customers.IgnoreQueryFilters().SingleAsync(c => c.Id == 2);
+        Assert.Equal(777m, otherCustomer.Balance);
+        Assert.Equal(777m, otherCustomer.PendingBalance);
+    }
+
+    [Fact]
     public async Task DuplicateOrEmptyRequest_IsRejectedBeforeDatabaseAccess()
     {
         var service = new ReturnService(null!, null!, null!, null!);
@@ -168,6 +199,43 @@ public class ReturnStockTests
         db.ChangeTracker.Clear();
         Assert.Equal(20m, (await db.Products.SingleAsync()).StockQty);
         Assert.Single(await db.InventoryTransactions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task ApprovingRefundForAnonymousSale_CreatesCashRefundPayment()
+    {
+        await using var db = await Database(ReturnStatus.Pending);
+        var ret = await db.SaleReturns.SingleAsync();
+        ret.RefundStatus = "Refunded";
+        await db.SaveChangesAsync();
+
+        await new ReturnService(db, null!, null!, null!).ApproveSaleReturnAsync(1, 10);
+
+        var refund = await db.Payments.SingleAsync(p => p.SaleReturnId == 1);
+        Assert.Null(refund.CustomerId);
+        Assert.Equal(50m, refund.Amount);
+        Assert.Equal(PaymentMode.CASH, refund.Mode);
+        Assert.Equal(PaymentStatus.CLEARED, refund.Status);
+    }
+
+    [Fact]
+    public async Task ImmediateRefundForAnonymousSale_CreatesCashRefundPayment()
+    {
+        await using var db = await Database(ReturnStatus.Rejected);
+        var service = new ReturnService(db, null!, new SettingsService(db), new SalesSchemaService(db));
+
+        await service.CreateSaleReturnAsync(new CreateSaleReturnRequest
+        {
+            SaleId = 1,
+            ReturnType = "RefundNow",
+            Items = [new SaleReturnItemRequest { SaleItemId = 1, Qty = 1, StockEffect = false }]
+        }, userId: 1, tenantId: 10);
+
+        var refund = await db.Payments.SingleAsync(p => p.SaleReturnId != null);
+        Assert.Null(refund.CustomerId);
+        Assert.Equal(52.5m, refund.Amount);
+        Assert.Equal(PaymentMode.CASH, refund.Mode);
+        Assert.Equal(PaymentStatus.CLEARED, refund.Status);
     }
 
     [Fact]

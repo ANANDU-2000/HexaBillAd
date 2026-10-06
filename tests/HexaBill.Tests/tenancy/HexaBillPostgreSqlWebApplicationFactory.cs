@@ -102,6 +102,8 @@ public sealed class HexaBillPostgreSqlWebApplicationFactory : WebApplicationFact
         if (!_seeded)
         {
             SeedDatabase(host.Services);
+            host.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>()
+                .CompleteInitialization(hasPendingMigrations: false);
             _seeded = true;
         }
 

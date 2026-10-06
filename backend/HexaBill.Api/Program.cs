@@ -267,6 +267,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         Microsoft.Extensions.Logging.LogLevel.Information,
         Microsoft.EntityFrameworkCore.Diagnostics.DbContextLoggerOptions.None);
 });
+builder.Services.AddSingleton<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>();
 
 // Security Services
 builder.Services.AddSecurityServices(builder.Configuration);
@@ -484,6 +485,7 @@ if (isPostgres && (isProduction || isRenderDb))
     }
     catch (Exception ex)
     {
+        app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>().MarkFailed();
         startupLog?.LogWarning(ex, "SupplierLedgerCredits ensure at startup failed: {Message}", ex.Message);
     }
 }
@@ -742,6 +744,7 @@ using (var scope = app.Services.CreateScope())
                 !errorMsg.Contains("duplicate", StringComparison.OrdinalIgnoreCase) &&
                 !errorMsg.Contains("42701", StringComparison.OrdinalIgnoreCase))
             {
+                app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>().MarkFailed();
                 startupLogger?.LogWarning(ex, "PostgreSQL migration warning (non-fatal): {Message}", errorMsg);
             }
         }
@@ -995,6 +998,7 @@ using (var scope = app.Services.CreateScope())
 
 // CRITICAL: Global Exception Handler - MUST be FIRST in pipeline to catch all unhandled exceptions
 app.UseMiddleware<HexaBill.Api.Core.Infrastructure.GlobalExceptionHandlerMiddleware>();
+app.UseMiddleware<HexaBill.Api.Core.Infrastructure.DatabaseInitializationGateMiddleware>();
 
 // Get logger from app services
 var appLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Application");
@@ -1273,6 +1277,14 @@ app.MapGet("/api/cors-check", (HttpContext context) =>
 app.MapGet("/health", async () =>
 {
     var deployVersion = HexaBill.Api.Core.Infrastructure.DeployVersionResolver.Resolve();
+    var initializationStatus = app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>();
+    if (initializationStatus.State != HexaBill.Api.Core.Infrastructure.DatabaseInitializationState.Ready)
+    {
+        var schemaState = initializationStatus.State == HexaBill.Api.Core.Infrastructure.DatabaseInitializationState.Failed
+            ? "InitializationFailed"
+            : "InitializationPending";
+        return Results.Json(new { status = "Unhealthy", database = "Unknown", schema = schemaState, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
+    }
     try
     {
         using var scope = app.Services.CreateScope();
@@ -1296,14 +1308,30 @@ app.MapGet("/health/ready", async (HttpContext ctx) =>
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var initializationStatus = app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>();
+        if (initializationStatus.State != HexaBill.Api.Core.Infrastructure.DatabaseInitializationState.Ready)
+        {
+            var schemaState = initializationStatus.State == HexaBill.Api.Core.Infrastructure.DatabaseInitializationState.Failed
+                ? "InitializationFailed"
+                : "InitializationPending";
+            return Results.Json(new { status = "Unhealthy", database = "Unknown", schema = schemaState, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
+        }
+
         var connected = await db.Database.CanConnectAsync();
-        return connected
-            ? Results.Ok(new { status = "Ready", database = "Connected", timestamp = DateTime.UtcNow, deployVersion })
-            : Results.Json(new { status = "Unhealthy", database = "Disconnected", timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
+        if (!connected)
+            return Results.Json(new { status = "Unhealthy", database = "Disconnected", schema = "Unknown", timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
+
+        // Production deliberately does not run migrations in-process. Readiness must therefore
+        // prove the release schema is applied before the load balancer sends customer traffic.
+        var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
+        var pendingCount = pendingMigrations.Count();
+        return pendingCount == 0
+            ? Results.Ok(new { status = "Ready", database = "Connected", schema = "Current", timestamp = DateTime.UtcNow, deployVersion })
+            : Results.Json(new { status = "Unhealthy", database = "Connected", schema = "MigrationsPending", pendingMigrationCount = pendingCount, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
-    catch (Exception ex)
+    catch
     {
-        return Results.Json(new { status = "Unhealthy", database = "Disconnected", error = ex.Message, timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
+        return Results.Json(new { status = "Unhealthy", database = "Unknown", schema = "CheckFailed", timestamp = DateTime.UtcNow, deployVersion }, statusCode: 503);
     }
 }).AllowAnonymous();
 app.MapGet("/", () => Results.Ok(new { service = "HexaBill.Api", status = "Running", version = "2.0" })).AllowAnonymous();
@@ -1347,67 +1375,6 @@ app.MapGet("/api/diagnostics/errors", () =>
     });
 }).AllowAnonymous();
 
-// AUDIT-5 FIX: Check for pending migrations on startup (skip on Render/Production to avoid 139)
-_ = Task.Run(async () =>
-{
-    try
-    {
-        await Task.Delay(2000);
-        if (isPostgres && (isProduction || isRenderDb))
-            return; // No DB access on Render/Production
-        using var scope = app.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-        
-        var pendingMigrations = await db.Database.GetPendingMigrationsAsync();
-        if (pendingMigrations.Any())
-        {
-            logger.LogWarning("⚠️ Pending migrations detected: {Count}", pendingMigrations.Count());
-            logger.LogWarning("Pending migrations: {Migrations}", string.Join(", ", pendingMigrations));
-            
-            // In development, optionally auto-apply migrations
-            if (app.Environment.IsDevelopment())
-            {
-                logger.LogInformation("Auto-applying migrations in development...");
-                await db.Database.MigrateAsync();
-                logger.LogInformation("✅ Migrations applied successfully");
-            }
-        }
-        else
-        {
-            logger.LogInformation("✅ Database is up to date - no pending migrations");
-        }
-    }
-    catch (Exception ex)
-    {
-        try
-        {
-            var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(ex, "❌ Error checking migrations");
-        }
-        catch
-        {
-            // Even logging failed - don't crash the process
-        }
-        // Don't throw - allow app to start even if migration check fails
-    }
-}).ContinueWith(task =>
-{
-    // CRITICAL: Catch any unhandled exceptions from the Task.Run
-    if (task.IsFaulted && task.Exception != null)
-    {
-        try
-        {
-            var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogError(task.Exception, "❌ Unhandled exception in migration check task");
-        }
-        catch
-        {
-            // Even logging failed - don't crash the process
-        }
-    }
-}, TaskContinuationOptions.OnlyOnFaulted);
-
 // Database initialization - run in background, don't block server startup
 // CRITICAL: Wrap in Task.Run with ContinueWith to prevent unhandled exceptions from crashing the process
 _ = Task.Run(async () =>
@@ -1425,6 +1392,7 @@ _ = Task.Run(async () =>
         using (var scope = app.Services.CreateScope())
         {
             var initLogger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DatabaseInit");
+            var initializationStatus = app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>();
             try
             {
             var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1462,8 +1430,13 @@ _ = Task.Run(async () =>
                 catch (Exception ex)
                 {
                     initLogger.LogWarning(ex, "Production/Render: SupplierLedgerCredits ensure failed: {Message}", ex.Message);
+                    initializationStatus.MarkFailed();
                 }
                 initLogger.LogInformation("Production/Render (PostgreSQL): skipping remaining background schema init. Schema is the versioned EF migrations.");
+                var productionPendingMigrations = (await context.Database.GetPendingMigrationsAsync()).ToList();
+                initializationStatus.CompleteInitialization(productionPendingMigrations.Any());
+                if (productionPendingMigrations.Any())
+                    initLogger.LogError("Production database has {Count} pending EF migrations; readiness will remain closed.", productionPendingMigrations.Count());
                 return;
             }
             // CRITICAL: Ensure all required columns exist (fixes login when migrations haven't run)
@@ -2631,9 +2604,17 @@ _ = Task.Run(async () =>
             {
                 initLogger.LogError(diagEx, "❌ CRITICAL: Startup diagnostics failed with exception");
             }
+
+            var pendingAtInitialization = (await context.Database.GetPendingMigrationsAsync()).ToList();
+            if (pendingAtInitialization.Any())
+            {
+                initLogger.LogError("Database initialization finished with {Count} pending EF migrations; readiness will remain closed.", pendingAtInitialization.Count());
+            }
+            initializationStatus.CompleteInitialization(pendingAtInitialization.Any());
             }
             catch (Exception ex)
             {
+                initializationStatus.MarkFailed();
                 try
                 {
                     initLogger.LogError(ex, "Database initialization error");
@@ -2647,6 +2628,7 @@ _ = Task.Run(async () =>
     }
     catch (Exception outerEx)
     {
+        app.Services.GetRequiredService<HexaBill.Api.Core.Infrastructure.DatabaseInitializationStatus>().MarkFailed();
         // CRITICAL: Catch any exceptions from the entire Task.Run block
         try
         {

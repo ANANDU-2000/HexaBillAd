@@ -109,7 +109,7 @@ namespace HexaBill.Api.Modules.Auth
                 return null;
             }
 
-            // Block login if tenant is suspended (optional: load tenant; skip if tenant not found)
+            // Tenant-state lookup failures must never bypass suspension/expiry enforcement.
             try
             {
                 if (user.TenantId is int tenantId)
@@ -121,7 +121,10 @@ namespace HexaBill.Api.Modules.Auth
                     }
                 }
             }
-            catch { /* non-fatal */ }
+            catch
+            {
+                return null;
+            }
 
             // Verify password - with better error handling (use trimmed password)
             try

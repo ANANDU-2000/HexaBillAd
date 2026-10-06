@@ -12,6 +12,8 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const FORBIDDEN_CONN_PATTERNS = [
   /render\.com/i,
@@ -42,6 +44,7 @@ function parseArgs(argv) {
     if (argv[i] === '--api') out.api = argv[++i];
     else if (argv[i] === '--admin-token') out.adminToken = argv[++i];
     else if (argv[i] === '--connection-string') out.connectionString = argv[++i];
+    else if (argv[i] === '--local-money-fixtures') out.localMoneyFixtures = true;
   }
   return out;
 }
@@ -115,6 +118,22 @@ async function seedTenantPlan(tenant) {
 async function main() {
   const opts = parseArgs(process.argv);
   refuseProduction(opts);
+
+  if (opts.localMoneyFixtures) {
+    if (process.env.ASPNETCORE_ENVIRONMENT !== 'Development'
+      || !process.env.HEXABILL_TEST_POSTGRES
+      || !process.env.HEXABILL_SYNTHETIC_PASSWORD) {
+      throw new Error('Local fixtures require Development, dedicated HEXABILL_TEST_POSTGRES and a runtime synthetic password.');
+    }
+    const project = fileURLToPath(new URL('../tools/HexaBill.SyntheticSeed/HexaBill.SyntheticSeed.csproj', import.meta.url));
+    const result = await new Promise((resolve, reject) => {
+      const child = spawn('dotnet', ['run', '--project', project, '--no-build', '--no-restore'], { stdio: 'inherit', shell: false });
+      child.once('error', reject);
+      child.once('exit', resolve);
+    });
+    if (result !== 0) throw new Error('Synthetic fixture tool failed; no release acceptance is claimed.');
+    return;
+  }
 
   const tenants = ['frozenhub1', 'frozenhub2', 'gulfharvest', 'zayogya-test'];
   const plans = [];

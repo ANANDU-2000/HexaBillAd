@@ -176,7 +176,9 @@ namespace HexaBill.Api.Modules.Purchases
             var vendorDiscountCount = await _context.VendorDiscounts.CountAsync(
                 vd => vd.TenantId == tenantId && loserIdSet.Contains(vd.SupplierId), ct);
             var purchaseReturnCount = await _context.PurchaseReturns.CountAsync(
-                pr => pr.SupplierId != null && loserIdSet.Contains(pr.SupplierId.Value), ct);
+                pr => pr.TenantId == tenantId
+                    && pr.SupplierId != null
+                    && loserIdSet.Contains(pr.SupplierId.Value), ct);
 
             result.RowsMoved = new Dictionary<string, int>
             {
@@ -238,7 +240,7 @@ namespace HexaBill.Api.Modules.Purchases
                     await _context.Database.ExecuteSqlInterpolatedAsync($"""
                         UPDATE "PurchaseReturns"
                         SET "SupplierId" = {survivorId}
-                        WHERE "SupplierId" = {loserId}
+                        WHERE "TenantId" = {tenantId} AND "SupplierId" = {loserId}
                         """, ct);
 
                     // Purchases: SupplierId in losers → survivor + name

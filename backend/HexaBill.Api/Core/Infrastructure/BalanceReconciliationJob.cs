@@ -131,7 +131,7 @@ namespace HexaBill.Api.Core.Infrastructure
                         if (stoppingToken.IsCancellationRequested) return;
                         try
                         {
-                            await balanceService.RecalculateCustomerBalanceAsync(customerId);
+                            await balanceService.RecalculateCustomerBalanceAsync(customerId, tenantId);
                             processed++;
                         }
                         catch (Exception ex)

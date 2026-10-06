@@ -13,16 +13,16 @@ namespace HexaBill.Api.Modules.Customers
 {
     public interface IBalanceService
     {
-        Task RecalculateCustomerBalanceAsync(int customerId);
-        Task UpdateCustomerBalanceOnInvoiceCreatedAsync(int customerId, decimal invoiceTotal);
-        Task UpdateCustomerBalanceOnInvoiceDeletedAsync(int customerId, decimal invoiceTotal);
-        Task UpdateCustomerBalanceOnInvoiceEditedAsync(int customerId, decimal oldTotal, decimal newTotal);
-        Task UpdateCustomerBalanceOnPaymentCreatedAsync(int customerId, decimal paymentAmount);
-        Task UpdateCustomerBalanceOnPaymentDeletedAsync(int customerId, decimal paymentAmount);
-        Task<BalanceValidationResult> ValidateCustomerBalanceAsync(int customerId);
+        Task RecalculateCustomerBalanceAsync(int customerId, int tenantId);
+        Task UpdateCustomerBalanceOnInvoiceCreatedAsync(int customerId, decimal invoiceTotal, int tenantId);
+        Task UpdateCustomerBalanceOnInvoiceDeletedAsync(int customerId, decimal invoiceTotal, int tenantId);
+        Task UpdateCustomerBalanceOnInvoiceEditedAsync(int customerId, decimal oldTotal, decimal newTotal, int tenantId);
+        Task UpdateCustomerBalanceOnPaymentCreatedAsync(int customerId, decimal paymentAmount, int tenantId);
+        Task UpdateCustomerBalanceOnPaymentDeletedAsync(int customerId, decimal paymentAmount, int tenantId);
+        Task<BalanceValidationResult> ValidateCustomerBalanceAsync(int customerId, int tenantId);
         Task<List<BalanceMismatch>> DetectAllBalanceMismatchesAsync(int? tenantId = null);
-        Task<bool> FixBalanceMismatchAsync(int customerId);
-        Task<bool> CanCustomerReceiveCreditAsync(int customerId, decimal additionalAmount);
+        Task<bool> FixBalanceMismatchAsync(int customerId, int tenantId);
+        Task<bool> CanCustomerReceiveCreditAsync(int customerId, decimal additionalAmount, int tenantId);
     }
 
     public class BalanceService : IBalanceService
@@ -46,7 +46,7 @@ namespace HexaBill.Api.Modules.Customers
         /// UNIFIED: TotalPayments = CLEARED only, excluding refund payments (SaleReturnId != null).
         /// PendingBalance = TotalSales - TotalPayments - TotalSalesReturns + RefundsPaid (matches CustomerService).
         /// </summary>
-        public async Task RecalculateCustomerBalanceAsync(int customerId)
+        public async Task RecalculateCustomerBalanceAsync(int customerId, int tenantId)
         {
             // Avoid nested transactions: PaymentService / other callers may already hold BeginTransactionAsync.
             // When we own the txn, wrap with CreateExecutionStrategy (Npgsql retry policy).
@@ -59,7 +59,7 @@ namespace HexaBill.Api.Modules.Customers
                     await using var localTxn = await _context.Database.BeginTransactionAsync();
                     try
                     {
-                        await RecalculateCustomerBalanceCoreAsync(customerId);
+                        await RecalculateCustomerBalanceCoreAsync(customerId, tenantId);
                         await localTxn.CommitAsync();
                     }
                     catch
@@ -71,21 +71,20 @@ namespace HexaBill.Api.Modules.Customers
                 return;
             }
 
-            await RecalculateCustomerBalanceCoreAsync(customerId);
+            await RecalculateCustomerBalanceCoreAsync(customerId, tenantId);
         }
 
-        private async Task RecalculateCustomerBalanceCoreAsync(int customerId)
+        private async Task RecalculateCustomerBalanceCoreAsync(int customerId, int tenantId)
         {
             try
             {
-                var customer = await _context.Customers.FindAsync(customerId);
+                var customer = await _context.Customers
+                    .FirstOrDefaultAsync(c => c.Id == customerId && c.TenantId == tenantId);
                 if (customer == null)
                 {
                     _logger.LogWarning("Customer {CustomerId} not found for balance recalculation", customerId);
                     return;
                 }
-
-                var tenantId = customer.TenantId;
 
                 decimal totalSales;
                 decimal totalPayments;
@@ -165,9 +164,9 @@ namespace HexaBill.Api.Modules.Customers
         /// <summary>
         /// Update customer balance when invoice is created. Uses full recalc so returns/refunds are included.
         /// </summary>
-        public async Task UpdateCustomerBalanceOnInvoiceCreatedAsync(int customerId, decimal invoiceTotal)
+        public async Task UpdateCustomerBalanceOnInvoiceCreatedAsync(int customerId, decimal invoiceTotal, int tenantId)
         {
-            await RecalculateCustomerBalanceAsync(customerId);
+            await RecalculateCustomerBalanceAsync(customerId, tenantId);
 
             _logger.LogInformation(
                 "Customer {CustomerId} balance updated on invoice created: +{Amount}",
@@ -177,45 +176,46 @@ namespace HexaBill.Api.Modules.Customers
         /// <summary>
         /// Update customer balance when invoice is deleted. Uses full recalc so returns/refunds are included.
         /// </summary>
-        public async Task UpdateCustomerBalanceOnInvoiceDeletedAsync(int customerId, decimal invoiceTotal)
+        public async Task UpdateCustomerBalanceOnInvoiceDeletedAsync(int customerId, decimal invoiceTotal, int tenantId)
         {
-            await RecalculateCustomerBalanceAsync(customerId);
+            await RecalculateCustomerBalanceAsync(customerId, tenantId);
             _logger.LogInformation("Customer {CustomerId} balance updated on invoice deleted: -{Amount}", customerId, invoiceTotal);
         }
 
         /// <summary>
         /// Update customer balance when invoice is edited. Uses full recalc so returns/refunds are included.
         /// </summary>
-        public async Task UpdateCustomerBalanceOnInvoiceEditedAsync(int customerId, decimal oldTotal, decimal newTotal)
+        public async Task UpdateCustomerBalanceOnInvoiceEditedAsync(int customerId, decimal oldTotal, decimal newTotal, int tenantId)
         {
-            await RecalculateCustomerBalanceAsync(customerId);
+            await RecalculateCustomerBalanceAsync(customerId, tenantId);
             _logger.LogInformation("Customer {CustomerId} balance updated on invoice edited: Delta={Delta}", customerId, newTotal - oldTotal);
         }
 
         /// <summary>
         /// Update customer balance when payment is created. Uses full recalc so returns/refunds are included.
         /// </summary>
-        public async Task UpdateCustomerBalanceOnPaymentCreatedAsync(int customerId, decimal paymentAmount)
+        public async Task UpdateCustomerBalanceOnPaymentCreatedAsync(int customerId, decimal paymentAmount, int tenantId)
         {
-            await RecalculateCustomerBalanceAsync(customerId);
+            await RecalculateCustomerBalanceAsync(customerId, tenantId);
             _logger.LogInformation("Customer {CustomerId} balance updated on payment created: +{Amount}", customerId, paymentAmount);
         }
 
         /// <summary>
         /// Update customer balance when payment is deleted. Uses full recalc so returns/refunds are included.
         /// </summary>
-        public async Task UpdateCustomerBalanceOnPaymentDeletedAsync(int customerId, decimal paymentAmount)
+        public async Task UpdateCustomerBalanceOnPaymentDeletedAsync(int customerId, decimal paymentAmount, int tenantId)
         {
-            await RecalculateCustomerBalanceAsync(customerId);
+            await RecalculateCustomerBalanceAsync(customerId, tenantId);
             _logger.LogInformation("Customer {CustomerId} balance updated on payment deleted: -{Amount}", customerId, paymentAmount);
         }
 
         /// <summary>
         /// Validate customer balance against actual data
         /// </summary>
-        public async Task<BalanceValidationResult> ValidateCustomerBalanceAsync(int customerId)
+        public async Task<BalanceValidationResult> ValidateCustomerBalanceAsync(int customerId, int tenantId)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
+            var customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.TenantId == tenantId);
             if (customer == null)
             {
                 return new BalanceValidationResult
@@ -224,8 +224,6 @@ namespace HexaBill.Api.Modules.Customers
                     ErrorMessage = "Customer not found"
                 };
             }
-
-            var tenantId = customer.TenantId;
 
             // Sequential on one DbContext (same reason as RecalculateCustomerBalanceCoreAsync).
             var actualTotalSales = await _context.Sales
@@ -267,7 +265,7 @@ namespace HexaBill.Api.Modules.Customers
                         { "StoredPending", customer.PendingBalance },
                         { "ActualPending", actualPendingBalance }
                     },
-                    customer.TenantId);
+                    tenantId);
 
                 return new BalanceValidationResult
                 {
@@ -296,16 +294,25 @@ namespace HexaBill.Api.Modules.Customers
             {
                 query = query.Where(c => c.TenantId == tenantId.Value);
             }
+            else if (!_context.RequestIsPlatformScope)
+            {
+                var requestTenantId = _context.RequestTenantId;
+                if (!requestTenantId.HasValue) return mismatches;
+                query = query.Where(c => c.TenantId == requestTenantId.Value);
+            }
             var customers = await query.ToListAsync();
 
             foreach (var customer in customers)
             {
-                var validation = await ValidateCustomerBalanceAsync(customer.Id);
+                var customerTenantId = customer.TenantId;
+                if (!customerTenantId.HasValue) continue;
+                var validation = await ValidateCustomerBalanceAsync(customer.Id, customerTenantId.Value);
                 if (!validation.IsValid)
                 {
                     mismatches.Add(new BalanceMismatch
                     {
                         CustomerId = customer.Id,
+                        TenantId = customerTenantId.Value,
                         CustomerName = customer.Name,
                         StoredPending = validation.StoredPendingBalance,
                         ActualPending = validation.ActualPendingBalance,
@@ -320,12 +327,12 @@ namespace HexaBill.Api.Modules.Customers
         /// <summary>
         /// Fix balance mismatch for a specific customer
         /// </summary>
-        public async Task<bool> FixBalanceMismatchAsync(int customerId)
+        public async Task<bool> FixBalanceMismatchAsync(int customerId, int tenantId)
         {
             try
             {
-                await RecalculateCustomerBalanceAsync(customerId);
-                var validation = await ValidateCustomerBalanceAsync(customerId);
+                await RecalculateCustomerBalanceAsync(customerId, tenantId);
+                var validation = await ValidateCustomerBalanceAsync(customerId, tenantId);
                 return validation.IsValid;
             }
             catch (Exception ex)
@@ -338,9 +345,10 @@ namespace HexaBill.Api.Modules.Customers
         /// <summary>
         /// Check if customer can receive additional credit (pending balance check)
         /// </summary>
-        public async Task<bool> CanCustomerReceiveCreditAsync(int customerId, decimal additionalAmount)
+        public async Task<bool> CanCustomerReceiveCreditAsync(int customerId, decimal additionalAmount, int tenantId)
         {
-            var customer = await _context.Customers.FindAsync(customerId);
+            var customer = await _context.Customers
+                .FirstOrDefaultAsync(c => c.Id == customerId && c.TenantId == tenantId);
             if (customer == null) return false;
 
             // Calculate new pending balance if invoice is created
@@ -389,6 +397,7 @@ namespace HexaBill.Api.Modules.Customers
     public class BalanceMismatch
     {
         public int CustomerId { get; set; }
+        public int TenantId { get; set; }
         public string CustomerName { get; set; } = string.Empty;
         public decimal StoredPending { get; set; }
         public decimal ActualPending { get; set; }

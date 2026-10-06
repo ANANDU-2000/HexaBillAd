@@ -23,6 +23,46 @@ public class PurchaseReturnStockTests
         Assert.Equal(-12m, (await db.InventoryTransactions.SingleAsync()).ChangeQty);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(3)]
+    public async Task PurchaseReturn_RejectsNonPositiveOrExcessQuantityWithoutChangingStock(decimal qty)
+    {
+        await using var db = await DatabaseAsync();
+        var service = new ReturnService(db, null!, null!, null!);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreatePurchaseReturnAsync(new CreatePurchaseReturnRequest
+        {
+            PurchaseId = 1,
+            Items = [new PurchaseReturnItemRequest { PurchaseItemId = 1, Qty = qty }]
+        }, 1, 10));
+
+        db.ChangeTracker.Clear();
+        Assert.Equal(100m, (await db.Products.SingleAsync()).StockQty);
+        Assert.Empty(await db.PurchaseReturns.ToListAsync());
+        Assert.Empty(await db.InventoryTransactions.ToListAsync());
+    }
+
+    [Fact]
+    public async Task PurchaseReturn_CannotReturnAlreadyReturnedQuantityTwice()
+    {
+        await using var db = await DatabaseAsync();
+        var service = new ReturnService(db, null!, null!, null!);
+        var request = new CreatePurchaseReturnRequest
+        {
+            PurchaseId = 1,
+            Items = [new PurchaseReturnItemRequest { PurchaseItemId = 1, Qty = 2 }]
+        };
+
+        await service.CreatePurchaseReturnAsync(request, 1, 10);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => service.CreatePurchaseReturnAsync(request, 1, 10));
+
+        db.ChangeTracker.Clear();
+        Assert.Equal(76m, (await db.Products.SingleAsync()).StockQty);
+        Assert.Single(await db.PurchaseReturns.ToListAsync());
+        Assert.Single(await db.InventoryTransactions.ToListAsync());
+    }
+
     [Fact]
     public async Task SavedConversionAtPurchase_CannotBeOverwrittenByApplicationSave()
     {

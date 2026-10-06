@@ -368,7 +368,7 @@ namespace HexaBill.Api.Modules.Payments
                     Data = result
                 });
             }
-            catch (ArgumentException ex)
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
                 return BadRequest(new ApiResponse<CreatePaymentResponse>
                 {

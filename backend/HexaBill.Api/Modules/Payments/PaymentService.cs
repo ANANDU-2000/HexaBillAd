@@ -13,6 +13,10 @@ using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Sales;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.DailyClose;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 namespace HexaBill.Api.Modules.Payments
 {
@@ -56,6 +60,117 @@ namespace HexaBill.Api.Modules.Payments
             TenantFeatureFlags.IsEnabled(
                 await _context.Tenants.AsNoTracking().Where(t => t.Id == tenantId).Select(t => t.FeaturesJson).SingleOrDefaultAsync(),
                 TenantFeatureFlags.SettlementAdjustments);
+
+        private sealed class PaymentReplaySnapshot
+        {
+            public int Version { get; set; } = 2;
+            public string RequestHash { get; set; } = string.Empty;
+            public CreatePaymentResponse Response { get; set; } = null!;
+        }
+
+        private sealed class CanonicalPaymentDecimalConverter : System.Text.Json.Serialization.JsonConverter<decimal>
+        {
+            public override decimal Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options) => reader.GetDecimal();
+            public override void Write(Utf8JsonWriter writer, decimal value, JsonSerializerOptions options) =>
+                writer.WriteRawValue(value.ToString("G29", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
+        private static readonly JsonSerializerOptions PaymentHashOptions = new()
+        {
+            Converters = { new CanonicalPaymentDecimalConverter() }
+        };
+
+        private static string? ScopedPaymentKey(string? clientKey, int tenantId)
+        {
+            if (string.IsNullOrEmpty(clientKey)) return null;
+            if (string.IsNullOrWhiteSpace(clientKey) || clientKey.Length > 100)
+                throw new ArgumentException("Idempotency key must contain between 1 and 100 characters.");
+            // Fits the existing 100-character primary key; historical rows are retained.
+            return $"payment:v2:{tenantId}:{Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(clientKey)))}";
+        }
+
+        private static string PaymentRequestHash(string operation, object request) =>
+            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(operation + ":" + JsonSerializer.Serialize(request, PaymentHashOptions))));
+
+        private async Task<CreatePaymentResponse?> ReplayPaymentAsync(string? storedKey, string? clientKey, string requestHash, int tenantId)
+        {
+            if (storedKey == null) return null;
+            if (_context.Database.IsNpgsql())
+            {
+                var lockId = BinaryPrimitives.ReadInt64BigEndian(SHA256.HashData(Encoding.UTF8.GetBytes(storedKey)));
+                await _context.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({lockId})");
+            }
+
+            // Explicit payment ownership also protects legacy rows without TenantId.
+            var existing = await _context.PaymentIdempotencies.AsNoTracking()
+                .Where(p => p.Payment.TenantId == tenantId && (p.IdempotencyKey == storedKey || p.IdempotencyKey == clientKey))
+                .OrderByDescending(p => p.IdempotencyKey == storedKey)
+                .Include(p => p.Payment).ThenInclude(p => p.Sale)
+                .Include(p => p.Payment).ThenInclude(p => p.Customer)
+                .FirstOrDefaultAsync();
+            if (existing == null) return null;
+
+            if (existing.IdempotencyKey == storedKey)
+            {
+                var snapshot = JsonSerializer.Deserialize<PaymentReplaySnapshot>(existing.ResponseSnapshot ?? "null");
+                if (snapshot?.Version != 2 || snapshot.Response?.Payment == null || snapshot.Response.Payment.Id != existing.PaymentId)
+                    throw new InvalidOperationException("Stored payment response is unavailable. Please refresh before retrying.");
+                if (snapshot.RequestHash != requestHash)
+                    throw new ArgumentException("This idempotency key was already used for a different payment request.");
+                // A retained payment may since have been voided, cleared, or edited.
+                // Preserve retry identity without presenting its old posting as active.
+                if (existing.Payment.Status.ToString() != snapshot.Response.Payment.Status
+                    || existing.Payment.Amount != snapshot.Response.Payment.Amount
+                    || (existing.Payment.UpdatedAt.HasValue && existing.Payment.UpdatedAt.Value != existing.Payment.CreatedAt))
+                {
+                    snapshot.Response.Payment = await GetPaymentByIdAsync(existing.PaymentId, tenantId)
+                        ?? throw new InvalidOperationException("Stored payment is unavailable.");
+                    var currentSale = existing.Payment.Sale?.TenantId == tenantId ? existing.Payment.Sale : null;
+                    var currentCustomer = existing.Payment.Customer?.TenantId == tenantId ? existing.Payment.Customer : null;
+                    if (snapshot.Response.Invoice != null)
+                        snapshot.Response.Invoice = currentSale == null ? null : new InvoiceSummaryDto
+                        {
+                            Id = currentSale.Id, InvoiceNo = currentSale.InvoiceNo, TotalAmount = currentSale.GrandTotal,
+                            PaidAmount = currentSale.PaidAmount, OutstandingAmount = currentSale.GrandTotal - currentSale.PaidAmount, Status = currentSale.PaymentStatus.ToString()
+                        };
+                    if (snapshot.Response.Customer != null)
+                        snapshot.Response.Customer = currentCustomer == null ? null : new CustomerSummaryDto
+                        { Id = currentCustomer.Id, Name = currentCustomer.Name, Balance = currentCustomer.Balance };
+                    if (snapshot.Response.SettlementAdjustment != null)
+                        snapshot.Response.SettlementAdjustment = await GetPaymentByIdAsync(snapshot.Response.SettlementAdjustment.Id, tenantId);
+                }
+                return snapshot.Response;
+            }
+
+            // Legacy snapshots did not capture a complete response or request hash.
+            var payment = await GetPaymentByIdAsync(existing.PaymentId, tenantId);
+            if (payment == null) throw new InvalidOperationException("Stored payment is unavailable.");
+            var sale = existing.Payment.Sale?.TenantId == tenantId ? existing.Payment.Sale : null;
+            var customer = existing.Payment.Customer?.TenantId == tenantId ? existing.Payment.Customer : null;
+            var adjustmentId = await _context.Payments.Where(p => p.TenantId == tenantId && p.ParentPaymentId == existing.PaymentId && p.IsSettlementAdjustment)
+                .Select(p => (int?)p.Id).FirstOrDefaultAsync();
+            return new CreatePaymentResponse
+            {
+                Payment = payment,
+                SettlementAdjustment = adjustmentId.HasValue ? await GetPaymentByIdAsync(adjustmentId.Value, tenantId) : null,
+                Invoice = sale == null ? null : new InvoiceSummaryDto
+                {
+                    Id = sale.Id, InvoiceNo = sale.InvoiceNo, TotalAmount = sale.GrandTotal,
+                    PaidAmount = sale.PaidAmount, OutstandingAmount = sale.GrandTotal - sale.PaidAmount, Status = sale.PaymentStatus.ToString()
+                },
+                Customer = customer == null ? null : new CustomerSummaryDto { Id = customer.Id, Name = customer.Name, Balance = customer.Balance }
+            };
+        }
+
+        private void RememberPaymentResponse(string? storedKey, string requestHash, CreatePaymentResponse response, int userId)
+        {
+            if (storedKey == null) return;
+            _context.PaymentIdempotencies.Add(new PaymentIdempotency
+            {
+                IdempotencyKey = storedKey, PaymentId = response.Payment.Id, UserId = userId, CreatedAt = DateTime.UtcNow,
+                ResponseSnapshot = JsonSerializer.Serialize(new PaymentReplaySnapshot { RequestHash = requestHash, Response = response })
+            });
+        }
 
         private async Task RefreshSalePaymentStateAsync(Sale sale, int tenantId, IEnumerable<Payment>? pending = null, IEnumerable<int>? omitPaymentIds = null)
         {
@@ -204,44 +319,8 @@ namespace HexaBill.Api.Modules.Payments
             if (!request.CustomerId.HasValue && !request.SaleId.HasValue)
                 throw new ArgumentException("Please select a customer or invoice before recording payment.");
 
-            // Check idempotency if key provided
-            if (!string.IsNullOrEmpty(idempotencyKey))
-            {
-                var existingRequest = await _context.PaymentIdempotencies
-                    .FirstOrDefaultAsync(pr => pr.IdempotencyKey == idempotencyKey);
-                
-                if (existingRequest != null)
-                {
-                    // Return existing payment response
-                    var existingPayment = await GetPaymentByIdAsync(existingRequest.PaymentId, tenantId);
-                    if (existingPayment != null)
-                    {
-                        var sale = existingRequest.Payment?.Sale;
-                        var customer = existingRequest.Payment?.Customer;
-                        
-                        _logger.LogWarning("Duplicate payment detected (idempotency key). Key: {IdempotencyKey}", idempotencyKey);
-                        return new CreatePaymentResponse
-                        {
-                            Payment = existingPayment,
-                            Invoice = sale != null ? new InvoiceSummaryDto
-                            {
-                                Id = sale.Id,
-                                InvoiceNo = sale.InvoiceNo,
-                                TotalAmount = sale.GrandTotal,
-                                PaidAmount = sale.PaidAmount,
-                                OutstandingAmount = sale.GrandTotal - sale.PaidAmount,
-                                Status = sale.PaymentStatus.ToString()
-                            } : null,
-                            Customer = customer != null ? new CustomerSummaryDto
-                            {
-                                Id = customer.Id,
-                                Name = customer.Name,
-                                Balance = customer.Balance
-                            } : null
-                        };
-                    }
-                }
-            }
+            var storedIdempotencyKey = ScopedPaymentKey(idempotencyKey, tenantId);
+            var requestHash = PaymentRequestHash("create", request);
 
             // Phase 1 Fix: Single transaction + Sale row lock (FOR UPDATE) to prevent overpayment and half-saves.
             var strategy = _context.Database.CreateExecutionStrategy();
@@ -250,6 +329,8 @@ namespace HexaBill.Api.Modules.Payments
                 using var transaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    var replay = await ReplayPaymentAsync(storedIdempotencyKey, idempotencyKey, requestHash, tenantId);
+                    if (replay != null) return replay;
                     Sale? invoiceSale = null;
                     if (request.SaleId.HasValue)
                     {
@@ -405,22 +486,8 @@ namespace HexaBill.Api.Modules.Payments
                     };
                     _context.AuditLogs.Add(auditLog);
 
-                    if (!string.IsNullOrEmpty(idempotencyKey))
-                    {
-                        _context.PaymentIdempotencies.Add(new PaymentIdempotency
-                        {
-                            IdempotencyKey = idempotencyKey,
-                            PaymentId = payment.Id,
-                            UserId = userId,
-                            CreatedAt = DateTime.UtcNow,
-                            ResponseSnapshot = System.Text.Json.JsonSerializer.Serialize(new { PaymentId = payment.Id, InvoiceId = request.SaleId, CustomerId = request.CustomerId, Amount = request.Amount })
-                        });
-                    }
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
                     var paymentId = payment.Id;
-                    return new CreatePaymentResponse
+                    var response = new CreatePaymentResponse
                     {
                         Payment = await GetPaymentByIdAsync(paymentId, tenantId) ?? throw new InvalidOperationException("Failed to retrieve payment"),
                         SettlementAdjustment = adjustmentPayment != null
@@ -442,6 +509,11 @@ namespace HexaBill.Api.Modules.Payments
                             Balance = updatedCustomer.Balance
                         } : null
                     };
+                    RememberPaymentResponse(storedIdempotencyKey, requestHash, response, userId);
+                    await _context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    return response;
                 }
                 catch (DbUpdateConcurrencyException ex)
                 {
@@ -513,19 +585,19 @@ namespace HexaBill.Api.Modules.Payments
             if (oldStatus == PaymentStatus.PENDING && status == PaymentStatus.CLEARED)
             {
                 if (payment.CustomerId.HasValue)
-                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, tenantId);
             }
             else if ((status == PaymentStatus.VOID || status == PaymentStatus.RETURNED) && oldStatus != PaymentStatus.VOID)
             {
                 _logger.LogInformation("Payment status change {OldStatus} to {NewStatus} for payment {PaymentId}; reversing effects", oldStatus, status, paymentId);
                 if (payment.CustomerId.HasValue)
-                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, tenantId);
             }
             else if (oldStatus == PaymentStatus.CLEARED && status == PaymentStatus.PENDING)
             {
                 _logger.LogInformation("Payment status change CLEARED to PENDING for payment {PaymentId}", paymentId);
                 if (payment.CustomerId.HasValue)
-                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value);
+                    await _balanceService.RecalculateCustomerBalanceAsync(payment.CustomerId.Value, tenantId);
             }
 
             // Create audit log
@@ -911,56 +983,47 @@ namespace HexaBill.Api.Modules.Payments
         {
             if (request.Amount <= 0)
                 throw new ArgumentException("Payment amount must be greater than zero");
+            if (request.Amount != Math.Round(request.Amount, 2, MidpointRounding.AwayFromZero))
+                throw new ArgumentException("Payment amount must have no more than two decimal places.");
 
             if (!request.CustomerId.HasValue)
                 throw new ArgumentException("Customer ID is required");
 
-            // Check idempotency if key provided
-            if (!string.IsNullOrEmpty(idempotencyKey))
-            {
-                var existingRequest = await _context.PaymentIdempotencies
-                    .FirstOrDefaultAsync(pr => pr.IdempotencyKey == idempotencyKey);
-                
-                if (existingRequest != null)
-                {
-                    var existingPayment = await GetPaymentByIdAsync(existingRequest.PaymentId, tenantId);
-                    if (existingPayment != null)
-                    {
-                        var sale = existingRequest.Payment?.Sale;
-                        var customer = existingRequest.Payment?.Customer;
-                        
-                        return new CreatePaymentResponse
-                        {
-                            Payment = existingPayment,
-                            Invoice = sale != null ? new InvoiceSummaryDto
-                            {
-                                Id = sale.Id,
-                                InvoiceNo = sale.InvoiceNo,
-                                TotalAmount = sale.GrandTotal,
-                                PaidAmount = sale.PaidAmount,
-                                OutstandingAmount = sale.GrandTotal - sale.PaidAmount,
-                                Status = sale.PaymentStatus.ToString()
-                            } : null,
-                            Customer = customer != null ? new CustomerSummaryDto
-                            {
-                                Id = customer.Id,
-                                Name = customer.Name,
-                                Balance = customer.Balance
-                            } : null
-                        };
-                    }
-                }
-            }
+            if (request.Allocations == null || request.Allocations.Count == 0 || request.Allocations.Count > 500)
+                throw new ArgumentException("Select between 1 and 500 invoice allocations.");
+            if (request.Allocations.Any(a => a.InvoiceId <= 0 || a.Amount <= 0))
+                throw new ArgumentException("Every allocation requires an invoice and a positive amount.");
+            if (request.Allocations.Any(a => a.Amount != Math.Round(a.Amount, 2, MidpointRounding.AwayFromZero)))
+                throw new ArgumentException("Invoice allocation amounts must have no more than two decimal places.");
+            if (request.Allocations.Select(a => a.InvoiceId).Distinct().Count() != request.Allocations.Count)
+                throw new ArgumentException("Select each invoice once and combine its allocated amount.");
+
+            var storedIdempotencyKey = ScopedPaymentKey(idempotencyKey, tenantId);
+            var requestHash = PaymentRequestHash("allocate", request);
 
             return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                var replay = await ReplayPaymentAsync(storedIdempotencyKey, idempotencyKey, requestHash, tenantId);
+                if (replay != null) return replay;
                 var customer = await _context.Customers
                     .FirstOrDefaultAsync(c => c.Id == request.CustomerId.Value && c.TenantId == tenantId);
                 if (customer == null)
                     throw new ArgumentException("Customer not found");
+
+                // Lock before reading outstanding amounts. Creation/edit/void also take
+                // the invoice row lock, so a waiting allocation sees their committed state.
+                // Stable ID order prevents two multi-invoice allocations taking opposite locks.
+                if (_context.Database.IsNpgsql())
+                {
+                    foreach (var invoiceId in request.Allocations.Select(a => a.InvoiceId).OrderBy(id => id))
+                    {
+                        await _context.Database.ExecuteSqlInterpolatedAsync(
+                            $"SELECT \"Id\" FROM \"Sales\" WHERE \"Id\" = {invoiceId} AND \"TenantId\" = {tenantId} AND \"CustomerId\" = {request.CustomerId.Value} AND NOT \"IsDeleted\" FOR UPDATE");
+                    }
+                }
 
                 // Get outstanding invoices ordered by date (oldest first)
                 var outstandingInvoices = await GetOutstandingInvoicesAsync(request.CustomerId.Value, tenantId);
@@ -1040,25 +1103,22 @@ namespace HexaBill.Api.Modules.Payments
                             .FirstOrDefaultAsync(s => s.Id == allocation.InvoiceId && s.TenantId == tenantId);
                         if (sale != null)
                         {
-                            sale.PaidAmount = Math.Round(sale.PaidAmount + allocationAmount, 2, MidpointRounding.AwayFromZero);
-                            sale.LastPaymentDate = payment.PaymentDate;
-
-                            if (sale.PaidAmount >= sale.GrandTotal)
-                                sale.PaymentStatus = SalePaymentStatus.Paid;
-                            else if (sale.PaidAmount > 0)
-                                sale.PaymentStatus = SalePaymentStatus.Partial;
+                            await RefreshSalePaymentStateAsync(sale, tenantId);
                         }
                     }
 
                     remainingAmount -= allocationAmount;
                 }
 
+                if (allocatedPayments.Count == 0)
+                    throw new InvalidOperationException("No payments were allocated. Please refresh the outstanding invoices and try again.");
+
                 // CRITICAL FIX: Recalculate customer balance INSIDE transaction
                 // This ensures balance is correct AND if recalculation fails, the whole transaction fails
                 if (request.CustomerId.HasValue)
                 {
                     var customerService = new HexaBill.Api.Modules.Customers.CustomerService(_context);
-                    await customerService.RecalculateCustomerBalanceAsync(request.CustomerId.Value, customer.TenantId ?? 0);
+                    await customerService.RecalculateCustomerBalanceAsync(request.CustomerId.Value, tenantId);
                     _logger.LogInformation("Customer balance recalculated after payment allocation for customer {CustomerId}", request.CustomerId);
                 }
 
@@ -1081,54 +1141,7 @@ namespace HexaBill.Api.Modules.Payments
 
                 _context.AuditLogs.Add(auditLog);
 
-                // Save changes with optimistic concurrency check
-                try
-                {
-                    await _context.SaveChangesAsync();
-                    
-                    // Create idempotency record if key provided
-                    if (!string.IsNullOrEmpty(idempotencyKey) && allocatedPayments.Any())
-                    {
-                        var firstPayment = allocatedPayments.First();
-                        var responseSnapshot = System.Text.Json.JsonSerializer.Serialize(new
-                        {
-                            PaymentId = firstPayment.Id,
-                            CustomerId = request.CustomerId,
-                            TotalAmount = request.Amount,
-                            Allocations = request.Allocations
-                        });
-                        
-                        var paymentIdempotency = new PaymentIdempotency
-                        {
-                            IdempotencyKey = idempotencyKey,
-                            PaymentId = firstPayment.Id,
-                            UserId = userId,
-                            CreatedAt = DateTime.UtcNow,
-                            ResponseSnapshot = responseSnapshot
-                        };
-                        
-                        _context.PaymentIdempotencies.Add(paymentIdempotency);
-                        await _context.SaveChangesAsync();
-                    }
-                    
-                    await transaction.CommitAsync();
-                }
-                catch (DbUpdateConcurrencyException ex)
-                {
-                    try { await transaction.RollbackAsync(); } catch { }
-                    throw new InvalidOperationException("Invoice was modified by another user. Please refresh and try again.", ex);
-                }
-
-                // Reload customer
-                await _context.Entry(customer).ReloadAsync();
-
-                // CRITICAL FIX: Validate allocatedPayments is not empty before accessing
-                if (allocatedPayments.Count == 0)
-                {
-                    throw new InvalidOperationException("No payments were allocated. Please check invoice allocation criteria.");
-                }
-
-                return new CreatePaymentResponse
+                var response = new CreatePaymentResponse
                 {
                     Payment = await GetPaymentByIdAsync(allocatedPayments.First().Id, tenantId) ?? throw new InvalidOperationException("Failed to retrieve payment"),
                     Customer = new CustomerSummaryDto
@@ -1138,6 +1151,24 @@ namespace HexaBill.Api.Modules.Payments
                         Balance = customer.Balance
                     }
                 };
+
+                // Save changes with optimistic concurrency check
+                try
+                {
+                    await _context.SaveChangesAsync();
+                    
+                    RememberPaymentResponse(storedIdempotencyKey, requestHash, response, userId);
+                    await _context.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
+                }
+                catch (DbUpdateConcurrencyException ex)
+                {
+                    try { await transaction.RollbackAsync(); } catch { }
+                    throw new InvalidOperationException("Invoice was modified by another user. Please refresh and try again.", ex);
+                }
+
+                return response;
             }
             catch (Exception ex)
             {

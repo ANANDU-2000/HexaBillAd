@@ -35,6 +35,35 @@ public class DailyCloseControllerTests
     }
 
     [Fact]
+    public async Task Preview_BranchIncludesCashRefundLinkedThroughSaleReturn()
+    {
+        await using var db = await DatabaseAsync();
+        var noon = new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc);
+        db.SaleReturns.Add(new SaleReturn
+        {
+            Id = 1, OwnerId = 10, TenantId = 10, SaleId = 1, BranchId = 1, ReturnNo = "RET-CASH-1",
+            ReturnDate = noon, GrandTotal = 100m, Status = ReturnStatus.Approved, CreatedBy = 1, CreatedAt = noon
+        });
+        db.Payments.Add(new Payment
+        {
+            TenantId = 10, OwnerId = 10, SaleReturnId = 1, CustomerId = null,
+            Amount = 100m, Mode = PaymentMode.CASH, Status = PaymentStatus.CLEARED,
+            PaymentDate = noon, CreatedBy = 1, CreatedAt = noon
+        });
+        await db.SaveChangesAsync();
+
+        var controller = Controller(db, tenantId: 10, role: "Owner", userId: 1);
+        var businessDate = new DateTime(2026, 10, 3, 0, 0, 0, DateTimeKind.Utc);
+        var action = await controller.Preview(businessDate, openingCash: 100m, branchId: 1);
+        var result = Assert.IsType<OkObjectResult>(action.Result);
+        var payload = Assert.IsType<ApiResponse<DailyClosePreviewDto>>(result.Value);
+        Assert.True(payload.Success);
+        Assert.NotNull(payload.Data);
+        Assert.Equal(150m, payload.Data!.CollectionsCashPaidOut);
+        Assert.Equal(1280m, payload.Data.ExpectedCash);
+    }
+
+    [Fact]
     public async Task Preview_RejectsBranchFromAnotherTenant()
     {
         await using var db = await DatabaseAsync();

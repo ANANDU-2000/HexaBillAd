@@ -74,6 +74,23 @@ public class CustomersHttpIsolationTests
     }
 
     [Fact]
+    public async Task GetOutstandingInvoices_IncludesCustomerIdentityForLedgerFiltering()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var response = await client.GetAsync("/api/customers/1/outstanding-invoices");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var invoices = json.RootElement.GetProperty("data").EnumerateArray().ToList();
+        Assert.NotEmpty(invoices);
+        Assert.All(invoices, invoice =>
+        {
+            Assert.True(invoice.TryGetProperty("customerId", out var customerId), "Ledger drops invoices without customerId and hides Pay All.");
+            Assert.Equal(1, customerId.GetInt32());
+            Assert.True(invoice.GetProperty("balanceAmount").GetDecimal() > 0);
+        });
+    }
+
+    [Fact]
     public async Task SearchCustomers_DoesNotReturnOtherTenantCustomers()
     {
         using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");

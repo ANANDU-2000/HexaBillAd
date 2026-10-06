@@ -30,7 +30,9 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useBranding } from '../../tenant/TenantBrandingContext'
-import { formatCurrency, formatBalance } from '../../utils/currency'
+import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
+import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
+import { invoiceBillTotals } from '../../utils/invoiceBillTotals'
 import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
@@ -195,6 +197,28 @@ const CustomerLedgerPage = () => {
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })
   const [duplicatePaymentModal, setDuplicatePaymentModal] = useState({ isOpen: false, amount: 0 })
   const pendingPaymentRef = useRef(null) // Store pending payment for duplicate confirm
+  const paymentJournal = useMemo(() => createLedgerPaymentJournal({
+    getItem: key => window.sessionStorage.getItem(key),
+    setItem: (key, value) => window.sessionStorage.setItem(key, value),
+    removeItem: key => window.sessionStorage.removeItem(key),
+  }), [])
+  const paymentScope = ledgerPaymentScope({
+    origin: window.location.origin, tenantId: user?.tenantId, userId: user?.id,
+    customerId: normalizeLedgerCustomerId(selectedCustomer?.id),
+  })
+  const paymentScopeRef = useRef(paymentScope)
+  paymentScopeRef.current = paymentScope
+  const [unconfirmedPayment, setUnconfirmedPayment] = useState(null)
+  const [paymentRecoveryError, setPaymentRecoveryError] = useState(null)
+  useEffect(() => {
+    try {
+      setUnconfirmedPayment(paymentScope ? paymentJournal.read(paymentScope) : null)
+      setPaymentRecoveryError(null)
+    } catch (error) {
+      setUnconfirmedPayment(null)
+      setPaymentRecoveryError(error.message)
+    }
+  }, [paymentScope, paymentJournal])
 
   // Keyboard shortcuts refs
   const searchInputRef = useRef(null)
@@ -1623,296 +1647,163 @@ const CustomerLedgerPage = () => {
 
   const handlePaymentSubmit = async (data) => {
     if (paymentLoadingRef.current || paymentLoading) return
-    if (!selectedCustomer) {
-      toast.error('Please select a customer first')
-      return
-    }
-
-    paymentLoadingRef.current = true
-    setPaymentLoading(true)
-
-    const idempotencyKey = crypto.randomUUID()
-    const amount = parseFloat(data.amount)
-    if (!amount || amount <= 0 || isNaN(amount) || !isFinite(amount)) {
-      toast.error('Please enter a valid payment amount greater than 0')
-      paymentLoadingRef.current = false
-      setPaymentLoading(false)
-      return
-    }
-    if (amount > 10000000) {
-      toast.error('Payment amount exceeds maximum limit (10,000,000)')
-      paymentLoadingRef.current = false
-      setPaymentLoading(false)
-      return
-    }
-
-    const isCashCustomer = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
-    const isAllocate = payAllOutstandingMode && outstandingInvoices.length > 0
-    const paymentMethod = (data.method || data.mode || 'CASH').toUpperCase()
-    const saleIdParsed = data.saleId ? parseInt(data.saleId, 10) : null
-    let settlementAdjustmentAmount = 0
-    let settlementAdjustmentReason = null
-
-    if (settlementAdjustmentsEnabled && saleIdParsed && !isAllocate && paymentMethod === 'CASH') {
-      const selectedInv = outstandingInvoices.find((inv) => inv.id === saleIdParsed)
-        || customerInvoices.find((inv) => inv.id === saleIdParsed)
-      const balance = selectedInv
-        ? Number(selectedInv.balanceAmount ?? computeOutstanding(selectedInv.grandTotal || selectedInv.total, selectedInv.paidAmount))
-        : 0
-      const shortfall = computeInvoiceSettlementShortfall(balance, amount)
-      if (data.applySettlementAdjustment) {
-        if (shortfall <= 0) {
-          toast.error('Settlement adjustment is not applicable for this cash amount')
-          paymentLoadingRef.current = false
-          setPaymentLoading(false)
-          return
-        }
-        const reason = (data.settlementAdjustmentReason || '').trim()
-        if (reason.length < 3) {
-          toast.error('Enter a short reason for the settlement adjustment (at least 3 characters)')
-          paymentLoadingRef.current = false
-          setPaymentLoading(false)
-          return
-        }
-        settlementAdjustmentAmount = shortfall
-        settlementAdjustmentReason = reason
-      }
-    }
-
-    // DUPLICATE PAYMENT CHECK: same customer + same amount + same day
-    if (!isCashCustomer) {
-      const paymentDateStr = data.paymentDate ? (data.paymentDate.includes('T') ? data.paymentDate.split('T')[0] : data.paymentDate) : localDateString(new Date())
-      let checkAmount = amount
-      if (isAllocate) {
-        checkAmount = outstandingInvoices
-          .filter(inv => (Number(inv.balanceAmount) || 0) > 0)
-          .reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
-      }
-      try {
-        const checkRes = await paymentsAPI.checkDuplicatePayment(parseInt(selectedCustomer.id), checkAmount, paymentDateStr)
-        const hasDuplicate = checkRes?.data?.hasDuplicate || checkRes?.hasDuplicate
-        if (hasDuplicate) {
-          pendingPaymentRef.current = { data, idempotencyKey, isAllocate }
-          setDuplicatePaymentModal({ isOpen: true, amount: checkAmount })
-          paymentLoadingRef.current = false
-          setPaymentLoading(false)
-          return
-        }
-      } catch (err) {
-        console.warn('Duplicate check failed, proceeding:', err)
-      }
-    }
-
-    await executePaymentApi({
-      data: { ...data, settlementAdjustmentAmount, settlementAdjustmentReason },
-      idempotencyKey,
-      isAllocate
-    })
-  }
-
-  const executePaymentApi = async ({ data, idempotencyKey, isAllocate }) => {
-    paymentLoadingRef.current = true
-    setPaymentLoading(true)
-    const amount = parseFloat(data.amount)
-    const isCashCustomer = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
-
+    if (!selectedCustomer) { toast.error('Please select a customer first'); return }
     try {
-      if (isAllocate) {
-        const allocations = outstandingInvoices
-          .filter(inv => (Number(inv.balanceAmount) || 0) > 0)
-          .map(inv => ({ invoiceId: inv.id, amount: Number(inv.balanceAmount) || 0 }))
-        const totalAlloc = allocations.reduce((s, a) => s + a.amount, 0)
-        if (allocations.length === 0 || Math.abs(totalAlloc - amount) > 0.01) {
-          toast.error('Outstanding amounts may have changed. Please refresh and try again.')
-          paymentLoadingRef.current = false
-          setPaymentLoading(false)
+      const previous = paymentJournal.read(paymentScope)
+      if (previous) {
+        if (previous.form !== ledgerPaymentForm(data, payAllOutstandingMode)) {
+          toast.error('Retry the previous payment before recording a different payment.')
           return
         }
-        const allocateData = {
-          customerId: parseInt(selectedCustomer.id),
-          amount: totalAlloc,
-          mode: (data.method || data.mode || 'CASH').toUpperCase(),
-          reference: data.ref || data.reference || null,
-          paymentDate: data.paymentDate || new Date().toISOString(),
-          allocations
-        }
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Payment request timed out after 30 seconds')), 30000)
-        )
-        const response = await Promise.race([
-          paymentsAPI.allocatePayment(allocateData),
-          timeoutPromise
-        ])
-        if (response?.success) {
-          toast.success(`Payment recorded: ${formatCurrency(amount)} across ${allocations.length} invoice(s)`, { id: 'payment-success', duration: 5000 })
-          const allocatedPayment = response?.data?.payment || response?.data?.Payment
-          onPaymentReceiptOffer(allocatedPayment)
-          showReturnToPrompt(navigate, returnTo)
-          setShowPaymentModal(false)
-          setPayAllOutstandingMode(false)
-          setPaymentModalInvoiceId(null)
-          resetPaymentForm()
-          const isCash = false
-          setBalanceRefreshSkeleton(true)
-          try {
-            await customersAPI.recalculateBalance(selectedCustomer.id)
-          } catch (recalcErr) {
-            console.warn('Balance recalc after payment:', recalcErr?.message)
-          }
-          await new Promise(r => setTimeout(r, 500))
-          await loadCustomerData(selectedCustomer.id)
-          const fetchResp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
-          if (fetchResp?.success && fetchResp?.data?.items) {
-            setCustomers(fetchResp.data.items)
-            const updated = fetchResp.data.items.find(c => c.id === selectedCustomer.id)
-            if (updated) setSelectedCustomer(updated)
-          }
-          setTimeout(() => setBalanceRefreshSkeleton(false), 500)
-          setTimeout(async () => {
-            await loadCustomerData(selectedCustomer.id)
-            const resp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
-            if (resp?.success && resp?.data?.items) {
-              setCustomers(resp.data.items)
-              const upd = resp.data.items.find(c => c.id === selectedCustomer.id)
-              if (upd) setSelectedCustomer(upd)
-            }
-            window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { customerId: selectedCustomer.id } }))
-            window.dispatchEvent(new CustomEvent('dataUpdated'))
-          }, 2000)
-          window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { customerId: selectedCustomer.id } }))
-          window.dispatchEvent(new CustomEvent('dataUpdated'))
-        } else {
-          toast.error(response?.message || 'Failed to allocate payment', { id: 'payment-error' })
-        }
-        paymentLoadingRef.current = false
-        setPaymentLoading(false)
+        await executePaymentApi({ savedIntent: previous })
         return
       }
+    } catch (error) { toast.error(error.message); return }
 
-      // createPayment flow
-      const paymentData = {
-        customerId: isCashCustomer ? null : parseInt(selectedCustomer.id),
-        saleId: data.saleId ? parseInt(data.saleId) : null,
-        amount: amount,
-        mode: (data.method || data.mode || 'CASH').toUpperCase(), // Backend expects uppercase: CASH, CHEQUE, ONLINE, CREDIT
-        reference: data.ref || data.reference || null,
-        paymentDate: data.paymentDate || new Date().toISOString()
+    const amount = Number(data.amount)
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 10000000) {
+      toast.error('Enter a payment amount greater than 0 and no more than 10,000,000.')
+      return
+    }
+    const isCashCustomer = normalizeLedgerCustomerId(selectedCustomer.id) === 'cash'
+    const isAllocate = payAllOutstandingMode
+    const saleId = data.saleId ? parseInt(data.saleId, 10) : null
+    const mode = (data.method || data.mode || 'CASH').toUpperCase()
+    let request = {
+      customerId: isCashCustomer ? null : parseInt(selectedCustomer.id, 10),
+      saleId, amount, mode, reference: data.ref || data.reference || null,
+      paymentDate: data.paymentDate || new Date().toISOString(),
+    }
+    if (isAllocate) {
+      const allocations = outstandingInvoices.filter(inv => Number(inv.balanceAmount) > 0)
+        .map(inv => ({ invoiceId: inv.id, amount: Number(inv.balanceAmount) }))
+      const total = roundMoney(allocations.reduce((sum, allocation) => sum + allocation.amount, 0))
+      if (!allocations.length || Math.abs(total - amount) > 0.01) {
+        toast.error('Outstanding amounts may have changed. Please refresh and try again.')
+        return
       }
-      if (data.settlementAdjustmentAmount > 0) {
-        paymentData.settlementAdjustmentAmount = data.settlementAdjustmentAmount
-        paymentData.settlementAdjustmentReason = data.settlementAdjustmentReason
+      request = { ...request, amount: total, allocations }
+      delete request.saleId
+    } else if (settlementAdjustmentsEnabled && saleId && mode === 'CASH' && data.applySettlementAdjustment) {
+      const invoice = outstandingInvoices.find(inv => inv.id === saleId) || customerInvoices.find(inv => inv.id === saleId)
+      const balance = invoice ? Number(invoice.balanceAmount ?? computeOutstanding(invoice.grandTotal || invoice.total, invoice.paidAmount)) : 0
+      const shortfall = computeInvoiceSettlementShortfall(balance, amount)
+      const reason = (data.settlementAdjustmentReason || '').trim()
+      if (shortfall <= 0 || reason.length < 3) {
+        toast.error(shortfall <= 0 ? 'Settlement adjustment is not applicable for this cash amount' : 'Enter an adjustment reason (at least 3 characters)')
+        return
       }
-
-      console.log('Submitting payment with data:', paymentData)
-      console.log('Idempotency key:', idempotencyKey)
-
-      // Add timeout to prevent hanging (30 seconds)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Payment request timed out after 30 seconds')), 30000)
-      )
-
-      console.log('Sending payment request to API...')
-      const response = await Promise.race([
-        paymentsAPI.createPayment(paymentData, idempotencyKey),
-        timeoutPromise
-      ])
-      console.log('Payment API response received:', response)
-
-      // Backend returns: { success: true, message: "...", data: { payment, invoice, customer } }
-      if (response?.success) {
-        const paymentResult = response?.data?.payment || response?.data
-        const invoiceResult = response?.data?.invoice
-        const mode = paymentResult?.mode || paymentResult?.method || data.method || 'CASH'
-        const amount = paymentResult?.amount || data.amount
-
-        const adjAmt = response?.data?.settlementAdjustment?.amount
-        const adjPart = adjAmt > 0 ? ` + ${formatCurrency(adjAmt)} adjustment` : ''
-        const statusMsg = invoiceResult?.invoiceNo
-          ? ` Invoice ${invoiceResult.invoiceNo} status: ${invoiceResult.status || invoiceResult.paymentStatus || 'PENDING'}`
-          : ''
-        toast.success(`Payment recorded: ${formatCurrency(amount)} cash${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
-        onPaymentReceiptOffer(paymentResult)
-        showReturnToPrompt(navigate, returnTo)
-
-        setShowPaymentModal(false)
-        setPaymentModalInvoiceId(null)
-        resetPaymentForm() // Reset payment form after successful submission
-
-        // RISK-2: Show "Refreshing balance…" so user knows to wait (skip for cash customer)
-        const isCash = !selectedCustomer.id || selectedCustomer.id === 'cash' || selectedCustomer.id === 0
-        if (!isCash) setBalanceRefreshSkeleton(true)
-
-        // Bypass cooldown: direct recalc + short delay + load (payment is always a fresh event)
+      request.settlementAdjustmentAmount = shortfall
+      request.settlementAdjustmentReason = reason
+    }
+    const draft = { kind: isAllocate ? 'allocate' : 'create', request, form: ledgerPaymentForm(data, isAllocate) }
+    const scope = paymentScope
+    paymentLoadingRef.current = true
+    setPaymentLoading(true)
+    try {
+      if (!isCashCustomer) {
         try {
-          await customersAPI.recalculateBalance(isCash ? 'cash' : selectedCustomer.id)
-        } catch (recalcErr) {
-          console.warn('Balance recalc after payment:', recalcErr?.message)
-        }
-        await new Promise(r => setTimeout(r, 500))
-        await loadCustomerData(isCash ? 'cash' : selectedCustomer.id)
-        const fetchResp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
-        if (fetchResp?.success && fetchResp?.data?.items) {
-          setCustomers(fetchResp.data.items)
-          if (!isCash) {
-            const updated = fetchResp.data.items.find(c => c.id === selectedCustomer.id)
-            if (updated) setSelectedCustomer(updated)
+          const check = await paymentsAPI.checkDuplicatePayment(request.customerId, request.amount, request.paymentDate.split('T')[0])
+          if (scope !== paymentScopeRef.current) return
+          if (check?.data?.hasDuplicate || check?.hasDuplicate) {
+            pendingPaymentRef.current = { scope, draft }
+            setDuplicatePaymentModal({ isOpen: true, amount: request.amount })
+            return
           }
-        }
-
-        if (!isCash) setTimeout(() => setBalanceRefreshSkeleton(false), 500)
-
-        // Delayed refresh to catch backend eventual consistency (2s)
-        setTimeout(async () => {
-          await loadCustomerData(isCash ? 'cash' : selectedCustomer.id)
-          const resp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
-          if (resp?.success && resp?.data?.items) {
-            setCustomers(resp.data.items)
-            if (!isCash) {
-              const updated = resp.data.items.find(c => c.id === selectedCustomer.id)
-              if (updated) setSelectedCustomer(updated)
-            }
-          }
-          window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { customerId: selectedCustomer.id, payment: paymentResult } }))
-          window.dispatchEvent(new CustomEvent('dataUpdated'))
-        }, 2000)
-
-        window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { customerId: selectedCustomer.id, payment: paymentResult } }))
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
-      } else {
-        toast.error(response?.message || 'Failed to save payment', { id: 'payment-error' })
+        } catch (error) { console.warn('Duplicate check failed:', error.message) }
       }
-    } catch (error) {
-      // Log error once (prevent flooding)
-      if (!error._logged) {
-        console.error('Payment error:', error?.response?.data || error?.message)
-        error._logged = true
-      }
-
-      // Skip if interceptor already showed the error
-      if (!error?._handledByInterceptor) {
-        // Handle HTTP 409 Conflict (concurrent modification)
-        if (error.message?.includes('CONFLICT') || error.response?.status === 409) {
-          toast.error('Another user updated this invoice. Refreshing data...', {
-            id: 'payment-error',
-            duration: 5000
-          })
-          await loadCustomerData(selectedCustomer.id)
-          const resp = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
-          if (resp?.success && resp?.data?.items) setCustomers(resp.data.items)
-        } else {
-          let errorMsg = 'Failed to save payment'
-          if (error?.response?.data?.message) {
-            errorMsg = error.response.data.message
-          } else if (error?.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-            errorMsg = error.response.data.errors.join(', ')
-          } else if (error?.message) {
-            errorMsg = error.message
-          }
-          toast.error(errorMsg, { id: 'payment-error', duration: 5000 })
-        }
-      }
+      if (scope === paymentScopeRef.current) await executePaymentApi({ scope, draft })
     } finally {
-      // Reset loading state (both ref and state)
+      paymentLoadingRef.current = false
+      setPaymentLoading(false)
+    }
+  }
+
+  const executePaymentApi = async ({ savedIntent, scope = savedIntent?.scope, draft }) => {
+    if (scope !== paymentScopeRef.current) return
+    paymentLoadingRef.current = true
+    setPaymentLoading(true)
+    let intent, timer, confirmed = false, recovering = false
+    try {
+      recovering = Boolean(savedIntent || paymentJournal.read(scope))
+      intent = savedIntent || paymentJournal.begin(scope, draft)
+      const { request, idempotencyKey } = intent
+      setUnconfirmedPayment(intent)
+      const send = intent.kind === 'allocate' ? paymentsAPI.allocatePayment : paymentsAPI.createPayment
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Payment confirmation timed out. Retry the previous payment.')), 30000)
+      })
+      const response = await Promise.race([send(request, idempotencyKey), timeout])
+      if (!response?.success) {
+        if (scope === paymentScopeRef.current) toast.error(response?.message || 'Payment is unconfirmed. Retry the previous payment.')
+        return
+      }
+      confirmed = true
+      paymentJournal.complete(scope, idempotencyKey)
+      if (scope !== paymentScopeRef.current) return
+      setUnconfirmedPayment(null)
+      const payment = response?.data?.payment || response?.data?.Payment || response?.data
+      const voided = String(payment?.status || '').toUpperCase() === 'VOID'
+      const adjustment = response?.data?.settlementAdjustment?.amount
+      const allocationText = intent.kind === 'allocate' ? ` across ${request.allocations.length} invoice(s)` : ''
+      toast.success(voided ? 'Previous payment is void. No new payment was recorded.' :
+        `Payment confirmed: ${formatCurrency(request.amount)} (${request.mode})${allocationText}${adjustment > 0 ? ` + ${formatCurrency(adjustment)} adjustment` : ''}`,
+      { id: 'payment-success', duration: 5000 })
+      if (!voided) onPaymentReceiptOffer(payment)
+      showReturnToPrompt(navigate, returnTo)
+      setShowPaymentModal(false)
+      setPayAllOutstandingMode(false)
+      setPaymentModalInvoiceId(null)
+      resetPaymentForm()
+      const customerId = request.customerId ?? 'cash'
+      if (customerId !== 'cash') setBalanceRefreshSkeleton(true)
+      try { await customersAPI.recalculateBalance(customerId) }
+      catch (error) { console.warn('Balance recalc after payment:', error.message) }
+      if (scope !== paymentScopeRef.current) return
+      await loadCustomerData(customerId)
+      const refreshCustomers = async () => {
+        const result = await customersAPI.getCustomers({ page: 1, pageSize: 1000 })
+        if (scope !== paymentScopeRef.current) return
+        if (result?.success && result?.data?.items) {
+          setCustomers(result.data.items)
+          const updated = result.data.items.find(customer => customer.id === customerId)
+          if (updated) setSelectedCustomer(updated)
+        }
+      }
+      await refreshCustomers()
+      if (scope !== paymentScopeRef.current) return
+      setBalanceRefreshSkeleton(false)
+      const dispatch = () => {
+        window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { customerId, payment } }))
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+      }
+      dispatch()
+      setTimeout(async () => {
+        if (scope !== paymentScopeRef.current) return
+        try {
+          await loadCustomerData(customerId)
+          await refreshCustomers()
+          if (scope === paymentScopeRef.current) dispatch()
+        } catch (error) {
+          console.warn('Confirmed payment ledger refresh:', error.message)
+        }
+      }, 2000)
+    } catch (error) {
+      // A rejected first attempt can be released, but a rejected retry cannot
+      // prove whether its earlier unconfirmed attempt committed.
+      if (!confirmed && !recovering && intent && [400, 403, 404, 422].includes(error.response?.status)) {
+        paymentJournal.complete(scope, intent.idempotencyKey)
+        if (scope === paymentScopeRef.current) setUnconfirmedPayment(null)
+      }
+      if (scope !== paymentScopeRef.current) return
+      if (confirmed) {
+        toast.error('Payment was confirmed, but the ledger could not refresh. Refresh the ledger before recording another payment.', { id: 'payment-error', duration: 5000 })
+        return
+      }
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || error.message || 'Payment is unconfirmed. Retry the previous payment.',
+        { id: 'payment-error', duration: 5000 })
+    } finally {
+      clearTimeout(timer)
       paymentLoadingRef.current = false
       setPaymentLoading(false)
     }
@@ -2465,6 +2356,19 @@ const CustomerLedgerPage = () => {
         >
           {selectedCustomer && (
             <>
+              {(paymentRecoveryError || unconfirmedPayment?.scope === paymentScope) && (
+                <div role="alert" className="m-3 p-3 rounded-md border border-amber-300 bg-amber-50 text-sm text-amber-950">
+                  {paymentRecoveryError || (paymentLoading
+                    ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
+                    : `A payment of ${formatCurrency(unconfirmedPayment.request.amount)} needs confirmation. Retry it before recording another payment.`)}
+                  {!paymentRecoveryError && (
+                    <button type="button" disabled={paymentLoading} className="ml-3 min-h-[44px] px-3 rounded bg-amber-800 text-white disabled:opacity-50"
+                      onClick={() => { if (!paymentLoadingRef.current) executePaymentApi({ savedIntent: unconfirmedPayment }) }}>
+                      Retry previous payment
+                    </button>
+                  )}
+                </div>
+              )}
               {/* Compact customer + balance + actions */}
               <div className="sticky top-0 z-20 shrink-0 bg-white border-b border-neutral-200 px-3 py-2 sm:px-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
@@ -3056,6 +2960,8 @@ const CustomerLedgerPage = () => {
         watch={watchPayment}
         loading={paymentLoading}
         settlementAdjustmentsEnabled={settlementAdjustmentsEnabled}
+        unconfirmedPayment={unconfirmedPayment?.scope === paymentScope ? unconfirmedPayment : null}
+        onRetryPayment={() => { if (!paymentLoadingRef.current && unconfirmedPayment?.scope === paymentScope) executePaymentApi({ savedIntent: unconfirmedPayment }) }}
       />
 
       {/* Settle Credit Modal — Apply to invoice or Issue refund */}
@@ -3641,10 +3547,10 @@ const CustomerLedgerPage = () => {
         confirmLabel="Yes, Record Another"
         onConfirm={async () => {
           if (pendingPaymentRef.current) {
-            const { data, idempotencyKey, isAllocate } = pendingPaymentRef.current
+            const command = pendingPaymentRef.current
             setDuplicatePaymentModal({ isOpen: false })
             pendingPaymentRef.current = null
-            await executePaymentApi({ data, idempotencyKey, isAllocate })
+            await executePaymentApi(command)
           }
         }}
         onClose={() => {
@@ -4286,17 +4192,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
     return <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color} ml-2`} title={text}>{text}</span>
   }
 
-  const totalInvoices = sortedInvoices.length
-  // Use table data for totals so footer matches visible rows (avoids stale outstandingInvoices)
-  const totalPending = sortedInvoices.reduce((sum, inv) => {
-    const paid = inv.paidAmount ?? 0
-    const total = inv.grandTotal || inv.total || 0
-    const balance = Math.max(0, total - paid)
-    return sum + balance
-  }, 0)
-  const totalPaid = sortedInvoices
-    .filter(inv => inv.paymentStatus === 'Paid')
-    .reduce((sum, inv) => sum + (inv.grandTotal || 0), 0)
+  const { totalInvoices, totalPaid, totalPending } = invoiceBillTotals(sortedInvoices)
 
   return (
     <div className="w-full h-full flex flex-col">
@@ -4456,6 +4352,11 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
 
       {/* Invoices Cards - Mobile */}
       <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
+        <div className="sticky top-0 z-10 bg-gray-50 border-b border-neutral-200 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
+          <span className="font-semibold text-neutral-900">Total Invoices: {totalInvoices}</span>
+          <span className="font-semibold text-green-700">Total Paid: {formatCurrency(totalPaid)}</span>
+          <span className="font-semibold text-red-700">Total Pending: {formatCurrency(totalPending)}</span>
+        </div>
         {sortedInvoices.length === 0 ? (
           <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
             No invoices found
@@ -4944,6 +4845,8 @@ const PaymentEntryModal = ({
   outstandingInvoices,
   allInvoices = [], // All customer invoices (not just outstanding)
   payAllOutstandingMode = false,
+  unconfirmedPayment = null,
+  onRetryPayment,
   onSubmit,
   register,
   handleSubmit,
@@ -5059,8 +4962,17 @@ const PaymentEntryModal = ({
       title={`Add Payment for Customer – ${customer?.name || ''}`}
       size="lg"
     >
+      {unconfirmedPayment && (
+        <div role="alert" className="mb-4 p-3 rounded border border-amber-300 bg-amber-50 text-sm text-amber-950">
+          {loading
+            ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
+            : `Payment confirmation was not received for ${formatCurrency(unconfirmedPayment.request.amount)}. Retry the previous payment to confirm its result.`}
+          <button type="button" disabled={loading} onClick={onRetryPayment} className="mt-2 block min-h-[44px] px-3 rounded bg-amber-800 text-white disabled:opacity-50">
+            Retry previous payment
+          </button>
+        </div>
+      )}
       <form onSubmit={handleSubmit((data) => {
-        console.log('Payment form submitted with data:', data)
         onSubmit(data)
       }, (errors) => {
         console.log('Payment form validation errors:', errors)
@@ -5234,8 +5146,8 @@ const PaymentEntryModal = ({
 
         {!payAllOutstandingMode && !selectedSaleId && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 flex items-center gap-2">
-              <span className="font-medium">General Payment:</span>
+            <p className="text-sm text-yellow-800 flex flex-col sm:flex-row sm:items-center gap-2">
+              <span className="font-medium shrink-0">General Payment:</span>
               <span>This payment will not be allocated to any specific invoice. You can select an invoice above to allocate the payment.</span>
             </p>
           </div>
