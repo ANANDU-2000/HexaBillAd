@@ -33,7 +33,13 @@ One row per verified check. Newest first. Status: `planned | implemented | teste
 
 **Tests (2026-10-06):** GulfHarvestDocumentFamily + TenantHeaderParity + Zayogya + TenantCompanySettings + SampleVatTrn + PaymentReceipt = **73 passed**.
 
-**Production:** deploy + live MCP in progress this session.
+**Production (2026-10-06):**
+- API Render deploy `dep-db25m0cs728c73b6gepg` → **live** on commit `308e88c` (HexaBill `srv-d68jpdvpm1nc7393q4d0`).
+- Live login gulfharvest.hexabill.company **OK** (owner).
+- Settings PUT: EN/AR name, address Abu Dhabi, bilingual header, **VAT cleared**, **CT TRN from CT certificate** moved into `CORPORATE_TAX_TRN` (was wrongly in VAT). Logo already present.
+- Live PDF: barcode labels **OK**. Sales list / ledger / worksheet / payments / customer statement **blocked** by missing prod columns (`ConversionAtSale`, `IsSettlementAdjustment`, …) — migration gap. Quotations/agreements/salary: **no records**. Purchase-return printable: **GAP**.
+- Live artifact: `gh-print-20261006/live/gh-live-settings-preview.png` (settings HTML preview; CT line fix committed `50908e2` on `release-1`, main push flaky).
+- FE Vercel: not MCP-verified this session; preview HTML lagged PDF until `50908e2`.
 
 **VAT proof status:** genuine VAT certificate **not supplied**; CT only in `CORPORATE_TAX_TRN`.
 
