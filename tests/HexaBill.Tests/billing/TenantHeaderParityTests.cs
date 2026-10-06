@@ -128,6 +128,57 @@ public class TenantHeaderParityTests
         SaveEvidence($"{slug}-receipt.pdf", receipt);
     }
 
+    [Fact]
+    public async Task GulfHarvest_Header_PrintsCtSeparateFromVat_AndPendingVatLine()
+    {
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.SetRequestTenantScope(null, true);
+        const int tenantId = 22;
+        const string ctTrn = "200000000000001";
+        using var logo = new Image<Rgba32>(80, 40, new Rgba32(20, 20, 20));
+        using var ms = new MemoryStream();
+        logo.SaveAsPng(ms);
+        foreach (var pair in new Dictionary<string, string>
+        {
+            ["COMPANY_NAME_EN"] = "GULF HARVEST GENERAL TRADING - L.L.C - S.P.C",
+            ["COMPANY_NAME_AR"] = "جلف هارفيست للتجارة العامة - ذ.م.م - ش.ش.و",
+            ["COMPANY_TRN"] = "",
+            ["CORPORATE_TAX_TRN"] = ctTrn,
+            ["COMPANY_PHONE"] = "+971563306130",
+            ["COMPANY_EMAIL"] = "gulfharvest@hexabill.company",
+            ["COMPANY_ADDRESS"] = "Abu Dhabi, UAE",
+            ["INVOICE_HEADER_STYLE"] = "BilingualMonochrome",
+            ["LOGO_BASE64_DATA_URI"] = "data:image/png;base64," + Convert.ToBase64String(ms.ToArray())
+        })
+            db.Settings.Add(new Setting { TenantId = tenantId, OwnerId = tenantId, Key = pair.Key, Value = pair.Value });
+        await db.SaveChangesAsync();
+
+        var company = await new SettingsService(db).GetCompanySettingsAsync(tenantId);
+        Assert.Equal(ctTrn, company.CorporateTaxTrn);
+        Assert.True(string.IsNullOrEmpty(company.VatNumber));
+        Assert.NotEqual(company.CorporateTaxTrn, company.VatNumber);
+        Assert.Equal("INVOICE", SampleVatTrn.DocumentTitle(company.VatNumber));
+
+        var fonts = new FontService(NullLogger<FontService>.Instance);
+        fonts.RegisterFonts();
+        var pdf = new PdfService(db, null!, fonts, new SettingsService(db), null!, NullLogger<PdfService>.Instance, null!);
+        var sale = new SaleDto
+        {
+            Id = 1, OwnerId = tenantId, InvoiceNo = "GH-CT-1",
+            InvoiceDate = new DateTime(2026, 10, 3), CustomerName = "Synthetic customer",
+            Subtotal = 458, VatTotal = 22.90m, RoundOff = 0.10m, GrandTotal = 481,
+            Items = [new SaleItemDto { ProductId = 1, ProductName = "Item", Qty = 1, UnitType = "KG", UnitPrice = 458, LineTotal = 458, VatAmount = 22.90m }]
+        };
+        var bytes = await pdf.GenerateInvoicePdfAsync(sale, "A4", "full");
+        Assert.True(bytes.Length > 800);
+        SaveEvidence("gulfharvest-CT-VAT-pending-A4.pdf", bytes);
+        var text = System.Text.Encoding.Latin1.GetString(bytes);
+        Assert.DoesNotContain("Starplus", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ZAYOGA", text, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("FROZENHUB", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     private static void SaveEvidence(string filename, byte[] bytes)
     {
         var output = Environment.GetEnvironmentVariable("HEXABILL_PDF_EVIDENCE_DIR");

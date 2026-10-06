@@ -60,11 +60,15 @@ namespace HexaBill.Api.Modules.Sales
                                 .FontSize(9)
                                 .AlignCenter();
 
-                            // TITLE
-                            column.Item().PaddingVertical(5).Text("TAX INVOICE")
+                            // TITLE — never claim TAX INVOICE for empty/sample VAT TRN
+                            column.Item().PaddingVertical(5)
+                                .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
                                 .FontSize(14)
                                 .Bold()
                                 .AlignCenter();
+                            var trnLine = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
+                            if (!string.IsNullOrEmpty(trnLine))
+                                column.Item().AlignCenter().Text($"TRN: {trnLine}").FontSize(9);
 
                             // INVOICE DETAILS
                             column.Item().Row(row =>

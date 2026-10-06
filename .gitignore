@@ -142,3 +142,6 @@ backend/**/hexabill*.db
 backend/**/hexabill*.db-*
 frontend/hexabill-ui/dist/
 *.pdf.evidence/
+
+# Local logo seed (never commit)
+backend/HexaBill.Api/App_Data/

@@ -27,7 +27,7 @@ before(async () => {
         }
       })
       builder.onLoad({ filter: /.*/, namespace: 'fixture' }, (args) => ({ loader: 'js', contents:
-        args.path === './Modal' ? 'export default function Modal({isOpen, children}) { return isOpen ? children : null }' :
+        args.path === './Modal' ? 'import React from "react"; export default function Modal({isOpen, children, footer}) { return isOpen ? React.createElement("div", null, children, footer) : null }' :
           args.path === '../services' ? 'export const paymentsAPI = globalThis.__receiptTestAPI' :
             args.path === '../tenant/TenantBrandingContext' ? 'export function useBranding() { return { currency: "AED" } }' :
             'export const Printer=()=>null, Download=()=>null, X=()=>null, Loader2=()=>null' }))
@@ -47,7 +47,7 @@ function button(label) {
 
 test('receipt keeps its preview and explains a blocked print window', async () => {
   await mount()
-  act(() => button('Print receipt').props.onClick())
+  await act(async () => { await button('Print receipt').props.onClick() })
   const alert = renderer.root.findByProps({ role: 'alert' })
   assert.match(alert.props.children, /print window was blocked/)
   assert.ok(button('Download PDF'))
@@ -60,6 +60,43 @@ test('PDF rejection shows actionable inline error and permits retry', async () =
   assert.match(renderer.root.findByProps({ role: 'alert' }).props.children, /Reopen the preview/)
   assert.equal(button('Download PDF').props.disabled, false)
   assert.match(JSON.stringify(renderer.toJSON()), /Saved customer/)
+})
+
+test('legacy receipt blocked-popup recovery never recommends an unavailable PDF', async () => {
+  const original = globalThis.__receiptTestAPI.generateReceipt
+  globalThis.__receiptTestAPI.generateReceipt = async () => ({ success: true, data: {
+    detail: { ...detail, isHistoricalSnapshot: false, legacyReconstruction: true }
+  } })
+  try {
+    await mount()
+    await act(async () => { await button('Print receipt').props.onClick() })
+    const message = renderer.root.findByProps({ role: 'alert' }).props.children
+    assert.match(message, /Allow pop-ups.*try again/)
+    assert.doesNotMatch(message, /download.*PDF/i)
+    assert.equal(button('Download PDF'), undefined)
+    assert.equal(button('Print receipt').props.disabled, false)
+    assert.match(JSON.stringify(renderer.toJSON()), /Saved customer/)
+  } finally { globalThis.__receiptTestAPI.generateReceipt = original }
+})
+
+test('legacy receipt print failure keeps the preview and offers an available retry', async () => {
+  const original = globalThis.__receiptTestAPI.generateReceipt
+  globalThis.__receiptTestAPI.generateReceipt = async () => ({ success: true, data: {
+    detail: { ...detail, isHistoricalSnapshot: false, legacyReconstruction: true }
+  } })
+  let closed = false
+  globalThis.window.open = () => ({ document: { write() {}, close() {}, readyState: 'complete' },
+    focus() {}, addEventListener() {}, removeEventListener() {}, close() { closed = true },
+    print() { throw new Error('Synthetic print failure') } })
+  try {
+    await mount()
+    await act(async () => { await button('Print receipt').props.onClick() })
+    assert.match(renderer.root.findByProps({ role: 'alert' }).props.children, /Printing could not start.*try again/)
+    assert.doesNotMatch(renderer.root.findByProps({ role: 'alert' }).props.children, /download.*PDF/i)
+    assert.equal(button('Download PDF'), undefined)
+    assert.equal(closed, true)
+    assert.match(JSON.stringify(renderer.toJSON()), /Saved customer/)
+  } finally { globalThis.__receiptTestAPI.generateReceipt = original }
 })
 
 test('same selected payment IDs do not repeatedly mint or fetch on parent rerender', async () => {

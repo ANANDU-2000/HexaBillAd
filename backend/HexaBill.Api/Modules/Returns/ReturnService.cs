@@ -304,13 +304,11 @@ namespace HexaBill.Api.Modules.Returns
 
                     if (saleInfo.CustomerId.HasValue)
                     {
-                        var customer = await _context.Customers.FindAsync(saleInfo.CustomerId.Value);
-                        if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, customer.TenantId ?? 0);
+                        await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, tenantId);
                     }
 
                     // Refund Now: create refund payment (money out) so ledger balance can go to 0
-                    if (rt == ReturnType.RefundNow && saleInfo.CustomerId.HasValue)
+                    if (rt == ReturnType.RefundNow)
                     {
                         _context.Payments.Add(new Payment
                         {
@@ -327,9 +325,10 @@ namespace HexaBill.Api.Modules.Returns
                             OwnerId = tenantId
                         });
                         await _context.SaveChangesAsync();
-                        var customer = await _context.Customers.FindAsync(saleInfo.CustomerId.Value);
-                        if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, customer.TenantId ?? 0);
+                        if (saleInfo.CustomerId.HasValue)
+                        {
+                            await _customerService.RecalculateCustomerBalanceAsync(saleInfo.CustomerId.Value, tenantId);
+                        }
                     }
                 }
 
@@ -382,12 +381,18 @@ namespace HexaBill.Api.Modules.Returns
 
         public async Task<PurchaseReturnDto> CreatePurchaseReturnAsync(CreatePurchaseReturnRequest request, int userId, int tenantId)
         {
+            if (request.Items == null || request.Items.Count == 0 || request.Items.Count > 500)
+                throw new InvalidOperationException("Select between 1 and 500 purchase lines to return.");
+            if (request.Items.Select(i => i.PurchaseItemId).Distinct().Count() != request.Items.Count)
+                throw new InvalidOperationException("Select each purchase line once and combine its returned quantity.");
             var strategyPurchase = _context.Database.CreateExecutionStrategy();
             return await strategyPurchase.ExecuteAsync(async () =>
             {
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
+                await AcquireReturnWorkspaceLockAsync(tenantId);
+                await LockPurchaseRowAsync(request.PurchaseId, tenantId);
                 // Get original purchase
                 var purchase = await _context.Purchases
                     .Include(p => p.Items)
@@ -396,6 +401,15 @@ namespace HexaBill.Api.Modules.Returns
 
                 if (purchase == null)
                     throw new InvalidOperationException("Original purchase not found");
+
+                var alreadyReturnedByPurchaseItemId = await _context.PurchaseReturnItems
+                    .Where(pri => pri.PurchaseReturn.PurchaseId == request.PurchaseId
+                        && pri.PurchaseReturn.TenantId == tenantId
+                        && pri.PurchaseReturn.Status != ReturnStatus.Rejected
+                        && pri.PurchaseReturn.Status != ReturnStatus.Reversed)
+                    .GroupBy(pri => pri.PurchaseItemId)
+                    .Select(g => new { PurchaseItemId = g.Key, Total = g.Sum(x => x.Qty) })
+                    .ToDictionaryAsync(x => x.PurchaseItemId, x => x.Total);
 
                 // Generate return number
                 var returnNo = await GeneratePurchaseReturnNumberAsync(tenantId);
@@ -411,6 +425,12 @@ namespace HexaBill.Api.Modules.Returns
                     var purchaseItem = purchase.Items.FirstOrDefault(pi => pi.Id == item.PurchaseItemId);
                     if (purchaseItem == null)
                         throw new InvalidOperationException($"Purchase item {item.PurchaseItemId} not found");
+                    var alreadyReturned = alreadyReturnedByPurchaseItemId.GetValueOrDefault(purchaseItem.Id, 0m);
+                    var maxReturnable = purchaseItem.Qty - alreadyReturned;
+                    if (item.Qty <= 0)
+                        throw new InvalidOperationException($"Return quantity for item {item.PurchaseItemId} must be greater than 0.");
+                    if (item.Qty > maxReturnable)
+                        throw new InvalidOperationException($"Return quantity for item {item.PurchaseItemId} must not exceed quantity remaining to return (purchased: {purchaseItem.Qty}, already returned: {alreadyReturned}, max: {maxReturnable}).");
 
                     // AUDIT-4 FIX: Add TenantId filter to prevent cross-tenant product access
                     var product = await _context.Products
@@ -825,29 +845,27 @@ namespace HexaBill.Api.Modules.Returns
                             }
                         }
 
-                        // Refund Now on approval
-                        if (string.Equals(ret.RefundStatus, "Refunded", StringComparison.OrdinalIgnoreCase) && ret.Sale.CustomerId.HasValue)
+                        await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, tenantId);
+                    }
+                    // Refunds for anonymous/cash sales still need a cleared payment row so cash close
+                    // and financial reports record the money leaving the drawer.
+                    if (string.Equals(ret.RefundStatus, "Refunded", StringComparison.OrdinalIgnoreCase))
+                    {
+                        _context.Payments.Add(new Payment
                         {
-                            _context.Payments.Add(new Payment
-                            {
-                                TenantId = tenantId,
-                                SaleReturnId = ret.Id,
-                                CustomerId = ret.Sale.CustomerId,
-                                Amount = ret.GrandTotal,
-                                Mode = PaymentMode.CASH,
-                                Status = PaymentStatus.CLEARED,
-                                PaymentDate = DateTime.UtcNow,
-                                Reference = $"Refund for return {ret.ReturnNo}",
-                                CreatedBy = ret.CreatedBy,
-                                CreatedAt = DateTime.UtcNow,
-                                OwnerId = tenantId
-                            });
-                            await _context.SaveChangesAsync();
-                        }
-
-                        var customer = await _context.Customers.FindAsync(ret.Sale.CustomerId.Value);
-                        if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, customer.TenantId ?? 0);
+                            TenantId = tenantId,
+                            SaleReturnId = ret.Id,
+                            CustomerId = ret.CustomerId,
+                            Amount = ret.GrandTotal,
+                            Mode = PaymentMode.CASH,
+                            Status = PaymentStatus.CLEARED,
+                            PaymentDate = DateTime.UtcNow,
+                            Reference = $"Refund for return {ret.ReturnNo}",
+                            CreatedBy = ret.CreatedBy,
+                            CreatedAt = DateTime.UtcNow,
+                            OwnerId = tenantId
+                        });
+                        await _context.SaveChangesAsync();
                     }
                     await transaction.CommitAsync();
                     return await GetSaleReturnByIdAsync(ret.Id);
@@ -990,9 +1008,7 @@ namespace HexaBill.Api.Modules.Returns
 
                     if (ret.Sale?.CustomerId != null)
                     {
-                        var customer = await _context.Customers.FindAsync(ret.Sale.CustomerId.Value);
-                        if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, customer.TenantId ?? 0);
+                        await _customerService.RecalculateCustomerBalanceAsync(ret.Sale.CustomerId.Value, tenantId);
                     }
                     return await GetSaleReturnByIdAsync(ret.Id);
                 }
@@ -1067,9 +1083,7 @@ namespace HexaBill.Api.Modules.Returns
 
                     if (customerId.HasValue)
                     {
-                        var customer = await _context.Customers.FindAsync(customerId.Value);
-                        if (customer != null)
-                            await _customerService.RecalculateCustomerBalanceAsync(customerId.Value, customer.TenantId ?? 0);
+                        await _customerService.RecalculateCustomerBalanceAsync(customerId.Value, tenantId);
                     }
                 }
                 catch
@@ -1228,9 +1242,7 @@ namespace HexaBill.Api.Modules.Returns
             cn.AppliedAmount += applyAmount;
             cn.Status = cn.AppliedAmount >= cn.Amount ? "used" : "partial";
             await _context.SaveChangesAsync();
-            var customer = await _context.Customers.FindAsync(cn.CustomerId);
-            if (customer != null)
-                await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
+            await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, tenantId);
         }
 
         public Task RefundCreditNoteAsync(int creditNoteId, int userId, int tenantId) =>
@@ -1282,9 +1294,7 @@ namespace HexaBill.Api.Modules.Returns
                 linkedReturn.RefundStatus = "Refunded";
             }
             await _context.SaveChangesAsync();
-            var customer = await _context.Customers.FindAsync(cn.CustomerId);
-            if (customer != null)
-                await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, customer.TenantId ?? tenantId);
+            await _customerService.RecalculateCustomerBalanceAsync(cn.CustomerId, tenantId);
         }
 
         private async Task RunInTransactionAsync(Func<Task> action)
@@ -1374,12 +1384,20 @@ namespace HexaBill.Api.Modules.Returns
             var dto = MapToSaleReturnDto(sr);
             var settings = await _settingsService.GetOwnerSettingsAsync(tenantId);
             var companyName = settings.GetValueOrDefault("COMPANY_NAME_EN") ?? "HexaBill";
+            var companyNameAr = settings.GetValueOrDefault("COMPANY_NAME_AR") ?? "";
             var companyAddress = settings.GetValueOrDefault("COMPANY_ADDRESS") ?? "";
+            var companyPhone = settings.GetValueOrDefault("COMPANY_PHONE") ?? "";
             var companyTrn = settings.GetValueOrDefault("COMPANY_TRN") ?? "";
+            var corporateTaxTrn = settings.GetValueOrDefault("CORPORATE_TAX_TRN") ?? "";
             var currency = settings.GetValueOrDefault("CURRENCY") ?? "AED";
             var returnPolicyHeader = settings.GetValueOrDefault("RETURN_POLICY_HEADER") ?? "";
             var returnPolicyFooter = settings.GetValueOrDefault("RETURN_POLICY_FOOTER") ?? "";
             var returnBillTitle = settings.GetValueOrDefault("RETURN_BILL_TITLE") ?? "SALES RETURN NOTE";
+            var vatLine = string.IsNullOrWhiteSpace(companyTrn)
+                ? "VAT TRN: To be provided"
+                : (HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(companyTrn) is { Length: > 0 } d
+                    ? $"VAT TRN: {d}"
+                    : "VAT TRN: To be provided");
 
             var document = Document.Create(container =>
             {
@@ -1397,14 +1415,19 @@ namespace HexaBill.Api.Modules.Returns
                                 {
                                     row.RelativeItem().Column(col =>
                                     {
-                                        col.Item().Text(companyName).FontSize(16).Bold();
-                                        col.Item().Text(companyAddress).FontSize(10).FontColor(Colors.Grey.Darken2);
-                                        if (!string.IsNullOrEmpty(companyTrn))
-                                            col.Item().Text($"TRN: {companyTrn}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                                        col.Item().Text(companyName).FontSize(14).Bold();
+                                        if (!string.IsNullOrWhiteSpace(companyNameAr))
+                                            col.Item().Text(companyNameAr).FontSize(10);
+                                        if (!string.IsNullOrWhiteSpace(companyPhone))
+                                            col.Item().Text($"Mob: {companyPhone}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                                        col.Item().Text(companyAddress).FontSize(9).FontColor(Colors.Grey.Darken2);
+                                        if (!string.IsNullOrWhiteSpace(corporateTaxTrn))
+                                            col.Item().Text($"CT Reg. No.: {corporateTaxTrn}").FontSize(8).FontColor(Colors.Grey.Darken2);
+                                        col.Item().Text(vatLine).FontSize(8).FontColor(Colors.Grey.Darken2);
                                     });
                                     row.RelativeItem().Column(col =>
                                     {
-                                        col.Item().Text(returnBillTitle).FontSize(18).Bold().AlignRight();
+                                        col.Item().Text(returnBillTitle).FontSize(16).Bold().AlignRight();
                                         col.Item().Text(dto.ReturnNo).FontSize(12).AlignRight();
                                         col.Item().Text(dto.ReturnDate.ToString("dd-MM-yyyy")).FontSize(9).AlignRight();
                                     });
@@ -1501,6 +1524,13 @@ namespace HexaBill.Api.Modules.Returns
             if (_context.Database.IsNpgsql())
                 await _context.Database.ExecuteSqlInterpolatedAsync(
                     $@"SELECT ""Id"" FROM ""Sales"" WHERE ""Id"" = {saleId} AND ""TenantId"" = {tenantId} FOR UPDATE");
+        }
+
+        private async Task LockPurchaseRowAsync(int purchaseId, int tenantId)
+        {
+            if (_context.Database.IsNpgsql())
+                await _context.Database.ExecuteSqlInterpolatedAsync(
+                    $@"SELECT ""Id"" FROM ""Purchases"" WHERE ""Id"" = {purchaseId} AND ""TenantId"" = {tenantId} FOR UPDATE");
         }
 
         private void DetachReturnAttempt(SaleReturn? ret, IEnumerable<InventoryTransaction>? inventory)

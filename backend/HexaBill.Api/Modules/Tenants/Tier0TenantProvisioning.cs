@@ -231,17 +231,59 @@ public sealed class Tier0TenantProvisioning
             }, ResolvePlatformActorId());
             tenant = await _db.Tenants.FirstAsync(t => t.Id == created.Tenant.Id, ct);
             await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.GulfHarvest, ct);
-            if (!string.IsNullOrWhiteSpace(spec.CorporateTaxTrn))
-                await UpsertSettingIfEmptyAsync(tenant.Id, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
+            await ForceGulfHarvestVerifiedFieldsAsync(tenant.Id, spec, ct);
             await _db.SaveChangesAsync(ct);
             return FormatCreateLog("gulfharvest", tenant, created.InviteUrl);
         }
 
         await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.GulfHarvest, ct);
-        if (!string.IsNullOrWhiteSpace(spec.CorporateTaxTrn))
-            await UpsertSettingIfEmptyAsync(tenant.Id, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
+        await ForceGulfHarvestVerifiedFieldsAsync(tenant.Id, spec, ct);
         await _db.SaveChangesAsync(ct);
         return $"gulfharvest tenantId={tenant.Id} slug={tenant.Subdomain}";
+    }
+
+    /// <summary>
+    /// Apply verified licence / CT fields for Gulf Harvest. Never writes VAT TRN here (sample/pending path stays separate).
+    /// </summary>
+    private async Task ForceGulfHarvestVerifiedFieldsAsync(int tenantId, Tier0TenantSpec spec, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(spec.CompanyNameEn))
+            await ForceSettingAsync(tenantId, "COMPANY_NAME_EN", spec.CompanyNameEn!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.CompanyNameAr))
+            await ForceSettingAsync(tenantId, "COMPANY_NAME_AR", spec.CompanyNameAr!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.License))
+            await ForceSettingAsync(tenantId, "COMPANY_LICENSE", spec.License!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.Address))
+            await ForceSettingAsync(tenantId, "COMPANY_ADDRESS", spec.Address!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.Phone))
+            await ForceSettingAsync(tenantId, "COMPANY_PHONE", spec.Phone!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.Email))
+            await ForceSettingAsync(tenantId, "COMPANY_EMAIL", spec.Email!.Trim(), ct);
+        if (!string.IsNullOrWhiteSpace(spec.CorporateTaxTrn))
+            await ForceSettingAsync(tenantId, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
+        await ForceSettingAsync(tenantId, "INVOICE_HEADER_STYLE", "BilingualMonochrome", ct);
+
+        // Optional local-only monochrome logo seed (gitignored App_Data). Never invent identity from this path.
+        try
+        {
+            var existingLogo = await _settings.GetSettingValueAsync(tenantId, "LOGO_BASE64_DATA_URI");
+            if (string.IsNullOrWhiteSpace(existingLogo))
+            {
+                var logoPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "gulfharvest-logo.datauri.txt");
+                if (!File.Exists(logoPath))
+                    logoPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "App_Data", "gulfharvest-logo.datauri.txt"));
+                if (File.Exists(logoPath))
+                {
+                    var dataUri = (await File.ReadAllTextAsync(logoPath, ct)).Trim();
+                    if (dataUri.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) && dataUri.Length < 2_000_000)
+                        await ForceSettingAsync(tenantId, "LOGO_BASE64_DATA_URI", dataUri, ct);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Optional Gulf Harvest logo seed skipped");
+        }
     }
 
     private async Task<string> EnsureZayogyaAsync(Tier0ProvisioningOptions options, CancellationToken ct)
@@ -464,7 +506,10 @@ public sealed class Tier0TenantProvisioning
 
     private async Task ForceSettingAsync(int tenantId, string key, string value, CancellationToken ct)
     {
-        var row = await _db.Settings.FirstOrDefaultAsync(s => s.TenantId == tenantId && s.Key == key, ct);
+        var row = _db.Settings.Local.FirstOrDefault(s =>
+                s.Key == key && (s.TenantId == tenantId || s.OwnerId == tenantId))
+            ?? await _db.Settings.FirstOrDefaultAsync(s =>
+                s.Key == key && (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)), ct);
         if (row is null)
         {
             _db.Settings.Add(new Setting
@@ -479,6 +524,8 @@ public sealed class Tier0TenantProvisioning
             return;
         }
         row.Value = value;
+        if (row.TenantId is null)
+            row.TenantId = tenantId;
         row.UpdatedAt = DateTime.UtcNow;
     }
 

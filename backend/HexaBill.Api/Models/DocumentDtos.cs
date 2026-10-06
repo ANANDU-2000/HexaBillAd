@@ -112,7 +112,8 @@ namespace HexaBill.Api.Models
         public DateTime CreatedAt { get; set; }
 
         public string FirstPartyName { get; set; } = string.Empty;
-        public string FirstPartyLicense { get; set; } = "CN-4937175";
+        /// <summary>From tenant settings at render time — never hard-code a client licence.</summary>
+        public string FirstPartyLicense { get; set; } = string.Empty;
         public string FirstPartyAddress { get; set; } = string.Empty;
         public string FirstPartyMobile { get; set; } = string.Empty;
         public string FirstPartyEmail { get; set; } = string.Empty;
@@ -155,7 +156,7 @@ namespace HexaBill.Api.Models
         public decimal? MonthlySalary { get; set; }
         public string? MonthlySalaryWords { get; set; }
         public string? EmployeePhone { get; set; }
-        public string SignatoryName { get; set; } = "Sudheesh Thampi";
+        public string SignatoryName { get; set; } = string.Empty;
         public string SignatoryTitle { get; set; } = "Manager";
         public string Status { get; set; } = "Draft";
         public string? Notes { get; set; }

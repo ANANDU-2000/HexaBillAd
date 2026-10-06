@@ -2,10 +2,10 @@ namespace HexaBill.Api.Core.Tenancy;
 
 /// <summary>
 /// Synthetic VAT TRNs for local fixtures. Never print a sample as a real Tax Invoice TRN.
-/// Document rules (proposed master-loop-2, pending owner approval):
-/// - empty TRN → print "Invoice", omit TRN, owner banner "VAT TRN missing"
-/// - sample TRN kept → print title must include SAMPLE; never "Tax Invoice" alone
-/// - real 15-digit non-sample → Tax Invoice
+/// Document rules (APPROVED 2026-10-05):
+/// - empty TRN → print "INVOICE", omit TRN, owner banner "VAT TRN missing"
+/// - sample TRN kept → print "SAMPLE INVOICE"; never "TAX INVOICE" alone
+/// - real 15-digit non-sample → TAX INVOICE
 /// Zayogya is not auto-seeded with samples.
 /// </summary>
 public static class SampleVatTrn

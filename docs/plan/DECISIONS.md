@@ -1,20 +1,24 @@
 ﻿
-## 2026-10-04 — PROPOSED: Sample/missing TRN never prints as Tax Invoice (pending owner approval)
+# DECISIONS.md
 
-**Status:** PROPOSED (master-loop-2) — supersedes prior "sample TRN allowed on Tax Invoice in Production" decision until approved.
+Newest first. Date = approval day. Approver = Anandu unless noted.
 
-**Proposal:**
+## 2026-10-05 — APPROVED: Sample/missing TRN never prints as Tax Invoice
+
+**Status:** APPROVED (Gulf Harvest print/VAT session).
+
+**Decision:**
 - Empty VAT TRN → document title **INVOICE**, omit TRN line, owner banner "VAT TRN missing: update in Settings > Company".
 - Sample TRN kept in settings → document title **SAMPLE INVOICE**, TRN shown as `SAMPLE <digits>`. Never "TAX INVOICE".
 - Real 15-digit non-sample → **TAX INVOICE**.
 - Zayogya unchanged (no sample seeding).
 - Sale finalize is not blocked on missing TRN; print/PDF follows the titles above.
-- Auto-fill of sample TRN on settings read is removed.
+- Auto-fill of sample TRN on settings read remains removed.
+- Corporate Tax TRN stays in `CORPORATE_TAX_TRN` only; never printed as VAT TRN.
+- No genuine Gulf Harvest VAT registration certificate was supplied; VAT remains sample/pending.
 
-**Approved by:** pending Anandu
-# DECISIONS.md
-
-Newest first. Date = approval day. Approver = Anandu unless noted.
+**Overrides:** Prior PROPOSED master-loop-2 note; clarifies (does not reverse) "Sample VAT TRN allowed in Production" for title honesty.
+**Approved by:** Anandu (Gulf Harvest setup and dynamic print formats request).
 
 ## 2026-10-04 — Executor location: main repo (not Codex worktree)
 

@@ -393,6 +393,8 @@ namespace HexaBill.Api.Modules.Sales
             public string CompanyAddress { get; set; } = "";
             public string CompanyPhone { get; set; } = "";
             public string CompanyTrn { get; set; } = "";
+            /// <summary>Corporate Tax TRN — never printed as VAT TRN.</summary>
+            public string CorporateTaxTrn { get; set; } = "";
             public string CompanyEmail { get; set; } = "";
             public string CompanyWebsite { get; set; } = "";
             public bool BilingualMonochromeHeader { get; set; }

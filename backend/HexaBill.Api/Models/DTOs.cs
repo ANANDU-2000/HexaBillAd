@@ -459,6 +459,7 @@ namespace HexaBill.Api.Models
         public string CompanyName { get; set; } = string.Empty;
         public string? CompanyNameAr { get; set; }
         public string? CompanyTrn { get; set; }
+        public string? CorporateTaxTrn { get; set; }
         public string? CompanyAddress { get; set; }
         public string? CompanyPhone { get; set; }
         public string? CompanyEmail { get; set; }
@@ -1465,6 +1466,7 @@ namespace HexaBill.Api.Models
     public class OutstandingInvoiceDto
     {
         public int Id { get; set; }
+        public int? CustomerId { get; set; }
         public string InvoiceNo { get; set; } = string.Empty;
         public DateTime InvoiceDate { get; set; }
         public decimal GrandTotal { get; set; }

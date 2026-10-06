@@ -374,7 +374,8 @@ namespace HexaBill.Api.Modules.Sales
                 {
                     CompanyNameEn = company.LegalNameEn, CompanyNameAr = company.LegalNameAr,
                     CompanyAddress = company.Address, CompanyPhone = company.Mobile,
-                    CompanyTrn = company.VatNumber, CompanyEmail = company.Email,
+                    CompanyTrn = company.VatNumber, CorporateTaxTrn = company.CorporateTaxTrn,
+                    CompanyEmail = company.Email,
                     Currency = company.Currency, LogoImageBytes = logo,
                     BilingualMonochromeHeader = company.BilingualMonochromeHeader
                 };

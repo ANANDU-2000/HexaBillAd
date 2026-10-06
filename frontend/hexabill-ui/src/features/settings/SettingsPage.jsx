@@ -965,7 +965,7 @@ const SettingsPage = () => {
                   {...register('invoiceHeaderStyle')}
                   options={[
                     { value: 'Legacy', label: 'Existing layout' },
-                    { value: 'BilingualMonochrome', label: 'Centered bilingual, black and white' }
+                    { value: 'BilingualMonochrome', label: 'Bilingual letterhead (EN left / logo / AR right)' }
                   ]}
                 />
 
@@ -1829,28 +1829,43 @@ const SettingsPage = () => {
         <div className="space-y-4">
           <p className="text-sm text-gray-600">This is how your company header will appear on printed invoices.</p>
           <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
-            <div className="grid grid-cols-[120px_1fr_120px] md:grid-cols-[140px_1fr_140px] gap-3 md:gap-4 items-center max-w-full overflow-hidden">
-              <div className="flex justify-center">
+            <div className="grid grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 items-start max-w-full overflow-hidden">
+              <div className="text-left min-w-0">
+                <h3 className="font-bold text-sm uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
+                <p className="text-xs text-gray-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'}</p>
+                {settings.companyAddress && <p className="text-xs text-gray-500 break-words">{settings.companyAddress}</p>}
+              </div>
+              <div className="flex flex-col items-center justify-center px-2">
                 {((typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/'))) && (
                   <img
                     src={(typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) ? logoDataUri : (logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`))}
                     alt="Company Logo"
-                    className="max-w-[140px] max-h-[80px] object-contain"
+                    className="max-w-[100px] max-h-[56px] object-contain"
                     onError={(e) => { e.target.style.display = 'none' }}
                   />
                 )}
+                {(() => {
+                  const trn = String(settings.companyTrn || '').trim()
+                  const samples = ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321']
+                  if (!trn) return null
+                  if (samples.includes(trn)) return <p className="text-xs mt-1">TRN: SAMPLE {trn}</p>
+                  return <p className="text-xs mt-1">TRN: {trn}</p>
+                })()}
               </div>
-              <div className="text-center min-w-0">
-                <h3 className="font-bold text-base uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
-                {settings.companyNameAr && <p className="text-sm text-gray-700" dir="rtl" style={{ wordBreak: 'break-word' }}>{settings.companyNameAr}</p>}
-                <p className="text-xs text-gray-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'} {settings.companyAddress && `, ${settings.companyAddress}`}</p>
-              </div>
-              <div className="text-right text-sm">
-                <p>TRN: No : {settings.companyTrn || '—'}</p>
-                <p className="mt-1">DATE: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-')}</p>
+              <div className="text-right text-sm min-w-0">
+                {settings.companyNameAr && <p className="font-bold text-sm" dir="rtl" style={{ wordBreak: 'break-word' }}>{settings.companyNameAr}</p>}
               </div>
             </div>
-            <div className="border-t-2 border-b-2 border-gray-300 mt-3 py-2 text-center font-bold text-sm">TAX INVOICE</div>
+            <div className="border-t-2 border-b-2 border-gray-300 mt-3 py-2 text-center font-bold text-sm">
+              {(() => {
+                const trn = String(settings.companyTrn || '').trim()
+                const samples = ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321']
+                if (!trn) return 'INVOICE'
+                if (samples.includes(trn)) return 'SAMPLE INVOICE'
+                if (/^[0-9]{15}$/.test(trn)) return 'TAX INVOICE'
+                return 'INVOICE'
+              })()}
+            </div>
           </div>
           <p className="text-xs text-gray-500">This is a preview only. Actual invoice uses real transaction data.</p>
           <div className="flex justify-end">

@@ -31,6 +31,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
   const [outputError, setOutputError] = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [printing, setPrinting] = useState(false)
+  const printRetryAlternative = data?.detail?.isHistoricalSnapshot ? ' or download the PDF.' : '.'
   const [retry, setRetry] = useState(0)
   const paymentKey = JSON.stringify(paymentIds)
   const activePreview = useRef(null)
@@ -110,7 +111,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
     const win = window.open('', '_blank')
     setOutputError(null)
     if (!win) {
-      setOutputError('The print window was blocked. Allow pop-ups for this site and try again, or download the PDF.')
+      setOutputError(`The print window was blocked. Allow pop-ups for this site and try again${printRetryAlternative}`)
       return
     }
     setPrinting(true)
@@ -184,7 +185,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         if (win.closed || activePreview.current !== preview) { closePrintWindow(); return }
         win.print()
       } catch (_) {
-        setOutputError('Printing could not start. Please try again or download the PDF.')
+        setOutputError(`Printing could not start. Please try again${printRetryAlternative}`)
         closePrintWindow()
         return
       }
@@ -196,6 +197,28 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
 
   const detail = data?.detail
   const displayCurrency = detail?.currency || tenantCurrency || 'AED'
+  const footer = !loading && !error && detail && (
+    <div className="flex flex-wrap gap-3">
+      {outputError && <p role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{outputError}</p>}
+      {detail.isHistoricalSnapshot && (
+        <button type="button" onClick={handleDownload} disabled={downloading}
+          className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {downloading ? 'Downloading…' : 'Download PDF'}
+        </button>
+      )}
+      <button type="button" onClick={handlePrint} disabled={printing}
+        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        title="Print when customer requests">
+        <Printer className="h-4 w-4" /> Print receipt
+      </button>
+      <button type="button" onClick={onClose}
+        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        <X className="h-4 w-4" /> Close
+      </button>
+      <span className="w-full text-xs text-gray-500">Optional — print when customer asks</span>
+    </div>
+  )
 
   return (
     <Modal
@@ -206,6 +229,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         onClose()
       }}
       title="Payment Receipt / إيصال دفع"
+      footer={footer}
     >
       {loading && (
         <div className="flex items-center justify-center py-12">
@@ -221,7 +245,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
       {!loading && !error && data?.detail && (
         <>
           {!detail.companyTrn && <p role="status" className="mb-3 text-sm text-amber-800">Add VAT TRN in Settings. This payment receipt is not a Tax Invoice.</p>}
-          <div ref={printRef} className="receipt-preview rounded-lg border border-gray-200 bg-white p-6 text-left receipt-print-styles">
+          <div ref={printRef} className="receipt-preview rounded-lg border border-gray-200 bg-white p-4 sm:p-6 text-left receipt-print-styles">
             {detail.bilingualMonochromeHeader && (
               <header className="company-document-header mb-4 text-center text-black">
                 {detail.companyLogoDataUri && <img src={detail.companyLogoDataUri} alt="Company logo" className="mx-auto mb-2 h-14 max-w-[120px] object-contain" style={{ filter: 'grayscale(1)' }} />}
@@ -252,7 +276,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
             <div className="receipt-separator mt-4 mb-4 border-t border-gray-300" aria-hidden="true" />
             {detail.invoices?.length > 0 && (
               <>
-                <table className="receipt-table w-full text-sm border-collapse">
+                <table className="receipt-table w-full text-xs sm:text-sm border-collapse">
                   <thead>
                     <tr className="border-b-2 border-gray-400">
                       <th className="py-2 text-left font-semibold text-gray-800">Invoice</th>
@@ -302,35 +326,6 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
               {detail.companyAddress && <p>{detail.companyAddress}</p>}
               {detail.companyTrn && <p>TRN: {detail.companyTrn}</p>}
             </div>
-          </div>
-          <div className="mt-6 flex flex-wrap gap-3">
-            {outputError && <p role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{outputError}</p>}
-            {detail.isHistoricalSnapshot && (
-              <button type="button" onClick={handleDownload} disabled={downloading}
-                className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
-                {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                {downloading ? 'Downloading…' : 'Download PDF'}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handlePrint}
-              disabled={printing}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-              title="Print when customer requests"
-            >
-              <Printer className="h-4 w-4" />
-              Print receipt
-            </button>
-            <span className="text-xs text-gray-500 self-center">Optional — print when customer asks</span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <X className="h-4 w-4" />
-              Close
-            </button>
           </div>
         </>
       )}

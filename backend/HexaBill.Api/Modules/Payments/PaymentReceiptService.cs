@@ -153,6 +153,7 @@ namespace HexaBill.Api.Modules.Payments
                                 CompanyName = settings.LegalNameEn ?? "",
                                 CompanyNameAr = settings.LegalNameAr,
                                 CompanyTrn = settings.VatNumber,
+                                CorporateTaxTrn = settings.CorporateTaxTrn,
                                 CompanyAddress = settings.Address,
                                 CompanyPhone = settings.Mobile,
                                 CompanyEmail = settings.Email,
@@ -220,6 +221,7 @@ namespace HexaBill.Api.Modules.Payments
                         plan.Detail.CompanyName = settings.LegalNameEn;
                         plan.Detail.CompanyNameAr = settings.LegalNameAr;
                         plan.Detail.CompanyTrn = settings.VatNumber;
+                        plan.Detail.CorporateTaxTrn = settings.CorporateTaxTrn;
                         plan.Detail.CompanyAddress = settings.Address;
                         plan.Detail.CompanyPhone = settings.Mobile;
                         plan.Detail.CompanyEmail = settings.Email;

@@ -85,7 +85,8 @@ namespace HexaBill.Api.Modules.Sales
                         }
                         RenderCompanyHeader(column.Item(), new InvoiceTemplateService.CompanySettings {
                             CompanyNameEn = receipt.CompanyName, CompanyNameAr = receipt.CompanyNameAr ?? "",
-                            CompanyTrn = receipt.CompanyTrn ?? "", CompanyAddress = receipt.CompanyAddress ?? "",
+                            CompanyTrn = receipt.CompanyTrn ?? "", CorporateTaxTrn = receipt.CorporateTaxTrn ?? "",
+                            CompanyAddress = receipt.CompanyAddress ?? "",
                             CompanyPhone = receipt.CompanyPhone ?? "", CompanyEmail = receipt.CompanyEmail ?? "",
                             LogoImageBytes = logo
                         }, 14);
@@ -100,7 +101,7 @@ namespace HexaBill.Api.Modules.Sales
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyTrn)) column.Item().Text($"TRN: {receipt.CompanyTrn}");
                     }
                     column.Item().PaddingTop(12).Text("PAYMENT RECEIPT").Bold().FontSize(14);
-                    column.Item().Text("Proof of payment â€” not a tax invoice").FontSize(9);
+                    column.Item().Text("Proof of payment — not a tax invoice").FontSize(9);
                     column.Item().Text($"Receipt: {receipt.ReceiptNumber}");
                 });
                 page.Content().PaddingTop(12).Column(column =>
@@ -380,14 +381,14 @@ namespace HexaBill.Api.Modules.Sales
                                             });
                                         }
 
-                                        AddHeader("Ø±.Ù…", "SL.No");
-                                        AddHeader("Ø§Ù„ÙˆØµÙ", "Description");
-                                        AddHeader("Ø§Ù„ÙˆØ­Ø¯Ø©", "Unit");
-                                        AddHeader("Ø§Ù„ÙƒÙ…ÙŠØ©", "Qty");
-                                        AddHeader("Ø³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø©", "Unit Price");
-                                        AddHeader("Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ", "Total");
-                                        AddHeader("Ø¶.Ù‚.Ù… Ù¥Ùª", "Vat:5%");
-                                        AddHeader("Ø§Ù„Ù…Ø¨Ù„Øº", "Amount");
+                                        AddHeader("ر.م", "SL.No");
+                                        AddHeader("الوصف", "Description");
+                                        AddHeader("الوحدة", "Unit");
+                                        AddHeader("الكمية", "Qty");
+                                        AddHeader("سعر الوحدة", "Unit Price");
+                                        AddHeader("الإجمالي", "Total");
+                                        AddHeader("ض.ق.م ٥٪", "Vat:5%");
+                                        AddHeader("المبلغ", "Amount");
                                     });
 
                                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
@@ -441,7 +442,7 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                         row.AutoItem().Text("INV.Amount").FontSize(10);
                                         row.RelativeItem();
-                                        row.AutoItem().Text("Ù…Ø¨Ù„Øº Ø§Ù„ÙØ§ØªÙˆØ±Ø©").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        row.AutoItem().Text("مبلغ الفاتورة").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.Subtotal.ToString("0.00")).FontSize(10);
                                     
@@ -449,7 +450,7 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                         row.AutoItem().Text("VAT 5%").FontSize(10);
                                         row.RelativeItem();
-                                        row.AutoItem().Text("Ø¶Ø±ÙŠØ¨Ø© Ù¥Ùª").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        row.AutoItem().Text("ضريبة ٥٪").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(10);
                                     
@@ -459,7 +460,7 @@ namespace HexaBill.Api.Modules.Sales
                                         table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                             row.AutoItem().Text("Round Off").FontSize(10);
                                             row.RelativeItem();
-                                            row.AutoItem().Text("ØªÙ‚Ø±ÙŠØ¨").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                            row.AutoItem().Text("تقريب").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                         });
                                         var roundOffText = sale.RoundOff > 0 ? "+" + sale.RoundOff.ToString("0.00") : sale.RoundOff.ToString("0.00");
                                         table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(roundOffText).FontSize(10);
@@ -478,7 +479,7 @@ namespace HexaBill.Api.Modules.Sales
                                         text.Span("............. ").FontSize(8);
                                         text.Span(amountInWords).FontSize(8).Italic();
                                         text.Span(" ............. ").FontSize(8);
-                                        text.Span(" Ø¯Ø±Ù‡Ù… ÙÙ‚Ø·").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        text.Span(" درهم فقط").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
@@ -495,7 +496,7 @@ namespace HexaBill.Api.Modules.Sales
                                     {
                                         // Left column: Receiver's info
                                         sigRow.RelativeItem().Column(leftCol => {
-                                            leftCol.Item().Text("Receive's Name: " + new string('.', 30)).FontSize(8);
+                                            leftCol.Item().Text("Receiver's Name: " + new string('.', 30)).FontSize(8);
                                             leftCol.Item().PaddingTop(1).Text("Receiver's Sign: " + new string('.', 30)).FontSize(8);
                                         });
                                         
@@ -533,7 +534,7 @@ namespace HexaBill.Api.Modules.Sales
                                         footerCol.Item().PaddingTop(2).AlignRight().Text(text => {
                                             text.Span($"Pending: {customerPendingInfo.TotalPendingBills} | ").FontSize(7);
                                             text.Span($"Balance: {settings.Currency} {customerPendingInfo.TotalBalanceDue:N2}").FontSize(7).Bold().FontColor(Colors.Red.Medium);
-                                            text.Span(" Ø§Ù„Ø±ØµÙŠØ¯").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                            text.Span(" الرصيد").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                         });
                                     }
                                 });
@@ -1152,29 +1153,81 @@ namespace HexaBill.Api.Modules.Sales
             return output.ToArray();
         }
 
+        /// <summary>
+        /// Honest VAT line for bilingual headers. Never prints Corporate Tax as VAT.
+        /// Empty → "To be provided"; sample → SAMPLE prefix; real → digits.
+        /// </summary>
+        private static string VatTrnLineForHeader(string? vatTrn)
+        {
+            if (string.IsNullOrWhiteSpace(vatTrn))
+                return "VAT TRN: To be provided";
+            var display = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(vatTrn);
+            if (string.IsNullOrEmpty(display))
+                return "VAT TRN: To be provided";
+            return $"VAT TRN: {display}";
+        }
+
+        /// <summary>
+        /// Bilingual monochrome letterhead: English left, logo centered, RTL Arabic right.
+        /// CT Reg under EN block; VAT honest line; logo column has no TRN.
+        /// </summary>
         private void RenderCompanyHeader(IContainer container, InvoiceTemplateService.CompanySettings settings, float fontSize)
         {
             container.DefaultTextStyle(x => x.FontColor(Colors.Black)).Column(column =>
             {
                 column.Spacing(1);
                 var logo = MonochromeLogo(settings.LogoImageBytes);
-                if (logo != null)
-                    column.Item().AlignCenter().Width(fontSize <= 9 ? 45 : 90).Height(fontSize <= 9 ? 24 : 42).Image(logo).FitArea();
-                column.Item().AlignCenter().Text(settings.CompanyNameEn).FontFamily(_englishFont).FontSize(fontSize).SemiBold();
-                if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
-                    column.Item().AlignCenter().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
-                        .FontSize(fontSize).DirectionFromRightToLeft();
-                column.Item().AlignCenter().Text($"VAT TRN / Ø±Ù‚Ù… Ø§Ù„ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¶Ø±ÙŠØ¨ÙŠ: {settings.CompanyTrn}")
-                    .FontFamily(_arabicFont).FontSize(Math.Max(5, fontSize - 3));
-                foreach (var contact in new[] { settings.CompanyPhone, settings.CompanyEmail, settings.CompanyAddress })
-                    if (!string.IsNullOrWhiteSpace(contact))
+                var nameSize = Math.Max(8f, fontSize);
+                var detailSize = Math.Max(5f, fontSize - 3f);
+                var logoW = fontSize <= 9 ? 40f : 72f;
+                var logoH = fontSize <= 9 ? 22f : 40f;
+                var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
+                if (string.IsNullOrWhiteSpace(title))
+                    title = settings.CompanyNameEn ?? "";
+
+                column.Item().Row(row =>
+                {
+                    row.RelativeItem().AlignLeft().Column(en =>
                     {
-                        var containsArabic = contact.Any(c => c >= '\u0600' && c <= '\u06ff');
-                        var line = column.Item().AlignCenter().Text(contact)
-                            .FontFamily(containsArabic ? _arabicFont : _englishFont).FontSize(Math.Max(5, fontSize - 3));
-                        if (containsArabic) line.DirectionFromRightToLeft();
-                        else line.DirectionFromLeftToRight();
-                    }
+                        en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
+                        if (!string.IsNullOrWhiteSpace(subtitle))
+                            en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(detailSize).SemiBold();
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                            en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
+                            en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                            en.Item().Text(settings.CompanyAddress).FontFamily(_englishFont).FontSize(detailSize);
+                        var taxBits = new List<string>();
+                        if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
+                            taxBits.Add($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}");
+                        taxBits.Add(VatTrnLineForHeader(settings.CompanyTrn));
+                        en.Item().PaddingTop(1).Text(string.Join(" | ", taxBits))
+                            .FontFamily(_englishFont).FontSize(Math.Max(5f, detailSize - 0.5f));
+                    });
+
+                    row.ConstantItem(fontSize <= 9 ? 52 : 88).AlignCenter().AlignMiddle().Column(c =>
+                    {
+                        if (logo != null)
+                            c.Item().AlignCenter().Width(logoW).Height(logoH).Image(logo).FitArea();
+                        else
+                            c.Item().Height(4);
+                    });
+
+                    row.RelativeItem().AlignRight().Column(ar =>
+                    {
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
+                            ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
+                                .FontSize(nameSize).Bold().DirectionFromRightToLeft();
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                            ar.Item().PaddingTop(1).AlignRight().Text(settings.CompanyPhone).FontFamily(_arabicFont)
+                                .FontSize(detailSize).DirectionFromRightToLeft();
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                            ar.Item().AlignRight().Text(settings.CompanyAddress).FontFamily(_arabicFont)
+                                .FontSize(detailSize).DirectionFromRightToLeft();
+                    });
+                });
+                column.Item().PaddingTop(2).LineHorizontal(0.8f).LineColor(Colors.Black);
             });
         }
 
@@ -1183,14 +1236,21 @@ namespace HexaBill.Api.Modules.Sales
             var trnDisplay = string.IsNullOrWhiteSpace(customerTrn) ? "" : customerTrn;
             column.Spacing(0);
 
-            column.Item().Border(2).Padding(8).Column(innerColumn =>
-            {
+            // Bilingual letterhead is taller; avoid outer Border (blocks table page-break) so combined PDF can paginate.
+            if (settings.BilingualMonochromeHeader)
+                column.Item().Padding(4).Column(innerColumn => RenderInvoiceContentBody(innerColumn, sale, settings, trnDisplay));
+            else
+                column.Item().Border(2).Padding(8).Column(innerColumn => RenderInvoiceContentBody(innerColumn, sale, settings, trnDisplay));
+        }
+
+        private void RenderInvoiceContentBody(ColumnDescriptor innerColumn, SaleDto sale, InvoiceTemplateService.CompanySettings settings, string trnDisplay)
+        {
                 innerColumn.Spacing(0);
 
                 if (settings.BilingualMonochromeHeader)
                 {
-                    RenderCompanyHeader(innerColumn.Item(), settings, 14);
-                    innerColumn.Item().AlignRight().Text($"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9);
+                    RenderCompanyHeader(innerColumn.Item(), settings, 9);
+                    innerColumn.Item().AlignRight().Text($"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(8);
                 }
                 else
                 {
@@ -1285,14 +1345,14 @@ if (hasLogo)
                             });
                         }
 
-                        AddHeader("SL.No", "Ø±.Ù…");
-                        AddHeader("Description", "Ø§Ù„ÙˆØµÙ");
-                        AddHeader("Unit", "Ø§Ù„ÙˆØ­Ø¯Ø©");
-                        AddHeader("Qty", "Ø§Ù„ÙƒÙ…ÙŠØ©");
-                        AddHeader("Unit Price", "Ø³Ø¹Ø± Ø§Ù„ÙˆØ­Ø¯Ø©");
-                        AddHeader("Total", "Ø§Ù„Ø¥Ø¬Ù…Ø§Ù„ÙŠ");
-                        AddHeader("Vat 5%", "Ø¶.Ù‚.Ù… Ù¥Ùª");
-                        AddHeader("Amount", "Ø§Ù„Ù…Ø¨Ù„Øº");
+                        AddHeader("SL.No", "ر.م");
+                        AddHeader("Description", "الوصف");
+                        AddHeader("Unit", "الوحدة");
+                        AddHeader("Qty", "الكمية");
+                        AddHeader("Unit Price", "سعر الوحدة");
+                        AddHeader("Total", "الإجمالي");
+                        AddHeader("Vat 5%", "ض.ق.م ٥٪");
+                        AddHeader("Amount", "المبلغ");
                     });
 
                     int itemCount = sale.Items != null ? sale.Items.Count : 0;
@@ -1337,7 +1397,8 @@ if (hasLogo)
                         }
                     }
 
-                    int maxTotalRows = 16;
+                    // Bilingual header is taller (CT/VAT lines); fewer blank pad rows so content fits A4 + page footer.
+                    int maxTotalRows = settings.BilingualMonochromeHeader ? 8 : 16;
                     int emptyRowsNeeded = Math.Max(0, maxTotalRows - itemCount);
                     
                     for (int i = 0; i < emptyRowsNeeded; i++)
@@ -1376,52 +1437,39 @@ if (hasLogo)
                         });
                     }
 
-                    table.Cell().ColumnSpan(5).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("INV.Amount").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text("Ù…Ø¨Ù„Øº Ø§Ù„ÙØ§ØªÙˆØ±Ø©").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    table.Cell().ColumnSpan(5).Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
+                        col.Item().Text("INV.Amount").FontSize(8).Bold();
+                        col.Item().Text("مبلغ الفاتورة").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                        col.Item().AlignRight().Text(sale.Subtotal.ToString("N2")).FontSize(11).Bold();
-                    });
-                    table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                        col.Item().AlignRight().Text(sale.VatTotal.ToString("N2")).FontSize(11).Bold();
-                    });
-                    table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                        col.Item().Text("");
-                    });
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        .Text(sale.Subtotal.ToString("N2")).FontSize(10).Bold();
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        .Text(sale.VatTotal.ToString("N2")).FontSize(10).Bold();
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
 
-                    table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("VAT 5%").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text("Ø¶Ø±ÙŠØ¨Ø© Ù¥Ùª").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    table.Cell().ColumnSpan(6).Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
+                        col.Item().Text("VAT 5%").FontSize(8).Bold();
+                        col.Item().Text("ضريبة ٥٪").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                        col.Item().Text("");
-                    });
-                    table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                        col.Item().Text("");
-                    });
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
 
                     if (sale.RoundOff != 0)
                     {
-                        table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(2).AlignRight().Column(col => {
-                            col.Item().Text("Round Off / ØªÙ‚Ø±ÙŠØ¨").FontSize(9).Bold();
-                        });
-                        table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => { col.Item().Text(""); });
-                        table.Cell().Border(1).Height(20).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignRight().Text((sale.RoundOff > 0 ? "+" : "") + sale.RoundOff.ToString("N2")).FontSize(10).Bold();
-                        });
+                        table.Cell().ColumnSpan(6).Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(2).AlignRight()
+                            .Text("Round Off / تقريب").FontSize(8).Bold();
+                        table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).Text("");
+                        table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                            .Text((sale.RoundOff > 0 ? "+" : "") + sale.RoundOff.ToString("N2")).FontSize(9).Bold();
                     }
 
-                    table.Cell().ColumnSpan(6).Border(1).Height(20).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("Total Amount").FontSize(9).Bold();
-                        col.Item().PaddingTop(1).Text(new string('.', 45) + " Ø¯Ø±Ù‡Ù… ÙÙ‚Ø·").FontSize(9).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    table.Cell().ColumnSpan(6).Border(1).MinHeight(24).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
+                        col.Item().Text("Total Amount").FontSize(8).Bold();
+                        col.Item().Text(new string('.', 45) + " درهم فقط").FontSize(8).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).Height(20).PaddingVertical(2).PaddingHorizontal(1).Column(col => {
-                        col.Item().Text("");
-                    });
-                    table.Cell().Border(2).Height(20).PaddingVertical(2).PaddingHorizontal(1).Column(col => {
-                        col.Item().AlignRight().Text(sale.GrandTotal.ToString("N2")).FontSize(11).Bold();
-                    });
+                    table.Cell().Border(1).MinHeight(24).PaddingVertical(2).PaddingHorizontal(1).Text("");
+                    table.Cell().Border(2).MinHeight(24).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        .Text(sale.GrandTotal.ToString("N2")).FontSize(10).Bold();
                 });
 
                 innerColumn.Item().PaddingTop(3).BorderTop(1);
@@ -1432,7 +1480,7 @@ if (hasLogo)
                         .FontSize(9)
                         .Bold();
                     
-                    footerCol.Item().PaddingTop(2).AlignCenter().Text("Ø§Ø³ØªÙ„Ù…Ù†Ø§ Ø§Ù„Ø¨Ø¶Ø§Ø¹Ø© Ø£Ø¹Ù„Ø§Ù‡ Ø¨Ø­Ø§Ù„Ø© Ø¬ÙŠØ¯Ø©")
+                    footerCol.Item().PaddingTop(2).AlignCenter().Text("استلمنا البضاعة أعلاه بحالة جيدة")
                         .FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
 
                     footerCol.Item().PaddingTop(8).Table(sigTable =>
@@ -1458,7 +1506,6 @@ if (hasLogo)
                         });
                     });
                 });
-            });
         }
 
         private async Task<InvoiceTemplateService.CompanySettings> GetCompanySettingsAsync(int tenantId)
@@ -1482,6 +1529,7 @@ if (hasLogo)
                 CompanyNameAr = companySettings.LegalNameAr ?? "",
                 CompanyAddress = companySettings.Address ?? "",
                 CompanyTrn = companySettings.VatNumber ?? "",
+                CorporateTaxTrn = companySettings.CorporateTaxTrn ?? "",
                 CompanyPhone = companySettings.Mobile ?? "",
                 CompanyEmail = companySettings.Email,
                 CompanyWebsite = companySettings.Website,
@@ -1884,27 +1932,39 @@ if (hasLogo)
             return date.ToString("dd-MM-yyyy");
         }
 
-        /// <summary>Shared report header: logo left | company name + address + TRN centre | date right; then line; then optional subtitle.</summary>
-        private static void RenderCompanyHeader(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings, string? subtitle, string dateText)
+        /// <summary>
+        /// Shared report/document header. When BilingualMonochromeHeader: EN left / logo center / AR right.
+        /// Legacy: logo left | company centre | date right.
+        /// </summary>
+        private void RenderCompanyHeader(ColumnDescriptor col, InvoiceTemplateService.CompanySettings settings, string? subtitle, string dateText)
         {
-            var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
-            col.Item().Row(row =>
+            if (settings.BilingualMonochromeHeader)
             {
-                if (hasLogo)
-                    row.ConstantItem(80).AlignLeft().AlignMiddle().Width(80).Height(40).Image(settings.LogoImageBytes!).FitArea();
-                row.RelativeItem().AlignCenter().AlignMiddle().Column(centerCol =>
+                RenderCompanyHeader(col.Item(), settings, 11);
+                col.Item().AlignRight().Text(dateText).FontSize(9);
+            }
+            else
+            {
+                var hasLogo = settings.LogoImageBytes != null && settings.LogoImageBytes.Length > 0;
+                col.Item().Row(row =>
                 {
-                    centerCol.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").FontSize(10).Bold();
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
-                        centerCol.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(8);
-                    if (!string.IsNullOrWhiteSpace(settings.CompanyTrn))
-                        centerCol.Item().AlignCenter().Text(string.IsNullOrEmpty(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)) ? "" : $"TRN: {HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn)}").FontSize(8);
+                    if (hasLogo)
+                        row.ConstantItem(80).AlignLeft().AlignMiddle().Width(80).Height(40).Image(settings.LogoImageBytes!).FitArea();
+                    row.RelativeItem().AlignCenter().AlignMiddle().Column(centerCol =>
+                    {
+                        centerCol.Item().AlignCenter().Text(settings.CompanyNameEn ?? "Company").FontSize(10).Bold();
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                            centerCol.Item().AlignCenter().Text(settings.CompanyAddress).FontSize(8);
+                        var trn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.CompanyTrn);
+                        if (!string.IsNullOrEmpty(trn))
+                            centerCol.Item().AlignCenter().Text($"TRN: {trn}").FontSize(8);
+                    });
+                    row.ConstantItem(100).AlignRight().AlignMiddle().Text(dateText).FontSize(9);
                 });
-                row.ConstantItem(100).AlignRight().AlignMiddle().Text(dateText).FontSize(9);
-            });
-            col.Item().Height(3);
-            col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
-            col.Item().Height(2);
+                col.Item().Height(3);
+                col.Item().LineHorizontal(1).LineColor(Colors.Grey.Medium);
+                col.Item().Height(2);
+            }
             if (!string.IsNullOrWhiteSpace(subtitle))
                 col.Item().Text(subtitle).FontSize(14).Bold().AlignCenter();
         }
@@ -2446,8 +2506,9 @@ if (hasLogo)
                         page.Content().Column(column =>
                         {
                             column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "Profit & Loss Statement", $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}"));
+                            column.Item().PaddingTop(6).Text("Estimate — not for filing").FontSize(9).Bold().FontColor(Colors.Grey.Darken2);
                             if (report.EstimatedCostLineCount > 0)
-                                column.Item().PaddingTop(8).Text($"Estimated costs: {report.EstimatedCostLineCount} invoice lines have no saved historical cost. Current product costs are used and may change.").FontSize(9).FontColor(Colors.Orange.Darken3);
+                                column.Item().PaddingTop(4).Text($"Estimated costs: {report.EstimatedCostLineCount} invoice lines have no saved historical cost. Current product costs are used and may change.").FontSize(9).FontColor(Colors.Orange.Darken3);
                             column.Item().PaddingTop(8).PaddingBottom(5).Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(9).FontColor(Colors.Grey.Medium);
                             column.Item().PaddingTop(12).Table(table =>
                             {
@@ -2519,6 +2580,64 @@ if (hasLogo)
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error generating Worksheet PDF: {Message}", ex.Message);
+                throw;
+            }
+        }
+
+        public async Task<byte[]> GenerateSummaryReportPdfAsync(SummaryReportDto summary, DateTime fromDate, DateTime toDate, int tenantId)
+        {
+            try
+            {
+                var settings = await GetCompanySettingsAsync(tenantId);
+                var currency = settings.Currency ?? "AED";
+                var document = Document.Create(container =>
+                {
+                    container.Page(page =>
+                    {
+                        page.Size(PageSizes.A4);
+                        page.Margin(15, Unit.Millimetre);
+                        page.PageColor(Colors.White);
+                        page.DefaultTextStyle(x => x.FontFamily(_englishFont).FontSize(10));
+                        page.Content().Column(column =>
+                        {
+                            column.Item().Column(headerCol => RenderCompanyHeader(headerCol, settings, "Report Summary", $"{fromDate:dd-MMM-yyyy} to {toDate:dd-MMM-yyyy}"));
+                            if (summary.ProfitToday.HasValue)
+                                column.Item().PaddingTop(6).Text("Profit figures are Estimate — not for filing").FontSize(9).Bold().FontColor(Colors.Grey.Darken2);
+                            column.Item().PaddingTop(8).Table(table =>
+                            {
+                                table.ColumnsDefinition(columns => { columns.RelativeColumn(2); columns.ConstantColumn(100); });
+                                void Row(string label, string value, bool emphasize = false)
+                                {
+                                    if (emphasize)
+                                    {
+                                        table.Cell().Border(1).Padding(4).Text(label).Bold();
+                                        table.Cell().Border(1).Padding(4).AlignRight().Text(value).Bold();
+                                    }
+                                    else
+                                    {
+                                        table.Cell().Border(1).Padding(4).Text(label);
+                                        table.Cell().Border(1).Padding(4).AlignRight().Text(value);
+                                    }
+                                }
+                                Row("Sales (period)", $"{summary.SalesToday:N2} {currency}", true);
+                                Row("Returns", $"{summary.ReturnsToday:N2} {currency}");
+                                Row("Net sales", $"{summary.NetSalesToday:N2} {currency}", true);
+                                Row("Purchases", $"{summary.PurchasesToday:N2} {currency}");
+                                Row("Expenses", $"{summary.ExpensesToday:N2} {currency}");
+                                Row("Cash collections", $"{summary.CashCollectionsTotal:N2} {currency}");
+                                Row("Pending bills", $"{summary.PendingBillsAmount:N2} {currency} ({summary.PendingBills})");
+                                Row("Net VAT (guidance)", $"{summary.NetVatPayablePeriod:N2} {currency}");
+                                if (summary.ProfitToday.HasValue)
+                                    Row("Profit estimate", $"{summary.ProfitToday.Value:N2} {currency}");
+                            });
+                        });
+                    });
+                });
+                return document.GeneratePdf();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating summary report PDF: {Message}", ex.Message);
                 throw;
             }
         }
