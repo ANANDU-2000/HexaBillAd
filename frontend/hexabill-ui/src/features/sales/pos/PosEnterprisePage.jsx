@@ -1068,76 +1068,108 @@ const PosEnterprisePage = () => {
     }
   }
 
-  /** One-click print for specified format (A4, A5, 80mm, 58mm). Opens PDF in new tab and triggers print dialog. */
+  /** Hidden-iframe print — avoids pop-up blockers (do not window.open before fetch). */
+  const printBlobViaIframe = (blob, downloadName, toastId) => {
+    let settled = false
+    const pdfUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('title', 'Print document')
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;opacity:0;pointer-events:none'
+    iframe.src = pdfUrl
+    document.body.appendChild(iframe)
+
+    const cleanup = () => {
+      setTimeout(() => {
+        if (iframe.parentNode) document.body.removeChild(iframe)
+        URL.revokeObjectURL(pdfUrl)
+      }, 10000)
+    }
+
+    const finish = (mode) => {
+      if (settled) return
+      settled = true
+      toast.dismiss(toastId)
+      if (mode === 'print') toast.success('Print dialog opened')
+      cleanup()
+    }
+
+    const downloadFallback = () => {
+      if (settled) return
+      const a = document.createElement('a')
+      a.href = pdfUrl
+      a.download = downloadName
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      toast.dismiss(toastId)
+      toast.success('PDF downloaded. Open it to print.')
+      settled = true
+      cleanup()
+    }
+
+    const trigger = () => {
+      if (settled) return
+      try {
+        const win = iframe.contentWindow
+        if (!win) {
+          downloadFallback()
+          return
+        }
+        win.focus()
+        win.print()
+        finish('print')
+      } catch {
+        downloadFallback()
+      }
+    }
+
+    iframe.onload = () => setTimeout(trigger, 600)
+    setTimeout(() => { if (!settled) trigger() }, 2500)
+  }
+
+  /** One-click print for specified format (A4, A5, 80mm, 58mm). */
   const handlePrintFormat = async (format, saleIdOverride) => {
     const saleId = saleIdOverride ?? lastCreatedInvoice?.id ?? (isEditMode ? editingSaleId : null)
     if (!saleId) {
       toast.error('No invoice to print. Save the invoice first.')
       return
     }
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      toast.error('Pop-up blocked. Allow pop-ups for this site.')
-      return
-    }
-    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing document…</p>')
     const toastId = `print-${format}-toast`
     try {
       toast.loading(`Preparing ${format}...`, { id: toastId })
       const blob = await salesAPI.getInvoicePdf(saleId, { format, layout: 'body' })
-      const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
-      printWindow.location.href = blobUrl
-      printWindow.onload = () => {
-        try {
-          printWindow.print()
-          toast.dismiss(toastId)
-          toast.success('Print dialog opened')
-        } catch {
-          toast.dismiss(toastId)
-          toast.error('Could not open print dialog')
-        }
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+      if (!blob || (blob instanceof Blob && blob.size === 0)) {
+        toast.dismiss(toastId)
+        toast.error('PDF could not be generated')
+        return
       }
+      printBlobViaIframe(blob, `invoice_${saleId}_${format}.pdf`, toastId)
     } catch (error) {
-      printWindow.close()
       toast.dismiss(toastId)
       console.error('Print error:', error)
       if (!error?._handledByInterceptor) toast.error('Failed to prepare PDF')
     }
   }
 
-  /** Packing-list delivery note (no prices) — same synchronous window pattern as invoice print. */
+  /** Packing-list delivery note (no prices). */
   const handleDeliveryNotePrint = async (format = 'A4', saleIdOverride) => {
     const saleId = saleIdOverride ?? lastCreatedInvoice?.id ?? (isEditMode ? editingSaleId : null)
     if (!saleId) {
       toast.error('No invoice to print. Save the invoice first.')
       return
     }
-    const printWindow = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWindow) {
-      toast.error('Pop-up blocked. Allow pop-ups for this site.')
-      return
-    }
-    printWindow.document.write('<p style="font-family:sans-serif;padding:24px">Preparing delivery note…</p>')
     const toastId = 'delivery-note-print'
     try {
       toast.loading('Preparing delivery note...', { id: toastId })
       const blob = await salesAPI.getDeliveryNotePdf(saleId, { format, layout: 'body' })
-      const blobUrl = URL.createObjectURL(blob instanceof Blob ? blob : new Blob([blob], { type: 'application/pdf' }))
-      printWindow.location.href = blobUrl
-      printWindow.onload = () => {
-        try {
-          printWindow.print()
-          toast.dismiss(toastId)
-          toast.success('Delivery note opened')
-        } catch {
-          toast.dismiss(toastId)
-          toast.error('Could not open print dialog')
-        }
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
+      if (!blob || (blob instanceof Blob && blob.size === 0)) {
+        toast.dismiss(toastId)
+        toast.error('Delivery note could not be generated')
+        return
       }
+      printBlobViaIframe(blob, `delivery_note_${saleId}.pdf`, toastId)
     } catch (error) {
-      printWindow.close()
       toast.dismiss(toastId)
       console.error('Delivery note print error:', error)
       if (!error?._handledByInterceptor) toast.error('Failed to prepare delivery note')

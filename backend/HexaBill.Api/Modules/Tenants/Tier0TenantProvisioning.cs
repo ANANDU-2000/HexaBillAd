@@ -115,6 +115,7 @@ public sealed class Tier0TenantProvisioning
             {
                 await UpsertSettingIfEmptyAsync(tenant.Id, "LEGACY_SUBDOMAIN", spec.LegacySlug!, ct);
             }
+            await TrySeedLogoDataUriIfEmptyAsync(tenant.Id, "frozenhub-logo.datauri.txt", ct);
             await _db.SaveChangesAsync(ct);
             return FormatCreateLog("frozenhub1", tenant, RewriteInviteHost(created.InviteUrl, tenant.Subdomain, options.Domain));
         }
@@ -140,6 +141,7 @@ public sealed class Tier0TenantProvisioning
 
         await ApplyVerifiedIdentityAsync(tenant, spec, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub1, ct);
         await EnsureSharedLegalWorkspaceFeatureAsync(tenant, ct);
+        await TrySeedLogoDataUriIfEmptyAsync(tenant.Id, "frozenhub-logo.datauri.txt", ct);
         await _db.SaveChangesAsync(ct);
         return $"frozenhub1 tenantId={tenant.Id} slug={tenant.Subdomain}";
     }
@@ -155,6 +157,7 @@ public sealed class Tier0TenantProvisioning
         {
             await UpsertSettingIfEmptyAsync(existing.Id, "OPENING_DATA_CHOICE", "Empty", ct);
             await ApplyVerifiedIdentityAsync(existing, MergeFrozenHubIdentity(options, spec), allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub2, ct);
+            await TrySeedLogoDataUriIfEmptyAsync(existing.Id, "frozenhub-logo.datauri.txt", ct);
             await _db.SaveChangesAsync(ct);
             return $"frozenhub2 already exists tenantId={existing.Id} slug={existing.Subdomain} (settings preserved)";
         }
@@ -196,6 +199,7 @@ public sealed class Tier0TenantProvisioning
         var createdTenant = await _db.Tenants.FirstAsync(t => t.Id == created.Tenant.Id, ct);
         await ApplyVerifiedIdentityAsync(createdTenant, identity, allowSampleVat: true, sampleVat: SampleVatTrn.FrozenHub2, ct);
         await UpsertSettingIfEmptyAsync(createdTenant.Id, "OPENING_DATA_CHOICE", "Empty", ct);
+        await TrySeedLogoDataUriIfEmptyAsync(createdTenant.Id, "frozenhub-logo.datauri.txt", ct);
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
@@ -263,26 +267,46 @@ public sealed class Tier0TenantProvisioning
             await ForceSettingAsync(tenantId, "CORPORATE_TAX_TRN", spec.CorporateTaxTrn!.Trim(), ct);
         await ForceSettingAsync(tenantId, "INVOICE_HEADER_STYLE", "BilingualMonochrome", ct);
 
-        // Optional local-only monochrome logo seed (gitignored App_Data). Never invent identity from this path.
+        await TrySeedLogoDataUriIfEmptyAsync(tenantId, "gulfharvest-logo.datauri.txt", ct);
+    }
+
+    /// <summary>
+    /// Optional App_Data logo seed when LOGO_BASE64_DATA_URI is empty. Never overwrites an existing logo.
+    /// </summary>
+    private async Task TrySeedLogoDataUriIfEmptyAsync(int tenantId, string fileName, CancellationToken ct)
+    {
         try
         {
             var existingLogo = await _settings.GetSettingValueAsync(tenantId, "LOGO_BASE64_DATA_URI");
-            if (string.IsNullOrWhiteSpace(existingLogo))
+            if (!string.IsNullOrWhiteSpace(existingLogo))
+                return;
+
+            // Prefer published SeedLogos; fall back to App_Data (local gitignored) then project tree.
+            string? logoPath = null;
+            foreach (var candidate in new[]
+                     {
+                         Path.Combine(AppContext.BaseDirectory, "SeedLogos", fileName),
+                         Path.Combine(AppContext.BaseDirectory, "App_Data", fileName),
+                         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "SeedLogos", fileName)),
+                         Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "App_Data", fileName))
+                     })
             {
-                var logoPath = Path.Combine(AppContext.BaseDirectory, "App_Data", "gulfharvest-logo.datauri.txt");
-                if (!File.Exists(logoPath))
-                    logoPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "App_Data", "gulfharvest-logo.datauri.txt"));
-                if (File.Exists(logoPath))
+                if (File.Exists(candidate))
                 {
-                    var dataUri = (await File.ReadAllTextAsync(logoPath, ct)).Trim();
-                    if (dataUri.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) && dataUri.Length < 2_000_000)
-                        await ForceSettingAsync(tenantId, "LOGO_BASE64_DATA_URI", dataUri, ct);
+                    logoPath = candidate;
+                    break;
                 }
             }
+            if (logoPath is null)
+                return;
+
+            var dataUri = (await File.ReadAllTextAsync(logoPath, ct)).Trim();
+            if (dataUri.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) && dataUri.Length < 2_000_000)
+                await ForceSettingAsync(tenantId, "LOGO_BASE64_DATA_URI", dataUri, ct);
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Optional Gulf Harvest logo seed skipped");
+            _logger.LogDebug(ex, "Optional logo seed skipped for {File} tenant {TenantId}", fileName, tenantId);
         }
     }
 

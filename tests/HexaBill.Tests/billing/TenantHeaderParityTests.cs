@@ -1,3 +1,4 @@
+using System.Text;
 using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Models;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using UglyToad.PdfPig;
 
 namespace HexaBill.Tests;
 
@@ -173,10 +175,30 @@ public class TenantHeaderParityTests
         var bytes = await pdf.GenerateInvoicePdfAsync(sale, "A4", "full");
         Assert.True(bytes.Length > 800);
         SaveEvidence("gulfharvest-CT-VAT-pending-A4.pdf", bytes);
-        var text = System.Text.Encoding.Latin1.GetString(bytes);
-        Assert.DoesNotContain("Starplus", text, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("ZAYOGA", text, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("FROZENHUB", text, StringComparison.OrdinalIgnoreCase);
+        var extracted = ExtractPdfText(bytes);
+        SaveEvidence("gulfharvest-CT-VAT-pending-A4.txt", Encoding.UTF8.GetBytes(extracted));
+        Assert.Contains("CT Reg. No.:", extracted, StringComparison.Ordinal);
+        Assert.Contains(ctTrn, extracted, StringComparison.Ordinal);
+        Assert.Contains("VAT TRN:", extracted, StringComparison.Ordinal);
+        Assert.Contains("To be provided", extracted, StringComparison.OrdinalIgnoreCase);
+        // CT and VAT must not be joined on one header line with " | "
+        Assert.DoesNotContain($"CT Reg. No.: {ctTrn} |", extracted, StringComparison.Ordinal);
+        Assert.DoesNotContain(" | VAT TRN:", extracted, StringComparison.Ordinal);
+        Assert.Contains("INVOICE", extracted, StringComparison.Ordinal);
+        Assert.DoesNotContain("TAX INVOICE", extracted, StringComparison.Ordinal);
+        Assert.Equal("INVOICE", SampleVatTrn.DocumentTitle(company.VatNumber));
+        Assert.DoesNotContain("Starplus", extracted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ZAYOGA", extracted, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("FROZENHUB", extracted, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ExtractPdfText(byte[] bytes)
+    {
+        using var doc = PdfDocument.Open(bytes);
+        var sb = new StringBuilder();
+        foreach (var page in doc.GetPages())
+            sb.AppendLine(page.Text);
+        return sb.ToString();
     }
 
     private static void SaveEvidence(string filename, byte[] bytes)

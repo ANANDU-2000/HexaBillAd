@@ -275,8 +275,7 @@ namespace HexaBill.Api.Modules.Sales
 
                                 if (settings.BilingualMonochromeHeader)
                                 {
-                                    RenderCompanyHeader(innerColumn.Item(), settings, 14);
-                                    innerColumn.Item().AlignRight().Text($"DATE: {invoiceDateStr}").FontSize(10);
+                                    RenderCompanyHeader(innerColumn.Item(), settings, 14, a4Letterhead: true, dateLine: $"DATE: {invoiceDateStr}");
                                 }
                                 else if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                 {
@@ -450,7 +449,7 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().ColumnSpan(7).Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).Row(row => {
                                         row.AutoItem().Text("VAT 5%").FontSize(10);
                                         row.RelativeItem();
-                                        row.AutoItem().Text("ضريبة ٥٪").FontSize(10).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                        row.AutoItem().Text("ضريبة القيمة المضافة").FontSize(9).FontFamily(_arabicFont).DirectionFromRightToLeft();
                                     });
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.VatTotal.ToString("0.00")).FontSize(10);
                                     
@@ -528,14 +527,13 @@ namespace HexaBill.Api.Modules.Sales
                                         });
                                     }
                                     
-                                    // COMPACT: Customer Balance - single line, minimal spacing
+                                    // Pending / Balance — centered black (reference style; never red)
                                     if (sale.CustomerId.HasValue && customerPendingInfo.TotalPendingBills > 0)
                                     {
-                                        footerCol.Item().PaddingTop(2).AlignRight().Text(text => {
-                                            text.Span($"Pending: {customerPendingInfo.TotalPendingBills} | ").FontSize(7);
-                                            text.Span($"Balance: {settings.Currency} {customerPendingInfo.TotalBalanceDue:N2}").FontSize(7).Bold().FontColor(Colors.Red.Medium);
-                                            text.Span(" الرصيد").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
-                                        });
+                                        footerCol.Item().PaddingTop(4).LineHorizontal(0.5f).LineColor(Colors.Black);
+                                        footerCol.Item().PaddingTop(3).AlignCenter()
+                                            .Text($"Pending: {customerPendingInfo.TotalPendingBills} | Balance: {settings.Currency} {customerPendingInfo.TotalBalanceDue:N2}")
+                                            .FontSize(8).Bold().FontColor(Colors.Black);
                                     }
                                 });
                             });
@@ -1168,45 +1166,55 @@ namespace HexaBill.Api.Modules.Sales
         }
 
         /// <summary>
-        /// Bilingual monochrome letterhead: English left, logo centered, RTL Arabic right.
-        /// CT Reg under EN block; VAT honest line; logo column has no TRN.
+        /// Bilingual monochrome letterhead: English left (~35%), logo center (~30%), RTL Arabic right (~35%).
+        /// CT Reg and VAT TRN are separate lines (never joined with "|"). Logo column has no TRN.
         /// </summary>
-        private void RenderCompanyHeader(IContainer container, InvoiceTemplateService.CompanySettings settings, float fontSize)
+        /// <param name="a4Letterhead">True for A4/A5 full invoice headers (larger logo/type). False for thermal/compact.</param>
+        /// <param name="dateLine">When set, DATE is drawn lower-right under the three columns (A4 bilingual).</param>
+        private void RenderCompanyHeader(
+            IContainer container,
+            InvoiceTemplateService.CompanySettings settings,
+            float fontSize,
+            bool a4Letterhead = false,
+            string? dateLine = null)
         {
             container.DefaultTextStyle(x => x.FontColor(Colors.Black)).Column(column =>
             {
                 column.Spacing(1);
                 var logo = MonochromeLogo(settings.LogoImageBytes);
-                var nameSize = Math.Max(8f, fontSize);
-                var detailSize = Math.Max(5f, fontSize - 3f);
-                var logoW = fontSize <= 9 ? 40f : 72f;
-                var logoH = fontSize <= 9 ? 22f : 40f;
+                var nameSize = a4Letterhead ? 15.5f : Math.Max(8f, fontSize);
+                var detailSize = a4Letterhead ? 8f : Math.Max(5f, fontSize - 3f);
+                var taxSize = a4Letterhead ? 7.5f : Math.Max(5f, detailSize - 0.5f);
+                var logoW = a4Letterhead ? 112f : (fontSize <= 9 ? 40f : 72f);
+                var logoH = a4Letterhead ? 80f : (fontSize <= 9 ? 22f : 40f);
+                var logoColW = a4Letterhead ? 120f : (fontSize <= 9 ? 52f : 88f);
                 var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
 
                 column.Item().Row(row =>
                 {
-                    row.RelativeItem().AlignLeft().Column(en =>
+                    row.RelativeItem(35).AlignLeft().Column(en =>
                     {
+                        en.Spacing(1);
                         en.Item().Text(title.ToUpperInvariant()).FontFamily(_englishFont).FontSize(nameSize).Bold();
                         if (!string.IsNullOrWhiteSpace(subtitle))
-                            en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(detailSize).SemiBold();
+                            en.Item().Text(subtitle.ToUpperInvariant()).FontFamily(_englishFont).FontSize(a4Letterhead ? 8.5f : detailSize).SemiBold();
                         if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
                             en.Item().PaddingTop(1).Text($"Mob: {settings.CompanyPhone}").FontFamily(_englishFont).FontSize(detailSize);
                         if (!string.IsNullOrWhiteSpace(settings.CompanyEmail))
                             en.Item().Text(settings.CompanyEmail).FontFamily(_englishFont).FontSize(detailSize);
                         if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
                             en.Item().Text(settings.CompanyAddress).FontFamily(_englishFont).FontSize(detailSize);
-                        var taxBits = new List<string>();
+                        // CT and VAT on separate lines — never "CT | VAT" on one wrapping row.
                         if (!string.IsNullOrWhiteSpace(settings.CorporateTaxTrn))
-                            taxBits.Add($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}");
-                        taxBits.Add(VatTrnLineForHeader(settings.CompanyTrn));
-                        en.Item().PaddingTop(1).Text(string.Join(" | ", taxBits))
-                            .FontFamily(_englishFont).FontSize(Math.Max(5f, detailSize - 0.5f));
+                            en.Item().PaddingTop(2).Text($"CT Reg. No.: {settings.CorporateTaxTrn.Trim()}")
+                                .FontFamily(_englishFont).FontSize(taxSize);
+                        en.Item().PaddingTop(2).Text(VatTrnLineForHeader(settings.CompanyTrn))
+                            .FontFamily(_englishFont).FontSize(taxSize);
                     });
 
-                    row.ConstantItem(fontSize <= 9 ? 52 : 88).AlignCenter().AlignMiddle().Column(c =>
+                    row.ConstantItem(logoColW).AlignCenter().AlignMiddle().Column(c =>
                     {
                         if (logo != null)
                             c.Item().AlignCenter().Width(logoW).Height(logoH).Image(logo).FitArea();
@@ -1214,19 +1222,27 @@ namespace HexaBill.Api.Modules.Sales
                             c.Item().Height(4);
                     });
 
-                    row.RelativeItem().AlignRight().Column(ar =>
+                    row.RelativeItem(35).AlignRight().Column(ar =>
                     {
+                        ar.Spacing(1);
                         if (!string.IsNullOrWhiteSpace(settings.CompanyNameAr))
                             ar.Item().AlignRight().Text(settings.CompanyNameAr).FontFamily(_arabicFont)
-                                .FontSize(nameSize).Bold().DirectionFromRightToLeft();
+                                .FontSize(a4Letterhead ? 14f : nameSize).Bold().DirectionFromRightToLeft();
                         if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
                             ar.Item().PaddingTop(1).AlignRight().Text(settings.CompanyPhone).FontFamily(_arabicFont)
+                                .FontSize(detailSize).DirectionFromRightToLeft();
+                        if (!string.IsNullOrWhiteSpace(settings.CompanyEmail) && a4Letterhead)
+                            ar.Item().AlignRight().Text(settings.CompanyEmail).FontFamily(_arabicFont)
                                 .FontSize(detailSize).DirectionFromRightToLeft();
                         if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
                             ar.Item().AlignRight().Text(settings.CompanyAddress).FontFamily(_arabicFont)
                                 .FontSize(detailSize).DirectionFromRightToLeft();
                     });
                 });
+
+                if (!string.IsNullOrWhiteSpace(dateLine))
+                    column.Item().PaddingTop(2).AlignRight().Text(dateLine).FontFamily(_englishFont).FontSize(a4Letterhead ? 8f : 7f);
+
                 column.Item().PaddingTop(2).LineHorizontal(0.8f).LineColor(Colors.Black);
             });
         }
@@ -1249,8 +1265,12 @@ namespace HexaBill.Api.Modules.Sales
 
                 if (settings.BilingualMonochromeHeader)
                 {
-                    RenderCompanyHeader(innerColumn.Item(), settings, 9);
-                    innerColumn.Item().AlignRight().Text($"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(8);
+                    RenderCompanyHeader(
+                        innerColumn.Item(),
+                        settings,
+                        14,
+                        a4Letterhead: true,
+                        dateLine: $"DATE: {FormatInvoiceDate(sale.InvoiceDate, settings)}");
                 }
                 else
                 {
@@ -1295,40 +1315,55 @@ if (hasLogo)
 
                 }
 
-                innerColumn.Item().PaddingTop(6).BorderTop(2).BorderBottom(2).PaddingVertical(4).Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
-                    .FontSize(14)
+                innerColumn.Item().PaddingTop(4).BorderTop(1).BorderBottom(1).PaddingVertical(3)
+                    .Text(HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTitle(settings.CompanyTrn))
+                    .FontSize(settings.BilingualMonochromeHeader ? 11.5f : 14)
                     .Bold()
                     .AlignCenter();
 
-                innerColumn.Item().PaddingTop(5).Table(metaTable =>
+                // Meta: invoice + customer TRN on one baseline; DATE already in letterhead for bilingual.
+                if (settings.BilingualMonochromeHeader)
                 {
-                    metaTable.ColumnsDefinition(columns =>
+                    innerColumn.Item().PaddingTop(4).Row(meta =>
                     {
-                        columns.RelativeColumn();
-                        columns.RelativeColumn();
-                        columns.RelativeColumn();
+                        meta.RelativeItem().AlignLeft().Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(8.5f).Bold();
+                        meta.RelativeItem().AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(8.5f).Bold();
                     });
-
-                    metaTable.Cell().Padding(3).Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(9).Bold();
-                    metaTable.Cell().Padding(3).AlignCenter().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9).Bold();
-                    metaTable.Cell().Padding(3).AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(9).Bold();
-                    
                     var customerDisplayName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName;
-                    metaTable.Cell().ColumnSpan(3).Padding(3).Text($"Customer Name : {customerDisplayName}").FontSize(9).Bold();
-                });
+                    innerColumn.Item().PaddingTop(2).AlignLeft().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
+                }
+                else
+                {
+                    innerColumn.Item().PaddingTop(5).Table(metaTable =>
+                    {
+                        metaTable.ColumnsDefinition(columns =>
+                        {
+                            columns.RelativeColumn();
+                            columns.RelativeColumn();
+                            columns.RelativeColumn();
+                        });
 
-                innerColumn.Item().Border(1).Table(table =>
+                        metaTable.Cell().Padding(3).Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(9).Bold();
+                        metaTable.Cell().Padding(3).AlignCenter().Text($"DATE : {FormatInvoiceDate(sale.InvoiceDate, settings)}").FontSize(9).Bold();
+                        metaTable.Cell().Padding(3).AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(9).Bold();
+
+                        var customerDisplayName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName;
+                        metaTable.Cell().ColumnSpan(3).Padding(3).Text($"Customer Name : {customerDisplayName}").FontSize(9).Bold();
+                    });
+                }
+
+                innerColumn.Item().PaddingTop(3).Border(1).Table(table =>
                 {
                     table.ColumnsDefinition(columns =>
                     {
-                        columns.RelativeColumn(5);
-                        columns.RelativeColumn(36);
-                        columns.RelativeColumn(7);
-                        columns.RelativeColumn(7);
+                        columns.RelativeColumn(6);
+                        columns.RelativeColumn(35);
+                        columns.RelativeColumn(8);
+                        columns.RelativeColumn(8);
+                        columns.RelativeColumn(12);
                         columns.RelativeColumn(11);
-                        columns.RelativeColumn(10);
-                        columns.RelativeColumn(7);
-                        columns.RelativeColumn(17);
+                        columns.RelativeColumn(9);
+                        columns.RelativeColumn(11);
                     });
 
                     table.Header(header =>
@@ -1339,7 +1374,7 @@ if (hasLogo)
                             {
                                 if (!string.IsNullOrEmpty(arabic))
                                 {
-                                    col.Item().AlignCenter().Text(arabic).FontSize(6).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
+                                    col.Item().AlignCenter().Text(arabic).FontSize(7).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
                                 }
                                 col.Item().AlignCenter().Text(eng).FontSize(7.5f).Bold();
                             });
@@ -1351,7 +1386,7 @@ if (hasLogo)
                         AddHeader("Qty", "الكمية");
                         AddHeader("Unit Price", "سعر الوحدة");
                         AddHeader("Total", "الإجمالي");
-                        AddHeader("Vat 5%", "ض.ق.م ٥٪");
+                        AddHeader("Vat:5%", "ض.ق.م ٥٪");
                         AddHeader("Amount", "المبلغ");
                     });
 
@@ -1361,148 +1396,94 @@ if (hasLogo)
                         for (int i = 0; i < itemCount; i++)
                         {
                             var item = sale.Items[i];
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignCenter().Text((i + 1).ToString()).FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(2).Column(col => {
-                                col.Item().AlignLeft().Text(item.ProductName ?? "").FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignCenter().Text(item.UnitType ?? "").FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignRight().Text(item.UnitPrice.ToString("N2")).FontSize(8f).Bold();
-                            });
-                            
+                            var unitTypeText = string.IsNullOrWhiteSpace(item.UnitType) ? "CRTN" : item.UnitType.ToUpperInvariant();
+
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignCenter().Text((i + 1).ToString()).FontSize(8f);
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(2).AlignLeft().Text(item.ProductName ?? "").FontSize(8f);
+                            // Unit then Qty (headers order) — was swapped previously.
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignCenter().Text(unitTypeText).FontSize(8f);
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignCenter().Text(item.Qty.ToString("0.##")).FontSize(8f);
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignRight().Text(item.UnitPrice.ToString("N2")).FontSize(8f);
                             var lineNet = item.Qty * item.UnitPrice;
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignRight().Text(lineNet.ToString("N2")).FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignRight().Text(item.VatAmount.ToString("N2")).FontSize(8f).Bold();
-                            });
-                            
-                            table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                                col.Item().AlignRight().Text(item.LineTotal.ToString("N2")).FontSize(8f).Bold();
-                            });
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignRight().Text(lineNet.ToString("N2")).FontSize(8f);
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignRight().Text(item.VatAmount.ToString("N2")).FontSize(8f);
+                            table.Cell().Border(1).PaddingVertical(2).PaddingHorizontal(1).AlignRight().Text(item.LineTotal.ToString("N2")).FontSize(8f);
                         }
                     }
 
-                    // Bilingual header is taller (CT/VAT lines); fewer blank pad rows so content fits A4 + page footer.
-                    int maxTotalRows = settings.BilingualMonochromeHeader ? 8 : 16;
+                    // Spacer row for short invoices — blank cells only (no fake 0.00 amounts).
+                    int maxTotalRows = settings.BilingualMonochromeHeader ? 6 : 16;
                     int emptyRowsNeeded = Math.Max(0, maxTotalRows - itemCount);
-                    
                     for (int i = 0; i < emptyRowsNeeded; i++)
                     {
-                        int rowNumber = itemCount + i + 1;
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignCenter().Text(rowNumber.ToString()).FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignLeft().Text("").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignCenter().Text("").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignCenter().Text("").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignRight().Text("").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignRight().Text("0.00").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignRight().Text("0.00").FontSize(8f);
-                        });
-                        
-                        table.Cell().Border(1).PaddingVertical(1).PaddingHorizontal(1).Column(col => {
-                            col.Item().AlignRight().Text("0.00").FontSize(8f);
-                        });
+                        for (int c = 0; c < 8; c++)
+                            table.Cell().BorderLeft(1).BorderRight(1).MinHeight(14).Text("");
                     }
 
-                    table.Cell().ColumnSpan(5).Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("INV.Amount").FontSize(8).Bold();
-                        col.Item().Text("مبلغ الفاتورة").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    table.Cell().ColumnSpan(7).Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(2).Row(row =>
+                    {
+                        row.AutoItem().Text("INV.Amount").FontSize(8).Bold();
+                        row.RelativeItem();
+                        row.AutoItem().Text("مبلغ الفاتورة").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
-                        .Text(sale.Subtotal.ToString("N2")).FontSize(10).Bold();
-                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
-                        .Text(sale.VatTotal.ToString("N2")).FontSize(10).Bold();
-                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
+                    table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        .Text(sale.Subtotal.ToString("N2")).FontSize(9).Bold();
 
-                    table.Cell().ColumnSpan(6).Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("VAT 5%").FontSize(8).Bold();
-                        col.Item().Text("ضريبة ٥٪").FontSize(6).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    table.Cell().ColumnSpan(7).Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(2).Row(row =>
+                    {
+                        row.AutoItem().Text("VAT 5%").FontSize(8).Bold();
+                        row.RelativeItem();
+                        row.AutoItem().Text("ضريبة القيمة المضافة").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
-                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).Text("");
+                    table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        .Text(sale.VatTotal.ToString("N2")).FontSize(9).Bold();
 
                     if (sale.RoundOff != 0)
                     {
-                        table.Cell().ColumnSpan(6).Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(2).AlignRight()
-                            .Text("Round Off / تقريب").FontSize(8).Bold();
-                        table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).Text("");
-                        table.Cell().Border(1).MinHeight(20).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                        table.Cell().ColumnSpan(7).Border(1).MinHeight(18).PaddingVertical(2).PaddingHorizontal(2).Row(row =>
+                        {
+                            row.AutoItem().Text("Round Off").FontSize(8).Bold();
+                            row.RelativeItem();
+                            row.AutoItem().Text("تقريب").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
+                        });
+                        table.Cell().Border(1).MinHeight(18).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
                             .Text((sale.RoundOff > 0 ? "+" : "") + sale.RoundOff.ToString("N2")).FontSize(9).Bold();
                     }
 
-                    table.Cell().ColumnSpan(6).Border(1).MinHeight(24).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Column(col => {
-                        col.Item().Text("Total Amount").FontSize(8).Bold();
-                        col.Item().Text(new string('.', 45) + " درهم فقط").FontSize(8).Bold().FontFamily(_arabicFont).DirectionFromRightToLeft();
+                    var amountInWordsBody = ConvertToWords(sale.GrandTotal);
+                    if (amountInWordsBody.Length > 80)
+                        amountInWordsBody = amountInWordsBody.Substring(0, 77) + "...";
+                    table.Cell().ColumnSpan(7).Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(2).Text(text =>
+                    {
+                        text.Span("Total Amount ").FontSize(8).Bold();
+                        text.Span("........ ").FontSize(7);
+                        text.Span(amountInWordsBody).FontSize(7).Italic();
+                        text.Span(" ........ ").FontSize(7);
+                        text.Span("درهم فقط").FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
                     });
-                    table.Cell().Border(1).MinHeight(24).PaddingVertical(2).PaddingHorizontal(1).Text("");
-                    table.Cell().Border(2).MinHeight(24).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
+                    table.Cell().Border(1).MinHeight(22).PaddingVertical(2).PaddingHorizontal(1).AlignMiddle().AlignRight()
                         .Text(sale.GrandTotal.ToString("N2")).FontSize(10).Bold();
                 });
 
-                innerColumn.Item().PaddingTop(3).BorderTop(1);
-
-                innerColumn.Item().PaddingTop(6).Column(footerCol =>
+                innerColumn.Item().PaddingTop(4).Column(footerCol =>
                 {
-                    footerCol.Item().AlignCenter().Text("Received the above goods in good order")
-                        .FontSize(9)
-                        .Bold();
-                    
-                    footerCol.Item().PaddingTop(2).AlignCenter().Text("استلمنا البضاعة أعلاه بحالة جيدة")
+                    footerCol.Item().AlignLeft().Text("Received the above goods in good order").FontSize(7.5f);
+                    footerCol.Item().PaddingTop(2).AlignLeft().Text("استلمنا البضاعة أعلاه بحالة جيدة")
                         .FontSize(7).FontFamily(_arabicFont).DirectionFromRightToLeft();
 
-                    footerCol.Item().PaddingTop(8).Table(sigTable =>
+                    footerCol.Item().PaddingTop(10).Row(sigRow =>
                     {
-                        sigTable.ColumnsDefinition(columns =>
+                        sigRow.RelativeItem().AlignLeft().Column(sigCol =>
                         {
-                            columns.RelativeColumn();
-                            columns.RelativeColumn();
+                            sigCol.Item().Text("Receiver's Name").FontSize(8);
+                            sigCol.Item().PaddingTop(3).Text(new string('.', 40)).FontSize(8);
+                            sigCol.Item().PaddingTop(10).Text("Receiver's Sign").FontSize(8);
+                            sigCol.Item().PaddingTop(3).Text(new string('.', 40)).FontSize(8);
                         });
-                        
-                        sigTable.Cell().AlignLeft().Column(sigCol =>
+                        sigRow.RelativeItem().AlignRight().Column(sigCol =>
                         {
-                            sigCol.Item().Text("Receiver's Name").FontSize(9);
-                            sigCol.Item().PaddingTop(4).Text(new string('.', 50)).FontSize(9);
-                            sigCol.Item().PaddingTop(6).Text("Receiver's Sign").FontSize(9);
-                            sigCol.Item().PaddingTop(4).Text(new string('.', 50)).FontSize(9);
-                        });
-                        
-                        sigTable.Cell().AlignRight().Column(sigCol =>
-                        {
-                            sigCol.Item().Text($"For {settings.CompanyNameEn}").FontSize(9);
-                            sigCol.Item().PaddingTop(4).Text(new string('.', 50)).FontSize(9);
+                            sigCol.Item().AlignRight().Text($"For {settings.CompanyNameEn}").FontSize(8);
+                            sigCol.Item().PaddingTop(3).AlignRight().Text(new string('.', 40)).FontSize(8);
                         });
                     });
                 });
