@@ -1833,7 +1833,22 @@ const SettingsPage = () => {
               <div className="text-left min-w-0">
                 <h3 className="font-bold text-sm uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
                 <p className="text-xs text-gray-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'}</p>
+                {settings.companyEmail && <p className="text-xs text-gray-500 break-words">{settings.companyEmail}</p>}
                 {settings.companyAddress && <p className="text-xs text-gray-500 break-words">{settings.companyAddress}</p>}
+                {(() => {
+                  const ct = String(settings.corporateTaxTrn || '').trim()
+                  const vat = String(settings.companyTrn || '').trim()
+                  const samples = ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321']
+                  const vatLine = !vat
+                    ? 'VAT TRN: To be provided'
+                    : samples.includes(vat)
+                      ? `VAT TRN: SAMPLE ${vat}`
+                      : `VAT TRN: ${vat}`
+                  const bits = []
+                  if (ct) bits.push(`CT Reg. No.: ${ct}`)
+                  bits.push(vatLine)
+                  return <p className="text-[11px] text-gray-700 mt-1 break-words">{bits.join(' | ')}</p>
+                })()}
               </div>
               <div className="flex flex-col items-center justify-center px-2">
                 {((typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) || logoPreview || logoBlobUrl || (settings.logoUrl && !settings.logoUrl.includes('/api/storage/') && !settings.logoUrl.includes('storage/tenants/'))) && (
@@ -1844,16 +1859,11 @@ const SettingsPage = () => {
                     onError={(e) => { e.target.style.display = 'none' }}
                   />
                 )}
-                {(() => {
-                  const trn = String(settings.companyTrn || '').trim()
-                  const samples = ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321']
-                  if (!trn) return null
-                  if (samples.includes(trn)) return <p className="text-xs mt-1">TRN: SAMPLE {trn}</p>
-                  return <p className="text-xs mt-1">TRN: {trn}</p>
-                })()}
               </div>
               <div className="text-right text-sm min-w-0">
                 {settings.companyNameAr && <p className="font-bold text-sm" dir="rtl" style={{ wordBreak: 'break-word' }}>{settings.companyNameAr}</p>}
+                {settings.companyPhone && <p className="text-xs text-gray-500 mt-0.5" dir="rtl">{settings.companyPhone}</p>}
+                {settings.companyAddress && <p className="text-xs text-gray-500" dir="rtl">{settings.companyAddress}</p>}
               </div>
             </div>
             <div className="border-t-2 border-b-2 border-gray-300 mt-3 py-2 text-center font-bold text-sm">
