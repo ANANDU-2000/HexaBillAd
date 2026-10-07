@@ -159,52 +159,67 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
             var userId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : (int?)null;
             var role = User.FindFirst(ClaimTypes.Role)?.Value;
 
-            // Fetch all data in parallel for better performance
-            var summaryTask = _reportService.GetSummaryReportAsync(tenantId, fromDate, toDate, null, null, userId, role);
-            var branchesTask = _branchService.GetBranchesAsync(tenantId);
-            var routesTask = _routeService.GetRoutesAsync(tenantId, null);
-            
-            // Get users (Admin/Owner only)
-            Task<List<UserDto>>? usersTask = null;
-            if (IsAdmin)
-            {
-                usersTask = Task.Run(async () =>
-                {
-                    var users = await _context.Users
-                        .Where(u => u.TenantId == tenantId)
-                        .Select(u => new UserDto
-                        {
-                            Id = u.Id,
-                            Name = u.Name,
-                            Email = u.Email,
-                            Role = u.Role.ToString(),
-                            Phone = u.Phone,
-                            DashboardPermissions = u.DashboardPermissions,
-                            PageAccess = u.PageAccess,
-                            CreatedAt = u.CreatedAt,
-                            LastLoginAt = u.LastLoginAt,
-                            LastActiveAt = u.LastActiveAt,
-                            AssignedBranchIds = _context.BranchStaff.Where(bs => bs.UserId == u.Id).Select(bs => bs.BranchId).ToList(),
-                            AssignedRouteIds = _context.RouteStaff.Where(rs => rs.UserId == u.Id).Select(rs => rs.RouteId).ToList()
-                        })
-                        .OrderBy(u => u.Name)
-                        .ToListAsync();
-                    return users;
-                });
-            }
+            // Sequential awaits — scoped DbContext cannot run concurrent operations
+            // (parallel Task.Run previously caused live dashboard 500s).
+            var summary = await _reportService.GetSummaryReportAsync(tenantId, fromDate, toDate, null, null, userId, role);
 
-            // Wait for all tasks
-            var summary = await summaryTask;
-            
             // Hide profit from Staff
             if (IsStaff && !IsAdmin)
             {
                 summary.ProfitToday = null;
             }
 
-            var branches = await branchesTask;
-            var routes = await routesTask;
-            var users = usersTask != null ? await usersTask : new List<UserDto>();
+            var branches = await _branchService.GetBranchesAsync(tenantId);
+            var routes = await _routeService.GetRoutesAsync(tenantId, null);
+
+            var users = new List<UserDto>();
+            if (IsAdmin)
+            {
+                var userRows = await _context.Users
+                    .AsNoTracking()
+                    .Where(u => u.TenantId == tenantId)
+                    .OrderBy(u => u.Name)
+                    .Select(u => new
+                    {
+                        u.Id,
+                        u.Name,
+                        u.Email,
+                        Role = u.Role.ToString(),
+                        u.Phone,
+                        u.DashboardPermissions,
+                        u.PageAccess,
+                        u.CreatedAt,
+                        u.LastLoginAt,
+                        u.LastActiveAt
+                    })
+                    .ToListAsync();
+
+                var userIds = userRows.Select(u => u.Id).ToList();
+                var branchStaff = await _context.BranchStaff.AsNoTracking()
+                    .Where(bs => userIds.Contains(bs.UserId))
+                    .Select(bs => new { bs.UserId, bs.BranchId })
+                    .ToListAsync();
+                var routeStaff = await _context.RouteStaff.AsNoTracking()
+                    .Where(rs => userIds.Contains(rs.UserId))
+                    .Select(rs => new { rs.UserId, rs.RouteId })
+                    .ToListAsync();
+
+                users = userRows.Select(u => new UserDto
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Email = u.Email,
+                    Role = u.Role,
+                    Phone = u.Phone,
+                    DashboardPermissions = u.DashboardPermissions,
+                    PageAccess = u.PageAccess,
+                    CreatedAt = u.CreatedAt,
+                    LastLoginAt = u.LastLoginAt,
+                    LastActiveAt = u.LastActiveAt,
+                    AssignedBranchIds = branchStaff.Where(bs => bs.UserId == u.Id).Select(bs => bs.BranchId).ToList(),
+                    AssignedRouteIds = routeStaff.Where(rs => rs.UserId == u.Id).Select(rs => rs.RouteId).ToList()
+                }).ToList();
+            }
 
             var batchResponse = new DashboardBatchDto
             {
