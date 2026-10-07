@@ -699,7 +699,8 @@ const ExpensesPage = () => {
         if (response?.success) {
           toast.success('Expense updated successfully!', { id: 'expense-update', duration: 4000 })
         } else {
-          toast.error('Could not save this expense.', { id: 'expense-update' })
+          const reason = response?.message || response?.errors?.[0] || 'Could not save this expense.'
+          toast.error(reason, { id: 'expense-update' })
           return
         }
       } else {
@@ -758,9 +759,19 @@ const ExpensesPage = () => {
           toast.success('Expense added successfully!', { id: 'expense-add', duration: 4000 })
           window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
-          toast.error('Could not save this expense.', { id: 'expense-add' })
+          const reason = response?.message || response?.errors?.[0] || 'Could not save this expense.'
+          toast.error(reason, { id: 'expense-add' })
           return
         }
+      }
+
+      // Keep list filter inclusive of the saved expense date (GST calendar day from local form date).
+      const expenseDay = (data.date && String(data.date).slice(0, 10)) || expenseDate.slice(0, 10)
+      if (expenseDay && (expenseDay < dateRange.from || expenseDay > dateRange.to)) {
+        setDateRange((prev) => ({
+          from: expenseDay < prev.from ? expenseDay : prev.from,
+          to: expenseDay > prev.to ? expenseDay : prev.to
+        }))
       }
 
       reset()
@@ -774,7 +785,10 @@ const ExpensesPage = () => {
       window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
       console.error('Error saving expense:', error)
-      const errMsg = 'Could not save this expense.'
+      const errMsg = error?.response?.data?.message
+        || error?.response?.data?.errors?.[0]
+        || error?.message
+        || 'Could not save this expense.'
       if (!error?._handledByInterceptor) toast.error(errMsg)
     }
   }

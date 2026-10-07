@@ -27,8 +27,8 @@ public class LogoUploadService : ILogoUploadService
 {
     private const int MaxBytes = 5 * 1024 * 1024; // 5MB
     // Stacked bilingual logos (GH/FH) need a taller box than 400×200.
-    private const int MaxWidth = 480;
-    private const int MaxHeight = 280;
+    private const int MaxWidth = 720;
+    private const int MaxHeight = 420;
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
         { "image/png", "image/jpeg", "image/jpg", "image/webp" };
 

@@ -4517,7 +4517,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
       <p className="mb-3 text-xs text-gray-600">Receipts are available for cleared incoming payments only. Select up to 500 payments.</p>
 
       {/* Payments Table - Desktop */}
-      <div className="hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden flex-1 min-h-0">
+      <div className={`hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden flex-1 min-h-0 ${currentSelectedIds.length > 0 ? 'mb-20' : ''}`}>
         <div className="overflow-x-auto overflow-y-auto h-full">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50 sticky top-0">
@@ -4629,9 +4629,9 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
         </div>
       </div>
 
-      {/* Selection action bar - Generate Receipt */}
+      {/* Selection action bar - Generate Receipt (fixed so multi-select is always visible) */}
       {onGenerateReceiptBatch && currentSelectedIds.length > 0 && (
-        <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
           <span className="text-sm font-medium text-gray-700">
             {currentSelectedIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
           </span>
@@ -4656,7 +4656,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
       )}
 
       {/* Payments Cards - Mobile */}
-      <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
+      <div className={`md:hidden flex-1 overflow-y-auto space-y-3 ${currentSelectedIds.length > 0 ? 'pb-24' : 'pb-4'}`}>
         {payments.length === 0 ? (
           <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
             No payments found

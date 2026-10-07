@@ -483,8 +483,8 @@ namespace HexaBill.Api.Modules.Sales
                                     table.Cell().Border(0.5f).PaddingVertical(2).PaddingHorizontal(2).AlignRight().Text(sale.GrandTotal.ToString("0.00")).FontSize(10);
                                 });
 
-                                // Footer Section - optimized with CUSTOMER BALANCE
-                                innerColumn.Item().PaddingTop(1).Column(footerCol =>
+                                // Pin signature / Pending near A4 page bottom after short tables
+                                innerColumn.Item().ExtendVertical().AlignBottom().PaddingTop(1).Column(footerCol =>
                                 {
                                     // Acknowledgement text
                                     footerCol.Item().AlignLeft().Text("Received the above goods in good order")
@@ -499,7 +499,7 @@ namespace HexaBill.Api.Modules.Sales
                                             leftCol.Item().PaddingTop(1).Text("Receiver's Sign: " + new string('.', 30)).FontSize(8);
                                         });
                                         
-                                        // Right column: Company name (skipped when letterhead-only â€” stamp/sig fills this zone)
+                                        // Right column: Company name (skipped when letterhead-only — stamp/sig fills this zone)
                                         sigRow.RelativeItem().Column(rightCol => {
                                             if (!settings.LetterheadOnlyPrint && !useOrangeLetterhead)
                                             {
@@ -1185,9 +1185,9 @@ namespace HexaBill.Api.Modules.Sales
                 var nameSize = a4Letterhead ? 15.5f : Math.Max(8f, fontSize);
                 var detailSize = a4Letterhead ? 8f : Math.Max(5f, fontSize - 3f);
                 var taxSize = a4Letterhead ? 7.5f : Math.Max(5f, detailSize - 0.5f);
-                var logoW = a4Letterhead ? 112f : (fontSize <= 9 ? 40f : 72f);
-                var logoH = a4Letterhead ? 80f : (fontSize <= 9 ? 22f : 40f);
-                var logoColW = a4Letterhead ? 120f : (fontSize <= 9 ? 52f : 88f);
+                var logoW = a4Letterhead ? 140f : (fontSize <= 9 ? 40f : 72f);
+                var logoH = a4Letterhead ? 100f : (fontSize <= 9 ? 22f : 40f);
+                var logoColW = a4Letterhead ? 148f : (fontSize <= 9 ? 52f : 88f);
                 var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
