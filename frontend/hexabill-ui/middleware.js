@@ -43,11 +43,38 @@ export default async function middleware(request) {
 
   try {
     const upstream = await fetch(target, init)
-    const outHeaders = new Headers(upstream.headers)
-    outHeaders.delete('content-encoding')
-    outHeaders.delete('transfer-encoding')
-    outHeaders.delete('connection')
-    return new Response(upstream.body, {
+    // Buffer the body. Streaming upstream.body through Node middleware can
+    // drop JSON on 201 Created (Content-Length/chunk mismatch → empty body),
+    // which makes expense create look like a soft failure in the UI.
+    const body = await upstream.arrayBuffer()
+    const outHeaders = new Headers()
+    upstream.headers.forEach((value, key) => {
+      const lower = key.toLowerCase()
+      if (
+        lower === 'content-encoding' ||
+        lower === 'transfer-encoding' ||
+        lower === 'connection' ||
+        lower === 'content-length'
+      ) {
+        return
+      }
+      outHeaders.set(key, value)
+    })
+    // Keep Location on the tenant host so clients never hit Render directly.
+    const location = upstream.headers.get('location')
+    if (location) {
+      try {
+        const loc = new URL(location)
+        const backend = new URL(backendOrigin)
+        if (loc.origin === backend.origin) {
+          outHeaders.set('location', `${url.origin}${loc.pathname}${loc.search}`)
+        }
+      } catch {
+        /* keep upstream Location */
+      }
+    }
+    outHeaders.set('content-length', String(body.byteLength))
+    return new Response(body, {
       status: upstream.status,
       statusText: upstream.statusText,
       headers: outHeaders,
