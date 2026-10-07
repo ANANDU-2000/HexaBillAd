@@ -33,6 +33,8 @@ export default async function middleware(request) {
     const value = request.headers.get(name)
     if (value) headers.set(name, value)
   }
+  // Avoid compressed upstream bodies that some Node middleware paths mishandle.
+  headers.set('accept-encoding', 'identity')
   headers.set('x-hexabill-original-host', originalHost)
   headers.set('x-hexabill-edge-secret', process.env.HEXABILL_EDGE_PROXY_SECRET || '')
 

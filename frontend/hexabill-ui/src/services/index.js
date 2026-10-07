@@ -891,6 +891,16 @@ export const expensesAPI = {
 
   createExpense: async (expense) => {
     const response = await api.post('/expenses', expense)
+    // Some proxy paths historically returned 201 + Location with an empty body.
+    // Recover the created expense so the UI does not soft-fail after a real save.
+    if (response?.status === 201 && (response.data == null || response.data === '' || !response.data?.success)) {
+      const location = response.headers?.location || response.headers?.Location
+      const match = typeof location === 'string' ? location.match(/\/expenses\/(\d+)/i) : null
+      if (match?.[1]) {
+        const fetched = await api.get(`/expenses/${match[1]}`)
+        if (fetched?.data?.success) return fetched.data
+      }
+    }
     return response.data
   },
 

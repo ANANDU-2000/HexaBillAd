@@ -342,7 +342,10 @@ namespace HexaBill.Api.Modules.Expenses
                     staffRouteIds = routeIds;
                 }
                 var result = await _expenseService.CreateExpenseAsync(request, userId, tenantId, staffBranchIds, staffRouteIds);
-                return CreatedAtAction(nameof(GetExpense), new { id = result.Id }, new ApiResponse<ExpenseDto>
+                // Prefer StatusCode(201) over CreatedAtAction: the Vercel Node /api proxy
+                // was delivering Location but an empty JSON body for CreatedAtAction, which
+                // made the Expenses UI treat a successful create as a soft failure.
+                return StatusCode(StatusCodes.Status201Created, new ApiResponse<ExpenseDto>
                 {
                     Success = true,
                     Message = "Expense created successfully",
