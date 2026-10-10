@@ -876,7 +876,7 @@ const PurchasesPage = () => {
 
         {/* Purchase Form - Tally Style - mobile: single column, no horizontal scroll */}
         {showForm && (
-          <div ref={formRef} className={`${tallyVoucherShellClass} shadow-lg`}>
+          <div ref={formRef} data-shell-hides-nav className={`${tallyVoucherShellClass} shadow-lg`}>
             <div className="flex items-center justify-between mb-3 sm:mb-4 border-b-2 border-neutral-200 pb-2">
               <h2 className="text-base sm:text-lg font-bold text-primary-800">
                 {editingPurchase ? 'Edit Purchase Entry' : 'New Purchase Entry'}
@@ -898,8 +898,9 @@ const PurchasesPage = () => {
                 onToggle={toggleVoucherSection}
               >
                 <div className="relative">
-                  <label className={tallyLabelClass}>Supplier Name *</label>
+                  <label htmlFor="purchase-supplier" className={tallyLabelClass}>Supplier Name *</label>
                   <input
+                    id="purchase-supplier"
                     type="text"
                     required
                     className={tallyInputClass}
@@ -969,16 +970,16 @@ const PurchasesPage = () => {
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[11rem_11rem_minmax(0,1fr)_minmax(0,1fr)]">
                   <div>
-                    <label className={tallyLabelClass}>Invoice No *</label>
-                    <input type="text" required className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
+                    <label htmlFor="purchase-invoice" className={tallyLabelClass}>Invoice No *</label>
+                    <input id="purchase-invoice" type="text" required className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
                   </div>
                   <div>
-                    <label className={tallyLabelClass}>Purchase Date *</label>
-                    <input type="date" required className={tallyInputClass} value={formData.purchaseDate} onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })} />
+                    <label htmlFor="purchase-date" className={tallyLabelClass}>Purchase Date *</label>
+                    <input id="purchase-date" type="date" required className={tallyInputClass} value={formData.purchaseDate} onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })} />
                   </div>
                   <div>
-                    <label className={tallyLabelClass}>Expense Category *</label>
-                    <select required className={tallySelectClass} value={formData.expenseCategory} onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}>
+                    <label htmlFor="purchase-category" className={tallyLabelClass}>Expense Category *</label>
+                    <select id="purchase-category" required className={tallySelectClass} value={formData.expenseCategory} onChange={(e) => setFormData({ ...formData, expenseCategory: e.target.value })}>
                       <option value="Inventory">Inventory (Stock Items)</option>
                       <option value="Supplies">Supplies (Office/Packaging)</option>
                       <option value="Equipment">Equipment (Machinery/Tools)</option>
@@ -1032,9 +1033,10 @@ const PurchasesPage = () => {
                 isOpen={mobileVoucherSection === 'items'}
                 onToggle={toggleVoucherSection}
               >
-                <label className={tallyLabelClass}>Add Product (F3)</label>
+                <label htmlFor="purchase-product-search" className={tallyLabelClass}>Add Product (F3)</label>
                 <div className="relative">
                   <input
+                    id="purchase-product-search"
                     ref={searchInputRef}
                     type="text"
                     placeholder="Search products..."

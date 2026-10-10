@@ -1688,8 +1688,9 @@ export const suppliersAPI = {
     const response = await api.get(`/suppliers/transactions/${encodeURIComponent(supplierName)}`, { params })
     return response.data
   },
-  getAllSuppliersSummary: async () => {
-    const response = await api.get('/suppliers/summary')
+  // Deactivated suppliers are returned only when asked for ("Include deactivated" on the Suppliers page).
+  getAllSuppliersSummary: async ({ includeInactive = false } = {}) => {
+    const response = await api.get('/suppliers/summary', { params: includeInactive ? { includeInactive: true } : {} })
     return response.data
   },
   searchSuppliers: async (query, limit = 20) => {

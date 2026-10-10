@@ -25,14 +25,15 @@ export function useKeyboardOpen () {
   return open
 }
 
-/** True while a modal dialog or sheet (aria-modal) is in the document. */
+/** True while a modal dialog, sheet (aria-modal) or an inline panel marked data-shell-hides-nav is in the document. */
 export function useOverlayOpen () {
   const [open, setOpen] = useState(false)
   useEffect(() => {
     let frame = 0
     const check = () => {
       frame = 0
-      setOpen(Boolean(document.querySelector('[aria-modal="true"]')))
+      // Inline panels that own the screen (for example the purchase form) also hide the bottom nav.
+      setOpen(Boolean(document.querySelector('[aria-modal="true"], [data-shell-hides-nav]')))
     }
     const schedule = () => { if (!frame) frame = requestAnimationFrame(check) }
     const observer = new MutationObserver(schedule)

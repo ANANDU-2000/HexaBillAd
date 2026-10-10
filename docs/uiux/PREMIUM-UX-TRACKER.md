@@ -144,10 +144,31 @@ Baseline (before): first record 360px **823 px (103%, below the fold)**, row 410
 | PU-12 | P2 | The Pay supplier link puts the amount and the invoice number in the URL (`?recordPayment=1&amount=…&ref=…`). These can end up in history, logs and referrers. The brief says sensitive data must not go in URLs. | `openPay` in `PurchasesPage.jsx` | Pass the amount and reference through router state (location.state) instead of the query string, and keep the URL to the supplier name. | PASS |
 | ↳ fix | | `openPay` passes `{ payment: { amount, reference } }` in router state. `SupplierDetailPage` applies it once and then replaces the history entry with state cleared. The URL is `/suppliers/<name>` only. Removed the unused `useSearchParams` import. | `SupplierDetailPage.jsx` | `e2e/purchases-crud.spec.js` pay test asserts the URL has no `amount=`, `ref=` or `recordPayment` and that the amount is filled (3 widths passed) | |
 | PU-11 | P3 | UX copy: row buttons renamed "Pay supplier" and "Supplier ledger" (was "Pay" and "Ledger"). Filter and tile labels were unchanged. | `purchases-list.spec.js` names | Keep consistent with the glossary when the copy review runs. | PASS |
+| PU-13 | P1 | On phones the inline purchase form ran under the bottom navigation. The fixed nav sat under the form's Cancel and Save bar. The shell hides the nav for routes, sheets and dialogs, but this form is inline, so the rule did not apply. | `e2e/.shots/review/purchase-form-m360.png` (before) | Mark the inline panel with `data-shell-hides-nav`; `useOverlayOpen` treats it like a dialog. | PASS |
+| ↳ fix | | `useShellChrome.js` selector plus the `PurchasesPage.jsx` form container. `purchases-list` "the purchase form hides the bottom nav" (m360, passed). | | | |
+| PU-14 | P3 | The main purchase form labels (Supplier Name, Invoice No, Purchase Date, Expense Category, Add Product) were not linked to their inputs, so screen readers did not announce them. | Code: label siblings without `htmlFor` | Link each label to its input with `htmlFor` and `id`. | PASS |
+| ↳ fix | | `purchases-list` asserts `getByLabel` for four of them. | | | |
 
-### Suppliers (`/suppliers`)
 
-Baseline only (Checkpoint 5, same seeded data): 360px first record 295 px (37%), 5 controls, row 136 px with 1 button; 768px 296 px (29%); 1440px 249 px (28%). Not yet audited beyond the baseline. Supplier create, edit, ledger and payments are TODO.
+### Suppliers (`/suppliers`, `features/purchases/SuppliersPage.jsx`)
+
+Baseline (Checkpoint 5): 360px first record 295 px (37%), row 136 px with 1 button; 1440px first record 249 px (28%), desktop row with 3 icon buttons.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| SU-01 | P1 | "Include deactivated" did nothing. The summary endpoint only returned active suppliers, and the DTO hard-coded `IsActive = true`, so a deactivated supplier never came back and never showed "Deactivated". | `SupplierService.GetAllSuppliersSummaryAsync` (`s.IsActive` filter); `e2e/suppliers-list.spec.js` "add supplier -> persisted -> deactivate" failed at the toggle step | Add an opt-in `includeInactive` query flag (default false, so existing callers are unchanged). Report each row's real `IsActive`. The page sends the flag and reloads when the toggle changes. | PASS |
+| ↳ fix | | `backend/HexaBill.Api/Modules/Purchases/SupplierService.cs`, `SuppliersController.cs`; `frontend/hexabill-ui/src/services/index.js`, `SuppliersPage.jsx`. Backend test `GetAllSuppliersSummary_DeactivatedSupplier_HiddenByDefaultAndListedWhenIncluded` added to `tests/HexaBill.Tests/tenancy/SuppliersHttpIsolationTests.cs`. | | `dotnet test --filter SuppliersHttpIsolationTests` → 7 passed, 0 failed (new test included; it fails on the old code because the flag was ignored). Browser: `suppliers-list` 2 passed (m360, d1440). | |
+| SU-02 | P2 | At 360px the search was about 210 px wide, so its placeholder was clipped ("Search name or pho"). It shared a row with two checkboxes. | `audit-suppliers-m360.png` (before) | Search takes the full width. The two checkboxes go on their own row below 768px and share the row from 768px. | PASS |
+| ↳ fix | | Placeholder shortened to "Search suppliers". `suppliers-list` asserts the search is at least 280 px wide at 360px. A desktop regression (first record 249→287 px) was caught in the audit and fixed. | `audit-suppliers-d1440.png` | | |
+| SU-03 | P2 | Each mobile supplier card had a full-width "More" button, which opened Edit and Deactivate in a second row. The card was 136 px. | `audit-suppliers-m360.png` (before) | One "…" menu in the card header (shared `OverflowMenu`). Edit supplier, then Deactivate supplier (danger, after a separator). | PASS |
+| ↳ fix | | Card 136→108 px, 1 control. Menu hidden for roles without `canManage`, as before. | `audit-suppliers-m360.png` (after) | `suppliers-list` "search uses the full width and each card has one actions menu" | |
+| SU-04 | P2 | Desktop rows had three icon buttons (Open, Edit, Deactivate). The row and the eye button both carried the label "Open <name>". | `audit-suppliers-d1440.png` (before) | Keep the eye icon for Open. Move Edit and Deactivate into the same "…" menu used on phones. | PASS |
+| ↳ fix | | Row controls 3→2 (eye and "…"). The desktop test uses the first visible row. | `audit-suppliers-d1440.png` (after) | `suppliers-list` at d1440 (2 passed) | |
+| SU-05 | P3 | The intro text under the title wraps to three lines at 360px next to the refresh and Add buttons. | `audit-suppliers-m360.png` | Shorter helper text, or move it under the title. | TODO |
+| SU-06 | P2 | First record at 360px is still 37% (target 35%). The header, the intro text and the Pending summary row use the space. | `audit-suppliers-m360.png` (after: 295 px, rows 108 px) | Decide whether the Pending summary moves into the header row. | TODO |
+| SU-07 | — | Supplier create, edit and deactivate are covered by `suppliers-list` (create, persist, deactivate, hidden by default, shown with the toggle). Edit fields, payment terms, credit limit and statement export are not covered. | — | Add edit and statement checks in a later checkpoint. | PARTIAL |
+| SU-08 | — | Supplier ledger (`/suppliers/<name>`) at 360px reviewed by screenshot: header, Outstanding and Unpaid bills, Pay and Edit, and the summary card are readable. The supplier name truncates ("UX Audit ..."). Ledger tabs (Ledger, Bills, Paid) were not exercised. | `e2e/.shots/review/supplier-ledger-m360.png` | Show the full supplier name on a second line or in the page title. | TODO |
+
 
 ### Shared shell and navigation
 

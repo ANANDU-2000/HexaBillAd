@@ -139,3 +139,21 @@ STOP HERE — do not begin next phase automatically.
 - **Next task:** a visual review of the mobile purchase form and the supplier ledger at 360/768, then Suppliers.
 - **STOP HERE** — one checkpoint per session.
 
+### 2026-10-10 — Checkpoint 8: Purchase form review and Suppliers (P1-06; SU-01, SU-02, SU-03, SU-04, PU-13, PU-14 PASS)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). The API was stopped for a backend build and restarted in Development against the same UI-test database. No production access.
+- **Changed:**
+  - Backend: `SupplierService.cs` and `SuppliersController.cs`. The summary takes an opt-in `includeInactive` flag (default false), and each row reports its real `IsActive`. Test added to `tests/HexaBill.Tests/tenancy/SuppliersHttpIsolationTests.cs`.
+  - Frontend: `SuppliersPage.jsx` (full-width search; one "…" menu per card and per desktop row; reload on toggle), `services/index.js`, `PurchasesPage.jsx` and `SupplierDetailPage.jsx` (labels linked; form marked `data-shell-hides-nav`), `useShellChrome.js`.
+  - E2E: new `e2e/suppliers-list.spec.js`. `e2e/purchases-list.spec.js` gains a form nav and label test.
+- **Found by review:** the inline purchase form ran under the phone bottom nav (PU-13). "Include deactivated" did nothing (SU-01, P1). The toggle helper matched two elements, which exposed the desktop row label duplication (SU-04).
+- **Commands and results:**
+  - `dotnet test --filter SuppliersHttpIsolationTests` → 7 passed, 0 failed.
+  - `npx playwright test e2e/suppliers-list.spec.js` at m360 and d1440 → 2 passed each.
+  - `npx playwright test e2e/purchases-list.spec.js` at m360 → 6 passed.
+  - `npx playwright test e2e/shell-navigation.spec.js` at m360 → 5 passed.
+  - `npx vite build` → exit 0. ESLint on the changed files: 0 errors (pre-existing warnings only).
+- **Measured:** Suppliers 360px first record 295 px (37%; target 35% not met, SU-06). Row 136→108 px. 1440px first record 249 px (28%). Row controls 3→2.
+- **Not done:** the full backend suite was not run (only the supplier HTTP tests). `dotnet build` could not replace the API binaries while the local API ran (file lock), so the API was stopped for the test run and restarted afterwards. Supplier edit fields, statement export, purchase print and export are still untested.
+- **Next task:** SU-05 and SU-06 (Suppliers header and first record), SU-08 (supplier name in the ledger header), then Suppliers edit and statement checks.
+- **STOP HERE** — one checkpoint per session.
+

@@ -81,12 +81,12 @@ namespace HexaBill.Api.Modules.Purchases
         }
 
         [HttpGet("summary")]
-        public async Task<ActionResult<ApiResponse<List<SupplierSummaryDto>>>> GetAllSuppliersSummary()
+        public async Task<ActionResult<ApiResponse<List<SupplierSummaryDto>>>> GetAllSuppliersSummary([FromQuery] bool includeInactive = false)
         {
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _supplierService.GetAllSuppliersSummaryAsync(tenantId);
+                var result = await _supplierService.GetAllSuppliersSummaryAsync(tenantId, includeInactive);
                 return Ok(new ApiResponse<List<SupplierSummaryDto>>
                 {
                     Success = true,

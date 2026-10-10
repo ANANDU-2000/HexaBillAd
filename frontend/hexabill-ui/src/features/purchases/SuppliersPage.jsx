@@ -6,6 +6,7 @@ import { formatCurrency } from '../../utils/currency'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import Modal from '../../components/Modal'
+import OverflowMenu from '../../components/ui/OverflowMenu'
 import toast from 'react-hot-toast'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import { ListSkeleton } from '../../components/mobile/index'
@@ -77,12 +78,12 @@ const SuppliersPage = () => {
   const [updating, setUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
-  const [moreName, setMoreName] = useState(null)
   const skipPageReset = useRef(true)
 
+  // Reload when "Include deactivated" changes: the server decides which suppliers come back.
   useEffect(() => {
     loadSuppliers()
-  }, [])
+  }, [showDeactivated])
 
   const shouldOpenCreateFromUrl = searchParams.get('create') === '1'
   const prefillNameFromUrl = searchParams.get('prefill') || ''
@@ -183,7 +184,7 @@ const SuppliersPage = () => {
     try {
       setLoading(true)
       setLoadError('')
-      const response = await suppliersAPI.getAllSuppliersSummary()
+      const response = await suppliersAPI.getAllSuppliersSummary({ includeInactive: showDeactivated })
       if (response?.success && Array.isArray(response?.data)) setSuppliers(response.data)
       else {
         setSuppliers([])
@@ -441,29 +442,31 @@ const SuppliersPage = () => {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <div className="relative flex-1 min-w-[12rem]">
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-4">
+        <div className="relative w-full md:w-80">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
           <input
             type="search"
-            placeholder="Search name or phone"
+            placeholder="Search suppliers"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className={`${fieldClass} pl-8`}
             aria-label="Search suppliers"
           />
         </div>
-        <label className="inline-flex items-center gap-2 h-11 sm:h-9 px-2 text-sm text-neutral-700">
-          <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} className="rounded border-neutral-300" />
-          Overdue
-        </label>
-        <label className="inline-flex items-center gap-2 h-11 sm:h-9 px-2 text-sm text-neutral-700">
-          <input type="checkbox" checked={showDeactivated} onChange={e => setShowDeactivated(e.target.checked)} className="rounded border-neutral-300" />
-          Include deactivated
-        </label>
-        {filtersOn && (
-          <button type="button" onClick={clearFilters} className="text-sm text-primary-700 underline h-9">Clear</button>
-        )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <label className="inline-flex items-center gap-2 h-11 sm:h-9 text-sm text-neutral-700">
+            <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} className="rounded border-neutral-300" />
+            Overdue
+          </label>
+          <label className="inline-flex items-center gap-2 h-11 sm:h-9 text-sm text-neutral-700">
+            <input type="checkbox" checked={showDeactivated} onChange={e => setShowDeactivated(e.target.checked)} className="rounded border-neutral-300" />
+            Include deactivated
+          </label>
+          {filtersOn && (
+            <button type="button" onClick={clearFilters} className="text-sm text-primary-700 underline h-9">Clear</button>
+          )}
+        </div>
       </div>
 
       {!loading && !loadError && (
@@ -557,14 +560,15 @@ const SuppliersPage = () => {
                           <Eye className="h-4 w-4" />
                         </button>
                         {canManage && s.id != null && (
-                          <>
-                            <button type="button" onClick={() => openEditModal(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-neutral-700 hover:bg-neutral-100" title="Edit" aria-label={`Edit ${s.supplierName}`}>
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-error-fg hover:bg-error-bg" title="Deactivate" aria-label={`Deactivate ${s.supplierName}`}>
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
+                          <span className="ml-1 inline-flex align-middle" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                            <OverflowMenu
+                              label={`More actions for ${s.supplierName}`}
+                              items={[
+                                { label: 'Edit supplier', icon: Pencil, onClick: () => openEditModal(s) },
+                                { label: 'Deactivate supplier', icon: Trash2, danger: true, separatorBefore: true, onClick: () => setDeleteConfirm(s) },
+                              ]}
+                            />
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -599,8 +603,21 @@ const SuppliersPage = () => {
                   className="p-3 cursor-pointer focus:outline-none focus:bg-neutral-50"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold text-neutral-900">{s.supplierName}</p>
-                    {s.isActive === false && <span className="text-micro text-amber-800">Deactivated</span>}
+                    <p className="min-w-0 text-sm font-semibold text-neutral-900">{s.supplierName}</p>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {s.isActive === false && <span className="text-micro text-amber-800">Deactivated</span>}
+                      {canManage && s.id != null && (
+                        <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                          <OverflowMenu
+                            label={`More actions for ${s.supplierName}`}
+                            items={[
+                              { label: 'Edit supplier', icon: Pencil, onClick: () => openEditModal(s) },
+                              { label: 'Deactivate supplier', icon: Trash2, danger: true, separatorBefore: true, onClick: () => setDeleteConfirm(s) },
+                            ]}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                     <div>
@@ -616,17 +633,6 @@ const SuppliersPage = () => {
                       <p className="tabular-nums font-medium text-neutral-900">{s.invoiceCount ?? '—'}</p>
                     </div>
                   </div>
-                  {canManage && s.id != null && (
-                    <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" onClick={() => setMoreName(moreName === s.supplierName ? null : s.supplierName)} className={`${btnOutline} text-xs`}>More</button>
-                      {moreName === s.supplierName && (
-                        <div className="mt-2 flex gap-2">
-                          <button type="button" onClick={() => openEditModal(s)} className={`${btnOutline} gap-1`}><Pencil className="h-4 w-4" /> Edit</button>
-                          <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center gap-1 h-11 px-3 text-sm font-medium border border-error-border rounded-md text-error-fg bg-white"><Trash2 className="h-4 w-4" /> Deactivate</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
             </div>

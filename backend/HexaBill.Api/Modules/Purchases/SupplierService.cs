@@ -18,7 +18,7 @@ namespace HexaBill.Api.Modules.Purchases
     {
         Task<SupplierBalanceDto> GetSupplierBalanceAsync(int tenantId, string supplierName);
         Task<List<SupplierTransactionDto>> GetSupplierTransactionsAsync(int tenantId, string supplierName, DateTime? fromDate = null, DateTime? toDate = null);
-        Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId);
+        Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId, bool includeInactive = false);
         Task<SupplierPaymentDto> CreateSupplierPaymentAsync(int tenantId, string supplierName, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes, int userId);
         Task<SupplierLedgerCreditDto> CreateLedgerCreditAsync(int tenantId, string supplierName, decimal amount, DateTime creditDate, string creditType, string? notes, int userId);
         Task<SupplierPaymentDto?> UpdateSupplierPaymentAsync(int tenantId, int paymentId, decimal amount, DateTime paymentDate, SupplierPaymentMode mode, string? reference, string? notes);
@@ -230,12 +230,12 @@ namespace HexaBill.Api.Modules.Purchases
             return transactions;
         }
 
-        public async Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId)
+        public async Task<List<SupplierSummaryDto>> GetAllSuppliersSummaryAsync(int tenantId, bool includeInactive = false)
         {
-            // Active directory only — soft-deleted/merged names must not reappear in supplier lists.
+            // Active directory by default. Deactivated suppliers are listed only when the caller asks for them (includeInactive); merged names still never reappear.
             var activeSuppliers = await _context.Suppliers
                 .AsNoTracking()
-                .Where(s => s.TenantId == tenantId && s.IsActive)
+                .Where(s => s.TenantId == tenantId && (includeInactive || s.IsActive))
                 .OrderBy(s => s.Name)
                 .ToListAsync();
 
@@ -262,7 +262,7 @@ namespace HexaBill.Api.Modules.Purchases
                     Overdue = 0,
                     Phone = supplier.Phone,
                     CreditLimit = supplier.CreditLimit,
-                    IsActive = true
+                    IsActive = supplier.IsActive
                 });
             }
 

@@ -88,9 +88,29 @@ public class SuppliersHttpIsolationTests
         public decimal TotalPurchases { get; set; }
     }
 
+    [Fact]
+    public async Task GetAllSuppliersSummary_DeactivatedSupplier_HiddenByDefaultAndListedWhenIncluded()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var name = "Sup Inactive " + Guid.NewGuid().ToString("N")[..8];
+
+        var created = await client.PostAsJsonAsync("/api/suppliers", new { name, phone = "+971500000009" });
+        Assert.True(created.IsSuccessStatusCode, $"create failed: {created.StatusCode}");
+        var deleted = await client.DeleteAsync($"/api/suppliers/{Uri.EscapeDataString(name)}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+
+        var defaults = await client.GetFromJsonAsync<ApiEnvelope<List<SupplierSummaryStub>>>("/api/suppliers/summary");
+        Assert.DoesNotContain(defaults!.Data!, s => s.SupplierName == name);
+
+        var withInactive = await client.GetFromJsonAsync<ApiEnvelope<List<SupplierSummaryStub>>>("/api/suppliers/summary?includeInactive=true");
+        var row = Assert.Single(withInactive!.Data!, s => s.SupplierName == name);
+        Assert.False(row.IsActive);
+    }
+
     private sealed class SupplierSummaryStub
     {
         public string? SupplierName { get; set; }
         public decimal NetPayable { get; set; }
+        public bool IsActive { get; set; } = true;
     }
 }

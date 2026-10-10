@@ -87,3 +87,19 @@ test('an empty period explains why', async ({ page }) => {
   await expect(visible(page.getByText('No purchases found'))).toHaveCount(1)
   await expect(visible(page.getByRole('alert')).filter({ hasText: 'could not be loaded' })).toHaveCount(0)
 })
+
+// The inline purchase form owns the phone screen: the bottom nav must not sit under its Save bar.
+// Its main fields must also be labelled, so screen readers announce them.
+test('the purchase form hides the bottom nav and its fields are labelled', async ({ page }, info) => {
+  test.skip(info.project.use.viewport.width >= 768, 'Bottom nav is phone-only')
+  await openPurchases(page)
+  const bottomNav = page.locator('nav[aria-label="Main navigation"]')
+  await expect(bottomNav).toBeVisible()
+  await page.getByRole('button', { name: /^New Purchase$/ }).click()
+  await expect(page.getByText('New Purchase Entry')).toBeVisible()
+  await expect(bottomNav).toHaveCount(0)
+  await expect(page.getByLabel('Supplier Name *')).toBeVisible()
+  await expect(page.getByLabel('Invoice No *')).toBeVisible()
+  await expect(page.getByLabel('Purchase Date *')).toBeVisible()
+  await expect(page.getByLabel('Expense Category *')).toBeVisible()
+})
