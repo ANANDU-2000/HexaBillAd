@@ -6,6 +6,7 @@ import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../serv
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import OverflowMenu from '../../components/ui/OverflowMenu'
 import Modal from '../../components/Modal'
 import { localDateString } from '../../utils/dateFormat'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
@@ -698,6 +699,13 @@ const PurchasesPage = () => {
     const balance = Number(purchase.balanceAmount ?? purchase.totalAmount ?? 0)
     return status !== 'paid' && balance > 0.009
   }
+
+  // Row actions for desktop: one visible primary action (Pay supplier) plus a menu for the rest.
+  const purchaseMenuItems = (purchase) => [
+    { label: 'Supplier ledger', icon: Eye, onClick: () => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } }) },
+    { label: 'Edit purchase', icon: Edit, onClick: () => handleEditPurchase(purchase) },
+    { label: 'Delete purchase', icon: Trash2, danger: true, separatorBefore: true, onClick: () => handleDeletePurchase(purchase) },
+  ]
 
   const openPay = (purchase) => {
     navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}?recordPayment=1&amount=${purchase.balanceAmount ?? purchase.totalAmount}&ref=${encodeURIComponent(purchase.invoiceNo || '')}`, { state: { returnTo: location.pathname + location.search } })
@@ -1413,41 +1421,18 @@ const PurchasesPage = () => {
                           </td>
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
                           <td className="whitespace-nowrap px-3 py-2">
-                            <div className="flex flex-nowrap justify-center gap-1">
-                              {(canPayPurchase(purchase) && (
+                            <div className="flex items-center justify-center gap-1">
+                              {canPayPurchase(purchase) && (
                                 <button
+                                  type="button"
                                   onClick={() => openPay(purchase)}
-                                  className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
+                                  className="inline-flex min-h-[40px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2.5 text-xs font-medium text-neutral-800"
                                   title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
                                 >
-                                  <CreditCard className="h-3.5 w-3.5" /> Pay
+                                  <CreditCard className="h-3.5 w-3.5" aria-hidden /> Pay supplier
                                 </button>
-                              ))}
-                              <button
-                                onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
-                                title="Supplier Ledger (full page)"
-                              >
-                                <Eye className="h-3.5 w-3.5" /> Ledger
-                              </button>
-                              <button
-                                onClick={() => handleEditPurchase(purchase)}
-                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
-                                title="Edit Purchase"
-                                aria-label="Edit Purchase"
-                              >
-                                <Edit className="h-3.5 w-3.5" />
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeletePurchase(purchase)}
-                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-error-fg"
-                                title="Delete Purchase"
-                                aria-label="Delete Purchase"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                                Delete
-                              </button>
+                              )}
+                              <OverflowMenu label={`More actions for ${purchase.invoiceNo}`} items={purchaseMenuItems(purchase)} />
                             </div>
                           </td>
                         </tr>

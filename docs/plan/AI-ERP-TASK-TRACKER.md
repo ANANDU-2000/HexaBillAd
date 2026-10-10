@@ -114,3 +114,16 @@ GIT STATUS:
 NEXT ONE TASK:
 STOP HERE — do not begin next phase automatically.
 ```
+
+### 2026-10-10 — Checkpoint 6: Purchases row actions and desktop workflow (P1-06, PU-08 PASS, PU-10 PARTIAL)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `PurchasesPage.jsx` (desktop row: Pay supplier when owed + shared `OverflowMenu` for Supplier ledger, Edit purchase, Delete purchase). New spec: `e2e/purchases-crud.spec.js` (desktop 1280px+).
+- **Results:** desktop row controls 4→2, row 59→55 px. The CRUD workflow passes at 1440px: create → API total 105.00 → refresh → edit qty 6 → API total 126.00 → refresh → delete via menu and confirm → gone. Pay supplier → supplier payment saved → API net payable reduced by the paid amount.
+- **Commands and results:**
+  - `npx playwright test e2e/purchases-crud.spec.js --project=d1440` → 2 passed (clean run after cooldown). An earlier run failed on HTTP 429 from the local per-IP limit; the error banner showed correctly.
+  - `npx playwright test e2e/purchases-list.spec.js --project=d1440` → 3 passed, 2 mobile-only skipped.
+  - `npm test` → 147 pass, 0 fail. `npx vite build` → exit 0. ESLint: 0 errors, 3 warnings (pre-existing).
+- **Data changed on the local synthetic DB:** one payment was recorded against the seeded supplier (Al Noor) by the pay test. Balances on the seeded purchases differ from earlier audits.
+- **Open:** PU-12 (amount and invoice number in the Pay URL, P2). Mobile create, edit, delete and pay not tested. Print and export not tested. Desktop row text is 10.5 px (UX-S06).
+- **Next task:** PU-12 (router state instead of URL), then the mobile purchase form (create, edit, pay), then Suppliers.
+- **STOP HERE** — one checkpoint per session.
