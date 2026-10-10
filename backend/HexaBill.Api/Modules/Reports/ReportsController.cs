@@ -156,6 +156,44 @@ namespace HexaBill.Api.Modules.Reports
             }
         }
 
+        [HttpGet("vat-return/period-config")]
+        [Authorize(Roles = "Admin,Owner,Manager")]
+        public async Task<ActionResult<ApiResponse<object>>> GetVatPeriodConfig()
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            var cfg = await VatTaxPeriodConfig.LoadAsync(_context, tenantId);
+            var (start, end) = cfg.PeriodContaining(DateTime.UtcNow);
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Data = new { cfg.Configured, cfg.Frequency, cfg.AnchorMonth, currentPeriodStart = start, currentPeriodEnd = end,
+                    note = cfg.Configured ? "Filing periods follow this tenant's configuration." : "Not configured: legacy default shown; calendar ranges are analysis only." }
+            });
+        }
+
+        [HttpPut("vat-return/period-config")]
+        [Authorize(Roles = "Owner,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> SetVatPeriodConfig([FromBody] VatPeriodConfigRequest request)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            if (!VatTaxPeriodConfig.TryValidate(request?.Frequency, request?.AnchorMonth?.ToString(), out var cfg, out var error))
+                return BadRequest(new ApiResponse<object> { Success = false, Message = error });
+            await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
+            if (await _context.VatReturnPeriods.AnyAsync(p => p.TenantId == tenantId && (p.Status == "Locked" || p.Status == "Submitted")))
+                return Conflict(new ApiResponse<object> { Success = false, Message = "Frozen periods exist. Amend them before changing the VAT period schedule." });
+            foreach (var (key, value) in new[] { (VatTaxPeriodConfig.FrequencyKey, cfg.Frequency), (VatTaxPeriodConfig.AnchorMonthKey, cfg.AnchorMonth.ToString()) })
+            {
+                var row = await _context.Settings.FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Key == key);
+                if (row == null)
+                    _context.Settings.Add(new Setting { Key = key, TenantId = tenantId, OwnerId = tenantId, Value = value, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+                else { row.Value = value; row.UpdatedAt = DateTime.UtcNow; }
+            }
+            await _context.SaveChangesAsync();
+            return Ok(new ApiResponse<object> { Success = true, Message = "VAT period schedule saved." });
+        }
+
         [HttpGet("vat-return/suggest-period")]
         [Authorize(Roles = "Admin,Owner,Manager")]
         public async Task<ActionResult<ApiResponse<object>>> GetVatReturnSuggestPeriod()
@@ -165,10 +203,16 @@ namespace HexaBill.Api.Modules.Reports
                 var tenantId = CurrentTenantId;
                 if (tenantId <= 0) return Forbid();
                 var (from, to, label) = await _vatReturnReportService.GetSuggestedPeriodAsync(tenantId);
+                var periodCfg = await VatTaxPeriodConfig.LoadAsync(_context, tenantId);
+                if (periodCfg.Configured)
+                {
+                    var (cs, ce) = periodCfg.PeriodContaining(DateTime.UtcNow.AddMonths(periodCfg.Frequency == "Monthly" ? -1 : -3));
+                    from = cs.ToString("yyyy-MM-dd"); to = ce.ToString("yyyy-MM-dd"); label = periodCfg.Frequency == "Monthly" ? cs.ToString("MMM-yyyy") : $"{cs:MMM}-{ce:MMM yyyy}";
+                }
                 return Ok(new ApiResponse<object>
                 {
                     Success = true,
-                    Data = new { from, to, label }
+                    Data = new { from, to, label, periodConfigured = periodCfg.Configured }
                 });
             }
             catch (Exception ex)
@@ -259,7 +303,9 @@ namespace HexaBill.Api.Modules.Reports
                 if (request?.From == null || request.To == null)
                     return BadRequest(new ApiResponse<VatReturn201Dto> { Success = false, Message = "From and To dates are required." });
                 // Enforce VAT period shape for custom ranges as well.
-                if (!IsSupportedVatPeriod(request.From.Value.Date, request.To.Value.Date, out var periodError))
+                var calcCfg = await VatTaxPeriodConfig.LoadAsync(_context, tenantId);
+                if (!calcCfg.IsFilingPeriod(request.From.Value.Date, request.To.Value.Date)
+                    && !IsSupportedVatPeriod(request.From.Value.Date, request.To.Value.Date, out var periodError))
                     return BadRequest(new ApiResponse<VatReturn201Dto> { Success = false, Message = periodError });
                 var fromLocal = new DateTime(request.From.Value.Year, request.From.Value.Month, request.From.Value.Day, 0, 0, 0, DateTimeKind.Unspecified);
                 var toEndLocal = new DateTime(request.To.Value.Year, request.To.Value.Month, request.To.Value.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
@@ -479,6 +525,9 @@ namespace HexaBill.Api.Modules.Reports
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
             if (period.Status is "Locked" or "Submitted")
                 return Conflict(new ApiResponse<object> { Success = false, Message = "Period is already frozen." });
+            var lockCfg = await VatTaxPeriodConfig.LoadAsync(_context, tenantId);
+            if (lockCfg.Configured && !lockCfg.IsFilingPeriod(period.PeriodStart, period.PeriodEnd))
+                return Conflict(new ApiResponse<object> { Success = false, Message = "This range is an analysis range, not one of the company's configured VAT filing periods, so it cannot be frozen." });
             if (!VatReturnWorkflow.CanTransition(period.Status, "Locked"))
                 return Conflict(new ApiResponse<object> { Success = false, Message = $"A {period.Status} period must be calculated and reviewed before it can be frozen." });
             if (!await HasAcceptableVatTrnFormatAsync(tenantId))

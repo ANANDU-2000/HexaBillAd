@@ -77,3 +77,9 @@ Session 2 FIRST tasks: (a) run the PG tests with 0 skips and apply/rollback the 
 | Returns / credit notes | already guarded (`EnsurePeriodOpenAsync`) | ReturnService |
 | PAYMENT adjustment | not applicable to current VAT bases (invoice-dated); re-check if a cash basis is ever added | accountant to confirm |
 Open: tenant tax-period config, Form 201 box states, PG concurrency tests (still need local PG credentials), production migration (see infrastructure section).
+
+## Session 2 additions
+- **Tenant tax-period config** (`VatTaxPeriodConfig`, settings `VAT_PERIOD_FREQUENCY`/`VAT_PERIOD_ANCHOR_MONTH`, tenant-scoped, no migration): `GET/PUT vat-return/period-config`; suggest-period follows it; Calculate accepts configured filing periods; **Lock refuses analysis ranges for configured tenants**. DECISION: unconfigured tenants keep legacy behaviour (default Feb stagger shown, `periodConfigured=false`) so existing tenants are not broken; accountant/owner should configure each tenant. Changing the schedule is blocked while Locked/Submitted periods exist. Tests: `VatTaxPeriodConfigTests` (10).
+- **Form 201 projection** (`Form201ProjectionBuilder`, `Form201Projection` on the report DTO): per box `amount?`, `vatAmount?`, `calculationState`, `sourceCompleteness`, `reviewState` (always PendingAccountantReview). Boxes 2, 3, 6, 7 are null/Unavailable (no source data: tourist refunds, sales reverse charge, imports); box 1 is Partial (no emirate split); 8, 12, 14 depend on incomplete boxes. Test: `Form201ProjectionTests`.
+- **UNVERIFIED:** the box numbering/meaning was written from knowledge; the FTA page could not be fetched (WebFetch model error). Accountant must verify the mapping against the live Form 201. Exports/UI do not yet render the projection (Session 3/4); null must render as "Source unavailable", never 0.00.
+- Full backend: 709 pass, 0 fail, 52 skipped (PG). 

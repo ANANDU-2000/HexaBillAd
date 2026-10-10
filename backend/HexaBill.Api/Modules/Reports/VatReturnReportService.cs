@@ -467,6 +467,7 @@ namespace HexaBill.Api.Modules.Reports
             _logger.LogDebug("VAT return assurance: tenant {TenantId} Box1a={Box1a}, Box1b={Box1b}, Box9b={Box9b}, Box12={Box12}, Box13a={Box13a}, Box13b={Box13b}.",
                 tenantId, dto.Box1a, dto.Box1b, dto.Box9b, dto.Box12, dto.Box13a, dto.Box13b);
             await FillProfitFormAsync(dto, tenantId, from, to);
+            dto.Form201Projection = Form201ProjectionBuilder.Build(dto);
             return dto;
         }
 

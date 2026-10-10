@@ -1820,6 +1820,24 @@ namespace HexaBill.Api.Models
         public List<VatReturnCreditNoteLineDto> CreditNoteLines { get; set; } = new();
         public List<VatReturnReverseChargeLineDto> ReverseChargeLines { get; set; } = new();
         public List<ValidationIssueDto> ValidationIssues { get; set; } = new();
+        /// <summary>FTA Form 201 projection. Not a filing-ready document; every box is pending accountant review.</summary>
+        public List<Form201BoxDto> Form201Projection { get; set; } = new();
+    }
+
+    /// <summary>One Form 201 box. Amount is null (never 0) when its source data is unavailable.</summary>
+    public class Form201BoxDto
+    {
+        public string BoxId { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public decimal? Amount { get; set; }
+        public decimal? VatAmount { get; set; }
+        /// <summary>Calculated | VerifiedZero | Incomplete | NotCalculable</summary>
+        public string CalculationState { get; set; } = "NotCalculable";
+        /// <summary>Complete | Partial | Unavailable</summary>
+        public string SourceCompleteness { get; set; } = "Unavailable";
+        /// <summary>PendingAccountantReview | AccountantConfirmed</summary>
+        public string ReviewState { get; set; } = "PendingAccountantReview";
+        public string? Note { get; set; }
     }
 
     public class VatReturnOutputLineDto
@@ -1900,6 +1918,12 @@ namespace HexaBill.Api.Models
         /// This is intended for support/debug scenarios and is optional.
         /// </summary>
         public bool Diagnostics { get; set; }
+    }
+
+    public class VatPeriodConfigRequest
+    {
+        public string? Frequency { get; set; }
+        public int? AnchorMonth { get; set; }
     }
 
     public class VatReturnAmendRequest
