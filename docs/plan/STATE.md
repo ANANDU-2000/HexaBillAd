@@ -1,5 +1,7 @@
 # STATE.md — HexaBill single source of truth
 
+> **2026-10-10:** AI-ERP master plan adopted. Active task status now lives in `docs/plan/AI-ERP-TASK-TRACKER.md` (P0/AI phases) and `docs/uiux/PREMIUM-UX-TRACKER.md` (UX). Deploy facts below may be older than the tracker header; the tracker wins on conflict.
+
 ## Active VAT Management Report goal — 10 October 2026
 
 The user-authorized `CODEX BUILD PROMPT v2` is being implemented on branch `vat-mgmt-report`, created from `release-1` at `e14c7dcd6ddaa0acefc74cfde0f7bb1cd8cfff3b`. For this VAT Management Report goal, `vat-mgmt-report` is the authoritative working branch; the `release-1`/`bdcc429` checkpoint below describes the separate production-stabilization workstream and is not the starting point for this goal. Do not merge, push, or deploy this goal branch as part of this task. Current VAT phase evidence belongs in `docs/plan/VAT-RETURN-EVIDENCE.md`.
