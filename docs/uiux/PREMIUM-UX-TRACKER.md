@@ -128,5 +128,15 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 - A wheel scroll reaches the last record on every audited list.
 - Every icon-only button on the selected Customer Ledger screen has an aria-label or title.
 
+## Coverage totals (route level)
+
+Source: [COVERAGE-MATRIX.md](COVERAGE-MATRIX.md), generated from `App.jsx`.
+
+- Discovered routes: 62 (5 public-tenant app pages incl. onboarding and error page, 43 tenant pages, 10 SuperAdmin, 2 redirects, plus shared help/feedback/profile/more).
+- Verified locally with an interaction test: 5 routes (`/login`, `/billing-history`, `/customers`, `/ledger`, `/expenses`).
+- Layout sweep only: 10 routes.
+- Not verified: 45 routes.
+- Nested tabs, subtabs, forms, modals and drawers: **not yet inventoried**, so no totals are reported for them.
+
 ## Next
 Phase 2 (implementation) starts only after owner review of this audit. Per the approved session plan, the next task is **Checkpoint 2: P0-02** (false "Under Maintenance" lockout). UX implementation then resumes from UX-S01 (adaptive navigation), followed by the Customers and Customer Ledger rows.
