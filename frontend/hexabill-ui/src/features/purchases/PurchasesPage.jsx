@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
@@ -722,6 +723,8 @@ const PurchasesPage = () => {
   }
 
   // Purchase page
+  useCreateIntent(handleNewPurchase)
+
   return (
     <div className={`h-full min-h-0 bg-neutral-50 overflow-x-hidden w-full flex flex-col ${mobilePageShellClass}`}>
       <div className="bg-white border-b border-neutral-200 px-3 sm:px-4 py-2 sticky top-0 z-20">
@@ -1239,7 +1242,7 @@ const PurchasesPage = () => {
               </VoucherSection>
 
               {/* (6) Totals - shown in items table foot; (7) Actions - sticky on mobile above BottomNav */}
-              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
+              <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
                   <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}

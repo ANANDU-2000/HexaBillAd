@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { useForm } from 'react-hook-form'
 import {
   Plus,
@@ -217,6 +218,7 @@ const ExpensesPage = () => {
   const [filteredExpenses, setFilteredExpenses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [showAddModal, setShowAddModal] = useState(false)
+  useCreateIntent(() => setShowAddModal(true))
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedExpense, setSelectedExpense] = useState(null)
   const [creatingCategory, setCreatingCategory] = useState(false)

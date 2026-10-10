@@ -1,17 +1,20 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Home, Plus, BookOpen, MoreHorizontal } from 'lucide-react'
+import { Home, Plus, BookOpen, MoreHorizontal, ShoppingCart } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { canAccessPage } from '../utils/roles'
 
 /**
- * Mobile primary IA: Home · Sale · Ledger · More.
- * The three direct tabs map to real routes; "More" opens the grouped menu
- * bottom sheet (MoreMenuSheet). Home and More are permanent anchors — every
- * other tab is filtered by the staff page-access check.
+ * Mobile primary IA: Home · Sale · New · Ledger · More.
+ * Direct tabs map to real routes; "New" opens the role-filtered quick-create sheet;
+ * "More" opens the grouped menu sheet (MoreMenuSheet). Home, New and More are permanent
+ * anchors — every other tab is filtered by the staff page-access check.
+ * Shown only on browsing screens; Layout hides it on POS, create/edit screens, open dialogs
+ * and while the on-screen keyboard is up (navigation/quickCreate.shouldShowBottomNav).
  */
 const NAV_ITEMS = [
   { id: 'home', name: 'Home', href: '/dashboard', icon: Home, pageId: null },
-  { id: 'pos', name: 'Sale', href: '/pos', icon: Plus, center: true, pageId: 'pos' },
+  { id: 'pos', name: 'Sale', href: '/pos', icon: ShoppingCart, pageId: 'pos' },
+  { id: 'new', name: 'New', icon: Plus, center: true, isCreate: true },
   { id: 'ledger', name: 'Ledger', href: '/ledger', icon: BookOpen, pageId: 'invoices' },
   { id: 'more', name: 'More', icon: MoreHorizontal, isMore: true },
 ]
@@ -38,14 +41,14 @@ const isNavActive = (pathname, href) => {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
+const BottomNav = ({ moreOpen, onOpenMore, onCloseMore, onOpenCreate }) => {
   const location = useLocation()
   const { user } = useAuth()
 
   const pathname = location.pathname
 
   const navItems = NAV_ITEMS.filter((item) => {
-    if (item.isMore) return true // More is a permanent anchor
+    if (item.isMore || item.isCreate) return true // permanent anchors
     if (!item.pageId) return true
     return canAccessPage(user, item.pageId)
   })
@@ -102,29 +105,24 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                 )
               }
 
-              // Primary "Sale" tab: filled pill, flush with the bar so it never covers labels or page content.
+              // Centre "New": filled pill flush with the bar; opens the quick-create sheet.
               if (item.center) {
-                const posActive = isNavActive(pathname, item.href)
                 return (
-                  <Link
+                  <button
                     key={item.id}
-                    to={item.href}
-                    onClick={onCloseMore}
+                    type="button"
+                    onClick={() => { onCloseMore?.(); onOpenCreate?.() }}
                     className="flex min-h-[44px] min-w-0 flex-col items-center justify-end gap-0.5 pb-1"
-                    aria-current={posActive ? 'page' : undefined}
-                    aria-label="New sale"
+                    aria-label="Create new"
+                    aria-haspopup="dialog"
                   >
-                    <span
-                      className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors duration-150 ${
-                        posActive ? 'bg-primary-700 text-white' : 'bg-primary-600 text-white active:bg-primary-700'
-                      }`}
-                    >
+                    <span className="flex h-8 w-12 items-center justify-center rounded-full bg-primary-600 text-white transition-colors duration-150 active:bg-primary-700">
                       <Icon className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
                     </span>
-                    <span className={`max-w-full truncate px-0.5 text-micro leading-tight ${posActive ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'}`}>
+                    <span className="max-w-full truncate px-0.5 text-micro font-medium leading-tight text-[#475569]">
                       {item.name}
                     </span>
-                  </Link>
+                  </button>
                 )
               }
 

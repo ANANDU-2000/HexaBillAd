@@ -3488,7 +3488,7 @@ const PosEnterprisePage = () => {
     />
 
       {/* Mobile: Sticky bottom bar — single total + one CTA (opens payment sheet) */}
-      <div className="md:hidden fixed bottom-[4.75rem] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
+      <div className="md:hidden fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
           <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>

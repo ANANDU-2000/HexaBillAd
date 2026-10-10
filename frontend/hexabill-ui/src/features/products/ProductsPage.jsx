@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router-dom'
+import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye, ScanBarcode, Printer, Share2, Wand2 } from 'lucide-react'
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
 import ProductForm from '../../components/ProductForm'
@@ -31,6 +32,7 @@ const ProductsPage = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [showForm, setShowForm] = useState(false)
+  useCreateIntent(() => setShowForm(true))
   const [editingProduct, setEditingProduct] = useState(null)
   const [prefillBarcode] = useState(() => {
     try {

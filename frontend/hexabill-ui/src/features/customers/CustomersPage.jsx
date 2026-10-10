@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
+import { useCreateIntent } from '../../hooks/useCreateIntent'
 import {
   Plus,
   Search,
@@ -99,6 +100,12 @@ const CustomersPage = () => {
     watch,
     formState: { errors }
   } = useForm()
+
+  const openAddCustomer = () => {
+    reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'Credit', paymentTerms: '', address: '', location: '' })
+    setShowAddModal(true)
+  }
+  useCreateIntent(openAddCustomer)
 
   const selectedBranchId = watch('branchId')
   const watchMainLat = watch('mainLatitude')
@@ -672,6 +679,7 @@ const CustomersPage = () => {
     return <LoadingCard message="Loading customers..." />
   }
 
+
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
       {/* Modern Header - Responsive */}
@@ -699,10 +707,7 @@ const CustomersPage = () => {
               Refresh
             </button>
             <button
-              onClick={() => {
-                reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'Credit', paymentTerms: '', address: '', location: '' })
-                setShowAddModal(true)
-              }}
+              onClick={openAddCustomer}
               className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg shadow-sm text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 min-h-[44px]"
             >
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />

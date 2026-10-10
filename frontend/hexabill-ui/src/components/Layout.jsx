@@ -17,6 +17,9 @@ import {
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
+import { QuickCreateSheet, QuickCreateMenu } from './QuickCreate'
+import { useKeyboardOpen, useOverlayOpen } from '../hooks/useShellChrome'
+import { shouldShowBottomNav } from '../navigation/quickCreate'
 import Logo from './Logo'
 import CommandPalette from './CommandPalette'
 import ShortcutHelp from './ShortcutHelp'
@@ -55,6 +58,9 @@ const Layout = () => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [navTip, setNavTip] = useState(null)
   const closeMore = useCallback(() => setMoreOpen(false), [])
+  const [createOpen, setCreateOpen] = useState(false)
+  const keyboardOpen = useKeyboardOpen()
+  const overlayOpen = useOverlayOpen()
   const [backendUnavailable, setBackendUnavailable] = useState(() => !connectionManager.isConnected)
 
   useEffect(() => {
@@ -287,6 +293,10 @@ const Layout = () => {
   const isSalesLedger = location.pathname === '/sales-ledger'
   const isExpensesLedger = location.pathname === '/expenses'
   const isPosRoute = location.pathname === '/pos'
+  // Adaptive phone navigation (UX-S01). Route visibility drives layout padding; the keyboard and
+  // open dialogs only hide the bar, so page content does not reflow underneath a sheet.
+  const routeShowsBottomNav = shouldShowBottomNav({ pathname: location.pathname })
+  const bottomNavVisible = routeShowsBottomNav && !keyboardOpen && !overlayOpen
   // Data-heavy pages: fill viewport height, internal scroll (no airy document scroll)
   const isViewportShellRoute =
     isSalesLedger ||
@@ -321,7 +331,7 @@ const Layout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 overflow-x-hidden">
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden" style={{ '--hb-bottom-nav-h': routeShowsBottomNav ? '4.75rem' : '0px' }}>
       {/* Skip Link */}
       <a
         href="#main-content"
@@ -343,10 +353,12 @@ const Layout = () => {
         </div>
       )}
 
-      {/* Mobile top bar — one title per screen; hidden on /pos for full-viewport cashier mode (use BottomNav) */}
-      {!isPosRoute && (
+      {/* Mobile top bar — one title per screen. The menu button appears only where the bottom
+          navigation (and its More sheet) is hidden, so phones never show two menu entry points. */}
+      {(
       <header className={`md:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
         <div className="flex h-14 items-center gap-1 px-1">
+          {!routeShowsBottomNav ? (
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
@@ -356,6 +368,7 @@ const Layout = () => {
           >
             <Menu className="h-5 w-5" strokeWidth={1.75} />
           </button>
+          ) : <span className="w-3 shrink-0" aria-hidden />}
           <p className="min-w-0 flex-1 truncate px-1 text-base font-semibold">{mobilePageTitle || companyName}</p>
           <button
             type="button"
@@ -475,6 +488,7 @@ const Layout = () => {
               <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-micro text-neutral-500 lg:block">Ctrl K</kbd>
             </button>
             <div className="ml-auto flex shrink-0 items-center gap-1 text-neutral-600">
+              <QuickCreateMenu />
               {isAdminOrOwner(user) && <AlertNotifications />}
               <div className="relative" ref={profileDropdownRef}>
                 <button
@@ -536,9 +550,9 @@ const Layout = () => {
         </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] pb-[4.75rem] md:pb-6 ${userIsSystemAdmin && selectedTenantId
-          ? (isPosRoute ? 'pt-10' : 'pt-24 md:pt-[6.5rem]')
-          : (isPosRoute ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
+        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] ${routeShowsBottomNav ? 'pb-[4.75rem]' : 'pb-[env(safe-area-inset-bottom,0px)]'} md:pb-6 ${userIsSystemAdmin && selectedTenantId
+          ? (isPosRoute ? 'pt-24 md:pt-10' : 'pt-24 md:pt-[6.5rem]')
+          : (isPosRoute ? 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
           }`}>
           <div className={`flex-1 min-h-0 ${isViewportShellRoute ? 'overflow-hidden flex flex-col' : 'overflow-auto'}`}>
             <div className={`w-full max-w-full mx-auto px-3 sm:px-4 ${isViewportShellRoute ? 'py-2 lg:py-3 min-h-0 flex-1 flex flex-col' : 'min-h-full py-2 lg:py-3'}`}>
@@ -548,8 +562,11 @@ const Layout = () => {
         </main>
         {/* Mobile Bottom Navigation */}
         <div className="md:hidden">
-          <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} />
+          {bottomNavVisible && (
+            <BottomNav moreOpen={moreOpen} onOpenMore={() => setMoreOpen(true)} onCloseMore={closeMore} onOpenCreate={() => setCreateOpen(true)} />
+          )}
           <MoreMenuSheet open={moreOpen} onClose={closeMore} />
+          <QuickCreateSheet open={createOpen} onClose={() => setCreateOpen(false)} />
         </div>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
