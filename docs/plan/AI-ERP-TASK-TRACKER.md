@@ -189,3 +189,12 @@ STOP HERE — do not begin next phase automatically.
 - **Audit limit:** the row measurement needs two or more receipts; the local tenant has one. Row density stays unmeasured until a receipt fixture exists (PY-06).
 - **Next task:** Payments create/edit/delete with API read-back and a receipt fixture (PY-06); then the Receipts module surface.
 
+### 2026-10-11 — Checkpoint 12: Payment create, edit and void with API read-back (PY-06 PARTIAL)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `e2e/payments-crud.spec.js` (new). No application code changed.
+- **Results:** create → API persisted (amount, customer) → refresh → edit (amount -10%, reference) → API persisted → refresh → void → API status VOID. Passes at 360, 768 and 1440.
+- **Finding:** on-account customer payments are refused by the API unless an outstanding invoice exists. That is the intended rule, and the test selects a customer with a balance.
+- **Commands:** `npx playwright test e2e/payments-crud.spec.js` at m360, t768, d1440 → 1 passed each.
+- **Not done:** bulk payments, cheques, allocations across invoices, receipts and print, role restriction, row density with two or more receipts.
+- **Next task:** Receipts module surface (print and PDF of cleared receipts, batch receipts), then bulk payments.
+
