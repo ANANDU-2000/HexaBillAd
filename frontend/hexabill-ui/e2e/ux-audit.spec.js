@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { signIn, feOrigin } from './session.js'
 
 const SLUG = process.env.HEXABILL_AUDIT_TENANT || 'gulfharvest'
-const ROUTES = ['/customers', '/billing-history', '/expenses', '/ledger', '/pos', '/purchases', '/suppliers', '/daily-close']
+const ROUTES = ['/customers', '/billing-history', '/expenses', '/ledger', '/pos', '/purchases', '/suppliers', '/daily-close', '/payments']
 const here = path.dirname(fileURLToPath(import.meta.url))
 // Not under .results: Playwright empties its outputDir on every run.
 const outDir = path.join(here, '.shots', 'ux-audit')

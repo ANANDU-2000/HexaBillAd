@@ -132,6 +132,24 @@ Baseline (360px): 1,574 px page height; "Submit close" at 1,430 px; the bottom n
 | DC-05 | P3 | The intro paragraph takes three lines before the first input. The sentence about settlement adjustments is an accounting rule and must stay. | `audit-daily-close-m360.png` | Keep the wording; move the rule next to "Expected in drawer" as a one-line note. | TODO |
 | DC-06 | — | Not exercised yet: Submit close (variance reason, persisted close, Recent closes row, reports), Reopen day, Add movement, Capital and transfers rows, desktop visual review. Submit and reopen would change the synthetic business day, so they need a dedicated fixture per run. | — | Add a fixture that creates a closed day and a reopen path, then verify totals against the ledger. | NOT TESTED |
 
+### Payments (`/payments`, `features/payments/PaymentsPage.jsx`)
+
+Route `/payments` is visible only when `canManagePayments(user)`; other roles are redirected to the dashboard. Audited with one synthetic receipt (the local tenant has one payment). The audit's row measurement needs two or more records, so row density is not measured yet (PY-06).
+
+Baseline (360px): intro text four lines; "Add Payment" and "Bulk Payment" each wrapped onto two lines; Bulk Payment in green as a second primary; customer name touching the amount on rows; search card padded 24px.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| PY-01 | P2 | Header actions wrapped: "Add Payment" and "Bulk Payment" each took two lines at 360px, and Refresh was a full text button. | `e2e/.shots/audit-payments-m360.png` (before) | One row on phones: Refresh as an icon-only 44px button, Bulk Payment and Add Payment flex 1 with nowrap labels. From sm the labels return. | PASS |
+| ↳ fix | | `PaymentsPage.jsx` header; `e2e/payments-list.spec.js` "phones: Refresh, Bulk Payment and Add Payment share one row" (m360 passed). | `audit-payments-m360.png` (after) | | |
+| PY-02 | P2 | Bulk Payment was green (`bg-success`), competing with Add Payment as a second primary. | `audit-payments-m360.png` (before) | Bulk Payment is secondary (outline). Add Payment is the only primary. | PASS |
+| ↳ fix | | Asserted in `payments-list` (Bulk Payment background is not primary blue). | | | |
+| PY-03 | P2 | On phone rows the customer name ran into the amount ("Walk-in Cafe 500.00 AED" with no gap). | `audit-payments-m360.png` (before) | Name truncates in its own flex column; amount is `shrink-0` nowrap with tabular figures. | PASS |
+| ↳ fix | | `payments-list` "a payment row keeps the amount beside a long customer name" (name box ends before the amount box starts). Screenshot after: "gulfharvest Walk-in ..." with the amount clear. | `audit-payments-m360.png` (after) | | |
+| PY-04 | P3 | Intro text was 16px and ran to four lines; the search card had 24px padding on phones. | `audit-payments-m360.png` (before) | Intro 14px on phones (16px from sm). Search card 12px padding on phones. The business rule text (cleared payments only; cheques) is kept. | PASS |
+| PY-05 | P3 | Desktop search stretched across the whole filter card (about 930px). | `audit-payments-d1440.png` (before) | Bounded at 26rem (416px) from sm, per the desktop search guidance. | PASS |
+| PY-06 | — | Not tested yet: Add Payment save (invoice and general), persisted record, edit, delete, allocations across invoices, Bulk Payment, cheque clearing, receipts and print, role restriction for non-payment roles, row density with two or more records. | — | Add a receipt fixture and a payment-create spec with API read-back; measure rows with 12 synthetic receipts. | NOT TESTED |
+
 ### Purchases (`/purchases`, `features/purchases/PurchasesPage.jsx`)
 
 Audited at Checkpoint 5 (2026-10-10) with 12 synthetic purchases and 2 synthetic suppliers seeded into the local tenant (`seed-purchases` script, local API only). Create, edit, delete and pay were **not** exercised in this checkpoint, so they stay NOT TESTED.

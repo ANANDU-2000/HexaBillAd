@@ -666,40 +666,42 @@ const PaymentsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
-          <p className="text-neutral-600">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
+          <p className="text-sm text-neutral-600 sm:text-base">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
         </div>
-        <div className="mt-4 sm:mt-0 flex space-x-3">
+        <div className="mt-3 flex flex-nowrap items-center gap-2 sm:mt-0 sm:gap-3">
           <button
             onClick={() => fetchData()}
-            className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
+            aria-label="Refresh"
+            title="Refresh"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 sm:w-auto sm:px-4 sm:text-sm sm:font-medium"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            disabled={submitting || Boolean(user?.supportReadOnly)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 min-h-[44px]"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Payment
+            <RefreshCw className="h-4 w-4 sm:mr-2" aria-hidden />
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
             onClick={() => setShowBulkPaymentModal(true)}
             disabled={submitting || Boolean(user?.supportReadOnly)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-success hover:bg-green-700 min-h-[44px]"
+            className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 sm:flex-none sm:px-4"
             title="Add multiple payments at once"
           >
-            <Plus className="h-4 w-4 mr-2" />
             Bulk Payment
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            disabled={submitting || Boolean(user?.supportReadOnly)}
+            className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md bg-primary-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 sm:flex-none sm:px-4"
+          >
+            <Plus className="mr-2 h-4 w-4" aria-hidden />
+            Add Payment
           </button>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-3 sm:p-6">
         <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
+          {/* Desktop: a bounded search (about 26rem), not the full toolbar width. */}
+          <div className="min-w-0 flex-1 sm:max-w-[26rem]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
               <input
@@ -966,16 +968,16 @@ const PaymentsPage = () => {
         ) : (
           filteredPayments.map((payment) => (
             <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between gap-3 mb-3">
                 {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && (
                   <input type="checkbox" checked={receiptSelectedIds.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)}
-                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-3 min-h-[24px] min-w-[24px] rounded border-neutral-300" />
+                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-1 min-h-[24px] min-w-[24px] shrink-0 rounded border-neutral-300" />
                 )}
-                <div>
-                  <p className="text-sm font-semibold text-neutral-900">{payment.customerName || 'Unknown'}</p>
-                  <p className="text-xs text-neutral-500">{payment.invoiceNo || 'General Payment'}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-neutral-900">{payment.customerName || 'Unknown'}</p>
+                  <p className="truncate text-xs text-neutral-500">{payment.invoiceNo || 'General Payment'}</p>
                 </div>
-                <p className="text-base font-bold text-neutral-900">{money(payment.amount)}</p>
+                <p className="shrink-0 whitespace-nowrap text-base font-bold tabular-nums text-neutral-900">{money(payment.amount)}</p>
               </div>
               <div className="flex items-center gap-3 mb-3 text-xs text-neutral-500">
                 <div className="flex items-center gap-1">

@@ -180,3 +180,12 @@ STOP HERE — do not begin next phase automatically.
 - **Not done:** Submit close, reopen, Add movement and capital transfers (they would change the synthetic day). Shared `LoadingButton` override problem (DC-04) is open.
 - **Next task:** Daily close close-and-reopen fixture (DC-06), then the Payments and Receipts module surface discovery.
 
+### 2026-10-11 — Checkpoint 11: Payments list header and rows (PY-01 to PY-05 PASS; PY-06 NOT TESTED)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `PaymentsPage.jsx` (one header row on phones; Bulk Payment secondary; row name truncates and amount is nowrap; search card padding on phones; intro 14px on phones; bounded desktop search). `e2e/payments-list.spec.js` (new). `e2e/ux-audit.spec.js` (adds `/payments`).
+- **Commands and results:**
+  - `npx playwright test e2e/payments-list.spec.js` → m360 2 passed (desktop and tablet skipped by design).
+  - `npx vite build` → exit 0. ESLint on the page: 0 errors (pre-existing warnings).
+- **Audit limit:** the row measurement needs two or more receipts; the local tenant has one. Row density stays unmeasured until a receipt fixture exists (PY-06).
+- **Next task:** Payments create/edit/delete with API read-back and a receipt fixture (PY-06); then the Receipts module surface.
+
