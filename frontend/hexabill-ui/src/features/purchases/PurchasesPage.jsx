@@ -707,8 +707,14 @@ const PurchasesPage = () => {
     { label: 'Delete purchase', icon: Trash2, danger: true, separatorBefore: true, onClick: () => handleDeletePurchase(purchase) },
   ]
 
+  // The amount and invoice reference travel in router state, not the URL (PU-12).
   const openPay = (purchase) => {
-    navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}?recordPayment=1&amount=${purchase.balanceAmount ?? purchase.totalAmount}&ref=${encodeURIComponent(purchase.invoiceNo || '')}`, { state: { returnTo: location.pathname + location.search } })
+    navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, {
+      state: {
+        returnTo: location.pathname + location.search,
+        payment: { amount: purchase.balanceAmount ?? purchase.totalAmount, reference: purchase.invoiceNo || '' },
+      },
+    })
   }
 
   const clearPurchaseFilters = () => {

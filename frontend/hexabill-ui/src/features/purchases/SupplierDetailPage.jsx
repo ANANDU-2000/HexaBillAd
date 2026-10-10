@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom'
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Download, Banknote, Pencil, Trash2, Share2, FileDown } from 'lucide-react'
 import { suppliersAPI, purchasesAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
@@ -40,7 +40,6 @@ function safeMessage(err, fallback) {
 
 const SupplierDetailPage = () => {
   const { name } = useParams()
-  const [searchParams] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -56,7 +55,7 @@ const SupplierDetailPage = () => {
   const [purchases, setPurchases] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const [showRecordPayment, setShowRecordPayment] = useState(() => searchParams.get('recordPayment') === '1')
+  const [showRecordPayment, setShowRecordPayment] = useState(false)
   const [saving, setSaving] = useState(false)
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
@@ -92,19 +91,19 @@ const SupplierDetailPage = () => {
     if (supplierName) loadData()
   }, [supplierName, activeTab, appliedFrom, appliedTo])
 
+  // A purchase row passes the amount and invoice reference in router state (not the URL). Apply once, then clear it.
   useEffect(() => {
-    const urlAmount = searchParams.get('amount')
-    const urlRef = searchParams.get('ref')
-    if (urlAmount && parseFloat(urlAmount) > 0 && canPay) {
-      setPaymentForm(prev => ({
-        ...prev,
-        amount: urlAmount,
-        reference: urlRef ? decodeURIComponent(urlRef) : prev.reference
-      }))
-      setPreFillPayment({ amount: urlAmount, reference: urlRef ? decodeURIComponent(urlRef) : '' })
+    const incoming = location.state?.payment
+    if (!incoming || !canPay) return
+    const amount = incoming.amount != null ? String(incoming.amount) : ''
+    const reference = incoming.reference || ''
+    if (parseFloat(amount) > 0) {
+      setPaymentForm(prev => ({ ...prev, amount, reference }))
+      setPreFillPayment({ amount, reference })
       setShowRecordPayment(true)
     }
-  }, [canPay, searchParams])
+    navigate(location.pathname, { replace: true, state: { returnTo } })
+  }, [canPay, location.state, location.pathname, navigate, returnTo])
 
   const loadData = async () => {
     if (!supplierName) return

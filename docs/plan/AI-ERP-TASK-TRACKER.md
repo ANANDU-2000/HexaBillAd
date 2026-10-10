@@ -127,3 +127,15 @@ STOP HERE — do not begin next phase automatically.
 - **Open:** PU-12 (amount and invoice number in the Pay URL, P2). Mobile create, edit, delete and pay not tested. Print and export not tested. Desktop row text is 10.5 px (UX-S06).
 - **Next task:** PU-12 (router state instead of URL), then the mobile purchase form (create, edit, pay), then Suppliers.
 - **STOP HERE** — one checkpoint per session.
+
+### 2026-10-10 — Checkpoint 7: Purchases PU-12 (router state) and mobile workflow (PU-10 PARTIAL)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `PurchasesPage.jsx` (`openPay` passes the amount and reference in router state). `SupplierDetailPage.jsx` (applies router-state payment once, then clears history state; removed the unused `useSearchParams` import). `e2e/purchases-crud.spec.js` is viewport-aware (item form table at 768px+, list table at 1280px+).
+- **Results:** PU-12 closed: the Pay URL is `/suppliers/<name>` with no amount or invoice reference. Purchase CRUD and pay pass at 360, 768 and 1440 (2 tests each, 6 total).
+- **Commands and results:**
+  - `npx playwright test e2e/purchases-crud.spec.js` at m360, t768, d1440, one project per run with cooldowns → 2 passed each.
+  - `npx vite build` → exit 0. ESLint on the changed files: 0 errors. The remaining supplier-page warning (a `loadData` hook dependency) was already there before this change.
+- **Open:** print and export not tested. VAT toggles, supplier auto-registration and payment allocation to a specific invoice not tested. The mobile form has not been reviewed visually. Desktop row text 10.5 px (UX-S06). The local API limit (300/min) returned 429s in batch runs; the helper polls count against it.
+- **Next task:** a visual review of the mobile purchase form and the supplier ledger at 360/768, then Suppliers.
+- **STOP HERE** — one checkpoint per session.
+
