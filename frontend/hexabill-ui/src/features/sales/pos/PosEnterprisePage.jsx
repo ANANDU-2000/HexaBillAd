@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react'
+import { createSaleSubmitKeys } from './saleSubmitKey'
 import { flushSync } from 'react-dom'
 import ProductDrawer from './ProductDrawer'
 import PosShell from './PosShell'
@@ -81,6 +82,7 @@ const PosEnterprisePage = () => {
   const selection = usePosSelection()
   const undoApi = usePosUndo()
   const tableScrollRef = useRef(null)
+  const saleSubmitKeysRef = useRef(createSaleSubmitKeys())
   const [selectionTick, setSelectionTick] = useState(0)
   const { branches, routes, staffHasNoAssignments, loading: branchesRoutesLoading, refresh: refreshBranchesRoutes } = useBranchesRoutes()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1827,11 +1829,13 @@ const PosEnterprisePage = () => {
         console.log('  - Discount:', saleData.discount)
         console.log('  - Payments:', saleData.payments)
 
-        response = await salesAPI.createSale(saleData)
+        response = await salesAPI.createSale({ ...saleData, externalReference: saleSubmitKeysRef.current.keyFor(saleData) })
 
         console.log('Create Sale Response:', response)
 
         if (response.success) {
+          // The invoice exists now; the next sale (even if identical) must get a new key.
+          saleSubmitKeysRef.current.reset()
           const invoiceNo = response.data?.invoiceNo
           const saleId = response.data?.id
 
@@ -1966,6 +1970,7 @@ const PosEnterprisePage = () => {
 
   const handleNewInvoice = () => {
     try { clearDraft?.() } catch (_) {}
+    saleSubmitKeysRef.current.reset()
     undoApi.clear()
     usePosInteractionStore.getState().resetInteraction()
     setCart([])
