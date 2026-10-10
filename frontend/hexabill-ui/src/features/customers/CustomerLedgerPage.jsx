@@ -6,7 +6,6 @@ import {
   Download,
   Printer,
   RefreshCw,
-  Settings,
   Plus,
   FileText,
   Eye,
@@ -37,6 +36,7 @@ import { LoadingCard, LoadingButton } from '../../components/Loading'
 import { Input, Select } from '../../components/Form'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
+import { OverflowMenu } from '../../components/ui'
 import { customersAPI, paymentsAPI, salesAPI, reportsAPI, adminAPI, returnsAPI, subscriptionAPI } from '../../services/index'
 import {
   computeInvoiceSettlementShortfall,
@@ -47,7 +47,7 @@ import { Lock, Unlock } from 'lucide-react'
 import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
-import { mobileFormFieldClass, mobileFormSelectClass, mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
+import { mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
 import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
@@ -180,6 +180,7 @@ const CustomerLedgerPage = () => {
   const [ledgerRouteId, setLedgerRouteId] = useState(() => searchParams.get('routeId') || '')
   const [ledgerStaffId, setLedgerStaffId] = useState(() => searchParams.get('staffId') || '')
   // Staged filter values; applied values above drive API calls
+  const [pickerFiltersOpen, setPickerFiltersOpen] = useState(false)
   const [filterDraft, setFilterDraft] = useState(() => {
     const now = new Date()
     const yearsAgo = new Date(now)
@@ -192,6 +193,8 @@ const CustomerLedgerPage = () => {
       staffId: searchParams.get('staffId') || '',
     }
   })
+  const activePickerFilters = (filterDraft.branchId ? 1 : 0) + (filterDraft.routeId ? 1 : 0)
+
   const [staffUsers, setStaffUsers] = useState([])
   const [staffAssignmentsLoaded, setStaffAssignmentsLoaded] = useState(false)
   const [duplicateCheckModal, setDuplicateCheckModal] = useState({ isOpen: false, message: '', customerData: null })
@@ -2094,157 +2097,73 @@ const CustomerLedgerPage = () => {
 
   return (
     <div className={`h-full min-h-0 flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full ${mobilePageShellClass}`}>
-      {/* TOP BAR — compact on mobile */}
-      <div className="bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 sm:py-3 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {/* Return/Back Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (selectedCustomer) {
-                  clearSelectedCustomer({ keepSearch: false })
-                  return
-                }
-                navigate(returnTo || '/customers')
-              }}
-              className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-neutral-600 hover:bg-neutral-100 rounded-lg shrink-0"
-              title={
-                selectedCustomer
-                  ? 'Clear selected customer'
-                  : returnTo
-                    ? `Back to ${getReturnLabel(returnTo)}`
-                    : 'Back to Customers'
+      {/* TOP BAR (UX-L01): back + title; record actions live in one menu once a customer is open.
+          Phones show it only for an open customer — the shell top bar already names the page. */}
+      <div className={`bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 shrink-0 ${selectedCustomer ? '' : 'hidden md:block'}`}>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedCustomer) {
+                clearSelectedCustomer({ keepSearch: false })
+                return
               }
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div className="min-w-0">
-              <h1 className={mobilePageTitleClass}>Customer Ledger</h1>
-              <p className="text-xs text-neutral-500 truncate hidden sm:block">{companyName || 'Select a customer below'}</p>
-            </div>
+              navigate(returnTo || '/customers')
+            }}
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+            aria-label={
+              selectedCustomer
+                ? 'Back to customer list'
+                : returnTo
+                  ? `Back to ${getReturnLabel(returnTo)}`
+                  : 'Back to Customers'
+            }
+          >
+            <ArrowLeft className="h-5 w-5" aria-hidden />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className={mobilePageTitleClass}>Customer Ledger</h1>
           </div>
           {returnTo && (
             <button
               type="button"
               onClick={() => navigate(returnTo)}
-              className="hidden sm:inline-flex min-h-9 shrink-0 items-center rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
+              className="hidden sm:inline-flex btn btn-ghost btn-sm shrink-0"
             >
               {getReturnLabel(returnTo)}
             </button>
           )}
-          <div className="hidden md:flex items-center gap-3 shrink-0">
-            <div className="text-right text-xs text-neutral-600">
-              <p>{new Date().toLocaleDateString('en-GB')}</p>
-              <p>{user?.name || 'Admin'}</p>
-            </div>
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={handleExportPDF}
-                disabled={pdfLoading}
-                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
-                title="Export PDF (F7)"
-              >
-                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                onClick={handleExportPDF}
-                disabled={pdfLoading}
-                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
-                title="Print (Ctrl+P)"
-              >
-                <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                onClick={() => {
-                  if (selectedCustomer) {
+          {selectedCustomer && (
+            <OverflowMenu
+              label="Ledger actions"
+              items={[
+                { label: pdfLoading ? 'Preparing PDF…' : 'Export / print PDF', icon: Download, disabled: pdfLoading, onClick: handleExportPDF },
+                {
+                  label: 'Refresh',
+                  icon: RefreshCw,
+                  onClick: () => {
                     ledgerLoadInProgressRef.current = null
                     loadCustomerData(selectedCustomer.id)
-                  }
-                }}
-                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
-                title="Refresh"
-                disabled={!selectedCustomer}
-              >
-                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                onClick={handleManualReconciliation}
-                className="p-1 sm:p-1.5 text-success hover:bg-success-bg rounded transition-colors"
-                title="Reconcile & Verify Data (Validates all transactions and recalculates balance)"
-                disabled={!selectedCustomer || loading}
-              >
-                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-              <button
-                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
-                title="Settings"
-              >
-                <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex md:hidden items-center gap-1 shrink-0">
-            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-11 min-w-11 text-neutral-600 hover:bg-neutral-100 rounded-lg" title="Export PDF" aria-label="Export PDF">
-              <Download className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => selectedCustomer && loadCustomerData(selectedCustomer.id)}
-              className="p-2 min-h-11 min-w-11 text-neutral-600 hover:bg-neutral-100 rounded-lg"
-              title="Refresh"
-              aria-label="Refresh"
-              disabled={!selectedCustomer}
-            >
-              <RefreshCw className="h-5 w-5" />
-            </button>
-          </div>
+                  },
+                },
+                { label: 'Reconcile & verify balance', icon: CheckCircle, disabled: loading, onClick: handleManualReconciliation },
+              ]}
+            />
+          )}
         </div>
       </div>
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col overflow-hidden bg-white min-h-0">
-        {/* Branch / Route filters for customer list — only before selecting a customer */}
-        {!selectedCustomer && (
-        <div className={`shrink-0 bg-neutral-100/80 border-b border-neutral-200 px-3 py-1.5 flex flex-col sm:flex-row sm:items-center gap-2 sm:flex-wrap ${mobilePageShellClass}`}>
-          <span className="text-xs font-medium text-neutral-600 shrink-0">Filter:</span>
-          <select
-            value={filterDraft.branchId}
-            onChange={(e) => {
-              const v = e.target.value
-              setFilterDraft(prev => ({ ...prev, branchId: v, routeId: '' }))
-              setLedgerBranchId(v)
-              setLedgerRouteId('')
-            }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-11 sm:!min-h-9 !py-1.5 !text-sm`}
-            title="Filter customers by branch"
-          >
-            <option value="">All branches</option>
-            {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-          <select
-            value={filterDraft.routeId}
-            onChange={(e) => {
-              const v = e.target.value
-              setFilterDraft(prev => ({ ...prev, routeId: v }))
-              setLedgerRouteId(v)
-            }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-11 sm:!min-h-9 !py-1.5 !text-sm`}
-            title="Filter customers by route"
-          >
-            <option value="">All routes</option>
-            {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
-              <option key={r.id} value={r.id}>{r.name}</option>
-            ))}
-          </select>
-        </div>
-        )}
-        {/* TOP BAR - Customer Search */}
-        <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
-          <div className="relative flex-1 min-w-0 max-w-full lg:max-w-xl">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+        {/* Customer picker (UX-L01/L03): search first; branch and route filters sit behind a Filters
+            toggle that shows how many are active, so they never push the list down by default. */}
+        <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1 lg:max-w-xl">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
             <input
               ref={searchInputRef}
-              type="text"
+              type="search"
               placeholder="Search customer (F2)"
               value={searchTerm}
               onFocus={() => {
@@ -2259,30 +2178,80 @@ const CustomerLedgerPage = () => {
                   clearSelectedCustomer({ keepSearch: true })
                 }
               }}
-              className={`w-full pl-9 pr-3 !min-h-11 sm:!min-h-9 !py-1.5 !text-sm ${mobileFormFieldClass}`}
+              aria-label="Search customer"
+              className="input w-full pl-9"
             />
+            </div>
+            {!selectedCustomer && (
+              <button
+                type="button"
+                onClick={() => setPickerFiltersOpen((v) => !v)}
+                className="btn btn-secondary shrink-0"
+                aria-expanded={pickerFiltersOpen || activePickerFilters > 0}
+                aria-controls="ledger-picker-filters"
+                aria-label={activePickerFilters > 0 ? `Filters, ${activePickerFilters} active` : 'Filters'}
+              >
+                <Filter className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Filters</span>
+                {activePickerFilters > 0 && (
+                  <span className="rounded-full bg-primary-600 px-1.5 text-micro font-semibold leading-5 text-white">{activePickerFilters}</span>
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowAddCustomerModal(true)
+              }}
+              className="btn btn-secondary shrink-0"
+              aria-label="Add customer"
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              <span className="hidden sm:inline">Add customer</span>
+            </button>
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setShowAddCustomerModal(true)
-            }}
-            className="btn btn-secondary whitespace-nowrap"
-            title="Add new customer"
-            aria-label="Add customer"
-            type="button"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            <span>Add customer</span>
-          </button>
-          {selectedCustomer && (
-            <div className="px-2.5 py-1.5 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold min-w-0 truncate max-w-full" title={selectedCustomer.name}>
-              {selectedCustomer.name}
+          {!selectedCustomer && (pickerFiltersOpen || activePickerFilters > 0) && (
+            <div id="ledger-picker-filters" className="mt-2 grid grid-cols-2 gap-2 sm:flex sm:max-w-lg">
+              <select
+                value={filterDraft.branchId}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setFilterDraft(prev => ({ ...prev, branchId: v, routeId: '' }))
+                  setLedgerBranchId(v)
+                  setLedgerRouteId('')
+                }}
+                className="input min-w-0 text-sm sm:flex-1"
+                aria-label="Filter customers by branch"
+              >
+                <option value="">All branches</option>
+                {availableBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </select>
+              <select
+                value={filterDraft.routeId}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setFilterDraft(prev => ({ ...prev, routeId: v }))
+                  setLedgerRouteId(v)
+                }}
+                className="input min-w-0 text-sm sm:flex-1"
+                aria-label="Filter customers by route"
+              >
+                <option value="">All routes</option>
+                {(filterDraft.branchId ? availableRoutes.filter(r => r.branchId === parseInt(filterDraft.branchId, 10)) : availableRoutes).map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
             </div>
           )}
-          <div className="text-xs text-neutral-600 whitespace-nowrap ml-auto">
-            {searchDropdownLoading ? 'Searching…' : (searchTerm || !selectedCustomer ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
+          <div className="mt-1 flex items-center gap-2 text-xs text-neutral-600">
+            {selectedCustomer && (
+              <span className="min-w-0 truncate font-semibold text-primary-800" title={selectedCustomer.name}>{selectedCustomer.name}</span>
+            )}
+            <span className="ml-auto whitespace-nowrap" aria-live="polite">
+              {searchDropdownLoading ? 'Searching…' : (searchTerm || !selectedCustomer ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
+            </span>
           </div>
         </div>
 

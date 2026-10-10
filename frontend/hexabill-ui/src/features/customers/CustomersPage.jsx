@@ -20,7 +20,6 @@ import {
   UserPlus,
   DollarSign,
   Inbox,
-  ArrowLeft,
   MessageCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
@@ -667,11 +666,24 @@ const CustomersPage = () => {
     return new Date(c.lastActivity) < thirtyDaysAgo
   }).length
 
+  // One action list for desktop and phone rows (UX-C03). Ledger first; Collect only when owed.
+  const customerMenuItems = (customer) => {
+    const waUrl = buildWhatsAppUrlFromPhone(customer.phone)
+    return [
+      { label: 'Open ledger', icon: Eye, onClick: () => handleViewLedger(customer) },
+      { label: 'Collect payment', icon: DollarSign, hidden: !((Number(customer.balance) || 0) > 0), onClick: () => openCollectInLedger(customer) },
+      { label: 'WhatsApp', icon: MessageCircle, hidden: !waUrl, onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer') },
+      { label: 'Send statement', icon: Mail, onClick: () => handleSendStatement(customer.id) },
+      { label: 'Edit customer', icon: Edit, onClick: () => handleEdit(customer) },
+      { label: 'Delete customer', icon: Trash2, danger: true, separatorBefore: true, hidden: !isAdminOrOwner(user), onClick: () => handleDelete(customer.id) },
+    ]
+  }
+
   const tabs = [
-    { id: 'all', label: 'All Customers', icon: Users },
+    { id: 'all', label: 'All', icon: Users },
     { id: 'active', label: 'Active', icon: UserPlus },
     { id: 'outstanding', label: 'Outstanding', icon: AlertCircle, badge: customers.filter(c => (c.balance || 0) > 0).length },
-    { id: 'overdue', label: 'Overdue (30d+)', icon: AlertCircle, badge: overdueCount || null },
+    { id: 'overdue', label: 'Overdue 30d+', icon: AlertCircle, badge: overdueCount || null },
     { id: 'inactive', label: 'Inactive', icon: Users }
   ]
 
@@ -682,115 +694,60 @@ const CustomersPage = () => {
 
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
-      {/* Modern Header - Responsive */}
-      <div className="bg-white border-b border-neutral-200 shadow-sm -mx-6 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center justify-center p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-              <h1 className="text-xl sm:text-xl font-semibold text-neutral-900">Customers</h1>
-              <p className="text-xs sm:text-sm text-neutral-600 mt-1">Manage customer information and accounts</p>
-            </div>
+      {/* Header (UX-C01/C02): title + count, one primary action, secondary actions in a menu;
+          search and sort on one row; tabs carry the counts. No negative margins. */}
+      <div className="rounded-lg border border-surface-border bg-white">
+        <div className="flex items-center gap-2 px-3 pt-3 sm:px-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-semibold text-text-primary">Customers</h1>
+            <p className="text-xs text-neutral-500 tabular-nums" aria-live="polite">
+              {totalCount} {totalCount === 1 ? 'customer' : 'customers'}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => fetchCustomers()}
-              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] border border-neutral-300 rounded-lg shadow-sm text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
-            >
-              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-              Refresh
-            </button>
-            <button
-              onClick={openAddCustomer}
-              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg shadow-sm text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 min-h-[44px]"
-            >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
-              Add Customer
-            </button>
-          </div>
-        </div>
-
-        {/* Modern Tabs */}
-        <div className="mt-4">
-          <TabNavigation
-            tabs={tabs}
-            activeTab={activeTab}
-            onChange={setActiveTab}
+          <button type="button" onClick={openAddCustomer} className="btn btn-primary shrink-0" aria-label="Add customer">
+            <Plus className="h-4 w-4" aria-hidden />
+            <span>Add<span className="hidden sm:inline"> customer</span></span>
+          </button>
+          <OverflowMenu
+            label="More customer actions"
+            items={[
+              { label: 'Refresh', icon: RefreshCw, onClick: () => fetchCustomers() },
+              { label: 'Export CSV', icon: Download, onClick: handleExportCustomers },
+              { label: 'Import CSV', icon: Inbox, onClick: () => document.getElementById('csv-import-input')?.click() },
+              { label: 'Overdue invoices report', icon: AlertCircle, separatorBefore: true, hidden: !canAccessPage(user, 'reports'), onClick: () => navigate('/reports?tab=overdue') },
+            ]}
           />
-          {canAccessPage(user, 'reports') && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Link
-                to="/reports?tab=overdue"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800 bg-warning-bg border border-warning-border rounded-lg px-3 py-2 min-h-11 hover:bg-amber-100 transition-colors"
-              >
-                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
-                Overdue invoices (Reports)
-              </Link>
-            </div>
-          )}
+          <input id="csv-import-input" type="file" accept=".csv" className="hidden" onChange={handleImportCustomers} />
         </div>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-              <input
-                type="text"
-                placeholder="Search customers..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={handleExportCustomers}
-              className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </button>
-            <button
-              onClick={() => document.getElementById('csv-import-input')?.click()}
-              className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
-            >
-              <Inbox className="h-4 w-4 mr-2" />
-              Import
-            </button>
+        <div className="flex gap-2 px-3 pt-3 sm:px-4">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
             <input
-              id="csv-import-input"
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleImportCustomers}
+              type="search"
+              placeholder="Search customers"
+              aria-label="Search customers"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="input w-full pl-9"
             />
-            <div className="w-full sm:w-48 min-w-[10rem]">
-              <label htmlFor="customer-sort" className="block text-xs text-neutral-500 mb-1">Sort</label>
-              <select
-                id="customer-sort"
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value)
-                  setCurrentPage(1)
-                }}
-                className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white min-h-11"
-              >
-                <option value="name">Name (A–Z)</option>
-                <option value="balanceDesc">Balance (highest first)</option>
-                <option value="activityDesc">Last activity (recent first)</option>
-              </select>
-            </div>
           </div>
+          <label htmlFor="customer-sort" className="sr-only">Sort customers</label>
+          <select
+            id="customer-sort"
+            value={sortBy}
+            onChange={(e) => {
+              setSortBy(e.target.value)
+              setCurrentPage(1)
+            }}
+            className="input w-[6.75rem] shrink-0 sm:w-44"
+          >
+            <option value="name">A–Z</option>
+            <option value="balanceDesc">Balance</option>
+            <option value="activityDesc">Recent</option>
+          </select>
+        </div>
+        <div className="mt-2 px-1 sm:px-2">
+          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
         </div>
       </div>
 
@@ -845,7 +802,7 @@ const CustomersPage = () => {
               ) : (
                 filteredCustomers.map((customer) => (
                   <tr key={customer.id} className="hover:bg-neutral-50">
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <td className="px-4 py-2.5 whitespace-nowrap">
                       <div>
                         <button
                           onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
@@ -856,87 +813,32 @@ const CustomersPage = () => {
                         <div className="text-xs text-neutral-500">{customer.trn}</div>
                       </div>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                    <td className="px-4 py-2.5 whitespace-nowrap">
                       <div className="text-xs sm:text-sm text-neutral-900">{customer.phone}</div>
                       <div className="text-xs text-neutral-500">{customer.email}</div>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
                       {formatCurrency(customer.creditLimit)}
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className={`text-xs sm:text-sm font-medium ${customer.balance < 0 ? 'text-success' : customer.balance > 0 ? 'text-error' : 'text-neutral-600'
-                        }`}>
+                    <td className="px-4 py-2.5 whitespace-nowrap">
+                      <span className={`text-sm tabular-nums ${customer.balance > 0 ? 'font-semibold text-text-primary' : 'text-neutral-500'}`}>
                         {formatBalance(customer.balance)}
                       </span>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
                       {customer.lastOrderDate || 'No orders'}
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <button
-                          onClick={() => handleViewLedger(customer)}
-                          className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                          title="View Ledger"
-                          aria-label="View Ledger"
-                        >
-                          <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline text-xs font-medium">View</span>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-xs sm:text-sm font-medium">
+                      <div className="flex items-center justify-end gap-1">
+                        <button type="button" onClick={() => handleViewLedger(customer)} className="btn btn-ghost btn-sm">
+                          Ledger
                         </button>
                         {(Number(customer.balance) || 0) > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => openCollectInLedger(customer)}
-                            className="bg-warning-bg text-amber-800 hover:text-white hover:bg-warning border border-amber-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                            title="Collect payment in customer ledger"
-                            aria-label="Collect payment"
-                          >
-                            <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span className="hidden sm:inline text-xs font-medium">Collect</span>
+                          <button type="button" onClick={() => openCollectInLedger(customer)} className="btn btn-secondary btn-sm">
+                            Collect
                           </button>
                         )}
-                        {buildWhatsAppUrlFromPhone(customer.phone) ? (
-                          <a
-                            href={buildWhatsAppUrlFromPhone(customer.phone)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-success-bg text-success-fg hover:text-white hover:bg-success border border-emerald-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                            title="WhatsApp"
-                            aria-label="WhatsApp"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span className="hidden sm:inline text-xs font-medium">WhatsApp</span>
-                          </a>
-                        ) : null}
-                        <button
-                          onClick={() => handleSendStatement(customer.id)}
-                          className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                          title="Send Statement"
-                          aria-label="Send Statement"
-                        >
-                          <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline text-xs font-medium">Statement</span>
-                        </button>
-                        <button
-                          onClick={() => handleEdit(customer)}
-                          className="bg-indigo-50 text-indigo-600 hover:text-white hover:bg-indigo-600 border border-indigo-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                          title="Edit Customer"
-                          aria-label="Edit Customer"
-                        >
-                          <Edit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          <span className="hidden sm:inline text-xs font-medium">Edit</span>
-                        </button>
-                        {isAdminOrOwner(user) && (
-                          <button
-                            onClick={() => handleDelete(customer.id)}
-                            className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
-                            title="Delete Customer (Admin Only)"
-                            aria-label="Delete Customer (Admin Only)"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            <span className="hidden sm:inline text-xs font-medium">Delete</span>
-                          </button>
-                        )}
+                        <OverflowMenu label={`More actions for ${customer.name}`} items={customerMenuItems(customer)} />
                       </div>
                     </td>
                   </tr>
@@ -950,10 +852,9 @@ const CustomersPage = () => {
         <ul className="md:hidden divide-y divide-surface-border">
           {filteredCustomers.map((customer) => {
             const balance = Number(customer.balance) || 0
-            const waUrl = buildWhatsAppUrlFromPhone(customer.phone)
             return (
-              <li key={customer.id} className="p-3">
-                <div className="flex items-start justify-between gap-3">
+              <li key={customer.id} className="px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
@@ -963,32 +864,12 @@ const CustomersPage = () => {
                     {customer.phone && <span className="block text-xs text-neutral-500 tabular-nums">{customer.phone}</span>}
                   </button>
                   <div className="shrink-0 text-end">
-                    <span className={`block text-sm font-semibold tabular-nums ${balance < 0 ? 'text-success-fg' : balance > 0 ? 'text-error-fg' : 'text-neutral-600'}`}>
+                    <span className={`block text-sm tabular-nums ${balance > 0 ? 'font-semibold text-text-primary' : 'text-neutral-500'}`}>
                       {formatBalance(customer.balance)}
                     </span>
-                    <span className="block text-xs text-neutral-500">Limit {formatCurrency(customer.creditLimit)}</span>
+                    {balance > 0 && <span className="block text-xs text-neutral-500">Outstanding</span>}
                   </div>
-                </div>
-                <div className="mt-2 flex items-center gap-2">
-                  {balance > 0 && (
-                    <button type="button" onClick={() => openCollectInLedger(customer)} className="btn btn-primary flex-1">
-                      <DollarSign className="h-4 w-4" aria-hidden />
-                      Collect
-                    </button>
-                  )}
-                  <button type="button" onClick={() => handleViewLedger(customer)} className="btn btn-secondary flex-1">
-                    <Eye className="h-4 w-4" aria-hidden />
-                    Ledger
-                  </button>
-                  <OverflowMenu
-                    label={`More actions for ${customer.name}`}
-                    items={[
-                      { label: 'WhatsApp', icon: MessageCircle, hidden: !waUrl, onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer') },
-                      { label: 'Send statement', icon: Mail, onClick: () => handleSendStatement(customer.id) },
-                      { label: 'Edit customer', icon: Edit, onClick: () => handleEdit(customer) },
-                      { label: 'Delete customer', icon: Trash2, danger: true, separatorBefore: true, hidden: user?.role?.toLowerCase() !== 'admin', onClick: () => handleDelete(customer.id) },
-                    ]}
-                  />
+                  <OverflowMenu label={`Actions for ${customer.name}`} items={customerMenuItems(customer)} />
                 </div>
               </li>
             )

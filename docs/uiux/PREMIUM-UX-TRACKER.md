@@ -52,10 +52,14 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 
 | ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
 |---|---|---|---|---|---|
-| UX-C01 | P1 | At 360px, five stacked sections come before the list: back + subtitle, Refresh + Add, 5 tabs, an "Overdue invoices (Reports)" banner, and a search card with Export/Import/Sort. The first customer starts at 69% of the viewport, so only about 1.5 records are visible above the bottom nav. | `audit-customers-m360.png`; screenshots 2026-10-04 161712–161812 | Compact header: title + count, one full-width search, a filter/sort button that opens a sheet, and Add as the primary action. Move Export/Import and Refresh into an overflow menu. The overdue banner becomes a tab badge. | TODO |
-| UX-C02 | P2 | Header content is clipped at the left screen edge at 360px (back arrow, Refresh button, overdue banner), caused by the `-mx-6` header wrapper. | `audit-customers-m360.png` | Use the page's own padding; no negative margins. | TODO |
-| UX-C03 | P2 | Desktop rows carry 5 differently coloured action buttons (View, WhatsApp, Statement, Edit, Delete) that compete with the data. | `audit-customers-d1440.png` | One primary row action (open ledger) plus a menu for the rest. Use neutral styling; only Delete is destructive. | TODO |
-| UX-C04 | P3 | At 1440px, the first record is at 47% of the screen. The overdue banner and search card add about 170px. | `audit-customers-d1440.png` | Put search, filters and actions on one toolbar row. | TODO |
+| UX-C01 | P1 | At 360px, five stacked sections come before the list: back + subtitle, Refresh + Add, 5 tabs, an "Overdue invoices (Reports)" banner, and a search card with Export/Import/Sort. The first customer starts at 69% of the viewport, so only about 1.5 records are visible above the bottom nav. | `audit-customers-m360.png`; screenshots 2026-10-04 161712–161812 | Compact header: title + count, one full-width search, a filter/sort button that opens a sheet, and Add as the primary action. Move Export/Import and Refresh into an overflow menu. The overdue banner becomes a tab badge. | PASS |
+| ↳ fix | | One header card: title + count, **Add** (primary), "…" (Refresh, Export, Import, Overdue report); search + sort on one row; tabs with counts. **After @360: first record 552→247 px (69%→31%), controls above 13→9, row 116→60 px.** @1440 first record 419→267 px. | `e2e/ux-audit.spec.js`, `workflows.spec.js` UX-1 (create customer via UI, persisted via API) | | |
+| UX-C02 | P2 | Header content is clipped at the left screen edge at 360px (back arrow, Refresh button, overdue banner), caused by the `-mx-6` header wrapper. | `audit-customers-m360.png` | Use the page's own padding; no negative margins. | PASS |
+| ↳ fix | | Removed `-mx-6` header and dashboard back arrow; nothing touches the screen edge @360. | `audit-customers-m360.png` | | |
+| UX-C03 | P2 | Desktop rows carry 5 differently coloured action buttons (View, WhatsApp, Statement, Edit, Delete) that compete with the data. | `audit-customers-d1440.png` | One primary row action (open ledger) plus a menu for the rest. Use neutral styling; only Delete is destructive. | PASS |
+| ↳ fix | | Desktop rows: Ledger (ghost) + Collect only when owed + "…"; phone rows: name/phone, neutral balance + "Outstanding", one "…". One `customerMenuItems` for both. Fixed: phone menu hid **Delete** from owners (checked `role === "admin"`); now `isAdminOrOwner` like desktop. Positive balances no longer red. | `audit-customers-d1440.png`, e2e | | |
+| UX-C04 | P3 | At 1440px, the first record is at 47% of the screen. The overdue banner and search card add about 170px. | `audit-customers-d1440.png` | Put search, filters and actions on one toolbar row. | PASS |
+| ↳ fix | | Overdue banner moved into the "…" menu / tab badge; desktop rows 69→59 px. | e2e | | |
 
 ### Billing History (`/billing-history`, `features/sales/BillingHistoryPage.jsx`)
 
@@ -83,9 +87,11 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 
 | ID | Sev | Issue | Evidence | Proposed solution | Status |
 |---|---|---|---|---|---|
-| UX-L01 | P2 | Before search the screen shows a back/export/refresh bar, a "Filter:" label and two full-width selects (branch, route). Search sits at about 36% of the screen, and the first customer at 50% (360px). | `audit-ledger-m360.png`; screenshots 2026-09-27 114519, 2026-10-04 161310 | Search first. Branch and route move into a filter chip/sheet that shows the active filters. | TODO |
+| UX-L01 | P2 | Before search the screen shows a back/export/refresh bar, a "Filter:" label and two full-width selects (branch, route). Search sits at about 36% of the screen, and the first customer at 50% (360px). | `audit-ledger-m360.png`; screenshots 2026-09-27 114519, 2026-10-04 161310 | Search first. Branch and route move into a filter chip/sheet that shows the active filters. | PASS |
+| ↳ fix | | Picker: search first; branch/route behind **Filters** (active-count badge, stays open while a filter is set); compact Add. Top bar shown on phones only for an open customer; record actions in one "…" (Export/print PDF, Refresh, Reconcile). Removed a dead **Settings** button (no handler), a duplicate Print (same PDF export) and the date/user text. **After @360: first customer 399→149 px (50%→19%), controls 7→3.** | `e2e/ux-audit.spec.js` | | |
 | UX-L02 | P1 | After selecting a customer at 360px: 7 colour-coded icon-only buttons (aria-labelled, but no visible text), then dates, branch, route and staff selects. The Ledger tab starts at 72% of the viewport, leaving less than 100px for transactions above the bottom nav. | `audit-ledger-selected-m360.png`; jsonl `/ledger#selected`; screenshots 161319–161335 | Customer summary bar: name, balance, then Collect as primary and More. Move filters into a sheet. Transactions get the main scroll area. | TODO |
-| UX-L03 | P2 | The branch select is clipped ("Main Wareho…") and there is a full-width "Add customer" button inside the ledger picker. | same | Size fields to their content; Add customer moves to quick-create. | TODO |
+| UX-L03 | P2 | The branch select is clipped ("Main Wareho…") and there is a full-width "Add customer" button inside the ledger picker. | same | Size fields to their content; Add customer moves to quick-create. | IN_PROGRESS |
+| ↳ note | | Add customer now compact (icon on phone). Selected-customer filter row still clips "Main Wareho…" — handled with UX-L02. | | | |
 
 ### Shared shell and navigation
 
