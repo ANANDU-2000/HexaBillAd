@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Eye, RefreshCw, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Search, Eye, RefreshCw, Plus, Pencil, Trash2, Filter } from 'lucide-react'
 import { suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import { useAuth } from '../../hooks/useAuth'
@@ -65,6 +65,7 @@ const SuppliersPage = () => {
   const [loadError, setLoadError] = useState('')
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '')
   const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [showDeactivated, setShowDeactivated] = useState(() => searchParams.get('inactive') === '1')
   const [page, setPage] = useState(() => Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1))
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -166,6 +167,7 @@ const SuppliersPage = () => {
   const pendingTotal = filteredSuppliers.reduce((sum, s) => sum + (s.netPayable || 0), 0)
   const withBalance = filteredSuppliers.filter(s => (s.netPayable || 0) > 0).length
   const filtersOn = Boolean(searchTerm.trim() || overdueOnly || showDeactivated)
+  const activeFilterCount = [overdueOnly, showDeactivated].filter(Boolean).length
 
   const listQuery = () => {
     const p = new URLSearchParams()
@@ -427,10 +429,10 @@ const SuppliersPage = () => {
 
   return (
     <div className={`w-full px-3 sm:px-4 py-3 pb-24 lg:pb-4 ${mobilePageShellClass}`}>
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-neutral-900">Suppliers</h1>
-          <p className="text-xs text-neutral-500 mt-0.5">Find a supplier, see what you owe, and open the ledger.</p>
+          <p className="hidden text-xs text-neutral-500 md:block">Find a supplier and open its ledger.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button type="button" onClick={loadSuppliers} disabled={loading} className={iconBtn} title="Refresh" aria-label="Refresh suppliers">
@@ -441,9 +443,13 @@ const SuppliersPage = () => {
           </button>
         </div>
       </div>
+      {/* Phones: helper text sits full width on its own line, so it does not wrap beside the buttons (SU-05). */}
+      <p className="mb-3 mt-1 text-xs text-neutral-500 md:hidden">Find a supplier and open its ledger.</p>
 
-      <div className="mb-3 flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center md:gap-x-4">
-        <div className="relative w-full md:w-80">
+      {/* Phones: search and one Filters button share a row; the checkboxes open below it (SU-06).
+          From md: everything sits on one row. */}
+      <div className="mb-3 flex items-center gap-2 md:flex-wrap md:gap-x-4">
+        <div className="relative min-w-0 flex-1 md:w-80 md:flex-none">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400 pointer-events-none" />
           <input
             type="search"
@@ -454,7 +460,24 @@ const SuppliersPage = () => {
             aria-label="Search suppliers"
           />
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        {/* Icon-only trigger, 44px: the search keeps the row. The count sits on the icon and in the name. */}
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(v => !v)}
+          aria-expanded={filtersOpen}
+          aria-controls="supplier-filters"
+          aria-label={activeFilterCount > 0 ? `Filters, ${activeFilterCount} active` : 'Filters'}
+          className="btn btn-secondary relative h-11 w-11 shrink-0 px-0 md:hidden"
+        >
+          <Filter className="h-4 w-4" aria-hidden />
+          {activeFilterCount > 0 && (
+            <span aria-hidden className="absolute -right-1 -top-1 flex min-w-[1rem] items-center justify-center rounded-full bg-primary-600 px-1 text-micro font-semibold text-white">{activeFilterCount}</span>
+          )}
+        </button>
+        <div
+          id="supplier-filters"
+          className={`${filtersOpen ? 'flex' : 'hidden'} w-full flex-wrap items-center gap-x-4 gap-y-1 md:flex md:w-auto`}
+        >
           <label className="inline-flex items-center gap-2 h-11 sm:h-9 text-sm text-neutral-700">
             <input type="checkbox" checked={overdueOnly} onChange={e => setOverdueOnly(e.target.checked)} className="rounded border-neutral-300" />
             Overdue

@@ -27,8 +27,11 @@ test('search uses the full width and each card has one actions menu', async ({ p
   const search = page.getByLabel('Search suppliers')
   await expect(search).toBeVisible()
   const box = await search.boundingBox()
-  // At 360px the search was about 210px and clipped its placeholder. It is now the full content width.
-  expect(box.width).toBeGreaterThan(info.project.use.viewport.width < 768 ? 280 : 300)
+  // At 360px the search was about 210px and clipped its placeholder. Phones: the search takes the row beside a 44px
+  // Filters button (row = padding + 44px trigger + gaps, so ~260px at 360). Desktop: a bounded search, not the full toolbar.
+  if (info.project.use.viewport.width < 768) expect(box.width).toBeGreaterThan(250)
+  else expect(box.width).toBeGreaterThanOrEqual(240)
+  if (info.project.use.viewport.width >= 768) expect(box.width).toBeLessThanOrEqual(420)
 
   // Phones: one menu per card. Desktop uses the same menu (owners see it at every width).
   const menu = page.getByRole('button', { name: `More actions for ${SEEDED}` })
@@ -40,7 +43,7 @@ test('search uses the full width and each card has one actions menu', async ({ p
   await expect(page.getByRole('menuitem', { name: 'Edit supplier' })).toHaveCount(0)
 })
 
-test('add supplier -> persisted -> deactivate -> hidden by default', async ({ page }) => {
+test('add supplier -> persisted -> deactivate -> hidden by default', async ({ page }, info) => {
   const name = `UX Supplier ${Date.now()}`
   await openSuppliers(page)
 
@@ -66,7 +69,29 @@ test('add supplier -> persisted -> deactivate -> hidden by default', async ({ pa
   // Deactivated suppliers are hidden until "Include deactivated" is on.
   await page.reload({ waitUntil: 'networkidle' })
   await expect(card(page, name)).toHaveCount(0)
+  // Phones keep the checkboxes behind the Filters button.
+  if (info.project.use.viewport.width < 768) await page.getByRole('button', { name: /^Filters/ }).click()
   await page.getByLabel('Include deactivated').check()
   await expect(card(page, name)).toBeVisible()
   await expect(card(page, name)).toContainText('Deactivated')
+})
+
+// SU-05/SU-06: on a 360x800 phone the first supplier record should start high on the screen.
+test('the first supplier record starts in the upper part of a 360x800 phone', async ({ page }, info) => {
+  test.skip(info.project.name !== 'm360', 'Measured on the 360px phone only')
+  await openSuppliers(page)
+  const box = await card(page, SEEDED).boundingBox()
+  const viewportHeight = page.viewportSize().height
+  // Target from PREMIUM-UX-TRACKER (SU-06): first record in the top 35% of the viewport.
+  expect(box.y / viewportHeight).toBeLessThanOrEqual(0.35)
+})
+
+// SU-08: the ledger header shows the whole supplier name. It wraps; it must not be clipped.
+test('the supplier ledger header shows the full supplier name', async ({ page }) => {
+  await signIn(page, SLUG)
+  await page.goto(`${feOrigin(SLUG)}/suppliers/${encodeURIComponent(SEEDED)}`, { waitUntil: 'networkidle' })
+  const heading = page.getByRole('heading', { level: 1 })
+  await expect(heading).toHaveText(SEEDED)
+  const clipped = await heading.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
+  expect(clipped).toBe(false)
 })

@@ -421,7 +421,8 @@ const SupplierDetailPage = () => {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl font-semibold text-neutral-900 truncate">{supplierName}</h1>
+          {/* Wraps instead of truncating: a clipped supplier name hides which account is open (SU-08). */}
+          <h1 className="break-words text-lg sm:text-xl font-semibold text-neutral-900">{supplierName}</h1>
           <p className="text-xs text-neutral-500">Supplier ledger</p>
         </div>
         {supplierInfo?.isActive === false && <span className="text-micro px-1.5 py-0.5 rounded bg-warning-bg text-amber-800 border border-warning-border">Deactivated</span>}

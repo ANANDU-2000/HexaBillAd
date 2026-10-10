@@ -157,3 +157,16 @@ STOP HERE — do not begin next phase automatically.
 - **Next task:** SU-05 and SU-06 (Suppliers header and first record), SU-08 (supplier name in the ledger header), then Suppliers edit and statement checks.
 - **STOP HERE** — one checkpoint per session.
 
+### 2026-10-11 — Checkpoint 9: Suppliers header, filter row and ledger title (SU-05, SU-06, SU-08 PASS)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `SuppliersPage.jsx` (helper line placed by breakpoint; phone search row with an icon-only Filters trigger; checkboxes in a panel on phones, inline from md). `SupplierDetailPage.jsx` (ledger title wraps). `e2e/suppliers-list.spec.js` (first-record and search-width checks; the add-and-deactivate test opens Filters on phones).
+- **Measured:** 360px first record 295→257 px (37%→32%), controls 5→4, rows 108 px. 1440px first record 249→238 px (28%→26%).
+- **Commands and results:**
+  - `npx playwright test e2e/suppliers-list.spec.js` at m360 (4 passed), t768 (3 passed, 1 mobile-only skipped), d1440 (3 passed, 1 skipped).
+  - `npx playwright test e2e/ux-audit.spec.js -g "audit /suppliers"` at m360 and d1440: measured above.
+  - `npx vite build` → exit 0. ESLint on the changed files: 0 errors (pre-existing warnings only).
+- **Review:** 360px screenshot checked by eye: one search row with the filter icon, helper line readable, cards with one "…" action, no clipping.
+- **Not done:** SU-07 (edit fields, statement export). Ledger tabs (Ledger, Bills, Paid) not exercised.
+- **Next task:** Suppliers ledger tabs and supplier edit/statement checks (SU-07), then the next module in the coverage matrix.
+- **Continue:** next approved local task, per AGENTS.md CONTINUOUS LOCAL EXECUTION POLICY.
+
