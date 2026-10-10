@@ -265,9 +265,9 @@ const HelpPage = () => {
           </div>
         )}
 
-        {/* Quick tips — how to get the most out of HexaBill */}
+        {/* Quick tips — daily-work tips */}
         <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">How to get the most out of HexaBill</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Tips for everyday work</h2>
           <ul className="text-gray-600 text-sm space-y-1.5 list-disc list-inside">
             <li>Complete company & VAT in Settings first, then add branches and routes.</li>
             <li>Use the <strong>Get started</strong> checklist on the Dashboard to track setup progress.</li>

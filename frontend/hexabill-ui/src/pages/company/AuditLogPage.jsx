@@ -277,7 +277,7 @@ const AuditLogPage = () => {
       <div className="p-3 sm:p-6 w-full max-w-full space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className={`${mobilePageTitleClass} flex items-center gap-2`}>
+            <h1 className={`${mobilePageTitleClass} md:flex items-center gap-2`}>
               <History className="h-5 w-5 text-primary-600 shrink-0" aria-hidden="true" />
               Activity log
             </h1>

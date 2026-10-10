@@ -365,7 +365,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
           </p>
         )}
       </main>
-      <p className="mt-6 text-center text-xs text-neutral-500 dark:text-[#8B9BB4]">© {new Date().getFullYear()} HexaBill</p>
+      <p className="mt-6 text-center text-xs text-neutral-500 dark:text-[#8B9BB4]">{resolvedName ? <>Powered by HexaBill</> : <>© {new Date().getFullYear()} HexaBill</>}</p>
     </div>
   )
 }

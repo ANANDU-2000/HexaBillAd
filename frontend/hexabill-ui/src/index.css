@@ -19,7 +19,7 @@
   }
 
   html {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.5;
   }
@@ -42,6 +42,22 @@
   @media (max-width: 768px) {
     * {
       min-width: 0;
+    }
+  }
+
+  /* Arabic copy and RTL screens: Arabic-first stack, looser line height for diacritics. */
+  [dir='rtl'] body,
+  :lang(ar) {
+    font-family: var(--font-arabic);
+    line-height: 1.65;
+  }
+
+  /* Mobile: 16px form text so iOS does not zoom on focus. */
+  @media (max-width: 767px) {
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea {
+      font-size: 16px !important;
     }
   }
 
@@ -81,9 +97,9 @@
     overflow-x: hidden;
   }
 
-  /* Card: white + border only, NO shadow (design lock; blue & white only) */
+  /* Card: white + neutral hairline, no shadow. Colour is reserved for actions and status. */
   .card {
-    @apply bg-white border border-primary-200 rounded-xl p-4;
+    @apply bg-white border border-surface-border rounded-lg p-4;
   }
 
   @media (min-width: 769px) {
@@ -102,7 +118,7 @@
   }
 
   .btn-secondary {
-    @apply bg-white border border-primary-200 text-primary-700 hover:bg-primary-50 focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
+    @apply bg-white border border-neutral-300 text-text-primary hover:bg-neutral-50 focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
   }
 
   .btn-danger {
@@ -142,22 +158,55 @@
     @apply w-full border-collapse;
   }
 
+  .table {
+    font-variant-numeric: tabular-nums;
+  }
+
   .table th {
-    @apply bg-primary-50 px-4 py-3 text-left text-xs font-medium text-primary-700 uppercase tracking-wider border-b border-primary-200;
+    @apply bg-neutral-50 px-4 py-2.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide border-b border-surface-border;
   }
 
   .table td {
-    @apply px-4 py-3 text-sm text-primary-800 border-b border-primary-200;
+    @apply px-4 py-2.5 text-sm text-text-primary border-b border-surface-border;
   }
 
   .table tbody tr:hover {
-    @apply bg-primary-50/50;
+    @apply bg-neutral-50;
+  }
+
+  /* Money and quantities: fixed-width digits, right aligned in columns. */
+  .num,
+  .amount {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer utilities {
   .focus-ring {
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+
+  /* Sidebar: one thin scrollbar, no arrow buttons, only visible on hover. */
+  .sidebar-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .sidebar-scroll:hover,
+  .sidebar-scroll:focus-within {
+    scrollbar-color: rgb(255 255 255 / 0.25) transparent;
+  }
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar-scroll::-webkit-scrollbar-button {
+    display: none;
+  }
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 9999px;
+  }
+  .sidebar-scroll:hover::-webkit-scrollbar-thumb {
+    background: rgb(255 255 255 / 0.25);
   }
 
   .scrollbar-hide::-webkit-scrollbar {

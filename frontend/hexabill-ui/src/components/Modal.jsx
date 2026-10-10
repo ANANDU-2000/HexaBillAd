@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useId } from 'react'
 import { X, Maximize2, Minimize2 } from 'lucide-react'
 
 const Modal = ({
@@ -14,6 +14,7 @@ const Modal = ({
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const modalRef = useRef(null)
+  const titleId = useId()
 
   // Phase 10.4: Auto full-screen on mobile when allowFullscreen
   useEffect(() => {
@@ -104,27 +105,28 @@ const Modal = ({
 
   return (
     <div className={`fixed inset-0 z-50 ${isFullscreen ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-      <div className={`flex ${isFullscreen ? 'h-full' : 'min-h-screen items-center justify-center p-4'}`}>
+      {/* Phones: bottom sheet anchored above the safe area. md+: centered dialog. */}
+      <div className={`flex ${isFullscreen ? 'h-full' : 'min-h-full items-end justify-center md:min-h-screen md:items-center md:p-4'}`}>
         {/* Overlay */}
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+          className="fixed inset-0 bg-neutral-900/50 transition-opacity"
           onClick={closeOnOverlayClick ? onClose : undefined}
         />
 
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`relative bg-white rounded-xl border border-neutral-200 shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} max-h-[calc(100dvh-2rem)]`}`}
+          className={`relative bg-white rounded-xl border border-neutral-200 shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} max-h-[92dvh] rounded-b-none safe-area-bottom md:max-h-[calc(100dvh-2rem)] md:rounded-b-xl`}`}
           onKeyDown={handleKeyDown}
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? 'modal-title' : undefined}
+          aria-labelledby={title ? titleId : undefined}
         >
           {/* Header */}
           {(title || showCloseButton || allowFullscreen) && (
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 shrink-0">
               {title && (
-                <h3 id="modal-title" className="text-lg font-semibold text-gray-900">
+                <h3 id={titleId} className="text-lg font-semibold text-text-primary">
                   {title}
                 </h3>
               )}
@@ -142,9 +144,9 @@ const Modal = ({
                   <button
                     onClick={onClose}
                     className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    aria-label="Close modal"
+                    aria-label="Close"
                   >
-                    <X className="h-6 w-6" />
+                    <X className="h-5 w-5" />
                   </button>
                 )}
               </div>

@@ -2,7 +2,8 @@
  * Shared mobile layout: compact headers, icon tab bars (no vertical tab scroll), ledger cards.
  */
 
-export const mobilePageTitleClass = 'text-xl font-semibold text-neutral-900 leading-tight'
+// The mobile top bar already shows the page title, so in-page titles start at md.
+export const mobilePageTitleClass = 'hidden md:block text-xl font-semibold text-neutral-900 leading-tight'
 export const mobilePageSubtitleClass = 'text-xs text-neutral-500 hidden sm:block'
 export const mobileLedgerCardClass =
   'rounded-lg border border-neutral-200 bg-white p-3 text-sm leading-snug'

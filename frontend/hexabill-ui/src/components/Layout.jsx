@@ -7,16 +7,19 @@ import {
   LogOut,
   User,
   ChevronDown,
-  Printer,
   ChevronLeft,
   ChevronRight,
   Menu,
   HelpCircle,
-  MoreHorizontal
+  Keyboard,
+  MoreHorizontal,
+  Search
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
 import Logo from './Logo'
+import CommandPalette from './CommandPalette'
+import ShortcutHelp from './ShortcutHelp'
 import AlertNotifications from './AlertNotifications'
 import CloudHostingCostReminder from './CloudHostingCostReminder'
 import { SubscriptionGraceBanner } from './SubscriptionGraceBanner'
@@ -48,6 +51,8 @@ const Layout = () => {
   )
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [navTip, setNavTip] = useState(null)
   const closeMore = useCallback(() => setMoreOpen(false), [])
   const [backendUnavailable, setBackendUnavailable] = useState(() => !connectionManager.isConnected)
@@ -93,11 +98,35 @@ const Layout = () => {
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (!(e.ctrlKey || e.metaKey) || e.key !== '\\') return
       const tag = e.target?.tagName?.toLowerCase()
-      if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target?.isContentEditable) return
-      e.preventDefault()
-      toggleSidebar()
+      const typing = tag === 'input' || tag === 'textarea' || tag === 'select' || !!e.target?.isContentEditable
+      const mod = e.ctrlKey || e.metaKey
+      if (e.key === 'Escape') setShowProfileDropdown(false)
+      // Ctrl/Cmd+K works from inside fields too: it is the app's search, not text editing.
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((open) => !open)
+        return
+      }
+      if (typing || e.altKey) return
+      if (mod && e.key === '\\') {
+        e.preventDefault()
+        toggleSidebar()
+        return
+      }
+      if (mod) return
+      if (e.key === '?') {
+        e.preventDefault()
+        setShortcutsOpen(true)
+      } else if (e.key === '/') {
+        const main = document.getElementById('main-content')
+        const field = main?.querySelector('input[type="search"], input[placeholder*="Search" i], input[placeholder*="search" i]')
+        if (field && field.offsetParent !== null) {
+          e.preventDefault()
+          field.focus()
+          field.select?.()
+        }
+      }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -309,48 +338,42 @@ const Layout = () => {
         </div>
       )}
 
-      {/* Mobile Header — hidden on /pos for full-viewport cashier mode (use BottomNav) */}
+      {/* Mobile top bar — one title per screen; hidden on /pos for full-viewport cashier mode (use BottomNav) */}
       {!isPosRoute && (
-      <div className={`md:hidden fixed left-0 right-0 bg-primary-900 text-white border-b border-primary-800 z-50 safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
-        <div className="flex items-center justify-between px-2 py-2">
+      <header className={`md:hidden fixed left-0 right-0 z-50 border-b border-surface-border bg-white text-text-primary safe-area-top ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+        <div className="flex h-14 items-center gap-1 px-1">
           <button
             type="button"
             onClick={() => setMoreOpen(true)}
-            className="p-2 rounded-lg hover:bg-primary-800 active:bg-primary-700 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Menu"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100 active:bg-neutral-200 touch-manipulation"
+            aria-label="Open menu"
             aria-expanded={moreOpen}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" strokeWidth={1.75} />
           </button>
-          <div className="flex-1 flex justify-center min-w-0 px-2">
-            <span className="text-sm font-semibold truncate">{mobilePageTitle || companyName}</span>
-          </div>
+          <p className="min-w-0 flex-1 truncate px-1 text-base font-semibold">{mobilePageTitle || companyName}</p>
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              navigate('/profile')
-            }}
-            className="p-2 rounded-lg hover:bg-primary-800 active:bg-primary-700 transition-colors touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-            aria-label="Profile"
+            onClick={() => setPaletteOpen(true)}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100 active:bg-neutral-200 touch-manipulation"
+            aria-label="Search"
           >
-            <User className="h-5 w-5" />
+            <Search className="h-5 w-5" strokeWidth={1.75} />
           </button>
         </div>
-      </div>
+      </header>
       )}
 
       {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
       <div className={`hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
-            {labelsVisible ? (
-              <span className="truncate pl-2 text-sm font-semibold text-white" title={companyName}>
-                {companyName}
-              </span>
-            ) : (
+            <Link to="/dashboard" className={`flex min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
-            )}
+              {labelsVisible && (
+                <span className="truncate text-sm font-semibold leading-tight text-white">{companyName}</span>
+              )}
+            </Link>
             <button
               type="button"
               onClick={toggleSidebar}
@@ -361,7 +384,7 @@ const Layout = () => {
               {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
             </button>
           </div>
-          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 py-2" aria-label="Main">
+          <nav className="sidebar-scroll min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 py-2" aria-label="Main">
             {navGroups.map((group, groupIndex) => {
               const open = groupIsOpen(group)
               return (
@@ -386,7 +409,7 @@ const Layout = () => {
                       <Link
                         key={item.id}
                         to={item.href}
-                        className={`group/nav relative flex min-h-9 items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${
+                        className={`group/nav relative flex items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-9 px-2' : 'min-h-11 justify-center px-2'} ${
                           active ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
                         }`}
                         aria-label={item.label}
@@ -396,7 +419,7 @@ const Layout = () => {
                         onFocus={(event) => showNavTip(event, item.label)}
                         onBlur={() => setNavTip(null)}
                       >
-                        <Icon className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+                        <Icon className={`shrink-0 ${labelsVisible ? 'mr-2.5 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
                         {labelsVisible && <span className="truncate">{item.label}</span>}
                       </Link>
                     )
@@ -406,7 +429,7 @@ const Layout = () => {
             })}
             <Link
               to="/more"
-              className={`group/nav relative flex min-h-9 items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${
+              className={`group/nav relative flex items-center rounded-md text-sm font-medium transition-colors duration-150 motion-reduce:transition-none ${labelsVisible ? 'min-h-9 px-2' : 'min-h-11 justify-center px-2'} ${
                 location.pathname === '/more' ? 'bg-primary-600 text-white' : 'text-primary-200 hover:bg-primary-800 hover:text-white'
               }`}
               aria-label="More"
@@ -416,50 +439,10 @@ const Layout = () => {
               onFocus={(event) => showNavTip(event, 'More')}
               onBlur={() => setNavTip(null)}
             >
-              <MoreHorizontal className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
+              <MoreHorizontal className={`shrink-0 ${labelsVisible ? 'mr-2.5 h-[18px] w-[18px]' : 'h-5 w-5'}`} strokeWidth={1.75} aria-hidden />
               {labelsVisible && <span className="truncate">More</span>}
             </Link>
           </nav>
-          <div className="shrink-0 space-y-1 border-t border-primary-800 p-2">
-            <Link
-              to="/profile"
-              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'} ${location.pathname === '/profile' ? 'bg-primary-800 text-white' : ''}`}
-              aria-label="My profile"
-              aria-current={location.pathname === '/profile' ? 'page' : undefined}
-              onMouseEnter={(event) => showNavTip(event, user?.name || 'Profile')}
-              onMouseLeave={() => setNavTip(null)}
-              onFocus={(event) => showNavTip(event, user?.name || 'Profile')}
-              onBlur={() => setNavTip(null)}
-            >
-              <User className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
-              {labelsVisible && <span className="truncate">{user?.name || 'Profile'}</span>}
-            </Link>
-            <Link
-              to="/help"
-              className={`group/nav relative flex min-h-11 items-center rounded-md text-sm text-primary-200 transition-colors duration-150 hover:bg-primary-800 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
-              aria-label="Help"
-              onMouseEnter={(event) => showNavTip(event, 'Help')}
-              onMouseLeave={() => setNavTip(null)}
-              onFocus={(event) => showNavTip(event, 'Help')}
-              onBlur={() => setNavTip(null)}
-            >
-              <HelpCircle className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
-              {labelsVisible && <span className="truncate">Help</span>}
-            </Link>
-            <button
-              type="button"
-              onClick={logout}
-              className={`group/nav relative flex min-h-11 w-full items-center rounded-md text-sm text-red-200 transition-colors duration-150 hover:bg-red-950/40 hover:text-white min-h-[44px] ${labelsVisible ? 'px-2' : 'justify-center px-2'}`}
-              aria-label="Log out"
-              onMouseEnter={(event) => showNavTip(event, 'Log out')}
-              onMouseLeave={() => setNavTip(null)}
-              onFocus={(event) => showNavTip(event, 'Log out')}
-              onBlur={() => setNavTip(null)}
-            >
-              <LogOut className={`h-4 w-4 shrink-0 ${labelsVisible ? 'mr-2' : ''}`} aria-hidden />
-              {labelsVisible && <span>Log out</span>}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -472,91 +455,80 @@ const Layout = () => {
         )}
         <SubscriptionGraceBanner />
         <CloudHostingCostReminder />
-        {/* Top Header Bar — fully hidden on /pos for full-viewport cashier mode */}
+        {/* Desktop/tablet top bar — search, alerts, one account menu. Pages own their heading; tenant identity lives in the sidebar only. */}
         {!isPosRoute && (
-        <div className={`fixed right-0 z-30 hidden h-16 border-b border-primary-800 bg-primary-900 text-white transition-all duration-150 motion-reduce:transition-none md:block md:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
-          <div className="flex items-center justify-between px-4 py-3">
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <Logo size="default" showText={false} className="flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-base font-semibold text-white">{companyName}</p>
-                {mobilePageTitle && (
-                  <p className="text-xs text-primary-200 truncate">{mobilePageTitle}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center space-x-1.5 flex-shrink-0">
+        <header className={`fixed right-0 z-30 hidden h-16 border-b border-surface-border bg-white text-text-primary transition-all duration-150 motion-reduce:transition-none md:block md:left-20 ${isSidebarCollapsed ? 'lg:left-20' : 'lg:left-60'} ${userIsSystemAdmin && selectedTenantId ? 'top-10' : 'top-0'}`}>
+          <div className="flex h-full items-center gap-3 px-4 lg:px-6">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex min-h-[40px] w-full max-w-md items-center gap-2 rounded-md border border-surface-border bg-neutral-50 px-3 text-sm text-neutral-500 transition-colors hover:border-neutral-300 hover:bg-white"
+              aria-label="Search (Ctrl+K)"
+            >
+              <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
+              <span className="flex-1 truncate text-left">Search pages, customers, products…</span>
+              <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-[11px] text-neutral-500 lg:block">Ctrl K</kbd>
+            </button>
+            <div className="ml-auto flex shrink-0 items-center gap-1 text-neutral-600">
               {isAdminOrOwner(user) && <AlertNotifications />}
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="p-2 hover:bg-primary-800 rounded-md transition flex items-center justify-center min-h-[44px] min-w-[44px]"
-                title="Print this page"
-                aria-label="Print current page"
-              >
-                <Printer className="h-5 w-5" />
-              </button>
-              <div className="relative ml-2" ref={profileDropdownRef}>
+              <div className="relative" ref={profileDropdownRef}>
                 <button
+                  type="button"
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center space-x-2 px-3 py-1.5 hover:bg-primary-800 rounded-lg transition min-h-[44px]"
-                  aria-label="User profile menu"
+                  className="flex min-h-[44px] items-center gap-2 rounded-md px-2 transition-colors hover:bg-neutral-100"
+                  aria-label="Account menu"
+                  aria-haspopup="menu"
                   aria-expanded={showProfileDropdown}
                 >
-                  <div className="hidden md:block text-right">
-                    <p className="text-xs font-medium text-white">{user?.name || 'User'}</p>
-                    <p className="text-xs text-primary-200">{user?.role || 'Staff'}</p>
-                  </div>
-                  <div className="h-8 w-8 rounded-full bg-neutral-700 flex items-center justify-center">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <ChevronDown className="h-4 w-4" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-50 text-sm font-semibold text-primary-700" aria-hidden>
+                    {(user?.name || 'U').charAt(0).toUpperCase()}
+                  </span>
+                  <span className="hidden text-left leading-tight xl:block">
+                    <span className="block max-w-[10rem] truncate text-sm font-medium text-text-primary">{user?.name || 'User'}</span>
+                    <span className="block text-xs text-neutral-500">{user?.role || 'Staff'}</span>
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-neutral-400" aria-hidden />
                 </button>
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-md border border-primary-200 py-1 z-50">
-                    <div className="px-4 py-3 border-b border-primary-200">
-                      <p className="text-sm font-medium text-primary-800">{user?.name}</p>
-                      <p className="text-xs text-primary-600">{user?.role}</p>
+                  <div role="menu" className="absolute right-0 z-50 mt-2 w-60 rounded-lg border border-surface-border bg-white py-1 shadow-lg">
+                    <div className="border-b border-surface-border px-4 py-3">
+                      <p className="truncate text-sm font-medium text-text-primary">{user?.name}</p>
+                      <p className="text-xs text-neutral-500">{user?.role}</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        navigate('/profile')
-                        setShowProfileDropdown(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-primary-700 hover:bg-primary-50 flex items-center"
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      My Profile
-                    </button>
-                    {isAdminOrOwner(user) && (
+                    {[
+                      { label: 'My profile', icon: User, onClick: () => navigate('/profile') },
+                      ...(isAdminOrOwner(user) ? [{ label: 'Settings', icon: Settings, onClick: () => navigate('/settings') }] : []),
+                      { label: 'Help & support', icon: HelpCircle, onClick: () => navigate('/help') },
+                      { label: 'Keyboard shortcuts', icon: Keyboard, onClick: () => setShortcutsOpen(true), hint: '?' },
+                    ].map(({ label, icon: ItemIcon, onClick, hint }) => (
                       <button
-                        onClick={() => {
-                          navigate('/settings')
-                          setShowProfileDropdown(false)
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-primary-700 hover:bg-primary-50 flex items-center"
+                        key={label}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { setShowProfileDropdown(false); onClick() }}
+                        className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-text-primary hover:bg-neutral-50"
                       >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
+                        <ItemIcon className="h-4 w-4 text-neutral-500" strokeWidth={1.75} aria-hidden />
+                        <span className="flex-1">{label}</span>
+                        {hint && <kbd className="rounded border border-surface-border px-1 font-sans text-[11px] text-neutral-500">{hint}</kbd>}
                       </button>
-                    )}
-                    <div className="border-t border-primary-200 my-1" />
+                    ))}
+                    <div className="my-1 border-t border-surface-border" />
                     <button
-                      onClick={() => {
-                        logout()
-                        setShowProfileDropdown(false)
-                      }}
-                      className="w-full px-4 py-2 text-left text-sm text-error hover:bg-error/10 flex items-center"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setShowProfileDropdown(false); logout() }}
+                      className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-error hover:bg-red-50"
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Logout
+                      <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                      Log out
                     </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </div>
+        </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
         <main id="main-content" className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] pb-[4.75rem] md:pb-6 ${userIsSystemAdmin && selectedTenantId
@@ -575,6 +547,8 @@ const Layout = () => {
           <MoreMenuSheet open={moreOpen} onClose={closeMore} />
         </div>
       </div>
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      <ShortcutHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {navTip && (
         <div
           role="tooltip"

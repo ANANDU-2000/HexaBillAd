@@ -7,7 +7,6 @@ import {
   Home,
   ShoppingCart,
   History,
-  FileText,
   BookOpen,
   Truck,
   Receipt,
@@ -34,6 +33,15 @@ import {
   Database,
   Inbox,
   Wallet,
+  FileSpreadsheet,
+  Quote,
+  FileSignature,
+  Percent,
+  Calculator,
+  PackageCheck,
+  CalendarCheck,
+  ScrollText,
+  Boxes,
 } from 'lucide-react'
 import { canAccessPage, canManagePayments, isAdminOrOwner, isOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'
@@ -70,7 +78,7 @@ export const MORE_MENU_GROUPS = [
       { id: 'pos', label: 'POS', href: '/pos', icon: ShoppingCart, pageId: 'pos', sidebar: true, bottomNav: true },
       // Not a BottomNav tab — keep in mobile More (bottomNav would hide it incorrectly).
       { id: 'billing-history', label: 'Billing History', href: '/billing-history', icon: History, pageId: 'pos', sidebar: true },
-      { id: 'sales-ledger', label: 'Sales Ledger', href: '/sales-ledger', icon: FileText, pageId: 'reports', sidebar: true },
+      { id: 'sales-ledger', label: 'Sales Ledger', href: '/sales-ledger', icon: FileSpreadsheet, pageId: 'reports', sidebar: true },
       { id: 'ledger', label: 'Customer Ledger', href: '/ledger', icon: BookOpen, pageId: 'invoices', sidebar: true, bottomNav: true },
       { id: 'payments', label: 'Payments', href: '/payments', icon: Wallet, managePaymentsOnly: true, sidebar: true },
       { id: 'purchases', label: 'Purchases', href: '/purchases', icon: Truck, adminOnly: true, sidebar: true },
@@ -95,11 +103,11 @@ export const MORE_MENU_GROUPS = [
     label: 'Operations',
     sidebar: true,
     items: [
-      { id: 'stock-adjustments', label: 'Stock Adjustments', href: '/stock-adjustments', icon: ClipboardList, pageId: 'products', sidebar: true },
-      { id: 'quotations', label: 'Quotations', href: '/quotations', icon: FileText, sidebar: true },
-      { id: 'delivery-notes', label: 'Delivery Notes', href: '/delivery-notes', icon: Package, sidebar: true },
+      { id: 'stock-adjustments', label: 'Stock Adjustments', href: '/stock-adjustments', icon: Boxes, pageId: 'products', sidebar: true },
+      { id: 'quotations', label: 'Quotations', href: '/quotations', icon: Quote, sidebar: true },
+      { id: 'delivery-notes', label: 'Delivery Notes', href: '/delivery-notes', icon: PackageCheck, sidebar: true },
       { id: 'returns-create', label: 'Returns', href: '/returns/create', icon: RotateCcw, sidebar: true },
-      { id: 'agreements', label: 'Agreements', href: '/agreements', icon: FileText },
+      { id: 'agreements', label: 'Agreements', href: '/agreements', icon: FileSignature },
       { id: 'salary-certificates', label: 'Salary Certificates', href: '/salary-certificates', icon: BadgeDollarSign },
     ],
   },
@@ -109,9 +117,9 @@ export const MORE_MENU_GROUPS = [
     sidebar: true,
     items: [
       { id: 'reports', label: 'Reports', href: '/reports', icon: BarChart3, pageId: 'reports', sidebar: true },
-      { id: 'daily-close', label: 'Daily close', href: '/daily-close', icon: Wallet, adminOnly: true, sidebar: true },
-      { id: 'vat-return', label: 'VAT Return', href: '/vat-return', icon: FileText, adminOnly: true, sidebar: true },
-      { id: 'worksheet', label: 'Worksheet', href: '/worksheet', icon: FileText, ownerOnly: true, sidebar: true },
+      { id: 'daily-close', label: 'Daily close', href: '/daily-close', icon: CalendarCheck, adminOnly: true, sidebar: true },
+      { id: 'vat-return', label: 'VAT Return', href: '/vat-return', icon: Percent, adminOnly: true, sidebar: true },
+      { id: 'worksheet', label: 'Worksheet', href: '/worksheet', icon: Calculator, ownerOnly: true, sidebar: true },
     ],
   },
   {
@@ -121,7 +129,7 @@ export const MORE_MENU_GROUPS = [
     items: [
       { id: 'users', label: 'Users', href: '/users', icon: Shield, pageId: 'users', adminOnly: true, sidebar: true },
       { id: 'settings', label: 'Settings', href: '/settings', icon: Settings, pageId: 'settings', adminOnly: true, sidebar: true },
-      { id: 'audit', label: 'Activity Log', href: '/audit', icon: ClipboardList, adminOnly: true, sidebar: true },
+      { id: 'audit', label: 'Activity Log', href: '/audit', icon: ScrollText, adminOnly: true, sidebar: true },
       { id: 'backup', label: 'Backup & Restore', href: '/backup', icon: Archive, pageId: 'backup', adminOnly: true, sidebar: true },
     ],
   },

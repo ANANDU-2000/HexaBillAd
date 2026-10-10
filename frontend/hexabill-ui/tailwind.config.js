@@ -6,13 +6,15 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        // Arabic glyphs fall through to Noto Sans Arabic (bilingual names, RTL screens).
+        sans: ['Inter', '"Noto Sans Arabic"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
       },
       fontSize: {
+        // Mirrors --h*-size in src/styles/tokens.css.
         'display': ['28px', { lineHeight: '1.2' }],
-        'h1': ['28px', { lineHeight: '1.25' }],
-        'h2': ['22px', { lineHeight: '1.3' }],
-        'h3': ['18px', { lineHeight: '1.35' }],
+        'h1': ['24px', { lineHeight: '1.2' }],
+        'h2': ['20px', { lineHeight: '1.25' }],
+        'h3': ['16px', { lineHeight: '1.3' }],
         'body': ['14px', { lineHeight: '1.5' }],
         'caption': ['12px', { lineHeight: '1.4' }],
       },
@@ -24,7 +26,7 @@ module.exports = {
         'grid-6': '48px',
       },
       maxWidth: {
-        'content': '1400px',
+        'content': '1280px', // --content-max
       },
       colors: {
         primary: {

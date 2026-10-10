@@ -58,7 +58,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
   return (
     <>
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white border-t border-[#E5E7EB] safe-area-bottom shadow-[0_-1px_6px_rgba(15,23,42,0.06)]"
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-[#E5E7EB] safe-area-bottom shadow-[0_-1px_6px_rgba(15,23,42,0.06)]"
         aria-label="Main navigation"
       >
         <div className="relative max-w-screen-sm mx-auto px-1 pt-2 pb-1">
@@ -89,7 +89,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                       aria-hidden
                     />
                     <span
-                      className={`text-[10px] leading-tight text-center truncate max-w-full ${
+                      className={`text-[11px] leading-tight text-center truncate max-w-full ${
                         moreActive ? 'font-semibold text-primary-700' : 'font-medium'
                       }`}
                     >
@@ -102,31 +102,26 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                 )
               }
 
-              // Raised POS FAB
+              // Primary "Sale" tab: filled pill, flush with the bar so it never covers labels or page content.
               if (item.center) {
+                const posActive = isNavActive(pathname, item.href)
                 return (
                   <Link
                     key={item.id}
                     to={item.href}
                     onClick={onCloseMore}
-                    className="flex flex-col items-center justify-end min-w-0 min-h-[44px] pb-0.5"
-                    aria-current={isNavActive(pathname, item.href) ? 'page' : undefined}
+                    className="flex min-h-[44px] min-w-0 flex-col items-center justify-end gap-0.5 pb-1"
+                    aria-current={posActive ? 'page' : undefined}
                     aria-label="New sale"
                   >
                     <span
-                      className={`flex items-center justify-center w-12 h-12 -mt-5 rounded-full shadow-md transition-colors duration-150 ${
-                        isNavActive(pathname, item.href)
-                          ? 'bg-primary-700 text-white ring-2 ring-primary-200'
-                          : 'bg-primary-600 text-white active:bg-primary-700'
+                      className={`flex h-8 w-12 items-center justify-center rounded-full transition-colors duration-150 ${
+                        posActive ? 'bg-primary-700 text-white' : 'bg-primary-600 text-white active:bg-primary-700'
                       }`}
                     >
-                      <Icon className="w-6 h-6 shrink-0" strokeWidth={2.5} aria-hidden />
+                      <Icon className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
                     </span>
-                    <span
-                      className={`mt-1 text-[10px] leading-tight font-medium truncate max-w-full px-0.5 ${
-                        isNavActive(pathname, item.href) ? 'text-primary-700 font-semibold' : 'text-[#475569]'
-                      }`}
-                    >
+                    <span className={`max-w-full truncate px-0.5 text-[11px] leading-tight ${posActive ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'}`}>
                       {item.name}
                     </span>
                   </Link>
@@ -148,7 +143,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                     aria-hidden
                   />
                   <span
-                    className={`text-[10px] leading-tight text-center truncate max-w-full ${
+                    className={`text-[11px] leading-tight text-center truncate max-w-full ${
                       active ? 'font-semibold text-primary-700' : 'font-medium'
                     }`}
                   >

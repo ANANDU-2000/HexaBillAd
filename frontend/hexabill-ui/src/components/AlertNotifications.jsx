@@ -21,7 +21,7 @@ const useBrowserNotifications = (unreadCount) => {
     const show = () => {
       try {
         if (Notification.permission === 'granted') {
-          new Notification('HexaBill Alerts', {
+          new Notification(`${document.title || 'Alerts'} — alerts`, {
             body: unreadCount === 1 ? 'You have 1 unread notification.' : `You have ${unreadCount} unread notifications.`,
             icon: '/favicon.ico'
           })
@@ -215,11 +215,11 @@ const AlertNotifications = () => {
       {/* Bell Icon with Badge */}
       <button
         onClick={() => setShowPanel(!showPanel)}
-        className="relative p-2 hover:bg-blue-700 rounded-lg transition flex items-center justify-center"
+        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md transition-colors hover:bg-neutral-100"
         title="Alerts & notifications — low stock, overdue invoices, balance issues"
         aria-label="View alerts and notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-5 w-5" strokeWidth={1.75} />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -237,7 +237,7 @@ const AlertNotifications = () => {
           />
           
           {/* Panel */}
-          <div className="absolute right-0 mt-2 w-96 max-w-sm bg-white rounded-lg shadow-lg z-50 max-h-[600px] flex flex-col">
+          <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg border border-surface-border shadow-lg z-50 max-h-[min(600px,80vh)] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
