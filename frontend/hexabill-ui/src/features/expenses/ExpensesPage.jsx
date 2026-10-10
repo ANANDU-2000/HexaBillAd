@@ -1044,7 +1044,7 @@ const ExpensesPage = () => {
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700 md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary-600 px-3 text-sm font-medium text-white hover:bg-primary-700 md:flex-none"
             >
               <Plus className="h-4 w-4" aria-hidden />
               Add expense
@@ -1476,9 +1476,9 @@ const ExpensesPage = () => {
 
         {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
         {!showAggregated && expenseView === 'ledger' && (
-          <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-lg border border-neutral-200 overflow-hidden shadow-sm">
-            <div className="shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
-              <h3 className="text-sm font-bold text-neutral-900">Expenses Ledger</h3>
+          <div className="flex flex-col flex-1 min-h-0 mt-3 md:mt-4 md:bg-white md:rounded-lg md:border md:border-neutral-200 overflow-hidden md:shadow-sm">
+            <div className="hidden md:block shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
+              <h3 className="text-sm font-bold text-neutral-900">Expenses ledger</h3>
             </div>
 
             {/* Desktop Table */}
@@ -1672,27 +1672,40 @@ const ExpensesPage = () => {
               </div>
             </div>
 
-            {/* Mobile Cards */}
-            <div className="md:hidden space-y-3 p-3">
+            {/* Mobile rows (UX-E02/E03): one compact row per expense; category and note on the left,
+                amount and date on the right, status as text. Actions: edit and delete as icons with
+                labels; approve/reject only for pending items. Amounts stay neutral. */}
+            <div className="md:hidden">
               {displayExpenses.length === 0 ? (
                 loading && !listError ? (
-                  <div aria-busy="true" aria-label="Loading expenses">
+                  <div aria-busy="true" aria-label="Loading expenses" className="p-3">
                     <ListSkeleton count={5} />
                   </div>
                 ) : (
-                <div className="text-center py-8 text-neutral-500">
-                  {user && !isAdminOrOwner(user)
-                    ? 'No expenses in your assigned branch(es) for this period.'
-                    : listError
-                    ? 'Unable to load expenses.'
-                    : 'No expenses in this period.'}
+                <div className="px-4 py-10 text-center">
+                  <p className="text-sm font-medium text-neutral-700">
+                    {user && !isAdminOrOwner(user)
+                      ? 'No expenses in your branches for this period.'
+                      : listError
+                      ? 'Expenses could not be loaded.'
+                      : 'No expenses for this period.'}
+                  </p>
+                  {!listError && isAdminOrOwner(user) && (
+                    <button type="button" onClick={() => setShowAddModal(true)} className="btn btn-primary mt-3">
+                      <Plus className="h-4 w-4" aria-hidden />
+                      Add expense
+                    </button>
+                  )}
                 </div>
                 )
               ) : (
-                displayExpenses.map((expense) => (
-                  <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-start gap-2 flex-1">
+                <ul className="divide-y divide-surface-border">
+                  {displayExpenses.map((expense) => {
+                    const total = expense.totalAmount != null ? expense.totalAmount : (expense.vatAmount != null ? (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) : expense.amount)
+                    const label = expense.categoryName || 'Uncategorized'
+                    const where = [expense.branchName && `Branch: ${expense.branchName}`, expense.routeName && `Route: ${expense.routeName}`].filter(Boolean).join(' · ')
+                    return (
+                      <li key={expense.id} className="flex items-start gap-2 px-3 py-2.5">
                         <input
                           type="checkbox"
                           checked={selectedExpenseIds.includes(expense.id)}
@@ -1700,103 +1713,62 @@ const ExpensesPage = () => {
                             if (e.target.checked) setSelectedExpenseIds(prev => [...prev, expense.id])
                             else setSelectedExpenseIds(prev => prev.filter(id => id !== expense.id))
                           }}
-                          className="mt-1 rounded border-neutral-300"
+                          aria-label={`Select ${label} expense`}
+                          className="mt-1 h-5 w-5 shrink-0 rounded border-neutral-300"
                         />
-                        <div className="flex-1 min-w-0">
-                        <div className="flex items-center mb-1">
-                          <p className="text-sm font-semibold text-neutral-900">{expense.categoryName || 'Uncategorized'}</p>
-                        </div>
-                        <p className="text-xs text-neutral-500 mt-0.5">{expense.note || 'No description'}</p>
-                        {(expense.branchName || expense.routeName) && (
-                          <p className="text-xs text-primary-600 mt-1">
-                            {expense.branchName && `Branch: ${expense.branchName}`}
-                            {expense.branchName && expense.routeName && ' · '}
-                            {expense.routeName && `Route: ${expense.routeName}`}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-text-primary">
+                            {label}
+                            <span className="ml-2 text-xs font-normal text-neutral-500">{expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}</span>
                           </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {expense.status === 'Approved' && <CheckCircle className="h-3 w-3 text-green-500" />}
-                          {expense.status === 'Rejected' && <XCircle className="h-3 w-3 text-red-500" />}
-                          {expense.status === 'Pending' && <Clock className="h-3 w-3 text-yellow-500" />}
-                          <span className={`text-xs font-semibold ${
-                            expense.status === 'Approved' ? 'text-success-fg' :
-                            expense.status === 'Rejected' ? 'text-error-fg' :
-                            'text-yellow-700'
-                          }`}>
-                            {expense.status || 'Approved'}
-                          </span>
-                          {expense.date && (
-                            <span className="inline-flex px-1.5 py-0.5 text-micro font-semibold rounded bg-purple-100 text-purple-800">
-                              {getVatQuarter(expense.date).label}
+                          <p className="truncate text-xs text-neutral-600">{expense.note || 'No description'}</p>
+                          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-neutral-500">
+                            <span className={`font-medium ${
+                              expense.status === 'Rejected' ? 'text-error-fg' :
+                              expense.status === 'Pending' ? 'text-warning-fg' : 'text-success-fg'
+                            }`}>
+                              {expense.status || 'Approved'}
                             </span>
-                          )}
-                          {expense.attachmentUrl && (
-                            <button
-                              type="button"
-                              onClick={() => handleDownloadAttachment(expense)}
-                              className="text-primary-600 hover:text-primary-900"
-                              title="View receipt"
-                            >
-                              <FileText className="h-3 w-3" />
-                            </button>
-                          )}
+                            {where && <span className="truncate">{where}</span>}
+                            {expense.date && <span>{getVatQuarter(expense.date).label}</span>}
+                            {expense.attachmentUrl && (
+                              <button type="button" onClick={() => handleDownloadAttachment(expense)} className="inline-flex min-h-[32px] items-center gap-1 text-primary-700 hover:underline">
+                                <FileText className="h-3 w-3" aria-hidden />
+                                Receipt
+                              </button>
+                            )}
+                          </p>
                         </div>
+                        <div className="shrink-0 text-end">
+                          <p className="text-sm font-semibold tabular-nums text-text-primary">{formatCurrency(total)}</p>
+                          {expense.vatAmount != null && <p className="text-xs tabular-nums text-neutral-500">VAT {formatCurrency(expense.vatAmount)}</p>}
+                          <div className="mt-1 flex items-center justify-end">
+                            {isAdminOrOwner(user) && expense.status === 'Pending' && (
+                              <>
+                                <button type="button" onClick={() => handleApproveExpense(expense.id)} aria-label={`Approve ${label} expense`} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-success-fg hover:bg-success-bg">
+                                  <CheckCircle className="h-4 w-4" aria-hidden />
+                                </button>
+                                <button type="button" onClick={() => handleRejectExpense(expense.id)} aria-label={`Reject ${label} expense`} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-error-fg hover:bg-error-bg">
+                                  <XCircle className="h-4 w-4" aria-hidden />
+                                </button>
+                              </>
+                            )}
+                            {isAdminOrOwner(user) && (
+                              <>
+                                <button type="button" onClick={() => handleEdit(expense)} aria-label={`Edit ${label} expense`} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-neutral-600 hover:bg-neutral-100">
+                                  <Edit className="h-4 w-4" aria-hidden />
+                                </button>
+                                <button type="button" onClick={() => handleDelete(expense.id)} aria-label={`Delete ${label} expense`} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-neutral-500 hover:bg-error-bg hover:text-error-fg">
+                                  <Trash2 className="h-4 w-4" aria-hidden />
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="text-right ml-2">
-                        <p className="text-base font-bold text-error">{formatCurrency(expense.totalAmount != null ? expense.totalAmount : (expense.vatAmount != null ? (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) : expense.amount))}</p>
-                        {expense.vatAmount != null && <p className="text-xs text-neutral-500">VAT {formatCurrency(expense.vatAmount)}</p>}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-3 border-t border-neutral-200">
-                      <div className="flex items-center gap-3">
-                        <span>{expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isAdminOrOwner(user) && expense.status === 'Pending' && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleApproveExpense(expense.id)}
-                              className="text-success hover:text-green-900 p-1"
-                              title="Approve"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRejectExpense(expense.id)}
-                              className="text-error hover:text-red-900 p-1"
-                              title="Reject"
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                        {isAdminOrOwner(user) && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleEdit(expense)}
-                              className="text-indigo-600 hover:text-indigo-900 p-1"
-                              title="Edit expense"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDelete(expense.id)}
-                              className="text-error hover:text-red-900 p-1"
-                              title="Delete expense"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))
+                      </li>
+                    )
+                  })}
+                </ul>
               )}
             </div>
 
@@ -1841,7 +1813,8 @@ const ExpensesPage = () => {
         size="xl"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="max-h-[80vh] overflow-y-auto overscroll-contain">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
+          {/* One column on phones so no field is clipped at 360px (UX-E04). */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-sm font-medium text-neutral-700">
@@ -2009,7 +1982,8 @@ const ExpensesPage = () => {
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-neutral-200">
+          {/* Sticky footer: Save and Cancel stay reachable while the form scrolls on phones. */}
+          <div className="sticky bottom-0 -mx-4 mt-4 flex justify-end gap-2 border-t border-neutral-200 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-6 sm:px-6">
             <button
               type="button"
               onClick={() => {
@@ -2028,7 +2002,7 @@ const ExpensesPage = () => {
               className="px-4 py-2 bg-success text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center min-h-[44px]"
             >
               <Save className="h-4 w-4 mr-2" />
-              {uploadingAttachment ? 'Uploading...' : 'Add Expense'}
+              {uploadingAttachment ? 'Saving…' : 'Save expense'}
             </LoadingButton>
           </div>
         </form>
