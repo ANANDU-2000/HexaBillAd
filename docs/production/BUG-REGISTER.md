@@ -10,3 +10,5 @@ Open legacy items tracked in `docs/plan/PRODUCTION-ISSUE-REGISTER.md`: PS-003/00
 | B-006 | S2 | Dashboard | Month/custom-range dashboard did not show a new sale or expense for up to 5 minutes | report cache keyed only by tenant+range | (this commit) | FIXED (single-instance assumption documented) |
 | B-007 | S3 | Print/UI | Garbled characters "Â·" and "Â±" in expense register PDF, round-off error messages, dashboard and expenses page | mis-encoded literals in source | (this commit) | FIXED |
 | B-008 | S3 | Print | Invoices for unregistered customers printed an empty "CUSTOMER TRN : NO :" label | unconditional label | (this commit) | FIXED |
+| B-009 | S2 | Print/VAT | Customer & supplier statements (and legacy receipt header) printed sample/unverified TRNs as real TRNs (e.g. "TRN: 900000000000003") | raw COMPANY_TRN instead of DocumentTrnDisplay | (this commit) | FIXED |
+| B-010 | S3 | Print | Customer statement not monochrome (red/green amounts, grey header fills with gaps) | styling | (this commit) | FIXED |

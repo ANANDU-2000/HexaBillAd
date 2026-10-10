@@ -1382,7 +1382,8 @@ namespace HexaBill.Api.Modules.Customers
             var companyName = settings.GetValueOrDefault("COMPANY_NAME_EN") ?? "HexaBill";
                 // Never substitute another business's address; omit the line when the tenant has none.
                 var companyAddress = settings.GetValueOrDefault("COMPANY_ADDRESS") ?? "";
-            var companyTrn = settings.GetValueOrDefault("COMPANY_TRN") ?? "";
+            // Same rule as invoices: sample TRNs are labelled SAMPLE, malformed values are not printed.
+            var companyTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(settings.GetValueOrDefault("COMPANY_TRN")) ?? "";
             var currency = settings.GetValueOrDefault("CURRENCY") ?? "AED";
                 
                 // Validate required data
@@ -1772,7 +1773,7 @@ namespace HexaBill.Api.Modules.Customers
                                 row.ConstantItem(250).Column(col =>
                                 {
                                     col.Item().PaddingBottom(5).Border(1).BorderColor(Colors.Black)
-                                        .Background(Colors.Grey.Lighten4)
+                                        .Background(Colors.White)
                                         .Padding(8)
                                         .Column(summaryCol =>
                                         {
@@ -1848,88 +1849,88 @@ namespace HexaBill.Api.Modules.Customers
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Date")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Type")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Invoice No")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Mode")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Debit")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Credit")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Status")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                     header.Cell().Element(cell =>
                                     {
                                         cell.Border(1).BorderColor(Colors.Black)
                                             .Padding(4)
-                                            .Background(Colors.Grey.Darken1)
+                                            .Background(Colors.White)
                                             .Text("Balance")
                                             .FontSize(8)
                                             .Bold()
-                                            .FontColor(Colors.White)
+                                            .FontColor(Colors.Black)
                                             .AlignCenter();
                                     });
                                 });
@@ -1940,7 +1941,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text(fromDate.AddDays(-1).ToString("dd-MM-yyyy"))
                                         .FontSize(8)
                                         .Bold();
@@ -1949,7 +1950,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text("OPENING")
                                         .FontSize(8)
                                         .Bold();
@@ -1958,7 +1959,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text("")
                                         .FontSize(8);
                                 });
@@ -1966,7 +1967,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text("")
                                         .FontSize(8);
                                 });
@@ -1975,11 +1976,11 @@ namespace HexaBill.Api.Modules.Customers
                                     var openingDebit = openingBalance > 0 ? openingBalance.ToString("N2") : "-";
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text(openingDebit)
                                         .FontSize(8)
                                         .Bold()
-                                        .FontColor(openingBalance > 0 ? Colors.Red.Darken2 : Colors.Black)
+                                        .FontColor(openingBalance > 0 ? Colors.Black : Colors.Black)
                                         .AlignRight();
                                 });
                                 table.Cell().Element(cell =>
@@ -1987,18 +1988,18 @@ namespace HexaBill.Api.Modules.Customers
                                     var openingCredit = openingBalance < 0 ? Math.Abs(openingBalance).ToString("N2") : "-";
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text(openingCredit)
                                         .FontSize(8)
                                         .Bold()
-                                        .FontColor(openingBalance < 0 ? Colors.Green.Darken2 : Colors.Black)
+                                        .FontColor(openingBalance < 0 ? Colors.Black : Colors.Black)
                                         .AlignRight();
                                 });
                                 table.Cell().Element(cell =>
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text("")
                                         .FontSize(8);
                                 });
@@ -2015,17 +2016,17 @@ namespace HexaBill.Api.Modules.Customers
                                     else if (openingBalance > 0)
                                     {
                                         openingBalanceText = $"{openingBalance:N2} Dr";
-                                        balanceColor = Colors.Red.Darken2;
+                                        balanceColor = Colors.Black;
                                     }
                                     else
                                     {
                                         openingBalanceText = $"{Math.Abs(openingBalance):N2} Cr";
-                                        balanceColor = Colors.Green.Darken2;
+                                        balanceColor = Colors.Black;
                                     }
                                     
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten3)
+                                        .Background(Colors.White)
                                         .Text(openingBalanceText)
                                         .FontSize(8)
                                         .Bold()
@@ -2042,9 +2043,9 @@ namespace HexaBill.Api.Modules.Customers
                                     var bgColor = Colors.White;
                                     if (!string.IsNullOrEmpty(transaction.Status))
                                     {
-                                        bgColor = transaction.Status == "Paid" ? Colors.Green.Lighten4
+                                        bgColor = transaction.Status == "Paid" ? Colors.White
                                             : transaction.Status == "Partial" ? Colors.Yellow.Lighten4
-                                            : Colors.Red.Lighten4;
+                                            : Colors.White;
                                     }
 
                                     // Format date: date only (no time to save space)
@@ -2102,7 +2103,7 @@ namespace HexaBill.Api.Modules.Customers
                                             .Background(bgColor)
                                             .Text(debitText)
                                             .FontSize(8)
-                                            .FontColor(transaction.Debit > 0 ? Colors.Red.Darken2 : Colors.Black);
+                                            .FontColor(transaction.Debit > 0 ? Colors.Black : Colors.Black);
                                         
                                         if (transaction.Debit > 0)
                                         {
@@ -2120,7 +2121,7 @@ namespace HexaBill.Api.Modules.Customers
                                             .Background(bgColor)
                                             .Text(creditText)
                                             .FontSize(8)
-                                            .FontColor(transaction.Credit > 0 ? Colors.Green.Darken2 : Colors.Black);
+                                            .FontColor(transaction.Credit > 0 ? Colors.Black : Colors.Black);
                                         
                                         if (transaction.Credit > 0)
                                         {
@@ -2155,12 +2156,12 @@ namespace HexaBill.Api.Modules.Customers
                                         else if (runningBalance > 0)
                                         {
                                             balanceText = $"{runningBalance:N2} Dr";
-                                            balanceColor = Colors.Red.Darken2;
+                                            balanceColor = Colors.Black;
                                         }
                                         else
                                         {
                                             balanceText = $"{Math.Abs(runningBalance):N2} Cr";
-                                            balanceColor = Colors.Green.Darken2;
+                                            balanceColor = Colors.Black;
                                         }
                                         
                                         cell.Border(1).BorderColor(Colors.Black)
@@ -2182,7 +2183,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text(toDate.ToString("dd-MM-yyyy"))
                                         .FontSize(8)
                                         .Bold();
@@ -2191,7 +2192,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text("CLOSING")
                                         .FontSize(8)
                                         .Bold();
@@ -2200,7 +2201,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text("-")
                                         .FontSize(8)
                                         .AlignCenter();
@@ -2209,7 +2210,7 @@ namespace HexaBill.Api.Modules.Customers
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text("-")
                                         .FontSize(8)
                                         .AlignCenter();
@@ -2220,11 +2221,11 @@ namespace HexaBill.Api.Modules.Customers
                                     var closingDebit = finalClosingBalance > 0 ? finalClosingBalance.ToString("N2") : "-";
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text(closingDebit)
                                         .FontSize(8)
                                         .Bold()
-                                        .FontColor(finalClosingBalance > 0 ? Colors.Red.Darken2 : Colors.Black)
+                                        .FontColor(finalClosingBalance > 0 ? Colors.Black : Colors.Black)
                                         .AlignRight();
                                 });
                                 table.Cell().Element(cell =>
@@ -2233,18 +2234,18 @@ namespace HexaBill.Api.Modules.Customers
                                     var closingCredit = finalClosingBalance < 0 ? Math.Abs(finalClosingBalance).ToString("N2") : "-";
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text(closingCredit)
                                         .FontSize(8)
                                         .Bold()
-                                        .FontColor(finalClosingBalance < 0 ? Colors.Green.Darken2 : Colors.Black)
+                                        .FontColor(finalClosingBalance < 0 ? Colors.Black : Colors.Black)
                                         .AlignRight();
                                 });
                                 table.Cell().Element(cell =>
                                 {
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text("-")
                                         .FontSize(8)
                                         .AlignCenter();
@@ -2263,17 +2264,17 @@ namespace HexaBill.Api.Modules.Customers
                                     else if (finalClosingBalance > 0)
                                     {
                                         closingBalanceText = $"{finalClosingBalance:N2} Dr";
-                                        balanceColor = Colors.Red.Darken2;
+                                        balanceColor = Colors.Black;
                                     }
                                     else
                                     {
                                         closingBalanceText = $"{Math.Abs(finalClosingBalance):N2} Cr";
-                                        balanceColor = Colors.Green.Darken2;
+                                        balanceColor = Colors.Black;
                                     }
                                     
                                     cell.Border(1).BorderColor(Colors.Black)
                                         .Padding(3)
-                                        .Background(Colors.Grey.Lighten2)
+                                        .Background(Colors.White)
                                         .Text(closingBalanceText)
                                         .FontSize(9)
                                         .Bold()
@@ -2287,7 +2288,7 @@ namespace HexaBill.Api.Modules.Customers
                             {
                                 row.RelativeItem();
                                 row.ConstantItem(350).Border(1).BorderColor(Colors.Black)
-                                    .Background(Colors.Grey.Lighten4)
+                                    .Background(Colors.White)
                                     .Padding(10)
                                     .Column(col =>
                                 {
@@ -2305,7 +2306,7 @@ namespace HexaBill.Api.Modules.Customers
                                         sumRow.ConstantItem(100).Text($"{allTransactions.Sum(t => t.Debit):N2} {currency}")
                                                 .FontSize(10)
                                             .Bold()
-                                                .FontColor(Colors.Red.Darken2)
+                                                .FontColor(Colors.Black)
                                             .AlignRight();
                                     });
                                         col.Item().PaddingTop(5).Row(sumRow =>
@@ -2316,7 +2317,7 @@ namespace HexaBill.Api.Modules.Customers
                                         sumRow.ConstantItem(100).Text($"{allTransactions.Sum(t => t.Credit):N2} {currency}")
                                                 .FontSize(10)
                                             .Bold()
-                                                .FontColor(Colors.Green.Darken2)
+                                                .FontColor(Colors.Black)
                                             .AlignRight();
                                     });
                                         col.Item().PaddingTop(8).BorderTop(2).BorderColor(Colors.Black).Row(sumRow =>
@@ -2334,12 +2335,12 @@ namespace HexaBill.Api.Modules.Customers
                                             else if (netBalance > 0)
                                             {
                                                 netBalanceText = $"{netBalance:N2} {currency} Dr";
-                                                netColor = Colors.Red.Darken2;
+                                                netColor = Colors.Black;
                                             }
                                             else
                                             {
                                                 netBalanceText = $"{Math.Abs(netBalance):N2} {currency} Cr";
-                                                netColor = Colors.Green.Darken2;
+                                                netColor = Colors.Black;
                                             }
                                             
                                             sumRow.RelativeItem().Text("NET BALANCE:")

@@ -98,7 +98,8 @@ namespace HexaBill.Api.Modules.Sales
                         column.Item().AlignRight().Text(receipt.CompanyNameAr).FontFamily(_arabicFont);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyAddress)) column.Item().Text(receipt.CompanyAddress);
                     if (!string.IsNullOrWhiteSpace(receipt.CompanyPhone)) column.Item().Text(receipt.CompanyPhone);
-                    if (!string.IsNullOrWhiteSpace(receipt.CompanyTrn)) column.Item().Text($"TRN: {receipt.CompanyTrn}");
+                    var receiptTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(receipt.CompanyTrn);
+                    if (!string.IsNullOrWhiteSpace(receiptTrn)) column.Item().Text($"TRN: {receiptTrn}");
                     }
                     column.Item().PaddingTop(12).Text("PAYMENT RECEIPT").Bold().FontSize(14);
                     column.Item().Text("Proof of payment — not a tax invoice").FontSize(9);

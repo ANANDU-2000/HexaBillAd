@@ -713,7 +713,7 @@ namespace HexaBill.Api.Modules.Purchases
             var companyName = Setting("COMPANY_NAME_EN");
             if (string.IsNullOrWhiteSpace(companyName)) companyName = "Company";
             var companyAddress = Setting("COMPANY_ADDRESS");
-            var companyTrn = Setting("COMPANY_TRN");
+            var companyTrn = HexaBill.Api.Core.Tenancy.SampleVatTrn.DocumentTrnDisplay(Setting("COMPANY_TRN")) ?? "";
             var currency = Setting("CURRENCY");
 
             string Money(decimal amount) => string.IsNullOrWhiteSpace(currency)
