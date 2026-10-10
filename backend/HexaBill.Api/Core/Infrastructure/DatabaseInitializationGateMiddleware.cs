@@ -28,6 +28,7 @@ public sealed class DatabaseInitializationGateMiddleware
 
         context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
         context.Response.Headers.CacheControl = "no-store";
+        context.Response.Headers.RetryAfter = "15";
         context.Response.ContentType = "application/json";
         var schemaState = initializationStatus.State == DatabaseInitializationState.Failed
             ? "InitializationFailed"
@@ -35,6 +36,9 @@ public sealed class DatabaseInitializationGateMiddleware
         await JsonSerializer.SerializeAsync(context.Response.Body, new
         {
             status = "Unavailable",
+            // Not administrator maintenance: clients should show "starting/updating" and retry reads.
+            reason = "SERVICE_UNAVAILABLE",
+            message = "HexaBill is starting or being updated. Please try again shortly.",
             schema = schemaState,
             timestamp = DateTime.UtcNow
         });

@@ -4,6 +4,7 @@ import camelcaseKeys from 'camelcase-keys'
 import toast from 'react-hot-toast'
 import { connectionManager } from './connectionManager'
 import { showMaintenanceOverlay } from '../components/MaintenanceOverlay'
+import { classifyServiceError, isAutoRetryable } from './serviceErrors.js'
 import { setSubscriptionGraceFromResponse } from '../components/SubscriptionGraceBanner'
 import { createRequestSession } from './requestSession.js'
 
@@ -754,6 +755,18 @@ api.interceptors.response.use(
       showThrottledError(...args)
     }
 
+    // P0-02: administrator maintenance is final for this request; show it without retrying.
+    // Any other 503 (startup, update, schema gate) is "server unavailable", never "maintenance".
+    const serviceKind = error.response?.status === 503
+      ? classifyServiceError(503, error.response?.data)
+      : null
+    if (serviceKind === 'maintenance') {
+      connectionManager.markConnected()
+      showMaintenanceOverlay(error.response?.data?.message || 'System under maintenance. Back shortly.', 'maintenance')
+      error._handledByInterceptor = true
+      return Promise.reject(error)
+    }
+
     // Handle network/connection errors (includes timeout ECONNABORTED)
     const isTimeout = error.code === 'ECONNABORTED' || error.message?.includes('timeout')
     const isNetworkError = !error.response && (
@@ -769,19 +782,24 @@ api.interceptors.response.use(
 
     // BUG #3 FIX: Automatic retry with exponential backoff for transient errors (500/503/network)
     // CRITICAL: Never retry 401 (authentication) errors - they will always fail
-    const retryableStatuses = [500, 503, 502, 504]
-    const isRetryable = isNetworkError || (error.response && retryableStatuses.includes(error.response.status))
+    // P0-07: writes are resent only when the server de-duplicates them (Idempotency-Key or
+    // POS externalReference); see serviceErrors.isAutoRetryable.
+    const isRetryable = isNetworkError || !!error.response
     const retryCount = error.config?._retryCount || 0
     const maxRetries = error.config?._maxRetries ?? 1
-    const method = error.config?.method ? String(error.config.method).toUpperCase() : ''
-    const isRetryableMethod = !method || ['GET', 'POST', 'PUT', 'PATCH'].includes(method)
     // Prevent retry loops on 401 - authentication errors should never be retried
     const is401Error = error.response?.status === 401
-    const shouldRetry = isRetryable && retryCount < maxRetries && isRetryableMethod && !error.config?._skipRetry && !is401Error
+    const shouldRetry = isRetryable && retryCount < maxRetries && !is401Error &&
+      isAutoRetryable(error.config, error.response?.status)
     
     // Additional safety: If retry count exceeded, prevent further retries
     if (retryCount >= maxRetries) {
       error._handledByInterceptor = true
+      if (serviceKind === 'unavailable') {
+        connectionManager.markConnected()
+        showMaintenanceOverlay(error.response?.data?.message, 'unavailable')
+        return Promise.reject(error)
+      }
       if (!is401Error) {
         let serverMsg = error.response?.data?.message || error.response?.data?.errors?.[0]
         if (!serverMsg && error.response?.data instanceof Blob) {
@@ -956,11 +974,11 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    // Handle 503 Maintenance Mode - show branded maintenance screen, no toast
-    if (error.response?.status === 503) {
+    // 503 that is not administrator maintenance: server starting/updating. The overlay polls
+    // and closes itself when the API answers again.
+    if (serviceKind === 'unavailable') {
       connectionManager.markConnected()
-      const msg = error.response?.data?.message || 'System under maintenance. Back shortly.'
-      showMaintenanceOverlay(msg)
+      showMaintenanceOverlay(error.response?.data?.message, 'unavailable')
       error._handledByInterceptor = true
       return Promise.reject(error)
     }

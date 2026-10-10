@@ -62,7 +62,10 @@ namespace HexaBill.Api.Core.Infrastructure
             // Check maintenance mode from Settings
             try
             {
+                // Platform-scoped row (OwnerId 0): read past the tenant query filter, otherwise
+                // signed-in tenant requests never see maintenance mode.
                 var maintenanceMode = await dbContext.Settings
+                    .IgnoreQueryFilters()
                     .AsNoTracking()
                     .Where(s => s.OwnerId == 0 && s.Key == "PLATFORM_MAINTENANCE_MODE")
                     .Select(s => s.Value)
@@ -71,6 +74,7 @@ namespace HexaBill.Api.Core.Infrastructure
                 if (string.Equals(maintenanceMode, "true", StringComparison.OrdinalIgnoreCase))
                 {
                     var messageSetting = await dbContext.Settings
+                        .IgnoreQueryFilters()
                         .AsNoTracking()
                         .Where(s => s.OwnerId == 0 && s.Key == "PLATFORM_MAINTENANCE_MESSAGE")
                         .Select(s => s.Value)
@@ -79,12 +83,15 @@ namespace HexaBill.Api.Core.Infrastructure
                     var message = !string.IsNullOrEmpty(messageSetting) ? messageSetting : "System under maintenance. Back shortly.";
 
                     context.Response.StatusCode = 503;
+                    context.Response.Headers.RetryAfter = "60";
+                    context.Response.Headers.CacheControl = "no-store";
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(new
                     {
                         success = false,
                         message,
                         maintenanceMode = true,
+                        reason = "MAINTENANCE_ENABLED",
                         code = 503
                     }));
                     return;
