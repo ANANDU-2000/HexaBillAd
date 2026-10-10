@@ -13,6 +13,7 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using Microsoft.AspNetCore.Http;
 using Npgsql;
+using HexaBill.Api.Core.Infrastructure;
 
 namespace HexaBill.Api.Modules.Auth
 {
@@ -75,12 +76,24 @@ namespace HexaBill.Api.Modules.Auth
                 return null;
             }
 
-            // Single indexed query by email (no full table scan). Uses exact match so DB index is used.
-            // Emails are stored normalized (lowercase, trimmed) on register; existing users may need to use lowercase to login.
-            // Do not use AsNoTracking: we update LastLoginAt and TenantId and call SaveChangesAsync.
-            var user = await _context.Users
-                .IgnoreQueryFilters()
-                .FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+            var httpContext = _httpContextAccessor?.HttpContext;
+            var hostResolution = httpContext?.Items[TenantHostMiddleware.ResolutionItemKey] as TenantHostResolution
+                ?? (httpContext is null ? TenantHostResolution.Unknown() : await _tenantHostResolver.ResolveAsync(httpContext));
+
+            // Email is unique within a tenant. Resolve the trusted workspace before
+            // selecting an account so another tenant's matching email cannot shadow it.
+            var users = _context.Users.IgnoreQueryFilters().Where(u => u.Email == normalizedEmail);
+            if (hostResolution.Kind == TenantHostKind.Platform)
+                users = users.Where(u => u.IsPlatformAdmin && !u.TenantId.HasValue);
+            else if (hostResolution.Kind == TenantHostKind.Tenant && hostResolution.TenantId.HasValue)
+                users = users.Where(u => !u.IsPlatformAdmin && u.TenantId == hostResolution.TenantId);
+            else
+                return null;
+
+            // Keep tracking: the successful account's LastLoginAt is persisted below.
+            User? user;
+            using (RequestStageTimings.Measure(httpContext, RequestStage.UserLookup))
+                user = await users.FirstOrDefaultAsync();
 
             if (user == null)
             {
@@ -89,10 +102,6 @@ namespace HexaBill.Api.Modules.Auth
 
             if (!user.IsActive)
                 return null;
-
-            var httpContext = _httpContextAccessor?.HttpContext;
-            var hostResolution = httpContext?.Items[TenantHostMiddleware.ResolutionItemKey] as TenantHostResolution
-                ?? (httpContext is null ? TenantHostResolution.Unknown() : await _tenantHostResolver.ResolveAsync(httpContext));
 
             if (hostResolution.Kind == TenantHostKind.Platform)
             {
@@ -114,7 +123,9 @@ namespace HexaBill.Api.Modules.Auth
             {
                 if (user.TenantId is int tenantId)
                 {
-                    var tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
+                    Tenant? tenant;
+                    using (RequestStageTimings.Measure(httpContext, RequestStage.TenantStatus))
+                        tenant = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
                     if (tenant == null || tenant.Status is TenantStatus.Suspended or TenantStatus.Expired)
                     {
                         return null;
@@ -129,6 +140,7 @@ namespace HexaBill.Api.Modules.Auth
             // Verify password - with better error handling (use trimmed password)
             try
             {
+                using var passwordTiming = RequestStageTimings.Measure(httpContext, RequestStage.PasswordVerification);
                 if (string.IsNullOrEmpty(user.PasswordHash))
                 {
                     return null;
@@ -147,7 +159,8 @@ namespace HexaBill.Api.Modules.Auth
 
             // Update last login timestamp
             user.LastLoginAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
+            using (RequestStageTimings.Measure(httpContext, RequestStage.LastLoginSave))
+                await _context.SaveChangesAsync();
 
             // Record session for "who is logged in" / session list
             try
@@ -168,22 +181,28 @@ namespace HexaBill.Api.Modules.Auth
                     UserAgent = userAgent != null && userAgent.Length > 500 ? userAgent.Substring(0, 500) : userAgent,
                     IpAddress = ipAddress != null && ipAddress.Length > 45 ? ipAddress.Substring(0, 45) : ipAddress
                 });
-                await _context.SaveChangesAsync();
+                using (RequestStageTimings.Measure(httpContext, RequestStage.SessionSave))
+                    await _context.SaveChangesAsync();
             }
             catch { /* session recording is optional */ }
 
             // Session lifetime is fixed at 12 hours. RememberMe no longer extends security credentials.
             const int expiryHours = 12;
-            var token = GenerateJwtToken(user, expiryHours, hostResolution);
+            string token;
+            using (RequestStageTimings.Measure(httpContext, RequestStage.JwtGeneration))
+                token = GenerateJwtToken(user, expiryHours, hostResolution);
 
             string companyName = "HexaBill";
             List<int> assignedBranchIds = new List<int>();
             List<int> assignedRouteIds = new List<int>();
             try
             {
-                companyName = await GetCompanyNameAsync();
-                assignedBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == user.Id).Select(bs => bs.BranchId).ToListAsync();
-                assignedRouteIds = await _context.RouteStaff.Where(rs => rs.UserId == user.Id).Select(rs => rs.RouteId).ToListAsync();
+                using (RequestStageTimings.Measure(httpContext, RequestStage.CompanySettings))
+                    companyName = await GetCompanyNameAsync();
+                using (RequestStageTimings.Measure(httpContext, RequestStage.BranchAssignments))
+                    assignedBranchIds = await _context.BranchStaff.Where(bs => bs.UserId == user.Id).Select(bs => bs.BranchId).ToListAsync();
+                using (RequestStageTimings.Measure(httpContext, RequestStage.RouteAssignments))
+                    assignedRouteIds = await _context.RouteStaff.Where(rs => rs.UserId == user.Id).Select(rs => rs.RouteId).ToListAsync();
             }
             catch { /* do not fail login if Settings/BranchStaff/RouteStaff query fails (e.g. missing column) */ }
 

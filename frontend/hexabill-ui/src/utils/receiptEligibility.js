@@ -73,3 +73,31 @@ export function currentReceiptSelection(payments, selectedIds) {
   const eligible = new Set(payments.filter(canReceivePaymentReceipt).map(payment => payment.id))
   return [...new Set(selectedIds)].filter(id => eligible.has(id))
 }
+
+export function paymentStatusLabel(payment) {
+  const p = normalizePaymentForReceipt(payment)
+  switch (p?.status.toUpperCase()) {
+    case 'CLEARED': return p.mode.toUpperCase() === 'CHEQUE' ? 'Cleared' : 'Completed'
+    case 'PENDING': return 'Pending'
+    case 'RETURNED': return 'Returned'
+    case 'VOID': return 'Voided'
+    default: return 'Unknown'
+  }
+}
+
+export function receiptSelectionSummary(payments, selectedIds, visiblePayments = payments) {
+  const ids = currentReceiptSelection(payments, selectedIds)
+  const selected = payments.filter(payment => ids.includes(payment.id))
+  const visibleIds = visiblePayments.filter(canReceivePaymentReceipt).map(payment => payment.id)
+  return {
+    ids, visibleIds,
+    total: Math.round(selected.reduce((sum,payment) => sum + Number(payment.amount),0) * 100) / 100,
+    customerCount: new Set(selected.map(payment => String(payment.customerId ?? payment.CustomerId ?? 'cash'))).size,
+    allVisibleSelected: visibleIds.length > 0 && visibleIds.every(id => ids.includes(id)),
+  }
+}
+
+export function toggleVisibleReceiptSelection(selectedIds, visibleIds) {
+  if (visibleIds.every(id => selectedIds.includes(id))) return selectedIds.filter(id => !visibleIds.includes(id))
+  return [...new Set([...selectedIds,...visibleIds])]
+}

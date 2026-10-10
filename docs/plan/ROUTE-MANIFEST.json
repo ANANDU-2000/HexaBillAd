@@ -1,7 +1,7 @@
 {
   "source": "frontend/hexabill-ui/src/app/App.jsx",
-  "verifiedAt": "2026-10-03",
-  "uniqueRoutePathCount": 61,
+  "verifiedAt": "2026-10-08",
+  "uniqueRoutePathCount": 62,
   "paths": [
     "*",
     "/",
@@ -16,10 +16,10 @@
     "/branches/:id",
     "/customers",
     "/customers/:id",
+    "/daily-close",
     "/dashboard",
     "/delivery-notes",
     "/delivery-notes/:saleId",
-    "/daily-close",
     "/expenses",
     "/feedback",
     "/help",
@@ -27,6 +27,7 @@
     "/login",
     "/more",
     "/onboarding",
+    "/payments",
     "/pos",
     "/pricelist",
     "/products",
@@ -66,5 +67,9 @@
     "/worksheet"
   ],
   "pageSpecificationTracker": "docs/refactor-progress.md#hexabill-verification-tracker",
-  "acceptanceViewports": ["desktop", "tablet", "phone"]
+  "acceptanceViewports": [
+    "desktop",
+    "tablet",
+    "phone"
+  ]
 }

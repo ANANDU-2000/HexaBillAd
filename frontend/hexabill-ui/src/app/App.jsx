@@ -2,7 +2,7 @@ import { useEffect, Suspense, lazy } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isSystemAdmin } from '../utils/superAdmin'
-import { canAccessPage, isOwner } from '../utils/roles'
+import { canAccessPage, canManagePayments, isOwner } from '../utils/roles'
 import { getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from '../tenant/tenantHost'
 import Login from '../auth/Login'
@@ -26,6 +26,7 @@ const SuppliersPage = lazy(() => import('../features/purchases/SuppliersPage'))
 const SupplierDetailPage = lazy(() => import('../features/purchases/SupplierDetailPage'))
 const PosPage = lazy(() => import('../features/sales/PosPage'))
 const CustomerLedgerPage = lazy(() => import('../features/customers/CustomerLedgerPage'))
+const PaymentsPage = lazy(() => import('../features/payments/PaymentsPage'))
 const ExpensesPage = lazy(() => import('../features/expenses/ExpensesPage'))
 const ReportsPage = lazy(() => import('../features/reports/ReportsPage'))
 const VatReturnPage = lazy(() => import('../features/reports/VatReturnPage'))
@@ -247,6 +248,7 @@ function App() {
               <Route path="/suppliers/:name" element={<SupplierDetailPage />} />
               <Route path="/pos" element={<PosPage />} />
               <Route path="/ledger" element={<CustomerLedgerPage />} />
+              <Route path="/payments" element={canManagePayments(user) ? <PaymentsPage /> : <Navigate to="/dashboard" replace />} />
               <Route path="/expenses" element={<ExpensesPage />} />
               <Route path="/sales-ledger" element={<SalesLedgerPage />} />
               <Route path="/billing-history" element={<BillingHistoryPage />} />
@@ -294,6 +296,7 @@ function App() {
             <Route path="/products" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/pos" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/ledger" element={<Navigate to="/superadmin/dashboard" replace />} />
+            <Route path="/payments" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/expenses" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/purchases" element={<Navigate to="/superadmin/dashboard" replace />} />
             <Route path="/suppliers" element={<Navigate to="/superadmin/dashboard" replace />} />

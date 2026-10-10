@@ -35,7 +35,7 @@ import {
   Inbox,
   Wallet,
 } from 'lucide-react'
-import { canAccessPage, isAdminOrOwner, isOwner } from '../utils/roles'
+import { canAccessPage, canManagePayments, isAdminOrOwner, isOwner } from '../utils/roles'
 import { isSystemAdmin } from '../utils/superAdmin'
 
 /**
@@ -43,6 +43,7 @@ import { isSystemAdmin } from '../utils/superAdmin'
  *  - label, href, icon
  *  - pageId            staff restriction via canAccessPage
  *  - adminOnly         Admin or Owner (purchases, suppliers, branches, VAT, system)
+ *  - managePaymentsOnly payment-management roles from the existing role policy
  *  - ownerOnly         Owner (worksheet)
  *  - systemAdminOnly   impersonating SystemAdmin
  *  - sidebar           shown in the desktop/tablet sidebar
@@ -71,6 +72,7 @@ export const MORE_MENU_GROUPS = [
       { id: 'billing-history', label: 'Billing History', href: '/billing-history', icon: History, pageId: 'pos', sidebar: true },
       { id: 'sales-ledger', label: 'Sales Ledger', href: '/sales-ledger', icon: FileText, pageId: 'reports', sidebar: true },
       { id: 'ledger', label: 'Customer Ledger', href: '/ledger', icon: BookOpen, pageId: 'invoices', sidebar: true, bottomNav: true },
+      { id: 'payments', label: 'Payments', href: '/payments', icon: Wallet, managePaymentsOnly: true, sidebar: true },
       { id: 'purchases', label: 'Purchases', href: '/purchases', icon: Truck, adminOnly: true, sidebar: true },
       { id: 'expenses', label: 'Expenses', href: '/expenses', icon: Receipt, pageId: 'expenses', sidebar: true },
     ],
@@ -152,6 +154,7 @@ export const MORE_MENU_GROUPS = [
 ]
 
 const canSeeItem = (user, item, isImpersonating) => {
+  if (item.managePaymentsOnly) return canManagePayments(user)
   if (item.systemAdminOnly) return isSystemAdmin(user) && !!isImpersonating
   if (item.action) return true
   if (item.ownerOnly) return isOwner(user)

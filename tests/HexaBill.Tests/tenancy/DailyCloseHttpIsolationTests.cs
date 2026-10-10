@@ -4,12 +4,16 @@ using System.Net.Http.Json;
 namespace HexaBill.Tests;
 
 [Collection("HttpIntegration")]
-public class DailyCloseHttpIsolationTests
+public class DailyCloseHttpIsolationTests : IDisposable
 {
     private const string BusinessDate = "2026-10-03";
     private readonly HexaBillWebApplicationFactory _factory;
 
-    public DailyCloseHttpIsolationTests(HexaBillWebApplicationFactory factory) => _factory = factory;
+    // Closing/reopening days must not lock the shared fixture used by unrelated
+    // payment and sale tests when the fixed business date happens to be today.
+    public DailyCloseHttpIsolationTests() => _factory = new HexaBillWebApplicationFactory();
+
+    public void Dispose() => _factory.Dispose();
 
     [Fact]
     public async Task GetHistory_ExcludesOtherTenantsCloses()

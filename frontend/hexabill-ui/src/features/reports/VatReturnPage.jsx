@@ -20,6 +20,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
 import { reportsAPI } from '../../services/index'
+import VatProfitEstimateCard from './VatProfitEstimateCard'
 
 function trackVatEvent(eventType, data = {}) {
   reportsAPI.trackVatEvent({ eventType, page: 'VatReturn', ...data }).catch(() => {})
@@ -381,13 +382,11 @@ const VatReturnPage = () => {
   const [activeTab, setActiveTab] = useState('overview') // overview | transactions | sales | purchases | expenses | creditNotes | validation
   const v = vatReturn
   const isProfitBasis = String(v?.vatCalculationBasis ?? v?.VatCalculationBasis ?? 'SalesBased') === 'ProfitBased'
-  const profitEstimateNotForFiling = Boolean(v?.profitEstimateNotForFiling ?? v?.ProfitEstimateNotForFiling ?? isProfitBasis)
   const profitSales = Number(v?.profitSales ?? v?.ProfitSales ?? 0)
   const profitCogs = Number(v?.profitCogs ?? v?.ProfitCogs ?? 0)
   const profitExpenses = Number(v?.profitExpenses ?? v?.ProfitExpenses ?? 0)
   const profitAmount = Number(v?.profitAmount ?? v?.ProfitAmount ?? 0)
-  // D5: never treat profit × 5% as VAT. Keep reading profitVat only as a discarded legacy field.
-  const profitVat = 0
+  const profitVatEstimate = v?.profitVatEstimate ?? v?.ProfitVatEstimate
   useEffect(() => {
     if (isProfitBasis && !['overview', 'profit', 'validation'].includes(activeTab)) setActiveTab('overview')
   }, [isProfitBasis, activeTab])
@@ -1187,20 +1186,9 @@ const VatReturnPage = () => {
                   </tbody>
                 </table>
               </div>
-              {profitEstimateNotForFiling && (
-                <div className="mt-4 p-3 rounded-lg border border-amber-300 bg-amber-50 text-sm text-amber-950">
-                  <p className="font-semibold">Estimate, not for filing</p>
-                  <p className="mt-1 text-xs">Operating profit view only. This is not UAE VAT and must not be filed with the FTA. Margin-scheme VAT waits for accountant fixtures.</p>
-                  <ul className="mt-2 grid grid-cols-2 gap-1 text-xs">
-                    <li>Sales: {formatCurrency(profitSales)}</li>
-                    <li>COGS: {formatCurrency(profitCogs)}</li>
-                    <li>Expenses: {formatCurrency(profitExpenses)}</li>
-                    <li className="font-medium">Profit estimate: {formatCurrency(profitAmount)}</li>
-                  </ul>
-                </div>
-              )}
+              <VatProfitEstimateCard report={v} />
               <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
-                <p className="font-medium text-gray-800">Standard VAT totals are authoritative for filing.</p>
+                <p className="font-medium text-gray-800">Standard VAT summary — review with your accountant before filing.</p>
                 <p className="mt-1">Net VAT to Pay = Sales VAT (Box 1b) − Input VAT (Box 12: purchases + claimable expenses). If Expense VAT shows 0, only expenses marked <strong>Tax claimable (ITC)</strong> on the Expenses page with VAT in this period are included. After adding or editing expenses, click <strong>Refresh</strong> or <strong>Recalculate</strong> to update.</p>
               </div>
               {(v?.petroleumExcluded ?? 0) > 0 && (
@@ -1507,6 +1495,7 @@ const VatReturnPage = () => {
                   <tr><td className="px-3 py-2">Cost of goods</td><td className="px-3 py-2 text-right">{formatCurrency(profitCogs)}</td></tr>
                   <tr><td className="px-3 py-2">Expenses</td><td className="px-3 py-2 text-right">{formatCurrency(profitExpenses)}</td></tr>
                   <tr><td className="px-3 py-2 font-medium">Profit estimate</td><td className="px-3 py-2 text-right font-medium">{formatCurrency(profitAmount)}</td></tr>
+                  <tr><td className="px-3 py-2 font-medium">5% profit estimate — not for filing</td><td className="px-3 py-2 text-right font-medium">{profitVatEstimate != null && Number.isFinite(Number(profitVatEstimate)) ? formatCurrency(Number(profitVatEstimate)) : 'Refresh to load estimate'}</td></tr>
                 </tbody>
               </table>
             </div>

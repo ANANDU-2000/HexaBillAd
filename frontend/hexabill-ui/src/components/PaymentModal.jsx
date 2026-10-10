@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { X, Wallet, DollarSign, Calendar, FileText, AlertTriangle, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { paymentsAPI, salesAPI, subscriptionAPI } from '../services'
@@ -14,8 +14,11 @@ import {
 } from '../utils/offerReceiptPreview'
 import { formatCurrency } from '../utils/currency'
 import { useBranding } from '../tenant/TenantBrandingContext'
+import { useAuth } from '../hooks/useAuth'
+import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../utils/ledgerPaymentIntent'
 
 const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess, onReceiptPreview }) => {
+  const { user } = useAuth()
   const { currency: tenantCurrency = 'AED' } = useBranding()
   const money = (value) => formatCurrency(value, tenantCurrency)
   const [loading, setLoading] = useState(false)
@@ -33,6 +36,27 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
   const [settlementAdjustmentsEnabled, setSettlementAdjustmentsEnabled] = useState(false)
   const [applySettlementAdjustment, setApplySettlementAdjustment] = useState(false)
   const [settlementAdjustmentReason, setSettlementAdjustmentReason] = useState('')
+  const paymentJournal = useMemo(() => createLedgerPaymentJournal({
+    getItem: key => window.sessionStorage.getItem(key),
+    setItem: (key, value) => window.sessionStorage.setItem(key, value),
+    removeItem: key => window.sessionStorage.removeItem(key),
+  }), [])
+  const paymentScope = ledgerPaymentScope({ origin: window.location.origin,
+    tenantId: user?.tenantId, userId: user?.id, customerId: customerId ?? 'cash' })
+  const paymentScopeRef = useRef(paymentScope)
+  paymentScopeRef.current = paymentScope
+  const [unconfirmedPayment, setUnconfirmedPayment] = useState(null)
+  const [paymentRecoveryError, setPaymentRecoveryError] = useState(null)
+  useEffect(() => {
+    if (!isOpen) return
+    try {
+      setUnconfirmedPayment(paymentScope ? paymentJournal.read(paymentScope) : null)
+      setPaymentRecoveryError(null)
+    } catch (error) { setPaymentRecoveryError(error.message) }
+  }, [isOpen, paymentScope, paymentJournal])
+
+  const currentPaymentForm = () => ledgerPaymentForm({ ...formData, saleId: invoiceId,
+    applySettlementAdjustment, settlementAdjustmentReason }, false)
 
   const outstandingAmount = Number(invoice?.outstandingAmount) || 0
   const settlementShortfall = invoiceId && formData.mode === 'CASH'
@@ -72,8 +96,9 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
   const loadInvoiceAmount = async () => {
     try {
       const response = await salesAPI.getInvoiceAmount?.(invoiceId) || await paymentsAPI.getInvoiceAmount?.(invoiceId)
-      if (response?.data?.success && response.data.data) {
-        const invoiceData = response.data.data
+      const invoiceResponse = response?.success !== undefined ? response : response?.data
+      if (invoiceResponse?.success && invoiceResponse.data) {
+        const invoiceData = invoiceResponse.data
         setInvoice(invoiceData)
         // Auto-fill outstanding amount
         setFormData(prev => ({
@@ -83,8 +108,9 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       } else {
         // Fallback: try to get sale details
         const saleResponse = await salesAPI.getSale(invoiceId)
-        if (saleResponse?.data?.success && saleResponse.data.data) {
-          const sale = saleResponse.data.data
+        const saleResult = saleResponse?.success !== undefined ? saleResponse : saleResponse?.data
+        if (saleResult?.success && saleResult.data) {
+          const sale = saleResult.data
           const outstanding = (sale.grandTotal || sale.totalAmount || 0) - (sale.paidAmount || 0)
           setInvoice({
             invoiceNo: sale.invoiceNo,
@@ -113,6 +139,20 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       toast.error('Please wait, payment is being processed...')
       return
     }
+
+    // Recover before duplicate/outstanding checks: the previous request may already
+    // have changed those values. A changed draft must not replace an uncertain post.
+    try {
+      const previous = paymentJournal.read(paymentScope)
+      if (previous) {
+        if (previous.form !== currentPaymentForm()) {
+          toast.error('Retry the previous payment before recording a different payment.')
+          return
+        }
+        await doSubmitPayment(previous)
+        return
+      }
+    } catch (error) { toast.error(error.message); return }
 
     if (!formData.amount || formData.amount <= 0) {
       toast.error('Payment amount must be greater than zero')
@@ -167,7 +207,10 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
     await doSubmitPayment()
   }
 
-  const doSubmitPayment = async () => {
+  const doSubmitPayment = async (savedIntent = null) => {
+    if (submissionInProgressRef.current) return
+    const scope = savedIntent?.scope ?? paymentScope
+    if (scope !== paymentScopeRef.current) return
     // Mark as in-progress immediately (synchronous)
     submissionInProgressRef.current = true
     setLoading(true)
@@ -178,39 +221,47 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
     }
     
     try {
-      // Generate idempotency key for duplicate prevention
-      const idempotencyKey = crypto.randomUUID()
+      let intent = savedIntent
+      if (!intent) {
+        const paymentData = {
+          saleId: invoiceId || null,
+          customerId: customerId || null,
+          amount: parseFloat(formData.amount),
+          mode: formData.mode.toUpperCase(), // Ensure uppercase: CASH, CHEQUE, ONLINE, CREDIT
+          reference: formData.reference || null,
+          paymentDate: formData.paymentDate ? new Date(formData.paymentDate).toISOString() : new Date().toISOString()
+        }
+        if (applySettlementAdjustment && settlementShortfall > 0) {
+          paymentData.settlementAdjustmentAmount = settlementShortfall
+          paymentData.settlementAdjustmentReason = settlementAdjustmentReason.trim()
+        }
       
-      const paymentData = {
-        saleId: invoiceId || null,
-        customerId: customerId || null,
-        amount: parseFloat(formData.amount),
-        mode: formData.mode.toUpperCase(), // Ensure uppercase: CASH, CHEQUE, ONLINE, CREDIT
-        reference: formData.reference || null,
-        paymentDate: formData.paymentDate ? new Date(formData.paymentDate).toISOString() : new Date().toISOString()
+        intent = paymentJournal.begin(scope, {
+          kind: 'create', form: currentPaymentForm(), request: paymentData,
+        })
       }
-      if (applySettlementAdjustment && settlementShortfall > 0) {
-        paymentData.settlementAdjustmentAmount = settlementShortfall
-        paymentData.settlementAdjustmentReason = settlementAdjustmentReason.trim()
-      }
-      
-      console.log('Submitting payment:', paymentData, 'Idempotency:', idempotencyKey)
-
-      const response = await paymentsAPI.createPayment(paymentData, idempotencyKey)
+      setUnconfirmedPayment(intent)
+      const send = intent.kind === 'allocate' ? paymentsAPI.allocatePayment : paymentsAPI.createPayment
+      const response = await send(intent.request, intent.idempotencyKey)
       
       // Backend returns: { success: true, message: "...", data: { payment, invoice, customer } }
       if (response?.success) {
+        paymentJournal.complete(scope, intent.idempotencyKey)
+        if (scope !== paymentScopeRef.current) return
+        setUnconfirmedPayment(null)
         const paymentResult = response?.data?.payment || response?.data
         const invoiceData = response?.data?.invoice
-        const mode = paymentResult?.mode || formData.mode
-        const amount = paymentResult?.amount || formData.amount
+        const mode = paymentResult?.mode || intent.request.mode
+        const amount = paymentResult?.amount || intent.request.amount
         const adj = response?.data?.settlementAdjustment?.amount
         const adjPart = adj > 0 ? ` + ${money(adj)} adjustment` : ''
         
         const statusMsg = invoiceData?.invoiceNo
           ? ` Invoice ${invoiceData.invoiceNo} status: ${invoiceData.status || invoiceData.paymentStatus || 'PENDING'}`
           : ''
-        toast.success(`Payment recorded: ${money(amount)} cash${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
+        const voided = String(paymentResult?.status || '').toUpperCase() === 'VOID'
+        toast.success(voided ? 'Previous payment is void. No new payment was recorded.' :
+          `Payment recorded: ${money(amount)}${adjPart} (${mode})${statusMsg}`, { id: 'payment-success', duration: 5000 })
 
         if (typeof onReceiptPreview === 'function') {
           offerReceiptPreviewAfterPayment(paymentResult, onReceiptPreview)
@@ -237,13 +288,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         setShowConfirmation(false) // Reset confirmation on error
       }
     } catch (error) {
-      console.error('Failed to save payment:', error)
-      console.log('Payment error:', {
-        message: error?.message,
-        responseData: error?.response?.data,
-        responseStatus: error?.response?.status,
-        fullError: error
-      })
+      if (scope !== paymentScopeRef.current) return
       
       setShowConfirmation(false) // Reset confirmation on error
       
@@ -274,7 +319,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       } else if (error.response?.data?.message) {
         toast.error(error.response.data.message, { id: 'payment-error' })
       } else {
-        toast.error('Failed to save payment', { id: 'payment-error' })
+        toast.error(error?.message || 'Payment is unconfirmed. Retry the previous payment.', { id: 'payment-error' })
       }
     } finally {
       submissionInProgressRef.current = false
@@ -319,6 +364,13 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           </button>
         </div>
 
+        {paymentRecoveryError && <p role="alert" className="p-4 text-sm text-red-700">{paymentRecoveryError}</p>}
+        {unconfirmedPayment && (
+          <div role="status" className="p-4 bg-amber-50 border-b border-amber-200 text-sm text-amber-950">
+            <p>Previous payment of {money(unconfirmedPayment.request.amount)} is unconfirmed. Retry it to confirm the result before recording another payment.</p>
+            <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-amber-400 rounded-md font-medium">Retry previous payment</button>
+          </div>
+        )}
         {/* Invoice Info */}
         {invoice && (
           <div className="p-6 bg-gray-50 border-b">

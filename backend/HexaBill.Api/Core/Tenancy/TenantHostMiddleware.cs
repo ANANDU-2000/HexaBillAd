@@ -3,6 +3,7 @@ namespace HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Models;
 using HexaBill.Api.Data;
 using Microsoft.Extensions.Options;
+using HexaBill.Api.Core.Infrastructure;
 
 public sealed class TenantHostMiddleware
 {
@@ -31,7 +32,9 @@ public sealed class TenantHostMiddleware
             }
         }
 
-        var resolution = await resolver.ResolveAsync(context, context.RequestAborted);
+        TenantHostResolution resolution;
+        using (RequestStageTimings.Measure(context, RequestStage.HostResolution))
+            resolution = await resolver.ResolveAsync(context, context.RequestAborted);
         context.Items[ResolutionItemKey] = resolution;
 
         // Browser navigation on a legacy host → canonical tenant host (preserve path/query).

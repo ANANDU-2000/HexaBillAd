@@ -15,6 +15,7 @@ using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
+using HexaBill.Api.Core.Infrastructure;
 
 namespace HexaBill.Api.Modules.Auth
 {
@@ -91,7 +92,10 @@ namespace HexaBill.Api.Modules.Auth
                     return BadRequest(new ApiResponse<LoginResponse> { Success = false, Message = "Email is required.", Errors = new List<string>() });
                 }
                 // BUG #2.7 FIX: Use async lockout check (persistent in PostgreSQL)
-                if (await _lockout.IsLockedOutAsync(email))
+                bool lockedOut;
+                using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutCheck))
+                    lockedOut = await _lockout.IsLockedOutAsync(email);
+                if (lockedOut)
                 {
                     _logger.LogWarning("Login attempt for locked-out email: {Email}", email);
                     return StatusCode(429, new ApiResponse<LoginResponse> { Success = false, Message = "Too many failed attempts. Try again in 15 minutes." });
@@ -100,11 +104,13 @@ namespace HexaBill.Api.Modules.Auth
                 var result = await _authService.LoginAsync(request);
                 if (result == null)
                 {
-                    await _lockout.RecordFailedAttemptAsync(email);
+                    using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutFailure))
+                        await _lockout.RecordFailedAttemptAsync(email);
                     _logger.LogWarning("Failed login attempt for email: {Email}", email);
                     return BadRequest(new ApiResponse<LoginResponse> { Success = false, Message = "Invalid email or password", Errors = new List<string>() });
                 }
-                await _lockout.ClearAttemptsAsync(email);
+                using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutClear))
+                    await _lockout.ClearAttemptsAsync(email);
                 _logger.LogInformation("Login successful for user: {UserId} ({Email})", result.UserId, email);
                 return Ok(new ApiResponse<LoginResponse> { Success = true, Message = "Login successful", Data = result });
             }

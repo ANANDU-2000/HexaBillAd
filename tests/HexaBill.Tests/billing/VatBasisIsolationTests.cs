@@ -122,12 +122,14 @@ public class VatBasisIsolationTests
             Assert.Equal(before[id].ProfitCogs, after.ProfitCogs);
             Assert.Equal(before[id].ProfitExpenses, after.ProfitExpenses);
             Assert.Equal(before[id].ProfitVat, after.ProfitVat);
+            Assert.Equal(before[id].ProfitVatEstimate, after.ProfitVatEstimate);
             Assert.Equal(before[id].VatCalculationBasis, after.VatCalculationBasis);
             Assert.Equal(historyBefore[id], await context.TenantVatBasisHistory.CountAsync(h => h.TenantId == id));
         }
 
         Assert.Equal(nameof(VatCalculationBasis.SalesBased), before[1].VatCalculationBasis);
         Assert.Equal(0, before[1].ProfitVat);
+        Assert.Null(before[1].ProfitVatEstimate);
         Assert.Equal(nameof(VatCalculationBasis.ProfitBased), before[2].VatCalculationBasis);
         Assert.NotEqual(before[2].ProfitSales, before[1].ProfitSales);
         var afterChanged = await service.GetVatReturn201Async(3, from, to);
@@ -136,6 +138,7 @@ public class VatBasisIsolationTests
         Assert.Equal(nameof(VatCalculationBasis.ProfitBased), afterChanged.VatCalculationBasis);
         // D5: ProfitVat is never filing VAT; estimate flag + ProfitAmount carry the operating view.
         Assert.Equal(0, afterChanged.ProfitVat);
+        Assert.Equal(VatCalculator.Round(Math.Max(0m, afterChanged.ProfitAmount) * 0.05m), afterChanged.ProfitVatEstimate);
         Assert.True(afterChanged.ProfitEstimateNotForFiling);
         Assert.True(afterChanged.ProfitAmount != 0 || afterChanged.ProfitSales > 0);
         Assert.Equal(historyBefore[3] + 1, await context.TenantVatBasisHistory.CountAsync(h => h.TenantId == 3));
@@ -409,6 +412,7 @@ public class VatBasisIsolationTests
         Assert.Equal(VatCalculator.Round(expectedProfit), dto.ProfitAmount);
         // D5: never treat profit × 5% as VAT. Standard boxes remain the filing figures.
         Assert.Equal(0m, dto.ProfitVat);
+        Assert.Equal(0.50m, dto.ProfitVatEstimate);
         Assert.True(dto.ProfitEstimateNotForFiling);
         Assert.True(dto.Box1b > 0);
         Assert.NotEqual(VatCalculator.Round(expectedProfit * VatCalculator.StandardRate), dto.ProfitVat);
@@ -466,6 +470,7 @@ public class VatBasisIsolationTests
 
         Assert.True(dto.ProfitAmount <= 0);
         Assert.Equal(0, dto.ProfitVat);
+        Assert.Equal(0m, dto.ProfitVatEstimate);
         Assert.True(dto.Box1b > 0);
     }
 

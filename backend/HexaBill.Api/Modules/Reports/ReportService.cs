@@ -2621,6 +2621,8 @@ namespace HexaBill.Api.Modules.Reports
                     RealPending = 0, // Payments don't have pending
                     RealGotPayment = payment.Amount, // Real payment received
                     Status = status,
+                    PaymentLineStatus = payment.Status.ToString(),
+                    IsSettlementAdjustment = payment.IsSettlementAdjustment,
                     CustomerBalance = customerBalances[paymentCustomerKey],
                     PlanDate = null, // Payments don't have plan dates
                     PaymentId = payment.Id,

@@ -29,7 +29,7 @@ import Modal from '../../components/Modal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { paymentsAPI, customersAPI, salesAPI } from '../../services/index'
+import { paymentsAPI, customersAPI } from '../../services/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import { canManagePayments } from '../../utils/roles'
 import { useAuth } from '../../hooks/useAuth'
@@ -38,8 +38,9 @@ import { localDateString } from '../../utils/dateFormat'
 import { readPaymentsStateFromParams, syncPaymentsSearchParams } from '../../utils/paymentsUrl'
 import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
 import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
-import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason } from '../../utils/receiptEligibility'
+import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
+import { createLedgerPaymentJournal, createPaymentBatchJournal, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope } from '../../utils/ledgerPaymentIntent'
 
 const PaymentsPage = () => {
   const { user } = useAuth()
@@ -73,6 +74,42 @@ const PaymentsPage = () => {
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
   const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
   const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
+  const submittingRef = useRef(false)
+  const recoveryStorage = useMemo(() => ({
+    getItem: key => window.sessionStorage.getItem(key),
+    setItem: (key, value) => window.sessionStorage.setItem(key, value),
+    removeItem: key => window.sessionStorage.removeItem(key),
+    key: index => window.sessionStorage.key(index),
+    get length() { return window.sessionStorage.length },
+  }), [])
+  const paymentJournal = useMemo(() => createLedgerPaymentJournal(recoveryStorage), [recoveryStorage])
+  const batchJournal = useMemo(() => createPaymentBatchJournal(recoveryStorage), [recoveryStorage])
+  const recoveryIdentity = useMemo(() => ({ origin: window.location.origin,
+    tenantId: user?.tenantId, userId: user?.id }), [user?.tenantId, user?.id])
+  const accountPrefix = ledgerPaymentAccountPrefix(recoveryIdentity)
+  const bulkScope = paymentBatchScope(recoveryIdentity)
+  const accountPrefixRef = useRef(accountPrefix)
+  accountPrefixRef.current = accountPrefix
+  const [unconfirmedPayments, setUnconfirmedPayments] = useState([])
+  const [savedBatch, setSavedBatch] = useState(null)
+  const [recoveryError, setRecoveryError] = useState(null)
+  const refreshRecovery = useCallback(() => {
+    try {
+      setUnconfirmedPayments(paymentJournal.list(recoveryIdentity))
+      setSavedBatch(bulkScope ? batchJournal.read(bulkScope) : null)
+      setRecoveryError(null)
+    } catch (error) { setRecoveryError(error.message) }
+  }, [paymentJournal, batchJournal, recoveryIdentity, bulkScope])
+  useEffect(() => {
+    setUnconfirmedPayments([])
+    setSavedBatch(null)
+    refreshRecovery()
+  }, [refreshRecovery])
+
+  const bulkRows = savedBatch ? savedBatch.rows.map(row => ({
+    ...row.request, method: row.request.mode, paymentDate: JSON.parse(row.form).date,
+    confirmed: row.confirmed,
+  })) : bulkPayments
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -98,6 +135,7 @@ const PaymentsPage = () => {
   }, [setSearchParams])
 
   const closeAddPaymentModal = useCallback(() => {
+    if (submittingRef.current) return
     setShowAddModal(false)
     reset()
     clearPaymentCustomerIdFromUrl()
@@ -310,141 +348,145 @@ const PaymentsPage = () => {
       )
     }
 
-    // Apply status filter (use normalized method/chequeStatus)
+    // Filter by the authoritative state, independently of payment method.
     if (filterStatus) {
-      if (filterStatus === 'completed') {
-        filtered = filtered.filter(payment => {
-          const method = getPaymentMethod(payment)
-          const cs = getChequeStatus(payment)
-          if (method === 'Cash' || method === 'Online') return true
-          if (method === 'Cheque' && cs === 'Cleared') return true
-          return false
-        })
-      } else if (filterStatus === 'pending') {
-        filtered = filtered.filter(payment => {
-          const method = getPaymentMethod(payment)
-          const cs = getChequeStatus(payment)
-          if (method === 'Pending') return true
-          if (method === 'Cheque' && (cs === 'Pending' || cs === 'Returned')) return true
-          return false
-        })
-      } else if (filterStatus === 'credit') {
-        filtered = filtered.filter(payment => {
-          const method = getPaymentMethod(payment)
-          const cs = getChequeStatus(payment)
-          return method === 'Pending' || (method === 'Cheque' && cs === 'Pending')
-        })
-      }
+      filtered = filtered.filter(payment => {
+        const status = String(payment.status ?? payment.Status ?? '').toUpperCase()
+        if (filterStatus === 'completed') return status === 'CLEARED'
+        if (filterStatus === 'pending') return status === 'PENDING'
+        if (filterStatus === 'credit') return status === 'PENDING' && getPaymentMethod(payment) === 'Credit'
+        if (filterStatus === 'void') return status === 'VOID'
+        if (filterStatus === 'returned') return status === 'RETURNED'
+        return true
+      })
     }
 
     setFilteredPayments(filtered)
   }
 
-  const onSubmit = async (data) => {
-    // Prevent multiple submissions
-    if (submitting) {
-      toast.error('Please wait, operation in progress...')
-      return
-    }
-    
-    // Validate required fields
-    if (!data.customerId && !data.saleId) {
-      toast.error('Please select either a customer or an invoice')
-      return
-    }
-    
-    if (!data.amount || parseFloat(data.amount) <= 0) {
-      toast.error('Please enter a valid payment amount')
-      return
-    }
-    
-    // VALIDATION FIX: Check payment amount ≤ outstanding balance
-    const paymentAmount = parseFloat(data.amount)
-    if (data.saleId) {
-      // If invoice is selected, validate against invoice outstanding balance
-      const selectedInvoice = outstandingInvoices.find(inv => inv.id === parseInt(data.saleId, 10))
-      if (selectedInvoice && paymentAmount > selectedInvoice.balanceAmount + 0.01) {
-        toast.error(`Payment amount (${money(paymentAmount)}) exceeds outstanding balance (${money(selectedInvoice.balanceAmount)}). Maximum allowed: ${money(selectedInvoice.balanceAmount)}`)
-        return
-      }
-    } else if (data.customerId && selectedCustomerDetails) {
-      // If only customer is selected (no invoice), validate against customer balance
-      const customerBalance = Math.abs(selectedCustomerDetails.balance || 0)
-      if (customerBalance > 0 && paymentAmount > customerBalance + 0.01) {
-        toast.error(`Payment amount (${money(paymentAmount)}) exceeds customer outstanding balance (${money(customerBalance)}). Maximum allowed: ${money(customerBalance)}`)
-        return
-      }
-    }
-    
+  const executePayment = async (intent) => {
+    if (user?.supportReadOnly) { toast.error('This support session is read-only.'); return }
+    if (submittingRef.current || !accountPrefixRef.current || !intent.scope.startsWith(accountPrefixRef.current)) return
+    const prefix = accountPrefixRef.current
+    submittingRef.current = true
+    setSubmitting(true)
     try {
-      setSubmitting(true)
-      
-      // Prepare payment data with proper types
-      let paymentDate = data.paymentDate
-      
-      // If paymentDate is a date string (YYYY-MM-DD), convert to ISO string
-      if (paymentDate && typeof paymentDate === 'string' && paymentDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        // Convert YYYY-MM-DD to ISO string (adds time component)
-        paymentDate = new Date(paymentDate + 'T00:00:00').toISOString()
-      } else if (!paymentDate) {
-        paymentDate = new Date().toISOString()
-      }
-      
-      const paymentData = {
-        saleId: data.saleId ? parseInt(data.saleId, 10) : null,
-        customerId: data.customerId ? parseInt(data.customerId, 10) : null,
-        amount: parseFloat(data.amount),
-        mode: String(data.method || 'CASH').toUpperCase(),
-        reference: data.ref || null, // Backend expects 'Reference' not 'ref'
-        paymentDate: paymentDate
-      }
-
-      const response = await paymentsAPI.createPayment(paymentData)
-      
-      if (response.success) {
-        toast.success('Payment added successfully!')
-        const paymentResult = response?.data?.payment || response?.data
-        offerReceiptPreviewAfterPayment(paymentResult, (paymentId) => {
-          setReceiptPreviewPaymentIds([paymentId])
-          setShowReceiptPreviewModal(true)
-        })
-        showReturnToPrompt(navigate, returnTo)
-        // Reload data by calling the API directly (fetchData is now inline in useEffect)
-        try {
-          setLoading(true)
-          const [paymentsRes, customersRes, salesRes] = await Promise.all([
-            paymentsAPI.getPayments({ page: 1, pageSize: 100 }),
-            customersAPI.getCustomers({ page: 1, pageSize: 100 }),
-            salesAPI.getSales({ page: 1, pageSize: 100 })
-          ])
-          if (paymentsRes.success && paymentsRes.data) {
-            setPayments(paymentsRes.data.items || paymentsRes.data || [])
-          }
-          if (customersRes.success && customersRes.data) {
-            setCustomers(customersRes.data.items || customersRes.data || [])
-          }
-          if (salesRes.success && salesRes.data) {
-            setSales(salesRes.data.items || salesRes.data || [])
-          }
-        } catch (error) {
-          console.error('Failed to reload data:', error)
-        } finally {
-          setLoading(false)
-        }
-        reset()
-        closeAddPaymentModal()
-        setSelectedPayment(null)
-        // Trigger global update event
-        window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
-      } else {
-        toast.error(response.message || 'Failed to save payment')
-      }
+      const send = intent.kind === 'allocate' ? paymentsAPI.allocatePayment : paymentsAPI.createPayment
+      const response = await send(intent.request, intent.idempotencyKey)
+      if (!response?.success) throw new Error(response?.message || 'Payment is unconfirmed. Retry the previous payment.')
+      paymentJournal.complete(intent.scope, intent.idempotencyKey)
+      if (prefix !== accountPrefixRef.current) return
+      const paymentResult = response?.data?.payment || response?.data
+      const voided = String(paymentResult?.status || '').toUpperCase() === 'VOID'
+      toast.success(voided ? 'Previous payment is void. No new payment was recorded.' : 'Payment confirmed successfully!')
+      if (!voided) offerReceiptPreviewAfterPayment(paymentResult, (paymentId) => {
+        setReceiptPreviewPaymentIds([paymentId])
+        setShowReceiptPreviewModal(true)
+      })
+      showReturnToPrompt(navigate, returnTo)
+      setShowAddModal(false)
+      reset()
+      clearPaymentCustomerIdFromUrl()
+      setSelectedPayment(null)
+      await fetchData()
+      window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
-      console.error('Failed to save payment:', error)
-      toast.error(error?.response?.data?.message || error?.response?.data?.errors?.join(', ') || 'Failed to save payment')
+      if (prefix === accountPrefixRef.current) toast.error(error?.response?.data?.message || error.message || 'Payment is unconfirmed. Retry the previous payment.')
     } finally {
-      setSubmitting(false)
+      submittingRef.current = false
+      if (prefix === accountPrefixRef.current) { setSubmitting(false); refreshRecovery() }
+    }
+  }
+
+  const paymentDraft = (data) => {
+    const amount = Number(data.amount)
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Please enter a valid positive payment amount.')
+    const customerId = data.customerId ? Number(data.customerId) : null
+    const saleId = data.saleId ? Number(data.saleId) : null
+    if (!customerId && !saleId) throw new Error('Please select a customer or an invoice.')
+    const selectedMode = String(data.method || 'CASH').toUpperCase()
+    const mode = selectedMode === 'PENDING' ? 'CREDIT' : selectedMode
+    if (!['CASH','CHEQUE','ONLINE','CREDIT','DEBIT'].includes(mode)) throw new Error('Select a valid payment method.')
+    if (['CHEQUE', 'ONLINE'].includes(mode) && !String(data.ref || data.reference || '').trim()) {
+      throw new Error('Enter a reference for cheque or online payments.')
+    }
+    let paymentDate = data.paymentDate
+    if (/^\d{4}-\d{2}-\d{2}$/.test(paymentDate || '')) paymentDate = new Date(paymentDate + 'T00:00:00Z').toISOString()
+    else if (!paymentDate) paymentDate = new Date().toISOString()
+    return {kind:'create',form:ledgerPaymentForm(data,false),request:{
+      saleId,customerId,amount,mode,reference:data.ref || data.reference || null,paymentDate,
+    }}
+  }
+
+  const onSubmit = async (data) => {
+    if (user?.supportReadOnly) { toast.error('This support session is read-only.'); return }
+    if (submittingRef.current) return
+    try {
+      const scope = ledgerPaymentScope({...recoveryIdentity,customerId:data.customerId || 'cash'})
+      const previous = paymentJournal.read(scope)
+      if (previous) {
+        if (previous.form !== ledgerPaymentForm(data,false)) throw new Error('Retry the previous payment before recording a different payment.')
+        await executePayment(previous)
+        return
+      }
+      if (savedBatch?.rows.some(row => row.scope === scope && !row.confirmed)) {
+        throw new Error('Resume the saved bulk payments before recording a new payment for this customer.')
+      }
+      const draft = paymentDraft(data)
+      // Validate a new request against the visible balance, never a recovered request.
+      const paymentAmount = draft.request.amount
+      if (data.saleId) {
+        const selectedInvoice = outstandingInvoices.find(inv => inv.id === Number(data.saleId))
+        if (selectedInvoice && paymentAmount > selectedInvoice.balanceAmount + 0.01) {
+          throw new Error('Payment exceeds the invoice outstanding balance. Refresh the invoice before saving.')
+        }
+      } else if (selectedCustomerDetails) {
+        const customerBalance = Math.abs(selectedCustomerDetails.balance || 0)
+        if (customerBalance > 0 && paymentAmount > customerBalance + 0.01) {
+          throw new Error('Payment exceeds the customer outstanding balance. Refresh the customer before saving.')
+        }
+      }
+      const intent = paymentJournal.begin(scope,draft)
+      refreshRecovery()
+      await executePayment(intent)
+    } catch (error) { toast.error(error.message); refreshRecovery() }
+  }
+
+  const saveBulkPayments = async () => {
+    if (user?.supportReadOnly) { toast.error('This support session is read-only.'); return }
+    if (submittingRef.current) return
+    const prefix = accountPrefixRef.current
+    try {
+      if (!savedBatch) {
+        const drafts = bulkPayments.map(data => {
+          const draft = paymentDraft(data)
+          if (!draft.request.customerId) throw new Error('Select a customer for every bulk payment.')
+          return {...draft,scope:ledgerPaymentScope({...recoveryIdentity,customerId:draft.request.customerId})}
+        })
+        batchJournal.begin(bulkScope,drafts)
+        refreshRecovery()
+      }
+      submittingRef.current = true
+      setSubmitting(true)
+      const batch = await batchJournal.execute(bulkScope, (request,key) => {
+        if (prefix !== accountPrefixRef.current) throw new Error('Workspace changed. Resume the saved batch in its original workspace.')
+        return paymentsAPI.createPayment(request,key)
+      }, progress => { if (prefix === accountPrefixRef.current) setSavedBatch(progress) })
+      if (prefix !== accountPrefixRef.current) return
+      toast.success(`Confirmed ${batch.rows.length} payment(s).`)
+      setShowBulkPaymentModal(false)
+      setBulkPayments([{customerId:'',amount:'',method:'Cash',paymentDate:localDateString(new Date())}])
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
+    } catch (error) {
+      if (prefix === accountPrefixRef.current) toast.error(error?.response?.data?.message || error.message || 'Batch paused. Resume the saved payments.')
+    } finally {
+      submittingRef.current = false
+      if (prefix === accountPrefixRef.current) {
+        setSubmitting(false)
+        refreshRecovery()
+        await fetchData()
+      }
     }
   }
 
@@ -509,6 +551,11 @@ const PaymentsPage = () => {
       toast.error('One or more selected payments cannot produce a receipt.')
       return
     }
+    const { customerCount } = receiptSelectionSummary(payments,eligible)
+    if (customerCount > 1) {
+      toast.error(`Combined receipt requires payments from one customer. ${customerCount} customers are selected.`)
+      return
+    }
     setReceiptPreviewPaymentIds(eligible)
     setShowReceiptPreviewModal(true)
   }
@@ -531,23 +578,13 @@ const PaymentsPage = () => {
   }
 
   const eligibleFilteredReceiptIds = useMemo(
-    () => filteredPayments.filter(canReceivePaymentReceipt).map((p) => p.id),
-    [filteredPayments]
+    () => canEditPayments && !user?.supportReadOnly ? filteredPayments.filter(canReceivePaymentReceipt).map(p => p.id) : [],
+    [filteredPayments,canEditPayments,user?.supportReadOnly]
   )
 
-  const toggleSelectAllPayments = () => {
-    if (eligibleFilteredReceiptIds.length === 0) return
-    if (receiptSelectedIds.length === eligibleFilteredReceiptIds.length &&
-      eligibleFilteredReceiptIds.every((id) => receiptSelectedIds.includes(id))) {
-      setSelectedPaymentIds([])
-    } else {
-      setSelectedPaymentIds(eligibleFilteredReceiptIds)
-    }
-  }
-
-  const selectedTotal = filteredPayments
-    .filter(p => receiptSelectedIds.includes(p.id))
-    .reduce((sum, p) => sum + (p.amount || 0), 0)
+  const selectionSummary = receiptSelectionSummary(eligibleReceiptPayments,receiptSelectedIds,filteredPayments)
+  const selectedTotal = selectionSummary.total
+  const toggleSelectAllPayments = () => setSelectedPaymentIds(prev => toggleVisibleReceiptSelection(prev,eligibleFilteredReceiptIds))
 
   const handleChequeStatusUpdate = async (paymentId, status) => {
     try {
@@ -581,48 +618,21 @@ const PaymentsPage = () => {
     }
   }
 
-  const getStatusIcon = (status, chequeStatus, method) => {
-    // If payment method is Pending, show pending status
-    if (method === 'Pending') {
-      return <Clock className="h-5 w-5 text-yellow-500" />
-    }
-    
-    // For Cheque, use chequeStatus
-    if (method === 'Cheque') {
-      if (chequeStatus === 'Cleared') {
-        return <CheckCircle className="h-5 w-5 text-green-500" />
-      } else if (chequeStatus === 'Returned') {
-        return <XCircle className="h-5 w-5 text-red-500" />
-      }
-      return <Clock className="h-5 w-5 text-yellow-500" />
-    }
-    
-    // For Cash/Online, payment is completed
-    return <CheckCircle className="h-5 w-5 text-green-500" />
+  const getStatusIcon = (status) => {
+    const state = String(status || '').toUpperCase()
+    if (state === 'CLEARED') return <CheckCircle className="h-5 w-5 text-green-500" />
+    if (state === 'VOID' || state === 'RETURNED') return <XCircle className="h-5 w-5 text-red-500" />
+    return <Clock className="h-5 w-5 text-yellow-500" />
   }
 
-  // Normalize API response: backend sends mode/status (camelCase); support chequeStatus if present (PRODUCTION_MASTER_TODO #39)
-  const getPaymentMethod = (p) => (p.method || p.mode || '').toLowerCase().replace(/^./, (c) => c.toUpperCase())
+  const getPaymentMethod = (p) => (p.method || p.mode || '').toLowerCase().replace(/^./, c => c.toUpperCase())
   const getChequeStatus = (p) => p.chequeStatus || (p.status === 'CLEARED' ? 'Cleared' : p.status === 'RETURNED' ? 'Returned' : p.status === 'VOID' ? 'Void' : 'Pending')
-
-  const getStatusColor = (status, chequeStatus, method) => {
-    // If payment method is Pending, show pending status
-    if (method === 'Pending') {
-      return 'bg-yellow-100 text-yellow-800'
-    }
-    
-    // For Cheque, use chequeStatus
-    if (method === 'Cheque') {
-      if (chequeStatus === 'Cleared') {
-        return 'bg-green-100 text-green-800'
-      } else if (chequeStatus === 'Returned') {
-        return 'bg-red-100 text-red-800'
-      }
-      return 'bg-yellow-100 text-yellow-800'
-    }
-    
-    // For Cash/Online, payment is completed
-    return 'bg-green-100 text-green-800'
+  const getStatusColor = (status) => {
+    const state = String(status || '').toUpperCase()
+    if (state === 'CLEARED') return 'bg-green-100 text-green-800'
+    if (state === 'RETURNED') return 'bg-red-100 text-red-800'
+    if (state === 'PENDING') return 'bg-yellow-100 text-yellow-800'
+    return 'bg-gray-100 text-gray-800'
   }
 
   if (loading) {
@@ -630,7 +640,7 @@ const PaymentsPage = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${receiptSelectedIds.length ? 'pb-48 lg:pb-20' : ''}`}>
       {returnTo && (
         <button
           type="button"
@@ -642,6 +652,17 @@ const PaymentsPage = () => {
         </button>
       )}
       {/* Header */}
+      {recoveryError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{recoveryError}</p>}
+      {unconfirmedPayments.map(intent => (
+        <div key={intent.idempotencyKey} role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+          <p>Previous payment of {money(intent.request.amount)} for customer {intent.request.customerId ?? 'Cash Customer'} is unconfirmed. Confirm it before recording another payment for this customer.</p>
+          <button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Retry previous payment</button>
+        </div>
+      ))}
+      {savedBatch && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        <p>Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.</p>
+        <button type="button" disabled={submitting} onClick={() => setShowBulkPaymentModal(true)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Resume bulk payments</button>
+      </div>}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
@@ -657,6 +678,7 @@ const PaymentsPage = () => {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
+            disabled={submitting || Boolean(user?.supportReadOnly)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 min-h-[44px]"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -664,6 +686,7 @@ const PaymentsPage = () => {
           </button>
           <button
             onClick={() => setShowBulkPaymentModal(true)}
+            disabled={submitting || Boolean(user?.supportReadOnly)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 min-h-[44px]"
             title="Add multiple payments at once"
           >
@@ -708,6 +731,8 @@ const PaymentsPage = () => {
               <option value="completed">Completed</option>
               <option value="pending">Pending</option>
               <option value="credit">Credit</option>
+              <option value="void">Voided</option>
+              <option value="returned">Returned</option>
             </select>
             {(filterMethod || filterStatus) && (
               <button
@@ -736,8 +761,7 @@ const PaymentsPage = () => {
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
-                    checked={eligibleFilteredReceiptIds.length > 0 &&
-                      receiptSelectedIds.length === eligibleFilteredReceiptIds.length}
+                    checked={selectionSummary.allVisibleSelected}
                     disabled={eligibleFilteredReceiptIds.length === 0}
                     onChange={toggleSelectAllPayments}
                     className="rounded border-gray-300 disabled:opacity-40"
@@ -787,14 +811,13 @@ const PaymentsPage = () => {
                 filteredPayments.map((payment) => (
                   <tr key={payment.id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <input
+                      {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && <input
                         type="checkbox"
                         checked={receiptSelectedIds.includes(payment.id)}
-                        disabled={!canReceivePaymentReceipt(payment)}
                         onChange={() => togglePaymentSelection(payment.id)}
                         className="rounded border-gray-300 disabled:opacity-40"
                         aria-label={`Select payment ${payment.id} for receipt`}
-                      />
+                      />}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{payment.invoiceNo || '-'}</div>
@@ -818,7 +841,7 @@ const PaymentsPage = () => {
                       <div className="flex items-center">
                         {getStatusIcon(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}
                         <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}`}>
-                          {getPaymentMethod(payment) === 'Cheque' ? getChequeStatus(payment) : (getPaymentMethod(payment) === 'Pending' ? 'Pending' : 'Completed')}
+                          {paymentStatusLabel(payment)}
                         </span>
                       </div>
                     </td>
@@ -894,7 +917,7 @@ const PaymentsPage = () => {
 
       {/* Selection action bar - Generate Receipt */}
       {receiptSelectedIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex items-center justify-between">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span className="text-sm font-medium text-gray-700">
             {receiptSelectedIds.length} payment(s) selected — Total: {money(selectedTotal)}
           </span>
@@ -902,7 +925,7 @@ const PaymentsPage = () => {
             <button
               type="button"
               onClick={handleGenerateReceiptFromBar}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
             >
               <Printer className="h-4 w-4" />
               Generate Receipt
@@ -910,7 +933,7 @@ const PaymentsPage = () => {
             <button
               type="button"
               onClick={() => setSelectedPaymentIds([])}
-              className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
             >
               Cancel
             </button>
@@ -944,6 +967,10 @@ const PaymentsPage = () => {
           filteredPayments.map((payment) => (
             <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-start justify-between mb-3">
+                {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && (
+                  <input type="checkbox" checked={receiptSelectedIds.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)}
+                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-3 min-h-[24px] min-w-[24px] rounded border-gray-300" />
+                )}
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{payment.customerName || 'Unknown'}</p>
                   <p className="text-xs text-gray-500">{payment.invoiceNo || 'General Payment'}</p>
@@ -967,7 +994,7 @@ const PaymentsPage = () => {
                 <div className="flex items-center gap-1.5">
                   {getStatusIcon(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}
                   <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getStatusColor(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}`}>
-                    {getPaymentMethod(payment) === 'Cheque' ? getChequeStatus(payment) : (getPaymentMethod(payment) === 'Pending' ? 'Pending' : 'Completed')}
+                    {paymentStatusLabel(payment)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1346,8 +1373,9 @@ const PaymentsPage = () => {
       <Modal
         isOpen={showBulkPaymentModal}
         onClose={() => {
+          if (submittingRef.current) return
           setShowBulkPaymentModal(false)
-          setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
+          if (!savedBatch) setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
         }}
         title="Bulk Payment Entry"
         size="lg"
@@ -1356,11 +1384,11 @@ const PaymentsPage = () => {
           <p className="text-sm text-gray-600 mb-4">
             Add multiple payments at once. Each row represents one payment.
           </p>
-          {bulkPayments.map((payment, index) => (
+          {bulkRows.map((payment, index) => (
             <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Payment #{index + 1}</span>
-                {bulkPayments.length > 1 && (
+                <span className="text-sm font-medium text-gray-700">Payment #{index + 1}{savedBatch ? (payment.confirmed ? ' · Confirmed' : ' · Awaiting confirmation') : ''}</span>
+                {!savedBatch && bulkPayments.length > 1 && (
                   <button
                     type="button"
                     onClick={() => {
@@ -1375,6 +1403,7 @@ const PaymentsPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <Select
                   label="Customer"
+                  disabled={submitting || Boolean(savedBatch)}
                   options={[
                     { value: '', label: 'Select Customer' },
                     ...customers.map(customer => ({
@@ -1391,6 +1420,7 @@ const PaymentsPage = () => {
                 />
                 <Input
                   label="Amount"
+                  disabled={submitting || Boolean(savedBatch)}
                   type="number"
                   step="0.01"
                   placeholder="0.00"
@@ -1403,12 +1433,13 @@ const PaymentsPage = () => {
                 />
                 <Select
                   label="Payment Method"
+                  disabled={submitting || Boolean(savedBatch)}
                   options={[
-                    { value: 'Cash', label: 'Cash' },
-                    { value: 'Cheque', label: 'Cheque' },
-                    { value: 'Online', label: 'Online Transfer' }
+                    { value: 'CASH', label: 'Cash' },
+                    { value: 'CHEQUE', label: 'Cheque' },
+                    { value: 'ONLINE', label: 'Online Transfer' }
                   ]}
-                  value={payment.method}
+                  value={String(payment.method).toUpperCase()}
                   onChange={(e) => {
                     const updated = [...bulkPayments]
                     updated[index].method = e.target.value
@@ -1417,6 +1448,7 @@ const PaymentsPage = () => {
                 />
                 <Input
                   label="Payment Date"
+                  disabled={submitting || Boolean(savedBatch)}
                   type="date"
                   value={payment.paymentDate}
                   onChange={(e) => {
@@ -1425,12 +1457,18 @@ const PaymentsPage = () => {
                     setBulkPayments(updated)
                   }}
                 />
+                <Input label="Reference" value={payment.reference || ''}
+                  disabled={submitting || Boolean(savedBatch)}
+                  required={['CHEQUE','ONLINE'].includes(String(payment.method).toUpperCase())}
+                  onChange={e => { const updated=[...bulkPayments]; updated[index]={...updated[index],reference:e.target.value}; setBulkPayments(updated) }}
+                />
               </div>
             </div>
           ))}
           <div className="flex justify-between">
             <button
               type="button"
+              disabled={submitting || Boolean(savedBatch)}
               onClick={() => {
                 setBulkPayments([...bulkPayments, { customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
               }}
@@ -1443,68 +1481,19 @@ const PaymentsPage = () => {
               <button
                 type="button"
                 onClick={() => {
+                  if (submittingRef.current) return
                   setShowBulkPaymentModal(false)
-                  setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
+                  if (!savedBatch) setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
                 }}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
               >
                 Cancel
               </button>
               <LoadingButton
-                onClick={async () => {
-                  // Validate all payments
-                  const invalidPayments = bulkPayments.filter(p => !p.customerId || !p.amount || parseFloat(p.amount) <= 0)
-                  if (invalidPayments.length > 0) {
-                    toast.error('Please fill all required fields for all payments')
-                    return
-                  }
-
-                  try {
-                    setSubmitting(true)
-                    let successCount = 0
-                    let errorCount = 0
-
-                    // Process each payment sequentially to avoid race conditions
-                    for (const payment of bulkPayments) {
-                      try {
-                        const paymentDate = payment.paymentDate ? new Date(payment.paymentDate + 'T00:00:00').toISOString() : new Date().toISOString()
-                        const paymentData = {
-                          customerId: parseInt(payment.customerId, 10),
-                          amount: parseFloat(payment.amount),
-                          mode: String(payment.method || 'CASH').toUpperCase(),
-                          paymentDate: paymentDate
-                        }
-                        const response = await paymentsAPI.createPayment(paymentData)
-                        if (response.success) {
-                          successCount++
-                        } else {
-                          errorCount++
-                        }
-                      } catch (error) {
-                        console.error(`Failed to create payment ${bulkPayments.indexOf(payment) + 1}:`, error)
-                        errorCount++
-                      }
-                    }
-
-                    if (successCount > 0) {
-                      toast.success(`Successfully created ${successCount} payment(s)${errorCount > 0 ? `. ${errorCount} failed.` : ''}`)
-                      setShowBulkPaymentModal(false)
-                      setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
-                      fetchData()
-                      window.dispatchEvent(new CustomEvent('dataUpdated'))
-                    } else {
-                      toast.error('Failed to create payments. Please check the errors and try again.')
-                    }
-                  } catch (error) {
-                    console.error('Failed to create bulk payments:', error)
-                    toast.error('Failed to create bulk payments')
-                  } finally {
-                    setSubmitting(false)
-                  }
-                }}
+                onClick={saveBulkPayments}
                 loading={submitting}
               >
-                Save All Payments ({bulkPayments.length})
+                {savedBatch ? `Retry remaining payments (${savedBatch.rows.filter(row => !row.confirmed).length})` : `Save All Payments (${bulkPayments.length})`}
               </LoadingButton>
             </div>
           </div>

@@ -1688,6 +1688,9 @@ namespace HexaBill.Api.Models
         public decimal RealPending { get; set; } // Real pending amount (for sales: GrandTotal - PaidAmount, for payments: 0)
         public decimal RealGotPayment { get; set; } // Real payment received (for payments: Amount, for sales: PaidAmount from invoice)
         public string Status { get; set; } = string.Empty; // "Paid", "Unpaid", "Pending", "Partial"
+        /// <summary>Authoritative payment state for receipt/edit actions; separate from the display label.</summary>
+        public string? PaymentLineStatus { get; set; }
+        public bool IsSettlementAdjustment { get; set; }
         public decimal CustomerBalance { get; set; } // Per-customer running balance
         public DateTime? PlanDate { get; set; } // Due date (Invoice Date + 30 days)
         public int? SaleId { get; set; }
@@ -1767,6 +1770,8 @@ namespace HexaBill.Api.Models
         public decimal ProfitAmount { get; set; }
         /// <summary>Deprecated for filing. Always 0 after D5 — use Standard VAT boxes (Box1b/12/13).</summary>
         public decimal ProfitVat { get; set; }
+        /// <summary>Client-requested 5% of positive operating profit, an estimate only. Null for SalesBased tenants; never used in filing boxes.</summary>
+        public decimal? ProfitVatEstimate { get; set; }
         /// <summary>When true, ProfitAmount is an operating estimate only and must not be labelled as VAT.</summary>
         public bool ProfitEstimateNotForFiling { get; set; }
         public DateTime? CalculatedAt { get; set; }

@@ -210,6 +210,7 @@ const Layout = () => {
     '/suppliers': 'Suppliers',
     '/pos': 'New Bill',
     '/ledger': 'Customer Ledger',
+    '/payments': 'Payments',
     '/expenses': 'Expenses',
     '/sales-ledger': 'Sales Ledger',
     '/billing-history': 'Billing History',

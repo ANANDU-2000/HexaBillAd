@@ -6,7 +6,7 @@ import { build } from 'esbuild'
 import { createRequire } from 'node:module'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
-let PrintOptions, renderer, toasts
+let PrintOptions, renderer, toasts, originalSetTimeout, frameWindow, frameLoads
 
 before(async () => {
   const require = createRequire(import.meta.url)
@@ -49,12 +49,24 @@ before(async () => {
 beforeEach(() => {
   toasts = []
   globalThis.__printToasts = toasts
-  globalThis.window = { open: () => null }
+  globalThis.window = { open: () => { throw new Error('Iframe printing must not open a popup') } }
+  frameWindow = null
+  frameLoads = true
+  originalSetTimeout = globalThis.setTimeout
+  globalThis.setTimeout = (callback) => { queueMicrotask(callback); return 0 }
   const link = { href: '', download: '', click () { globalThis.__printClicks.push(this.download) }, remove () {} }
   globalThis.__printClicks = []
   globalThis.document = {
-    createElement: () => link,
-    body: { appendChild () {}, removeChild () {} },
+    createElement: (tag) => tag === 'iframe'
+      ? { style: {}, setAttribute () {}, get contentWindow () { return frameWindow } }
+      : link,
+    body: {
+      appendChild (element) {
+        element.parentNode = this
+        if (frameLoads) queueMicrotask(() => element.onload?.())
+      },
+      removeChild (element) { element.parentNode = null },
+    },
     write () {},
   }
   globalThis.URL.createObjectURL = () => 'blob:print-fixture'
@@ -64,6 +76,7 @@ beforeEach(() => {
 afterEach(() => {
   if (renderer) act(() => renderer.unmount())
   renderer = null
+  globalThis.setTimeout = originalSetTimeout
 })
 
 function button (label) {
@@ -75,7 +88,7 @@ function button (label) {
     }))
 }
 
-test('invoice print downloads PDF when pop-up is blocked', async () => {
+test('invoice print downloads PDF when iframe printing is unavailable', async () => {
   await act(async () => {
     renderer = create(React.createElement(PrintOptions, {
       saleId: 17,
@@ -86,10 +99,10 @@ test('invoice print downloads PDF when pop-up is blocked', async () => {
   })
   await act(async () => { await button('Print').props.onClick() })
   assert.deepEqual(globalThis.__printClicks, ['invoice-INV-17.pdf'])
-  assert.ok(toasts.some((t) => t[0] === 'success' && /Pop-up blocked/i.test(t[1])))
+  assert.ok(toasts.some((t) => t[0] === 'success' && /PDF downloaded/i.test(t[1])))
 })
 
-test('delivery note downloads PDF when pop-up is blocked', async () => {
+test('delivery note downloads PDF when iframe printing is unavailable', async () => {
   await act(async () => {
     renderer = create(React.createElement(PrintOptions, {
       saleId: 17,
@@ -99,5 +112,32 @@ test('delivery note downloads PDF when pop-up is blocked', async () => {
   })
   await act(async () => { await button('Delivery Note').props.onClick() })
   assert.deepEqual(globalThis.__printClicks, ['delivery-note-INV-17.pdf'])
-  assert.ok(toasts.some((t) => t[0] === 'success' && /Pop-up blocked/i.test(t[1])))
+  assert.ok(toasts.some((t) => t[0] === 'success' && /PDF downloaded/i.test(t[1])))
+})
+
+test('iframe prints once without opening a popup or downloading another copy', async () => {
+  let prints = 0, closes = 0, callbacks = 0
+  frameWindow = { focus () {}, print () { prints++ } }
+  await act(async () => {
+    renderer = create(React.createElement(PrintOptions, {
+      saleId: 17, invoiceNo: 'INV-17', onClose () { closes++ }, onPrint () { callbacks++ },
+    }))
+  })
+  await act(async () => { await button('Print').props.onClick() })
+  assert.equal(prints, 1)
+  assert.equal(closes, 1)
+  assert.equal(callbacks, 1)
+  assert.deepEqual(globalThis.__printClicks, [])
+})
+
+test('missing PDF iframe load event still opens one print dialog', async () => {
+  let prints = 0
+  frameLoads = false
+  frameWindow = { focus () {}, print () { prints++ } }
+  await act(async () => {
+    renderer = create(React.createElement(PrintOptions, { saleId: 17, onClose () {} }))
+  })
+  await act(async () => { await button('Delivery Note').props.onClick() })
+  assert.equal(prints, 1)
+  assert.deepEqual(globalThis.__printClicks, [])
 })

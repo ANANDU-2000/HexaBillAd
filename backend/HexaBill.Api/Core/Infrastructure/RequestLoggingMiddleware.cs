@@ -32,6 +32,7 @@ namespace HexaBill.Api.Core.Infrastructure
             var stopwatch = Stopwatch.StartNew();
             var path = context.Request.Path.Value ?? "";
             var method = context.Request.Method;
+            RequestStageTimings.StartLogin(context);
 
             // Skip logging for health checks and static files
             if (path.StartsWith("/health") || 
@@ -68,6 +69,22 @@ namespace HexaBill.Api.Core.Infrastructure
                 stopwatch.Stop();
                 var statusCode = context.Response.StatusCode;
                 var duration = stopwatch.ElapsedMilliseconds;
+
+                // Host/auth middleware runs after this logger. Read the final scope
+                // so anonymous login requests are attributed to the verified host.
+                if (context.Items[HexaBill.Api.Core.Tenancy.TenantHostMiddleware.ResolutionItemKey]
+                    is HexaBill.Api.Models.TenantHostResolution resolution)
+                    tenantId = resolution.TenantId;
+                if (context.User?.Identity?.IsAuthenticated == true)
+                {
+                    tenantId = context.User.GetTenantIdOrNullForSystemAdmin();
+                    if (int.TryParse(context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var finalUserId))
+                        userId = finalUserId;
+                }
+                var stages = RequestStageTimings.Read(context);
+                if (!string.IsNullOrEmpty(stages))
+                    _logger.LogInformation("Login stages | TenantId: {TenantId} | Status: {StatusCode} | CorrelationId: {CorrelationId} | Timings: {StageTimings}",
+                        tenantId ?? 0, statusCode, correlationId, stages);
 
                 // Log slow requests (>500ms) and errors (4xx, 5xx)
                 if (duration > 500 || statusCode >= 400)

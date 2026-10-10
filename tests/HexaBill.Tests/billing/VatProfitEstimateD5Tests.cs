@@ -10,6 +10,7 @@ public class VatProfitEstimateD5Tests
     {
         var dto = new VatReturn201Dto();
         Assert.Equal(0m, dto.ProfitVat);
+        Assert.Null(dto.ProfitVatEstimate);
         Assert.False(dto.ProfitEstimateNotForFiling);
     }
 

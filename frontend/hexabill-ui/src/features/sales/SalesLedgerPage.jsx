@@ -370,6 +370,8 @@ const SalesLedgerPage = () => {
           realPending: Number(entry.realPending || entry.RealPending || 0),
           realGotPayment: Number(entry.realGotPayment || entry.RealGotPayment || 0), // For sales: shows paidAmount, for payments: shows payment amount
           status: entry.status || 'Unpaid',
+          paymentLineStatus: entry.paymentLineStatus ?? entry.PaymentLineStatus,
+          isSettlementAdjustment: Boolean(entry.isSettlementAdjustment ?? entry.IsSettlementAdjustment),
           customerBalance: Number(entry.customerBalance || entry.CustomerBalance || 0),
           planDate: entry.planDate ? new Date(entry.planDate) : null,
           saleId: entry.saleId || entry.SaleId,
@@ -727,7 +729,7 @@ const SalesLedgerPage = () => {
     customerId: entry.customerId,
     customerName: entry.customerName,
     saleId: entry.saleId,
-    status: entry.status,
+    status: entry.paymentLineStatus ?? '',
     isRefund: entry.isRefund ?? entry.IsRefund,
     saleReturnId: entry.saleReturnId ?? entry.SaleReturnId,
     isSettlementAdjustment: entry.isSettlementAdjustment ?? entry.IsSettlementAdjustment

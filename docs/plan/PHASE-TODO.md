@@ -1,6 +1,10 @@
 ﻿# Tier 0 + Master Loop execution board
 
-**Branch:** `main` @ `6dc8d9c`  
+## Current strict production override — 8 October2026
+
+Live checklist: PRODUCTION-STABILIZATION-STATE.md; issues: PRODUCTION-ISSUE-REGISTER.md; gate: FINAL-PRODUCTION-SIGNOFF.md. Starting branch/HEAD release-1/bdcc429. Historical green counts and push assertions below do not certify this checkout. Fresh baselineFE99pass/2fail; PG-enabledBE649pass/26fail/0skip. Latest checkpoint: PG backend692/692/0skip; FE113/113, lint234warnings/0errors, build27.95sPASS. Scoped login/timings and ProfitBased5% comparison implemented; modal retry recovery component-tested, local browser/PG recovery proof PASS, broader matrix OPEN. Full gate FAIL/INPROGRESS. No main push until complete master gate passes.
+
+**Historical branch:** `main` @ `6dc8d9c`
 **Plan:** `docs/plan/MASTER-LOOP.md`  
 **State:** `docs/plan/STATE.md`  
 **Sign-off:** `docs/plan/TIER0-SIGNOFF.md`
