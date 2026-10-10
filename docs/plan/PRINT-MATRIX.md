@@ -10,3 +10,5 @@ Each family:1/2/20/50+rows, long English/Arabic/Malayalam where relevant, missin
 | Quotations/agreements/statements/purchase/expense/reports/DailyClose/creditnotes | No fresh full proof. | NOT RUN |
 
 No family production signed off. Receipt PDF export is snapshot-flag dependent; retain safeguards.
+
+> Superseded by docs/production/PRINT-SPECIFICATION.md (2026-10-10).

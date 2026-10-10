@@ -1380,15 +1380,14 @@ namespace HexaBill.Api.Modules.Customers
                     .ToDictionaryAsync(s => s.Key, s => s.Value);
             }
             var companyName = settings.GetValueOrDefault("COMPANY_NAME_EN") ?? "HexaBill";
-                var companyAddress = settings.GetValueOrDefault("COMPANY_ADDRESS") ?? "Mussafah 44 - Abu Dhabi";
+                // Never substitute another business's address; omit the line when the tenant has none.
+                var companyAddress = settings.GetValueOrDefault("COMPANY_ADDRESS") ?? "";
             var companyTrn = settings.GetValueOrDefault("COMPANY_TRN") ?? "";
             var currency = settings.GetValueOrDefault("CURRENCY") ?? "AED";
                 
                 // Validate required data
                 if (string.IsNullOrEmpty(companyName))
                     companyName = "HexaBill";
-                if (string.IsNullOrEmpty(companyAddress))
-                    companyAddress = "Mussafah 44 - Abu Dhabi";
 
             // CRITICAL: Ensure customerId is valid
             if (customerId <= 0)
@@ -1675,9 +1674,10 @@ namespace HexaBill.Api.Modules.Customers
                                         .FontSize(16)
                                         .Bold()
                                         .FontColor(Colors.Black);
-                                    col.Item().PaddingTop(2).Text(companyAddress)
-                                        .FontSize(10)
-                                        .FontColor(Colors.Grey.Darken2);
+                                    if (!string.IsNullOrWhiteSpace(companyAddress))
+                                        col.Item().PaddingTop(2).Text(companyAddress)
+                                            .FontSize(10)
+                                            .FontColor(Colors.Grey.Darken2);
                                     if (!string.IsNullOrEmpty(companyTrn))
                                     {
                                         col.Item().Text($"TRN: {companyTrn}")
