@@ -1,3 +1,4 @@
+using HexaBill.Api.Core.Tenancy;
 /*
 Purpose: Authentication controller for login and user management
 Author: AI Assistant
@@ -91,10 +92,12 @@ namespace HexaBill.Api.Modules.Auth
                 {
                     return BadRequest(new ApiResponse<LoginResponse> { Success = false, Message = "Email is required.", Errors = new List<string>() });
                 }
+                var lockoutKey = LoginLockoutKey.For(
+                    HttpContext.Items[TenantHostMiddleware.ResolutionItemKey] as TenantHostResolution, email);
                 // BUG #2.7 FIX: Use async lockout check (persistent in PostgreSQL)
                 bool lockedOut;
                 using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutCheck))
-                    lockedOut = await _lockout.IsLockedOutAsync(email);
+                    lockedOut = await _lockout.IsLockedOutAsync(lockoutKey);
                 if (lockedOut)
                 {
                     _logger.LogWarning("Login attempt for locked-out email: {Email}", email);
@@ -105,12 +108,12 @@ namespace HexaBill.Api.Modules.Auth
                 if (result == null)
                 {
                     using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutFailure))
-                        await _lockout.RecordFailedAttemptAsync(email);
+                        await _lockout.RecordFailedAttemptAsync(lockoutKey);
                     _logger.LogWarning("Failed login attempt for email: {Email}", email);
                     return BadRequest(new ApiResponse<LoginResponse> { Success = false, Message = "Invalid email or password", Errors = new List<string>() });
                 }
                 using (RequestStageTimings.Measure(HttpContext, RequestStage.LockoutClear))
-                    await _lockout.ClearAttemptsAsync(email);
+                    await _lockout.ClearAttemptsAsync(lockoutKey);
                 _logger.LogInformation("Login successful for user: {UserId} ({Email})", result.UserId, email);
                 return Ok(new ApiResponse<LoginResponse> { Success = true, Message = "Login successful", Data = result });
             }

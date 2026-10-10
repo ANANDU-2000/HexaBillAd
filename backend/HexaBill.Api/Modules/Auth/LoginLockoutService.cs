@@ -11,6 +11,8 @@ public interface ILoginLockoutService
     Task ClearAttemptsAsync(string email);
     /// <summary>Manually lock a user for specified duration (Super Admin only).</summary>
     Task LockUserAsync(string email, int durationMinutes = 15);
+    /// <summary>Clears lockout for an email in every workspace (Super Admin unlock).</summary>
+    Task ClearAllScopesAsync(string email);
 }
 
 /// <summary>
@@ -38,6 +40,17 @@ public class LoginLockoutService : ILoginLockoutService
 
         var attempt = await _context.FailedLoginAttempts
             .FirstOrDefaultAsync(a => a.Email == key);
+
+        // A Super Admin manual lock is stored under the bare email and applies to every workspace.
+        var colon = key.IndexOf(':');
+        if (colon > 0 && key.Length > colon + 1 && key[colon + 1] != '#')
+        {
+            var bare = key[(colon + 1)..];
+            var globalLock = await _context.FailedLoginAttempts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.Email == bare);
+            if (globalLock?.LockoutUntil is { } until && until > DateTime.UtcNow)
+                return true;
+        }
 
         if (attempt == null) return false;
 
@@ -100,6 +113,20 @@ public class LoginLockoutService : ILoginLockoutService
             }
         }
 
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task ClearAllScopesAsync(string email)
+    {
+        var bare = (email ?? "").Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(bare)) return;
+        var scoped = ":" + bare;
+        var hashed = ":" + LoginLockoutKey.HashSuffix(bare);
+        var rows = await _context.FailedLoginAttempts
+            .Where(a => a.Email == bare || a.Email.EndsWith(scoped) || a.Email.EndsWith(hashed))
+            .ToListAsync();
+        if (rows.Count == 0) return;
+        _context.FailedLoginAttempts.RemoveRange(rows);
         await _context.SaveChangesAsync();
     }
 

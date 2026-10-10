@@ -86,7 +86,7 @@ namespace HexaBill.Api.Modules.Tenants
                 return BadRequest(new ApiResponse<object> { Success = false, Message = "Email is required" });
             try
             {
-                await _lockoutService.ClearAttemptsAsync(request.Email.Trim());
+                await _lockoutService.ClearAllScopesAsync(request.Email.Trim());
                 await WriteSuperAdminAuditAsync("UnlockLogin", null, $"Unlocked login for: {request.Email}");
                 return Ok(new ApiResponse<object> { Success = true, Message = $"Login unlocked for {request.Email}" });
             }
