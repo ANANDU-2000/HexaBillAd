@@ -89,7 +89,7 @@ namespace HexaBill.Api.Modules.Reports
             var today = _timeZoneService.GetCurrentDate();
             var startForKey = fromDate.HasValue ? new DateTime(fromDate.Value.Year, fromDate.Value.Month, fromDate.Value.Day, 0, 0, 0, DateTimeKind.Utc) : today;
             var endForKey = toDate.HasValue ? toDate.Value.AddDays(1) : today.AddDays(1);
-            var cacheKey = $"report:summary:{tenantId}:{startForKey:yyyyMMdd}:{endForKey:yyyyMMdd}:{branchId}:{routeId}:{userIdForStaff}:{roleForStaff ?? ""}";
+            var cacheKey = $"report:summary:{tenantId}:v{HexaBill.Api.Core.Infrastructure.TenantDataVersion.Get(tenantId)}:{startForKey:yyyyMMdd}:{endForKey:yyyyMMdd}:{branchId}:{routeId}:{userIdForStaff}:{roleForStaff ?? ""}";
 
             // Use short cache when range is a single day (e.g. "Today") so dashboard Refresh and auto-refresh show live data
             var isSingleDay = fromDate.HasValue && toDate.HasValue && fromDate.Value.Date == toDate.Value.Date;

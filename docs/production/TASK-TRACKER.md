@@ -9,7 +9,7 @@
 | T-004b | P0 | Sales | Editing a credit invoice (no payment) left customer balance at the old total | UpdateSaleAsync recalculated balance from persisted rows before saving the new GrandTotal (only saved earlier when payments existed) | SaleService.cs | SaveChanges inside the same transaction before RecalculateCustomerBalanceAsync | SalePersistenceHttpTests create/edit/delete stock+balance (red→green) | SQLite HTTP harness | PASS |
 | T-004c | P0 | Purchases/Expenses/Payments | CRUD persistence sweep | no defect found | — | — | PurchasePersistenceHttpTests (stock + supplier payable create/edit/delete), ExpensePersistenceHttpTests (all fields, VAT, delete), payment partial/idempotent replay/delete in SalePersistenceHttpTests | SQLite HTTP harness | PASS |
 | T-004d | P1 | Returns | Return round-trip via HTTP | | | | existing service-level ReturnStockTests/CreditNoteDailyCloseTests only | | TODO |
-| T-005 | P0 | Dashboard | Totals reconcile with persisted rows | | | | | | TODO |
+| T-005 | P0 | Dashboard | Multi-day dashboard totals stale for 5 minutes after a sale/expense | summary cache key had no data version; no invalidation on writes | TenantDataVersion.cs, AppDbContext.cs, ReportService.cs | per-tenant version bumped on every tenant-row save, included in cache key | DashboardFreshnessHttpTests (red→green) | in-process; assumes single Render instance (true today) | PASS |
 | T-010 | P1 | Print | 3-column monochrome bilingual header + doc coverage | | | | | | TODO |
 | T-020 | P2 | VAT UI | Review/Lock, period picker, Form 201 tab | | | | | | TODO |
 | T-030 | P3 | UI | Responsive pass | | | | | | TODO |
@@ -18,4 +18,4 @@
 | T-050 | P2 | Tests | Intermittent failures under parallel run (statement PDF, VAT export) | suspected process-wide env vars (ASPNETCORE_ENVIRONMENT, HEXABILL_ALLOW_SAMPLE_VAT_TRN) set by legacy VAT tests in parallel | | | | | TODO |
 
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
-Next: T-005 dashboard reconciliation, then P1 print header.
+Next: P1 print header (T-010).

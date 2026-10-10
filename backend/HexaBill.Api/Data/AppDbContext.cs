@@ -34,13 +34,32 @@ namespace HexaBill.Api.Data
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
             ValidateTenantWrites();
-            return base.SaveChanges(acceptAllChangesOnSuccess);
+            var touched = TouchedTenants();
+            var result = base.SaveChanges(acceptAllChangesOnSuccess);
+            HexaBill.Api.Core.Infrastructure.TenantDataVersion.Bump(touched);
+            return result;
         }
 
-        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
         {
             ValidateTenantWrites();
-            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            var touched = TouchedTenants();
+            var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            HexaBill.Api.Core.Infrastructure.TenantDataVersion.Bump(touched);
+            return result;
+        }
+
+        /// <summary>Tenants whose rows are being added, changed or deleted in this save (for report-cache freshness).</summary>
+        private List<int> TouchedTenants()
+        {
+            var ids = new List<int>();
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State is not (EntityState.Added or EntityState.Modified or EntityState.Deleted)) continue;
+                if (entry.Metadata.FindProperty("TenantId") == null) continue;
+                if (entry.Property("TenantId").CurrentValue is int tenantId && tenantId > 0) ids.Add(tenantId);
+            }
+            return ids;
         }
 
         private void ValidateTenantWrites()
