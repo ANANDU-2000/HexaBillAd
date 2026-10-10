@@ -199,10 +199,10 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
   const displayCurrency = detail?.currency || tenantCurrency || 'AED'
   const footer = !loading && !error && detail && (
     <div className="flex flex-wrap gap-3">
-      {outputError && <p role="alert" className="w-full rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{outputError}</p>}
+      {outputError && <p role="alert" className="w-full rounded-md border border-error-border bg-error-bg p-3 text-sm text-error-fg">{outputError}</p>}
       {detail.isHistoricalSnapshot && (
         <button type="button" onClick={handleDownload} disabled={downloading}
-          className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50">
+          className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 disabled:opacity-50">
           {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           {downloading ? 'Downloading…' : 'Download PDF'}
         </button>
@@ -213,10 +213,10 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         <Printer className="h-4 w-4" /> Print receipt
       </button>
       <button type="button" onClick={onClose}
-        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+        className="inline-flex min-h-[44px] items-center gap-2 px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50">
         <X className="h-4 w-4" /> Close
       </button>
-      <span className="w-full text-xs text-gray-500">Optional — print when customer asks</span>
+      <span className="w-full text-xs text-neutral-500">Optional — print when customer asks</span>
     </div>
   )
 
@@ -237,7 +237,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
         </div>
       )}
       {error && (
-        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
+        <div role="alert" className="rounded-lg bg-error-bg border border-error-border px-4 py-3 text-error-fg text-sm">
           {error}
           <button type="button" onClick={() => setRetry(value => value + 1)} className="block mt-2 min-h-[44px] underline font-medium">Try again</button>
         </div>
@@ -245,7 +245,7 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
       {!loading && !error && data?.detail && (
         <>
           {!detail.companyTrn && <p role="status" className="mb-3 text-sm text-amber-800">Add VAT TRN in Settings. This payment receipt is not a Tax Invoice.</p>}
-          <div ref={printRef} className="receipt-preview rounded-lg border border-gray-200 bg-white p-4 sm:p-6 text-left receipt-print-styles">
+          <div ref={printRef} className="receipt-preview rounded-lg border border-neutral-200 bg-white p-4 sm:p-6 text-left receipt-print-styles">
             {detail.bilingualMonochromeHeader && (
               <header className="company-document-header mb-4 text-center text-black">
                 {detail.companyLogoDataUri && <img src={detail.companyLogoDataUri} alt="Company logo" className="mx-auto mb-2 h-14 max-w-[120px] object-contain" style={{ filter: 'grayscale(1)' }} />}
@@ -255,11 +255,11 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
                 {[detail.companyPhone, detail.companyEmail, detail.companyAddress].filter(Boolean).map((value, index) => <p key={index} className="text-sm break-words">{value}</p>)}
               </header>
             )}
-            <h1 className="text-xl font-bold text-gray-900 mb-2">PAYMENT RECEIPT</h1>
-            <p className="text-sm text-gray-700">Receipt No: {detail.receiptNumber}</p>
-            <p className="text-sm text-gray-700">Date: {toReceiptDate(detail.receiptDate)}</p>
+            <h1 className="text-xl font-bold text-neutral-900 mb-2">PAYMENT RECEIPT</h1>
+            <p className="text-sm text-neutral-700">Receipt No: {detail.receiptNumber}</p>
+            <p className="text-sm text-neutral-700">Date: {toReceiptDate(detail.receiptDate)}</p>
             {detail.receiptEndDate && detail.receiptEndDate !== detail.receiptDate && (
-              <p className="text-sm text-gray-700">Payments through: {toReceiptDate(detail.receiptEndDate)}</p>
+              <p className="text-sm text-neutral-700">Payments through: {toReceiptDate(detail.receiptEndDate)}</p>
             )}
             {detail.legacyReconstruction && (
               <p className="mt-2 text-xs text-amber-800">Legacy receipt reconstructed from available records. Original company and invoice details were not saved.</p>
@@ -268,26 +268,26 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
               <p className="mt-2 text-xs text-amber-800" role="status">This copy shows the saved receipt. The payment was changed afterward; review the ledger for its current details.</p>
             )}
             <div className="mt-4">
-              <p className="text-sm font-medium text-gray-700">Received From:</p>
-              <p className="text-gray-900 font-medium">{detail.receivedFrom}</p>
+              <p className="text-sm font-medium text-neutral-700">Received From:</p>
+              <p className="text-neutral-900 font-medium">{detail.receivedFrom}</p>
             </div>
-            <p className="text-sm text-gray-700 mt-2">Payment Method: {detail.paymentMethod}</p>
-            {detail.reference && <p className="text-sm text-gray-500 mt-0.5">Reference: {detail.reference}</p>}
-            <div className="receipt-separator mt-4 mb-4 border-t border-gray-300" aria-hidden="true" />
+            <p className="text-sm text-neutral-700 mt-2">Payment Method: {detail.paymentMethod}</p>
+            {detail.reference && <p className="text-sm text-neutral-500 mt-0.5">Reference: {detail.reference}</p>}
+            <div className="receipt-separator mt-4 mb-4 border-t border-neutral-300" aria-hidden="true" />
             {detail.invoices?.length > 0 && (
               <>
                 <table className="receipt-table w-full text-xs sm:text-sm border-collapse">
                   <thead>
-                    <tr className="border-b-2 border-gray-400">
-                      <th className="py-2 text-left font-semibold text-gray-800">Invoice</th>
-                      <th className="py-2 text-left font-semibold text-gray-800">Date</th>
-                      <th className="py-2 text-right font-semibold text-gray-800">Invoice Total</th>
-                      <th className="py-2 text-right font-semibold text-gray-800">Paid Amount</th>
+                    <tr className="border-b-2 border-neutral-400">
+                      <th className="py-2 text-left font-semibold text-neutral-800">Invoice</th>
+                      <th className="py-2 text-left font-semibold text-neutral-800">Date</th>
+                      <th className="py-2 text-right font-semibold text-neutral-800">Invoice Total</th>
+                      <th className="py-2 text-right font-semibold text-neutral-800">Paid Amount</th>
                     </tr>
                   </thead>
                   <tbody>
                     {detail.invoices.map((inv, i) => (
-                      <tr key={i} className="border-b border-gray-200">
+                      <tr key={i} className="border-b border-neutral-200">
                         <td className="py-2">{inv.invoiceNo}</td>
                         <td className="py-2">{toReceiptDate(inv.invoiceDate)}</td>
                         <td className="py-2 text-right">{formatCurrency(inv.invoiceTotal, displayCurrency)}</td>
@@ -296,14 +296,14 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
                     ))}
                   </tbody>
                 </table>
-                <div className="receipt-separator mt-4 mb-4 border-t border-gray-300" aria-hidden="true" />
+                <div className="receipt-separator mt-4 mb-4 border-t border-neutral-300" aria-hidden="true" />
               </>
             )}
-            <p className="text-base font-bold text-gray-900">
+            <p className="text-base font-bold text-neutral-900">
               Cash received: {formatCurrency(detail.amountReceived, displayCurrency)}
             </p>
             {Number(detail.settlementAdjustmentAmount) > 0 && (
-              <div className="mt-1 text-sm text-gray-800 space-y-0.5">
+              <div className="mt-1 text-sm text-neutral-800 space-y-0.5">
                 <p>
                   Settlement adjustment: {formatCurrency(detail.settlementAdjustmentAmount, displayCurrency)}
                   {detail.settlementAdjustmentReason ? ` — ${detail.settlementAdjustmentReason}` : ''}
@@ -314,14 +314,14 @@ export default function ReceiptPreviewModal ({ paymentIds = [], isOpen, onClose 
               </div>
             )}
             {Number(detail.settlementAdjustmentAmount) <= 0 && Number(detail.amountPaid) > Number(detail.amountReceived) && (
-              <p className="text-sm text-gray-700 mt-1">
+              <p className="text-sm text-neutral-700 mt-1">
                 Total applied: {formatCurrency(detail.amountPaid, displayCurrency)}
               </p>
             )}
             {detail.amountInWords && (
-              <p className="text-xs text-gray-500 mt-1 italic">{detail.amountInWords}</p>
+              <p className="text-xs text-neutral-500 mt-1 italic">{detail.amountInWords}</p>
             )}
-            <div className="mt-6 pt-4 border-t border-gray-200 text-xs text-gray-500">
+            <div className="mt-6 pt-4 border-t border-neutral-200 text-xs text-neutral-500">
               {detail.companyName && <p>{detail.companyName}</p>}
               {detail.companyAddress && <p>{detail.companyAddress}</p>}
               {detail.companyTrn && <p>TRN: {detail.companyTrn}</p>}

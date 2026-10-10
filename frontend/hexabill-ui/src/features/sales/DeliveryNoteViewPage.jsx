@@ -77,7 +77,7 @@ export default function DeliveryNoteViewPage() {
   if (!sale) {
     return (
       <div className="p-4">
-        <p className="text-sm text-red-600 mb-3">{error || 'Not found'}</p>
+        <p className="text-sm text-error mb-3">{error || 'Not found'}</p>
         <Link to="/delivery-notes" className="text-sm text-primary-600 hover:underline">
           Back to list
         </Link>
@@ -94,7 +94,7 @@ export default function DeliveryNoteViewPage() {
           <button
             type="button"
             onClick={() => navigate('/delivery-notes')}
-            className="p-1.5 rounded border border-gray-200 hover:bg-gray-50"
+            className="p-1.5 rounded border border-neutral-200 hover:bg-neutral-50"
             title="Back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -113,7 +113,7 @@ export default function DeliveryNoteViewPage() {
             type="button"
             disabled={busy}
             onClick={() => handlePdf('A4', 'download')}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded border border-neutral-300 bg-white hover:bg-neutral-50 disabled:opacity-50"
           >
             <Download className="w-3.5 h-3.5" /> Download
           </button>

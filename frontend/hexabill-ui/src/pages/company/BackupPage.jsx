@@ -32,9 +32,9 @@ const formatBytes = (bytes) => {
 const zoneLabel = (id) => ZONES.find((zone) => zone.id === id)?.label || id || 'UTC'
 
 const StatusIcon = ({ status }) => {
-  if (status === 'Automatic backup active' || status === 'Connected') return <CheckCircle className="h-5 w-5 text-green-600" aria-hidden="true" />
-  if (status === 'Needs attention' || status === 'Configured, device offline' || status === 'Disconnected') return <AlertCircle className="h-5 w-5 text-amber-600" aria-hidden="true" />
-  if (status === 'Running') return <RefreshCw className="h-5 w-5 text-blue-600 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+  if (status === 'Automatic backup active' || status === 'Connected') return <CheckCircle className="h-5 w-5 text-success" aria-hidden="true" />
+  if (status === 'Needs attention' || status === 'Configured, device offline' || status === 'Disconnected') return <AlertCircle className="h-5 w-5 text-warning" aria-hidden="true" />
+  if (status === 'Running') return <RefreshCw className="h-5 w-5 text-primary-600 animate-spin motion-reduce:animate-none" aria-hidden="true" />
   return <ShieldCheck className="h-5 w-5 text-neutral-500" aria-hidden="true" />
 }
 
@@ -411,7 +411,7 @@ const BackupPage = () => {
                           <button type="button" aria-label="View details" onClick={() => setDetail(row)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><Eye className="h-4 w-4" /></button>
                           {row.canDownload && row.fileName && <button type="button" aria-label="Download" onClick={() => downloadFile(row.fileName)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><Download className="h-4 w-4" /></button>}
                           {row.canRestore && row.fileName && <button type="button" aria-label="Restore" onClick={() => openRestore(row)} className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-neutral-100 dark:hover:bg-[#1E293B]"><RotateCcw className="h-4 w-4" /></button>}
-                          {row.canDelete && row.fileName && <button type="button" aria-label="Delete backup file" onClick={() => setFileToDelete(row.fileName)} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-red-700 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button>}
+                          {row.canDelete && row.fileName && <button type="button" aria-label="Delete backup file" onClick={() => setFileToDelete(row.fileName)} className="inline-flex h-11 w-11 items-center justify-center rounded-md text-error-fg hover:bg-error-bg"><Trash2 className="h-4 w-4" /></button>}
                         </div>
                       </td>
                     </tr>
@@ -462,7 +462,7 @@ const BackupPage = () => {
             {status.devices.map((device) => (
               <li key={device.id} className="flex flex-wrap items-center justify-between gap-2">
                 <span>{device.name} — {device.online ? 'Connected' : 'Offline'}{device.lastSeenAt ? `, last seen ${formatWhen(device.lastSeenAt)}` : ''} · {device.folderLabel || 'No folder'}</span>
-                <button type="button" className="min-h-11 text-red-700" onClick={() => backupAPI.revokeDevice(device.id).then(() => loadStatus())}>Disconnect</button>
+                <button type="button" className="min-h-11 text-error-fg" onClick={() => backupAPI.revokeDevice(device.id).then(() => loadStatus())}>Disconnect</button>
               </li>
             ))}
           </ul>

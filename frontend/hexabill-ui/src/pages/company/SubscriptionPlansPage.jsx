@@ -145,18 +145,18 @@ const SubscriptionPlansPage = () => {
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Subscription Plans</h1>
-        <p className="text-gray-600 mt-2">Choose the plan that fits your business needs</p>
+        <h1 className="text-3xl font-bold text-neutral-900">Subscription Plans</h1>
+        <p className="text-neutral-600 mt-2">Choose the plan that fits your business needs</p>
       </div>
 
       {/* Current Subscription Banner */}
       {currentSubscription && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="mb-6 bg-primary-50 border border-primary-200 rounded-lg p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-blue-900">Current Plan</p>
-              <p className="text-lg font-bold text-blue-900">{currentSubscription.plan.name}</p>
-              <p className="text-sm text-blue-700">
+              <p className="text-sm font-medium text-primary-900">Current Plan</p>
+              <p className="text-lg font-bold text-primary-900">{currentSubscription.plan.name}</p>
+              <p className="text-sm text-primary-700">
                 {currentSubscription.status === 'Trial' && currentSubscription.trialEndDate && (
                   <>Trial ends: {new Date(currentSubscription.trialEndDate).toLocaleDateString()}</>
                 )}
@@ -166,10 +166,10 @@ const SubscriptionPlansPage = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold text-blue-900">
+              <p className="text-2xl font-bold text-primary-900">
                 {formatCurrency(currentSubscription.amount)}
               </p>
-              <p className="text-sm text-blue-700">per {currentSubscription.billingCycle.toLowerCase()}</p>
+              <p className="text-sm text-primary-700">per {currentSubscription.billingCycle.toLowerCase()}</p>
             </div>
           </div>
         </div>
@@ -177,13 +177,13 @@ const SubscriptionPlansPage = () => {
 
       {/* Billing Cycle Toggle */}
       <div className="mb-6 flex justify-center">
-        <div className="inline-flex rounded-lg border border-gray-300 p-1 bg-white">
+        <div className="inline-flex rounded-lg border border-neutral-300 p-1 bg-white">
           <button
             onClick={() => setBillingCycle('Monthly')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition ${
               billingCycle === 'Monthly'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-primary-600 text-white'
+                : 'text-neutral-700 hover:bg-neutral-100'
             }`}
           >
             Monthly
@@ -192,12 +192,12 @@ const SubscriptionPlansPage = () => {
             onClick={() => setBillingCycle('Yearly')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition ${
               billingCycle === 'Yearly'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
+                ? 'bg-primary-600 text-white'
+                : 'text-neutral-700 hover:bg-neutral-100'
             }`}
           >
             Yearly
-            <span className="ml-1 text-xs text-green-600">Save 20%</span>
+            <span className="ml-1 text-xs text-success">Save 20%</span>
           </button>
         </div>
       </div>
@@ -212,33 +212,33 @@ const SubscriptionPlansPage = () => {
             <div
               key={plan.id}
               className={`bg-white rounded-lg shadow-lg border-2 p-6 relative ${
-                isCurrentPlan ? 'border-blue-500' : 'border-gray-200'
+                isCurrentPlan ? 'border-primary-500' : 'border-neutral-200'
               }`}
             >
               {isCurrentPlan && (
-                <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded">
+                <div className="absolute top-4 right-4 bg-primary-600 text-white text-xs font-semibold px-2 py-1 rounded">
                   Current Plan
                 </div>
               )}
 
               <div className="mb-4">
-                <h3 className="text-2xl font-bold text-gray-900">{plan.name}</h3>
+                <h3 className="text-2xl font-bold text-neutral-900">{plan.name}</h3>
                 {plan.description && (
-                  <p className="text-gray-600 text-sm mt-1">{plan.description}</p>
+                  <p className="text-neutral-600 text-sm mt-1">{plan.description}</p>
                 )}
               </div>
 
               <div className="mb-6">
                 <div className="flex items-baseline">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-neutral-900">
                     {formatCurrency(price)}
                   </span>
-                  <span className="text-gray-600 ml-2">
+                  <span className="text-neutral-600 ml-2">
                     /{billingCycle === 'Monthly' ? 'month' : 'year'}
                   </span>
                 </div>
                 {billingCycle === 'Yearly' && (
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-neutral-500 mt-1">
                     {formatCurrency(plan.monthlyPrice)}/month billed annually
                   </p>
                 )}
@@ -248,50 +248,50 @@ const SubscriptionPlansPage = () => {
               <div className="space-y-3 mb-6">
                 <div className="flex items-center text-sm">
                   {getFeatureIcon('users')}
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-neutral-700">
                     {formatLimit(plan.maxUsers)} users
                   </span>
                 </div>
                 <div className="flex items-center text-sm">
                   {getFeatureIcon('invoices')}
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-neutral-700">
                     {formatLimit(plan.maxInvoicesPerMonth)} invoices/month
                   </span>
                 </div>
                 <div className="flex items-center text-sm">
                   {getFeatureIcon('customers')}
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-neutral-700">
                     {formatLimit(plan.maxCustomers)} customers
                   </span>
                 </div>
                 <div className="flex items-center text-sm">
                   {getFeatureIcon('products')}
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-neutral-700">
                     {formatLimit(plan.maxProducts)} products
                   </span>
                 </div>
                 <div className="flex items-center text-sm">
                   {getFeatureIcon('storage')}
-                  <span className="ml-2 text-gray-700">
+                  <span className="ml-2 text-neutral-700">
                     {formatLimit(plan.maxStorageMB)} MB storage
                   </span>
                 </div>
                 {plan.hasAdvancedReports && (
                   <div className="flex items-center text-sm">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="ml-2 text-gray-700">Advanced Reports</span>
+                    <Check className="h-4 w-4 text-success" />
+                    <span className="ml-2 text-neutral-700">Advanced Reports</span>
                   </div>
                 )}
                 {plan.hasApiAccess && (
                   <div className="flex items-center text-sm">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="ml-2 text-gray-700">API Access</span>
+                    <Check className="h-4 w-4 text-success" />
+                    <span className="ml-2 text-neutral-700">API Access</span>
                   </div>
                 )}
                 {plan.hasPrioritySupport && (
                   <div className="flex items-center text-sm">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <span className="ml-2 text-gray-700">Priority Support</span>
+                    <Check className="h-4 w-4 text-success" />
+                    <span className="ml-2 text-neutral-700">Priority Support</span>
                   </div>
                 )}
               </div>
@@ -302,8 +302,8 @@ const SubscriptionPlansPage = () => {
                 disabled={isCurrentPlan}
                 className={`w-full py-3 rounded-lg font-semibold transition ${
                   isCurrentPlan
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-neutral-200 text-neutral-500 cursor-not-allowed'
+                    : 'bg-primary-600 text-white hover:bg-primary-700'
                 }`}
               >
                 {isCurrentPlan ? 'Current Plan' : 'Subscribe'}
@@ -324,27 +324,27 @@ const SubscriptionPlansPage = () => {
       >
         {selectedPlan && (
           <div className="space-y-4">
-            <p className="text-gray-600">
+            <p className="text-neutral-600">
               You are about to subscribe to <strong>{selectedPlan.name}</strong> plan.
             </p>
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-neutral-50 rounded-lg p-4">
               <div className="flex justify-between mb-2">
-                <span className="text-gray-600">Plan:</span>
+                <span className="text-neutral-600">Plan:</span>
                 <span className="font-semibold">{selectedPlan.name}</span>
               </div>
               <div className="flex justify-between mb-2">
-                <span className="text-gray-600">Billing Cycle:</span>
+                <span className="text-neutral-600">Billing Cycle:</span>
                 <span className="font-semibold">{billingCycle}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Price:</span>
+                <span className="text-neutral-600">Price:</span>
                 <span className="font-bold text-lg">
                   {formatCurrency(billingCycle === 'Monthly' ? selectedPlan.monthlyPrice : selectedPlan.yearlyPrice)}
                   /{billingCycle === 'Monthly' ? 'month' : 'year'}
                 </span>
               </div>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-neutral-500">
               You will start with a {selectedPlan.trialDays}-day free trial.
             </p>
             <div className="flex justify-end space-x-3">
@@ -353,13 +353,13 @@ const SubscriptionPlansPage = () => {
                   setShowConfirmModal(false)
                   setSelectedPlan(null)
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmSubscribe}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 Confirm Subscription
               </button>

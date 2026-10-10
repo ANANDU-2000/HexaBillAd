@@ -1,53 +1,43 @@
+import { AlertTriangle, RotateCw } from 'lucide-react'
+
 /**
- * ErrorState - Task 19
- * Specific message, actionable fix, support contact. Never show generic errors.
+ * Error state for a page or panel that failed to load.
+ * Say what failed in plain words and offer a retry. Never show raw exception text.
  */
 export default function ErrorState({
-  title = 'Something went wrong',
+  title = 'This could not be loaded',
   message,
   actionLabel = 'Try again',
   onAction,
   supportLink,
+  compact = false,
   className = '',
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center py-12 px-6 text-center ${className}`}
+      className={`flex flex-col items-center justify-center text-center ${compact ? 'px-4 py-8' : 'px-6 py-12'} ${className}`}
       role="alert"
     >
-      <div className="w-12 h-12 rounded-full bg-error/10 flex items-center justify-center mb-4">
-        <svg
-          className="w-6 h-6 text-error"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-          />
-        </svg>
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-error-bg text-error-fg" aria-hidden="true">
+        <AlertTriangle className="h-6 w-6" strokeWidth={1.75} />
       </div>
-      <h2 className="text-lg font-semibold text-primary-800 mb-1">{title}</h2>
-      {message && <p className="text-sm text-primary-600 max-w-md mb-4">{message}</p>}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {onAction && (
-          <button type="button" onClick={onAction} className="btn btn-primary">
-            {actionLabel}
-          </button>
-        )}
-        {supportLink && (
-          <a
-            href={supportLink.href}
-            className="text-sm text-primary-600 underline hover:no-underline"
-          >
-            {supportLink.label || 'Contact support'}
-          </a>
-        )}
-      </div>
+      <h2 className="text-h3 font-semibold text-text-primary">{title}</h2>
+      {message && <p className="mt-1 max-w-md text-sm text-neutral-600">{message}</p>}
+      {(onAction || supportLink) && (
+        <div className="mt-4 flex flex-col items-center gap-3 sm:flex-row">
+          {onAction && (
+            <button type="button" onClick={onAction} className="btn btn-secondary">
+              <RotateCw className="h-4 w-4" aria-hidden />
+              {actionLabel}
+            </button>
+          )}
+          {supportLink && (
+            <a href={supportLink.href} className="text-sm font-medium text-primary-700 underline-offset-2 hover:underline">
+              {supportLink.label || 'Contact support'}
+            </a>
+          )}
+        </div>
+      )}
     </div>
   )
 }

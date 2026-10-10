@@ -23,19 +23,27 @@ const MobileSheet = ({
   ariaLabel,
 }) => {
   const panelRef = useRef(null)
+  // Ref so a new onClose identity on each parent render does not re-run the effect (and steal focus).
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
+    const previouslyFocused = document.activeElement
     document.addEventListener('keydown', onKeyDown)
     document.body.style.overflow = 'hidden'
+    // Move focus into the sheet so keyboard and screen-reader users land in it; restore on close.
+    const t = setTimeout(() => panelRef.current?.focus(), 0)
     return () => {
+      clearTimeout(t)
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = 'unset'
+      if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
@@ -50,7 +58,7 @@ const MobileSheet = ({
     <div className="fixed inset-0 z-[70]" aria-modal="true" role="dialog" aria-label={ariaLabel || title}>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 transition-opacity"
+        className="fixed inset-0 bg-neutral-900/50 transition-opacity"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -62,7 +70,8 @@ const MobileSheet = ({
         {/* Panel — mobile: bottom sheet; desktop: centered */}
         <div
           ref={panelRef}
-          className={`relative w-full rounded-t-2xl lg:rounded-xl bg-white shadow-lg flex flex-col max-h-[92dvh] lg:max-h-[88dvh] animate-slideUp ${sizeClasses[size]}`}
+          tabIndex={-1}
+          className={`relative w-full rounded-t-xl lg:rounded-lg bg-white outline-none shadow-lg flex flex-col max-h-[92dvh] lg:max-h-[88dvh] animate-slideUp ${sizeClasses[size]}`}
         >
           {/* Grab handle (mobile hint) */}
           <div className="flex justify-center pt-2.5 lg:hidden" aria-hidden="true">

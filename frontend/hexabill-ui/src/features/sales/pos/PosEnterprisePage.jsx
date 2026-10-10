@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { productsAPI, salesAPI, customersAPI, settingsAPI } from '../../../services/index'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../../utils/currency'
+import { useBranding } from '../../../tenant/TenantBrandingContext'
 import { useAuth } from '../../../hooks/useAuth'
 import { isAdminOrOwner } from '../../../utils/roles'
 import { useBranchesRoutes } from '../../../contexts/BranchesRoutesContext'
@@ -78,6 +79,7 @@ const PosEnterprisePage = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const { currency = 'AED' } = useBranding()
   const tenantId = user?.tenantId ?? user?.companyId ?? 'default'
   const selection = usePosSelection()
   const undoApi = usePosUndo()
@@ -2290,7 +2292,7 @@ const PosEnterprisePage = () => {
               type="text"
               value={customInvoiceNo}
               onChange={(e) => setCustomInvoiceNo(e.target.value)}
-              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-24 text-blue-100 placeholder:text-blue-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
+              className="font-mono text-xs sm:text-sm bg-white/10 border border-white/30 rounded px-2 py-1 w-16 min-w-0 sm:w-24 text-primary-100 placeholder:text-primary-200/60 focus:outline-none focus:ring-1 focus:ring-white/50"
               title="Invoice # (editable before save). Tab to continue · Enter to move to next field."
               placeholder={nextInvoiceNumberPreview || 'Auto'}
               maxLength={32}
@@ -2333,7 +2335,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={handleHold}
             disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-warning text-white rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Hold (F6)"
           >
             <Bookmark className="h-3.5 w-3.5" />
@@ -2342,13 +2344,13 @@ const PosEnterprisePage = () => {
           <button
             onClick={() => setShowResumeModal(true)}
             disabled={isFormDisabled || heldInvoices.length === 0 || loadingHeldInvoices}
-            className={`h-9 px-2 sm:px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 relative ${heldInvoices.length > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-white/20 text-white/60 cursor-not-allowed'}`}
+            className={`h-9 px-2 sm:px-2.5 text-xs font-medium rounded-md transition-colors inline-flex items-center gap-1 relative ${heldInvoices.length > 0 ? 'bg-success text-white hover:bg-emerald-700' : 'bg-white/20 text-white/60 cursor-not-allowed'}`}
             title={heldInvoices.length > 0 ? `${heldInvoices.length} held — resume` : 'No held invoices'}
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Resume</span>
             {heldInvoices.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 text-[10px] font-bold bg-red-500 text-white rounded-full flex items-center justify-center px-0.5">
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-4 text-micro font-bold bg-red-500 text-white rounded-full flex items-center justify-center px-0.5">
                 {heldInvoices.length}
               </span>
             )}
@@ -2375,28 +2377,28 @@ const PosEnterprisePage = () => {
       {/* Hold Invoice Modal */}
       {showHoldModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-4">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Hold Invoice</h3>
-            <p className="text-sm text-gray-600 mb-3">Save this invoice to resume later. Enter a name (optional):</p>
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4">
+            <h3 className="text-lg font-bold text-neutral-900 mb-2">Hold Invoice</h3>
+            <p className="text-sm text-neutral-600 mb-3">Save this invoice to resume later. Enter a name (optional):</p>
             <input
               type="text"
               placeholder="e.g. Customer interrupted, Table 5"
               value={holdNameInput}
               onChange={(e) => setHoldNameInput(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               autoFocus
               onKeyDown={(e) => e.key === 'Enter' && handleHoldConfirm()}
             />
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setShowHoldModal(false)}
-                className="flex-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                className="flex-1 px-3 py-2 text-sm font-medium text-neutral-700 bg-neutral-100 rounded-lg hover:bg-neutral-200"
               >
                 Cancel
               </button>
               <button
                 onClick={handleHoldConfirm}
-                className="flex-1 px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700"
+                className="flex-1 px-3 py-2 text-sm font-medium text-white bg-warning rounded-lg hover:bg-amber-700"
               >
                 Hold
               </button>
@@ -2408,39 +2410,39 @@ const PosEnterprisePage = () => {
       {/* Resume Held Invoice Modal */}
       {showResumeModal && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Resume Held Invoice</h3>
-              <button onClick={() => setShowResumeModal(false)} className="p-1 rounded hover:bg-gray-100">
-                <X className="h-5 w-5 text-gray-500" />
+              <h3 className="text-lg font-bold text-neutral-900">Resume Held Invoice</h3>
+              <button onClick={() => setShowResumeModal(false)} className="p-1 rounded hover:bg-neutral-100">
+                <X className="h-5 w-5 text-neutral-500" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {heldInvoices.length === 0 ? (
-                <p className="text-sm text-gray-500">No held invoices.</p>
+                <p className="text-sm text-neutral-500">No held invoices.</p>
               ) : (
                 heldInvoices.map((held) => {
                   const itemCount = (held.cart || []).filter(i => i.productId).length
                   const subtotal = (held.cart || []).reduce((s, i) => s + (Number(i.lineTotal) || 0), 0)
                   return (
-                    <div key={held.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between gap-2">
+                    <div key={held.id} className="border border-neutral-200 rounded-lg p-3 flex items-center justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-gray-900 truncate">{held.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {itemCount} item(s) · AED {subtotal.toFixed(2)}
+                        <p className="font-medium text-neutral-900 truncate">{held.name}</p>
+                        <p className="text-xs text-neutral-500">
+                          {itemCount} item(s) · {currency} {subtotal.toFixed(2)}
                           {held.selectedCustomer?.name && ` · ${held.selectedCustomer.name}`}
                         </p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
                         <button
                           onClick={() => handleResume(held)}
-                          className="px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 rounded hover:bg-emerald-700"
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-success rounded hover:bg-emerald-700"
                         >
                           Resume
                         </button>
                         <button
                           onClick={() => handleRemoveHeld(held)}
-                          className="px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-red-600 hover:bg-red-50 rounded"
+                          className="px-2 py-1.5 text-xs font-medium text-neutral-600 hover:text-error hover:bg-error-bg rounded"
                           title="Discard"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -2477,7 +2479,7 @@ const PosEnterprisePage = () => {
                   onClick={() => setDiscountMode('flat')}
                   className={`flex-1 h-9 text-xs font-medium rounded ${discountMode === 'flat' ? 'bg-white shadow text-neutral-900' : 'text-neutral-600'}`}
                 >
-                  Flat AED
+                  Flat {currency}
                 </button>
                 <button
                   type="button"
@@ -2489,7 +2491,7 @@ const PosEnterprisePage = () => {
               </div>
               {discountMode === 'flat' ? (
                 <div>
-                  <label className="block text-xs font-medium text-neutral-600 mb-1">Discount (AED)</label>
+                  <label className="block text-xs font-medium text-neutral-600 mb-1">Discount ({currency})</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -2534,10 +2536,10 @@ const PosEnterprisePage = () => {
                 </div>
               )}
               <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 space-y-1.5 text-xs">
-                <div className="flex justify-between"><span className="text-neutral-600">Gross</span><span className="font-semibold tabular-nums">AED {(totals.subtotal + totals.vatTotal).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-red-600">Discount</span><span className="font-semibold text-red-600 tabular-nums">-AED {Number(discount || 0).toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-neutral-600">VAT {vatPercent}%</span><span className="font-semibold tabular-nums">AED {totals.vatTotal.toFixed(2)}</span></div>
-                <div className="flex justify-between border-t border-neutral-200 pt-1.5"><span className="font-bold text-neutral-900">Net</span><span className="font-bold tabular-nums">AED {totals.grandTotal.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-neutral-600">Gross</span><span className="font-semibold tabular-nums">{currency} {(totals.subtotal + totals.vatTotal).toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-error">Discount</span><span className="font-semibold text-error tabular-nums">-{currency} {Number(discount || 0).toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-neutral-600">VAT {vatPercent}%</span><span className="font-semibold tabular-nums">{currency} {totals.vatTotal.toFixed(2)}</span></div>
+                <div className="flex justify-between border-t border-neutral-200 pt-1.5"><span className="font-bold text-neutral-900">Net</span><span className="font-bold tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span></div>
               </div>
               <button
                 type="button"
@@ -2556,7 +2558,7 @@ const PosEnterprisePage = () => {
           <button
             type="button"
             onClick={() => navigate(returnTo)}
-            className="flex items-center gap-1.5 text-xs font-medium text-blue-200 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-primary-200 hover:text-white transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to {getReturnLabel(returnTo)}
@@ -2572,7 +2574,7 @@ const PosEnterprisePage = () => {
       )}
 
       {loadingSale && (
-        <div className="bg-blue-500 text-white px-3 py-1 flex items-center justify-center gap-2 flex-shrink-0">
+        <div className="bg-primary-500 text-white px-3 py-1 flex items-center justify-center gap-2 flex-shrink-0">
           <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white"></div>
           <span className="text-xs font-semibold">Loading invoice...</span>
         </div>
@@ -2630,7 +2632,7 @@ const PosEnterprisePage = () => {
                         onMouseDown={(e) => { e.preventDefault(); setSelectedCustomer(c); setCustomerSearchTerm(''); setShowQuickCustomerDropdown(false); if (isEditMode) setCustomerChangedDuringEdit(true) }}
                       >
                         <p className="font-medium text-neutral-900 text-xs">{c.name}</p>
-                        {c.phone && <p className="text-[10px] text-neutral-500">{c.phone}</p>}
+                        {c.phone && <p className="text-micro text-neutral-500">{c.phone}</p>}
                       </div>
                     ))}
                   </div>
@@ -2639,17 +2641,17 @@ const PosEnterprisePage = () => {
             )}
           </div>
           {selectedCustomer && (
-            <span className="hidden lg:inline text-[11px] text-neutral-500 truncate max-w-[12rem]" title={[selectedCustomer.phone, selectedCustomer.address, selectedCustomer.trn].filter(Boolean).join(' · ')}>
+            <span className="hidden lg:inline text-micro text-neutral-500 truncate max-w-[12rem]" title={[selectedCustomer.phone, selectedCustomer.address, selectedCustomer.trn].filter(Boolean).join(' · ')}>
               {[selectedCustomer.phone, selectedCustomer.address, selectedCustomer.trn ? `TRN ${selectedCustomer.trn}` : null].filter(Boolean).join(' · ') || '—'}
             </span>
           )}
           {selectedCustomer && selectedCustomer.id !== 'cash' && (
-            <span className={`text-[11px] font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : selectedCustomer?.balance > 0 ? 'text-primary-600' : 'text-neutral-500'}`}>
+            <span className={`text-micro font-semibold tabular-nums ${selectedCustomer?.balance < 0 ? 'text-[#10B981]' : selectedCustomer?.balance > 0 ? 'text-primary-600' : 'text-neutral-500'}`}>
               {formatBalance(selectedCustomer?.balance || 0)}
             </span>
           )}
           {staffHasNoAssignments && (
-            <span className="text-[11px] text-amber-700 flex items-center gap-1">
+            <span className="text-micro text-warning-fg flex items-center gap-1">
               <AlertTriangle className="h-3.5 w-3.5" /> No branch/route
             </span>
           )}
@@ -2715,7 +2717,7 @@ const PosEnterprisePage = () => {
             disabled={isFormDisabled}
             className={`h-9 px-2.5 text-xs font-semibold rounded-md disabled:opacity-50 inline-flex items-center gap-1 border ${
               scanModeOn
-                ? 'bg-amber-500 text-white border-amber-600 hover:bg-amber-600'
+                ? 'bg-amber-500 text-white border-warning hover:bg-warning'
                 : 'bg-white text-neutral-800 border-neutral-300 hover:bg-neutral-50'
             }`}
             title={scanModeOn ? 'Stop camera scan' : 'Start continuous camera scan'}
@@ -2750,7 +2752,7 @@ const PosEnterprisePage = () => {
           const totalAfterInvoice = customerBalance + invoiceTotal
           if (creditLimit > 0 && totalAfterInvoice > creditLimit) {
             return (
-              <div className="mt-1 flex items-center gap-1.5 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-800">
+              <div className="mt-1 flex items-center gap-1.5 px-2 py-1 bg-warning-bg border border-warning-border rounded text-micro text-amber-800">
                 <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
                 Credit limit exceeded (Limit: {formatCurrency(creditLimit)})
               </div>
@@ -2770,27 +2772,27 @@ const PosEnterprisePage = () => {
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
           <div ref={tableScrollRef} className="flex-1 min-w-0 overflow-y-auto px-1 py-0.5 md:pb-0">
             {/* Desktop Table View */}
-            <div className="hidden md:block bg-white rounded-lg border border-gray-300 shadow-sm overflow-x-auto">
+            <div className="hidden md:block bg-white rounded-lg border border-neutral-300 shadow-sm overflow-x-auto">
               <div>
                 <table className="w-full text-xs sm:text-sm border-collapse" style={{ tableLayout: 'auto' }}>
-                  <thead className="bg-gray-100 border-b border-gray-300 sticky top-0 z-20">
+                  <thead className="bg-neutral-100 border-b border-neutral-300 sticky top-0 z-20">
                     <tr>
-                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-gray-100">SL<br /><span className="text-[10px] font-normal text-gray-600">رقم</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-gray-900 border-r border-gray-300 text-xs w-[28%] max-w-xs sticky left-10 z-[2] bg-gray-100">Description<br /><span className="text-[10px] font-normal text-gray-600">التفاصيل</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-28 text-xs">Qty<br /><span className="text-[10px] font-normal text-gray-600">الكمية</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-16 text-xs">Unit<br /><span className="text-[10px] font-normal text-gray-600">الوحدة</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-32 text-xs">Unit Price<br /><span className="text-[10px] font-normal text-gray-600">سعر الوحدة</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-20 text-xs">Total<br /><span className="text-[10px] font-normal text-gray-600">الإجمالي</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-28 text-xs">Discount<br /><span className="text-[10px] font-normal text-gray-600">خصم</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-20 text-xs">Vat:{vatPercent}%<br /><span className="text-[10px] font-normal text-gray-600">ضريبة {vatPercent}%</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-24 text-xs">Amount<br /><span className="text-[10px] font-normal text-gray-600">المبلغ</span></th>
-                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-gray-900 border-r border-gray-300 whitespace-nowrap w-14 text-xs">Actions<br /><span className="text-[10px] font-normal text-gray-600">إجراءات</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-10 text-xs sticky left-0 z-[2] bg-neutral-100">SL<br /><span className="text-micro font-normal text-neutral-600">رقم</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-left font-bold text-neutral-900 border-r border-neutral-300 text-xs w-[28%] max-w-xs sticky left-10 z-[2] bg-neutral-100">Description<br /><span className="text-micro font-normal text-neutral-600">التفاصيل</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-28 text-xs">Qty<br /><span className="text-micro font-normal text-neutral-600">الكمية</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-16 text-xs">Unit<br /><span className="text-micro font-normal text-neutral-600">الوحدة</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-32 text-xs">Unit Price<br /><span className="text-micro font-normal text-neutral-600">سعر الوحدة</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Total<br /><span className="text-micro font-normal text-neutral-600">الإجمالي</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-28 text-xs">Discount<br /><span className="text-micro font-normal text-neutral-600">خصم</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-20 text-xs">Vat:{vatPercent}%<br /><span className="text-micro font-normal text-neutral-600">ضريبة {vatPercent}%</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-right font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-24 text-xs">Amount<br /><span className="text-micro font-normal text-neutral-600">المبلغ</span></th>
+                      <th className="px-1 sm:px-1.5 py-1 text-center font-bold text-neutral-900 border-r border-neutral-300 whitespace-nowrap w-14 text-xs">Actions<br /><span className="text-micro font-normal text-neutral-600">إجراءات</span></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-neutral-200">
                     {cart.length === 0 ? (
                       <tr>
-                        <td colSpan="10" className="px-4 py-12 text-center text-gray-500 text-base">
+                        <td colSpan="10" className="px-4 py-12 text-center text-neutral-500 text-base">
                           No items. Press Add Row or F3
                         </td>
                       </tr>
@@ -2801,7 +2803,7 @@ const PosEnterprisePage = () => {
                           ref={(el) => { if (item.rowId) rowElRefsByRowId.current[item.rowId] = el }}
                           data-pos-row={index}
                           data-pos-row-id={item.rowId || ''}
-                          className={`border-b border-gray-200 even:bg-neutral-50 hover:bg-gray-50 ${
+                          className={`border-b border-neutral-200 even:bg-neutral-50 hover:bg-neutral-50 ${
                             (item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId))
                               ? 'bg-primary-50 ring-2 ring-inset ring-primary-500'
                               : ''
@@ -2833,8 +2835,8 @@ const PosEnterprisePage = () => {
                           }}
                           onMouseEnter={() => selection.setSelection({ hoverRow: index })}
                         >
-                          <td className={`px-1 sm:px-1.5 py-0.5 text-center border-r border-gray-200 font-medium text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
-                          <td className={`px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-[28%] max-w-xs sticky left-10 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>
+                          <td className={`px-1 sm:px-1.5 py-0.5 text-center border-r border-neutral-200 font-medium text-xs align-middle sticky left-0 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>{index + 1}</td>
+                          <td className={`px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-[28%] max-w-xs sticky left-10 z-[1] ${(item.rowId && (item.rowId === activeInvoiceRowId || item.rowId === drawerOwnerRowId)) ? 'bg-primary-50' : 'bg-white'}`}>
                             <div className="relative product-dropdown-container max-w-xs">
                               {item.productId ? (
                                 <div className="py-0.5 flex items-center gap-1.5">
@@ -2845,18 +2847,18 @@ const PosEnterprisePage = () => {
                                       <img 
                                         src={imageUrl} 
                                         alt={item.productName}
-                                        className="w-7 h-7 object-cover rounded border border-gray-200 flex-shrink-0"
+                                        className="w-7 h-7 object-cover rounded border border-neutral-200 flex-shrink-0"
                                         onError={(e) => { e.target.style.display = 'none' }}
                                       />
                                     ) : (
-                                      <div className="w-7 h-7 bg-gray-100 rounded border border-gray-200 flex-shrink-0 flex items-center justify-center">
-                                        <Package className="h-3.5 w-3.5 text-gray-400" />
+                                      <div className="w-7 h-7 bg-neutral-100 rounded border border-neutral-200 flex-shrink-0 flex items-center justify-center">
+                                        <Package className="h-3.5 w-3.5 text-neutral-400" />
                                       </div>
                                     )
                                   })()}
                                   <div className="flex-1 min-w-0">
-                                    <p className="font-semibold text-gray-900 text-xs leading-snug truncate" title={item.productName}>{item.productName}</p>
-                                    <p className="text-[10px] text-gray-500 truncate">{item.sku}</p>
+                                    <p className="font-semibold text-neutral-900 text-xs leading-snug truncate" title={item.productName}>{item.productName}</p>
+                                    <p className="text-micro text-neutral-500 truncate">{item.sku}</p>
                                   </div>
                                 </div>
                               ) : (
@@ -2871,7 +2873,7 @@ const PosEnterprisePage = () => {
                                       onClick={() => openProductPicker(item.rowId || index)}
                                       onFocus={() => openProductPicker(item.rowId || index)}
                                       placeholder="Click to search…"
-                                      className="flex-1 min-w-0 px-2 py-0.5 border border-blue-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                                      className="flex-1 min-w-0 px-2 py-0.5 border border-primary-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white min-h-8 h-8 font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                                       aria-label={`Product search row ${index + 1}`}
                                     />
                                     <input
@@ -2911,7 +2913,7 @@ const PosEnterprisePage = () => {
                             </div>
                           </td>
                           {/* Qty */}
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-28">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-28">
                             <input
                               type="number"
                               min="0"
@@ -2920,7 +2922,7 @@ const PosEnterprisePage = () => {
                               data-pos-control="qty"
                               data-pos-row-id={item.rowId || ''}
                               disabled={isFormDisabled}
-                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.qty === '' ? '' : item.qty}
                               onChange={(e) => updateCartItem(index, 'qty', e.target.value)}
                               onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'qty')}
@@ -2928,16 +2930,16 @@ const PosEnterprisePage = () => {
                             />
                           </td>
                           {/* Unit Type */}
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-16">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-16">
                             {item.productId ? (
-                              <div className="w-full px-1 py-0.5 border border-gray-200 rounded text-center text-xs font-medium uppercase min-h-8 h-8 flex items-center justify-center bg-gray-50">
+                              <div className="w-full px-1 py-0.5 border border-neutral-200 rounded text-center text-xs font-medium uppercase min-h-8 h-8 flex items-center justify-center bg-neutral-50">
                                 {item.unitType || 'CRTN'}
                               </div>
                             ) : (
                               <select
                                 tabIndex={-1}
                                 disabled={isFormDisabled}
-                                className="w-full px-1 py-0.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium uppercase min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full px-1 py-0.5 border border-neutral-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 text-xs font-medium uppercase min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                                 value={item.unitType || 'CRTN'}
                                 onChange={(e) => updateCartItem(index, 'unitType', e.target.value)}
                               >
@@ -2952,7 +2954,7 @@ const PosEnterprisePage = () => {
                               </select>
                             )}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-32">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-32">
                             <div className="flex flex-col gap-0.5">
                               <input
                                 type="number"
@@ -2962,17 +2964,17 @@ const PosEnterprisePage = () => {
                                 data-pos-control="unitPrice"
                                 data-pos-row-id={item.rowId || ''}
                                 disabled={isFormDisabled}
-                                className="w-full min-w-[5.5rem] px-2 py-0.5 border border-gray-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full min-w-[5.5rem] px-2 py-0.5 border border-neutral-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-semibold min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                                 value={item.unitPrice === '' ? '' : item.unitPrice}
                                 onChange={(e) => updateCartItem(index, 'unitPrice', e.target.value)}
                                 onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'unitPrice')}
                               />
                               {item.priceSource === 'last' && (
-                                <span className="text-[10px] text-blue-600 font-medium leading-none">Last price</span>
+                                <span className="text-micro text-primary-600 font-medium leading-none">Last price</span>
                               )}
                             </div>
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-gray-200 font-semibold text-xs align-middle w-20">
+                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle w-20">
                             {(() => {
                               const qty = typeof item.qty === 'number' ? item.qty : 0
                               const price = typeof item.unitPrice === 'number' ? item.unitPrice : 0
@@ -2980,7 +2982,7 @@ const PosEnterprisePage = () => {
                               return ((qty * price) - itemDiscount).toFixed(2)
                             })()}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-gray-200 align-middle w-28">
+                          <td className="px-1 sm:px-1.5 py-0.5 border-r border-neutral-200 align-middle w-28">
                             <input
                               type="number"
                               min="0"
@@ -2989,20 +2991,20 @@ const PosEnterprisePage = () => {
                               data-pos-control="discount"
                               data-pos-row-id={item.rowId || ''}
                               disabled={isFormDisabled}
-                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-gray-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full min-w-[4.5rem] px-2 py-0.5 border border-neutral-300 rounded text-right focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-medium min-h-8 h-8 disabled:opacity-50 disabled:cursor-not-allowed"
                               value={item.discount === '' || item.discount === undefined ? '' : item.discount}
                               onChange={(e) => updateCartItem(index, 'discount', e.target.value)}
                               onKeyDown={(e) => handleCartNumericKeyDown(e, index, 'discount')}
                               placeholder="0.00"
                             />
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-gray-200 font-semibold text-xs align-middle">
+                          <td className="px-1 sm:px-1.5 py-0.5 text-right border-r border-neutral-200 font-semibold text-xs align-middle">
                             {item.vatAmount.toFixed(2)}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-right font-bold border-r border-gray-200 text-xs align-middle">
+                          <td className="px-1 sm:px-1.5 py-0.5 text-right font-bold border-r border-neutral-200 text-xs align-middle">
                             {item.lineTotal.toFixed(2)}
                           </td>
-                          <td className="px-1 sm:px-1.5 py-0.5 text-center align-middle border-r border-gray-200">
+                          <td className="px-1 sm:px-1.5 py-0.5 text-center align-middle border-r border-neutral-200">
                             <button
                               type="button"
                               tabIndex={-1}
@@ -3016,7 +3018,7 @@ const PosEnterprisePage = () => {
                                 removeFromCart(index)
                               }}
                               disabled={isFormDisabled}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded transition-colors inline-flex items-center justify-center min-w-8 min-h-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="text-error hover:text-red-800 hover:bg-error-bg p-1 rounded transition-colors inline-flex items-center justify-center min-w-8 min-h-8 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                               title="Delete item"
                               aria-label="Delete item"
                             >
@@ -3052,7 +3054,7 @@ const PosEnterprisePage = () => {
                 </div>
               ) : (
                 cart.map((item, index) => (
-                  <div key={index} className="bg-white rounded-xl border border-neutral-200 p-4">
+                  <div key={index} className="bg-white rounded-lg border border-neutral-200 p-4">
                     {/* Header: Product Name or Search */}
                     <div className="bg-neutral-50 p-3 border-b border-neutral-200">
                       <div className="flex items-start gap-2 mb-2">
@@ -3064,12 +3066,12 @@ const PosEnterprisePage = () => {
                             <img 
                               src={imageUrl} 
                               alt={item.productName}
-                              className="w-10 h-10 object-cover rounded border border-gray-200 flex-shrink-0"
+                              className="w-10 h-10 object-cover rounded border border-neutral-200 flex-shrink-0"
                               onError={(e) => { e.target.style.display = 'none' }}
                             />
                           ) : (
-                            <div className="w-10 h-10 bg-gray-100 rounded border border-gray-200 flex-shrink-0 flex items-center justify-center">
-                              <Package className="h-5 w-5 text-gray-400" />
+                            <div className="w-10 h-10 bg-neutral-100 rounded border border-neutral-200 flex-shrink-0 flex items-center justify-center">
+                              <Package className="h-5 w-5 text-neutral-400" />
                             </div>
                           )
                         })()}
@@ -3122,7 +3124,7 @@ const PosEnterprisePage = () => {
                       {/* Row 1: Quantity and Unit - min-h-11 (44px) touch targets */}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Quantity</label>
+                          <label className="block text-xs font-bold text-neutral-700 mb-1">Quantity</label>
                           <input
                             type="number"
                             min="0"
@@ -3139,7 +3141,7 @@ const PosEnterprisePage = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-gray-700 mb-1">Unit Type</label>
+                          <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Type</label>
                           <select
                             disabled={isFormDisabled}
                             className="w-full min-h-[44px] px-2 py-2.5 border border-neutral-300 rounded-lg text-center text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -3160,7 +3162,7 @@ const PosEnterprisePage = () => {
 
                       {/* Row 2: Unit Price */}
                       <div>
-                        <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price (AED)</label>
+                        <label className="block text-xs font-bold text-neutral-700 mb-1">Unit Price ({currency})</label>
                         <input
                           type="number"
                           min="0"
@@ -3268,11 +3270,11 @@ const PosEnterprisePage = () => {
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-xs font-medium text-neutral-600">INV. Amount</span>
-                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">AED {totals.subtotal.toFixed(2)}</span>
+                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-xs font-medium text-neutral-600">VAT {vatPercent}%</span>
-                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">AED {totals.vatTotal.toFixed(2)}</span>
+                  <span className="text-xs font-semibold text-neutral-900 tabular-nums whitespace-nowrap">{currency} {totals.vatTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center gap-2">
                   <span className="text-xs font-medium text-neutral-600">Round Off</span>
@@ -3305,7 +3307,7 @@ const PosEnterprisePage = () => {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-medium text-neutral-600">Discount</label>
-                    <button type="button" onClick={() => setShowDiscountPopup(true)} disabled={isFormDisabled || isZeroInvoice} className="text-[10px] text-primary-600 hover:underline disabled:opacity-50">F8 popup</button>
+                    <button type="button" onClick={() => setShowDiscountPopup(true)} disabled={isFormDisabled || isZeroInvoice} className="text-micro text-primary-600 hover:underline disabled:opacity-50">F8 popup</button>
                   </div>
                   <input
                     type="text"
@@ -3338,13 +3340,13 @@ const PosEnterprisePage = () => {
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between items-center gap-2">
-                    <span className="text-xs font-medium text-red-600">Discount</span>
-                    <span className="text-xs font-semibold text-red-600 tabular-nums whitespace-nowrap">-AED {Number(discount).toFixed(2)}</span>
+                    <span className="text-xs font-medium text-error">Discount</span>
+                    <span className="text-xs font-semibold text-error tabular-nums whitespace-nowrap">-{currency} {Number(discount).toFixed(2)}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-end gap-2 border-t-2 border-primary-500 pt-2 mt-0.5">
                   <span className="text-xs font-bold uppercase tracking-wide text-primary-700">Grand Total</span>
-                  <span className="text-lg font-semibold text-neutral-900 tabular-nums whitespace-nowrap leading-none">AED {totals.grandTotal.toFixed(2)}</span>
+                  <span className="text-lg font-semibold text-neutral-900 tabular-nums whitespace-nowrap leading-none">{currency} {totals.grandTotal.toFixed(2)}</span>
                 </div>
               </div>
               {!isEditMode && (
@@ -3364,7 +3366,7 @@ const PosEnterprisePage = () => {
                     className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5"
                   />
                   <label htmlFor="pos-zero-invoice" className="text-xs font-medium text-neutral-700">Free sample / Zero invoice</label>
-                  {isZeroInvoice && <span className="text-[10px] bg-amber-100 text-amber-800 px-1 py-0.5 rounded">0 VAT</span>}
+                  {isZeroInvoice && <span className="text-micro bg-amber-100 text-amber-800 px-1 py-0.5 rounded">0 VAT</span>}
                 </div>
               )}
             </div>
@@ -3375,7 +3377,7 @@ const PosEnterprisePage = () => {
                 onClick={() => setPaymentPanelOpen(o => !o)}
                 className="w-full flex items-center justify-between text-xs font-bold text-neutral-900 border-b border-neutral-200 pb-1.5"
               >
-                <span>Payment <span className="text-[10px] font-normal text-neutral-500">(Optional · F4)</span></span>
+                <span>Payment <span className="text-micro font-normal text-neutral-500">(Optional · F4)</span></span>
                 <ChevronDown className={`h-4 w-4 text-neutral-500 transition-transform ${paymentPanelOpen ? 'rotate-180' : ''}`} />
               </button>
               {paymentPanelOpen && (
@@ -3448,7 +3450,7 @@ const PosEnterprisePage = () => {
                 disabled={loading || loadingSale || cart.length === 0}
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
                 className={`w-full min-h-11 px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-sm transition-all active:scale-[0.98] ${isEditMode
-                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-primary-600 text-white hover:bg-primary-700'
                   : 'bg-accent text-white hover:bg-accent/90'
                   }`}
               >
@@ -3464,7 +3466,7 @@ const PosEnterprisePage = () => {
                   </>
                 )}
               </button>
-              <p className="text-[10px] text-center text-neutral-500">Ctrl+S / F9 · Tab through fields · Enter next row</p>
+              <p className="text-micro text-center text-neutral-500">Ctrl+S / F9 · Tab through fields · Enter next row</p>
             </div>
           </div>
           </div>
@@ -3489,13 +3491,13 @@ const PosEnterprisePage = () => {
       <div className="md:hidden fixed bottom-[4.75rem] left-0 right-0 z-40 bg-white border-t border-[#E5E7EB] px-4 py-3 flex items-center justify-between gap-4" style={{ boxShadow: '0 -2px 8px rgba(0,0,0,0.06)' }}>
         <div>
           <span className="text-xs font-semibold uppercase tracking-wide text-primary-700 block">Grand Total</span>
-          <span className="text-lg font-semibold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
+          <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
         </div>
         <button
           onClick={() => (cart.length > 0 ? setShowPaymentSheet(true) : null)}
           disabled={loading || loadingSale || cart.length === 0}
           title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-          className="flex-1 max-w-[200px] min-h-11 px-4 py-3 rounded-xl font-bold text-sm bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="flex-1 max-w-[200px] min-h-11 px-4 py-3 rounded-lg font-bold text-sm bg-primary-600 text-white hover:bg-primary-700 active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {(loading || loadingSale) ? (
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
@@ -3522,18 +3524,18 @@ const PosEnterprisePage = () => {
             <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-2 space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-[#475569]">Subtotal</span>
-                <span className="font-medium text-[#0F172A]">AED {totals.subtotal.toFixed(2)}</span>
+                <span className="font-medium text-[#0F172A]">{currency} {totals.subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[#475569]">VAT {vatPercent}%</span>
-                <span className="font-medium text-[#0F172A]">AED {totals.vatTotal.toFixed(2)}</span>
+                <span className="font-medium text-[#0F172A]">{currency} {totals.vatTotal.toFixed(2)}</span>
               </div>
               <div className="pt-2 border-t border-[#E5E7EB]">
-                <label className="block text-xs font-medium text-[#475569] mb-1">Discount (AED)</label>
+                <label className="block text-xs font-medium text-[#475569] mb-1">Discount ({currency})</label>
                 <input
                   type="text"
                   inputMode="decimal"
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                   placeholder="0.00"
                   value={discountInput}
                   onChange={(e) => {
@@ -3546,15 +3548,15 @@ const PosEnterprisePage = () => {
                 />
               </div>
               <div className="pt-2">
-                <label className="block text-xs font-medium text-[#475569] mb-1">Round Off / تقريب (AED)</label>
+                <label className="block text-xs font-medium text-[#475569] mb-1">Round Off / تقريب ({currency})</label>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={handleAutoRoundOff} disabled={isZeroInvoice} className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-[#E5E7EB]">Auto</button>
+                  <button type="button" onClick={handleAutoRoundOff} disabled={isZeroInvoice} className="text-xs text-primary-600 hover:text-primary-700 px-2 py-1 rounded border border-[#E5E7EB]">Auto</button>
                   <input
                     type="number"
                     step="0.01"
                     min="-1"
                     max="1"
-                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="flex-1 px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] text-right focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder="0.00"
                     value={roundOffInput === '' && roundOff === 0 ? '' : roundOffInput}
                     onChange={(e) => {
@@ -3566,19 +3568,19 @@ const PosEnterprisePage = () => {
                 </div>
               </div>
               {discount > 0 && (
-                <div className="flex justify-between text-red-600 font-medium">
+                <div className="flex justify-between text-error font-medium">
                   <span>Discount</span>
-                  <span className="tabular-nums">-AED {Number(discount).toFixed(2)}</span>
+                  <span className="tabular-nums">-{currency} {Number(discount).toFixed(2)}</span>
                 </div>
               )}
               <div className="flex justify-between items-end pt-2 border-t-2 border-primary-500 font-semibold">
                 <span className="text-sm font-bold uppercase tracking-wide text-primary-700">Grand Total</span>
-                <span className="text-lg font-semibold text-neutral-900 tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
+                <span className="text-lg font-semibold text-neutral-900 tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
               </div>
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Payment method</label>
                 <select
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
                 >
@@ -3591,12 +3593,12 @@ const PosEnterprisePage = () => {
               </div>
               {paymentMethod !== 'Pending' && (
                 <div>
-                  <label className="block text-xs font-medium text-[#475569] mb-1">Amount (AED)</label>
+                  <label className="block text-xs font-medium text-[#475569] mb-1">Amount ({currency})</label>
                   <input
                     type="number"
                     min="0"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500"
                     placeholder={totals.grandTotal.toFixed(2)}
                     value={paymentAmount}
                     onChange={(e) => setPaymentAmount(e.target.value)}
@@ -3612,9 +3614,9 @@ const PosEnterprisePage = () => {
                           const maxAmount = Math.min(amount, totals.grandTotal)
                           setPaymentAmount(maxAmount.toFixed(2))
                         }}
-                        className="px-3 py-1.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 active:bg-blue-200 transition-colors"
+                        className="px-3 py-1.5 text-xs font-medium bg-primary-50 text-primary-700 border border-primary-200 rounded-lg hover:bg-primary-100 active:bg-primary-200 transition-colors"
                       >
-                        {amount} AED
+                        {amount} {currency}
                       </button>
                     ))}
                   </div>
@@ -3623,7 +3625,7 @@ const PosEnterprisePage = () => {
               <div>
                 <label className="block text-xs font-medium text-[#475569] mb-1">Notes (optional)</label>
                 <textarea
-                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-xl text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                  className="w-full px-3 py-2 border border-[#E5E7EB] rounded-lg text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                   rows={2}
                   placeholder="Notes..."
                   value={notes}
@@ -3639,7 +3641,7 @@ const PosEnterprisePage = () => {
                 }}
                 disabled={loading || loadingSale || cart.length === 0}
                 title={cart.length === 0 && !loading && !loadingSale ? 'Add at least one item to checkout' : undefined}
-                className="w-full py-3.5 rounded-xl font-bold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors duration-150 min-h-[48px]"
+                className="w-full py-3.5 rounded-lg font-bold text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors duration-150 min-h-[48px]"
               >
                 {(loading || loadingSale) ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
@@ -3656,15 +3658,15 @@ const PosEnterprisePage = () => {
       {/* Customer Search Modal */}
       {showCustomerSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg border-2 border-blue-300 shadow-xl w-full max-w-md">
-            <div className="p-4 border-b-2 border-blue-300 bg-blue-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900">Select Customer</h3>
+          <div className="bg-white rounded-lg border-2 border-primary-300 shadow-xl w-full max-w-md">
+            <div className="p-4 border-b-2 border-primary-300 bg-primary-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-neutral-900">Select Customer</h3>
               <button
                 onClick={() => {
                   setShowCustomerSearch(false)
                   setCustomerSearchTerm('')
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-neutral-500 hover:text-neutral-700"
                 aria-label="Close customer search"
               >
                 <X className="h-5 w-5" />
@@ -3676,15 +3678,15 @@ const PosEnterprisePage = () => {
                   ref={customerInputRef}
                   type="text"
                   placeholder="Search customers (F4)..."
-                  className="w-full px-3 py-2 border-2 border-blue-300 rounded text-sm"
+                  className="w-full px-3 py-2 border-2 border-primary-300 rounded text-sm"
                   value={customerSearchTerm}
                   onChange={(e) => setCustomerSearchTerm(e.target.value)}
                 />
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
               </div>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 <div
-                  className="p-3 border border-blue-200 rounded-lg hover:bg-blue-50 cursor-pointer bg-blue-50"
+                  className="p-3 border border-primary-200 rounded-lg hover:bg-primary-50 cursor-pointer bg-primary-50"
                   onClick={() => {
                     setSelectedCustomer(null)
                     // Track that user intentionally changed customer during edit
@@ -3695,12 +3697,12 @@ const PosEnterprisePage = () => {
                     setCustomerSearchTerm('')
                   }}
                 >
-                  <p className="font-medium text-gray-900">Cash Customer</p>
+                  <p className="font-medium text-neutral-900">Cash Customer</p>
                 </div>
                 {filteredCustomers.map((customer) => (
                   <div
                     key={customer.id}
-                    className="p-3 border border-blue-200 rounded-lg hover:bg-blue-50 cursor-pointer"
+                    className="p-3 border border-primary-200 rounded-lg hover:bg-primary-50 cursor-pointer"
                     onClick={() => {
                       setSelectedCustomer(customer)
                       // Track that user intentionally changed customer during edit
@@ -3711,10 +3713,10 @@ const PosEnterprisePage = () => {
                       setCustomerSearchTerm('')
                     }}
                   >
-                    <p className="font-medium text-gray-900">{customer.name}</p>
-                    <p className="text-xs text-gray-500">{customer.phone}</p>
-                    {customer.address && <p className="text-xs text-gray-500">{customer.address}</p>}
-                    <p className={`text-xs font-medium ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                    <p className="font-medium text-neutral-900">{customer.name}</p>
+                    <p className="text-xs text-neutral-500">{customer.phone}</p>
+                    {customer.address && <p className="text-xs text-neutral-500">{customer.address}</p>}
+                    <p className={`text-xs font-medium ${customer.balance < 0 ? 'text-success' : customer.balance > 0 ? 'text-error' : 'text-neutral-600'}`}>
                       Balance: {formatBalance(customer.balance || 0)}
                     </p>
                   </div>
@@ -3729,31 +3731,31 @@ const PosEnterprisePage = () => {
       {showEditReasonModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-yellow-50">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200 bg-yellow-50">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-xl font-bold text-neutral-900 flex items-center">
                   <AlertTriangle className="h-6 w-6 text-yellow-600 mr-2" />
                   Edit Reason Required
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">Staff users must provide a reason for editing invoices</p>
+                <p className="text-sm text-neutral-600 mt-1">Staff users must provide a reason for editing invoices</p>
               </div>
               <button
                 onClick={() => setShowEditReasonModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-neutral-400 hover:text-neutral-600"
                 aria-label="Close edit reason modal"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
             <div className="p-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Reason for Editing Invoice:
               </label>
               <textarea
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
                 placeholder="Enter reason for editing this invoice (e.g., 'Wrong quantity entered', 'Customer requested change', etc.)"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
                 rows={4}
                 autoFocus
               />
@@ -3851,7 +3853,7 @@ const PosEnterprisePage = () => {
                       setLoading(false)
                     }
                   }}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="flex-1 px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
                 >
                   Continue
                 </button>
@@ -3861,7 +3863,7 @@ const PosEnterprisePage = () => {
                     setEditReason('')
                     setLoading(false)
                   }}
-                  className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                  className="flex-1 px-6 py-3 bg-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-400 transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -3875,20 +3877,20 @@ const PosEnterprisePage = () => {
       {showEditConfirmModal && editingSale && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-orange-50">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200 bg-orange-50">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                <h2 className="text-xl font-bold text-neutral-900 flex items-center">
                   <AlertTriangle className="h-6 w-6 text-orange-600 mr-2" />
                   Confirm Invoice Edit
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">Invoice: {editingSale?.invoiceNo || editingSaleId}</p>
+                <p className="text-sm text-neutral-600 mt-1">Invoice: {editingSale?.invoiceNo || editingSaleId}</p>
               </div>
               <button
                 onClick={() => {
                   setShowEditConfirmModal(false)
                   setPendingSaveData(null)
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-neutral-400 hover:text-neutral-600"
                 aria-label="Close edit confirmation modal"
               >
                 <X className="h-6 w-6" />
@@ -3906,18 +3908,18 @@ const PosEnterprisePage = () => {
                     paidAmount: editingSale?.paidAmount,
                     paymentStatus: editingSale?.paymentStatus
                   }) && (
-                    <li>• Outstanding: <span className="font-bold text-red-600">{formatCurrency((editingSale?.grandTotal || 0) - (editingSale?.paidAmount || 0))}</span></li>
+                    <li>• Outstanding: <span className="font-bold text-error">{formatCurrency((editingSale?.grandTotal || 0) - (editingSale?.paidAmount || 0))}</span></li>
                   )}
                 </ul>
               </div>
 
-              <p className="text-gray-700 mb-4">
+              <p className="text-neutral-700 mb-4">
                 Editing this invoice may affect payment records and customer balances. Are you sure you want to continue?
               </p>
 
               {selectedCustomer && customerChangedDuringEdit && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-blue-800 text-sm">
+                <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg">
+                  <p className="text-primary-800 text-sm">
                     <strong>Customer Change:</strong> {editingSale?.customerName || 'Original Customer'} → {selectedCustomer?.name || 'Cash Customer'}
                   </p>
                 </div>
@@ -4001,7 +4003,7 @@ const PosEnterprisePage = () => {
                     setShowEditConfirmModal(false)
                     setPendingSaveData(null)
                   }}
-                  className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                  className="flex-1 px-6 py-3 bg-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-400 transition-colors font-medium"
                 >
                   Cancel
                 </button>
@@ -4026,17 +4028,17 @@ const PosEnterprisePage = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-green-50">
+            <div className="flex items-center justify-between p-6 border-b border-neutral-200 bg-success-bg">
               <div>
-                <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                  <CheckCircle className="h-6 w-6 text-green-600 mr-2" />
+                <h2 className="text-xl font-bold text-neutral-900 flex items-center">
+                  <CheckCircle className="h-6 w-6 text-success mr-2" />
                   Invoice Generated Successfully!
                 </h2>
-                <p className="text-sm text-gray-600 mt-1">Invoice: {lastCreatedInvoice.invoiceNo}</p>
+                <p className="text-sm text-neutral-600 mt-1">Invoice: {lastCreatedInvoice.invoiceNo}</p>
               </div>
               <button
                 onClick={handleCloseInvoiceOptions}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-neutral-400 hover:text-neutral-600"
                 aria-label="Close invoice options"
               >
                 <X className="h-6 w-6" />
@@ -4050,7 +4052,7 @@ const PosEnterprisePage = () => {
                 const statusBadge = getInvoicePaymentBadge(lastCreatedInvoice.data)
                 return (
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-sm text-gray-600">Status:</span>
+                    <span className="text-sm text-neutral-600">Status:</span>
                     <span
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.colorClass}`}
                     >
@@ -4059,7 +4061,7 @@ const PosEnterprisePage = () => {
                   </div>
                 )
               })()}
-              <p className="text-gray-700 mb-4">What would you like to do with this invoice?</p>
+              <p className="text-neutral-700 mb-4">What would you like to do with this invoice?</p>
 
               {/* Action Buttons - 4 direct format buttons for one-click print */}
               <div className="space-y-3">
@@ -4069,7 +4071,7 @@ const PosEnterprisePage = () => {
                       key={fmt}
                       type="button"
                       onClick={() => handlePrintFormat(fmt)}
-                      className="inline-flex items-center gap-1 px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+                      className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors shadow-sm"
                       title={`Print ${fmt}`}
                     >
                       <Printer className="h-4 w-4" />
@@ -4081,7 +4083,7 @@ const PosEnterprisePage = () => {
                 <button
                   type="button"
                   onClick={() => handleDeliveryNotePrint('A4')}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-warning text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
                 >
                   <Package className="h-5 w-5 mr-2" />
                   Print Delivery Note
@@ -4089,7 +4091,7 @@ const PosEnterprisePage = () => {
 
                 <button
                   onClick={() => handleDownloadPdf(lastCreatedInvoice.id, lastCreatedInvoice.invoiceNo)}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 transition-colors shadow-md"
                 >
                   <Download className="h-5 w-5 mr-2" />
                   Download PDF
@@ -4097,7 +4099,7 @@ const PosEnterprisePage = () => {
 
                 <button
                   onClick={handleWhatsAppShare}
-                  className="w-full flex items-center justify-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
+                  className="w-full flex items-center justify-center px-6 py-3 bg-success text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
                 >
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Share via WhatsApp
@@ -4116,7 +4118,7 @@ const PosEnterprisePage = () => {
                   <button
                     type="button"
                     onClick={handleCollectInLedger}
-                    className="w-full flex items-center justify-center px-6 py-3 min-h-[48px] bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
+                    className="w-full flex items-center justify-center px-6 py-3 min-h-[48px] bg-warning text-white rounded-lg hover:bg-amber-700 transition-colors shadow-md"
                   >
                     <Banknote className="h-5 w-5 mr-2" />
                     Collect balance in Customer Ledger
@@ -4126,10 +4128,10 @@ const PosEnterprisePage = () => {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end p-6 border-t border-gray-200 bg-gray-50">
+            <div className="flex items-center justify-end p-6 border-t border-neutral-200 bg-neutral-50">
               <button
                 onClick={handleCloseInvoiceOptions}
-                className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                className="px-6 py-2 text-neutral-700 bg-white border border-neutral-300 rounded-md hover:bg-neutral-50"
               >
                 Done
               </button>

@@ -277,10 +277,10 @@ export default function AgreementEditorPage() {
           <h1 className="text-lg font-semibold text-text-primary">{isEdit ? 'Edit agreement' : 'New agreement'}</h1>
           <p className="text-xs text-text-secondary">
             {agreementNo || 'Will assign AGR-n on save'}
-            {isDirty ? <span className="ml-2 text-amber-700 font-medium">· Unsaved changes</span> : null}
+            {isDirty ? <span className="ml-2 text-warning-fg font-medium">· Unsaved changes</span> : null}
             {autoSaveStatus === 'saving' ? <span className="ml-2 text-text-secondary">· Auto-saving…</span> : null}
-            {autoSaveStatus === 'saved' ? <span className="ml-2 text-green-700">· Auto-saved</span> : null}
-            {autoSaveStatus === 'error' ? <span className="ml-2 text-red-600">· Auto-save failed</span> : null}
+            {autoSaveStatus === 'saved' ? <span className="ml-2 text-success-fg">· Auto-saved</span> : null}
+            {autoSaveStatus === 'error' ? <span className="ml-2 text-error">· Auto-save failed</span> : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -306,7 +306,7 @@ export default function AgreementEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-error bg-error-bg border border-error-border rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">

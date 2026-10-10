@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useBranding } from '../../../tenant/TenantBrandingContext'
 
 /**
  * Overlay product drawer — does not shrink invoice table width.
@@ -22,6 +23,7 @@ export default function ProductDrawer({
   onPageChange,
   disabled,
 }) {
+  const { currency = 'AED' } = useBranding()
   if (!open) return null
   const displayRow = rowIndex != null && rowIndex >= 0 ? rowIndex : 0
 
@@ -59,7 +61,7 @@ export default function ProductDrawer({
         <div className="flex items-start justify-between px-3 py-2 border-b border-neutral-200 shrink-0 h-12">
           <div className="min-w-0">
             <p className="text-sm font-bold text-neutral-900">Products</p>
-            <p className="text-[10px] text-neutral-500">Row {displayRow + 1} · F3 / Esc</p>
+            <p className="text-micro text-neutral-500">Row {displayRow + 1} · F3 / Esc</p>
           </div>
           <button
             type="button"
@@ -89,7 +91,7 @@ export default function ProductDrawer({
               autoComplete="off"
             />
           </div>
-          <p className="text-[10px] text-neutral-500 mt-1">↑↓ Enter · Esc · Recent / Frequent / Last billed</p>
+          <p className="text-micro text-neutral-500 mt-1">↑↓ Enter · Esc · Recent / Frequent / Last billed</p>
         </div>
 
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -110,28 +112,28 @@ export default function ProductDrawer({
                   if (recentIds.has(id) && !showedRecent) {
                     showedRecent = true
                     headers.push(
-                      <div key="h-r" className="px-3 py-1 bg-slate-100 text-[10px] font-semibold uppercase text-slate-600">
+                      <div key="h-r" className="px-3 py-1 bg-slate-100 text-micro font-semibold uppercase text-slate-600">
                         Recent
                       </div>
                     )
                   } else if (frequentIds.has(id) && !showedFrequent) {
                     showedFrequent = true
                     headers.push(
-                      <div key="h-f" className="px-3 py-1 bg-amber-50 text-[10px] font-semibold uppercase text-amber-800">
+                      <div key="h-f" className="px-3 py-1 bg-warning-bg text-micro font-semibold uppercase text-amber-800">
                         Frequent
                       </div>
                     )
                   } else if (lastIds.has(id) && !showedLast) {
                     showedLast = true
                     headers.push(
-                      <div key="h-l" className="px-3 py-1 bg-emerald-50 text-[10px] font-semibold uppercase text-emerald-800">
+                      <div key="h-l" className="px-3 py-1 bg-success-bg text-micro font-semibold uppercase text-emerald-800">
                         Last billed
                       </div>
                     )
                   } else if (!recentIds.has(id) && !frequentIds.has(id) && !lastIds.has(id) && !showedAll) {
                     showedAll = true
                     headers.push(
-                      <div key="h-a" className="px-3 py-1 bg-slate-50 text-[10px] font-semibold uppercase text-slate-600">
+                      <div key="h-a" className="px-3 py-1 bg-slate-50 text-micro font-semibold uppercase text-slate-600">
                         All products
                       </div>
                     )
@@ -150,17 +152,17 @@ export default function ProductDrawer({
                     >
                       <p className="font-medium text-sm text-neutral-900 truncate col-span-2">{product.nameEn}</p>
                       <span className="text-xs text-neutral-600 tabular-nums">
-                        AED {(product.sellPrice ?? 0).toFixed(2)}
+                        {currency} {(product.sellPrice ?? 0).toFixed(2)}
                       </span>
                       <span
                         className={`text-xs font-semibold text-right tabular-nums ${
-                          product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600' : 'text-green-600'
+                          product.stockQty <= (product.reorderLevel || 0) ? 'text-error' : 'text-success'
                         }`}
                       >
                         {product.stockQty}
                       </span>
                       {product.sku && (
-                        <span className="text-[10px] text-neutral-400 col-span-2 truncate">{product.sku}</span>
+                        <span className="text-micro text-neutral-400 col-span-2 truncate">{product.sku}</span>
                       )}
                     </button>
                   </div>

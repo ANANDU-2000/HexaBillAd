@@ -136,16 +136,16 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <p className="text-xs text-blue-700 font-medium">Total Purchases</p>
-                <p className="text-lg font-bold text-blue-900">{money(balance?.totalPurchases || 0)}</p>
+              <div className="bg-primary-50 rounded-lg p-3 border border-primary-200">
+                <p className="text-xs text-primary-700 font-medium">Total Purchases</p>
+                <p className="text-lg font-bold text-primary-900">{money(balance?.totalPurchases || 0)}</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                <p className="text-xs text-green-700 font-medium">Total Payments</p>
+              <div className="bg-success-bg rounded-lg p-3 border border-success-border">
+                <p className="text-xs text-success-fg font-medium">Total Payments</p>
                 <p className="text-lg font-bold text-green-900">{money(balance?.totalPayments || 0)}</p>
               </div>
-              <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                <p className="text-xs text-amber-700 font-medium">Outstanding</p>
+              <div className="bg-warning-bg rounded-lg p-3 border border-warning-border">
+                <p className="text-xs text-warning-fg font-medium">Outstanding</p>
                 <p className="text-lg font-bold text-amber-900">{money(balance?.netPayable || 0)}</p>
               </div>
               <div className="bg-neutral-50 rounded-lg p-3 border border-neutral-200">
@@ -164,7 +164,7 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
               <button onClick={handleExportCsv} className="inline-flex items-center justify-center min-h-11 min-w-11 p-2 bg-primary-100 hover:bg-primary-200 rounded-lg" title="Export CSV" aria-label="Export CSV">
                 <Download className="h-4 w-4" />
               </button>
-              <button onClick={() => setShowRecordPayment(true)} className="inline-flex items-center justify-center min-h-11 px-3 gap-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm" title="Record Payment" aria-label="Record Payment">
+              <button onClick={() => setShowRecordPayment(true)} className="inline-flex items-center justify-center min-h-11 px-3 gap-1 bg-success hover:bg-green-700 text-white rounded-lg text-sm" title="Record Payment" aria-label="Record Payment">
                 <DollarSign className="h-4 w-4" />
                 <span className="hidden sm:inline">Pay</span>
               </button>
@@ -199,14 +199,14 @@ const SupplierLedgerModal = ({ isOpen, onClose, supplierName, onPaymentRecorded,
                     <input type="text" value={paymentForm.notes} onChange={e => setPaymentForm({ ...paymentForm, notes: e.target.value })} className="w-full border rounded px-3 py-2" />
                   </div>
                   <div className="sm:col-span-2 flex gap-2">
-                    <button type="submit" disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+                    <button type="submit" disabled={saving} className="px-4 py-2 bg-success text-white rounded hover:bg-green-700 disabled:opacity-50">
                       {saving ? 'Saving...' : 'Save Payment'}
                     </button>
                     <button type="button" onClick={() => setShowRecordPayment(false)} className="px-4 py-2 border rounded hover:bg-neutral-100">Cancel</button>
                   </div>
                 </form>
                 {(balance?.netPayable > 0 && parseFloat(paymentForm.amount) > balance.netPayable) && (
-                  <p className="text-amber-600 text-xs mt-2">Amount exceeds outstanding ({money(balance.netPayable)}). You may be overpaying.</p>
+                  <p className="text-warning text-xs mt-2">Amount exceeds outstanding ({money(balance.netPayable)}). You may be overpaying.</p>
                 )}
               </div>
             )}

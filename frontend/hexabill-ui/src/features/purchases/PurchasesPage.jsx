@@ -148,7 +148,7 @@ const PurchasesPage = () => {
     return () => window.removeEventListener('keydown', handler)
   }, [showForm])
 
-  // Supplier autocomplete â€” require â‰¥2 chars (match backend), debounce
+  // Supplier autocomplete — require ≥2 chars (match backend), debounce
   useEffect(() => {
     const q = (formData.supplierName || '').trim()
     if (!q || q.length < 2) {
@@ -192,7 +192,7 @@ const PurchasesPage = () => {
     return () => clearTimeout(t)
   }, [formData.supplierName])
 
-  // Fetch VAT from company settings (no hardcoded 5% â€” TODO #5)
+  // Fetch VAT from company settings (no hardcoded 5% — TODO #5)
   useEffect(() => {
     const fetchVat = async () => {
       try {
@@ -798,7 +798,7 @@ const PurchasesPage = () => {
               </select>
             </label>
             <div className="flex gap-2">
-              <button type="button" onClick={handleExportCsv} disabled={exportingCsv} className="min-h-[44px] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm">{exportingCsv ? 'Exportingâ€¦' : 'Export'}</button>
+              <button type="button" onClick={handleExportCsv} disabled={exportingCsv} className="min-h-[44px] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm">{exportingCsv ? 'Exporting…' : 'Export'}</button>
               <button type="button" onClick={clearPurchaseFilters} className="min-h-[44px] flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm">Clear</button>
             </div>
           </div>
@@ -812,7 +812,7 @@ const PurchasesPage = () => {
               </label>
             </div>
           )}
-          {loading && <p className="mt-2 text-xs text-neutral-500">Loadingâ€¦</p>}
+          {loading && <p className="mt-2 text-xs text-neutral-500">Loading…</p>}
         </div>
 
         {pendingSummary && (
@@ -875,7 +875,7 @@ const PurchasesPage = () => {
                           })
                           if (!exact && supplierSuggestions.length > 0) {
                             // Keep typed free-text for legacy name-only purchases; only clear if partial match clutter
-                            // Do not wipe â€” balance lookup still works by exact name.
+                            // Do not wipe — balance lookup still works by exact name.
                           }
                         }
                       }, 200)
@@ -909,7 +909,7 @@ const PurchasesPage = () => {
                     </div>
                   )}
                   {supplierPickedFromList && formData.supplierName.trim() && (
-                    <p className="text-[10px] text-slate-500 mt-0.5">Selected from supplier directory</p>
+                    <p className="text-micro text-slate-500 mt-0.5">Selected from supplier directory</p>
                   )}
                 </div>
               </VoucherSection>
@@ -960,7 +960,7 @@ const PurchasesPage = () => {
                       type="checkbox"
                       checked={formData.isTaxClaimable !== false}
                       onChange={(e) => setFormData({ ...formData, isTaxClaimable: e.target.checked })}
-                      className="rounded border-neutral-200 text-green-600 focus:ring-green-500"
+                      className="rounded border-neutral-200 text-success focus:ring-green-500"
                     />
                     <span className="text-sm font-medium text-primary-700">Tax claimable (ITC)</span>
                     <span className="text-xs text-primary-500" title="Include input VAT in VAT Return Box 9b">Include in VAT Return</span>
@@ -970,10 +970,10 @@ const PurchasesPage = () => {
 
               {/* (4) Supplier Balance Info */}
               {formData.supplierName.trim() && supplierBalance != null && (
-                <div className="mb-4 sm:mb-6 p-3 bg-amber-50 rounded-lg border-2 border-amber-200">
+                <div className="mb-4 sm:mb-6 p-3 bg-warning-bg rounded-lg border-2 border-warning-border">
                   <h3 className="text-sm font-bold text-amber-800 mb-2">Supplier Balance</h3>
                   <p className="text-sm text-amber-800">Current due: {formatCurrency(supplierBalance?.netPayable || 0)}</p>
-                  <p className="text-sm text-amber-700 mt-1">
+                  <p className="text-sm text-warning-fg mt-1">
                     After this purchase: {formatCurrency((supplierBalance?.netPayable || 0) + (calculateTotal() * (1 + vatPercent / 100)))}
                   </p>
                 </div>
@@ -1050,7 +1050,7 @@ const PurchasesPage = () => {
                               <p className="font-medium text-primary-800 text-sm truncate">{item.productName}</p>
                               <p className="text-xs text-primary-500">{item.sku}</p>
                             </div>
-                            <button type="button" onClick={() => removeItem(index)} className="shrink-0 text-red-600 p-1" aria-label="Remove">
+                            <button type="button" onClick={() => removeItem(index)} className="shrink-0 text-error p-1" aria-label="Remove">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
@@ -1077,7 +1077,7 @@ const PurchasesPage = () => {
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>
-                              <span className="text-sm font-bold text-green-700">{formatCurrency(total)}</span>
+                              <span className="text-sm font-bold text-success-fg">{formatCurrency(total)}</span>
                             </div>
                           </div>
                         </div>
@@ -1094,7 +1094,7 @@ const PurchasesPage = () => {
                         <span className="text-orange-600">VAT ({vatPercent}%)</span>
                         <span className="font-medium text-orange-600">{formatCurrency(calculateTotal() * (vatPercent / 100))}</span>
                       </div>
-                      <div className="flex justify-between text-base font-bold text-green-700 mt-1">
+                      <div className="flex justify-between text-base font-bold text-success-fg mt-1">
                         <span>Total</span>
                         <span>{formatCurrency(calculateTotal() * (1 + vatPercent / 100))}</span>
                       </div>
@@ -1103,9 +1103,9 @@ const PurchasesPage = () => {
                           type="checkbox"
                           checked={formData.isTaxClaimable !== false}
                           onChange={(e) => setFormData({ ...formData, isTaxClaimable: e.target.checked })}
-                          className="rounded border-neutral-200 text-green-600"
+                          className="rounded border-neutral-200 text-success"
                         />
-                        <span>Tax claimable (ITC) â€“ include in VAT Return Box 9b</span>
+                        <span>Tax claimable (ITC) – include in VAT Return Box 9b</span>
                       </label>
                     </div>
                   )}
@@ -1198,7 +1198,7 @@ const PurchasesPage = () => {
                                 return formatCurrency(qty * cost * (vatPercent / 100))
                               })()}
                             </td>
-                            <td className="px-2 py-2 font-bold text-green-700">
+                            <td className="px-2 py-2 font-bold text-success-fg">
                               {(() => {
                                 const qty = typeof item.qty === 'number' ? item.qty : 0
                                 const cost = typeof item.unitCost === 'number' ? item.unitCost : 0
@@ -1209,7 +1209,7 @@ const PurchasesPage = () => {
                               <button
                                 type="button"
                                 onClick={() => removeItem(index)}
-                                className="text-red-600 hover:text-red-800"
+                                className="text-error hover:text-red-800"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
@@ -1227,7 +1227,7 @@ const PurchasesPage = () => {
                         <td className="px-2 py-2 font-bold text-orange-600 border-r border-neutral-200">
                           {formatCurrency(calculateTotal() * (vatPercent / 100))}
                         </td>
-                        <td className="px-2 py-2 font-bold text-green-700">
+                        <td className="px-2 py-2 font-bold text-success-fg">
                           {formatCurrency(calculateTotal() * (1 + vatPercent / 100))}
                         </td>
                         <td></td>
@@ -1242,7 +1242,7 @@ const PurchasesPage = () => {
               <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[4.75rem] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
-                  <Save className="h-4 w-4 mr-2" /> {submitting ? 'Savingâ€¦' : 'Save Purchase'}
+                  <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}
                 </button>
               </div>
             </form>
@@ -1259,7 +1259,7 @@ const PurchasesPage = () => {
                   type="button"
                   onClick={() => navigate('/vat-return')}
                   className="px-2 py-1 rounded text-xs font-medium bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 flex items-center gap-1"
-                  title="VAT Return â€“ track and fix zero values"
+                  title="VAT Return – track and fix zero values"
                 >
                   <ExternalLink className="h-3 w-3" /> VAT Return
                 </button>
@@ -1270,7 +1270,7 @@ const PurchasesPage = () => {
                   className="px-2 py-1 rounded text-xs font-medium bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-800 disabled:opacity-50"
                   title="Mark all purchases with VAT as Tax claimable (ITC) for VAT Return"
                 >
-                  {bulkFixingItc ? 'Updatingâ€¦' : 'Mark all with VAT as claimable'}
+                  {bulkFixingItc ? 'Updating…' : 'Mark all with VAT as claimable'}
                 </button>
               </div>
             </div>
@@ -1357,12 +1357,12 @@ const PurchasesPage = () => {
                               {(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right font-bold text-green-700">{formatCurrency(purchase.totalAmount)}</td>
+                          <td className="px-3 py-2 text-right font-bold text-success-fg">{formatCurrency(purchase.totalAmount)}</td>
                           <td className="px-3 py-2 text-right text-purple-600">
                             {(purchase.vendorDiscountAmount ?? 0) > 0 ? formatCurrency(purchase.vendorDiscountAmount) : <span className="text-primary-400">-</span>}
                           </td>
                           <td className="px-3 py-2 text-right text-primary-600">{formatCurrency(purchase.paidAmount ?? 0)}</td>
-                          <td className="px-3 py-2 text-right font-medium text-amber-700">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
+                          <td className="px-3 py-2 text-right font-medium text-warning-fg">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                               (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
@@ -1403,7 +1403,7 @@ const PurchasesPage = () => {
                               </button>
                               <button
                                 onClick={() => handleDeletePurchase(purchase)}
-                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700"
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-error-fg"
                                 title="Delete Purchase"
                                 aria-label="Delete Purchase"
                               >
@@ -1451,7 +1451,7 @@ const PurchasesPage = () => {
                   purchases.map((purchase) => {
                     const isExpanded = expandedPurchaseId === purchase.id
                     return (
-                    <div key={purchase.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div key={purchase.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
                       <button
                         type="button"
                         onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}
@@ -1476,24 +1476,24 @@ const PurchasesPage = () => {
                         </div>
                       </button>
                       {isExpanded && purchase.items?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
+                        <div className="mt-3 pt-3 border-t border-neutral-100 space-y-1">
                           <p className="text-xs font-medium text-primary-600 mb-2">Items</p>
                           {purchase.items.map((item, idx) => (
                             <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 text-xs py-1">
                               <span className="text-primary-700 min-w-0 break-words">{item.productName || item.product?.nameEn || 'Item'}</span>
-                              <span>{item.qty} Ã— {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
+                              <span>{item.qty} × {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
                             </div>
                           ))}
                         </div>
                       )}
-                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-100 text-xs">
+                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-neutral-100 text-xs">
                         <div>
                           <p className="text-primary-500">Paid</p>
-                          <p className="font-medium text-green-600">{formatCurrency(purchase.paidAmount ?? 0)}</p>
+                          <p className="font-medium text-success">{formatCurrency(purchase.paidAmount ?? 0)}</p>
                         </div>
                         <div>
                           <p className="text-primary-500">Balance</p>
-                          <p className="font-medium text-amber-600">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</p>
+                          <p className="font-medium text-warning">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</p>
                         </div>
                         <div>
                           <p className="text-primary-500">Status</p>
@@ -1523,7 +1523,7 @@ const PurchasesPage = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-gray-100">
+                      <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-neutral-100">
                         {canPayPurchase(purchase) && (
                           <button
                             onClick={() => openPay(purchase)}
@@ -1550,7 +1550,7 @@ const PurchasesPage = () => {
                         </button>
                         <button
                           onClick={() => handleDeletePurchase(purchase)}
-                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-red-700"
+                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-error-fg"
                           title="Delete Purchase"
                         >
                           <Trash2 className="h-3.5 w-3.5" />

@@ -425,7 +425,7 @@ const SupplierDetailPage = () => {
           <h1 className="text-lg sm:text-xl font-semibold text-neutral-900 truncate">{supplierName}</h1>
           <p className="text-xs text-neutral-500">Supplier ledger</p>
         </div>
-        {supplierInfo?.isActive === false && <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">Deactivated</span>}
+        {supplierInfo?.isActive === false && <span className="text-micro px-1.5 py-0.5 rounded bg-warning-bg text-amber-800 border border-warning-border">Deactivated</span>}
         {canPay && supplierInfo?.id > 0 && (
           <button type="button" onClick={goEdit} className={btnOutline} aria-label="Edit supplier"><Pencil className="h-4 w-4" /> Edit</button>
         )}
@@ -439,7 +439,7 @@ const SupplierDetailPage = () => {
       <div className="flex flex-wrap gap-x-6 gap-y-2 mb-3 text-sm">
         <div>
           <p className="text-xs text-neutral-500">Outstanding</p>
-          <p className={`tabular-nums font-semibold ${(balance?.netPayable || 0) > 0 ? 'text-amber-700' : 'text-neutral-900'}`}>{formatCurrency(balance?.netPayable || 0)}</p>
+          <p className={`tabular-nums font-semibold ${(balance?.netPayable || 0) > 0 ? 'text-warning-fg' : 'text-neutral-900'}`}>{formatCurrency(balance?.netPayable || 0)}</p>
         </div>
         <div>
           <p className="text-xs text-neutral-500">Unpaid bills</p>
@@ -554,11 +554,11 @@ const SupplierDetailPage = () => {
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500">Payments</p>
-                  <p className={`tabular-nums font-medium ${(balance?.totalPayments || 0) > 0 ? 'text-green-700' : 'text-neutral-900'}`}>{formatCurrency(balance?.totalPayments || 0)}</p>
+                  <p className={`tabular-nums font-medium ${(balance?.totalPayments || 0) > 0 ? 'text-success-fg' : 'text-neutral-900'}`}>{formatCurrency(balance?.totalPayments || 0)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500">Outstanding</p>
-                  <p className={`tabular-nums font-medium ${(balance?.netPayable || 0) > 0 ? 'text-amber-700' : 'text-neutral-900'}`}>{formatCurrency(balance?.netPayable || 0)}</p>
+                  <p className={`tabular-nums font-medium ${(balance?.netPayable || 0) > 0 ? 'text-warning-fg' : 'text-neutral-900'}`}>{formatCurrency(balance?.netPayable || 0)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-neutral-500">Last payment</p>
@@ -607,14 +607,14 @@ const SupplierDetailPage = () => {
                     <p className="text-xs text-neutral-600 mt-0.5">{t.reference || '—'}</p>
                     <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                       <div><p className="text-neutral-500">Debit</p><p className="tabular-nums">{(t.debit || 0) > 0 ? formatCurrency(t.debit) : '—'}</p></div>
-                      <div><p className="text-neutral-500">Credit</p><p className={`tabular-nums ${(t.credit || 0) > 0 ? 'text-green-700' : ''}`}>{(t.credit || 0) > 0 ? formatCurrency(t.credit) : '—'}</p></div>
-                      <div><p className="text-neutral-500">Balance</p><p className={`tabular-nums font-medium ${t.balance < 0 ? 'text-red-700' : 'text-neutral-900'}`}>{formatCurrency(t.balance || 0)}</p></div>
+                      <div><p className="text-neutral-500">Credit</p><p className={`tabular-nums ${(t.credit || 0) > 0 ? 'text-success-fg' : ''}`}>{(t.credit || 0) > 0 ? formatCurrency(t.credit) : '—'}</p></div>
+                      <div><p className="text-neutral-500">Balance</p><p className={`tabular-nums font-medium ${t.balance < 0 ? 'text-error-fg' : 'text-neutral-900'}`}>{formatCurrency(t.balance || 0)}</p></div>
                     </div>
                   </div>
                 ))}
               </div>
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-sm">
                   <thead className="bg-neutral-50 text-neutral-500">
                     <tr>
                       <th className="text-left font-medium px-2 py-2">Date</th>
@@ -636,8 +636,8 @@ const SupplierDetailPage = () => {
                         <td className="px-2 h-10">{t.type}</td>
                         <td className="px-2 h-10">{t.reference || '—'}</td>
                         <td className="px-2 h-10 text-right tabular-nums">{(t.debit || 0) > 0 ? formatCurrency(t.debit) : '—'}</td>
-                        <td className={`px-2 h-10 text-right tabular-nums ${(t.credit || 0) > 0 ? 'text-green-700' : ''}`}>{(t.credit || 0) > 0 ? formatCurrency(t.credit) : '—'}</td>
-                        <td className={`px-2 h-10 text-right tabular-nums font-medium ${t.balance < 0 ? 'text-red-700' : 'text-neutral-900'}`}>{formatCurrency(t.balance || 0)}</td>
+                        <td className={`px-2 h-10 text-right tabular-nums ${(t.credit || 0) > 0 ? 'text-success-fg' : ''}`}>{(t.credit || 0) > 0 ? formatCurrency(t.credit) : '—'}</td>
+                        <td className={`px-2 h-10 text-right tabular-nums font-medium ${t.balance < 0 ? 'text-error-fg' : 'text-neutral-900'}`}>{formatCurrency(t.balance || 0)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -658,12 +658,12 @@ const SupplierDetailPage = () => {
                         <p className="font-medium text-neutral-900">{p.invoiceNo}</p>
                         <p className="text-xs text-neutral-500">{formatDate(p.purchaseDate)}</p>
                       </div>
-                      <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded h-fit ${(p.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-amber-50 text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>{p.paymentStatus || 'Unpaid'}</span>
+                      <span className={`text-micro font-medium px-1.5 py-0.5 rounded h-fit ${(p.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-warning-bg text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>{p.paymentStatus || 'Unpaid'}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                       <div><p className="text-neutral-500">Total</p><p className="tabular-nums">{formatCurrency(p.totalAmount || 0)}</p></div>
-                      <div><p className="text-neutral-500">Paid</p><p className={`tabular-nums ${(p.paidAmount || 0) > 0 ? 'text-green-700' : ''}`}>{(p.paidAmount || 0) > 0 ? formatCurrency(p.paidAmount) : formatCurrency(0)}</p></div>
-                      <div><p className="text-neutral-500">Balance</p><p className="tabular-nums text-amber-700">{formatCurrency(p.balanceAmount || 0)}</p></div>
+                      <div><p className="text-neutral-500">Paid</p><p className={`tabular-nums ${(p.paidAmount || 0) > 0 ? 'text-success-fg' : ''}`}>{(p.paidAmount || 0) > 0 ? formatCurrency(p.paidAmount) : formatCurrency(0)}</p></div>
+                      <div><p className="text-neutral-500">Balance</p><p className="tabular-nums text-warning-fg">{formatCurrency(p.balanceAmount || 0)}</p></div>
                     </div>
                     {canPay && (
                       <button type="button" onClick={() => startPay(p.balanceAmount || 0, p.invoiceNo || '')} className={`${btnPrimary} mt-2 w-full`}>Pay</button>
@@ -672,7 +672,7 @@ const SupplierDetailPage = () => {
                 ))}
               </div>
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-sm">
                   <thead className="bg-neutral-50 text-neutral-500">
                     <tr>
                       <th className="text-left font-medium px-2 py-2">Invoice</th>
@@ -692,8 +692,8 @@ const SupplierDetailPage = () => {
                         <td className="px-2 h-10 font-medium">{p.invoiceNo}</td>
                         <td className="px-2 h-10">{formatDate(p.purchaseDate)}</td>
                         <td className="px-2 h-10 text-right tabular-nums">{formatCurrency(p.totalAmount || 0)}</td>
-                        <td className={`px-2 h-10 text-right tabular-nums ${(p.paidAmount || 0) > 0 ? 'text-green-700' : ''}`}>{formatCurrency(p.paidAmount || 0)}</td>
-                        <td className="px-2 h-10 text-right tabular-nums text-amber-700">{formatCurrency(p.balanceAmount || 0)}</td>
+                        <td className={`px-2 h-10 text-right tabular-nums ${(p.paidAmount || 0) > 0 ? 'text-success-fg' : ''}`}>{formatCurrency(p.paidAmount || 0)}</td>
+                        <td className="px-2 h-10 text-right tabular-nums text-warning-fg">{formatCurrency(p.balanceAmount || 0)}</td>
                         <td className="px-2 h-10">{p.paymentStatus || 'Unpaid'}</td>
                         {canPay && (
                           <td className="px-2 h-10 text-right">
@@ -716,7 +716,7 @@ const SupplierDetailPage = () => {
                 ) : payments.map((t, i) => (
                   <div key={t.paymentId ?? i} className="p-3 text-sm">
                     <div className="flex justify-between">
-                      <p className="font-medium text-green-700 tabular-nums">{formatCurrency(t.credit || 0)}</p>
+                      <p className="font-medium text-success-fg tabular-nums">{formatCurrency(t.credit || 0)}</p>
                       <p className="text-xs text-neutral-500">{formatDate(t.date)}</p>
                     </div>
                     <p className="text-xs text-neutral-600 mt-1">{t.reference || '—'} · {t.mode || '—'}</p>
@@ -724,14 +724,14 @@ const SupplierDetailPage = () => {
                     {canPay && t.paymentId != null && (
                       <div className="flex gap-2 mt-2">
                         <button type="button" onClick={() => openEditPayment(t)} className={btnOutline}><Pencil className="h-4 w-4" /> Edit</button>
-                        <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className="inline-flex items-center gap-1 h-11 px-3 text-sm border border-red-200 rounded-md text-red-700"><Trash2 className="h-4 w-4" /> Delete</button>
+                        <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className="inline-flex items-center gap-1 h-11 px-3 text-sm border border-error-border rounded-md text-error-fg"><Trash2 className="h-4 w-4" /> Delete</button>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-[13px]">
+                <table className="w-full text-sm">
                   <thead className="bg-neutral-50 text-neutral-500">
                     <tr>
                       <th className="text-left font-medium px-2 py-2">Date</th>
@@ -750,14 +750,14 @@ const SupplierDetailPage = () => {
                         <td className="px-2 h-10">{formatDate(t.date)}</td>
                         <td className="px-2 h-10">{t.reference || '—'}</td>
                         <td className="px-2 h-10">{t.mode || '—'}</td>
-                        <td className="px-2 h-10 text-right tabular-nums text-green-700">{formatCurrency(t.credit || 0)}</td>
+                        <td className="px-2 h-10 text-right tabular-nums text-success-fg">{formatCurrency(t.credit || 0)}</td>
                         <td className="px-2 h-10 text-right tabular-nums">{formatCurrency(t.balance || 0)}</td>
                         {canPay && (
                           <td className="px-2 h-10 text-right">
                             {t.paymentId != null ? (
                               <span className="inline-flex">
                                 <button type="button" onClick={() => openEditPayment(t)} className="inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-neutral-100" aria-label="Edit payment"><Pencil className="h-4 w-4" /></button>
-                                <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-red-700 hover:bg-red-50" aria-label="Delete payment"><Trash2 className="h-4 w-4" /></button>
+                                <button type="button" onClick={() => { setDeletePaymentId(t.paymentId); setShowDeletePaymentConfirm(true) }} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-error-fg hover:bg-error-bg" aria-label="Delete payment"><Trash2 className="h-4 w-4" /></button>
                               </span>
                             ) : '—'}
                           </td>

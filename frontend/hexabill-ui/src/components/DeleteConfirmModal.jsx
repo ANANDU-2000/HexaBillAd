@@ -27,17 +27,17 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-gray-200 bg-red-50">
+        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-neutral-200 bg-error-bg">
           <div className="flex items-center min-w-0">
-            <AlertTriangle className="h-6 w-6 text-red-600 mr-3 flex-shrink-0" />
+            <AlertTriangle className="h-6 w-6 text-error mr-3 flex-shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-xl font-bold text-gray-900 truncate">{title || 'Confirm Deletion'}</h2>
-              {itemName && <p className="text-sm text-gray-600 mt-1 truncate">Item: {itemName}</p>}
+              <h2 className="text-xl font-bold text-neutral-900 truncate">{title || 'Confirm Deletion'}</h2>
+              {itemName && <p className="text-sm text-neutral-600 mt-1 truncate">Item: {itemName}</p>}
             </div>
           </div>
           <button
             onClick={handleClose}
-            className="min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center text-gray-400 hover:text-gray-600"
+            className="min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center text-neutral-400 hover:text-neutral-600"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -45,11 +45,11 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
         </div>
 
         <div className="p-6 overflow-y-auto overscroll-contain">
-          <p className="text-gray-700 mb-4">{message || 'This action cannot be undone. This will permanently delete the item.'}</p>
+          <p className="text-neutral-700 mb-4">{message || 'This action cannot be undone. This will permanently delete the item.'}</p>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Type <span className="font-bold text-red-600">DELETE</span> to confirm:
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
+              Type <span className="font-bold text-error">DELETE</span> to confirm:
             </label>
             <input
               type="text"
@@ -59,7 +59,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
                 setError('')
               }}
               placeholder="Type DELETE here"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase"
+              className="w-full px-4 py-3 border-2 border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase"
               autoFocus
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && confirmText.trim().toUpperCase() === 'DELETE') {
@@ -68,7 +68,7 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
               }}
             />
             {error && (
-              <p className="mt-2 text-sm text-red-600">{error}</p>
+              <p className="mt-2 text-sm text-error">{error}</p>
             )}
           </div>
 
@@ -76,13 +76,13 @@ const DeleteConfirmModal = ({ isOpen, onClose, onConfirm, title, message, itemNa
             <button
               onClick={handleConfirm}
               disabled={confirmText.trim().toUpperCase() !== 'DELETE'}
-              className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-error text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Delete
             </button>
             <button
               onClick={handleClose}
-              className="flex-1 px-6 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+              className="flex-1 px-6 py-3 bg-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-400 transition-colors font-medium"
             >
               Cancel
             </button>

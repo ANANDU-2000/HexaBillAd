@@ -419,7 +419,7 @@ const DashboardTally = () => {
     const trendHasSales = trendSales > 0
     const periodName = dateRange === 'today' ? 'Today' : dateRange === 'week' ? 'This week' : dateRange === 'month' ? 'This month' : 'Period'
     const rangeLabel = dateRange === 'custom' && customFromDate && customToDate
-        ? `${formatDisplayDate(customFromDate)} â€“ ${formatDisplayDate(customToDate)}`
+        ? `${formatDisplayDate(customFromDate)} – ${formatDisplayDate(customToDate)}`
         : periodName
 
     const attention = []
@@ -539,7 +539,7 @@ const DashboardTally = () => {
                         aria-label="From"
                         className={`min-h-[44px] min-w-0 flex-1 rounded-md border border-[var(--border)] bg-[var(--bg-base)] px-2 text-base text-[var(--text-primary)] md:max-w-[11rem] md:flex-none md:text-sm ${focusClass}`}
                     />
-                    <span className="text-sm text-[var(--text-tertiary)]" aria-hidden>â€“</span>
+                    <span className="text-sm text-[var(--text-tertiary)]" aria-hidden>–</span>
                     <input
                         type="date"
                         value={customToDate}
@@ -592,7 +592,7 @@ const DashboardTally = () => {
             )}
 
             {hasFigures && showProfit && stats.estimatedCostLineCount > 0 && (
-                <div className={`${surfaceClass} border-amber-200 bg-amber-50 p-3 text-sm text-amber-900`} role="status">
+                <div className={`${surfaceClass} border-warning-border bg-warning-bg p-3 text-sm text-amber-900`} role="status">
                     Profit includes current-cost estimates for {stats.estimatedCostLineCount} invoice lines without saved historical costs. Product cost changes can change these estimates.
                 </div>
             )}

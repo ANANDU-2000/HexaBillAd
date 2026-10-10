@@ -8,7 +8,7 @@ const ListSkeleton = ({ count = 5, className = '' }) => (
     {Array.from({ length: count }).map((_, i) => (
       <div
         key={i}
-        className="rounded-xl border border-neutral-200 bg-white p-3.5 animate-pulse"
+        className="rounded-lg border border-neutral-200 bg-white p-3.5 animate-pulse"
         aria-hidden="true"
       >
         <div className="flex items-center justify-between gap-3">

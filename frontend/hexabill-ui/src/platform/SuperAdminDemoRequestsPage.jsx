@@ -116,11 +116,11 @@ const SuperAdminDemoRequestsPage = () => {
   const getStatusBadge = (status) => {
     const badges = {
       Pending: <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 flex items-center gap-1"><Clock className="w-3 h-3" />Pending</span>,
-      Approved: <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Approved</span>,
+      Approved: <span className="px-2 py-1 text-xs font-medium rounded-full bg-primary-100 text-primary-800 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Approved</span>,
       Rejected: <span className="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 flex items-center gap-1"><XCircle className="w-3 h-3" />Rejected</span>,
       Converted: <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 flex items-center gap-1"><CheckCircle className="w-3 h-3" />Converted</span>
     }
-    return badges[status] || <span className="px-2 py-1 text-xs rounded-full bg-gray-100">{status}</span>
+    return badges[status] || <span className="px-2 py-1 text-xs rounded-full bg-neutral-100">{status}</span>
   }
 
   const columns = [
@@ -141,13 +141,13 @@ const SuperAdminDemoRequestsPage = () => {
             <>
               <button
                 onClick={() => { setSelectedDemo(row); setShowApproveModal(true) }}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-3 py-1 text-sm bg-primary-600 text-white rounded hover:bg-primary-700"
               >
                 Approve
               </button>
               <button
                 onClick={() => { setSelectedDemo(row); setShowRejectModal(true) }}
-                className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+                className="px-3 py-1 text-sm bg-error text-white rounded hover:bg-red-700"
               >
                 Reject
               </button>
@@ -156,13 +156,13 @@ const SuperAdminDemoRequestsPage = () => {
           {row.status === 'Approved' && !row.createdTenantId && (
             <button
               onClick={() => handleConvert(row.id)}
-              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+              className="px-3 py-1 text-sm bg-success text-white rounded hover:bg-green-700"
             >
               Create Company
             </button>
           )}
           {row.createdTenantId && (
-            <span className="text-sm text-green-600">Company #{row.createdTenantId}</span>
+            <span className="text-sm text-success">Company #{row.createdTenantId}</span>
           )}
         </div>
       )
@@ -178,11 +178,11 @@ const SuperAdminDemoRequestsPage = () => {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">Demo Requests</h1>
-          <p className="text-gray-600 mt-1">Manage demo requests from marketing site</p>
+          <p className="text-neutral-600 mt-1">Manage demo requests from marketing site</p>
         </div>
         <button
           onClick={fetchDemoRequests}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
         >
           <RefreshCw className="w-4 h-4" />
           Refresh
@@ -192,7 +192,7 @@ const SuperAdminDemoRequestsPage = () => {
       <div className="bg-white rounded-lg shadow mb-4 p-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-500" />
+            <Filter className="w-5 h-5 text-neutral-500" />
             <span className="text-sm font-medium">Filter:</span>
           </div>
           <Select
@@ -231,7 +231,7 @@ const SuperAdminDemoRequestsPage = () => {
       >
         {selectedDemo && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-neutral-50 p-4 rounded-lg">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div><strong>Company:</strong> {selectedDemo.companyName}</div>
                 <div><strong>Contact:</strong> {selectedDemo.contactName}</div>
@@ -263,13 +263,13 @@ const SuperAdminDemoRequestsPage = () => {
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleApprove}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
               >
                 Approve
               </button>
               <button
                 onClick={() => { setShowApproveModal(false); setSelectedDemo(null) }}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                className="flex-1 px-4 py-2 bg-neutral-200 text-neutral-800 rounded-lg hover:bg-neutral-300"
               >
                 Cancel
               </button>
@@ -286,7 +286,7 @@ const SuperAdminDemoRequestsPage = () => {
       >
         {selectedDemo && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-neutral-50 p-4 rounded-lg">
               <div className="text-sm">
                 <strong>Company:</strong> {selectedDemo.companyName}<br />
                 <strong>Contact:</strong> {selectedDemo.contactName}
@@ -297,7 +297,7 @@ const SuperAdminDemoRequestsPage = () => {
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 rows="4"
                 placeholder="Enter reason for rejection..."
               />
@@ -305,13 +305,13 @@ const SuperAdminDemoRequestsPage = () => {
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleReject}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="flex-1 px-4 py-2 bg-error text-white rounded-lg hover:bg-red-700"
               >
                 Reject
               </button>
               <button
                 onClick={() => { setShowRejectModal(false); setSelectedDemo(null); setRejectReason('') }}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                className="flex-1 px-4 py-2 bg-neutral-200 text-neutral-800 rounded-lg hover:bg-neutral-300"
               >
                 Cancel
               </button>

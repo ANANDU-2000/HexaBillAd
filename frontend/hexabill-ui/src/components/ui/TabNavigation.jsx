@@ -1,37 +1,39 @@
-import { Fragment } from 'react'
-
-const TabNavigation = ({ tabs, activeTab, onChange, className = '' }) => {
+/**
+ * Underline tabs. One row at every width: on phones the row scrolls sideways
+ * inside itself instead of wrapping onto several lines.
+ * tabs: [{ id, label, icon?, badge? }]
+ */
+const TabNavigation = ({ tabs, activeTab, onChange, className = '', ariaLabel = 'Tabs' }) => {
   return (
-    <div className={`border-b border-gray-200 ${className}`}>
-      <nav className="flex flex-wrap gap-2" aria-label="Tabs">
+    <div className={`border-b border-surface-border ${className}`}>
+      <nav className="-mb-px flex gap-1 overflow-x-auto overscroll-x-contain scrollbar-hide" role="tablist" aria-label={ariaLabel}>
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id
+          const Icon = tab.icon
           return (
             <button
               key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
               onClick={() => onChange(tab.id)}
-              className={`
-                py-2 px-2 border-b-2 font-medium text-sm transition-colors
-                ${
-                  isActive
-                    ? 'border-primary-600 text-primary-600'
-                    : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
-                }
-              `}
+              className={`flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors duration-150 md:min-h-[40px] ${
+                isActive
+                  ? 'border-primary-600 text-primary-700'
+                  : 'border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-800'
+              }`}
             >
-              <div className="flex items-center">
-                {tab.icon && <tab.icon className="h-4 w-4 sm:h-5 sm:w-5 mr-1.5 sm:mr-2" />}
-                {tab.label}
-                {tab.badge && (
-                  <span className={`ml-1.5 sm:ml-2 py-0.5 px-1.5 sm:px-2 rounded-full text-xs ${
-                    isActive 
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-neutral-100 text-neutral-600'
-                  }`}>
-                    {tab.badge}
-                  </span>
-                )}
-              </div>
+              {Icon && <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />}
+              {tab.label}
+              {tab.badge != null && tab.badge !== false && (
+                <span
+                  className={`rounded-full px-1.5 text-xs tabular-nums ${
+                    isActive ? 'bg-primary-100 text-primary-700' : 'bg-neutral-100 text-neutral-600'
+                  }`}
+                >
+                  {tab.badge}
+                </span>
+              )}
             </button>
           )
         })}
@@ -41,4 +43,3 @@ const TabNavigation = ({ tabs, activeTab, onChange, className = '' }) => {
 }
 
 export default TabNavigation
-

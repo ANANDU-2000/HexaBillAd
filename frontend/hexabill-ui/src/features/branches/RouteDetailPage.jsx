@@ -568,7 +568,7 @@ const RouteDetailPage = () => {
             <button
               type="button"
               onClick={openDeleteRouteConfirm}
-              className="inline-flex items-center gap-1 px-3 py-1.5 border border-red-200 text-red-700 rounded-lg text-sm hover:bg-red-50"
+              className="inline-flex items-center gap-1 px-3 py-1.5 border border-error-border text-error-fg rounded-lg text-sm hover:bg-error-bg"
             >
               <Trash2 className="h-4 w-4" />
               Delete route
@@ -607,11 +607,11 @@ const RouteDetailPage = () => {
               </div>
               <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Paid</p>
-                <p className="text-lg font-semibold text-emerald-600">{formatCurrency(summary.totalPayments ?? 0)}</p>
+                <p className="text-lg font-semibold text-success">{formatCurrency(summary.totalPayments ?? 0)}</p>
               </div>
               <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Unpaid / Pending</p>
-                <p className="text-lg font-semibold text-amber-600">{formatCurrency(summary.unpaidAmount ?? 0)}</p>
+                <p className="text-lg font-semibold text-warning">{formatCurrency(summary.unpaidAmount ?? 0)}</p>
               </div>
               <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Total Expenses</p>
@@ -619,7 +619,7 @@ const RouteDetailPage = () => {
               </div>
               <div className="bg-white rounded-lg border border-neutral-200 p-3">
                 <p className="text-sm text-neutral-500">Profit</p>
-                <p className={`text-lg font-semibold ${summary.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary.profit)}</p>
+                <p className={`text-lg font-semibold ${summary.profit >= 0 ? 'text-success' : 'text-error'}`}>{formatCurrency(summary.profit)}</p>
               </div>
             </div>
           )}
@@ -692,7 +692,7 @@ const RouteDetailPage = () => {
                       <td className="px-4 py-2 text-sm">{s.customerName || '—'}</td>
                       <td className="px-4 py-2 text-sm">{s.invoiceDate ? new Date(s.invoiceDate).toLocaleDateString() : '—'}</td>
                       <td className="px-4 py-2 text-sm text-right">{formatCurrency(s.grandTotal ?? s.total ?? 0)}</td>
-                      <td className="px-4 py-2 text-right"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(s.status || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-700' : (s.status || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{s.status || 'Pending'}</span></td>
+                      <td className="px-4 py-2 text-right"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(s.status || '').toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : (s.status || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-warning-fg' : 'bg-red-100 text-error-fg'}`}>{s.status || 'Pending'}</span></td>
                       <td className="px-4 py-2 text-right"><button type="button" onClick={() => navigate(`/sales-ledger?invoiceId=${s.id}`)} className="text-primary-600 hover:underline text-sm">View</button></td>
                     </tr>
                   ))}
@@ -747,7 +747,7 @@ const RouteDetailPage = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteExpense(e.id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                          className="p-1.5 text-error hover:bg-error-bg rounded"
                           aria-label="Delete expense"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -863,7 +863,7 @@ const RouteDetailPage = () => {
                               type="button"
                               onClick={() => handleRemoveRouteStaff(s)}
                               disabled={routeStaffRemovingId === s.userId}
-                              className="text-red-600 hover:bg-red-50 rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
+                              className="text-error hover:bg-error-bg rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
                             >
                               {routeStaffRemovingId === s.userId ? 'Removing…' : 'Remove'}
                             </button>
@@ -944,14 +944,14 @@ const RouteDetailPage = () => {
                     <BarChart3 className="h-4 w-4 text-primary-600" />
                     <p className="text-sm text-neutral-500">Net Profit</p>
                   </div>
-                  <p className={`text-xl font-semibold ${summary.profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary.profit)}</p>
+                  <p className={`text-xl font-semibold ${summary.profit >= 0 ? 'text-success' : 'text-error'}`}>{formatCurrency(summary.profit)}</p>
                 </div>
                 <div className="bg-white rounded-lg border border-neutral-200 p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Receipt className="h-4 w-4 text-primary-600" />
                     <p className="text-sm text-neutral-500">Profit Margin</p>
                   </div>
-                  <p className={`text-xl font-semibold ${summary.totalSales > 0 && (summary.profit / summary.totalSales * 100) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <p className={`text-xl font-semibold ${summary.totalSales > 0 && (summary.profit / summary.totalSales * 100) >= 0 ? 'text-success' : 'text-error'}`}>
                     {summary.totalSales > 0 ? `${(summary.profit / summary.totalSales * 100).toFixed(1)}%` : '—'}
                   </p>
                 </div>
@@ -963,13 +963,13 @@ const RouteDetailPage = () => {
                 </div>
                 <div className="bg-white rounded-lg border border-neutral-200 p-4">
                   <p className="text-sm text-neutral-500">Gross Profit</p>
-                  <p className={`text-lg font-semibold ${(summary.totalSales - (summary.costOfGoodsSold || 0)) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <p className={`text-lg font-semibold ${(summary.totalSales - (summary.costOfGoodsSold || 0)) >= 0 ? 'text-success' : 'text-error'}`}>
                     {formatCurrency(summary.totalSales - (summary.costOfGoodsSold || 0))}
                   </p>
                 </div>
                 <div className="bg-white rounded-lg border border-neutral-200 p-4">
                   <p className="text-sm text-neutral-500">Gross Margin</p>
-                  <p className={`text-lg font-semibold ${summary.totalSales > 0 && ((summary.totalSales - (summary.costOfGoodsSold || 0)) / summary.totalSales * 100) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <p className={`text-lg font-semibold ${summary.totalSales > 0 && ((summary.totalSales - (summary.costOfGoodsSold || 0)) / summary.totalSales * 100) >= 0 ? 'text-success' : 'text-error'}`}>
                     {summary.totalSales > 0 ? `${((summary.totalSales - (summary.costOfGoodsSold || 0)) / summary.totalSales * 100).toFixed(1)}%` : '—'}
                   </p>
                 </div>
@@ -1052,14 +1052,14 @@ const RouteDetailPage = () => {
                     <td className="px-3 py-2 text-neutral-600">
                       {s.mainLatitude != null
                         ? `${Number(s.mainLatitude).toFixed(5)}, ${Number(s.mainLongitude).toFixed(5)}`
-                        : <span className="text-amber-700">No location yet</span>}
+                        : <span className="text-warning-fg">No location yet</span>}
                     </td>
                     <td className="px-3 py-2 capitalize">{(s.mapStatus || '').replace('_', ' ')}</td>
                     <td className="px-3 py-2 text-right space-x-2 print:hidden">
                       <button
                         type="button"
                         onClick={() => openMarkReached(s, 'reached')}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-emerald-600 text-white"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-success text-white"
                       >
                         <Navigation className="h-3 w-3" /> Mark reached
                       </button>
@@ -1080,9 +1080,9 @@ const RouteDetailPage = () => {
             </table>
           </div>
           <div className="flex gap-3 text-xs text-neutral-600">
-            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-600 mr-1" />Reached</span>
+            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-success mr-1" />Reached</span>
             <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-slate-500 mr-1" />Not reached</span>
-            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-600 mr-1" />Skipped</span>
+            <span><span className="inline-block w-2.5 h-2.5 rounded-full bg-warning mr-1" />Skipped</span>
           </div>
         </div>
       )}
@@ -1100,7 +1100,7 @@ const RouteDetailPage = () => {
               <select
                 value={expenseCategory}
                 onChange={(e) => setExpenseCategory(e.target.value)}
-                className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-xl shadow-sm text-neutral-900 sm:text-sm"
+                className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-lg shadow-sm text-neutral-900 sm:text-sm"
               >
                 {EXPENSE_CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
@@ -1183,9 +1183,9 @@ const RouteDetailPage = () => {
                 {collectionSheet.customers?.map((c, i) => {
                   const statusColors = {
                     'NotVisited': 'bg-neutral-100 text-neutral-600',
-                    'Visited': 'bg-blue-100 text-blue-700',
-                    'NotHome': 'bg-amber-100 text-amber-700',
-                    'PaymentCollected': 'bg-emerald-100 text-emerald-700',
+                    'Visited': 'bg-primary-100 text-primary-700',
+                    'NotHome': 'bg-amber-100 text-warning-fg',
+                    'PaymentCollected': 'bg-emerald-100 text-success-fg',
                     'Rescheduled': 'bg-purple-100 text-purple-700'
                   }
                   const statusLabels = {
@@ -1226,7 +1226,7 @@ const RouteDetailPage = () => {
                             <button
                               type="button"
                               onClick={() => openMarkReached(c, 'reached')}
-                              className="text-[10px] text-emerald-700 underline"
+                              className="text-micro text-success-fg underline"
                             >
                               Mark reached + pin
                             </button>
@@ -1235,7 +1235,7 @@ const RouteDetailPage = () => {
                         </div>
                       </td>
                       <td className="py-2 px-2 print:py-1 print:px-1 text-center hidden print:table-cell">
-                        <div className={`w-6 h-6 border-2 rounded inline-block ${currentStatus === 'PaymentCollected' ? 'bg-emerald-200 border-emerald-400' : currentStatus === 'Visited' ? 'bg-blue-200 border-blue-400' : currentStatus === 'NotHome' ? 'bg-amber-200 border-amber-400' : 'border-neutral-400'}`} title={statusLabels[currentStatus] || currentStatus}></div>
+                        <div className={`w-6 h-6 border-2 rounded inline-block ${currentStatus === 'PaymentCollected' ? 'bg-emerald-200 border-emerald-400' : currentStatus === 'Visited' ? 'bg-primary-200 border-primary-400' : currentStatus === 'NotHome' ? 'bg-amber-200 border-amber-400' : 'border-neutral-400'}`} title={statusLabels[currentStatus] || currentStatus}></div>
                       </td>
                     </tr>
                   )
@@ -1250,7 +1250,7 @@ const RouteDetailPage = () => {
                   <td colSpan="7" className="py-2 px-2 print:py-1 print:px-1 text-xs text-neutral-600 print:text-xs">
                     <div className="flex flex-wrap gap-4 print:gap-2">
                       <span><span className="inline-block w-3 h-3 rounded-full bg-neutral-200 border border-neutral-400 mr-1"></span> Not Visited</span>
-                      <span><span className="inline-block w-3 h-3 rounded-full bg-blue-200 border border-blue-400 mr-1"></span> Visited</span>
+                      <span><span className="inline-block w-3 h-3 rounded-full bg-primary-200 border border-primary-400 mr-1"></span> Visited</span>
                       <span><span className="inline-block w-3 h-3 rounded-full bg-amber-200 border border-amber-400 mr-1"></span> Not Home</span>
                       <span><span className="inline-block w-3 h-3 rounded-full bg-emerald-200 border border-emerald-400 mr-1"></span> Payment Collected</span>
                       <span><span className="inline-block w-3 h-3 rounded-full bg-purple-200 border border-purple-400 mr-1"></span> Rescheduled</span>
@@ -1317,7 +1317,7 @@ const RouteDetailPage = () => {
                 type="button"
                 disabled={pinModal.saving}
                 onClick={confirmPinAction}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50"
+                className="px-4 py-2 bg-success text-white rounded-lg disabled:opacity-50"
               >
                 {pinModal.saving ? 'Saving…' : 'Confirm'}
               </button>

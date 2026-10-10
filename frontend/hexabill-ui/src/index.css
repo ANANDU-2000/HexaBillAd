@@ -33,10 +33,8 @@
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    color: #0F172A;
-    /* text primary */
-    background: #F8FAFC;
-    /* surface */
+    color: var(--text-strong);
+    background: var(--surface-page);
   }
 
   @media (max-width: 768px) {
@@ -58,6 +56,30 @@
     select,
     textarea {
       font-size: 16px !important;
+    }
+  }
+
+  /* Phones: the shell top bar names list pages, so their in-page h1 is visually hidden (kept for screen
+     readers). Layout sets data-shell-title="page" only on exact list routes. */
+  @media (max-width: 767px) {
+    #main-content[data-shell-title='page'] h1:not([data-keep-mobile]) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+  }
+
+  /* Phones: touch-size floor for page controls. Low specificity (:where) so components can still
+     set larger sizes. Opt out with .btn-sm, data-size="sm" or a [data-dense] container. */
+  @media (max-width: 767px) {
+    :where(#main-content) :where(input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='hidden']), select):not(:where([data-dense] *, [data-size='sm'])) {
+      min-height: 44px;
+    }
+    :where(#main-content) :where(button, [role='tab']):not(:where([data-dense] *, [data-size='sm'], .btn-sm)) {
+      min-height: 40px;
     }
   }
 
@@ -108,50 +130,83 @@
     }
   }
 
+  /* Buttons: 40px desktop, 44px on touch widths. One primary per view. */
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-150;
+    @apply inline-flex items-center justify-center gap-2 min-h-[40px] px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150 select-none;
   }
 
-  /* Task 9: Global button styles - primary CTA, secondary, disabled */
+  /* Phones: buttons reach the 44px touch minimum. */
+  @media (max-width: 767px) {
+    .btn {
+      min-height: 44px;
+    }
+  }
+
+  .btn-sm {
+    @apply min-h-[32px] px-3 py-1 text-sm;
+  }
+
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
+    @apply bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
   }
 
   .btn-secondary {
-    @apply bg-white border border-neutral-300 text-text-primary hover:bg-neutral-50 focus:ring-2 focus:ring-primary-400 focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
+    @apply bg-white border border-neutral-300 text-text-primary hover:bg-neutral-50 active:bg-neutral-100;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-neutral-700 hover:bg-neutral-100 active:bg-neutral-200;
   }
 
   .btn-danger {
-    @apply bg-error text-white hover:opacity-90 focus:ring-2 focus:ring-error focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
+    @apply bg-error text-white hover:bg-red-700 active:bg-red-800;
   }
 
   .btn-success {
-    @apply bg-success text-white hover:opacity-90 focus:ring-2 focus:ring-success focus:ring-offset-2 active:scale-[0.98] transition-transform duration-75;
+    @apply bg-success text-white hover:bg-emerald-700 active:bg-emerald-800;
   }
 
-  .btn:disabled {
-    opacity: 0.4;
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: var(--disabled-opacity);
     cursor: not-allowed;
-    transform: none;
   }
 
-  /* Task 10: Global input styles - focus ring, error state, disabled */
+  /* Inputs: 40px, 6px radius, neutral border, no shadow. Mobile font is forced to 16px in base. */
   .input {
-    @apply w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
+    @apply block w-full min-h-[40px] px-3 py-2 bg-white border border-neutral-300 rounded-md text-sm text-text-primary placeholder:text-neutral-400 transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500;
   }
 
-  .input:focus {
-    outline: none;
+  .input.input-error,
+  .input[aria-invalid='true'] {
+    @apply border-error focus:ring-error/20 focus:border-error;
   }
 
-  .input.input-error {
-    @apply border-error focus:ring-error focus:border-error;
+  .input:disabled,
+  .input:read-only {
+    @apply bg-neutral-50 text-neutral-500;
   }
 
   .input:disabled {
-    opacity: 0.6;
     cursor: not-allowed;
-    @apply bg-neutral-100;
+  }
+
+  @media (max-width: 767px) {
+    .input {
+      min-height: 44px;
+    }
+  }
+
+  .label {
+    @apply block mb-1 text-sm font-medium text-neutral-700;
+  }
+
+  .field-help {
+    @apply mt-1 text-xs text-neutral-500;
+  }
+
+  .field-error {
+    @apply mt-1 text-xs font-medium text-error-fg;
   }
 
   .table {
@@ -178,6 +233,15 @@
   .num,
   .amount {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Skeleton block: neutral pulse. Wrap groups in role="status" with an sr-only label. */
+  .skeleton {
+    @apply animate-pulse rounded bg-neutral-200;
+  }
+
+  .kbd {
+    @apply inline-flex items-center rounded border border-surface-border bg-white px-1.5 font-sans text-micro text-neutral-500;
   }
 }
 
@@ -236,32 +300,82 @@
   }
 }
 
-/* VAT Return (and similar report) print: hide chrome, show only report table and summary */
+/*
+ * Browser print (UI-025). Server PDFs are separate; this covers window.print().
+ *  - Default: print the page content; the shell (sidebar, top bars, bottom nav) and controls never print.
+ *  - A page that marks a region with .print-area (or the VAT .vat-return-print-area) prints only that region.
+ * The old rule hid everything except the VAT area on every page, so Reports printed blank.
+ */
 @media print {
-  body * {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  .no-print,
+  header,
+  nav,
+  aside,
+  [role='navigation'],
+  button {
+    display: none !important;
+  }
+
+  /* Undo the shell offsets so content starts at the page edge. */
+  div:has(> #main-content) {
+    padding: 0 !important;
+  }
+
+  #main-content {
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  .card,
+  [class*='border-surface-border'] {
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Dedicated print region */
+  body:has(.print-area) *,
+  body:has(.vat-return-print-area) * {
     visibility: hidden;
   }
-  .vat-return-print-area,
-  .vat-return-print-area * {
+
+  /* Same :has() prefix as the hide rule so this wins on specificity. */
+  body:has(.print-area) .print-area,
+  body:has(.print-area) .print-area *,
+  body:has(.vat-return-print-area) .vat-return-print-area,
+  body:has(.vat-return-print-area) .vat-return-print-area * {
     visibility: visible;
   }
+
+  .print-area,
   .vat-return-print-area {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
-    box-shadow: none;
-    border: 1px solid #e5e7eb;
+    border: 0 !important;
+    box-shadow: none !important;
     opacity: 1 !important;
     overflow: visible !important;
-  }
-  .no-print,
-  nav,
-  aside,
-  [role="navigation"],
-  button {
-    display: none !important;
   }
 }
 

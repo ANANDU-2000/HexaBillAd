@@ -887,9 +887,9 @@ const SalesLedgerPage = () => {
     }
   }
 
-  const stickyActionTh = 'sticky right-0 z-30 bg-gray-100 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-gray-300'
+  const stickyActionTh = 'sticky right-0 z-30 bg-neutral-100 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-neutral-300'
   const stickyActionCell = (bgClass) =>
-    `sticky right-0 z-20 border-l border-gray-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)] px-1 lg:px-2 py-1.5 lg:py-2 whitespace-nowrap text-center ${bgClass}`
+    `sticky right-0 z-20 border-l border-neutral-200 shadow-[-6px_0_10px_-4px_rgba(0,0,0,0.1)] px-1 lg:px-2 py-1.5 lg:py-2 whitespace-nowrap text-center ${bgClass}`
 
   const handleExportExcel = () => {
     if (filteredLedger.length === 0) {
@@ -975,23 +975,23 @@ const SalesLedgerPage = () => {
               <button
                 type="button"
                 onClick={() => setOverdueOnly((v) => !v)}
-                className={`px-2 md:px-2.5 py-1.5 border border-gray-300 rounded text-xs font-medium ${overdueOnly ? 'bg-amber-600 text-white border-amber-600' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                className={`px-2 md:px-2.5 py-1.5 border border-neutral-300 rounded text-xs font-medium ${overdueOnly ? 'bg-warning text-white border-warning' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
                 title="Show only overdue invoices (unpaid balance, invoice date before today)"
               >
                 Overdue
               </button>
-            <div className="flex rounded-md border border-gray-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
+            <div className="flex rounded-md border border-neutral-300 overflow-hidden text-xs font-medium" role="group" aria-label="Sort order">
               <button
                 type="button"
                 onClick={() => setSortOrderPersist('newest')}
-                className={`px-2 md:px-2.5 py-1.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                className={`px-2 md:px-2.5 py-1.5 ${sortOrder === 'newest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
               >
                 Newest
               </button>
               <button
                 type="button"
                 onClick={() => setSortOrderPersist('oldest')}
-                className={`px-2 md:px-2.5 py-1.5 border-l border-gray-300 ${sortOrder === 'oldest' ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                className={`px-2 md:px-2.5 py-1.5 border-l border-neutral-300 ${sortOrder === 'oldest' ? 'bg-primary-600 text-white' : 'bg-white text-neutral-700 hover:bg-neutral-50'}`}
               >
                 Oldest
               </button>
@@ -1002,14 +1002,14 @@ const SalesLedgerPage = () => {
                 setShowFilters(next)
                 try { localStorage.setItem(SHOW_FILTERS_KEY, String(next)) } catch (_) { }
               }}
-              className="px-2 md:px-3 py-1.5 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 flex items-center gap-1"
+              className="px-2 md:px-3 py-1.5 border border-neutral-300 rounded text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 flex items-center gap-1"
             >
               <Filter className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Show'}</span>
             </button>
             <button
               onClick={handleExportExcel}
-              className="px-3 py-2 border border-green-600 text-green-700 rounded-lg text-sm font-medium hover:bg-green-50 flex items-center gap-1.5"
+              className="px-3 py-2 border border-success text-success-fg rounded-lg text-sm font-medium hover:bg-success-bg flex items-center gap-1.5"
             >
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Export Excel</span>
@@ -1025,26 +1025,26 @@ const SalesLedgerPage = () => {
       </div>
 
       {filters.type === 'Sale' && (
-        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-gray-600 bg-emerald-50/90 border-b border-emerald-100">
+        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-success-bg/90 border-b border-emerald-100">
           <span className="font-medium text-emerald-900">Sales only:</span> one invoice list for all customers, sorted by date and id ({sortOrder === 'newest' ? 'newest at top' : 'oldest at top'}). Per-customer subtotals are hidden; use footer totals or set Type to All for grouped subtotals.
         </div>
       )}
       {sortOrder === 'newest' && filters.type !== 'Sale' && (
-        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-gray-600 bg-amber-50/90 border-b border-amber-100">
+        <div className="flex-shrink-0 px-2 md:px-4 py-1.5 text-xs text-neutral-600 bg-warning-bg/90 border-b border-amber-100">
           Newest-first within each customer (latest activity at top). Customer blocks are ordered by latest date, then by highest transaction id when dates tie. Balance column is per transaction, not a running total down the list.
         </div>
       )}
 
       {/* Filters - Collapsible */}
       {showFilters && (
-        <div className="flex-shrink-0 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-200 px-3 py-2 overflow-y-auto max-h-52 md:max-h-56">
+        <div className="flex-shrink-0 bg-gradient-to-r from-primary-50 to-indigo-50 border-b border-primary-200 px-3 py-2 overflow-y-auto max-h-52 md:max-h-56">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center">
-              <Filter className="h-4 w-4 text-blue-600 mr-2" />
-              <h3 className="text-sm lg:text-base font-semibold text-gray-900">Filters</h3>
+              <Filter className="h-4 w-4 text-primary-600 mr-2" />
+              <h3 className="text-sm lg:text-base font-semibold text-neutral-900">Filters</h3>
             </div>
             {hasActiveFilters && (
-              <span className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">
+              <span className="px-2 py-1 bg-primary-600 text-white text-xs font-medium rounded-full">
                 {Object.values(filters).filter(v => v !== '').length} active
               </span>
             )}
@@ -1132,7 +1132,7 @@ const SalesLedgerPage = () => {
               />
             )}
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-medium text-gray-700 mb-1" title="Filter by unpaid invoice amount">Outstanding Balance (Min–Max)</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1" title="Filter by unpaid invoice amount">Outstanding Balance (Min–Max)</label>
               <div className="flex gap-1">
                 <Input
                   type="number"
@@ -1149,7 +1149,7 @@ const SalesLedgerPage = () => {
               </div>
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs font-medium text-gray-700 mb-1" title="Filter by payment/received amount">Amount Received (Min–Max)</label>
+              <label className="block text-xs font-medium text-neutral-700 mb-1" title="Filter by payment/received amount">Amount Received (Min–Max)</label>
               <div className="flex gap-1">
                 <Input
                   type="number"
@@ -1184,7 +1184,7 @@ const SalesLedgerPage = () => {
                 })
                 setOverdueOnly(false)
               }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
               >
                 Clear All
               </button>
@@ -1193,24 +1193,24 @@ const SalesLedgerPage = () => {
         </div>
       )}
 
-      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-gray-200 text-xs text-gray-700">
-        <span className="font-medium text-gray-500 mr-2">Totals:</span>
+      <div className="flex-shrink-0 px-2 md:px-4 py-1.5 bg-white border-b border-neutral-200 text-xs text-neutral-700">
+        <span className="font-medium text-neutral-500 mr-2">Totals:</span>
         Sales {formatCurrency(filteredSummary.totalSales)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         Returns {formatCurrency(filteredSummary.totalReturns ?? 0)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         Net {formatCurrency(filteredSummary.netSales ?? filteredSummary.totalSales)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         Received {formatCurrency(filteredSummary.totalPayments)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         Unpaid {formatCurrency(filteredSummary.totalRealPending)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         Balance {formatBalance(filteredSummary.pendingBalance)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         VAT {formatCurrency(filteredSummary.totalVat ?? 0)}
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         {filteredSummary.totalInvoices || 0} invoices
-        <span className="mx-1.5 text-gray-300">|</span>
+        <span className="mx-1.5 text-neutral-300">|</span>
         {filteredLedger.length} rows
       </div>
 
@@ -1220,59 +1220,59 @@ const SalesLedgerPage = () => {
         <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading sales ledger…</p>
         </div>
       ) : (
-        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white w-full rounded-lg border border-gray-200">
+        <div className="flex flex-col flex-1 min-h-0 overflow-hidden bg-white w-full rounded-lg border border-neutral-200">
           {/* Desktop Table — sticky header; Actions column sticky right */}
           <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
             <div className="flex-1 min-h-0 overflow-auto w-full">
-            <table className="w-full min-w-[1100px] divide-y divide-gray-200 text-xs lg:text-sm">
-              <thead className="bg-gray-100 sticky top-0 z-20 border-b-2 border-gray-300">
+            <table className="w-full min-w-[1100px] divide-y divide-neutral-200 text-xs lg:text-sm">
+              <thead className="bg-neutral-100 sticky top-0 z-20 border-b-2 border-neutral-300">
                 <tr>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Date
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Type
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Invoice No
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Customer
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-left text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Payment Mode
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Bill Amount
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     VAT
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Paid Amount
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Pending
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Days overdue
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Status
                   </th>
-                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap border-r border-gray-300">
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Balance
                   </th>
-                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-gray-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
+                  <th className={`px-2 lg:px-3 py-2 text-center text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap min-w-[7rem] ${stickyActionTh}`}>
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-neutral-200">
                 {filteredLedger.length === 0 ? (
                   <tr>
-                    <td colSpan="13" className="px-4 py-8 text-center text-gray-500">
-                      <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <td colSpan="13" className="px-4 py-8 text-center text-neutral-500">
+                      <FileText className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
                       <p>No transactions found matching the filters</p>
                     </td>
                   </tr>
@@ -1293,28 +1293,28 @@ const SalesLedgerPage = () => {
                           // Use full customer totals from customerGroups, not just displayed entries
                           rows.push(
                             <tr key={`subtotal-${prevCustomer}-${idx}`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                              <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-gray-300">
+                              <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
                                 Subtotal for {prevCustomer}:
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-blue-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalSales)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-green-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPayments)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPending)}
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                                 —
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                                 {prevCustomerGroup.subtotal.totalInvoices} invoices
                               </td>
-                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-gray-300">
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
                                 {formatBalance(prevCustomerGroup.subtotal.totalSales - prevCustomerGroup.subtotal.totalPayments)}
                               </td>
                               <td className={stickyActionCell('bg-indigo-50')} />
@@ -1335,10 +1335,10 @@ const SalesLedgerPage = () => {
                       })
 
                       const rowBgColor = entry.type === 'Payment'
-                        ? 'bg-green-50 hover:bg-green-100'
+                        ? 'bg-success-bg hover:bg-green-100'
                         : entry.type === 'Return'
-                          ? 'bg-amber-50 hover:bg-amber-100'
-                          : 'hover:bg-gray-50'
+                          ? 'bg-warning-bg hover:bg-amber-100'
+                          : 'hover:bg-neutral-50'
 
                       const normalizeStatusForDisplay = (status) => {
                         if (entry.type === 'Return') return 'Returned'
@@ -1364,37 +1364,37 @@ const SalesLedgerPage = () => {
                               ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
                               : displayStatus === 'Unpaid'
                                 ? 'bg-red-100 text-red-800 border-red-300'
-                                : 'bg-gray-100 text-gray-800 border-gray-300'
+                                : 'bg-neutral-100 text-neutral-800 border-neutral-300'
 
                       // For Sale rows show remaining balance for this invoice (0 when Paid); for Payment/Return show running balance
                       const customerBalance = entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)
 
                       rows.push(
                         <tr key={ledgerRowKey(entry, idx)} className={rowBgColor}>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-gray-900 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
                           {dateStr}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-gray-900 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-medium text-neutral-900 border-r border-neutral-200">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${entry.type === 'Payment'
                             ? 'bg-green-100 text-green-800'
                             : entry.type === 'Return'
                               ? 'bg-amber-100 text-amber-800'
-                              : 'bg-blue-100 text-blue-800'
+                              : 'bg-primary-100 text-primary-800'
                             }`}>
                             {entry.type}
                           </span>
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-semibold text-gray-900 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm font-semibold text-neutral-900 border-r border-neutral-200">
                           {entry.invoiceNo}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-gray-900 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-900 border-r border-neutral-200">
                           {entry.customerName}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-gray-600 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-neutral-600 border-r border-neutral-200">
                           {entry.paymentMode || '-'}
                         </td>
                         {/* Bill Amount - Sales: GrandTotal; Return: -; Payment: credit amount */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-blue-600 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold text-primary-600 border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
                             : entry.type === 'Return'
@@ -1404,11 +1404,11 @@ const SalesLedgerPage = () => {
                                 : '-'}
                         </td>
                         {/* VAT - Sale/Return: vatTotal; Payment: - */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-neutral-200">
                           {entry.type === 'Payment' ? '-' : (entry.vatTotal > 0 ? formatCurrency(entry.vatTotal) : '-')}
                         </td>
                         {/* Paid Amount - Sales: paid; Return: return amount (credit); Payment: amount */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-green-600 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : entry.type === 'Return'
@@ -1418,32 +1418,32 @@ const SalesLedgerPage = () => {
                                 : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-red-600 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-error border-r border-neutral-200">
                           {entry.type === 'Sale' && entry.realPending > 0
                             ? formatCurrency(entry.realPending)
                             : '-'}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-gray-800 border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-neutral-800 border-r border-neutral-200">
                           {(() => {
                             const d = getSaleDaysOutstanding(entry)
                             return d == null ? '—' : `${d}d`
                           })()}
                         </td>
-                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-gray-200">
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-center border-r border-neutral-200">
                           {displayStatus && displayStatus !== '-' ? (
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold border ${statusColor}`}>
                               {displayStatus}
                             </span>
                           ) : (
-                            <span className="text-xs text-gray-400">-</span>
+                            <span className="text-xs text-neutral-400">-</span>
                           )}
                         </td>
                         <td
                           className={`px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-bold ${customerBalance < 0
-                            ? 'text-green-600'
+                            ? 'text-success'
                             : customerBalance > 0
-                              ? 'text-red-600'
-                              : 'text-gray-900'
+                              ? 'text-error'
+                              : 'text-neutral-900'
                             }`}
                         >
                           {formatBalance(customerBalance)}
@@ -1451,10 +1451,10 @@ const SalesLedgerPage = () => {
                         <td className={
                           stickyActionCell(
                             entry.type === 'Payment'
-                              ? 'bg-green-50 hover:bg-green-100'
+                              ? 'bg-success-bg hover:bg-green-100'
                               : entry.type === 'Return'
-                                ? 'bg-amber-50 hover:bg-amber-100'
-                                : 'bg-white hover:bg-gray-50'
+                                ? 'bg-warning-bg hover:bg-amber-100'
+                                : 'bg-white hover:bg-neutral-50'
                           )
                         }>
                           {entry.type === 'Sale' && entry.saleId ? (
@@ -1471,7 +1471,7 @@ const SalesLedgerPage = () => {
                                 type="button"
                                 onClick={() => handleShareInvoiceWhatsApp(entry)}
                                 disabled={sharingSaleId === entry.saleId}
-                                className="inline-flex items-center justify-center p-1.5 rounded-md text-green-600 hover:bg-green-50 hover:text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-success hover:bg-success-bg hover:text-success-fg disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Share via WhatsApp"
                               >
                                 <MessageCircle className="w-4 h-4" />
@@ -1480,7 +1480,7 @@ const SalesLedgerPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => goRecordPaymentForSale(entry)}
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-amber-700 hover:bg-amber-50"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-warning-fg hover:bg-warning-bg"
                                   title="Record payment"
                                 >
                                   <Banknote className="w-4 h-4" />
@@ -1496,7 +1496,7 @@ const SalesLedgerPage = () => {
                                 type="button"
                                 onClick={() => openPaymentReceipt(entry.paymentId)}
                                 disabled={!receiptUi.eligible}
-                                className="inline-flex items-center justify-center p-1.5 rounded-md text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="inline-flex items-center justify-center p-1.5 rounded-md text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
                                 title={receiptUi.title}
                               >
                                 <Printer className="w-4 h-4" />
@@ -1517,7 +1517,7 @@ const SalesLedgerPage = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteLedgerPayment(entry)}
-                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-red-600 hover:bg-red-50"
+                                  className="inline-flex items-center justify-center p-1.5 rounded-md text-error hover:bg-error-bg"
                                   title="Delete payment"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1525,7 +1525,7 @@ const SalesLedgerPage = () => {
                               )}
                             </div>
                           ) : (
-                            <span className="text-gray-300">-</span>
+                            <span className="text-neutral-300">-</span>
                           )}
                         </td>
                       </tr>
@@ -1539,28 +1539,28 @@ const SalesLedgerPage = () => {
                         // Use full customer totals from customerGroups, not just displayed entries
                         rows.push(
                           <tr key={`subtotal-${prevCustomer}-final`} className="bg-indigo-50 border-t-2 border-indigo-300">
-                            <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-gray-300">
+                            <td colSpan="5" className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-900 border-r border-neutral-300">
                               Subtotal for {prevCustomer}:
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-blue-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalSales)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalVat ?? 0)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-green-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPayments)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPending)}
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                               —
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
                               {lastCustomerGroup.subtotal.totalInvoices} invoices
                             </td>
-                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-gray-300">
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
                               {formatBalance(lastCustomerGroup.subtotal.balance)}
                             </td>
                             <td className={stickyActionCell('bg-indigo-50')} />
@@ -1574,52 +1574,52 @@ const SalesLedgerPage = () => {
                 )}
                 {hasMore && (
                   <tr>
-                    <td colSpan="13" className="px-4 py-3 text-center bg-gray-50">
+                    <td colSpan="13" className="px-4 py-3 text-center bg-neutral-50">
                       <button
                         onClick={handleLoadMore}
                         className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
                       >
                         Load More ({displayLedgerSorted.length - displayLimit} remaining)
                       </button>
-                      <p className="text-xs text-gray-500 mt-2">
+                      <p className="text-xs text-neutral-500 mt-2">
                         Showing {displayLimit} of {displayLedgerSorted.length} entries
                       </p>
                     </td>
                   </tr>
                 )}
               </tbody>
-              <tfoot className="bg-gray-200 sticky bottom-0 border-t-2 border-gray-400">
-                <tr className="bg-blue-50">
+              <tfoot className="bg-neutral-200 sticky bottom-0 border-t-2 border-neutral-400">
+                <tr className="bg-primary-50">
                   <td
                     colSpan="5"
-                    className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300"
+                    className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300"
                   >
                     TOTALS (filtered)
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-blue-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-primary-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalSales)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-teal-700 border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalVat ?? 0)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-green-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalPayments)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-red-700 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalRealPending)}
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-gray-500 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-500 border-r border-neutral-300">
                     —
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-gray-900 border-r border-gray-300">
+                  <td className="px-2 lg:px-3 py-2 text-center text-xs lg:text-sm font-bold text-neutral-900 border-r border-neutral-300">
                     -
                   </td>
-                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-gray-300">
-                    <span className={filteredSummary.pendingBalance > 0 ? 'text-red-700' : filteredSummary.pendingBalance < 0 ? 'text-green-700' : 'text-gray-900'}>
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold border-r border-neutral-300">
+                    <span className={filteredSummary.pendingBalance > 0 ? 'text-error-fg' : filteredSummary.pendingBalance < 0 ? 'text-success-fg' : 'text-neutral-900'}>
                       {formatBalance(filteredSummary.pendingBalance)}
                     </span>
                   </td>
-                  <td className={stickyActionCell('bg-blue-50')} />
+                  <td className={stickyActionCell('bg-primary-50')} />
                 </tr>
               </tfoot>
             </table>
@@ -1629,8 +1629,8 @@ const SalesLedgerPage = () => {
           {/* Mobile Card View - Shown only on mobile */}
           <div className="md:hidden flex-1 min-h-0 overflow-auto px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                <FileText className="w-12 h-12 mb-2 text-gray-300" />
+              <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                <FileText className="w-12 h-12 mb-2 text-neutral-300" />
                 <p className="text-sm">No transactions found</p>
               </div>
             ) : (
@@ -1668,7 +1668,7 @@ const SalesLedgerPage = () => {
                         ? 'bg-yellow-100 text-yellow-800'
                         : displayStatus === 'Unpaid'
                           ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
+                          : 'bg-neutral-100 text-neutral-800'
 
                 return (
                   <React.Fragment key={ledgerRowKey(entry, idx)}>
@@ -1682,24 +1682,24 @@ const SalesLedgerPage = () => {
                           </div>
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
-                                <div className="text-gray-600">Sales:</div>
-                                <div className="font-bold text-blue-700">{formatCurrency(prevCustomerGroup.subtotal.totalSales)}</div>
+                                <div className="text-neutral-600">Sales:</div>
+                                <div className="font-bold text-primary-700">{formatCurrency(prevCustomerGroup.subtotal.totalSales)}</div>
                               </div>
                               <div>
-                                <div className="text-gray-600">VAT:</div>
+                                <div className="text-neutral-600">VAT:</div>
                                 <div className="font-bold text-teal-700">{formatCurrency(prevCustomerGroup.subtotal.totalVat ?? 0)}</div>
                               </div>
                               <div>
-                                <div className="text-gray-600">Paid:</div>
-                                <div className="font-bold text-green-700">{formatCurrency(prevCustomerGroup.subtotal.totalPayments)}</div>
+                                <div className="text-neutral-600">Paid:</div>
+                                <div className="font-bold text-success-fg">{formatCurrency(prevCustomerGroup.subtotal.totalPayments)}</div>
                               </div>
                               <div>
-                                <div className="text-gray-600">Pending:</div>
-                                <div className="font-bold text-red-700">{formatCurrency(prevCustomerGroup.subtotal.totalPending)}</div>
+                                <div className="text-neutral-600">Pending:</div>
+                                <div className="font-bold text-error-fg">{formatCurrency(prevCustomerGroup.subtotal.totalPending)}</div>
                               </div>
                               <div>
-                                <div className="text-gray-600">Balance:</div>
-                                <div className={`font-bold ${prevCustomerGroup.subtotal.balance < 0 ? 'text-green-600' : prevCustomerGroup.subtotal.balance > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                                <div className="text-neutral-600">Balance:</div>
+                                <div className={`font-bold ${prevCustomerGroup.subtotal.balance < 0 ? 'text-success' : prevCustomerGroup.subtotal.balance > 0 ? 'text-error' : 'text-neutral-700'}`}>
                                   {formatBalance(prevCustomerGroup.subtotal.balance)}
                                 </div>
                               </div>
@@ -1709,32 +1709,32 @@ const SalesLedgerPage = () => {
                     })()}
                     <div
                       className={`rounded-lg border p-2.5 ${entry.type === 'Payment'
-                        ? 'bg-green-50 border-green-200'
+                        ? 'bg-success-bg border-success-border'
                         : entry.type === 'Return'
-                          ? 'bg-amber-50 border-amber-200'
-                          : 'bg-white border-gray-200'
+                          ? 'bg-warning-bg border-warning-border'
+                          : 'bg-white border-neutral-200'
                         }`}
                     >
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                           <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${entry.type === 'Payment'
-                            ? 'bg-green-600 text-white'
+                            ? 'bg-success text-white'
                             : entry.type === 'Return'
-                              ? 'bg-amber-600 text-white'
-                              : 'bg-blue-600 text-white'
+                              ? 'bg-warning text-white'
+                              : 'bg-primary-600 text-white'
                             }`}>
                             {entry.type}
                           </span>
-                          <span className="text-xs font-bold text-gray-900">{entry.invoiceNo}</span>
+                          <span className="text-xs font-bold text-neutral-900">{entry.invoiceNo}</span>
                           {displayStatus && displayStatus !== '-' && (
                             <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${statusColor}`}>
                               {displayStatus}
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-600">{entry.customerName}</div>
-                        <div className="text-xs text-gray-500">{dateStr}</div>
+                        <div className="text-xs text-neutral-600">{entry.customerName}</div>
+                        <div className="text-xs text-neutral-500">{dateStr}</div>
                       </div>
                       {entry.type === 'Sale' && entry.saleId ? (
                         <div className="flex shrink-0 items-center gap-0.5">
@@ -1750,7 +1750,7 @@ const SalesLedgerPage = () => {
                             type="button"
                             onClick={() => handleShareInvoiceWhatsApp(entry)}
                             disabled={sharingSaleId === entry.saleId}
-                            className="p-2 rounded-md text-green-600 hover:bg-green-50 disabled:opacity-50"
+                            className="p-2 rounded-md text-success hover:bg-success-bg disabled:opacity-50"
                             title="WhatsApp"
                           >
                             <MessageCircle className="w-4 h-4" />
@@ -1765,7 +1765,7 @@ const SalesLedgerPage = () => {
                             type="button"
                             onClick={() => openPaymentReceipt(entry.paymentId)}
                             disabled={!receiptUi.eligible}
-                            className="p-2 min-h-[44px] min-w-[44px] rounded-md text-blue-600 hover:bg-blue-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="p-2 min-h-[44px] min-w-[44px] rounded-md text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed"
                             title={receiptUi.title}
                           >
                             <Printer className="w-4 h-4" />
@@ -1786,7 +1786,7 @@ const SalesLedgerPage = () => {
                             <button
                               type="button"
                               onClick={() => handleDeleteLedgerPayment(entry)}
-                              className="p-2 rounded-md text-red-600 hover:bg-red-50"
+                              className="p-2 rounded-md text-error hover:bg-error-bg"
                               title="Delete payment"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -1798,8 +1798,8 @@ const SalesLedgerPage = () => {
 
                     <div className="grid grid-cols-2 gap-1.5 text-xs">
                       <div>
-                        <div className="text-xs text-gray-500 uppercase">Bill</div>
-                        <div className="font-bold text-blue-600">
+                        <div className="text-xs text-neutral-500 uppercase">Bill</div>
+                        <div className="font-bold text-primary-600">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
                             : entry.type === 'Return'
@@ -1809,13 +1809,13 @@ const SalesLedgerPage = () => {
                       </div>
                       {(entry.vatTotal > 0 && entry.type !== 'Payment') && (
                         <div>
-                          <div className="text-xs text-gray-500 uppercase">VAT</div>
+                          <div className="text-xs text-neutral-500 uppercase">VAT</div>
                           <div className="font-bold text-teal-700">{formatCurrency(entry.vatTotal)}</div>
                         </div>
                       )}
                       <div>
-                        <div className="text-xs text-gray-500 uppercase">Paid</div>
-                        <div className="font-bold text-green-600">
+                        <div className="text-xs text-neutral-500 uppercase">Paid</div>
+                        <div className="font-bold text-success">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : formatCurrency(entry.realGotPayment || 0)}
@@ -1823,16 +1823,16 @@ const SalesLedgerPage = () => {
                       </div>
                       {entry.type === 'Sale' && entry.realPending > 0 && (
                         <div>
-                          <div className="text-xs text-gray-500 uppercase">Pending</div>
-                          <div className="font-bold text-red-600">
+                          <div className="text-xs text-neutral-500 uppercase">Pending</div>
+                          <div className="font-bold text-error">
                             {formatCurrency(entry.realPending)}
                           </div>
                         </div>
                       )}
                       {entry.type === 'Sale' && (Number(entry.realPending) || 0) > LEDGER_PENDING_EPS && (
                         <div>
-                          <div className="text-xs text-gray-500 uppercase">Days overdue</div>
-                          <div className="font-bold text-gray-900">
+                          <div className="text-xs text-neutral-500 uppercase">Days overdue</div>
+                          <div className="font-bold text-neutral-900">
                             {(() => {
                               const d = getSaleDaysOutstanding(entry)
                               return d == null ? '—' : `${d}d`
@@ -1841,10 +1841,10 @@ const SalesLedgerPage = () => {
                         </div>
                       )}
                       <div>
-                        <div className="text-xs text-gray-500 uppercase">Balance</div>
-                        <div className={`font-bold ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-green-600' :
-                          (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) > 0 ? 'text-red-600' :
-                            'text-gray-900'
+                        <div className="text-xs text-neutral-500 uppercase">Balance</div>
+                        <div className={`font-bold ${(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) < 0 ? 'text-success' :
+                          (entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)) > 0 ? 'text-error' :
+                            'text-neutral-900'
                           }`}>
                           {formatBalance(entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0))}
                         </div>
@@ -1855,7 +1855,7 @@ const SalesLedgerPage = () => {
                       <button
                         type="button"
                         onClick={() => goRecordPaymentForSale(entry)}
-                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-amber-600 text-white text-sm font-bold hover:bg-amber-700 active:scale-[0.99] transition-transform"
+                        className="mt-2 w-full min-h-11 inline-flex items-center justify-center gap-2 rounded-lg bg-warning text-white text-sm font-bold hover:bg-amber-700 active:scale-[0.99] transition-transform"
                       >
                         <Banknote className="h-4 w-4 shrink-0" aria-hidden />
                         Record payment
@@ -1863,9 +1863,9 @@ const SalesLedgerPage = () => {
                     ) : null}
 
                     {entry.paymentMode && entry.paymentMode !== '-' && (
-                      <div className="mt-1.5 pt-1.5 border-t border-gray-200">
-                        <span className="text-xs text-gray-500">Mode: </span>
-                        <span className="text-xs font-medium text-gray-700">{entry.paymentMode}</span>
+                      <div className="mt-1.5 pt-1.5 border-t border-neutral-200">
+                        <span className="text-xs text-neutral-500">Mode: </span>
+                        <span className="text-xs font-medium text-neutral-700">{entry.paymentMode}</span>
                       </div>
                     )}
                     </div>
@@ -1878,20 +1878,20 @@ const SalesLedgerPage = () => {
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             <div>
-                              <div className="text-gray-600">Sales:</div>
-                              <div className="font-bold text-blue-700">{formatCurrency(customerGroup.subtotal.totalSales)}</div>
+                              <div className="text-neutral-600">Sales:</div>
+                              <div className="font-bold text-primary-700">{formatCurrency(customerGroup.subtotal.totalSales)}</div>
                             </div>
                             <div>
-                              <div className="text-gray-600">Paid:</div>
-                              <div className="font-bold text-green-700">{formatCurrency(customerGroup.subtotal.totalPayments)}</div>
+                              <div className="text-neutral-600">Paid:</div>
+                              <div className="font-bold text-success-fg">{formatCurrency(customerGroup.subtotal.totalPayments)}</div>
                             </div>
                             <div>
-                              <div className="text-gray-600">Pending:</div>
-                              <div className="font-bold text-red-700">{formatCurrency(customerGroup.subtotal.totalPending)}</div>
+                              <div className="text-neutral-600">Pending:</div>
+                              <div className="font-bold text-error-fg">{formatCurrency(customerGroup.subtotal.totalPending)}</div>
                             </div>
                             <div>
-                              <div className="text-gray-600">Balance:</div>
-                              <div className={`font-bold ${customerGroup.subtotal.balance < 0 ? 'text-green-600' : customerGroup.subtotal.balance > 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                              <div className="text-neutral-600">Balance:</div>
+                              <div className={`font-bold ${customerGroup.subtotal.balance < 0 ? 'text-success' : customerGroup.subtotal.balance > 0 ? 'text-error' : 'text-neutral-700'}`}>
                                 {formatBalance(customerGroup.subtotal.balance)}
                               </div>
                             </div>
@@ -1903,14 +1903,14 @@ const SalesLedgerPage = () => {
                 )
               })}
               {hasMore && (
-                <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+                <div className="bg-white rounded-lg border border-neutral-200 p-4 text-center">
                   <button
                     onClick={handleLoadMore}
                     className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
                   >
                     Load More ({displayLedgerSorted.length - displayLimit} remaining)
                   </button>
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-neutral-500 mt-2">
                     Showing {displayLimit} of {displayLedgerSorted.length} entries
                   </p>
                 </div>

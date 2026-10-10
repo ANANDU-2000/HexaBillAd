@@ -122,8 +122,8 @@ export default function SalaryCertificatesPage() {
         />
       </div>
 
-      {error && <div className="shrink-0 text-sm text-red-600 mb-2 bg-red-50 border border-red-200 rounded px-3 py-1.5">{error}</div>}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-gray-200 rounded-lg">
+      {error && <div className="shrink-0 text-sm text-error mb-2 bg-error-bg border border-error-border rounded px-3 py-1.5">{error}</div>}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
         {loading ? (
           <p className="text-sm text-text-secondary p-4">Loading…</p>
         ) : filtered.length === 0 ? (
@@ -218,7 +218,7 @@ export default function SalaryCertificatesPage() {
                           title="Delete"
                           disabled={busyId === r.id}
                           onClick={() => handleDelete(r)}
-                          className="inline-flex items-center gap-0.5 px-2 py-1 text-xs border border-red-200 text-red-700 rounded hover:bg-red-50 disabled:opacity-50"
+                          className="inline-flex items-center gap-0.5 px-2 py-1 text-xs border border-error-border text-error-fg rounded hover:bg-error-bg disabled:opacity-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" /> Delete
                         </button>

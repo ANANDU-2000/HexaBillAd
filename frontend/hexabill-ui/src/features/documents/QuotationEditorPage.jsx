@@ -7,6 +7,7 @@ import { productsAPI, settingsAPI } from '../../services/index'
 import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
 function unwrapProductList(res) {
@@ -59,6 +60,7 @@ function formatPreviewDate(iso) {
 }
 
 export default function QuotationEditorPage() {
+  const { currency = 'AED' } = useBranding()
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -493,10 +495,10 @@ export default function QuotationEditorPage() {
           <h1 className="text-lg font-semibold text-text-primary">{isEdit ? 'Edit quotation' : 'New quotation'}</h1>
           <p className="text-xs text-text-secondary">
             {quoteNo}
-            {isDirty ? <span className="ml-2 text-amber-700 font-medium">· Unsaved changes</span> : null}
+            {isDirty ? <span className="ml-2 text-warning-fg font-medium">· Unsaved changes</span> : null}
             {autoSaveStatus === 'saving' ? <span className="ml-2 text-text-secondary">· Auto-saving…</span> : null}
-            {autoSaveStatus === 'saved' ? <span className="ml-2 text-green-700">· Auto-saved</span> : null}
-            {autoSaveStatus === 'error' ? <span className="ml-2 text-red-600">· Auto-save failed</span> : null}
+            {autoSaveStatus === 'saved' ? <span className="ml-2 text-success-fg">· Auto-saved</span> : null}
+            {autoSaveStatus === 'error' ? <span className="ml-2 text-error">· Auto-save failed</span> : null}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -525,7 +527,7 @@ export default function QuotationEditorPage() {
           </button>
         </div>
       </div>
-      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-error bg-error-bg border border-error-border rounded px-3 py-2">{error}</div>}
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
         <div className="border rounded-lg bg-white p-2.5 space-y-2">
@@ -606,7 +608,7 @@ export default function QuotationEditorPage() {
                           </div>
                           <input
                             data-quote-cell={`${idx}-descriptionSubtitle`}
-                            className="mt-1 w-full border rounded px-1 py-1 text-[11px] text-text-secondary"
+                            className="mt-1 w-full border rounded px-1 py-1 text-micro text-text-secondary"
                             placeholder="Subtitle (optional)"
                             value={row.descriptionSubtitle}
                             onChange={(e) => updateItem(idx, { descriptionSubtitle: e.target.value })}
@@ -655,11 +657,11 @@ export default function QuotationEditorPage() {
                         </td>
                         <td className="p-1 text-right whitespace-nowrap">
                           <div>{calc.vatAmount.toFixed(2)}</div>
-                          <div className="text-[10px] text-text-secondary">{Number(row.vatRate || 5).toFixed(2)}%</div>
+                          <div className="text-micro text-text-secondary">{Number(row.vatRate || 5).toFixed(2)}%</div>
                         </td>
                         <td className="p-1 text-right">{calc.lineTotal.toFixed(2)}</td>
                         <td className="p-1">
-                          <button type="button" onClick={() => removeItem(idx)} className="text-red-600" aria-label="Remove">
+                          <button type="button" onClick={() => removeItem(idx)} className="text-error" aria-label="Remove">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </td>
@@ -690,12 +692,12 @@ export default function QuotationEditorPage() {
                 ) : null}
                 <div className="text-center flex-1 min-w-0">
                   <div className="font-bold text-xs uppercase leading-tight">{company.name || 'Company'}</div>
-                  {company.address ? <div className="text-[10px] text-text-secondary whitespace-pre-wrap">{company.address}</div> : null}
-                  {contactLine ? <div className="text-[10px] text-text-secondary">{contactLine}</div> : null}
+                  {company.address ? <div className="text-micro text-text-secondary whitespace-pre-wrap">{company.address}</div> : null}
+                  {contactLine ? <div className="text-micro text-text-secondary">{contactLine}</div> : null}
                 </div>
               </div>
             ) : (
-              <div className="flex-1 text-[10px] text-text-secondary italic">Letterhead paper (body only)</div>
+              <div className="flex-1 text-micro text-text-secondary italic">Letterhead paper (body only)</div>
             )}
             <div className="text-lg font-bold shrink-0">Quotation</div>
           </div>
@@ -729,26 +731,26 @@ export default function QuotationEditorPage() {
                   <td className="border-b p-1">{i + 1}</td>
                   <td className="border-b p-1">
                     <div className="font-medium">{line.description || '—'}</div>
-                    {line.descriptionSubtitle ? <div className="text-[10px] text-text-secondary">{line.descriptionSubtitle}</div> : null}
+                    {line.descriptionSubtitle ? <div className="text-micro text-text-secondary">{line.descriptionSubtitle}</div> : null}
                   </td>
                   <td className="border-b p-1 text-right">
                     <div>{line.qty}</div>
-                    <div className="text-[10px] text-text-secondary">{line.unitLabel}</div>
+                    <div className="text-micro text-text-secondary">{line.unitLabel}</div>
                   </td>
-                  <td className="border-b p-1 text-right">AED {Number(line.unitPrice).toFixed(2)}</td>
+                  <td className="border-b p-1 text-right">{currency} {Number(line.unitPrice).toFixed(2)}</td>
                   <td className="border-b p-1 text-right">
-                    <div>AED {line.vatAmount.toFixed(2)}</div>
-                    <div className="text-[10px] text-text-secondary">{Number(line.vatRate).toFixed(2)}%</div>
+                    <div>{currency} {line.vatAmount.toFixed(2)}</div>
+                    <div className="text-micro text-text-secondary">{Number(line.vatRate).toFixed(2)}%</div>
                   </td>
-                  <td className="border-b p-1 text-right">AED {line.lineTotal.toFixed(2)}</td>
+                  <td className="border-b p-1 text-right">{currency} {line.lineTotal.toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
           <div className="mt-3 ml-auto w-52 text-xs space-y-1">
-            <div className="flex justify-between"><span>SUBTOTAL</span><span>AED {totals.subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>TAX</span><span>AED {totals.vatTotal.toFixed(2)}</span></div>
-            <div className="flex justify-between font-bold border-t border-b-2 py-1"><span>GRAND TOTAL</span><span>AED {totals.grandTotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>SUBTOTAL</span><span>{currency} {totals.subtotal.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span>TAX</span><span>{currency} {totals.vatTotal.toFixed(2)}</span></div>
+            <div className="flex justify-between font-bold border-t border-b-2 py-1"><span>GRAND TOTAL</span><span>{currency} {totals.grandTotal.toFixed(2)}</span></div>
           </div>
           <p className="text-xs mt-4">{closingLine}</p>
           {!company.letterheadOnly ? (
@@ -759,10 +761,10 @@ export default function QuotationEditorPage() {
                 <div className="h-8" />
               )}
               <div className="font-semibold border-t pt-1">AUTHORIZED SIGNATURE</div>
-              {company.name ? <div className="text-[10px] text-text-secondary mt-0.5">{company.name}</div> : null}
+              {company.name ? <div className="text-micro text-text-secondary mt-0.5">{company.name}</div> : null}
             </div>
           ) : (
-            <div className="mt-10 text-[10px] text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
+            <div className="mt-10 text-micro text-text-secondary text-right italic">Stamp / signature zone (pre-printed)</div>
           )}
         </div>
       </div>

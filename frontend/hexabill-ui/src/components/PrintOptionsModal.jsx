@@ -146,11 +146,11 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
         {/* Header */}
-        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Print Options</h2>
+        <div className="flex items-center justify-between pl-6 pr-2 py-4 border-b border-neutral-200">
+          <h2 className="text-xl font-bold text-neutral-900">Print Options</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
+            className="text-neutral-400 hover:text-neutral-600 min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -161,7 +161,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
         <div className="p-6 space-y-6">
           {/* Format Selection - A4, A5, 80mm, 58mm (Gulf VAT compliant) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Print format
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -170,11 +170,11 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
                 onClick={() => setFormat('A4')}
                 className={`p-4 border-2 rounded-lg text-center transition-colors ${
                   format === 'A4'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
                 }`}
               >
-                <FileText className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                <FileText className="h-8 w-8 mx-auto mb-2 text-primary-600" />
                 <span className="font-medium">A4 Invoice</span>
               </button>
               <button
@@ -182,11 +182,11 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
                 onClick={() => setFormat('A5')}
                 className={`p-4 border-2 rounded-lg text-center transition-colors ${
                   format === 'A5'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
                 }`}
               >
-                <FileText className="h-8 w-8 mx-auto mb-2 text-blue-500" />
+                <FileText className="h-8 w-8 mx-auto mb-2 text-primary-500" />
                 <span className="font-medium">A5 Invoice</span>
               </button>
               <button
@@ -194,11 +194,11 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
                 onClick={() => setFormat('80mm')}
                 className={`p-4 border-2 rounded-lg text-center transition-colors ${
                   format === '80mm'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
                 }`}
               >
-                <Printer className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                <Printer className="h-8 w-8 mx-auto mb-2 text-success" />
                 <span className="font-medium">80mm Receipt</span>
               </button>
               <button
@@ -206,8 +206,8 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
                 onClick={() => setFormat('58mm')}
                 className={`p-4 border-2 rounded-lg text-center transition-colors ${
                   format === '58mm'
-                    ? 'border-blue-600 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                    ? 'border-primary-600 bg-primary-50'
+                    : 'border-neutral-200 hover:border-neutral-300'
                 }`}
               >
                 <Printer className="h-8 w-8 mx-auto mb-2 text-green-500" />
@@ -219,7 +219,7 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           {/* Copies - A4/A5 only */}
           {(format === 'A4' || format === 'A5') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-neutral-700 mb-2">
                 Copies
               </label>
               <input
@@ -228,20 +228,20 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
                 max="10"
                 value={copies}
                 onChange={(e) => setCopies(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                className="w-full px-4 py-2 border border-neutral-300 rounded-md"
               />
             </div>
           )}
 
           {/* Printer Selection (for future use) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Printer
             </label>
             <select
               value={printer}
               onChange={(e) => setPrinter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-md"
             >
               <option value="default">Default Printer</option>
               <option value="browser">Browser Print Dialog</option>
@@ -249,19 +249,19 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           </div>
 
           {/* Invoice Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-600">Invoice:</p>
-            <p className="font-medium text-gray-900">{invoiceNo || `#${saleId}`}</p>
+          <div className="bg-neutral-50 p-4 rounded-lg">
+            <p className="text-sm text-neutral-600">Invoice:</p>
+            <p className="font-medium text-neutral-900">{invoiceNo || `#${saleId}`}</p>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center justify-end p-6 border-t border-gray-200 gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center justify-end p-6 border-t border-neutral-200 gap-2 sm:gap-3">
           <button
             type="button"
             onClick={handleDeliveryNote}
             disabled={printing}
-            className="inline-flex items-center px-4 min-h-[44px] bg-amber-600 text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
+            className="inline-flex items-center px-4 min-h-[44px] bg-warning text-white rounded-md hover:bg-amber-700 disabled:opacity-50 mr-auto"
           >
             <FileText className="h-4 w-4 mr-2" />
             Delivery Note
@@ -269,14 +269,14 @@ const PrintOptionsModal = ({ saleId, invoiceNo, onClose, onPrint }) => {
           <button
             onClick={onClose}
             disabled={printing}
-            className="px-4 min-h-[44px] text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+            className="px-4 min-h-[44px] text-neutral-700 bg-neutral-100 rounded-md hover:bg-neutral-200 disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={handlePrint}
             disabled={printing}
-            className="inline-flex items-center px-4 min-h-[44px] bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+            className="inline-flex items-center px-4 min-h-[44px] bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
           >
             {printing ? (
               <>

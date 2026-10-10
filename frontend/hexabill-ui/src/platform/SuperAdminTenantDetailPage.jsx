@@ -568,11 +568,11 @@ const SuperAdminTenantDetailPage = () => {
 
     const badges = {
       active: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">Active</span>,
-      trial: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-blue-100 text-blue-800">Trial</span>,
+      trial: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-primary-100 text-primary-800">Trial</span>,
       suspended: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">Suspended</span>,
       expired: <span className="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">Expired</span>
     }
-    return badges[effectiveStatus] || <span className="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">{effectiveStatus}</span>
+    return badges[effectiveStatus] || <span className="px-3 py-1 text-sm font-semibold rounded-full bg-neutral-100 text-neutral-800">{effectiveStatus}</span>
   }
 
   if (loading) {
@@ -593,8 +593,8 @@ const SuperAdminTenantDetailPage = () => {
           >
             <ArrowLeft className="h-4 w-4" /> Back to companies
           </button>
-          <div className="bg-white border border-red-200 rounded-xl p-6">
-            <p className="font-medium text-red-700 text-sm mb-1">Failed to load company</p>
+          <div className="bg-white border border-error-border rounded-lg p-6">
+            <p className="font-medium text-error-fg text-sm mb-1">Failed to load company</p>
             <p className="text-sm text-neutral-500">{error}</p>
             <button
               onClick={() => { setError(null); fetchTenant(id); }}
@@ -618,7 +618,7 @@ const SuperAdminTenantDetailPage = () => {
           >
             <ArrowLeft className="h-4 w-4" /> Back to companies
           </button>
-          <div className="bg-white border border-neutral-200 rounded-xl p-6">
+          <div className="bg-white border border-neutral-200 rounded-lg p-6">
             <p className="text-sm text-neutral-500">Company not found.</p>
           </div>
         </div>
@@ -632,7 +632,7 @@ const SuperAdminTenantDetailPage = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate('/superadmin/tenants')}
-          className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900 mb-4"
         >
           <ArrowLeft className="h-5 w-5" />
           <span>Back to Companies</span>
@@ -657,7 +657,7 @@ const SuperAdminTenantDetailPage = () => {
                 </button>
               </div>
             </div>
-            <p className="text-gray-600 mt-1">{tenant.companyNameEn || tenant.companyNameAr || 'No company name'}</p>
+            <p className="text-neutral-600 mt-1">{tenant.companyNameEn || tenant.companyNameAr || 'No company name'}</p>
           </div>
           <div className="flex items-center space-x-3">
             <button
@@ -672,7 +672,7 @@ const SuperAdminTenantDetailPage = () => {
             {tenant.status?.toLowerCase() === 'suspended' ? (
               <button
                 onClick={handleActivate}
-                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow-sm"
+                className="flex items-center space-x-2 bg-success text-white px-4 py-2 rounded-lg hover:bg-green-700 font-bold shadow-sm"
               >
                 <CheckCircle className="h-5 w-5" />
                 <span>Activate Account</span>
@@ -703,7 +703,7 @@ const SuperAdminTenantDetailPage = () => {
                 })
                 setShowEditModal(true)
               }}
-              className="flex items-center space-x-2 bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 font-bold shadow-sm"
+              className="flex items-center space-x-2 bg-white text-neutral-700 border border-neutral-300 px-4 py-2 rounded-lg hover:bg-neutral-50 font-bold shadow-sm"
             >
               <Edit className="h-5 w-5" />
               <span>Edit Company</span>
@@ -727,15 +727,15 @@ const SuperAdminTenantDetailPage = () => {
         <div className="space-y-6">
           {/* Health Score Card */}
           {tenantHealth != null && (
-            <div className={`rounded-lg border shadow-sm p-6 ${tenantHealth.level === 'Green' ? 'bg-green-50 border-green-200' :
-              tenantHealth.level === 'Yellow' ? 'bg-amber-50 border-amber-200' :
-                'bg-red-50 border-red-200'
+            <div className={`rounded-lg border shadow-sm p-6 ${tenantHealth.level === 'Green' ? 'bg-success-bg border-success-border' :
+              tenantHealth.level === 'Yellow' ? 'bg-warning-bg border-warning-border' :
+                'bg-error-bg border-error-border'
               }`}>
               <h2 className="text-xl font-semibold text-neutral-900 mb-4 flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Tenant Health Score
                 <span
-                  className="inline-flex text-gray-500 hover:text-gray-700 cursor-help"
+                  className="inline-flex text-neutral-500 hover:text-neutral-700 cursor-help"
                   title={tenantHealth.scoreDescription || 'Starts at 100. Deductions: trial expiring soon (−15 to −30), high outstanding vs revenue (−10 to −25), high storage (−20), no activity 30+ days (−10). Green ≥70, Yellow ≥40, Red <40.'}
                   aria-label="How health score is calculated"
                 >
@@ -743,11 +743,11 @@ const SuperAdminTenantDetailPage = () => {
                 </span>
               </h2>
               {tenantHealth.scoreDescription && (
-                <p className="text-sm text-gray-600 mb-4 max-w-2xl">{tenantHealth.scoreDescription}</p>
+                <p className="text-sm text-neutral-600 mb-4 max-w-2xl">{tenantHealth.scoreDescription}</p>
               )}
               <div className="flex flex-wrap items-center gap-6">
-                <div className={`text-4xl font-bold ${tenantHealth.level === 'Green' ? 'text-green-700' :
-                  tenantHealth.level === 'Yellow' ? 'text-amber-700' : 'text-red-700'
+                <div className={`text-4xl font-bold ${tenantHealth.level === 'Green' ? 'text-success-fg' :
+                  tenantHealth.level === 'Yellow' ? 'text-warning-fg' : 'text-error-fg'
                   }`}>
                   {tenantHealth.score}/100
                 </div>
@@ -759,8 +759,8 @@ const SuperAdminTenantDetailPage = () => {
                 </span>
                 {(tenantHealth.riskFactors || []).length > 0 && (
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-600 mb-1">Risk factors:</p>
-                    <ul className="text-sm text-gray-700 list-disc list-inside">
+                    <p className="text-sm font-medium text-neutral-600 mb-1">Risk factors:</p>
+                    <ul className="text-sm text-neutral-700 list-disc list-inside">
                       {(tenantHealth.riskFactors || []).map((r, i) => (
                         <li key={i}>{r}</li>
                       ))}
@@ -777,21 +777,21 @@ const SuperAdminTenantDetailPage = () => {
               <Shield className="h-5 w-5 text-indigo-600" />
               Client controls
             </h2>
-            <p className="text-sm text-gray-600 mb-4">Account actions and limits. Use Limits tab for rate/storage caps.</p>
+            <p className="text-sm text-neutral-600 mb-4">Account actions and limits. Use Limits tab for rate/storage caps.</p>
             <div className="flex flex-wrap gap-3">
               {tenant?.status?.toLowerCase() === 'suspended' ? (
-                <button type="button" onClick={handleActivate} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium">
+                <button type="button" onClick={handleActivate} className="flex items-center gap-2 bg-success text-white px-4 py-2 rounded-lg hover:bg-green-700 font-medium">
                   <CheckCircle className="h-4 w-4" /> Activate account
                 </button>
               ) : (
-                <button type="button" onClick={() => setShowSuspendModal(true)} className="flex items-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 font-medium">
+                <button type="button" onClick={() => setShowSuspendModal(true)} className="flex items-center gap-2 bg-warning text-white px-4 py-2 rounded-lg hover:bg-amber-700 font-medium">
                   <Ban className="h-4 w-4" /> Suspend access
                 </button>
               )}
-              <button type="button" onClick={() => setShowClearDataModal(true)} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium">
+              <button type="button" onClick={() => setShowClearDataModal(true)} className="flex items-center gap-2 bg-error text-white px-4 py-2 rounded-lg hover:bg-red-700 font-medium">
                 <Trash2 className="h-4 w-4" /> Clear data
               </button>
-              <button type="button" onClick={() => { setLockoutAction('unlock'); setLockoutEmail(tenant?.users?.[0]?.email || ''); setShowLockoutModal(true) }} className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 font-medium">
+              <button type="button" onClick={() => { setLockoutAction('unlock'); setLockoutEmail(tenant?.users?.[0]?.email || ''); setShowLockoutModal(true) }} className="flex items-center gap-2 bg-neutral-600 text-white px-4 py-2 rounded-lg hover:bg-neutral-700 font-medium">
                 <Lock className="h-4 w-4" /> Login lockout
               </button>
               <button type="button" onClick={() => setActiveTab('limits')} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 font-medium">
@@ -808,21 +808,21 @@ const SuperAdminTenantDetailPage = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm mb-4">
               <div>
-                <p className="text-gray-500 mb-1">API requests (last 60 min)</p>
-                <p className="font-semibold text-gray-900 flex items-center gap-2">
+                <p className="text-neutral-500 mb-1">API requests (last 60 min)</p>
+                <p className="font-semibold text-neutral-900 flex items-center gap-2">
                   {tenantRequestUsage != null ? tenantRequestUsage.requestCountLast60Min ?? 0 : '—'}
-                  {tenantRequestUsage?.isHighVolume && <span className="text-xs font-medium text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">High volume</span>}
+                  {tenantRequestUsage?.isHighVolume && <span className="text-xs font-medium text-warning bg-amber-100 px-1.5 py-0.5 rounded">High volume</span>}
                 </p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1">Storage (estimate)</p>
-                <p className="font-semibold text-gray-900">
+                <p className="text-neutral-500 mb-1">Storage (estimate)</p>
+                <p className="font-semibold text-neutral-900">
                   {tenant?.usageMetrics != null ? `${(tenant.usageMetrics.storageEstimate ?? 0).toLocaleString()} rows` : '—'}
                 </p>
               </div>
               <div>
-                <p className="text-gray-500 mb-1">Limits</p>
-                <p className="font-semibold text-gray-900">
+                <p className="text-neutral-500 mb-1">Limits</p>
+                <p className="font-semibold text-neutral-900">
                   {limitsData.maxRequestsPerMinute}/min · {limitsData.maxStorageMb} MB
                 </p>
               </div>
@@ -833,22 +833,22 @@ const SuperAdminTenantDetailPage = () => {
               const daysLeft = Math.ceil((endDate - new Date()) / (24 * 60 * 60 * 1000))
               if (daysLeft <= 14 && daysLeft >= 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 p-3 bg-warning-bg border border-warning-border rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-amber-800">Trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</p>
-                      <p className="text-sm text-amber-700">Remind this client to upgrade before {endDate.toLocaleDateString()} to avoid service interruption.</p>
+                      <p className="text-sm text-warning-fg">Remind this client to upgrade before {endDate.toLocaleDateString()} to avoid service interruption.</p>
                     </div>
                   </div>
                 )
               }
               if (daysLeft < 0) {
                 return (
-                  <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-2 p-3 bg-error-bg border border-error-border rounded-lg">
+                    <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
                     <div>
                       <p className="font-medium text-red-800">Trial ended</p>
-                      <p className="text-sm text-red-700">Consider activating or upgrading this client.</p>
+                      <p className="text-sm text-error-fg">Consider activating or upgrading this client.</p>
                     </div>
                   </div>
                 )
@@ -861,39 +861,39 @@ const SuperAdminTenantDetailPage = () => {
             <h2 className="text-xl font-semibold text-neutral-900 mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-gray-500">Company Name</label>
-                <p className="text-gray-900 mt-1">{tenant.name}</p>
+                <label className="text-sm font-medium text-neutral-500">Company Name</label>
+                <p className="text-neutral-900 mt-1">{tenant.name}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Company Name (EN)</label>
-                <p className="text-gray-900 mt-1">{tenant.companyNameEn || 'N/A'}</p>
+                <label className="text-sm font-medium text-neutral-500">Company Name (EN)</label>
+                <p className="text-neutral-900 mt-1">{tenant.companyNameEn || 'N/A'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Company Name (AR)</label>
-                <p className="text-gray-900 mt-1">{tenant.companyNameAr || 'N/A'}</p>
+                <label className="text-sm font-medium text-neutral-500">Company Name (AR)</label>
+                <p className="text-neutral-900 mt-1">{tenant.companyNameAr || 'N/A'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Country</label>
-                <p className="text-gray-900 mt-1">{tenant.country}</p>
+                <label className="text-sm font-medium text-neutral-500">Country</label>
+                <p className="text-neutral-900 mt-1">{tenant.country}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Currency</label>
-                <p className="text-gray-900 mt-1">{tenant.currency}</p>
+                <label className="text-sm font-medium text-neutral-500">Currency</label>
+                <p className="text-neutral-900 mt-1">{tenant.currency}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">VAT Number</label>
-                <p className="text-gray-900 mt-1">{tenant.vatNumber || 'N/A'}</p>
+                <label className="text-sm font-medium text-neutral-500">VAT Number</label>
+                <p className="text-neutral-900 mt-1">{tenant.vatNumber || 'N/A'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Email</label>
-                <p className="text-gray-900 mt-1 flex items-center">
+                <label className="text-sm font-medium text-neutral-500">Email</label>
+                <p className="text-neutral-900 mt-1 flex items-center">
                   <Mail className="h-4 w-4 mr-2" />
                   {tenant.email || 'N/A'}
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Phone</label>
-                <p className="text-gray-900 mt-1 flex items-center">
+                <label className="text-sm font-medium text-neutral-500">Phone</label>
+                <p className="text-neutral-900 mt-1 flex items-center">
                   <Phone className="h-4 w-4 mr-2" />
                   {tenant.phone || 'N/A'}
                 </p>
@@ -907,7 +907,7 @@ const SuperAdminTenantDetailPage = () => {
               <Download className="h-5 w-5" />
               Export data
             </h2>
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-neutral-600 mb-4">
               Download key data (invoices, customers, products) as a ZIP of CSV files for offboarding or compliance.
             </p>
             <button
@@ -921,7 +921,7 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           {/* Login Lockout - Super Admin can unlock/lock client login */}
-          <div className="bg-amber-50 rounded-lg border border-amber-200 shadow-sm p-6 mt-6">
+          <div className="bg-warning-bg rounded-lg border border-warning-border shadow-sm p-6 mt-6">
             <h2 className="text-xl font-bold text-amber-800 mb-4 flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Login Lockout
@@ -932,14 +932,14 @@ const SuperAdminTenantDetailPage = () => {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => { setLockoutAction('unlock'); setLockoutEmail(tenant?.users?.[0]?.email || ''); setShowLockoutModal(true) }}
-                className="bg-white text-green-700 border border-green-300 px-4 py-2 rounded-lg font-medium hover:bg-green-50 flex items-center gap-2"
+                className="bg-white text-success-fg border border-green-300 px-4 py-2 rounded-lg font-medium hover:bg-success-bg flex items-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Unlock Login
               </button>
               <button
                 onClick={() => { setLockoutAction('lock'); setLockoutEmail(''); setShowLockoutModal(true) }}
-                className="bg-white text-amber-700 border border-amber-300 px-4 py-2 rounded-lg font-medium hover:bg-amber-50 flex items-center gap-2"
+                className="bg-white text-warning-fg border border-amber-300 px-4 py-2 rounded-lg font-medium hover:bg-warning-bg flex items-center gap-2"
               >
                 <Lock className="h-4 w-4" />
                 Lock Login
@@ -948,25 +948,25 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           {/* Danger Zone */}
-          <div className="bg-red-50 rounded-lg border border-red-100 shadow-sm p-6 mt-6">
+          <div className="bg-error-bg rounded-lg border border-red-100 shadow-sm p-6 mt-6">
             <h2 className="text-xl font-bold text-red-800 mb-4">Danger Zone</h2>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider">Reset Database</h3>
-                <p className="text-sm text-red-700 mt-1">
+                <p className="text-sm text-error-fg mt-1">
                   Wipe all transactions, sales, and expenses. Subscription and company settings are kept. Products and customers remain; stock and balances reset to 0. Create a backup first if needed.
                 </p>
               </div>
               <button
                 onClick={() => setShowClearDataModal(true)}
-                className="bg-white text-red-600 border border-red-200 px-6 py-2.5 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
+                className="bg-white text-error border border-error-border px-6 py-2.5 rounded-lg font-bold hover:bg-error hover:text-white transition-all shadow-sm flex items-center gap-2"
               >
                 <History className="h-5 w-5" />
                 Clear All Data
               </button>
               <button
                 onClick={handleOpenDuplicateModal}
-                className="bg-white text-blue-600 border border-blue-200 px-6 py-2.5 rounded-xl font-bold hover:bg-blue-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
+                className="bg-white text-primary-600 border border-primary-200 px-6 py-2.5 rounded-lg font-bold hover:bg-primary-600 hover:text-white transition-all shadow-sm flex items-center gap-2"
               >
                 <Copy className="h-5 w-5" />
                 Duplicate Data from Another Company
@@ -982,7 +982,7 @@ const SuperAdminTenantDetailPage = () => {
             <Receipt className="h-5 w-5" />
             Invoices (read-only)
           </h2>
-          <p className="text-sm text-gray-500 mb-4">View-only list. No edit or impersonation. Use &quot;Enter Workspace&quot; to manage invoices.</p>
+          <p className="text-sm text-neutral-500 mb-4">View-only list. No edit or impersonation. Use &quot;Enter Workspace&quot; to manage invoices.</p>
           {invoicesLoading ? (
             <LoadingCard />
           ) : invoicesData ? (
@@ -1054,7 +1054,7 @@ const SuperAdminTenantDetailPage = () => {
             <CreditCard className="h-5 w-5" />
             Payment history
           </h2>
-          <p className="text-sm text-gray-500 mb-4">Subscription and payment method. When the tenant paid or started trial, renewals, and payment method.</p>
+          <p className="text-sm text-neutral-500 mb-4">Subscription and payment method. When the tenant paid or started trial, renewals, and payment method.</p>
           {paymentHistoryLoading ? (
             <LoadingCard />
           ) : paymentHistory && paymentHistory.length > 0 ? (
@@ -1105,7 +1105,7 @@ const SuperAdminTenantDetailPage = () => {
                 setUserFormData({ name: '', email: '', password: '', role: 'Staff', phone: '' })
                 setShowAddUserModal(true)
               }}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="flex items-center space-x-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition"
             >
               <UserPlus className="h-5 w-5" />
               <span>Add User</span>
@@ -1113,27 +1113,27 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-neutral-200">
+              <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Role</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-neutral-200">
                 {tenant.users?.map((user) => (
                   <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.role}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">{user.name}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">{user.email}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-500">{user.role}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex justify-end space-x-2">
-                        <button onClick={() => { setSelectedUser(user); setUserFormData({ name: user.name, role: user.role, phone: user.phone || '' }); setShowEditUserModal(true); }} className="text-blue-600 hover:text-blue-900"><Edit className="h-4 w-4" /></button>
-                        <button onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }} title="Reset Password" className="text-green-600 hover:text-green-900"><CheckCircle2 className="h-4 w-4" /></button>
-                        <button onClick={() => handleForceLogout(user.id, user.name)} title="Force Logout" className="text-amber-600 hover:text-amber-900"><LogOut className="h-4 w-4" /></button>
-                        <button onClick={() => handleDeleteUser(user.id)} className="text-red-600 hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => { setSelectedUser(user); setUserFormData({ name: user.name, role: user.role, phone: user.phone || '' }); setShowEditUserModal(true); }} className="text-primary-600 hover:text-primary-900"><Edit className="h-4 w-4" /></button>
+                        <button onClick={() => { setSelectedUser(user); setShowPasswordModal(true); }} title="Reset Password" className="text-success hover:text-green-900"><CheckCircle2 className="h-4 w-4" /></button>
+                        <button onClick={() => handleForceLogout(user.id, user.name)} title="Force Logout" className="text-warning hover:text-amber-900"><LogOut className="h-4 w-4" /></button>
+                        <button onClick={() => handleDeleteUser(user.id)} className="text-error hover:text-red-900"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -1167,7 +1167,7 @@ const SuperAdminTenantDetailPage = () => {
                   }
                   setShowSubscriptionModal(true)
                 }}
-                className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
+                className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 transition-all flex items-center gap-2"
               >
                 <Settings className="h-4 w-4" />
                 Manage Subscription
@@ -1176,107 +1176,107 @@ const SuperAdminTenantDetailPage = () => {
 
             {tenant.subscription ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Current Plan</label>
-                  <p className="text-2xl font-black text-gray-900 mt-1">{tenant.subscription.plan.name}</p>
+                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                  <label className="text-xs font-bold text-neutral-500 uppercase">Current Plan</label>
+                  <p className="text-2xl font-black text-neutral-900 mt-1">{tenant.subscription.plan.name}</p>
                   <div className="mt-4 flex items-center gap-2">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${tenant.subscription.status === 'Active' ? 'bg-green-100 text-green-700' :
-                      tenant.subscription.status === 'Trial' ? 'bg-blue-100 text-blue-700' :
-                        'bg-red-100 text-red-700'
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${tenant.subscription.status === 'Active' ? 'bg-green-100 text-success-fg' :
+                      tenant.subscription.status === 'Trial' ? 'bg-primary-100 text-primary-700' :
+                        'bg-red-100 text-error-fg'
                       }`}>
                       {tenant.subscription.status}
                     </span>
-                    <span className="text-xs text-gray-500 font-bold">{tenant.subscription.billingCycle} Billing</span>
+                    <span className="text-xs text-neutral-500 font-bold">{tenant.subscription.billingCycle} Billing</span>
                   </div>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Pricing</label>
-                  <p className="text-2xl font-black text-gray-900 mt-1">
+                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Pricing</label>
+                  <p className="text-2xl font-black text-neutral-900 mt-1">
                     {formatCurrency(tenant.subscription.amount, tenant.subscription.currency)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-2 font-bold flex items-center gap-1">
+                  <p className="text-xs text-neutral-500 mt-2 font-bold flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     Next Billing: {tenant.subscription.nextBillingDate ? new Date(tenant.subscription.nextBillingDate).toLocaleDateString() : 'N/A'}
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Features Included</label>
+                <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-100">
+                  <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Features Included</label>
                   <ul className="mt-3 space-y-2">
                     <li className="text-xs font-bold flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      <CheckCircle2 className="h-3 w-3 text-success" />
                       {tenant.subscription.plan.maxUsers === -1 ? 'Unlimited' : tenant.subscription.plan.maxUsers} Users
                     </li>
                     <li className="text-xs font-bold flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      <CheckCircle2 className="h-3 w-3 text-success" />
                       {tenant.subscription.plan.maxInvoicesPerMonth === -1 ? 'Unlimited' : tenant.subscription.plan.maxInvoicesPerMonth} Invoices / Mo
                     </li>
                     <li className="text-xs font-bold flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-green-600" />
+                      <CheckCircle2 className="h-3 w-3 text-success" />
                       {tenant.subscription.plan.maxStorageMB} MB Storage
                     </li>
                   </ul>
                 </div>
               </div>
             ) : (
-              <div className="py-12 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                <Database className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-gray-600">No Active Subscription</h3>
-                <p className="text-sm text-gray-400 mt-1">This company does not have a formal subscription plan assigned.</p>
+              <div className="py-12 text-center bg-neutral-50 rounded-lg border-2 border-dashed border-neutral-200">
+                <Database className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-neutral-600">No Active Subscription</h3>
+                <p className="text-sm text-neutral-400 mt-1">This company does not have a formal subscription plan assigned.</p>
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-green-600" />
+              <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                <Shield className="h-5 w-5 text-success" />
                 Plan Entitlements
               </h3>
               <div className="space-y-4">
-                <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                  <span className="text-sm font-bold text-gray-600">Advanced Reports</span>
-                  {tenant.subscription?.plan.hasAdvancedReports ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Ban className="h-5 w-5 text-gray-300" />}
+                <div className="flex justify-between items-center py-2 border-b border-neutral-50">
+                  <span className="text-sm font-bold text-neutral-600">Advanced Reports</span>
+                  {tenant.subscription?.plan.hasAdvancedReports ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                  <span className="text-sm font-bold text-gray-600">White Labeling</span>
-                  {tenant.subscription?.plan.hasWhiteLabel ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Ban className="h-5 w-5 text-gray-300" />}
+                <div className="flex justify-between items-center py-2 border-b border-neutral-50">
+                  <span className="text-sm font-bold text-neutral-600">White Labeling</span>
+                  {tenant.subscription?.plan.hasWhiteLabel ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-gray-50">
-                  <span className="text-sm font-bold text-gray-600">Custom Branding</span>
-                  {tenant.subscription?.plan.hasCustomBranding ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Ban className="h-5 w-5 text-gray-300" />}
+                <div className="flex justify-between items-center py-2 border-b border-neutral-50">
+                  <span className="text-sm font-bold text-neutral-600">Custom Branding</span>
+                  {tenant.subscription?.plan.hasCustomBranding ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
                 </div>
                 <div className="flex justify-between items-center py-2">
-                  <span className="text-sm font-bold text-gray-600">Priority Support</span>
-                  {tenant.subscription?.plan.hasPrioritySupport ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <Ban className="h-5 w-5 text-gray-300" />}
+                  <span className="text-sm font-bold text-neutral-600">Priority Support</span>
+                  {tenant.subscription?.plan.hasPrioritySupport ? <CheckCircle2 className="h-5 w-5 text-success" /> : <Ban className="h-5 w-5 text-neutral-300" />}
                 </div>
               </div>
             </div>
 
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <History className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                <History className="h-5 w-5 text-primary-600" />
                 Timeline
               </h3>
               <div className="space-y-4 text-sm font-bold">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Member Since</span>
-                  <span className="text-gray-900">{new Date(tenant.createdAt).toLocaleDateString()}</span>
+                  <span className="text-neutral-500">Member Since</span>
+                  <span className="text-neutral-900">{new Date(tenant.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Current Plan Start</span>
-                  <span className="text-gray-900">{tenant.subscription ? new Date(tenant.subscription.startDate).toLocaleDateString() : 'N/A'}</span>
+                  <span className="text-neutral-500">Current Plan Start</span>
+                  <span className="text-neutral-900">{tenant.subscription ? new Date(tenant.subscription.startDate).toLocaleDateString() : 'N/A'}</span>
                 </div>
                 {tenant.subscription?.trialEndDate && (
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Trial Period Ends</span>
-                    <span className="text-red-600">{new Date(tenant.subscription.trialEndDate).toLocaleDateString()}</span>
+                    <span className="text-neutral-500">Trial Period Ends</span>
+                    <span className="text-error">{new Date(tenant.subscription.trialEndDate).toLocaleDateString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Status</span>
-                  <span className="text-gray-900">{tenant.status}</span>
+                  <span className="text-neutral-500">Status</span>
+                  <span className="text-neutral-900">{tenant.status}</span>
                 </div>
               </div>
             </div>
@@ -1290,16 +1290,16 @@ const SuperAdminTenantDetailPage = () => {
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Sales Invoices</p>
+                  <p className="text-sm text-neutral-600">Sales Invoices</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.invoiceCount}</p>
                 </div>
-                <FileText className="h-10 w-10 text-blue-500" />
+                <FileText className="h-10 w-10 text-primary-500" />
               </div>
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Supplier Purchases</p>
+                  <p className="text-sm text-neutral-600">Supplier Purchases</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.purchaseCount || 0}</p>
                 </div>
                 <ShoppingCart className="h-10 w-10 text-indigo-500" />
@@ -1308,7 +1308,7 @@ const SuperAdminTenantDetailPage = () => {
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Expense Records</p>
+                  <p className="text-sm text-neutral-600">Expense Records</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.expenseCount || 0}</p>
                 </div>
                 <Receipt className="h-10 w-10 text-red-500" />
@@ -1317,7 +1317,7 @@ const SuperAdminTenantDetailPage = () => {
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Customers</p>
+                  <p className="text-sm text-neutral-600">Customers</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.customerCount}</p>
                 </div>
                 <Users className="h-10 w-10 text-green-500" />
@@ -1326,7 +1326,7 @@ const SuperAdminTenantDetailPage = () => {
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Products</p>
+                  <p className="text-sm text-neutral-600">Products</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.productCount}</p>
                 </div>
                 <Package className="h-10 w-10 text-purple-500" />
@@ -1335,7 +1335,7 @@ const SuperAdminTenantDetailPage = () => {
             <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">System Users</p>
+                  <p className="text-sm text-neutral-600">System Users</p>
                   <p className="text-xl font-semibold text-neutral-900">{tenant.usageMetrics.userCount}</p>
                 </div>
                 <Shield className="h-10 w-10 text-yellow-500" />
@@ -1344,26 +1344,26 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold text-gray-900">Financial Summary</h2>
+            <div className="bg-neutral-50 px-6 py-4 border-b border-neutral-200">
+              <h2 className="text-lg font-bold text-neutral-900">Financial Summary</h2>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Total Revenue</label>
-                  <p className="text-xl font-bold text-green-600 mt-1">{formatCurrency(tenant.usageMetrics.totalRevenue)}</p>
+                  <label className="text-sm font-medium text-neutral-500">Total Revenue</label>
+                  <p className="text-xl font-bold text-success mt-1">{formatCurrency(tenant.usageMetrics.totalRevenue)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Total Purchases</label>
+                  <label className="text-sm font-medium text-neutral-500">Total Purchases</label>
                   <p className="text-xl font-bold text-indigo-600 mt-1">{formatCurrency(tenant.usageMetrics.totalPurchases || 0)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Total Expenses</label>
-                  <p className="text-xl font-bold text-red-600 mt-1">{formatCurrency(tenant.usageMetrics.totalExpenses || 0)}</p>
+                  <label className="text-sm font-medium text-neutral-500">Total Expenses</label>
+                  <p className="text-xl font-bold text-error mt-1">{formatCurrency(tenant.usageMetrics.totalExpenses || 0)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Total Outstanding</label>
-                  <p className="text-xl font-bold text-amber-600 mt-1">{formatCurrency(tenant.usageMetrics.totalOutstanding || 0)}</p>
+                  <label className="text-sm font-medium text-neutral-500">Total Outstanding</label>
+                  <p className="text-xl font-bold text-warning mt-1">{formatCurrency(tenant.usageMetrics.totalOutstanding || 0)}</p>
                 </div>
               </div>
             </div>
@@ -1379,21 +1379,21 @@ const SuperAdminTenantDetailPage = () => {
         <div className="space-y-6">
           <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <h2 className="text-xl font-semibold text-neutral-900 mb-6 flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-blue-600" />
+              <BarChart3 className="h-6 w-6 text-primary-600" />
               Company Data & Reports
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
-                { label: 'Products & Inventory', icon: <Package className="h-5 w-5" />, path: '/products', color: 'bg-blue-50 text-blue-700' },
-                { label: 'Sales & POS Billing', icon: <TrendingUp className="h-5 w-5" />, path: '/pos', color: 'bg-green-50 text-green-700' },
+                { label: 'Products & Inventory', icon: <Package className="h-5 w-5" />, path: '/products', color: 'bg-primary-50 text-primary-700' },
+                { label: 'Sales & POS Billing', icon: <TrendingUp className="h-5 w-5" />, path: '/pos', color: 'bg-success-bg text-success-fg' },
                 { label: 'Purchases & Suppliers', icon: <ShoppingCart className="h-5 w-5" />, path: '/purchases', color: 'bg-indigo-50 text-indigo-700' },
-                { label: 'Expenses Tracking', icon: <Receipt className="h-5 w-5" />, path: '/expenses', color: 'bg-red-50 text-red-700' },
-                { label: 'Customer Ledger', icon: <CreditCard className="h-5 w-5" />, path: '/ledger', color: 'bg-amber-50 text-amber-700' },
+                { label: 'Expenses Tracking', icon: <Receipt className="h-5 w-5" />, path: '/expenses', color: 'bg-error-bg text-error-fg' },
+                { label: 'Customer Ledger', icon: <CreditCard className="h-5 w-5" />, path: '/ledger', color: 'bg-warning-bg text-warning-fg' },
                 { label: 'Financial Reports', icon: <FileText className="h-5 w-5" />, path: '/reports', color: 'bg-purple-50 text-purple-700' },
                 { label: 'Sales Ledger', icon: <List className="h-5 w-5" />, path: '/sales-ledger', color: 'bg-teal-50 text-teal-700' },
-                { label: 'Profit & Loss', icon: <Wallet className="h-5 w-5" />, path: '/reports?tab=profit-loss', color: 'bg-emerald-50 text-emerald-700' },
-                { label: 'Company Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', color: 'bg-gray-50 text-gray-700' },
+                { label: 'Profit & Loss', icon: <Wallet className="h-5 w-5" />, path: '/reports?tab=profit-loss', color: 'bg-success-bg text-success-fg' },
+                { label: 'Company Settings', icon: <Settings className="h-5 w-5" />, path: '/settings', color: 'bg-neutral-50 text-neutral-700' },
               ].map((report) => (
                 <button
                   key={report.path}
@@ -1407,7 +1407,7 @@ const SuperAdminTenantDetailPage = () => {
                       window.open(`${tenant.loginUrl}#support=${encodeURIComponent(token)}`, '_blank', 'noopener,noreferrer')
                     } catch (_) { /* audit failure should not block */ }
                   }}
-                  className={`flex items-center p-4 rounded-xl border border-transparent hover:border-blue-300 transition-all duration-200 group ${report.color}`}
+                  className={`flex items-center p-4 rounded-lg border border-transparent hover:border-primary-300 transition-all duration-200 group ${report.color}`}
                 >
                   <div className="p-2 rounded-lg bg-white shadow-sm mr-4 group-hover:scale-110 transition-transform">
                     {report.icon}
@@ -1426,18 +1426,18 @@ const SuperAdminTenantDetailPage = () => {
             <Sliders className="h-6 w-6 text-indigo-600" />
             Per-Tenant Limits & Rate Limiting
           </h2>
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-neutral-600 mb-4">
             Configure API rate limits and quotas for this company. When limits are exceeded, requests return 429.
           </p>
           {/* Request usage visibility */}
           <div className="mb-6 p-3 bg-neutral-50 border border-neutral-200 rounded-lg flex flex-wrap items-center gap-4">
-            <span className="text-sm text-gray-600">Requests (last 60 min):</span>
-            <span className="font-semibold text-gray-900">{tenantRequestUsage != null ? (tenantRequestUsage.requestCountLast60Min ?? 0) : '—'}</span>
+            <span className="text-sm text-neutral-600">Requests (last 60 min):</span>
+            <span className="font-semibold text-neutral-900">{tenantRequestUsage != null ? (tenantRequestUsage.requestCountLast60Min ?? 0) : '—'}</span>
             {tenantRequestUsage?.isHighVolume && (
-              <span className="text-xs font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded">High volume</span>
+              <span className="text-xs font-medium text-warning bg-amber-100 px-2 py-1 rounded">High volume</span>
             )}
             {tenantRequestUsage?.lastActiveAt && (
-              <span className="text-xs text-gray-500">Last active: {new Date(tenantRequestUsage.lastActiveAt).toLocaleString()}</span>
+              <span className="text-xs text-neutral-500">Last active: {new Date(tenantRequestUsage.lastActiveAt).toLocaleString()}</span>
             )}
           </div>
           {limitsLoading ? (
@@ -1547,7 +1547,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-md transition-all"
             >
               Add User
             </LoadingButton>
@@ -1586,7 +1586,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 shadow-md transition-all"
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-bold hover:bg-primary-700 shadow-md transition-all"
             >
               Save Changes
             </LoadingButton>
@@ -1596,9 +1596,9 @@ const SuperAdminTenantDetailPage = () => {
 
       <Modal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} title="Security: Reset Password" closeOnOverlayClick={false}>
         <form onSubmit={handleResetPassword} className="p-6 space-y-5">
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-start space-x-3 mb-2">
-            <Lock className="h-6 w-6 text-blue-600 mt-0.5" />
-            <p className="text-sm text-blue-800">
+          <div className="bg-primary-50 p-4 rounded-lg border border-primary-100 flex items-start space-x-3 mb-2">
+            <Lock className="h-6 w-6 text-primary-600 mt-0.5" />
+            <p className="text-sm text-primary-800">
               Enter a new secure password for <strong>{selectedUser?.name}</strong>. The user will need to use this new password for their next login.
             </p>
           </div>
@@ -1615,7 +1615,7 @@ const SuperAdminTenantDetailPage = () => {
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 shadow-md transition-all"
+              className="w-full bg-success text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-md transition-all"
             >
               Update Password
             </LoadingButton>
@@ -1691,7 +1691,7 @@ const SuperAdminTenantDetailPage = () => {
             <button
               type="button"
               onClick={() => setShowEditModal(false)}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg"
             >
               Cancel
             </button>
@@ -1714,7 +1714,7 @@ const SuperAdminTenantDetailPage = () => {
         size="md"
       >
         <div className="space-y-4">
-          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl flex items-start space-x-3">
+          <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg flex items-start space-x-3">
             <Ban className="h-6 w-6 text-yellow-600 mt-0.5" />
             <div>
               <h4 className="text-sm font-bold text-yellow-800">Review Required</h4>
@@ -1725,7 +1725,7 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           <textarea
-            className="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none min-h-[100px]"
+            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-100 focus:border-primary-500 outline-none min-h-[100px]"
             placeholder="Reason for suspension (required)..."
             value={suspendReason}
             onChange={(e) => setSuspendReason(e.target.value)}
@@ -1735,7 +1735,7 @@ const SuperAdminTenantDetailPage = () => {
           <div className="flex justify-end space-x-3 pt-2">
             <button
               onClick={() => setShowSuspendModal(false)}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="px-4 py-2 text-neutral-700 hover:bg-neutral-100 rounded-lg"
             >
               Cancel
             </button>
@@ -1758,7 +1758,7 @@ const SuperAdminTenantDetailPage = () => {
         title={lockoutAction === 'unlock' ? 'Unlock Login' : 'Lock Login'}
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-600">
             {lockoutAction === 'unlock'
               ? 'Enter the user email to clear failed login attempts and allow them to sign in again.'
               : 'Enter the user email to manually lock their login for the specified duration.'}
@@ -1782,7 +1782,7 @@ const SuperAdminTenantDetailPage = () => {
             />
           )}
           <div className="flex gap-2 pt-2">
-            <button onClick={() => setShowLockoutModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+            <button onClick={() => setShowLockoutModal(false)} className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg">Cancel</button>
             <LoadingButton
               loading={loadingAction}
               disabled={!lockoutEmail.trim()}
@@ -1826,8 +1826,8 @@ const SuperAdminTenantDetailPage = () => {
         size="md"
         closeOnOverlayClick={false}
       >
-        <div className="space-y-5 border-2 border-red-600 rounded-xl p-1">
-          <div className="bg-red-600 p-4 rounded-xl text-white flex items-start space-x-3">
+        <div className="space-y-5 border-2 border-error rounded-lg p-1">
+          <div className="bg-error p-4 rounded-lg text-white flex items-start space-x-3">
             <Shield className="h-10 w-10 opacity-80 flex-shrink-0" />
             <div>
               <h4 className="font-bold text-lg leading-tight text-white mb-1">Critical: Wipe All Transactional Data</h4>
@@ -1839,14 +1839,14 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           <div className="space-y-3">
-            <ul className="text-xs space-y-2 text-gray-700">
+            <ul className="text-xs space-y-2 text-neutral-700">
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 bg-red-500 rounded-full"></span> Preserved: Users, Products, Customers, Subscription, Company settings</li>
               <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 bg-red-500 rounded-full"></span> Wiped: Sales, Purchases, Payments, Expenses, Returns; stock and balances reset to 0</li>
-              <li className="flex items-center gap-2 font-bold text-red-700"><span className="h-1.5 w-1.5 bg-red-600 rounded-full"></span> IRREVERSIBLE — create a backup first if you may need to restore</li>
+              <li className="flex items-center gap-2 font-bold text-error-fg"><span className="h-1.5 w-1.5 bg-error rounded-full"></span> IRREVERSIBLE — create a backup first if you may need to restore</li>
             </ul>
           </div>
 
-          <div className="space-y-3 bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="space-y-3 bg-error-bg border border-error-border rounded-lg p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -1857,10 +1857,10 @@ const SuperAdminTenantDetailPage = () => {
               <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data for this company.</span>
             </label>
             <div>
-              <label className="block text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
+              <label className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
               <input
                 type="text"
-                className="w-full px-4 py-3 border-2 border-red-300 rounded-xl bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
+                className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
                 placeholder="CLEAR"
                 value={clearDataConfirmation}
                 onChange={(e) => setClearDataConfirmation(e.target.value)}
@@ -1875,7 +1875,7 @@ const SuperAdminTenantDetailPage = () => {
                 setClearDataConfirmation('')
                 setClearDataCheckbox(false)
               }}
-              className="flex-1 px-4 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-all border border-gray-300"
+              className="flex-1 px-4 py-3 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-all border border-neutral-300"
             >
               Cancel
             </button>
@@ -1883,7 +1883,7 @@ const SuperAdminTenantDetailPage = () => {
               onClick={handleClearData}
               loading={loadingAction}
               disabled={clearDataConfirmation.trim().toUpperCase() !== 'CLEAR' || !clearDataCheckbox}
-              className="flex-2 px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
+              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
             >
               Clear All Data
             </LoadingButton>
@@ -1903,7 +1903,7 @@ const SuperAdminTenantDetailPage = () => {
         closeOnOverlayClick={false}
       >
         <div className="space-y-5">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-600">
             Copy products and/or settings from another company into <strong>{tenant?.name}</strong>. Existing settings with the same key are skipped.
           </p>
           <Select
@@ -1917,7 +1917,7 @@ const SuperAdminTenantDetailPage = () => {
             ))}
           </Select>
           <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Data to copy</label>
+            <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Data to copy</label>
             <div className="space-y-2">
               {['Products', 'Settings'].map(key => (
                 <label key={key} className="flex items-center gap-2 cursor-pointer">
@@ -1933,12 +1933,12 @@ const SuperAdminTenantDetailPage = () => {
           </div>
 
           {duplicatePreviewLoading && (
-            <p className="text-sm text-gray-500">Loading preview…</p>
+            <p className="text-sm text-neutral-500">Loading preview…</p>
           )}
           {!duplicatePreviewLoading && duplicatePreview && (
-            <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 space-y-2">
-              <p className="text-sm font-semibold text-gray-800">Preview</p>
-              <ul className="text-sm text-gray-700 space-y-1">
+            <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 space-y-2">
+              <p className="text-sm font-semibold text-neutral-800">Preview</p>
+              <ul className="text-sm text-neutral-700 space-y-1">
                 {duplicateDataTypes.Products && (
                   <li>Will copy <strong>{duplicatePreview.sourceProductsCount ?? 0}</strong> products from source. Target currently has <strong>{duplicatePreview.targetProductsCount ?? 0}</strong> products.</li>
                 )}
@@ -1947,7 +1947,7 @@ const SuperAdminTenantDetailPage = () => {
                 )}
               </ul>
               {((duplicatePreview.targetProductsCount > 0 && duplicateDataTypes.Products) || (duplicatePreview.targetSettingsCount > 0 && duplicateDataTypes.Settings)) && (
-                <p className="text-sm font-medium text-amber-700 mt-2">Target already has data. Products will be added; settings with the same key are skipped.</p>
+                <p className="text-sm font-medium text-warning-fg mt-2">Target already has data. Products will be added; settings with the same key are skipped.</p>
               )}
             </div>
           )}
@@ -1956,7 +1956,7 @@ const SuperAdminTenantDetailPage = () => {
             <button
               type="button"
               onClick={() => setShowDuplicateDataModal(false)}
-              className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+              className="flex-1 px-4 py-3 text-neutral-500 font-bold hover:bg-neutral-100 rounded-lg transition-all"
             >
               Cancel
             </button>
@@ -1964,7 +1964,7 @@ const SuperAdminTenantDetailPage = () => {
               onClick={handleDuplicateData}
               loading={loadingAction}
               disabled={!duplicateSourceTenantId || (!duplicateDataTypes.Products && !duplicateDataTypes.Settings)}
-              className="flex-2 px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg disabled:opacity-50 transition-all"
+              className="flex-2 px-8 py-3 bg-primary-600 text-white font-bold rounded-lg hover:bg-primary-700 shadow-lg disabled:opacity-50 transition-all"
             >
               Duplicate
             </LoadingButton>
@@ -1981,7 +1981,7 @@ const SuperAdminTenantDetailPage = () => {
         closeOnOverlayClick={false}
       >
         <form onSubmit={handleUpdateSubscription} className="space-y-5">
-          <div className="bg-indigo-600 p-4 rounded-xl text-white flex items-start space-x-3 mb-2">
+          <div className="bg-indigo-600 p-4 rounded-lg text-white flex items-start space-x-3 mb-2">
             <Shield className="h-8 w-8 opacity-80" />
             <div>
               <h4 className="font-bold text-lg leading-tight text-white mb-1">Super Admin Authority</h4>
@@ -2007,14 +2007,14 @@ const SuperAdminTenantDetailPage = () => {
             </Select>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Billing Frequency</label>
+              <label className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Billing Frequency</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() => setSubscriptionFormData({ ...subscriptionFormData, billingCycle: 0 })}
-                  className={`py-3 px-4 rounded-xl font-bold border transition-all ${subscriptionFormData.billingCycle === 0
+                  className={`py-3 px-4 rounded-lg font-bold border transition-all ${subscriptionFormData.billingCycle === 0
                     ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
                     }`}
                 >
                   Monthly
@@ -2022,9 +2022,9 @@ const SuperAdminTenantDetailPage = () => {
                 <button
                   type="button"
                   onClick={() => setSubscriptionFormData({ ...subscriptionFormData, billingCycle: 1 })}
-                  className={`py-3 px-4 rounded-xl font-bold border transition-all ${subscriptionFormData.billingCycle === 1
+                  className={`py-3 px-4 rounded-lg font-bold border transition-all ${subscriptionFormData.billingCycle === 1
                     ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
                     }`}
                 >
                   Yearly
@@ -2037,14 +2037,14 @@ const SuperAdminTenantDetailPage = () => {
             <button
               type="button"
               onClick={() => setShowSubscriptionModal(false)}
-              className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+              className="flex-1 px-4 py-3 text-neutral-500 font-bold hover:bg-neutral-100 rounded-lg transition-all"
             >
               Cancel
             </button>
             <LoadingButton
               type="submit"
               loading={loadingAction}
-              className="flex-2 px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg transition-all"
+              className="flex-2 px-8 py-3 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg transition-all"
             >
               Apply Plan
             </LoadingButton>
@@ -2332,7 +2332,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
   if (featuresLoading) {
     return (
       <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-8">
-        <div className="text-center text-gray-500">Loading features...</div>
+        <div className="text-center text-neutral-500">Loading features...</div>
       </div>
     )
   }
@@ -2340,8 +2340,8 @@ const TenantFeaturesTab = ({ tenantId }) => {
   return (
     <div className="space-y-6">
       {/* Warning banner */}
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+      <div className="bg-warning-bg border border-warning-border rounded-lg p-4 flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
         <div className="text-sm text-amber-800">
           <strong>Super Admin Only:</strong> These toggles are Super Admin only. Company admin cannot override these settings.
         </div>
@@ -2349,39 +2349,39 @@ const TenantFeaturesTab = ({ tenantId }) => {
 
       <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
         <h2 className="text-xl font-semibold text-neutral-900 mb-2 flex items-center gap-2">
-          <Receipt className="h-6 w-6 text-amber-600" />
+          <Receipt className="h-6 w-6 text-warning" />
           VAT profit-form basis
         </h2>
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-neutral-600 mb-4">
           Current: <strong>{vatBasis === 'ProfitBased' ? 'Profit-based (margin presentation)' : 'Sales-based'}</strong>.
           Changes append an audited history row; they do not rewrite statutory VAT201 sales boxes.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New basis</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">New basis</label>
             <select
               value={vatBasisDraft}
               onChange={(e) => setVatBasisDraft(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base min-h-[44px]"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-base min-h-[44px]"
             >
               <option value="SalesBased">Sales-based (default)</option>
               <option value="ProfitBased">Profit-based (accountant-approved margin)</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Effective from (UTC date)</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Effective from (UTC date)</label>
             <input
               type="date"
               value={vatEffectiveFrom}
               onChange={(e) => setVatEffectiveFrom(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base min-h-[44px]"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-base min-h-[44px]"
             />
           </div>
           <LoadingButton
             type="button"
             onClick={handleSaveVatBasis}
             loading={vatBasisSaving}
-            className="w-full md:w-auto px-6 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 font-medium min-h-[44px]"
+            className="w-full md:w-auto px-6 py-2.5 bg-warning text-white rounded-lg hover:bg-amber-700 font-medium min-h-[44px]"
           >
             Apply VAT basis
           </LoadingButton>
@@ -2394,7 +2394,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
           <Sliders className="h-6 w-6 text-indigo-600" />
           Feature Management
         </h2>
-        <p className="text-sm text-gray-600 mb-6">Enable or disable specific modules for this tenant.</p>
+        <p className="text-sm text-neutral-600 mb-6">Enable or disable specific modules for this tenant.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           {AVAILABLE_FEATURES.map((feat) => {
@@ -2405,23 +2405,23 @@ const TenantFeaturesTab = ({ tenantId }) => {
                 key={feat.key}
                 className={`flex items-start p-4 rounded-lg border transition-all ${isEnabled
                   ? 'border-indigo-200 bg-indigo-50/50'
-                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                  : 'border-neutral-200 hover:border-neutral-300 bg-white'
                   }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    {Icon && <Icon className={`h-4 w-4 flex-shrink-0 ${isEnabled ? 'text-indigo-600' : 'text-gray-400'}`} />}
-                    <h4 className={`font-semibold text-sm ${isEnabled ? 'text-indigo-900' : 'text-gray-700'}`}>
+                    {Icon && <Icon className={`h-4 w-4 flex-shrink-0 ${isEnabled ? 'text-indigo-600' : 'text-neutral-400'}`} />}
+                    <h4 className={`font-semibold text-sm ${isEnabled ? 'text-indigo-900' : 'text-neutral-700'}`}>
                       {feat.label}
                     </h4>
                     {isEnabled && <CheckCircle2 className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed">{feat.description}</p>
+                  <p className="text-xs text-neutral-500 leading-relaxed">{feat.description}</p>
                 </div>
                 <button
                   onClick={() => handleToggleFeature(feat.key, feat.label)}
                   disabled={featuresSaving}
-                  className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-gray-200 focus:ring-gray-500'
+                  className={`relative ml-3 inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${isEnabled ? 'bg-indigo-600 focus:ring-indigo-500' : 'bg-neutral-200 focus:ring-neutral-500'
                     } ${featuresSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span
@@ -2436,7 +2436,7 @@ const TenantFeaturesTab = ({ tenantId }) => {
         </div>
 
         {/* Save button */}
-        <div className="flex justify-end pt-4 border-t border-gray-200">
+        <div className="flex justify-end pt-4 border-t border-neutral-200">
           <LoadingButton
             onClick={handleSaveFeatures}
             loading={featuresSaving}

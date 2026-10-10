@@ -7,8 +7,10 @@ import toast from 'react-hot-toast'
 import { showToast } from '../utils/toast'
 import PrintOptionsModal from './PrintOptionsModal'
 import ConfirmDangerModal from './ConfirmDangerModal'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrint, onNew, onReturnItems }) => {
+  const { currency = 'AED' } = useBranding()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [invoice, setInvoice] = useState(null)
@@ -113,7 +115,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
       const message = `*Invoice ${invoiceNo}*\n\n` +
         `Customer: ${customerName}\n` +
         `Date: ${date}\n` +
-        `Total: AED ${grandTotal.toFixed(2)}\n\n` +
+        `Total: ${currency} ${grandTotal.toFixed(2)}\n\n` +
         `Please find the invoice attached.`
 
       // Encode message for WhatsApp URL
@@ -290,11 +292,11 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Invoice Preview - {invoice?.invoiceNo || invoiceNo || `#${saleId}`}</h2>
+        <div className="flex items-center justify-between p-6 border-b border-neutral-200">
+          <h2 className="text-xl font-bold text-neutral-900">Invoice Preview - {invoice?.invoiceNo || invoiceNo || `#${saleId}`}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-neutral-400 hover:text-neutral-600"
           >
             <X className="h-6 w-6" />
           </button>
@@ -309,26 +311,26 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
               {/* Invoice Header */}
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div>
-                  <p className="text-sm text-gray-600">Invoice Date:</p>
+                  <p className="text-sm text-neutral-600">Invoice Date:</p>
                   <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Customer:</p>
+                  <p className="text-sm text-neutral-600">Customer:</p>
                   <p className="font-medium">{invoice.customerName || 'Cash Customer'}</p>
                 </div>
               </div>
 
               {/* Items Table */}
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Item</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Qty</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Price</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Total</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-neutral-200">
                   {invoice.items?.map((item, idx) => (
                     <tr key={idx}>
                       <td className="px-4 py-3">{item.productName}</td>
@@ -359,22 +361,22 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
               </div>
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">Invoice not found</div>
+            <div className="text-center py-8 text-neutral-500">Invoice not found</div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between p-6 border-t border-neutral-200 bg-neutral-50">
           <button
             onClick={handleNewInvoice}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+            className="px-4 py-2 bg-neutral-200 text-neutral-700 rounded-md hover:bg-neutral-300"
           >
             New Invoice
           </button>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={handleReturnItems}
-              className="inline-flex items-center px-3 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 text-sm"
+              className="inline-flex items-center px-3 py-2 bg-warning text-white rounded-md hover:bg-amber-700 text-sm"
               title="Return Items"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
@@ -382,7 +384,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
             </button>
             <button
               onClick={handlePrint}
-              className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+              className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm"
               title="Print Invoice"
             >
               <Printer className="h-4 w-4 mr-2" />
@@ -390,7 +392,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
             </button>
             <button
               onClick={handleDownload}
-              className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+              className="inline-flex items-center px-3 py-2 bg-success text-white rounded-md hover:bg-green-700 text-sm"
               title="Download PDF"
             >
               <Download className="h-4 w-4 mr-2" />
@@ -398,7 +400,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
             </button>
             <button
               onClick={handleWhatsAppShare}
-              className="inline-flex items-center px-3 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 text-sm"
+              className="inline-flex items-center px-3 py-2 bg-green-500 text-white rounded-md hover:bg-success text-sm"
               title="Share via WhatsApp"
             >
               <MessageCircle className="h-4 w-4 mr-2" />
@@ -406,7 +408,7 @@ const InvoicePreviewModal = ({ saleId, invoiceNo, customerPhone, onClose, onPrin
             </button>
             <button
               onClick={handleEmailShare}
-              className="inline-flex items-center px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+              className="inline-flex items-center px-3 py-2 bg-neutral-600 text-white rounded-md hover:bg-neutral-700 text-sm"
               title="Send via Email"
             >
               <Mail className="h-4 w-4 mr-2" />

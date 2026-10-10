@@ -253,7 +253,7 @@ const OnboardingWizard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
         {/* Progress Bar */}
         <div className="mb-8">
@@ -266,9 +266,9 @@ const OnboardingWizard = () => {
               return (
                 <div key={step.number} className="flex flex-col items-center flex-1">
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
-                    isCompleted ? 'bg-green-600 text-white' :
-                    isCurrent ? 'bg-blue-600 text-white' :
-                    'bg-gray-200 text-gray-500'
+                    isCompleted ? 'bg-success text-white' :
+                    isCurrent ? 'bg-primary-600 text-white' :
+                    'bg-neutral-200 text-neutral-500'
                   }`}>
                     {isCompleted ? (
                       <CheckCircle className="h-6 w-6" />
@@ -277,7 +277,7 @@ const OnboardingWizard = () => {
                     )}
                   </div>
                   <span className={`text-xs font-medium ${
-                    isCurrent ? 'text-blue-600' : 'text-gray-500'
+                    isCurrent ? 'text-primary-600' : 'text-neutral-500'
                   }`}>
                     {step.title}
                   </span>
@@ -285,9 +285,9 @@ const OnboardingWizard = () => {
               )
             })}
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-neutral-200 rounded-full h-2">
             <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              className="bg-primary-600 h-2 rounded-full transition-all duration-300"
               style={{ width: `${(currentStep / 7) * 100}%` }}
             />
           </div>
@@ -295,10 +295,10 @@ const OnboardingWizard = () => {
 
         {/* Step Content */}
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <h2 className="text-2xl font-bold text-neutral-900 mb-2">
             {steps[currentStep - 1].title}
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-neutral-600 mb-6">
             {currentStep === 1 && 'Let\'s start by setting up your company information.'}
             {currentStep === 2 && 'Configure VAT settings for your business.'}
             {currentStep === 3 && 'Add a branch (e.g. main office or warehouse). You can add more later.'}
@@ -388,7 +388,7 @@ const OnboardingWizard = () => {
                 placeholder="e.g. Main, Head office"
                 required
               />
-              <p className="text-xs text-gray-500">You can add more branches later from the dashboard.</p>
+              <p className="text-xs text-neutral-500">You can add more branches later from the dashboard.</p>
             </div>
           )}
 
@@ -404,10 +404,10 @@ const OnboardingWizard = () => {
                     placeholder="e.g. Default route, North zone"
                     required
                   />
-                  <p className="text-xs text-gray-500">You can add more routes later from Branches & Routes.</p>
+                  <p className="text-xs text-neutral-500">You can add more routes later from Branches & Routes.</p>
                 </>
               ) : (
-                <p className="text-gray-600">Add branches and routes later from the dashboard (Branches & Routes).</p>
+                <p className="text-neutral-600">Add branches and routes later from the dashboard (Branches & Routes).</p>
               )}
             </div>
           )}
@@ -470,11 +470,11 @@ const OnboardingWizard = () => {
           {/* Step 7: Create Invoice */}
           {currentStep === 7 && (
             <div className="text-center py-8">
-              <FileText className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600 mb-6">
+              <FileText className="h-16 w-16 text-primary-600 mx-auto mb-4" />
+              <p className="text-neutral-600 mb-6">
                 Ready to create your first invoice! This will complete your onboarding.
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-neutral-500">
                 We'll use your first product and customer to create a sample invoice.
               </p>
             </div>
@@ -487,7 +487,7 @@ const OnboardingWizard = () => {
             {currentStep > 1 && (
               <button
                 onClick={handleBack}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900"
+                className="flex items-center space-x-2 text-neutral-600 hover:text-neutral-900"
               >
                 <ArrowLeft className="h-5 w-5" />
                 <span>Back</span>
@@ -497,14 +497,14 @@ const OnboardingWizard = () => {
           <div className="flex items-center space-x-3">
             <button
               onClick={handleSkip}
-              className="text-gray-600 hover:text-gray-900 px-4 py-2"
+              className="text-neutral-600 hover:text-neutral-900 px-4 py-2"
             >
               Skip for now
             </button>
             <LoadingButton
               onClick={handleNext}
               loading={loading}
-              className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-semibold"
+              className="flex items-center space-x-2 bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 font-semibold"
             >
               <span>{currentStep === 7 ? 'Complete Setup' : 'Next'}</span>
               {currentStep < 7 && <ArrowRight className="h-5 w-5" />}

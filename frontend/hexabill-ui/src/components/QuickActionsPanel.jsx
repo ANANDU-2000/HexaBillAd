@@ -20,7 +20,7 @@ const QuickActionsPanel = ({
   const isAdmin = isAdminOrOwner(user)
 
   return (
-    <div className="bg-white rounded-xl border border-primary-200 p-4 md:p-6 h-full flex flex-col min-w-0">
+    <div className="bg-white rounded-lg border border-primary-200 p-4 md:p-6 h-full flex flex-col min-w-0">
       <h3 className="text-lg font-semibold text-primary-800 mb-4">Quick Actions</h3>
 
       <div className="grid grid-cols-2 md:grid-cols-1 gap-3 flex-1">

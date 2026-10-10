@@ -265,7 +265,7 @@ export default function EditPaymentModal ({
         </div>
 
         {selectedInv ? (
-          <div className={`border rounded-lg p-3 text-sm ${selectedInv.isOutstanding ? 'bg-blue-50 border-blue-200' : 'bg-neutral-50 border-neutral-200'}`}>
+          <div className={`border rounded-lg p-3 text-sm ${selectedInv.isOutstanding ? 'bg-primary-50 border-primary-200' : 'bg-neutral-50 border-neutral-200'}`}>
             <p className="font-medium">{selectedInv.invoiceNo}</p>
             <p className="text-neutral-600 mt-0.5">
               Total {money(selectedInv.grandTotal)}
@@ -273,7 +273,7 @@ export default function EditPaymentModal ({
             </p>
           </div>
         ) : (
-          <div className="border border-amber-200 bg-amber-50 rounded-lg p-3 text-sm text-amber-900">
+          <div className="border border-warning-border bg-warning-bg rounded-lg p-3 text-sm text-amber-900">
             General payment — not linked to a specific invoice (same as Add Payment).
           </div>
         )}

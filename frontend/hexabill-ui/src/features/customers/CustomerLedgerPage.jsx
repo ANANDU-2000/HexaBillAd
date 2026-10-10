@@ -2058,16 +2058,16 @@ const CustomerLedgerPage = () => {
       case 'paid': return 'bg-green-100 text-green-800'
       case 'partial': return 'bg-yellow-100 text-yellow-800'
       case 'pending': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      default: return 'bg-neutral-100 text-neutral-800'
     }
   }
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
-      case 'paid': return <CheckCircle className="h-4 w-4 text-green-600" />
+      case 'paid': return <CheckCircle className="h-4 w-4 text-success" />
       case 'partial': return <Clock className="h-4 w-4 text-yellow-600" />
-      case 'pending': return <XCircle className="h-4 w-4 text-red-600" />
-      default: return <Clock className="h-4 w-4 text-gray-600" />
+      case 'pending': return <XCircle className="h-4 w-4 text-error" />
+      default: return <Clock className="h-4 w-4 text-neutral-600" />
     }
   }
 
@@ -2075,7 +2075,7 @@ const CustomerLedgerPage = () => {
   if (user && !isAdminOrOwner(user) && staffAssignmentsLoaded && staffHasNoAssignments) {
     return (
       <div className="min-h-screen flex flex-col bg-neutral-50 items-center justify-center p-6">
-        <div className="flex items-center gap-3 px-4 py-4 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 max-w-md">
+        <div className="flex items-center gap-3 px-4 py-4 rounded-lg bg-warning-bg border border-warning-border text-amber-800 max-w-md">
           <AlertTriangle className="h-8 w-8 shrink-0" />
           <p className="text-sm font-medium">No branches or routes assigned. Contact your admin.</p>
         </div>
@@ -2108,7 +2108,7 @@ const CustomerLedgerPage = () => {
                 }
                 navigate(returnTo || '/customers')
               }}
-              className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-gray-600 hover:bg-gray-100 rounded-lg shrink-0"
+              className="inline-flex items-center justify-center p-2 min-h-10 min-w-10 text-neutral-600 hover:bg-neutral-100 rounded-lg shrink-0"
               title={
                 selectedCustomer
                   ? 'Clear selected customer'
@@ -2121,7 +2121,7 @@ const CustomerLedgerPage = () => {
             </button>
             <div className="min-w-0">
               <h1 className={mobilePageTitleClass}>Customer Ledger</h1>
-              <p className="text-xs text-gray-500 truncate hidden sm:block">{companyName || 'Select a customer below'}</p>
+              <p className="text-xs text-neutral-500 truncate hidden sm:block">{companyName || 'Select a customer below'}</p>
             </div>
           </div>
           {returnTo && (
@@ -2134,7 +2134,7 @@ const CustomerLedgerPage = () => {
             </button>
           )}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            <div className="text-right text-xs text-gray-600">
+            <div className="text-right text-xs text-neutral-600">
               <p>{new Date().toLocaleDateString('en-GB')}</p>
               <p>{user?.name || 'Admin'}</p>
             </div>
@@ -2142,7 +2142,7 @@ const CustomerLedgerPage = () => {
               <button
                 onClick={handleExportPDF}
                 disabled={pdfLoading}
-                className="p-1 sm:p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
                 title="Export PDF (F7)"
               >
                 <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -2150,7 +2150,7 @@ const CustomerLedgerPage = () => {
               <button
                 onClick={handleExportPDF}
                 disabled={pdfLoading}
-                className="p-1 sm:p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors disabled:opacity-50"
                 title="Print (Ctrl+P)"
               >
                 <Printer className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -2162,7 +2162,7 @@ const CustomerLedgerPage = () => {
                     loadCustomerData(selectedCustomer.id)
                   }
                 }}
-                className="p-1 sm:p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                 title="Refresh"
                 disabled={!selectedCustomer}
               >
@@ -2170,14 +2170,14 @@ const CustomerLedgerPage = () => {
               </button>
               <button
                 onClick={handleManualReconciliation}
-                className="p-1 sm:p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                className="p-1 sm:p-1.5 text-success hover:bg-success-bg rounded transition-colors"
                 title="Reconcile & Verify Data (Validates all transactions and recalculates balance)"
                 disabled={!selectedCustomer || loading}
               >
                 <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
               <button
-                className="p-1 sm:p-1.5 text-gray-600 hover:bg-gray-100 rounded transition-colors"
+                className="p-1 sm:p-1.5 text-neutral-600 hover:bg-neutral-100 rounded transition-colors"
                 title="Settings"
               >
                 <Settings className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -2185,12 +2185,12 @@ const CustomerLedgerPage = () => {
             </div>
           </div>
           <div className="flex md:hidden items-center gap-1 shrink-0">
-            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-11 min-w-11 text-gray-600 hover:bg-gray-100 rounded-lg" title="Export PDF" aria-label="Export PDF">
+            <button onClick={handleExportPDF} disabled={pdfLoading} className="p-2 min-h-11 min-w-11 text-neutral-600 hover:bg-neutral-100 rounded-lg" title="Export PDF" aria-label="Export PDF">
               <Download className="h-5 w-5" />
             </button>
             <button
               onClick={() => selectedCustomer && loadCustomerData(selectedCustomer.id)}
-              className="p-2 min-h-11 min-w-11 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="p-2 min-h-11 min-w-11 text-neutral-600 hover:bg-neutral-100 rounded-lg"
               title="Refresh"
               aria-label="Refresh"
               disabled={!selectedCustomer}
@@ -2215,7 +2215,7 @@ const CustomerLedgerPage = () => {
               setLedgerBranchId(v)
               setLedgerRouteId('')
             }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-9 !py-1.5 !text-sm`}
+            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-11 sm:!min-h-9 !py-1.5 !text-sm`}
             title="Filter customers by branch"
           >
             <option value="">All branches</option>
@@ -2228,7 +2228,7 @@ const CustomerLedgerPage = () => {
               setFilterDraft(prev => ({ ...prev, routeId: v }))
               setLedgerRouteId(v)
             }}
-            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-9 !py-1.5 !text-sm`}
+            className={`${mobileFormSelectClass} sm:max-w-[200px] !min-h-11 sm:!min-h-9 !py-1.5 !text-sm`}
             title="Filter customers by route"
           >
             <option value="">All routes</option>
@@ -2259,7 +2259,7 @@ const CustomerLedgerPage = () => {
                   clearSelectedCustomer({ keepSearch: true })
                 }
               }}
-              className={`w-full pl-9 pr-3 !min-h-9 !py-1.5 !text-sm ${mobileFormFieldClass}`}
+              className={`w-full pl-9 pr-3 !min-h-11 sm:!min-h-9 !py-1.5 !text-sm ${mobileFormFieldClass}`}
             />
           </div>
           <button
@@ -2268,12 +2268,13 @@ const CustomerLedgerPage = () => {
               e.stopPropagation()
               setShowAddCustomerModal(true)
             }}
-            className="px-2.5 py-1.5 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700 active:bg-primary-800 flex items-center space-x-1.5 transition-colors whitespace-nowrap cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 min-h-[44px] min-w-[44px]"
-            title="Add New Customer"
+            className="btn btn-secondary whitespace-nowrap"
+            title="Add new customer"
+            aria-label="Add customer"
             type="button"
           >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Add Customer</span>
+            <Plus className="h-4 w-4" aria-hidden />
+            <span>Add customer</span>
           </button>
           {selectedCustomer && (
             <div className="px-2.5 py-1.5 bg-primary-50 text-primary-800 text-sm rounded-md font-semibold min-w-0 truncate max-w-full" title={selectedCustomer.name}>
@@ -2302,7 +2303,7 @@ const CustomerLedgerPage = () => {
                   }`}
               >
                 <div className="font-semibold text-sm">Cash Customer</div>
-                <div className={`text-[11px] ${selectedCustomer?.id === 'cash' ? 'text-primary-100' : 'text-neutral-500'}`}>
+                <div className={`text-micro ${selectedCustomer?.id === 'cash' ? 'text-primary-100' : 'text-neutral-500'}`}>
                   Cash sales • AED 0.00
                 </div>
               </button>
@@ -2326,10 +2327,10 @@ const CustomerLedgerPage = () => {
                   <div className="flex justify-between items-center gap-2">
                     <div className="flex-1 min-w-0">
                       <p className={`font-medium truncate text-sm ${selectedCustomer?.id === customer.id ? 'text-white' : 'text-neutral-900'}`}>{customer.name}</p>
-                      {customer.phone && <p className={`text-[11px] truncate ${selectedCustomer?.id === customer.id ? 'text-primary-100' : 'text-neutral-500'}`}>{customer.phone}</p>}
+                      {customer.phone && <p className={`text-micro truncate ${selectedCustomer?.id === customer.id ? 'text-primary-100' : 'text-neutral-500'}`}>{customer.phone}</p>}
                     </div>
                     <div className="flex-shrink-0 text-right">
-                      <p className={`text-xs font-semibold ${selectedCustomer?.id === customer.id ? 'text-white' : customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-neutral-600'}`}>
+                      <p className={`text-xs font-semibold ${selectedCustomer?.id === customer.id ? 'text-white' : customer.balance < 0 ? 'text-success' : customer.balance > 0 ? 'text-error' : 'text-neutral-600'}`}>
                         {formatBalance(customer.balance ?? 0)}
                       </p>
                     </div>
@@ -2357,7 +2358,7 @@ const CustomerLedgerPage = () => {
           {selectedCustomer && (
             <>
               {(paymentRecoveryError || unconfirmedPayment?.scope === paymentScope) && (
-                <div role="alert" className="m-3 p-3 rounded-md border border-amber-300 bg-amber-50 text-sm text-amber-950">
+                <div role="alert" className="m-3 p-3 rounded-md border border-amber-300 bg-warning-bg text-sm text-amber-950">
                   {paymentRecoveryError || (paymentLoading
                     ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
                     : `A payment of ${formatCurrency(unconfirmedPayment.request.amount)} needs confirmation. Retry it before recording another payment.`)}
@@ -2375,7 +2376,7 @@ const CustomerLedgerPage = () => {
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="min-w-0">
                       <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
-                      <div className="flex items-center gap-2 text-[11px] sm:text-xs text-neutral-600 flex-wrap">
+                      <div className="flex items-center gap-2 text-micro sm:text-xs text-neutral-600 flex-wrap">
                         {selectedCustomer.id !== 'cash' && selectedCustomer.phone && <span>{selectedCustomer.phone}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.trn && <span>TRN: {selectedCustomer.trn}</span>}
                         {selectedCustomer.id !== 'cash' && selectedCustomer.location && <span>{selectedCustomer.location}</span>}
@@ -2384,13 +2385,13 @@ const CustomerLedgerPage = () => {
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-[10px] text-neutral-600 uppercase tracking-wide">Balance</p>
+                    <p className="text-micro text-neutral-600 uppercase tracking-wide">Balance</p>
                     {balanceRefreshSkeleton ? (
                       <p className="text-sm text-neutral-500 animate-pulse">Refreshing…</p>
                     ) : (
-                      <p className={`text-base sm:text-lg font-bold ${(selectedCustomer.balance ?? 0) < 0 ? 'text-green-600' : (selectedCustomer.balance ?? 0) > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                      <p className={`text-base sm:text-lg font-bold ${(selectedCustomer.balance ?? 0) < 0 ? 'text-success' : (selectedCustomer.balance ?? 0) > 0 ? 'text-error' : 'text-neutral-900'}`}>
                         {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
-                        <span className="text-[10px] font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
+                        <span className="text-micro font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
                       </p>
                     )}
                   </div>
@@ -2455,7 +2456,7 @@ const CustomerLedgerPage = () => {
                     <button
                       onClick={handleExportStatement}
                       disabled={pdfLoading}
-                      className="min-h-[44px] px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="min-h-[44px] px-2 py-1 bg-success text-white text-xs rounded hover:bg-green-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                       title="Ledger Statement (F5)"
                     >
                       <FileText className="h-3 w-3" />
@@ -2502,7 +2503,7 @@ const CustomerLedgerPage = () => {
                           setPdfLoading(false)
                         }
                       }}
-                      className="min-h-[44px] px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
+                      className="min-h-[44px] px-2 py-1 bg-error text-white text-xs rounded hover:bg-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
                       title="Pending Bills PDF (Outstanding Invoices Only) - Uses Date Filter"
                     >
                       <DollarSign className="h-3 w-3" />
@@ -2519,7 +2520,7 @@ const CustomerLedgerPage = () => {
                     </button>
                     <button
                       onClick={handleShareWhatsApp}
-                      className="min-h-[44px] min-w-[44px] px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 flex items-center justify-center transition-colors"
+                      className="min-h-[44px] min-w-[44px] px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-success flex items-center justify-center transition-colors"
                       title="WhatsApp"
                     >
                       <Send className="h-3 w-3" />
@@ -2554,7 +2555,7 @@ const CustomerLedgerPage = () => {
                           handleShareWhatsApp()
                           setShowSendStatementModal(false)
                         }}
-                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-2.5 bg-success text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Send className="h-4 w-4" />
                         Share via WhatsApp
@@ -2605,14 +2606,14 @@ const CustomerLedgerPage = () => {
               {/* Date + branch/route/staff — one compact horizontal strip */}
               {selectedCustomer && (
                 <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <span className="text-[10px] font-medium text-neutral-500 uppercase shrink-0">From</span>
+                  <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
                   <input
                     type="date"
                     value={filterDraft.from}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
                     className="w-auto min-w-0 px-2 py-1 min-h-8 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
                   />
-                  <span className="text-[10px] font-medium text-neutral-500 uppercase shrink-0">To</span>
+                  <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
                   <input
                     type="date"
                     value={filterDraft.to}
@@ -3061,27 +3062,27 @@ const CustomerLedgerPage = () => {
         >
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 placeholder="Enter customer name"
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.name ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.name ? 'border-red-500' : 'border-neutral-300'
                   }`}
                 {...customerRegister('name', { required: 'Customer name is required' })}
               />
               {customerErrors.name && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.name.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.name.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
               <input
                 type="text"
                 placeholder="+971 50 123 4567 or 050 123 4567"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('phone', {
                   validate: (v) => {
                     const s = (v || '').trim()
@@ -3092,27 +3093,27 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.phone && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.phone.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
               <input
                 type="email"
                 placeholder="customer@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('email')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">TRN (15 digits)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">TRN (15 digits)</label>
               <input
                 type="text"
                 placeholder="UAE Tax Registration Number"
                 maxLength={15}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('trn', {
                   validate: (v) => {
                     const s = (v || '').trim()
@@ -3122,29 +3123,29 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.trn && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.trn.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.trn.message}</p>
               )}
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Address</label>
               <input
                 type="text"
                 placeholder="Full address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('address')}
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Location <span className="text-neutral-400 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
                 placeholder="Area / landmark (e.g. Mussafah, ICAD)"
                 maxLength={200}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('location')}
               />
             </div>
@@ -3152,11 +3153,11 @@ const CustomerLedgerPage = () => {
             {branches.length > 0 && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Branch {branches.length > 0 && <span className="text-red-500">*</span>}
                   </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.branchId ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.branchId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...customerRegister('branchId', {
                       required: branches.length > 0 ? 'Branch is required when company has branches' : false,
                       onChange: (e) => {
@@ -3171,15 +3172,15 @@ const CustomerLedgerPage = () => {
                     ))}
                   </select>
                   {customerErrors.branchId && (
-                    <p className="mt-1 text-sm text-red-600">{customerErrors.branchId.message}</p>
+                    <p className="mt-1 text-sm text-error">{customerErrors.branchId.message}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Route {addModalBranchId && <span className="text-red-500">*</span>}
                   </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${customerErrors.routeId ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed ${customerErrors.routeId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...customerRegister('routeId', {
                       required: addModalBranchId ? 'Route is required when branch is selected' : false
                     })}
@@ -3193,20 +3194,20 @@ const CustomerLedgerPage = () => {
                     ))}
                   </select>
                   {customerErrors.routeId && (
-                    <p className="mt-1 text-sm text-red-600">{customerErrors.routeId.message}</p>
+                    <p className="mt-1 text-sm text-error">{customerErrors.routeId.message}</p>
                   )}
                 </div>
               </>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Credit Limit (AED)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Credit Limit (AED)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0 = unlimited"
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-neutral-300'
                   }`}
                 {...customerRegister('creditLimit', {
                   valueAsNumber: true,
@@ -3214,15 +3215,15 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.creditLimit && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.creditLimit.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.creditLimit.message}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Payment Terms {(watchCustomer('creditLimit') || 0) > 0 && <span className="text-red-500">*</span>}
               </label>
               <select
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-neutral-300'}`}
                 {...customerRegister('paymentTerms', {
                   validate: (v) => {
                     const creditLimit = watchCustomer('creditLimit')
@@ -3241,7 +3242,7 @@ const CustomerLedgerPage = () => {
                 <option value="Custom">Custom</option>
               </select>
               {customerErrors.paymentTerms && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.paymentTerms.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.paymentTerms.message}</p>
               )}
             </div>
           </div>
@@ -3253,14 +3254,14 @@ const CustomerLedgerPage = () => {
                 setShowAddCustomerModal(false)
                 resetCustomerForm()
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+              className="px-4 py-2 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={customerLoading || customerLoadingRef.current}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               style={{
                 pointerEvents: (customerLoading || customerLoadingRef.current) ? 'none' : 'auto',
                 cursor: (customerLoading || customerLoadingRef.current) ? 'not-allowed' : 'pointer',
@@ -3306,27 +3307,27 @@ const CustomerLedgerPage = () => {
         >
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 placeholder="Enter customer name"
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.name ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.name ? 'border-red-500' : 'border-neutral-300'
                   }`}
                 {...customerRegister('name', { required: 'Customer name is required' })}
               />
               {customerErrors.name && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.name.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.name.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Phone</label>
               <input
                 type="text"
                 placeholder="+971 50 123 4567 or 050 123 4567"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('phone', {
                   validate: (v) => {
                     const s = (v || '').trim()
@@ -3337,27 +3338,27 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.phone && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.phone.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.phone.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Email</label>
               <input
                 type="email"
                 placeholder="customer@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('email')}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">TRN (15 digits)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">TRN (15 digits)</label>
               <input
                 type="text"
                 placeholder="UAE Tax Registration Number"
                 maxLength={15}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('trn', {
                   validate: (v) => {
                     const s = (v || '').trim()
@@ -3367,29 +3368,29 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.trn && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.trn.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.trn.message}</p>
               )}
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Address</label>
               <input
                 type="text"
                 placeholder="Full address"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('address')}
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Location <span className="text-gray-400 font-normal">(optional)</span>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Location <span className="text-neutral-400 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
                 placeholder="Area / landmark (e.g. Mussafah, ICAD)"
                 maxLength={200}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 {...customerRegister('location')}
               />
             </div>
@@ -3397,9 +3398,9 @@ const CustomerLedgerPage = () => {
             {branches.length > 0 && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Branch</label>
                   <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     {...(function () {
                       const r = customerRegister('branchId')
                       return {
@@ -3418,9 +3419,9 @@ const CustomerLedgerPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">Route</label>
                   <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed"
                     {...customerRegister('routeId')}
                     disabled={!watchCustomer('branchId')}
                   >
@@ -3436,13 +3437,13 @@ const CustomerLedgerPage = () => {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Credit Limit (AED)</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Credit Limit (AED)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0 = unlimited"
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.creditLimit ? 'border-red-500' : 'border-neutral-300'
                   }`}
                 {...customerRegister('creditLimit', {
                   valueAsNumber: true,
@@ -3450,15 +3451,15 @@ const CustomerLedgerPage = () => {
                 })}
               />
               {customerErrors.creditLimit && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.creditLimit.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.creditLimit.message}</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Payment Terms {(watchCustomer('creditLimit') || 0) > 0 && <span className="text-red-500">*</span>}
               </label>
               <select
-                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-gray-300'}`}
+                className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${customerErrors.paymentTerms ? 'border-red-500' : 'border-neutral-300'}`}
                 {...customerRegister('paymentTerms', {
                   validate: (v) => {
                     const creditLimit = watchCustomer('creditLimit')
@@ -3477,7 +3478,7 @@ const CustomerLedgerPage = () => {
                 <option value="Custom">Custom</option>
               </select>
               {customerErrors.paymentTerms && (
-                <p className="mt-1 text-sm text-red-600">{customerErrors.paymentTerms.message}</p>
+                <p className="mt-1 text-sm text-error">{customerErrors.paymentTerms.message}</p>
               )}
             </div>
           </div>
@@ -3490,7 +3491,7 @@ const CustomerLedgerPage = () => {
                 setEditingCustomer(null)
                 resetCustomerForm()
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 text-sm"
+              className="px-4 py-2 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50 text-sm"
             >
               Cancel
             </button>
@@ -3652,18 +3653,18 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
     <>
     <Modal isOpen={isOpen} onClose={onClose} title="Settle Credit" size="md">
       {loading ? (
-        <p className="text-sm text-gray-500">Loading...</p>
+        <p className="text-sm text-neutral-500">Loading...</p>
       ) : creditNote ? (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-neutral-600">
             Return <strong>{entry.reference || entry.returnId}</strong> · Credit: <strong>{remaining.toFixed(2)} AED</strong> remaining
           </p>
           <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Apply to invoice</p>
+            <p className="text-sm font-medium text-neutral-700 mb-2">Apply to invoice</p>
             <select
               value={applySaleId}
               onChange={(e) => setApplySaleId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm mb-2"
             >
               <option value="">Select invoice</option>
               {(outstandingInvoices || []).filter(inv => (Number(inv.grandTotal) || 0) > 0).map(inv => (
@@ -3673,7 +3674,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
               ))}
             </select>
             {(outstandingInvoices || []).length === 0 && (
-              <p className="text-xs text-amber-700 mb-2">
+              <p className="text-xs text-warning-fg mb-2">
                 This customer has no outstanding invoices. Use <strong>Issue refund</strong> below to settle the credit in cash.
               </p>
             )}
@@ -3685,7 +3686,7 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
               value={amountToApply}
               onChange={(e) => setAmountToApply(e.target.value)}
               placeholder="Amount to apply"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm mb-2"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-md text-sm mb-2"
             />
             <button
               type="button"
@@ -3697,12 +3698,12 @@ const SettleCreditModal = ({ isOpen, onClose, entry, customerId, customerName, o
             </button>
           </div>
           <div className="border-t pt-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">Issue refund</p>
+            <p className="text-sm font-medium text-neutral-700 mb-2">Issue refund</p>
             <button
               type="button"
               onClick={handleRefundClick}
               disabled={actionLoading || remaining <= 0}
-              className="inline-flex items-center px-3 py-2 bg-amber-600 text-white text-sm font-medium rounded hover:bg-amber-700 disabled:opacity-50"
+              className="inline-flex items-center px-3 py-2 bg-warning text-white text-sm font-medium rounded hover:bg-amber-700 disabled:opacity-50"
             >
               {actionLoading ? 'Processing...' : `Issue refund (${remaining.toFixed(2)} AED)`}
             </button>
@@ -3773,8 +3774,8 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
       {/* Compact metrics strip */}
       <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1.5 bg-white border-b border-neutral-200 text-xs">
         <span className="text-neutral-500">Sales <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalDebit) || 0)}</strong></span>
-        <span className="text-neutral-500">Paid <strong className="text-green-700 tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
-        <span className="text-neutral-500">Closing <strong className={`tabular-nums ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</strong></span>
+        <span className="text-neutral-500">Paid <strong className="text-success-fg tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
+        <span className="text-neutral-500">Closing <strong className={`tabular-nums ${closingBalance < 0 ? 'text-success' : closingBalance > 0 ? 'text-error' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</strong></span>
       </div>
 
       {/* Action Bar with Filters */}
@@ -3785,7 +3786,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             <select
               value={safeFilters.statusFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('status', e.target.value)}
-              className="px-1.5 py-0.5 text-[11px] border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="px-1.5 py-0.5 text-micro border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="all">All Status</option>
               <option value="paid">Paid</option>
@@ -3795,7 +3796,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             <select
               value={safeFilters.typeFilterValue || 'all'}
               onChange={(e) => safeOnFilterChange('type', e.target.value)}
-              className="px-1.5 py-0.5 text-[11px] border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
+              className="px-1.5 py-0.5 text-micro border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
             >
               <option value="all">All Types</option>
               <option value="Invoice">Invoices</option>
@@ -3804,7 +3805,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             </select>
             <button
               onClick={onPrintPreview}
-              className="px-2 py-1 text-[11px] bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
+              className="px-2 py-1 text-micro bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
               title="Print Preview"
             >
               <Eye className="h-3 w-3" />
@@ -3812,7 +3813,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             </button>
             <button
               onClick={onExportExcel}
-              className="px-2 py-1 text-[11px] bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+              className="px-2 py-1 text-micro bg-success text-white rounded hover:bg-green-700 flex items-center gap-1"
               title="Export to Excel"
             >
               <FileText className="h-3 w-3" />
@@ -3820,7 +3821,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             </button>
             <button
               onClick={onGeneratePDF}
-              className="px-2 py-1 text-[11px] bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
+              className="px-2 py-1 text-micro bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
               title="Download PDF Statement"
             >
               <Printer className="h-3 w-3" />
@@ -3828,7 +3829,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             </button>
             <button
               onClick={onShareWhatsApp}
-              className="px-2 py-1 text-[11px] bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+              className="px-2 py-1 text-micro bg-success text-white rounded hover:bg-green-700 flex items-center gap-1"
               title="Share via WhatsApp"
             >
               <Send className="h-3 w-3" />
@@ -3878,9 +3879,9 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
 
                   // Color coding: Debit = light red, Credit = light green
                   const rowBgColor = entry.debit > 0
-                    ? 'bg-red-50 hover:bg-red-100'
+                    ? 'bg-error-bg hover:bg-red-100'
                     : entry.credit > 0
-                      ? 'bg-green-50 hover:bg-green-100'
+                      ? 'bg-success-bg hover:bg-green-100'
                       : 'hover:bg-neutral-50'
 
                   return (
@@ -3899,7 +3900,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                             const ledgerPay = paymentFromCustomerLedgerEntry(entry)
                             if (ledgerPay && !canReceivePaymentReceipt(ledgerPay)) return null
                             return (
-                            <button type="button" onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)} className="inline-flex min-h-9 items-center rounded-md bg-blue-100 px-2 text-xs font-medium text-blue-800" aria-label="Print payment receipt">Receipt</button>
+                            <button type="button" onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)} className="inline-flex min-h-9 items-center rounded-md bg-primary-100 px-2 text-xs font-medium text-primary-800" aria-label="Print payment receipt">Receipt</button>
                             )
                           })() : null}
                           {entry.type === 'Sale Return' && (entry.returnId ?? entry.ReturnId) ? (
@@ -3918,7 +3919,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                                 } catch (e) {
                                   if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                                 }
-                              }} className="inline-flex min-h-9 items-center rounded-md bg-blue-100 px-2 text-xs font-medium text-blue-800">PDF</button>
+                              }} className="inline-flex min-h-9 items-center rounded-md bg-primary-100 px-2 text-xs font-medium text-primary-800">PDF</button>
                               {onDeleteReturn ? <button type="button" onClick={() => onDeleteReturn(entry.returnId ?? entry.ReturnId)} className="inline-flex min-h-9 items-center rounded-md bg-red-100 px-2 text-xs font-medium text-red-800">Delete</button> : null}
                               {(entry.status === 'Credit Issued' || entry.status === 'CreditIssued') && onSettleCredit ? <button type="button" onClick={() => onSettleCredit(entry)} className="inline-flex min-h-9 items-center rounded-md bg-emerald-100 px-2 text-xs font-medium text-emerald-800">Settle</button> : null}
                             </>
@@ -3931,7 +3932,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
                         {(Number(entry.credit) || 0) > 0 ? formatCurrency(Number(entry.credit) || 0) : '-'}
                       </td>
-                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-green-600' : (Number(entry.balance) || 0) > 0 ? 'text-red-600' : 'text-neutral-900'
+                      <td className={`px-3 py-2 whitespace-nowrap text-sm text-right font-bold ${(Number(entry.balance) || 0) < 0 ? 'text-success' : (Number(entry.balance) || 0) > 0 ? 'text-error' : 'text-neutral-900'
                         }`}>
                         {formatBalance(Number(entry.balance) || 0)}
                       </td>
@@ -3968,7 +3969,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                 <td className="px-3 py-2.5 text-right text-sm font-bold text-neutral-900">
                   {formatCurrency(Number(totalCredit) || 0)}
                 </td>
-                <td className={`px-3 py-2.5 text-right text-sm font-bold ${closingBalance < 0 ? 'text-green-600' : closingBalance > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                <td className={`px-3 py-2.5 text-right text-sm font-bold ${closingBalance < 0 ? 'text-success' : closingBalance > 0 ? 'text-error' : 'text-neutral-900'}`}>
                   {formatBalance(Number(closingBalance) || 0)}
                 </td>
               </tr>
@@ -3994,7 +3995,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
             const credit = Number(entry.credit) || 0
             const bal = Number(entry.balance) || 0
             return (
-              <div key={idx} className={`${mobileLedgerCardClass} ${debit > 0 ? 'border-red-200 bg-red-50/40' : credit > 0 ? 'border-green-200 bg-green-50/40' : ''}`}>
+              <div key={idx} className={`${mobileLedgerCardClass} ${debit > 0 ? 'border-error-border bg-error-bg/40' : credit > 0 ? 'border-success-border bg-success-bg/40' : ''}`}>
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-neutral-900">{entry.type}</p>
@@ -4003,7 +4004,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                   </div>
                   <div className="text-right shrink-0">
                     <p className={mobileLedgerLabelClass}>Balance</p>
-                    <p className={`${mobileLedgerAmountClass} ${bal < 0 ? 'text-green-600' : bal > 0 ? 'text-red-600' : 'text-neutral-900'}`}>
+                    <p className={`${mobileLedgerAmountClass} ${bal < 0 ? 'text-success' : bal > 0 ? 'text-error' : 'text-neutral-900'}`}>
                       {formatBalance(bal)}
                     </p>
                   </div>
@@ -4043,7 +4044,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                       <button
                         type="button"
                         onClick={() => onViewReceipt(entry.paymentId ?? entry.PaymentId)}
-                        className="inline-flex min-h-[44px] items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                        className="inline-flex min-h-[44px] items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded hover:bg-primary-200"
                         title="Print payment receipt"
                       >
                         <Printer className="h-3 w-3" />
@@ -4071,7 +4072,7 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
                               if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                             }
                           }}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded hover:bg-primary-200"
                           title="View / download return bill PDF"
                         >
                           <FileText className="h-3 w-3" />
@@ -4146,15 +4147,15 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
       case 'paid': return 'bg-green-100 text-green-800'
       case 'partial': return 'bg-yellow-100 text-yellow-800'
       case 'pending': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
+      default: return 'bg-neutral-100 text-neutral-800'
     }
   }
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
-      case 'paid': return <CheckCircle className="h-3.5 w-3.5 text-green-600 inline-block mr-1" aria-hidden />
+      case 'paid': return <CheckCircle className="h-3.5 w-3.5 text-success inline-block mr-1" aria-hidden />
       case 'partial': return <Clock className="h-3.5 w-3.5 text-yellow-600 inline-block mr-1" aria-hidden />
-      case 'pending': return <XCircle className="h-3.5 w-3.5 text-red-600 inline-block mr-1" aria-hidden />
+      case 'pending': return <XCircle className="h-3.5 w-3.5 text-error inline-block mr-1" aria-hidden />
       default: return <Clock className="h-3.5 w-3.5 text-neutral-500 inline-block mr-1" aria-hidden />
     }
   }
@@ -4199,22 +4200,22 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
       {/* Invoices Table - Desktop */}
       <div className="hidden md:flex bg-white overflow-hidden flex-1 flex-col w-full">
         <div className="overflow-x-auto overflow-y-auto flex-1 w-full">
-          <table className="w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0 z-10">
+          <table className="w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50 sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Date</th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 uppercase">Invoice No</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Amount</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Paid</th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Balance</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Status</th>
-                <th className="px-3 py-2 text-center text-xs font-medium text-gray-700 uppercase whitespace-nowrap">Action</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-neutral-700 uppercase">Invoice No</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Amount</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Paid</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Balance</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Status</th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-neutral-700 uppercase whitespace-nowrap">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {sortedInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="7" className="px-4 py-8 text-center text-neutral-500">
                     No invoices found
                   </td>
                 </tr>
@@ -4229,11 +4230,11 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   const invoiceStatus = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
 
                   return (
-                    <tr key={invoice.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                    <tr key={invoice.id} className="hover:bg-neutral-50">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-900">
                         {new Date(invoice.invoiceDate || invoice.date).toLocaleDateString('en-GB')}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">
                         <div className="flex items-center gap-1.5">
                           <span>{invoice.invoiceNo || `INV-${invoice.id}`}</span>
                           {invoice.isLocked && (
@@ -4244,13 +4245,13 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           )}
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
                         {formatCurrency(invoice.grandTotal || invoice.total || 0)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
                         {formatCurrency(paidAmount)}
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-neutral-900">
                         {formatCurrency(balance)}
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-center">
@@ -4267,7 +4268,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           {balance > 0 && onPayInvoice && (
                             <button
                               onClick={() => onPayInvoice(invoice.id)}
-                              className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
+                              className="bg-success hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
                               title="Pay Invoice"
                             >
                               <Wallet className="h-3 w-3" />
@@ -4276,7 +4277,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           )}
                           <button
                             onClick={() => onViewInvoice(invoice.id)}
-                            className="text-blue-600 hover:text-blue-900 hover:bg-blue-50 p-1 rounded transition-colors"
+                            className="text-primary-600 hover:text-primary-900 hover:bg-primary-50 p-1 rounded transition-colors"
                             title="View Invoice"
                           >
                             <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4302,7 +4303,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           {isAdmin && onDeleteInvoice && (
                             <button
                               onClick={() => onDeleteInvoice(invoice.id)}
-                              className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1.5 rounded transition-colors shadow-sm"
+                              className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1.5 rounded transition-colors shadow-sm"
                               title="Delete Invoice (Admin Only)"
                             >
                               <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4311,7 +4312,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           {onReturnInvoice && (
                             <button
                               onClick={() => onReturnInvoice(invoice.id)}
-                              className="text-amber-600 hover:text-amber-900 hover:bg-amber-50 p-1 rounded transition-colors"
+                              className="text-warning hover:text-amber-900 hover:bg-warning-bg p-1 rounded transition-colors"
                               title="Create return for this invoice"
                             >
                               <RotateCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4319,7 +4320,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                           )}
                           <button
                             onClick={() => onViewPDF(invoice.id)}
-                            className="text-green-600 hover:text-green-900 hover:bg-green-50 p-1 rounded transition-colors"
+                            className="text-success hover:text-green-900 hover:bg-success-bg p-1 rounded transition-colors"
                             title="PDF"
                           >
                             <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -4331,16 +4332,16 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                 })
               )}
             </tbody>
-            <tfoot className="bg-gray-50 sticky bottom-0">
+            <tfoot className="bg-neutral-50 sticky bottom-0">
               <tr>
-                <td colSpan="2" className="px-3 py-2 text-sm font-bold text-gray-900">
+                <td colSpan="2" className="px-3 py-2 text-sm font-bold text-neutral-900">
                   Total Invoices: {totalInvoices}
                 </td>
                 <td className="px-3 py-2"></td>
-                <td className="px-3 py-2 text-right text-sm font-bold text-green-600">
+                <td className="px-3 py-2 text-right text-sm font-bold text-success">
                   Total Paid: {formatCurrency(totalPaid)}
                 </td>
-                <td className="px-3 py-2 text-right text-sm font-bold text-red-600">
+                <td className="px-3 py-2 text-right text-sm font-bold text-error">
                   Total Pending: {formatCurrency(totalPending)}
                 </td>
                 <td colSpan="2"></td>
@@ -4352,10 +4353,10 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
 
       {/* Invoices Cards - Mobile */}
       <div className="md:hidden flex-1 overflow-y-auto space-y-3 pb-4">
-        <div className="sticky top-0 z-10 bg-gray-50 border-b border-neutral-200 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
+        <div className="sticky top-0 z-10 bg-neutral-50 border-b border-neutral-200 px-3 py-2 text-xs flex flex-wrap gap-x-4 gap-y-1">
           <span className="font-semibold text-neutral-900">Total Invoices: {totalInvoices}</span>
-          <span className="font-semibold text-green-700">Total Paid: {formatCurrency(totalPaid)}</span>
-          <span className="font-semibold text-red-700">Total Pending: {formatCurrency(totalPending)}</span>
+          <span className="font-semibold text-success-fg">Total Paid: {formatCurrency(totalPaid)}</span>
+          <span className="font-semibold text-error-fg">Total Pending: {formatCurrency(totalPending)}</span>
         </div>
         {sortedInvoices.length === 0 ? (
           <div className="bg-white rounded-lg border border-neutral-200 p-6 text-center text-neutral-500 text-sm">
@@ -4395,14 +4396,14 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   {balance > 0 && onPayInvoice && (
                     <button
                       onClick={() => onPayInvoice(invoice.id)}
-                      className="flex-1 min-w-0 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1"
+                      className="flex-1 min-w-0 px-3 py-2 bg-success hover:bg-green-700 text-white rounded-md text-xs font-medium flex items-center justify-center gap-1"
                     >
                       <Wallet className="h-3.5 w-3.5" /> Pay
                     </button>
                   )}
                   <button
                     onClick={() => onViewInvoice(invoice.id)}
-                    className="px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md text-xs font-medium flex items-center gap-1"
+                    className="px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-md text-xs font-medium flex items-center gap-1"
                     aria-label="View invoice"
                   >
                     <Eye className="h-3.5 w-3.5" /> View
@@ -4428,7 +4429,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   {isAdmin && onDeleteInvoice && (
                     <button
                       onClick={() => onDeleteInvoice(invoice.id)}
-                      className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md"
+                      className="px-3 py-2 text-error hover:bg-error-bg rounded-md"
                       aria-label="Delete invoice"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -4437,7 +4438,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   {onReturnInvoice && (
                     <button
                       onClick={() => onReturnInvoice(invoice.id)}
-                      className="px-3 py-2 text-amber-600 hover:bg-amber-50 rounded-md text-xs font-medium flex items-center gap-1"
+                      className="px-3 py-2 text-warning hover:bg-warning-bg rounded-md text-xs font-medium flex items-center gap-1"
                       aria-label="Create return"
                     >
                       <RotateCcw className="h-3.5 w-3.5" /> Return
@@ -4445,7 +4446,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   )}
                   <button
                     onClick={() => onViewPDF(invoice.id)}
-                    className="px-3 py-2 text-green-600 hover:bg-green-50 rounded-md text-xs font-medium flex items-center gap-1"
+                    className="px-3 py-2 text-success hover:bg-success-bg rounded-md text-xs font-medium flex items-center gap-1"
                     aria-label="View PDF"
                   >
                     <FileText className="h-3.5 w-3.5" /> PDF
@@ -4504,7 +4505,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
   return (
     <div className="w-full h-full flex flex-col">
       <div className="mb-4 flex justify-end flex-shrink-0">
-        <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-700">
+        <label className="flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-700">
           <Filter className="h-4 w-4" aria-hidden="true" />
           <span>Filter by mode</span>
           <select aria-label="Filter payments by mode" value={modeFilter} onChange={event => setModeFilter(event.target.value)} className="min-h-[44px] bg-transparent font-medium">
@@ -4514,13 +4515,13 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
         </label>
       </div>
 
-      <p className="mb-3 text-xs text-gray-600">Receipts are available for cleared incoming payments only. Select up to 500 payments.</p>
+      <p className="mb-3 text-xs text-neutral-600">Receipts are available for cleared incoming payments only. Select up to 500 payments.</p>
 
       {/* Payments Table - Desktop */}
-      <div className={`hidden md:block bg-white rounded-lg border border-gray-200 overflow-hidden flex-1 min-h-0 ${currentSelectedIds.length > 0 ? 'mb-20' : ''}`}>
+      <div className={`hidden md:block bg-white rounded-lg border border-neutral-200 overflow-hidden flex-1 min-h-0 ${currentSelectedIds.length > 0 ? 'mb-20' : ''}`}>
         <div className="overflow-x-auto overflow-y-auto h-full">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 sticky top-0">
+          <table className="min-w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50 sticky top-0">
               <tr>
                 {onGenerateReceiptBatch && (
                   <th className="px-4 py-3 text-left">
@@ -4530,28 +4531,28 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                       disabled={visibleEligiblePayments.length === 0}
                       aria-label="Select all eligible payments"
                       onChange={toggleSelectAllPayments}
-                      className="rounded border-gray-300"
+                      className="rounded border-neutral-300"
                     />
                   </th>
                 )}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Mode</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Related Invoice</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Reference / Remarks</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Action</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Mode</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Related Invoice</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Reference / Remarks</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Action</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {visiblePayments.length === 0 ? (
                 <tr>
-                  <td colSpan={onGenerateReceiptBatch ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={onGenerateReceiptBatch ? 7 : 6} className="px-4 py-8 text-center text-neutral-500">
                     {payments.length === 0 ? 'No payments found' : 'No payments match this mode.'}
                   </td>
                 </tr>
               ) : (
                 visiblePayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50">
+                  <tr key={payment.id} className="hover:bg-neutral-50">
                     {onGenerateReceiptBatch && (
                       <td className="px-4 py-3 whitespace-nowrap">
                         <input
@@ -4560,24 +4561,24 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                           disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
                           aria-label={`Select payment ${payment.id} for receipt`}
                           onChange={() => togglePaymentSelection(payment.id)}
-                          className="rounded border-gray-300"
+                          className="rounded border-neutral-300"
                         />
                       </td>
                     )}
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
                       {new Date(payment.paymentDate).toLocaleDateString('en-GB')}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
                       {payment.method || payment.mode || '-'}
-                      {isVoided(payment) && <span className="ml-2 rounded bg-gray-100 px-2 py-1 text-xs text-gray-700">VOID — history retained</span>}
+                      {isVoided(payment) && <span className="ml-2 rounded bg-neutral-100 px-2 py-1 text-xs text-neutral-700">VOID — history retained</span>}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
                       {formatCurrency(payment.amount)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                       {payment.invoiceNo || '-'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
+                    <td className="px-4 py-3 text-sm text-neutral-600">
                       {payment.ref || payment.reference || '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
@@ -4593,7 +4594,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                             onViewReceipt(payment.id)
                           }}
                           disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
-                          className="text-blue-600 hover:text-blue-900 p-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="text-primary-600 hover:text-primary-900 p-2 rounded transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                           title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                         >
                           <Printer className="h-4 w-4" />
@@ -4612,7 +4613,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                           <button
                             type="button"
                             onClick={() => onDeletePayment(payment)}
-                            className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1 rounded transition-colors min-h-[44px] min-w-[44px]"
+                            className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1 rounded transition-colors min-h-[44px] min-w-[44px]"
                             title="Void payment"
                             aria-label="Void payment"
                           >
@@ -4631,8 +4632,8 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
 
       {/* Selection action bar - Generate Receipt (fixed so multi-select is always visible) */}
       {onGenerateReceiptBatch && currentSelectedIds.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
-          <span className="text-sm font-medium text-gray-700">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-lg px-4 py-3 flex flex-wrap gap-3 items-center justify-between">
+          <span className="text-sm font-medium text-neutral-700">
             {currentSelectedIds.length} payment(s) selected — Total: {formatCurrency(selectedTotal)}
           </span>
           <div className="flex gap-2">
@@ -4647,7 +4648,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
             <button
               type="button"
               onClick={() => setSelectedPaymentIds([])}
-              className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="min-h-[44px] px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 text-sm font-medium"
             >
               Cancel
             </button>
@@ -4675,7 +4676,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                 <div>
                   <p className="font-semibold text-neutral-900">{formatCurrency(payment.amount)}</p>
                   <p className="text-xs text-neutral-500">{payment.method || payment.mode || '-'}</p>
-                  {isVoided(payment) && <p className="text-xs font-medium text-gray-700">VOID — history retained</p>}
+                  {isVoided(payment) && <p className="text-xs font-medium text-neutral-700">VOID — history retained</p>}
                   <p className="text-xs text-neutral-600 mt-0.5">
                     {new Date(payment.paymentDate).toLocaleDateString('en-GB')}
                   </p>
@@ -4701,7 +4702,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                     onViewReceipt(payment.id)
                   }}
                   disabled={!canEditDelete || user?.supportReadOnly || !canReceivePaymentReceipt(payment)}
-                  className="min-h-[44px] px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                  className="min-h-[44px] px-3 py-2 text-primary-600 hover:bg-primary-50 rounded-md text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
                   aria-label="Print receipt (optional)"
                   title={canReceivePaymentReceipt(payment) ? 'Preview payment receipt' : receiptIneligibilityReason(payment)}
                 >
@@ -4719,7 +4720,7 @@ const PaymentsTab = ({ payments, user, onViewReceipt, onEditPayment, onDeletePay
                 {canEditDelete && !user?.supportReadOnly && !isVoided(payment) && onDeletePayment && (
                   <button
                     onClick={() => onDeletePayment(payment)}
-                    className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md text-xs min-h-[44px]"
+                    className="px-3 py-2 text-error hover:bg-error-bg rounded-md text-xs min-h-[44px]"
                     aria-label="Void payment"
                   >
                     <Trash2 className="h-3.5 w-3.5" /> Void
@@ -4740,81 +4741,81 @@ const ReportsTab = ({ customer, summary, invoices, payments, outstandingInvoices
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-6 rounded-lg border border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Sales This Month</p>
-              <p className="text-lg sm:text-2xl font-bold text-blue-600 mt-2">
+              <p className="text-sm font-medium text-neutral-600">Total Sales This Month</p>
+              <p className="text-lg sm:text-2xl font-bold text-primary-600 mt-2">
                 {formatCurrency(summary?.totalSales || 0)}
               </p>
             </div>
-            <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+            <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-primary-600" />
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg border border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Payments Received</p>
-              <p className="text-lg sm:text-2xl font-bold text-green-600 mt-2">
+              <p className="text-xs sm:text-sm font-medium text-neutral-600">Payments Received</p>
+              <p className="text-lg sm:text-2xl font-bold text-success mt-2">
                 {formatCurrency(summary?.totalPayments || 0)}
               </p>
             </div>
-            <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+            <CreditCard className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
           </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-6 rounded-lg border border-gray-200">
+        <div className="bg-white p-4 sm:p-6 rounded-lg border border-neutral-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue Invoices</p>
-              <p className="text-lg sm:text-2xl font-bold text-red-600 mt-2">
+              <p className="text-xs sm:text-sm font-medium text-neutral-600">Overdue Invoices</p>
+              <p className="text-lg sm:text-2xl font-bold text-error mt-2">
                 {outstandingInvoices.filter(inv => inv.daysOverdue > 0).length}
               </p>
             </div>
-            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-red-600" />
+            <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-error" />
           </div>
         </div>
       </div>
 
       {/* Pending Bills List */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Pending Bills List</h3>
+      <div className="bg-white rounded-lg border border-neutral-200 p-6">
+        <h3 className="text-lg font-bold text-neutral-900 mb-4">Pending Bills List</h3>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Invoice No</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase">Date</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Amount</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Paid</th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-700 uppercase">Balance</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase">Days Overdue</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Invoice No</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Date</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Paid</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Balance</th>
+                <th className="px-4 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Days Overdue</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {outstandingInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan="6" className="px-4 py-8 text-center text-neutral-500">
                     No pending bills
                   </td>
                 </tr>
               ) : (
                 outstandingInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tr key={inv.id} className="hover:bg-neutral-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
                       {inv.invoiceNo}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                       {new Date(inv.invoiceDate).toLocaleDateString('en-GB')}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                       {formatCurrency(Number(inv.grandTotal) || 0)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                       {formatCurrency(Number(inv.paidAmount) || 0)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-red-600">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-error">
                       {formatCurrency(Number(inv.balanceAmount) || 0)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-center">
@@ -4963,7 +4964,7 @@ const PaymentEntryModal = ({
       size="lg"
     >
       {unconfirmedPayment && (
-        <div role="alert" className="mb-4 p-3 rounded border border-amber-300 bg-amber-50 text-sm text-amber-950">
+        <div role="alert" className="mb-4 p-3 rounded border border-amber-300 bg-warning-bg text-sm text-amber-950">
           {loading
             ? `Waiting for confirmation of ${formatCurrency(unconfirmedPayment.request.amount)}.`
             : `Payment confirmation was not received for ${formatCurrency(unconfirmedPayment.request.amount)}. Retry the previous payment to confirm its result.`}
@@ -4982,12 +4983,12 @@ const PaymentEntryModal = ({
         }
       })} className="space-y-4">
         {payAllOutstandingMode && (
-          <div className="col-span-2 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="col-span-2 p-4 bg-success-bg border border-success-border rounded-lg">
             <p className="text-sm font-medium text-emerald-800 flex items-center gap-2">
               <Wallet className="h-4 w-4" />
               Pay All Outstanding
             </p>
-            <p className="text-sm text-emerald-700 mt-1">
+            <p className="text-sm text-success-fg mt-1">
               Payment will be allocated across {outstandingInvoices.length} invoice(s) — Total: {formatCurrency(outstandingInvoices.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0))}
             </p>
           </div>
@@ -5031,7 +5032,7 @@ const PaymentEntryModal = ({
           />
 
           {settlementShortfall > 0 && (
-            <div className="col-span-2 p-3 border border-amber-200 bg-amber-50 rounded-lg space-y-2">
+            <div className="col-span-2 p-3 border border-warning-border bg-warning-bg rounded-lg space-y-2">
               <p className="text-sm text-amber-900">
                 Cash is {formatCurrency(settlementShortfall)} short of closing this invoice. An authorized adjustment can close the balance without inflating cash received.
               </p>
@@ -5085,12 +5086,12 @@ const PaymentEntryModal = ({
 
         {!payAllOutstandingMode && selectedSaleId && (
           <div className={`border rounded-lg p-4 ${allAvailableInvoices.find(inv => inv.id === parseInt(selectedSaleId))?.isOutstanding
-            ? 'bg-blue-50 border-blue-200'
-            : 'bg-gray-50 border-gray-200'
+            ? 'bg-primary-50 border-primary-200'
+            : 'bg-neutral-50 border-neutral-200'
             }`}>
             <p className="text-sm font-medium mb-2 flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              <span className={allAvailableInvoices.find(inv => inv.id === parseInt(selectedSaleId))?.isOutstanding ? 'text-blue-900' : 'text-gray-700'}>
+              <span className={allAvailableInvoices.find(inv => inv.id === parseInt(selectedSaleId))?.isOutstanding ? 'text-primary-900' : 'text-neutral-700'}>
                 Selected Invoice Details:
               </span>
             </p>
@@ -5101,37 +5102,37 @@ const PaymentEntryModal = ({
                   <div className="space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <span className="font-medium text-gray-600">Invoice No:</span>
+                        <span className="font-medium text-neutral-600">Invoice No:</span>
                         <span className="ml-2 font-semibold">{selectedInv.invoiceNo}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-600">Date:</span>
+                        <span className="font-medium text-neutral-600">Date:</span>
                         <span className="ml-2">{new Date(selectedInv.invoiceDate).toLocaleDateString('en-GB')}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-600">Total Amount:</span>
+                        <span className="font-medium text-neutral-600">Total Amount:</span>
                         <span className="ml-2 font-semibold">{formatCurrency(selectedInv.grandTotal)}</span>
                       </div>
                       <div>
-                        <span className="font-medium text-gray-600">Paid:</span>
-                        <span className="ml-2 font-semibold text-green-600">{formatCurrency(selectedInv.paidAmount)}</span>
+                        <span className="font-medium text-neutral-600">Paid:</span>
+                        <span className="ml-2 font-semibold text-success">{formatCurrency(selectedInv.paidAmount)}</span>
                       </div>
                     </div>
                     {selectedInv.balanceAmount > 0 ? (
-                      <div className="pt-2 border-t border-blue-300">
-                        <p className="text-red-600 font-bold text-base">
+                      <div className="pt-2 border-t border-primary-300">
+                        <p className="text-error font-bold text-base">
                           Balance Due: {formatCurrency(selectedInv.balanceAmount)}
                         </p>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-neutral-600 mt-1">
                           Payment will be allocated to this invoice
                         </p>
                       </div>
                     ) : (
-                      <div className="pt-2 border-t border-gray-300">
-                        <p className="text-green-600 font-semibold">
+                      <div className="pt-2 border-t border-neutral-300">
+                        <p className="text-success font-semibold">
                           Invoice is fully paid
                         </p>
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-neutral-600 mt-1">
                           This payment will be recorded as a general payment (not allocated to invoice)
                         </p>
                       </div>
@@ -5157,14 +5158,14 @@ const PaymentEntryModal = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 border border-neutral-300 rounded-md text-neutral-700 hover:bg-neutral-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
             style={{
               pointerEvents: loading ? 'none' : 'auto',
               cursor: loading ? 'not-allowed' : 'pointer',

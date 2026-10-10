@@ -35,7 +35,7 @@ const controlClass =
 function ActionBadge({ action }) {
   const { label, className } = getAuditActionBadge(action)
   return (
-    <span className={`inline-flex max-w-full items-center truncate rounded-md border px-2 py-0.5 text-[13px] font-medium ${className}`}>
+    <span className={`inline-flex max-w-full items-center truncate rounded-md border px-2 py-0.5 text-sm font-medium ${className}`}>
       {label}
     </span>
   )
@@ -51,8 +51,8 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
   return (
     <div className="space-y-4 text-sm">
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
-          <p className="text-sm text-red-700">Unable to load this activity.</p>
+        <div className="rounded-md border border-error-border bg-error-bg px-3 py-2">
+          <p className="text-sm text-error-fg">Unable to load this activity.</p>
           <button type="button" onClick={onRetry} className="mt-2 text-sm font-medium text-primary-700 hover:underline">
             Try again
           </button>
@@ -87,7 +87,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
         <p className="mt-1 text-neutral-800 leading-snug">{view.summary}</p>
       </div>
       {deleted && (
-        <p className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+        <p className="flex items-start gap-2 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-900">
           <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" aria-hidden="true" />
           Recovery unavailable.
         </p>
@@ -97,7 +97,7 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
         <div>
           <p className="text-xs font-medium text-neutral-700 mb-2">Changes</p>
           <div className="overflow-x-auto rounded-md border border-neutral-200">
-            <table className="min-w-full text-[13px]">
+            <table className="min-w-full text-sm">
               <thead className="bg-neutral-50 text-left text-xs text-neutral-500">
                 <tr>
                   <th className="px-3 py-2 font-medium">Field</th>
@@ -123,12 +123,12 @@ function ActivityDetail({ log, detail, loading, error, onRetry }) {
           <button
             type="button"
             onClick={() => setTechnicalOpen((v) => !v)}
-            className="text-[13px] font-medium text-primary-700 hover:underline min-h-11 md:min-h-0"
+            className="text-sm font-medium text-primary-700 hover:underline min-h-11 md:min-h-0"
           >
             {technicalOpen ? 'Hide technical details' : 'Technical details'}
           </button>
           {technicalOpen && (
-            <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-neutral-200 bg-neutral-50 p-3 text-[11px] leading-relaxed text-neutral-600 font-mono whitespace-pre-wrap break-all">
+            <pre className="mt-2 max-h-48 overflow-auto rounded-md border border-neutral-200 bg-neutral-50 p-3 text-micro leading-relaxed text-neutral-600 font-mono whitespace-pre-wrap break-all">
               {view.technical}
             </pre>
           )}
@@ -347,7 +347,7 @@ const AuditLogPage = () => {
           )}
           <div className="mt-2 flex items-center justify-between gap-2">
             {dateInvalid ? (
-              <p className="text-xs text-red-600">From date must be on or before to date.</p>
+              <p className="text-xs text-error">From date must be on or before to date.</p>
             ) : <span />}
             <button
               type="button"
@@ -361,8 +361,8 @@ const AuditLogPage = () => {
         </div>
 
         {error && (
-          <div className="bg-white rounded-lg border border-red-200 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-red-700">Unable to load activity log.</p>
+          <div className="bg-white rounded-lg border border-error-border px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-error-fg">Unable to load activity log.</p>
             <button
               type="button"
               onClick={() => fetchLogs(page)}
@@ -413,9 +413,9 @@ const AuditLogPage = () => {
                       <span className="text-xs text-neutral-500 tabular-nums shrink-0">{formatAuditDateTime(log.createdAt)}</span>
                     </div>
                     <p className="mt-2 text-sm font-medium text-neutral-900 truncate">{log.userName || '—'}</p>
-                    <p className="text-[13px] text-neutral-800 mt-1">{view.record}</p>
-                    <p className="text-[13px] text-neutral-600 mt-0.5 line-clamp-2">{view.summary}</p>
-                    <span className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-primary-700">
+                    <p className="text-sm text-neutral-800 mt-1">{view.record}</p>
+                    <p className="text-sm text-neutral-600 mt-0.5 line-clamp-2">{view.summary}</p>
+                    <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-700">
                       <Eye className="h-4 w-4" aria-hidden="true" />
                       View
                     </span>
@@ -426,7 +426,7 @@ const AuditLogPage = () => {
 
             <div className={`hidden md:block bg-white rounded-lg border border-neutral-200 overflow-hidden ${loading ? 'opacity-60' : ''}`}>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-[13px]">
+                <table className="min-w-full text-sm">
                   <thead className="bg-neutral-50 border-b border-neutral-200">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-medium text-neutral-500">Date</th>
@@ -455,7 +455,7 @@ const AuditLogPage = () => {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); openDetail(log) }}
-                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[13px] font-medium text-primary-700 hover:bg-primary-50 min-h-9"
+                              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm font-medium text-primary-700 hover:bg-primary-50 min-h-9"
                             >
                               <Eye className="h-4 w-4" aria-hidden="true" />
                               View

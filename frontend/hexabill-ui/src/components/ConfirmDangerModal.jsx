@@ -80,22 +80,22 @@ const ConfirmDangerModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="confirm-danger-title">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full border border-red-100 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 pr-2 border-b border-red-100 bg-red-50 rounded-t-xl">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full border border-red-100 max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-4 pr-2 border-b border-red-100 bg-error-bg rounded-t-xl">
           <div className="flex items-center gap-3 min-w-0">
-            <AlertTriangle className="h-6 w-6 text-red-600 flex-shrink-0" />
-            <h2 id="confirm-danger-title" className="text-lg font-bold text-gray-900 truncate">{title}</h2>
+            <AlertTriangle className="h-6 w-6 text-error flex-shrink-0" />
+            <h2 id="confirm-danger-title" className="text-lg font-bold text-neutral-900 truncate">{title}</h2>
           </div>
-          <button type="button" onClick={handleClose} className="p-1 text-gray-400 hover:text-gray-600 rounded min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2" aria-label="Close">
+          <button type="button" onClick={handleClose} className="p-1 text-neutral-400 hover:text-neutral-600 rounded min-h-[44px] min-w-[44px] flex items-center justify-center -mr-2" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="p-4 overflow-y-auto overscroll-contain">
-          <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{message}</p>
+          <p className="text-neutral-700 text-sm leading-relaxed whitespace-pre-line">{message}</p>
 
           {showInput && (
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 {inputPlaceholder}
               </label>
               <input
@@ -103,7 +103,7 @@ const ConfirmDangerModal = ({
                 value={promptValue}
                 onChange={(e) => { setPromptValue(e.target.value); setError('') }}
                 placeholder={inputPlaceholder}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm"
                 onKeyDown={(e) => e.key === 'Enter' && isInputValid && (!needsTyped || isMatch) && handleConfirm()}
                 autoFocus
               />
@@ -112,36 +112,36 @@ const ConfirmDangerModal = ({
 
           {needsTyped && (
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Type <span className="font-bold text-red-600">{requireTypedText}</span> to confirm:
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
+                Type <span className="font-bold text-error">{requireTypedText}</span> to confirm:
               </label>
               <input
                 type="text"
                 value={typedText}
                 onChange={(e) => { setTypedText(e.target.value); setError('') }}
                 placeholder={`Type ${requireTypedText} here`}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase text-sm"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 uppercase text-sm"
                 onKeyDown={(e) => e.key === 'Enter' && isMatch && isInputValid && handleConfirm()}
               />
-              {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+              {error && <p className="mt-1 text-sm text-error">{error}</p>}
             </div>
           )}
 
-          {error && !needsTyped && <p className="mt-1 text-sm text-red-600">{error}</p>}
+          {error && !needsTyped && <p className="mt-1 text-sm text-error">{error}</p>}
 
           <div className="flex gap-3 mt-4">
             <button
               type="button"
               onClick={handleConfirm}
               disabled={(needsTyped && !isMatch) || (showInput && !isInputValid)}
-              className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 px-4 py-2.5 bg-error text-white rounded-lg hover:bg-red-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {confirmLabel}
             </button>
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-4 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium transition-colors"
+              className="flex-1 px-4 py-2.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 font-medium transition-colors"
             >
               Cancel
             </button>

@@ -46,7 +46,7 @@ class ErrorBoundary extends React.Component {
             <button
               type="button"
               onClick={this.handleReset}
-              className="flex min-h-11 items-center gap-2 mx-auto px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              className="flex min-h-11 items-center gap-2 mx-auto px-4 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600"
             >
               <RefreshCw className="h-4 w-4" />
               Reload page

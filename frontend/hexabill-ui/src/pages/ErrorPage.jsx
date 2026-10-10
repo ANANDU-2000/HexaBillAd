@@ -37,17 +37,17 @@ const ErrorPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
         <div className="mb-6">
           <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="h-10 w-10 text-red-600" />
+            <AlertTriangle className="h-10 w-10 text-error" />
           </div>
           <h1 className="text-xl font-semibold text-neutral-900 mb-2">{getErrorTitle()}</h1>
-          <p className="text-gray-600 mb-4">{getErrorDescription()}</p>
+          <p className="text-neutral-600 mb-4">{getErrorDescription()}</p>
           {errorStatus !== 404 && (
-            <div className="bg-gray-50 rounded-lg p-4 text-left">
-              <p className="text-sm text-gray-500 font-mono break-all">{errorMessage}</p>
+            <div className="bg-neutral-50 rounded-lg p-4 text-left">
+              <p className="text-sm text-neutral-500 font-mono break-all">{errorMessage}</p>
             </div>
           )}
         </div>
@@ -55,7 +55,7 @@ const ErrorPage = () => {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <LoadingButton
             onClick={() => navigate('/dashboard')}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+            className="flex-1 bg-primary-600 hover:bg-primary-700 text-white"
           >
             <Home className="h-4 w-4 mr-2" />
             Go to Dashboard
@@ -70,10 +70,10 @@ const ErrorPage = () => {
           </LoadingButton>
         </div>
 
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-sm text-gray-500">
+        <div className="mt-6 pt-6 border-t border-neutral-200">
+          <p className="text-sm text-neutral-500">
             Need help?{' '}
-            <a href="/help" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a href="/help" className="text-primary-600 hover:text-primary-700 font-medium">
               Contact Support
             </a>
           </p>

@@ -41,28 +41,28 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
 
       <div className="relative bg-white rounded-lg p-5 sm:p-6 w-full max-w-md my-auto max-h-[90vh] overflow-y-auto overscroll-contain">
         <div className="flex justify-between items-center mb-5">
-          <h2 className="text-lg font-semibold text-gray-900 pr-2">
+          <h2 className="text-lg font-semibold text-neutral-900 pr-2">
             Adjust Stock - {product?.nameEn || 'Product'}
           </h2>
           <button
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center"
+            className="text-neutral-400 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -mt-2 flex items-center justify-center"
             aria-label="Close"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600">Current Stock:</p>
-          <p className="text-lg font-semibold text-gray-900">
+        <div className="mb-4 p-4 bg-neutral-50 rounded-lg">
+          <p className="text-sm text-neutral-600">Current Stock:</p>
+          <p className="text-lg font-semibold text-neutral-900">
             {product?.stockQty ?? 0} {product?.unitType || ''}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Change Quantity *
             </label>
             <input
@@ -76,13 +76,13 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
               onChange={handleChange}
               placeholder="Enter positive or negative value"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               Use positive values to increase stock, negative to decrease
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-neutral-700 mb-1">
               Reason *
             </label>
             <textarea

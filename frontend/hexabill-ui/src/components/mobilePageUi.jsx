@@ -34,7 +34,7 @@ export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) =
           }`}
         >
           <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-primary-600' : 'text-neutral-500'}`} aria-hidden />
-          <span className={`text-[10px] leading-tight font-medium truncate max-w-full ${active ? 'font-semibold' : ''}`}>
+          <span className={`text-micro font-medium truncate max-w-full ${active ? 'font-semibold' : ''}`}>
             {tab.shortLabel || tab.label}
           </span>
         </button>
@@ -45,7 +45,7 @@ export const MobileIconTabBar = ({ tabs, activeId, onChange, className = '' }) =
 
 /** Period chips: 2×2 on xs, one row on sm+ — avoids tall vertical stacks */
 export const MobilePeriodBar = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-xl border border-neutral-200 p-3 ${className}`}>
+  <div className={`bg-white rounded-lg border border-surface-border p-3 ${className}`}>
     <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2">{children}</div>
   </div>
 )
@@ -83,9 +83,9 @@ export const MobileLedgerTxnCard = ({
 }) => {
   const border =
     variant === 'debit' || (debit > 0 && !credit)
-      ? 'border-red-200 bg-red-50/40'
+      ? 'border-error-border bg-error-bg/40'
       : variant === 'credit' || credit > 0
-        ? 'border-green-200 bg-green-50/40'
+        ? 'border-success-border bg-success-bg/40'
         : 'border-neutral-200 bg-white'
   const bal = Number(balance) || 0
   return (
@@ -100,7 +100,7 @@ export const MobileLedgerTxnCard = ({
           <p className={mobileLedgerLabelClass}>Balance</p>
           <p
             className={`${mobileLedgerAmountClass} ${
-              bal < 0 ? 'text-green-600' : bal > 0 ? 'text-red-600' : 'text-neutral-900'
+              bal < 0 ? 'text-success-fg' : bal > 0 ? 'text-error-fg' : 'text-neutral-900'
             }`}
           >
             {formatBalance(bal)}

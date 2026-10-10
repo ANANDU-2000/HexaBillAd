@@ -143,7 +143,7 @@ const CommandPalette = ({ open, onClose }) => {
             aria-activedescendant={results[active] ? `cp-${results[active].key}` : undefined}
             autoComplete="off"
           />
-          <kbd className="hidden rounded border border-surface-border px-1.5 py-0.5 text-[11px] text-neutral-500 sm:block">Esc</kbd>
+          <kbd className="hidden rounded border border-surface-border px-1.5 py-0.5 text-micro text-neutral-500 sm:block">Esc</kbd>
         </div>
         <ul id="command-palette-list" ref={listRef} role="listbox" className="max-h-[60vh] overflow-y-auto py-1">
           {results.map((item, index) => {
@@ -163,7 +163,7 @@ const CommandPalette = ({ open, onClose }) => {
                 {Icon && <Icon className="h-[18px] w-[18px] shrink-0 text-neutral-500" aria-hidden />}
                 <span className="min-w-0 flex-1 truncate">{item.label}</span>
                 {item.hint && <span className="hidden truncate text-xs text-neutral-500 sm:block">{item.hint}</span>}
-                <span className="shrink-0 text-[11px] uppercase tracking-wide text-neutral-400">{item.kind}</span>
+                <span className="shrink-0 text-micro uppercase tracking-wide text-neutral-400">{item.kind}</span>
                 {selected && <CornerDownLeft className="h-3.5 w-3.5 shrink-0 text-neutral-400" aria-hidden />}
               </li>
             )
@@ -175,7 +175,7 @@ const CommandPalette = ({ open, onClose }) => {
             <li className="px-4 py-2 text-xs text-neutral-500" aria-live="polite">Searching records…</li>
           )}
         </ul>
-        <div className="hidden items-center gap-4 border-t border-surface-border px-3 py-2 text-[11px] text-neutral-500 sm:flex">
+        <div className="hidden items-center gap-4 border-t border-surface-border px-3 py-2 text-micro text-neutral-500 sm:flex">
           <span><kbd className="font-sans">↑↓</kbd> move</span>
           <span><kbd className="font-sans">Enter</kbd> open</span>
           <span><kbd className="font-sans">Esc</kbd> close</span>

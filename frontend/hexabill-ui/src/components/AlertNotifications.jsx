@@ -182,7 +182,7 @@ const AlertNotifications = () => {
         return <AlertTriangle className="h-5 w-5 text-yellow-500" />
       case 'info':
       default:
-        return <Info className="h-5 w-5 text-blue-500" />
+        return <Info className="h-5 w-5 text-primary-500" />
     }
   }
 
@@ -191,12 +191,12 @@ const AlertNotifications = () => {
       case 'critical':
         return 'bg-red-100 text-red-800 border-red-300'
       case 'error':
-        return 'bg-red-100 text-red-700 border-red-200'
+        return 'bg-red-100 text-error-fg border-error-border'
       case 'warning':
         return 'bg-yellow-100 text-yellow-800 border-yellow-300'
       case 'info':
       default:
-        return 'bg-blue-100 text-blue-800 border-blue-300'
+        return 'bg-primary-100 text-primary-800 border-primary-300'
     }
   }
 
@@ -239,14 +239,14 @@ const AlertNotifications = () => {
           {/* Panel */}
           <div className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-lg border border-surface-border shadow-lg z-50 max-h-[min(600px,80vh)] flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
+            <div className="flex items-center justify-between p-4 border-b border-neutral-200">
+              <h3 className="text-lg font-bold text-neutral-900">Notifications</h3>
               <div className="flex items-center space-x-2">
                 {alerts.length > 0 && (
                   <>
                     <button
                       onClick={handleMarkAllAsRead}
-                      className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center space-x-1"
+                      className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded hover:bg-primary-200 flex items-center space-x-1"
                       title="Mark all as read"
                     >
                       <CheckCheck className="h-3 w-3" />
@@ -254,7 +254,7 @@ const AlertNotifications = () => {
                     </button>
                     <button
                       onClick={handleDismissAll}
-                      className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center space-x-1"
+                      className="text-xs px-2 py-1 bg-neutral-100 text-neutral-700 rounded hover:bg-neutral-200 flex items-center space-x-1"
                       title="Dismiss all notifications"
                     >
                       <Trash2 className="h-3 w-3" />
@@ -264,7 +264,7 @@ const AlertNotifications = () => {
                 )}
                 <button
                   onClick={() => setShowPanel(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-neutral-400 hover:text-neutral-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -275,22 +275,22 @@ const AlertNotifications = () => {
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                 </div>
               ) : alerts.length === 0 ? (
                 <div className="text-center py-12 px-4">
                   <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">No notifications</p>
+                  <p className="text-neutral-500 text-sm">No notifications</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-neutral-100">
                   {alerts.map((alert) => {
                     const action = getAlertAction(alert)
                     return (
                       <div
                         key={alert.id}
-                        className={`p-4 hover:bg-gray-50 transition ${
-                          !alert.isRead ? 'bg-blue-50' : ''
+                        className={`p-4 hover:bg-neutral-50 transition ${
+                          !alert.isRead ? 'bg-primary-50' : ''
                         } ${alert.isResolved ? 'opacity-50' : ''}`}
                         onClick={() => !alert.isRead && handleMarkAsRead(alert.id)}
                       >
@@ -303,15 +303,15 @@ const AlertNotifications = () => {
                               <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-md border ${getSeverityBadgeColor(alert.severity)}`}>
                                 {alert.type}
                               </span>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-neutral-500">
                                 {formatTimeAgo(alert.createdAt)}
                               </span>
                             </div>
-                            <p className="text-sm font-medium text-gray-900 mb-1">
+                            <p className="text-sm font-medium text-neutral-900 mb-1">
                               {alert.title}
                             </p>
                             {alert.message && (
-                              <p className="text-xs text-gray-600 mb-2">
+                              <p className="text-xs text-neutral-600 mb-2">
                                 {alert.message}
                               </p>
                             )}
@@ -323,7 +323,7 @@ const AlertNotifications = () => {
                                     navigate(action.path)
                                     setShowPanel(false)
                                   }}
-                                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                                  className="text-xs text-primary-600 hover:text-primary-800 flex items-center space-x-1"
                                 >
                                   <span>{action.label}</span>
                                   <ExternalLink className="h-3 w-3" />
@@ -335,7 +335,7 @@ const AlertNotifications = () => {
                                     e.stopPropagation()
                                     handleMarkAsResolved(alert.id)
                                   }}
-                                  className="text-xs text-green-600 hover:text-green-800"
+                                  className="text-xs text-success hover:text-green-800"
                                 >
                                   Resolve
                                 </button>

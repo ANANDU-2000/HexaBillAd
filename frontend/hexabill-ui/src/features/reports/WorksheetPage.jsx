@@ -149,7 +149,7 @@ const WorksheetPage = () => {
   return (
     <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+        <h1 className="text-xl font-semibold text-neutral-900 flex items-center gap-2">
           <FileText className="h-6 w-6 text-primary-600" />
           Worksheet
         </h1>
@@ -163,7 +163,7 @@ const WorksheetPage = () => {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   preset === p.id
                     ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                 }`}
               >
                 {p.label}
@@ -178,7 +178,7 @@ const WorksheetPage = () => {
                 onChange={(e) => setFromDate(e.target.value)}
                 className="w-36"
               />
-              <span className="text-gray-500">to</span>
+              <span className="text-neutral-500">to</span>
               <Input
                 type="date"
                 value={toDate}
@@ -199,7 +199,7 @@ const WorksheetPage = () => {
         </div>
       </div>
 
-      <p className="text-sm text-gray-500 mb-3 flex items-center gap-1">
+      <p className="text-sm text-neutral-500 mb-3 flex items-center gap-1">
         <Calendar className="h-4 w-4" />
         Period: {periodLabel}
       </p>
@@ -208,52 +208,52 @@ const WorksheetPage = () => {
 
       {!loading && data && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <TrendingUp className="h-5 w-5 text-green-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-neutral-600 mb-1">
+              <TrendingUp className="h-5 w-5 text-success" />
               <span className="text-sm font-medium">Total Sales</span>
             </div>
-            <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.totalSales)}</p>
+            <p className="text-xl font-semibold text-neutral-900">{formatCurrency(data.totalSales)}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <TrendingDown className="h-5 w-5 text-amber-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-neutral-600 mb-1">
+              <TrendingDown className="h-5 w-5 text-warning" />
               <span className="text-sm font-medium">Total Purchases</span>
             </div>
-            <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.totalPurchases)}</p>
+            <p className="text-xl font-semibold text-neutral-900">{formatCurrency(data.totalPurchases)}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <Receipt className="h-5 w-5 text-gray-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-neutral-600 mb-1">
+              <Receipt className="h-5 w-5 text-neutral-600" />
               <span className="text-sm font-medium">Total Expenses</span>
             </div>
-            <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.totalExpenses)}</p>
+            <p className="text-xl font-semibold text-neutral-900">{formatCurrency(data.totalExpenses)}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <CreditCard className="h-5 w-5 text-blue-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
+            <div className="flex items-center gap-2 text-neutral-600 mb-1">
+              <CreditCard className="h-5 w-5 text-primary-600" />
               <span className="text-sm font-medium">Total Received</span>
             </div>
-            <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.totalReceived)}</p>
+            <p className="text-xl font-semibold text-neutral-900">{formatCurrency(data.totalReceived)}</p>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm col-span-2 md:col-span-1 lg:col-span-1">
-            <div className="flex items-center gap-2 text-gray-600 mb-1">
-              <AlertCircle className="h-5 w-5 text-amber-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm col-span-2 md:col-span-1 lg:col-span-1">
+            <div className="flex items-center gap-2 text-neutral-600 mb-1">
+              <AlertCircle className="h-5 w-5 text-warning" />
               <span className="text-sm font-medium">Pending Amount</span>
             </div>
-            <p className="text-xl font-semibold text-gray-900">{formatCurrency(data.pendingAmount)}</p>
+            <p className="text-xl font-semibold text-neutral-900">{formatCurrency(data.pendingAmount)}</p>
           </div>
         </div>
       )}
 
       {!loading && !data && effectiveRange && (
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-gray-500">
+        <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-6 text-center text-neutral-500">
           No data for the selected period.
         </div>
       )}
 
       {!loading && !effectiveRange && preset === 'custom' && (
-        <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 text-center text-gray-500">
+        <div className="bg-neutral-50 rounded-lg border border-neutral-200 p-6 text-center text-neutral-500">
           Select From and To dates for a custom range.
         </div>
       )}

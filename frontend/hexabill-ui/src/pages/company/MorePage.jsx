@@ -39,7 +39,7 @@ const MorePage = () => {
                         <Link
                           to={item.href}
                           aria-current={active ? 'page' : undefined}
-                          className={`flex items-center gap-3 min-h-11 px-4 py-3 rounded-xl bg-white border transition-colors ${
+                          className={`flex items-center gap-3 min-h-11 px-4 py-3 rounded-lg bg-white border transition-colors ${
                             active
                               ? 'border-primary-300 bg-primary-50/50'
                               : 'border-neutral-200 text-text-primary hover:border-primary-300 hover:bg-primary-50/50'

@@ -73,11 +73,11 @@ const SuperAdminSubscriptionsPage = () => {
     }
     const map = {
       active: 'bg-green-100 text-green-800',
-      trial: 'bg-blue-100 text-blue-800',
+      trial: 'bg-primary-100 text-primary-800',
       suspended: 'bg-yellow-100 text-yellow-800',
       expired: 'bg-red-100 text-red-800'
     }
-    const cls = map[s] || 'bg-gray-100 text-gray-800'
+    const cls = map[s] || 'bg-neutral-100 text-neutral-800'
     return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${cls}`}>{status || '—'}</span>
   }
 
@@ -140,7 +140,7 @@ const SuperAdminSubscriptionsPage = () => {
           </div>
         </div>
 
-        <div className="mb-6 p-4 bg-white rounded-xl border border-neutral-200">
+        <div className="mb-6 p-4 bg-white rounded-lg border border-neutral-200">
           <h3 className="text-sm font-medium text-neutral-500 mb-1">Platform MRR (from active subscriptions)</h3>
           <p className="text-2xl font-bold text-primary-600">{formatCurrency(mrrTotal)}</p>
         </div>
@@ -166,7 +166,7 @@ const SuperAdminSubscriptionsPage = () => {
           />
         </div>
 
-        <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+        <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-neutral-200">
               <thead className="bg-neutral-50">

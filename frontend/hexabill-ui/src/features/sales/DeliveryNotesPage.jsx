@@ -100,7 +100,7 @@ export default function DeliveryNotesPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 border border-neutral-300 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
         >
           <RefreshCw className="w-4 h-4" /> Refresh
         </button>
@@ -108,25 +108,25 @@ export default function DeliveryNotesPage() {
 
       <div className="shrink-0 mb-2 flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[10rem] max-w-md">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-400 h-4 w-4" />
           <input
             type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search invoice #, customer…"
-            className="w-full border border-gray-300 rounded-md pl-8 pr-2 py-1.5 text-sm bg-white"
+            className="w-full border border-neutral-300 rounded-md pl-8 pr-2 py-1.5 text-sm bg-white"
           />
         </div>
-        <span className="text-xs text-gray-500 whitespace-nowrap">
+        <span className="text-xs text-neutral-500 whitespace-nowrap">
           {rows.length} / {totalCount}
         </span>
       </div>
 
       {error && (
-        <div className="shrink-0 text-sm text-red-600 mb-2 bg-red-50 border border-red-200 rounded px-3 py-1.5">{error}</div>
+        <div className="shrink-0 text-sm text-error mb-2 bg-error-bg border border-error-border rounded px-3 py-1.5">{error}</div>
       )}
 
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-gray-200 rounded-lg">
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-white border border-neutral-200 rounded-lg">
         {loading ? (
           <p className="text-sm text-text-secondary p-4">Loading…</p>
         ) : rows.length === 0 ? (
@@ -173,7 +173,7 @@ export default function DeliveryNotesPage() {
                         <div className="flex flex-wrap items-center gap-1 justify-end">
                           <Link
                             to={`/delivery-notes/${r.id}`}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-200 text-xs hover:bg-neutral-50"
                             title="View"
                           >
                             <Eye className="w-3.5 h-3.5" /> View
@@ -182,7 +182,7 @@ export default function DeliveryNotesPage() {
                             type="button"
                             disabled={busy}
                             onClick={() => handlePdf(r, 'A4', 'download')}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-200 text-xs hover:bg-neutral-50 disabled:opacity-50"
                             title="Download full PDF"
                           >
                             <Download className="w-3.5 h-3.5" /> PDF
@@ -191,7 +191,7 @@ export default function DeliveryNotesPage() {
                             type="button"
                             disabled={busy}
                             onClick={() => handlePdf(r, 'A4', 'print')}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-200 text-xs hover:bg-neutral-50 disabled:opacity-50"
                             title="Print A4 on letterhead"
                           >
                             <Printer className="w-3.5 h-3.5" /> A4
@@ -200,7 +200,7 @@ export default function DeliveryNotesPage() {
                             type="button"
                             disabled={busy}
                             onClick={() => handlePdf(r, 'A5', 'print')}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 text-xs hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded border border-neutral-200 text-xs hover:bg-neutral-50 disabled:opacity-50"
                             title="Print A5 on letterhead"
                           >
                             <Printer className="w-3.5 h-3.5" /> A5
@@ -226,7 +226,7 @@ export default function DeliveryNotesPage() {
           >
             <ChevronLeft className="w-4 h-4" /> Prev
           </button>
-          <span className="text-sm text-gray-600">
+          <span className="text-sm text-neutral-600">
             Page {currentPage} of {totalPages}
           </span>
           <button

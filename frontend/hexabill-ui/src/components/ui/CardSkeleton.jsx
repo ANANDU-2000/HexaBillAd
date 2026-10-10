@@ -1,12 +1,10 @@
-/**
- * Skeleton placeholder for cards - use while loading
- */
+/** Card-shaped loading placeholder. */
 export function CardSkeleton({ lines = 2, className = '' }) {
   return (
-    <div className={`bg-white rounded-lg border border-neutral-200 p-6 animate-pulse ${className}`}>
-      <div className="h-4 bg-neutral-200 rounded w-1/4 mb-4" />
+    <div className={`rounded-lg border border-surface-border bg-white p-5 ${className}`} role="status" aria-label="Loading">
+      <div className="skeleton mb-4 h-4 w-1/4" aria-hidden="true" />
       {Array.from({ length: lines }).map((_, i) => (
-        <div key={i} className="h-4 bg-neutral-200 rounded mb-2" style={{ width: i === lines - 1 ? '60%' : '100%' }} />
+        <div key={i} className="skeleton mb-2 h-4" style={{ width: i === lines - 1 ? '60%' : '100%' }} aria-hidden="true" />
       ))}
     </div>
   )

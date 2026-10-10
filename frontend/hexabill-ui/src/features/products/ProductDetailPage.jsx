@@ -152,7 +152,7 @@ const ProductDetailPage = () => {
   if (!product) {
     return (
       <div className="p-4 md:p-6">
-        <div className="bg-white rounded-xl border border-neutral-200 p-6">
+        <div className="bg-white rounded-lg border border-neutral-200 p-6">
           <p className="text-neutral-600">Product not found</p>
           <Link to="/products" className="text-primary-600 hover:underline mt-4 inline-block min-h-11">
             Back to Products
@@ -197,7 +197,7 @@ const ProductDetailPage = () => {
             <button
               type="button"
               onClick={() => setShowStockModal(true)}
-              className="inline-flex items-center px-4 py-2 min-h-11 border border-green-300 rounded-lg text-sm font-medium text-green-800 bg-green-50 hover:bg-green-100"
+              className="inline-flex items-center px-4 py-2 min-h-11 border border-green-300 rounded-lg text-sm font-medium text-green-800 bg-success-bg hover:bg-green-100"
             >
               <Package className="h-4 w-4 mr-2" />
               Adjust stock
@@ -213,7 +213,7 @@ const ProductDetailPage = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-neutral-200 p-4 md:p-6">
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="shrink-0">
             {product.imageUrl ? (
@@ -252,7 +252,7 @@ const ProductDetailPage = () => {
                 {product.isActive === false ? (
                   <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Inactive</span>
                 ) : (
-                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-50 text-green-800">Active</span>
+                  <span className="inline-flex px-2 py-0.5 rounded text-xs font-medium bg-success-bg text-green-800">Active</span>
                 )}
               </p>
             </div>
@@ -267,15 +267,15 @@ const ProductDetailPage = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white rounded-lg border border-neutral-200 p-4">
           <p className="text-xs font-medium text-neutral-500">Cost price</p>
           <p className="text-lg font-bold text-neutral-900 mt-1">{formatCurrency(product.costPrice ?? 0)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white rounded-lg border border-neutral-200 p-4">
           <p className="text-xs font-medium text-neutral-500">Sell price</p>
           <p className="text-lg font-bold text-neutral-900 mt-1">{formatCurrency(product.sellPrice ?? 0)}</p>
         </div>
-        <div className="bg-white rounded-xl border border-neutral-200 p-4">
+        <div className="bg-white rounded-lg border border-neutral-200 p-4">
           <p className="text-xs font-medium text-neutral-500">Unit / conversion</p>
           <p className="text-lg font-bold text-neutral-900 mt-1">
             {product.unitType || '—'}
@@ -284,12 +284,12 @@ const ProductDetailPage = () => {
             ) : null}
           </p>
         </div>
-        <div className={`bg-white rounded-xl border p-4 ${isLowStock ? 'border-red-300 bg-red-50/50' : 'border-neutral-200'}`}>
+        <div className={`bg-white rounded-lg border p-4 ${isLowStock ? 'border-red-300 bg-error-bg/50' : 'border-neutral-200'}`}>
           <p className="text-xs font-medium text-neutral-500 flex items-center gap-1">
             Stock
-            {isLowStock && <AlertTriangle className="h-3.5 w-3.5 text-red-600" aria-hidden />}
+            {isLowStock && <AlertTriangle className="h-3.5 w-3.5 text-error" aria-hidden />}
           </p>
-          <p className={`text-lg font-bold mt-1 ${isLowStock ? 'text-red-700' : 'text-neutral-900'}`}>
+          <p className={`text-lg font-bold mt-1 ${isLowStock ? 'text-error-fg' : 'text-neutral-900'}`}>
             {product.stockQty ?? 0}
             <span className="text-sm font-normal text-neutral-600"> / reorder {product.reorderLevel ?? 0}</span>
           </p>
@@ -297,14 +297,14 @@ const ProductDetailPage = () => {
       </div>
 
       {(product.descriptionEn || product.descriptionAr) && (
-        <div className="bg-white rounded-xl border border-neutral-200 p-4 md:p-6">
+        <div className="bg-white rounded-lg border border-neutral-200 p-4 md:p-6">
           <h2 className="text-base font-semibold text-neutral-900 mb-2">Description</h2>
           {product.descriptionEn && <p className="text-sm text-neutral-700">{product.descriptionEn}</p>}
           {product.descriptionAr && <p className="text-sm text-neutral-700 mt-2" dir="rtl">{product.descriptionAr}</p>}
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 p-4 md:p-6">
+      <div className="bg-white rounded-lg border border-neutral-200 p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-neutral-900">Recent stock movements</h2>
           <button
@@ -371,7 +371,7 @@ const ProductDetailPage = () => {
 
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
-          <div className="bg-white w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-xl border border-neutral-200 shadow-lg">
+          <div className="bg-white w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto rounded-t-xl sm:rounded-lg border border-neutral-200 shadow-lg">
             <div className="sticky top-0 bg-white border-b border-neutral-200 px-4 py-3 flex justify-between items-center">
               <h3 className="font-semibold text-neutral-900">Edit product</h3>
               <button type="button" onClick={() => setShowEditModal(false)} className="min-h-11 min-w-11 px-2 text-neutral-600">×</button>

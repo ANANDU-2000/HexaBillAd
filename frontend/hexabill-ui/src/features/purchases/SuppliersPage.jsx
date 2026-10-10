@@ -22,9 +22,9 @@ const emptyForm = { name: '', phone: '', email: '', address: '', creditLimit: ''
 function moneyTone(kind, value) {
   const n = Number(value) || 0
   if (n === 0) return 'text-neutral-800'
-  if (kind === 'paid' && n > 0) return 'text-green-700'
-  if (kind === 'due' && n > 0) return 'text-amber-700'
-  if (kind === 'overdue' && n > 0) return 'text-red-700'
+  if (kind === 'paid' && n > 0) return 'text-success-fg'
+  if (kind === 'due' && n > 0) return 'text-warning-fg'
+  if (kind === 'overdue' && n > 0) return 'text-error-fg'
   return 'text-neutral-800'
 }
 
@@ -398,7 +398,7 @@ const SuppliersPage = () => {
   const supplierFields = (form, setForm, idPrefix) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="sm:col-span-2 sm:max-w-md">
-        <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-name`}>Name <span className="text-red-600">*</span></label>
+        <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-name`}>Name <span className="text-error">*</span></label>
         <input id={`${idPrefix}-name`} type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={fieldClass} required />
       </div>
       <div className="sm:max-w-xs">
@@ -496,7 +496,7 @@ const SuppliersPage = () => {
         ) : (
           <>
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-[13px]">
+              <table className="w-full text-sm">
                 <thead className="bg-neutral-50 text-neutral-500">
                   <tr>
                     <th className="text-left font-medium px-2 py-2">Supplier</th>
@@ -541,7 +541,7 @@ const SuppliersPage = () => {
                       <td className="px-2 h-10 font-medium text-neutral-900">
                         <span className="inline-flex items-center gap-2">
                           {s.supplierName}
-                          {s.isActive === false && <span className="px-1.5 py-0.5 text-[11px] font-medium rounded bg-amber-50 text-amber-800 border border-amber-200">Deactivated</span>}
+                          {s.isActive === false && <span className="px-1.5 py-0.5 text-micro font-medium rounded bg-warning-bg text-amber-800 border border-warning-border">Deactivated</span>}
                         </span>
                       </td>
                       <td className="px-2 h-10 text-neutral-600">{s.phone || '—'}</td>
@@ -561,7 +561,7 @@ const SuppliersPage = () => {
                             <button type="button" onClick={() => openEditModal(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-neutral-700 hover:bg-neutral-100" title="Edit" aria-label={`Edit ${s.supplierName}`}>
                               <Pencil className="h-4 w-4" />
                             </button>
-                            <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-red-700 hover:bg-red-50" title="Deactivate" aria-label={`Deactivate ${s.supplierName}`}>
+                            <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center justify-center h-9 w-9 rounded-md text-error-fg hover:bg-error-bg" title="Deactivate" aria-label={`Deactivate ${s.supplierName}`}>
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </>
@@ -600,7 +600,7 @@ const SuppliersPage = () => {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold text-neutral-900">{s.supplierName}</p>
-                    {s.isActive === false && <span className="text-[11px] text-amber-800">Deactivated</span>}
+                    {s.isActive === false && <span className="text-micro text-amber-800">Deactivated</span>}
                   </div>
                   <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                     <div>
@@ -622,7 +622,7 @@ const SuppliersPage = () => {
                       {moreName === s.supplierName && (
                         <div className="mt-2 flex gap-2">
                           <button type="button" onClick={() => openEditModal(s)} className={`${btnOutline} gap-1`}><Pencil className="h-4 w-4" /> Edit</button>
-                          <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center gap-1 h-11 px-3 text-sm font-medium border border-red-200 rounded-md text-red-700 bg-white"><Trash2 className="h-4 w-4" /> Deactivate</button>
+                          <button type="button" onClick={() => setDeleteConfirm(s)} className="inline-flex items-center gap-1 h-11 px-3 text-sm font-medium border border-error-border rounded-md text-error-fg bg-white"><Trash2 className="h-4 w-4" /> Deactivate</button>
                         </div>
                       )}
                     </div>
@@ -657,7 +657,7 @@ const SuppliersPage = () => {
           <form onSubmit={handleUpdateSupplier} className="space-y-4">
             {editFormIsDeactivated && <p className="text-xs text-amber-800">This supplier is deactivated.</p>}
             {editFormLoadFailed && (
-              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              <p className="text-sm text-amber-800 bg-warning-bg border border-warning-border rounded-md px-3 py-2">
                 Supplier details could not be loaded. You can view what is shown, but changes cannot be saved.
               </p>
             )}
@@ -682,7 +682,7 @@ const SuppliersPage = () => {
             </p>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={() => !deleting && setDeleteConfirm(null)} className={btnOutline}>Cancel</button>
-              <button type="button" onClick={handleDeleteSupplier} disabled={deleting} className="inline-flex items-center justify-center h-11 sm:h-9 px-3 text-sm font-semibold bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-60">
+              <button type="button" onClick={handleDeleteSupplier} disabled={deleting} className="inline-flex items-center justify-center h-11 sm:h-9 px-3 text-sm font-semibold bg-error text-white rounded-md hover:bg-red-700 disabled:opacity-60">
                 {deleting ? 'Deactivating...' : 'Deactivate'}
               </button>
             </div>

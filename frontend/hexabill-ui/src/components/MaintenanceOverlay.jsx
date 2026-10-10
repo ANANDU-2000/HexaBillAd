@@ -28,7 +28,7 @@ export const MaintenanceOverlay = () => {
       role="alert"
       aria-live="assertive"
     >
-      <div className="max-w-md mx-4 p-8 bg-white rounded-xl shadow-2xl text-center">
+      <div className="max-w-md mx-4 p-8 bg-white rounded-lg shadow-2xl text-center">
         <Construction className="h-16 w-16 mx-auto text-amber-500 mb-4" strokeWidth={1.5} />
         <h1 className="text-xl font-bold text-slate-900 mb-2">Under Maintenance</h1>
         <p className="text-slate-600 mb-6">{message}</p>

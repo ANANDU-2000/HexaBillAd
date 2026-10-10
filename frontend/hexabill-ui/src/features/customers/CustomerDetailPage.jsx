@@ -110,9 +110,9 @@ const CustomerDetailPage = () => {
   if (!customer) {
     return (
       <div className="p-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <p className="text-gray-500">Customer not found</p>
-          <Link to="/customers" className="text-blue-600 hover:underline mt-4 inline-block">
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+          <p className="text-neutral-500">Customer not found</p>
+          <Link to="/customers" className="text-primary-600 hover:underline mt-4 inline-block">
             Back to Customers
           </Link>
         </div>
@@ -128,14 +128,14 @@ const CustomerDetailPage = () => {
           <button
             type="button"
             onClick={() => navigate(location.state?.returnTo || '/customers')}
-            className="p-2 hover:bg-gray-100 rounded-md transition-colors min-h-11 min-w-11"
+            className="p-2 hover:bg-neutral-100 rounded-md transition-colors min-h-11 min-w-11"
             aria-label="Go back"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <h1 className="text-xl font-semibold text-neutral-900">{customer.name}</h1>
-            <p className="text-sm text-gray-500">Customer Details</p>
+            <p className="text-sm text-neutral-500">Customer Details</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -150,7 +150,7 @@ const CustomerDetailPage = () => {
           <Link
             to={buildCustomerLedgerHref({ customerId: customer.id })}
             state={{ returnTo }}
-            className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
           >
             <CreditCard className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Open ledger
@@ -158,14 +158,14 @@ const CustomerDetailPage = () => {
           <button
             type="button"
             onClick={() => navigate(`/customers?edit=${customer.id}`)}
-            className="inline-flex min-h-[44px] items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 shadow-sm hover:bg-neutral-50"
           >
             <Edit className="h-4 w-4 mr-2 shrink-0" aria-hidden />
             Edit
           </button>
           <Link
             to="/reports?tab=overdue"
-            className="inline-flex min-h-[44px] items-center rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+            className="inline-flex min-h-[44px] items-center rounded-md border border-warning-border bg-warning-bg px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
           >
             Overdue report
           </Link>
@@ -173,35 +173,35 @@ const CustomerDetailPage = () => {
       </div>
 
       {/* Statement PDF — date range + loading / error handled via toast + disabled state */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-3">Account statement (PDF)</h2>
-        <p className="text-sm text-gray-600 mb-4">Pick the period, then download. Large ranges may take longer.</p>
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4 md:p-6">
+        <h2 className="text-lg font-semibold text-neutral-900 mb-3">Account statement (PDF)</h2>
+        <p className="text-sm text-neutral-600 mb-4">Pick the period, then download. Large ranges may take longer.</p>
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
             <input
               type="date"
               value={statementFrom}
               onChange={(e) => setStatementFrom(e.target.value)}
               disabled={statementDownloading}
-              className="block w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
+              className="block w-full sm:w-auto border border-neutral-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
+            <label className="block text-xs font-medium text-neutral-600 mb-1">To</label>
             <input
               type="date"
               value={statementTo}
               onChange={(e) => setStatementTo(e.target.value)}
               disabled={statementDownloading}
-              className="block w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
+              className="block w-full sm:w-auto border border-neutral-300 rounded-md px-3 py-2 text-sm min-h-11 disabled:opacity-50"
             />
           </div>
           <button
             type="button"
             onClick={handleSendStatement}
             disabled={statementDownloading}
-            className="inline-flex items-center justify-center px-4 py-2 min-h-11 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center px-4 py-2 min-h-11 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Mail className="h-4 w-4 mr-2 shrink-0" />
             {statementDownloading ? 'Generating…' : 'Download statement'}
@@ -210,69 +210,69 @@ const CustomerDetailPage = () => {
       </div>
 
       {/* Customer Info Card */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h2>
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
+        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Customer Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div>
-            <label className="text-sm font-medium text-gray-500">Phone</label>
+            <label className="text-sm font-medium text-neutral-500">Phone</label>
             <div className="mt-1 flex items-center gap-2">
-              <Phone className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-900">{customer.phone || 'N/A'}</span>
+              <Phone className="h-4 w-4 text-neutral-400" />
+              <span className="text-sm text-neutral-900">{customer.phone || 'N/A'}</span>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Email</label>
+            <label className="text-sm font-medium text-neutral-500">Email</label>
             <div className="mt-1 flex items-center gap-2">
-              <Mail className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-900">{customer.email || 'N/A'}</span>
+              <Mail className="h-4 w-4 text-neutral-400" />
+              <span className="text-sm text-neutral-900">{customer.email || 'N/A'}</span>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">TRN</label>
-            <div className="mt-1 text-sm text-gray-900">{customer.trn || 'N/A'}</div>
+            <label className="text-sm font-medium text-neutral-500">TRN</label>
+            <div className="mt-1 text-sm text-neutral-900">{customer.trn || 'N/A'}</div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Address</label>
+            <label className="text-sm font-medium text-neutral-500">Address</label>
             <div className="mt-1 flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-900">{customer.address || 'N/A'}</span>
+              <MapPin className="h-4 w-4 text-neutral-400" />
+              <span className="text-sm text-neutral-900">{customer.address || 'N/A'}</span>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Location</label>
-            <div className="mt-1 text-sm text-gray-900">{customer.location || 'N/A'}</div>
+            <label className="text-sm font-medium text-neutral-500">Location</label>
+            <div className="mt-1 text-sm text-neutral-900">{customer.location || 'N/A'}</div>
             {(customer.mainLatitude != null && customer.mainLongitude != null) && (
-              <div className="mt-2 text-sm text-gray-700">
+              <div className="mt-2 text-sm text-neutral-700">
                 GPS: {Number(customer.mainLatitude).toFixed(6)}, {Number(customer.mainLongitude).toFixed(6)}
               </div>
             )}
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Customer Type</label>
-            <div className="mt-1 text-sm text-gray-900">{customer.customerType || 'Credit'}</div>
+            <label className="text-sm font-medium text-neutral-500">Customer Type</label>
+            <div className="mt-1 text-sm text-neutral-900">{customer.customerType || 'Credit'}</div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Payment Terms</label>
-            <div className="mt-1 text-sm text-gray-900">{customer.paymentTerms || 'N/A'}</div>
+            <label className="text-sm font-medium text-neutral-500">Payment Terms</label>
+            <div className="mt-1 text-sm text-neutral-900">{customer.paymentTerms || 'N/A'}</div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Credit Limit</label>
-            <div className="mt-1 text-sm text-gray-900">{formatCurrency(customer.creditLimit || 0)}</div>
+            <label className="text-sm font-medium text-neutral-500">Credit Limit</label>
+            <div className="mt-1 text-sm text-neutral-900">{formatCurrency(customer.creditLimit || 0)}</div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Last Activity</label>
+            <label className="text-sm font-medium text-neutral-500">Last Activity</label>
             <div className="mt-1 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-900">
+              <Calendar className="h-4 w-4 text-neutral-400" />
+              <span className="text-sm text-neutral-900">
                 {customer.lastActivity ? new Date(customer.lastActivity).toLocaleDateString() : 'No activity'}
               </span>
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-500">Last Payment</label>
+            <label className="text-sm font-medium text-neutral-500">Last Payment</label>
             <div className="mt-1 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-gray-400" />
-              <span className="text-sm text-gray-900">
+              <Calendar className="h-4 w-4 text-neutral-400" />
+              <span className="text-sm text-neutral-900">
                 {customer.lastPaymentDate ? new Date(customer.lastPaymentDate).toLocaleDateString() : 'No payments'}
               </span>
             </div>
@@ -282,40 +282,40 @@ const CustomerDetailPage = () => {
 
       {/* Balance Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label className="text-sm font-medium text-gray-500">Total Sales</label>
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+          <label className="text-sm font-medium text-neutral-500">Total Sales</label>
           <div className="mt-2 text-xl font-semibold text-neutral-900">
             {formatCurrency(customer.totalSales || 0)}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label className="text-sm font-medium text-gray-500">Total Payments</label>
-          <div className="mt-2 text-2xl font-bold text-green-600">
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+          <label className="text-sm font-medium text-neutral-500">Total Payments</label>
+          <div className="mt-2 text-2xl font-bold text-success">
             {formatCurrency(customer.totalPayments || 0)}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label className="text-sm font-medium text-gray-500">Pending Balance</label>
-          <div className={`mt-2 text-2xl font-bold ${(customer.pendingBalance || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+          <label className="text-sm font-medium text-neutral-500">Pending Balance</label>
+          <div className={`mt-2 text-2xl font-bold ${(customer.pendingBalance || 0) > 0 ? 'text-error' : 'text-neutral-900'}`}>
             {formatBalance(customer.pendingBalance || 0)}
           </div>
         </div>
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <label className="text-sm font-medium text-gray-500">Current Balance</label>
-          <div className={`mt-2 text-2xl font-bold ${customer.balance > 0 ? 'text-red-600' : customer.balance < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+          <label className="text-sm font-medium text-neutral-500">Current Balance</label>
+          <div className={`mt-2 text-2xl font-bold ${customer.balance > 0 ? 'text-error' : customer.balance < 0 ? 'text-success' : 'text-neutral-900'}`}>
             {formatBalance(customer.balance || 0)}
           </div>
         </div>
       </div>
 
       {/* Transaction History */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Transaction History</h2>
+          <h2 className="text-lg font-semibold text-neutral-900">Transaction History</h2>
           <button
             onClick={loadLedger}
             disabled={ledgerLoading}
-            className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${ledgerLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -323,13 +323,13 @@ const CustomerDetailPage = () => {
         </div>
         {ledgerLoading ? (
           <div className="py-8 text-center">
-            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-gray-400" />
-            <p className="mt-2 text-sm text-gray-500">Loading transactions...</p>
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-neutral-400" />
+            <p className="mt-2 text-sm text-neutral-500">Loading transactions...</p>
           </div>
         ) : ledger.length === 0 ? (
           <div className="py-8 text-center">
-            <FileText className="h-12 w-12 mx-auto text-gray-400" />
-            <p className="mt-2 text-sm text-gray-500">No transactions found</p>
+            <FileText className="h-12 w-12 mx-auto text-neutral-400" />
+            <p className="mt-2 text-sm text-neutral-500">No transactions found</p>
           </div>
         ) : (
           <>
@@ -354,34 +354,34 @@ const CustomerDetailPage = () => {
             ))}
           </div>
           <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-neutral-200">
+              <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reference</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Debit</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Credit</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Reference</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Remarks</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Debit</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Credit</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Balance</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-neutral-200">
                 {ledger.map((entry, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  <tr key={index} className="hover:bg-neutral-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
                       {new Date(entry.date).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{entry.type}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{entry.reference || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-900">{entry.remarks || '-'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">{entry.type}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">{entry.reference || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-neutral-900">{entry.remarks || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                       {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-success">
                       {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                     </td>
-                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-medium ${entry.balance > 0 ? 'text-red-600' : entry.balance < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                    <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-medium ${entry.balance > 0 ? 'text-error' : entry.balance < 0 ? 'text-success' : 'text-neutral-900'}`}>
                       {formatBalance(entry.balance)}
                     </td>
                   </tr>

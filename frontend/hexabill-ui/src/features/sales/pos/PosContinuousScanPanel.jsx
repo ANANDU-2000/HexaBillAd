@@ -124,11 +124,11 @@ export default function PosContinuousScanPanel({
       aria-label="Continuous barcode scanner"
     >
       <div className="flex items-center justify-between gap-1 px-2 py-1.5 bg-neutral-800 text-white">
-        <span className="text-[11px] font-semibold inline-flex items-center gap-1">
+        <span className="text-micro font-semibold inline-flex items-center gap-1">
           <Camera className="h-3.5 w-3.5 text-amber-400" />
           Scan {isScanning ? 'ON' : '…'}
           {engineType && (
-            <span className="text-[9px] font-normal text-neutral-400 ml-1">
+            <span className="text-micro font-normal text-neutral-400 ml-1">
               {engineType === 'native' ? 'fast' : 'compat'}
             </span>
           )}
@@ -168,7 +168,7 @@ export default function PosContinuousScanPanel({
           <div className={`w-[72%] h-10 border-2 rounded-sm ${flashOk ? 'border-emerald-400 bg-emerald-400/20' : 'border-amber-400/80'}`} />
         </div>
         {panelError && (
-          <div className="absolute inset-x-0 bottom-0 p-2 bg-red-900/90 text-[10px] text-red-50 leading-snug">
+          <div className="absolute inset-x-0 bottom-0 p-2 bg-red-900/90 text-micro text-red-50 leading-snug">
             {panelError}
             <button
               type="button"
@@ -181,7 +181,7 @@ export default function PosContinuousScanPanel({
         )}
       </div>
 
-      <div className="min-h-[2.25rem] px-2 py-1.5 bg-neutral-850 border-t border-neutral-700 text-[10px] text-neutral-200">
+      <div className="min-h-[2.25rem] px-2 py-1.5 bg-neutral-850 border-t border-neutral-700 text-micro text-neutral-200">
         {statusOk && (
           <p className="text-emerald-300 font-medium truncate">
             ✓ {statusOk.name} · qty {statusOk.qty}

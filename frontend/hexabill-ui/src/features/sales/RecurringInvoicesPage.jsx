@@ -105,7 +105,7 @@ const RecurringInvoicesPage = () => {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(r.id)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                      className="p-1.5 text-error hover:bg-error-bg rounded"
                       title="Delete"
                     >
                       <Trash2 className="h-4 w-4" />

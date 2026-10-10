@@ -537,9 +537,9 @@ const BranchDetailPage = () => {
         )}
       </div>
       {summaryError && (
-        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-800">
           <span>Failed to load summary. Check backend logs.</span>
-          <button type="button" onClick={retrySummary} className="shrink-0 font-medium text-amber-700 hover:underline">Retry</button>
+          <button type="button" onClick={retrySummary} className="shrink-0 font-medium text-warning-fg hover:underline">Retry</button>
         </div>
       )}
 
@@ -584,11 +584,11 @@ const BranchDetailPage = () => {
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
               <p className="text-xs text-neutral-500">Paid</p>
-              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-emerald-600">{formatCurrency(summary?.totalPayments ?? 0)}</p>}
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-success">{formatCurrency(summary?.totalPayments ?? 0)}</p>}
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
               <p className="text-xs text-neutral-500">Unpaid</p>
-              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-amber-600">{formatCurrency(summary?.unpaidAmount ?? 0)}</p>}
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className="text-base font-semibold text-warning">{formatCurrency(summary?.unpaidAmount ?? 0)}</p>}
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
               <p className="text-xs text-neutral-500">COGS</p>
@@ -600,7 +600,7 @@ const BranchDetailPage = () => {
             </div>
             <div className="bg-white rounded-lg border border-neutral-200 p-2.5">
               <p className="text-xs text-neutral-500">Profit / Loss</p>
-              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className={`text-base font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(summary?.profit ?? 0)}</p>}
+              {loading ? <div className="h-6 flex items-center"><div className="animate-spin rounded-full h-3 w-3 border-2 border-primary-600 border-t-transparent" /></div> : <p className={`text-base font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>{formatCurrency(summary?.profit ?? 0)}</p>}
             </div>
           </div>
           <p className="text-xs text-neutral-500 mb-1">Date range: {fromDate} to {toDate}</p>
@@ -627,7 +627,7 @@ const BranchDetailPage = () => {
                     {(r.invoiceCount ?? 0) > 0 && <span className="text-neutral-500">{r.invoiceCount} inv.</span>}
                     <span className="text-neutral-600">Sales: {formatCurrency(r.totalSales)}</span>
                     <span className="text-neutral-600">Exp: {formatCurrency(r.totalExpenses)}</span>
-                    <span className={r.profit >= 0 ? 'text-emerald-600 font-medium' : 'text-red-600 font-medium'}>P/L: {formatCurrency(r.profit)}</span>
+                    <span className={r.profit >= 0 ? 'text-success font-medium' : 'text-error font-medium'}>P/L: {formatCurrency(r.profit)}</span>
                   </div>
                 </li>
               ))}
@@ -674,7 +674,7 @@ const BranchDetailPage = () => {
                       <td className="px-2 py-1.5 text-right text-neutral-600">{r.invoiceCount ?? 0}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalSales)}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalExpenses)}</td>
-                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>{formatCurrency(r.profit)}</td>
                       <td className="px-2 py-1.5 text-right">
                         <Link
                           to={`/routes/${r.routeId || r.id}?fromDate=${fromDate}&toDate=${toDate}`}
@@ -739,7 +739,7 @@ const BranchDetailPage = () => {
                               type="button"
                               onClick={() => handleRemoveStaff(u)}
                               disabled={removeStaffSavingId === u.id}
-                              className="text-red-600 hover:bg-red-50 rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
+                              className="text-error hover:bg-error-bg rounded px-2 py-1 text-sm font-medium disabled:opacity-50"
                             >
                               {removeStaffSavingId === u.id ? 'Removing…' : 'Remove'}
                             </button>
@@ -763,7 +763,7 @@ const BranchDetailPage = () => {
                 <div className="py-8 flex justify-center"><div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent" /></div>
               ) : assignStaffLoadError ? (
                 <div className="py-4">
-                  <p className="text-red-600 mb-4">{assignStaffLoadError}</p>
+                  <p className="text-error mb-4">{assignStaffLoadError}</p>
                   <button type="button" onClick={openAssignStaffModal} className="px-3 py-2 bg-primary-600 text-white rounded text-sm hover:bg-primary-700">Retry</button>
                 </div>
               ) : staffToAssignList.length === 0 ? (
@@ -914,7 +914,7 @@ const BranchDetailPage = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteExpense(e)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded ml-1"
+                          className="p-1 text-error hover:bg-error-bg rounded ml-1"
                           title="Delete"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -948,7 +948,7 @@ const BranchDetailPage = () => {
               {loading ? (
                 <div className="h-7 flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-primary-600 border-t-transparent" /></div>
               ) : (
-                <p className={`text-lg font-semibold ${(summary?.growthPercent ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-lg font-semibold ${(summary?.growthPercent ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>
                   {summary?.growthPercent != null ? `${summary.growthPercent >= 0 ? '+' : ''}${summary.growthPercent.toFixed(1)}%` : '—'}
                 </p>
               )}
@@ -1007,17 +1007,17 @@ const BranchDetailPage = () => {
               </div>
               <div>
                 <p className="text-sm text-neutral-500">Total Payments Collected</p>
-                <p className="text-xl font-semibold text-emerald-600">{formatCurrency(summary?.totalPayments ?? 0)}</p>
+                <p className="text-xl font-semibold text-success">{formatCurrency(summary?.totalPayments ?? 0)}</p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500">Profit Margin</p>
-                <p className={`text-xl font-semibold ${(summary?.totalSales ?? 0) > 0 && ((summary?.profit ?? 0) / (summary?.totalSales ?? 1) * 100) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-xl font-semibold ${(summary?.totalSales ?? 0) > 0 && ((summary?.profit ?? 0) / (summary?.totalSales ?? 1) * 100) >= 0 ? 'text-success' : 'text-error'}`}>
                   {(summary?.totalSales ?? 0) > 0 ? `${((summary?.profit ?? 0) / summary.totalSales * 100).toFixed(1)}%` : '—'}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-neutral-500">Profit</p>
-                <p className={`text-xl font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                <p className={`text-xl font-semibold ${(summary?.profit ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>
                   {formatCurrency(summary?.profit ?? 0)}
                 </p>
               </div>
@@ -1065,7 +1065,7 @@ const BranchDetailPage = () => {
                       <td className="px-2 py-1.5 text-right">{r.invoiceCount ?? 0}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalSales)}</td>
                       <td className="px-2 py-1.5 text-right">{formatCurrency(r.totalExpenses)}</td>
-                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{formatCurrency(r.profit)}</td>
+                      <td className={`px-2 py-1.5 text-right font-medium ${(r.profit ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>{formatCurrency(r.profit)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1122,7 +1122,7 @@ const BranchDetailPage = () => {
               <select
                 value={expenseForm.categoryId}
                 onChange={(e) => setExpenseForm(prev => ({ ...prev, categoryId: e.target.value }))}
-                className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-xl text-neutral-900 sm:text-sm"
+                className="block w-full px-3 py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 sm:text-sm"
                 required
               >
                 <option value="">Select category</option>

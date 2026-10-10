@@ -883,12 +883,12 @@ const SettingsPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-neutral-900">Settings</h1>
-          <p className="text-gray-600">Manage your company settings and preferences</p>
+          <p className="text-neutral-600">Manage your company settings and preferences</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
           {hasUnsavedChanges && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-amber-600 font-medium">● Unsaved changes</span>
+              <span className="text-sm text-warning font-medium">● Unsaved changes</span>
               <button
                 type="submit"
                 disabled={saving}
@@ -901,7 +901,7 @@ const SettingsPage = () => {
           )}
           <button 
             type="button"
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
           >
             <Download className="h-4 w-4 mr-2" />
             Export Settings
@@ -910,7 +910,7 @@ const SettingsPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200">
         <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
       </div>
 
@@ -919,19 +919,19 @@ const SettingsPage = () => {
         {activeTab === 'company' && (
           <>
             {/* Company Information */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <Building2 className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Company Information</h2>
               </div>
 
               {!settings.companyTrn && (
-                <p role="status" className="mb-4 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p role="status" className="mb-4 rounded border border-amber-300 bg-warning-bg p-3 text-sm text-amber-900">
                   VAT TRN missing: update in Settings &gt; Company. Documents print as Invoice (not Tax Invoice) until a real 15-digit VAT TRN is entered.
                 </p>
               )}
               {!!settings.companyTrn && ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321'].includes(String(settings.companyTrn).trim()) && (
-                <p role="status" className="mb-4 rounded border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950">
+                <p role="status" className="mb-4 rounded border border-amber-400 bg-warning-bg p-3 text-sm text-amber-950">
                   Sample TRN in use: printed documents are labelled SAMPLE, not Tax Invoice. Update in Settings &gt; Company with the real VAT registration.
                 </p>
               )}
@@ -1004,7 +1004,7 @@ const SettingsPage = () => {
             </div>
 
             {/* Logo Upload */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <Image className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Company Logo</h2>
@@ -1018,7 +1018,7 @@ const SettingsPage = () => {
                       <img
                         src={(typeof logoDataUri === 'string' && logoDataUri.startsWith('data:')) ? logoDataUri : (logoPreview || logoBlobUrl || (settings.logoUrl?.startsWith('http') ? settings.logoUrl : `${getApiBaseUrlNoSuffix()}${settings.logoUrl?.startsWith('/') ? '' : '/'}${settings.logoUrl}`))}
                         alt="Company Logo"
-                        className="h-24 w-24 object-contain border border-gray-200 rounded-lg"
+                        className="h-24 w-24 object-contain border border-neutral-200 rounded-lg"
                         onError={(e) => {
                           e.target.style.display = 'none'
                           if (settings.logoUrl && !logoPreview) setLogoLoadFailed(true)
@@ -1027,14 +1027,14 @@ const SettingsPage = () => {
                       <button
                         type="button"
                         onClick={handleLogoDelete}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-error"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   ) : (
-                    <div className="h-24 w-24 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
-                      <Image className="h-8 w-8 text-gray-400" />
+                    <div className="h-24 w-24 border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center">
+                      <Image className="h-8 w-8 text-neutral-400" />
                     </div>
                   )}
                 </div>
@@ -1045,7 +1045,7 @@ const SettingsPage = () => {
                     <button
                       type="button"
                       onClick={() => setShowLogoModal(true)}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                      className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       {logoDataUri || logoPreview || settings.logoUrl ? 'Change Logo' : 'Upload Logo'}
@@ -1055,7 +1055,7 @@ const SettingsPage = () => {
                         <button
                           type="button"
                           onClick={() => setShowInvoicePreview(true)}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ml-2"
+                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 ml-2"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Preview on Invoice
@@ -1072,7 +1072,7 @@ const SettingsPage = () => {
                               toast.success('App logo refresh requested.')
                             }
                           }}
-                          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 ml-2"
+                          className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 ml-2"
                           title="If the logo in the header/sidebar did not update, click to refresh it"
                         >
                           <RefreshCw className="h-4 w-4 mr-2" />
@@ -1082,15 +1082,15 @@ const SettingsPage = () => {
                     )}
 
                     {logoLoadFailed && (
-                      <p className="text-sm text-amber-600">
+                      <p className="text-sm text-warning">
                         Logo not found. Please re-upload.
                       </p>
                     )}
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-neutral-500">
                       PNG, JPG, WEBP — Max 5MB. Your logo appears on all invoices and documents.
                     </p>
                     {(logoDataUri || logoPreview || settings.logoUrl) && (
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-neutral-600 mt-1">
                         {logoPdfStatusLoading
                           ? 'Checking…'
                           : logoPdfStatus?.hasLogoForPdf
@@ -1106,12 +1106,12 @@ const SettingsPage = () => {
             </div>
 
             {/* Letterhead + stamp/signature (Zayoga / Feature_DocumentStampSignature) */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-2">
                 <Printer className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Print / Letterhead</h2>
               </div>
-              <p className="text-sm text-gray-500 mb-4">
+              <p className="text-sm text-neutral-500 mb-4">
                 Letterhead-only prints body content for pre-printed paper (no digital header/footer).
                 Stamp and signature print on A4/A5 invoices, delivery notes, quotations, and agreements.
                 Thermal POS (80mm/58mm) receipts are not stamped.
@@ -1179,7 +1179,7 @@ const SettingsPage = () => {
                             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleStampUpload} disabled={uploadingStamp} />
                           </label>
                           {(stampPreview || settings.stampUrl) && (
-                            <button type="button" onClick={handleStampDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                            <button type="button" onClick={handleStampDelete} className="px-3 py-1.5 text-sm text-error-fg border border-error-border rounded-md hover:bg-error-bg">Remove</button>
                           )}
                         </div>
                       </div>
@@ -1201,7 +1201,7 @@ const SettingsPage = () => {
                             <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleSignatureUpload} disabled={uploadingSignature} />
                           </label>
                           {(signaturePreview || settings.signatureUrl) && (
-                            <button type="button" onClick={handleSignatureDelete} className="px-3 py-1.5 text-sm text-red-700 border border-red-200 rounded-md hover:bg-red-50">Remove</button>
+                            <button type="button" onClick={handleSignatureDelete} className="px-3 py-1.5 text-sm text-error-fg border border-error-border rounded-md hover:bg-error-bg">Remove</button>
                           )}
                         </div>
                       </div>
@@ -1229,7 +1229,7 @@ const SettingsPage = () => {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-3 py-2">
+                  <p className="text-sm text-amber-800 bg-warning-bg border border-amber-100 rounded-md px-3 py-2">
                     Enable stamp &amp; signature above, then upload images and drag them into place. Save when done.
                   </p>
                 )}
@@ -1237,12 +1237,12 @@ const SettingsPage = () => {
             </div>
 
             {/* Return Template (Print template for return bill) */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <RotateCcw className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Return Template</h2>
               </div>
-              <p className="text-sm text-gray-500 mb-4">Print template for the sales return bill PDF. Set the document title and return policy text. Header and footer appear at the top and bottom of the return document.</p>
+              <p className="text-sm text-neutral-500 mb-4">Print template for the sales return bill PDF. Set the document title and return policy text. Header and footer appear at the top and bottom of the return document.</p>
               <div className="space-y-4">
                 <Input
                   label="Return document title"
@@ -1281,7 +1281,7 @@ const SettingsPage = () => {
         {activeTab === 'billing' && (
           <>
             {/* Business Settings */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <DollarSign className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Business Settings</h2>
@@ -1295,7 +1295,7 @@ const SettingsPage = () => {
                     error={errors.defaultCurrency?.message}
                     {...register('defaultCurrency', { required: 'Default currency is required' })}
                   />
-                  <p className="text-xs text-amber-600 mt-1">
+                  <p className="text-xs text-warning mt-1">
                     ⚠️ Changing currency only updates the label. Historical invoices will still show original amounts. Currency conversion is not supported.
                   </p>
                 </div>
@@ -1327,22 +1327,22 @@ const SettingsPage = () => {
                 <p className="text-xs text-neutral-500">
                   When set, products with reorder level 0 are treated as low stock when quantity is at or below this value. Leave empty to use only each product&apos;s reorder level.
                 </p>
-                <label className="flex items-center gap-3 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg cursor-pointer">
+                <label className="flex items-center gap-3 mt-4 p-3 bg-warning-bg border border-warning-border rounded-lg cursor-pointer">
                   <input
                     type="checkbox"
                     {...register('allowNegativeStock')}
-                    className="rounded border-amber-400 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                    className="rounded border-amber-400 text-warning focus:ring-amber-500 h-4 w-4"
                   />
                   <div>
                     <span className="text-sm font-medium text-amber-800">Allow selling when stock is zero or insufficient</span>
-                    <p className="text-xs text-amber-600 mt-0.5">Enable emergency billing — invoices can be created even if product stock is 0 or negative. Stock will go into negative values.</p>
+                    <p className="text-xs text-warning mt-0.5">Enable emergency billing — invoices can be created even if product stock is 0 or negative. Stock will go into negative values.</p>
                   </div>
                 </label>
               </div>
             </div>
 
             {/* Default invoice print format (local preference) */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <Printer className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Invoice print</h2>
@@ -1357,7 +1357,7 @@ const SettingsPage = () => {
                     try { localStorage.setItem(DEFAULT_PRINT_FORMAT_KEY, v) } catch (_) {}
                     toast.success('Default print format saved for this device.')
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="A4">A4 Invoice</option>
                   <option value="A5">A5 Invoice</option>
@@ -1371,7 +1371,7 @@ const SettingsPage = () => {
             </div>
 
             {/* Invoice Template */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <Globe className="h-6 w-6 text-primary-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Invoice Template</h2>
@@ -1390,7 +1390,7 @@ const SettingsPage = () => {
                   <button
                     type="button"
                     onClick={() => setShowTemplatePreview(!showTemplatePreview)}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     {showTemplatePreview ? 'Hide Preview' : 'Preview Template'}
@@ -1401,7 +1401,7 @@ const SettingsPage = () => {
                       setValue('invoiceTemplate', '')
                       showToast.info('Template reset to default')
                     }}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                    className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
                   >
                     Reset to Default
                   </button>
@@ -1426,7 +1426,7 @@ const SettingsPage = () => {
 
         {/* Email Settings Tab */}
         {activeTab === 'email' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <div className="flex items-center mb-6">
               <Globe className="h-6 w-6 text-primary-600 mr-3" />
               <h2 className="text-lg font-semibold text-neutral-900">Email Settings</h2>
@@ -1435,11 +1435,11 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure SMTP settings to enable email notifications and invoice delivery.
               </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="bg-warning-bg border border-warning-border rounded-lg p-4">
                 <p className="text-sm text-amber-800">
                   <strong>Note:</strong> Email functionality is not yet implemented. This feature will allow you to:
                 </p>
-                <ul className="list-disc list-inside text-sm text-amber-700 mt-2 space-y-1">
+                <ul className="list-disc list-inside text-sm text-warning-fg mt-2 space-y-1">
                   <li>Send invoices to customers via email</li>
                   <li>Receive payment reminders and notifications</li>
                   <li>Configure SMTP server settings (Gmail, Outlook, custom SMTP)</li>
@@ -1480,9 +1480,9 @@ const SettingsPage = () => {
                   type="checkbox"
                   id="enableEmail"
                   disabled
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded opacity-60"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-neutral-300 rounded opacity-60"
                 />
-                <label htmlFor="enableEmail" className="ml-2 block text-sm text-gray-500">
+                <label htmlFor="enableEmail" className="ml-2 block text-sm text-neutral-500">
                   Enable email notifications (Coming soon)
                 </label>
               </div>
@@ -1492,7 +1492,7 @@ const SettingsPage = () => {
 
         {/* Notification Settings Tab */}
         {activeTab === 'notifications' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
             <div className="flex items-center mb-6">
               <Shield className="h-6 w-6 text-primary-600 mr-3" />
               <h2 className="text-lg font-semibold text-neutral-900">Notification Settings</h2>
@@ -1501,11 +1501,11 @@ const SettingsPage = () => {
               <p className="text-sm text-neutral-600 mb-4">
                 Configure how and when you receive notifications for important events.
               </p>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="bg-warning-bg border border-warning-border rounded-lg p-4">
                 <p className="text-sm text-amber-800">
                   <strong>Note:</strong> Notification settings are not yet implemented. This feature will allow you to:
                 </p>
-                <ul className="list-disc list-inside text-sm text-amber-700 mt-2 space-y-1">
+                <ul className="list-disc list-inside text-sm text-warning-fg mt-2 space-y-1">
                   <li>Configure notification channels (Email, SMS, WhatsApp, In-App)</li>
                   <li>Set up alerts for low stock, overdue payments, new orders</li>
                   <li>Customize notification preferences per event type</li>
@@ -1518,11 +1518,11 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">Email notification for overdue payments</span>
+                      <span className="ml-2 text-sm text-neutral-500">Email notification for overdue payments</span>
                     </label>
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">SMS notification for overdue payments</span>
+                      <span className="ml-2 text-sm text-neutral-500">SMS notification for overdue payments</span>
                     </label>
                   </div>
                 </div>
@@ -1531,11 +1531,11 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">Alert when product stock is low</span>
+                      <span className="ml-2 text-sm text-neutral-500">Alert when product stock is low</span>
                     </label>
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">Daily inventory summary</span>
+                      <span className="ml-2 text-sm text-neutral-500">Daily inventory summary</span>
                     </label>
                   </div>
                 </div>
@@ -1544,11 +1544,11 @@ const SettingsPage = () => {
                   <div className="space-y-2">
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">Notify on new orders</span>
+                      <span className="ml-2 text-sm text-neutral-500">Notify on new orders</span>
                     </label>
                     <label className="flex items-center">
                       <input type="checkbox" disabled className="h-4 w-4 text-indigo-600 opacity-60" />
-                      <span className="ml-2 text-sm text-gray-500">Weekly sales report</span>
+                      <span className="ml-2 text-sm text-neutral-500">Weekly sales report</span>
                     </label>
                   </div>
                 </div>
@@ -1561,7 +1561,7 @@ const SettingsPage = () => {
         {activeTab === 'backup' && isAdminOrOwner(user) && (
           <>
             {/* Cloud Backup Settings */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="flex items-center mb-6">
                 <Globe className="h-6 w-6 text-purple-600 mr-3" />
                 <h2 className="text-lg font-semibold text-neutral-900">Cloud Backup Settings</h2>
@@ -1573,9 +1573,9 @@ const SettingsPage = () => {
                     type="checkbox"
                     id="cloudBackupEnabled"
                     {...register('cloudBackupEnabled')}
-                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-neutral-300 rounded"
                   />
-                  <label htmlFor="cloudBackupEnabled" className="ml-2 block text-sm text-gray-900">
+                  <label htmlFor="cloudBackupEnabled" className="ml-2 block text-sm text-neutral-900">
                     Enable Google Drive Cloud Backup
                   </label>
                 </div>
@@ -1613,7 +1613,7 @@ const SettingsPage = () => {
                   </div>
                 )}
 
-                <p className="text-sm text-gray-500 pl-6">
+                <p className="text-sm text-neutral-500 pl-6">
                   Configure Google Drive OAuth credentials to enable automatic cloud backups.
                   See documentation for setup instructions.
                 </p>
@@ -1621,13 +1621,13 @@ const SettingsPage = () => {
             </div>
 
             {/* Platform Backup — full DB/files for system admin */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
               <div className="mb-6">
                 <div className="flex items-center mb-4">
                   <Database className="h-6 w-6 text-indigo-600 mr-3" />
                   <h2 className="text-lg font-semibold text-neutral-900">Platform Backup</h2>
                 </div>
-                <p className="text-sm text-gray-500 mb-4">Full database and files for system administration. Use &quot;My Data Export&quot; (Backup menu) to export only your company&apos;s data.</p>
+                <p className="text-sm text-neutral-500 mb-4">Full database and files for system administration. Use &quot;My Data Export&quot; (Backup menu) to export only your company&apos;s data.</p>
 
                 <div className="flex flex-wrap gap-2">
                   <button
@@ -1645,7 +1645,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={() => handleCreateFullBackup(false)}
                     disabled={loadingBackups}
-                    className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50"
+                    className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-success-fg bg-success-bg hover:bg-green-100 disabled:opacity-50"
                     title="Create FULL backup (database + files)"
                   >
                     <HardDrive className="h-4 w-4 mr-2" />
@@ -1656,7 +1656,7 @@ const SettingsPage = () => {
                     type="button"
                     onClick={() => handleCreateFullBackup(true)}
                     disabled={loadingBackups}
-                    className="inline-flex items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-50"
+                    className="inline-flex items-center px-4 py-2 border border-primary-300 rounded-md shadow-sm text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 disabled:opacity-50"
                     title="Create FULL backup and save to Desktop"
                   >
                     <FolderDown className="h-4 w-4 mr-2" />
@@ -1666,7 +1666,7 @@ const SettingsPage = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
+                <div className="flex items-center justify-between text-sm text-neutral-600 mb-4">
                   <span>Available Backups:</span>
                   <button
                     type="button"
@@ -1680,9 +1680,9 @@ const SettingsPage = () => {
                 </div>
 
                 {loadingBackups ? (
-                  <div className="text-center py-4 text-gray-500">Loading backups...</div>
+                  <div className="text-center py-4 text-neutral-500">Loading backups...</div>
                 ) : backups.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
+                  <div className="text-center py-8 text-neutral-500 border-2 border-dashed border-neutral-300 rounded-lg">
                     No backups found. Create your first backup.
                   </div>
                 ) : (
@@ -1690,11 +1690,11 @@ const SettingsPage = () => {
                     {backups.map((fileName, index) => (
                       <div
                         key={index}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm font-medium text-neutral-900 truncate">{fileName}</p>
+                          <p className="text-xs text-neutral-500">
                             {fileName.includes('_')
                               ? new Date(fileName.split('_')[1]?.replace('.db', '') || fileName.split('_')[1]?.replace('.sql', '') || '').toLocaleString()
                               : 'Date unknown'}
@@ -1704,7 +1704,7 @@ const SettingsPage = () => {
                           <button
                             type="button"
                             onClick={() => handleDownloadBackup(fileName)}
-                            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded"
+                            className="p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded"
                             title="Download"
                           >
                             <Download className="h-4 w-4" />
@@ -1712,7 +1712,7 @@ const SettingsPage = () => {
                           <button
                             type="button"
                             onClick={() => handleRestoreBackup(fileName)}
-                            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded"
+                            className="p-2 text-success hover:text-success-fg hover:bg-success-bg rounded"
                             title="Restore"
                           >
                             <RefreshCw className="h-4 w-4" />
@@ -1720,7 +1720,7 @@ const SettingsPage = () => {
                           <button
                             type="button"
                             onClick={() => handleDeleteBackup(fileName)}
-                            className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                            className="p-2 text-error hover:text-error-fg hover:bg-error-bg rounded"
                             title="Delete"
                           >
                             <Trash className="h-4 w-4" />
@@ -1734,11 +1734,11 @@ const SettingsPage = () => {
             </div>
 
             {/* Clear all data - Owner/Admin only */}
-            <div className="mt-8 bg-white rounded-lg border-2 border-red-200 shadow-sm p-6">
+            <div className="mt-8 bg-white rounded-lg border-2 border-error-border shadow-sm p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
                   <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider">Clear transactional data</h3>
-                  <p className="text-sm text-red-700 mt-1">
+                  <p className="text-sm text-error-fg mt-1">
                     Same as &quot;reset company data&quot;. Wipes sales, purchases, expenses, and returns. Keeps users, products, and customers; resets stock and balances to zero.
                   </p>
                 </div>
@@ -1749,7 +1749,7 @@ const SettingsPage = () => {
                     setClearDataCheckbox(false)
                     setShowClearDataModal(true)
                   }}
-                  className="bg-white text-red-600 border-2 border-red-300 px-6 py-2.5 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center gap-2 flex-shrink-0"
+                  className="bg-white text-error border-2 border-red-300 px-6 py-2.5 rounded-lg font-bold hover:bg-error hover:text-white transition-all shadow-sm flex items-center gap-2 flex-shrink-0"
                 >
                   <History className="h-5 w-5" />
                   Clear all data
@@ -1780,20 +1780,20 @@ const SettingsPage = () => {
         size="md"
       >
         <div className="space-y-6">
-          <div className={`border-2 border-dashed rounded-lg p-6 text-center transition ${uploadingLogo ? 'border-blue-400 bg-blue-50/50' : 'border-gray-300'}`}>
+          <div className={`border-2 border-dashed rounded-lg p-6 text-center transition ${uploadingLogo ? 'border-primary-400 bg-primary-50/50' : 'border-neutral-300'}`}>
             {uploadingLogo ? (
               <div className="flex flex-col items-center justify-center py-2">
-                <RefreshCw className="mx-auto h-12 w-12 text-blue-600 animate-spin" />
-                <span className="mt-3 block text-sm font-medium text-gray-700">Uploading…</span>
-                <span className="mt-1 block text-xs text-gray-500">Logo will appear in header and profile when done.</span>
+                <RefreshCw className="mx-auto h-12 w-12 text-primary-600 animate-spin" />
+                <span className="mt-3 block text-sm font-medium text-neutral-700">Uploading…</span>
+                <span className="mt-1 block text-xs text-neutral-500">Logo will appear in header and profile when done.</span>
               </div>
             ) : (
               <>
-                <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                <Upload className="mx-auto h-12 w-12 text-neutral-400" />
                 <div className="mt-4">
                   <label htmlFor="logo-upload" className="cursor-pointer">
-                    <span className="mt-2 block text-sm font-medium text-gray-900">Click to upload logo</span>
-                    <span className="mt-1 block text-sm text-gray-500">PNG, JPG, WEBP up to 5MB</span>
+                    <span className="mt-2 block text-sm font-medium text-neutral-900">Click to upload logo</span>
+                    <span className="mt-1 block text-sm text-neutral-500">PNG, JPG, WEBP up to 5MB</span>
                   </label>
                   <input
                     id="logo-upload"
@@ -1811,7 +1811,7 @@ const SettingsPage = () => {
               type="button"
               onClick={() => setShowLogoModal(false)}
               disabled={uploadingLogo}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {uploadingLogo ? 'Uploading…' : 'Cancel'}
             </button>
@@ -1827,14 +1827,14 @@ const SettingsPage = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">This is how your company header will appear on printed invoices.</p>
-          <div className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+          <p className="text-sm text-neutral-600">This is how your company header will appear on printed invoices.</p>
+          <div className="border-2 border-neutral-200 rounded-lg p-4 bg-white">
             <div className="grid grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 items-start max-w-full overflow-hidden">
               <div className="text-left min-w-0">
                 <h3 className="font-bold text-sm uppercase break-words">{settings.companyNameEn || 'Company Name'}</h3>
-                <p className="text-xs text-gray-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'}</p>
-                {settings.companyEmail && <p className="text-xs text-gray-500 break-words">{settings.companyEmail}</p>}
-                {settings.companyAddress && <p className="text-xs text-gray-500 break-words">{settings.companyAddress}</p>}
+                <p className="text-xs text-neutral-500 mt-0.5 break-words">Mob: {settings.companyPhone || '—'}</p>
+                {settings.companyEmail && <p className="text-xs text-neutral-500 break-words">{settings.companyEmail}</p>}
+                {settings.companyAddress && <p className="text-xs text-neutral-500 break-words">{settings.companyAddress}</p>}
                 {(() => {
                   const ct = String(settings.corporateTaxTrn || '').trim()
                   const vat = String(settings.companyTrn || '').trim()
@@ -1847,7 +1847,7 @@ const SettingsPage = () => {
                   const bits = []
                   if (ct) bits.push(`CT Reg. No.: ${ct}`)
                   bits.push(vatLine)
-                  return <p className="text-[11px] text-gray-700 mt-1 break-words">{bits.join(' | ')}</p>
+                  return <p className="text-micro text-neutral-700 mt-1 break-words">{bits.join(' | ')}</p>
                 })()}
               </div>
               <div className="flex flex-col items-center justify-center px-2">
@@ -1862,11 +1862,11 @@ const SettingsPage = () => {
               </div>
               <div className="text-right text-sm min-w-0">
                 {settings.companyNameAr && <p className="font-bold text-sm" dir="rtl" style={{ wordBreak: 'break-word' }}>{settings.companyNameAr}</p>}
-                {settings.companyPhone && <p className="text-xs text-gray-500 mt-0.5" dir="rtl">{settings.companyPhone}</p>}
-                {settings.companyAddress && <p className="text-xs text-gray-500" dir="rtl">{settings.companyAddress}</p>}
+                {settings.companyPhone && <p className="text-xs text-neutral-500 mt-0.5" dir="rtl">{settings.companyPhone}</p>}
+                {settings.companyAddress && <p className="text-xs text-neutral-500" dir="rtl">{settings.companyAddress}</p>}
               </div>
             </div>
-            <div className="border-t-2 border-b-2 border-gray-300 mt-3 py-2 text-center font-bold text-sm">
+            <div className="border-t-2 border-b-2 border-neutral-300 mt-3 py-2 text-center font-bold text-sm">
               {(() => {
                 const trn = String(settings.companyTrn || '').trim()
                 const samples = ['900000000000001', '900000000000002', '900000000000003', '123456789012345', '543210987654321']
@@ -1877,9 +1877,9 @@ const SettingsPage = () => {
               })()}
             </div>
           </div>
-          <p className="text-xs text-gray-500">This is a preview only. Actual invoice uses real transaction data.</p>
+          <p className="text-xs text-neutral-500">This is a preview only. Actual invoice uses real transaction data.</p>
           <div className="flex justify-end">
-            <button type="button" onClick={() => setShowInvoicePreview(false)} className="px-4 py-2 bg-gray-800 text-white rounded-md text-sm font-medium hover:bg-gray-700">Close</button>
+            <button type="button" onClick={() => setShowInvoicePreview(false)} className="px-4 py-2 bg-neutral-800 text-white rounded-md text-sm font-medium hover:bg-neutral-700">Close</button>
           </div>
         </div>
       </Modal>
@@ -1896,8 +1896,8 @@ const SettingsPage = () => {
         size="md"
         closeOnOverlayClick={false}
       >
-        <div className="space-y-5 border-2 border-red-600 rounded-xl p-1">
-          <div className="bg-red-600 p-4 rounded-xl text-white flex items-start space-x-3">
+        <div className="space-y-5 border-2 border-error rounded-lg p-1">
+          <div className="bg-error p-4 rounded-lg text-white flex items-start space-x-3">
             <Shield className="h-10 w-10 opacity-80 flex-shrink-0" />
             <div>
               <h4 className="font-bold text-lg leading-tight text-white mb-1">Reset all transactional data</h4>
@@ -1907,7 +1907,7 @@ const SettingsPage = () => {
               <p className="text-sm font-bold text-white mt-2">This action cannot be undone.</p>
             </div>
           </div>
-          <div className="space-y-3 bg-red-50 border border-red-200 rounded-lg p-3">
+          <div className="space-y-3 bg-error-bg border border-error-border rounded-lg p-3">
             <label className="flex items-start gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -1918,10 +1918,10 @@ const SettingsPage = () => {
               <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data.</span>
             </label>
             <div>
-              <label className="block text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
+              <label className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
               <input
                 type="text"
-                className="w-full px-4 py-3 border-2 border-red-300 rounded-xl bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
+                className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 font-bold focus:ring-2 focus:ring-red-400 outline-none transition-all"
                 placeholder="CLEAR"
                 value={clearDataConfirmation}
                 onChange={(e) => setClearDataConfirmation(e.target.value)}
@@ -1936,7 +1936,7 @@ const SettingsPage = () => {
                 setClearDataConfirmation('')
                 setClearDataCheckbox(false)
               }}
-              className="flex-1 px-4 py-3 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-all border border-gray-300"
+              className="flex-1 px-4 py-3 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-all border border-neutral-300"
             >
               Cancel
             </button>
@@ -1944,7 +1944,7 @@ const SettingsPage = () => {
               onClick={handleClearAllData}
               loading={loadingClearData}
               disabled={clearDataConfirmation.trim().toUpperCase() !== 'CLEAR' || !clearDataCheckbox}
-              className="flex-2 px-8 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
+              className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
             >
               Clear all data
             </LoadingButton>

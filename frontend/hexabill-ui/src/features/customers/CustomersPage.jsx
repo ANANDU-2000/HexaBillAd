@@ -23,6 +23,7 @@ import {
   MessageCircle
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { OverflowMenu } from '../../components/ui'
 import { formatCurrency, formatBalance, formatBalanceWithColor } from '../../utils/currency'
 import { isAdminOrOwner, canAccessPage } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { validateEmail } from '../../utils/validation'
@@ -288,6 +289,11 @@ const CustomersPage = () => {
       setSaving(true)
       const payload = {
         ...data,
+        // A blank Credit Limit arrives as NaN (valueAsNumber) and serialises to null, which the API
+        // rejects for a decimal. Blank already means 0 everywhere else (import, payment-terms check).
+        creditLimit: Number.isFinite(data.creditLimit) ? data.creditLimit : 0,
+        // The API validates Email as an address, so a blank optional email must be null, not "".
+        email: (data.email || '').trim() || null,
         branchId: data.branchId ? parseInt(data.branchId, 10) : null,
         routeId: data.routeId ? parseInt(data.routeId, 10) : null,
         mainLatitude: data.mainLatitude !== '' && data.mainLatitude != null ? Number(data.mainLatitude) : null,
@@ -669,35 +675,35 @@ const CustomersPage = () => {
   return (
     <div className="space-y-4 max-w-full overflow-x-hidden">
       {/* Modern Header - Responsive */}
-      <div className="bg-white border-b border-gray-200 shadow-sm -mx-6 px-4 sm:px-6 py-3 sm:py-4">
+      <div className="bg-white border-b border-neutral-200 shadow-sm -mx-6 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/dashboard')}
-              className="inline-flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="inline-flex items-center justify-center p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
               title="Back to Dashboard"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
             <div>
               <h1 className="text-xl sm:text-xl font-semibold text-neutral-900">Customers</h1>
-              <p className="text-xs sm:text-sm text-gray-600 mt-1">Manage customer information and accounts</p>
+              <p className="text-xs sm:text-sm text-neutral-600 mt-1">Manage customer information and accounts</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             <button
               onClick={() => fetchCustomers()}
-              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] border border-gray-300 rounded-lg shadow-sm text-xs sm:text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 min-h-[44px] border border-neutral-300 rounded-lg shadow-sm text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
               Refresh
             </button>
             <button
               onClick={() => {
-                reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '', location: '' })
+                reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'Credit', paymentTerms: '', address: '', location: '' })
                 setShowAddModal(true)
               }}
-              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg shadow-sm text-xs sm:text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 min-h-[44px]"
+              className="inline-flex items-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg shadow-sm text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 min-h-[44px]"
             >
               <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
               Add Customer
@@ -716,7 +722,7 @@ const CustomersPage = () => {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <Link
                 to="/reports?tab=overdue"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 min-h-11 hover:bg-amber-100 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-800 bg-warning-bg border border-warning-border rounded-lg px-3 py-2 min-h-11 hover:bg-amber-100 transition-colors"
               >
                 <AlertCircle className="h-4 w-4 shrink-0" aria-hidden />
                 Overdue invoices (Reports)
@@ -727,31 +733,31 @@ const CustomersPage = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Search customers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               onClick={handleExportCustomers}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <Download className="h-4 w-4 mr-2" />
               Export
             </button>
             <button
               onClick={() => document.getElementById('csv-import-input')?.click()}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <Inbox className="h-4 w-4 mr-2" />
               Import
@@ -764,7 +770,7 @@ const CustomersPage = () => {
               onChange={handleImportCustomers}
             />
             <div className="w-full sm:w-48 min-w-[10rem]">
-              <label htmlFor="customer-sort" className="block text-xs text-gray-500 mb-1">Sort</label>
+              <label htmlFor="customer-sort" className="block text-xs text-neutral-500 mb-1">Sort</label>
               <select
                 id="customer-sort"
                 value={sortBy}
@@ -772,7 +778,7 @@ const CustomersPage = () => {
                   setSortBy(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white min-h-11"
+                className="w-full border border-neutral-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white min-h-11"
               >
                 <option value="name">Name (A–Z)</option>
                 <option value="balanceDesc">Balance (highest first)</option>
@@ -784,46 +790,46 @@ const CustomersPage = () => {
       </div>
 
       {/* Customers Table - Responsive */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50">
               <tr>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Contact
                 </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Credit Limit
                 </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Balance
                 </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Last Order
                 </th>
-                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-4 sm:px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
-                      <Inbox className="h-12 w-12 text-gray-400 mb-3" />
-                      <p className="text-gray-500 text-sm font-medium">No customers found</p>
-                      <p className="text-gray-500 text-xs mt-1">Try adjusting your search or filters. Add customers to start creating invoices from POS or Sales Ledger.</p>
+                      <Inbox className="h-12 w-12 text-neutral-400 mb-3" />
+                      <p className="text-neutral-500 text-sm font-medium">No customers found</p>
+                      <p className="text-neutral-500 text-xs mt-1">Try adjusting your search or filters. Add customers to start creating invoices from POS or Sales Ledger.</p>
                       <button
                         onClick={() => {
-                        reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'retail', paymentTerms: '', address: '', location: '' })
+                        reset({ branchId: '', routeId: '', name: '', phone: '', email: '', trn: '', creditLimit: '', customerType: 'Credit', paymentTerms: '', address: '', location: '' })
                         setShowAddModal(true)
                       }}
-                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                        className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors"
                       >
                         <Plus className="h-4 w-4 mr-2" />
                         Add Customer
@@ -833,39 +839,39 @@ const CustomersPage = () => {
                 </tr>
               ) : (
                 filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50">
+                  <tr key={customer.id} className="hover:bg-neutral-50">
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div>
                         <button
                           onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
-                          className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                          className="text-xs sm:text-sm font-medium text-primary-600 hover:text-primary-800 hover:underline"
                         >
                           {customer.name}
                         </button>
-                        <div className="text-xs text-gray-500">{customer.trn}</div>
+                        <div className="text-xs text-neutral-500">{customer.trn}</div>
                       </div>
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-gray-900">{customer.phone}</div>
-                      <div className="text-xs text-gray-500">{customer.email}</div>
+                      <div className="text-xs sm:text-sm text-neutral-900">{customer.phone}</div>
+                      <div className="text-xs text-neutral-500">{customer.email}</div>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
                       {formatCurrency(customer.creditLimit)}
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <span className={`text-xs sm:text-sm font-medium ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
+                      <span className={`text-xs sm:text-sm font-medium ${customer.balance < 0 ? 'text-success' : customer.balance > 0 ? 'text-error' : 'text-neutral-600'
                         }`}>
                         {formatBalance(customer.balance)}
                       </span>
                     </td>
-                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                    <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-neutral-900">
                       {customer.lastOrderDate || 'No orders'}
                     </td>
                     <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
                           onClick={() => handleViewLedger(customer)}
-                          className="bg-blue-50 text-blue-600 hover:text-white hover:bg-blue-600 border border-blue-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                          className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
                           title="View Ledger"
                           aria-label="View Ledger"
                         >
@@ -876,7 +882,7 @@ const CustomersPage = () => {
                           <button
                             type="button"
                             onClick={() => openCollectInLedger(customer)}
-                            className="bg-amber-50 text-amber-800 hover:text-white hover:bg-amber-600 border border-amber-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            className="bg-warning-bg text-amber-800 hover:text-white hover:bg-warning border border-amber-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
                             title="Collect payment in customer ledger"
                             aria-label="Collect payment"
                           >
@@ -889,7 +895,7 @@ const CustomersPage = () => {
                             href={buildWhatsAppUrlFromPhone(customer.phone)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="bg-emerald-50 text-emerald-700 hover:text-white hover:bg-emerald-600 border border-emerald-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            className="bg-success-bg text-success-fg hover:text-white hover:bg-success border border-emerald-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
                             title="WhatsApp"
                             aria-label="WhatsApp"
                           >
@@ -899,7 +905,7 @@ const CustomersPage = () => {
                         ) : null}
                         <button
                           onClick={() => handleSendStatement(customer.id)}
-                          className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                          className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
                           title="Send Statement"
                           aria-label="Send Statement"
                         >
@@ -918,7 +924,7 @@ const CustomersPage = () => {
                         {isAdminOrOwner(user) && (
                           <button
                             onClick={() => handleDelete(customer.id)}
-                            className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
+                            className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1.5 sm:p-2 rounded transition-colors shadow-sm flex items-center gap-1"
                             title="Delete Customer (Admin Only)"
                             aria-label="Delete Customer (Admin Only)"
                           >
@@ -935,117 +941,75 @@ const CustomersPage = () => {
           </table>
         </div>
 
-        {/* Mobile Cards */}
-        <div className="md:hidden divide-y divide-gray-200">
-          {filteredCustomers.map((customer) => (
-            <div key={customer.id} className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
+        {/* Mobile cards: identity and balance first, two direct actions, the rest in More. */}
+        <ul className="md:hidden divide-y divide-surface-border">
+          {filteredCustomers.map((customer) => {
+            const balance = Number(customer.balance) || 0
+            const waUrl = buildWhatsAppUrlFromPhone(customer.phone)
+            return (
+              <li key={customer.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
                   <button
+                    type="button"
                     onClick={() => navigate(`/customers/${customer.id}`, { state: { returnTo: location.pathname + location.search } })}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    className="min-w-0 flex-1 text-start"
                   >
-                    {customer.name}
+                    <span className="block truncate text-sm font-semibold text-text-primary">{customer.name}</span>
+                    {customer.phone && <span className="block text-xs text-neutral-500 tabular-nums">{customer.phone}</span>}
                   </button>
-                  <div className="text-xs text-gray-500 mt-1">{customer.phone}</div>
+                  <div className="shrink-0 text-end">
+                    <span className={`block text-sm font-semibold tabular-nums ${balance < 0 ? 'text-success-fg' : balance > 0 ? 'text-error-fg' : 'text-neutral-600'}`}>
+                      {formatBalance(customer.balance)}
+                    </span>
+                    <span className="block text-xs text-neutral-500">Limit {formatCurrency(customer.creditLimit)}</span>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    onClick={() => handleViewLedger(customer)}
-                    className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
-                    title="View Ledger"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    View
-                  </button>
-                  {(Number(customer.balance) || 0) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => openCollectInLedger(customer)}
-                      className="bg-amber-50 text-amber-800 hover:bg-amber-600 hover:text-white border border-amber-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 min-h-11"
-                      title="Collect payment"
-                    >
-                      <DollarSign className="h-3.5 w-3.5" />
+                <div className="mt-2 flex items-center gap-2">
+                  {balance > 0 && (
+                    <button type="button" onClick={() => openCollectInLedger(customer)} className="btn btn-primary flex-1">
+                      <DollarSign className="h-4 w-4" aria-hidden />
                       Collect
                     </button>
                   )}
-                  {buildWhatsAppUrlFromPhone(customer.phone) ? (
-                    <a
-                      href={buildWhatsAppUrlFromPhone(customer.phone)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 min-h-11"
-                      title="WhatsApp"
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" />
-                      WA
-                    </a>
-                  ) : null}
-                  <button
-                    onClick={() => handleSendStatement(customer.id)}
-                    className="bg-green-50 text-green-600 hover:bg-green-600 hover:text-white border border-green-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
-                    title="Send Statement"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    Statement
+                  <button type="button" onClick={() => handleViewLedger(customer)} className="btn btn-secondary flex-1">
+                    <Eye className="h-4 w-4" aria-hidden />
+                    Ledger
                   </button>
-                  <button
-                    onClick={() => handleEdit(customer)}
-                    className="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white border border-indigo-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
-                    title="Edit Customer"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                    Edit
-                  </button>
-                  {user?.role?.toLowerCase() === 'admin' && (
-                    <button
-                      onClick={() => handleDelete(customer.id)}
-                      className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1"
-                      title="Delete Customer (Admin Only)"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete
-                    </button>
-                  )}
+                  <OverflowMenu
+                    label={`More actions for ${customer.name}`}
+                    items={[
+                      { label: 'WhatsApp', icon: MessageCircle, hidden: !waUrl, onClick: () => window.open(waUrl, '_blank', 'noopener,noreferrer') },
+                      { label: 'Send statement', icon: Mail, onClick: () => handleSendStatement(customer.id) },
+                      { label: 'Edit customer', icon: Edit, onClick: () => handleEdit(customer) },
+                      { label: 'Delete customer', icon: Trash2, danger: true, separatorBefore: true, hidden: user?.role?.toLowerCase() !== 'admin', onClick: () => handleDelete(customer.id) },
+                    ]}
+                  />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-gray-500">Balance:</span>
-                  <span className={`ml-1 font-medium ${customer.balance < 0 ? 'text-green-600' : customer.balance > 0 ? 'text-red-600' : 'text-gray-600'
-                    }`}>
-                    {formatBalance(customer.balance)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Limit:</span>
-                  <span className="ml-1">{formatCurrency(customer.creditLimit)}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              </li>
+            )
+          })}
+        </ul>
       </div>
 
       {/* Pagination — page size and next/prev to avoid loading thousands at once (#42) */}
       {totalCount > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-neutral-700">
                 Showing <span className="font-medium">{customers.length}</span> of <span className="font-medium">{totalCount}</span> customers
                 {filteredCustomers.length !== customers.length && (
-                  <span className="ml-2 text-gray-500">
+                  <span className="ml-2 text-neutral-500">
                     ({filteredCustomers.length} after filters)
                   </span>
                 )}
               </span>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
+              <label className="flex items-center gap-2 text-sm text-neutral-700">
                 Per page
                 <select
                   value={pageSize}
                   onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+                  className="border border-neutral-300 rounded-md px-2 py-1 text-sm"
                 >
                   {PAGE_SIZE_OPTIONS.map((n) => (
                     <option key={n} value={n}>{n}</option>
@@ -1057,7 +1021,7 @@ const CustomersPage = () => {
               <button
                 onClick={handleLoadMore}
                 disabled={loading}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -1076,31 +1040,31 @@ const CustomersPage = () => {
                 <button
                   onClick={() => fetchCustomers(1)}
                   disabled={currentPage === 1 || loading}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
                 >
                   First
                 </button>
                 <button
                   onClick={() => fetchCustomers(currentPage - 1)}
                   disabled={currentPage === 1 || loading}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
                 >
                   Previous
                 </button>
-                <span className="text-sm text-gray-700">
+                <span className="text-sm text-neutral-700">
                   Page {currentPage} of {totalPages}
                 </span>
                 <button
                   onClick={() => fetchCustomers(currentPage + 1)}
                   disabled={currentPage >= totalPages || loading}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
                 >
                   Next
                 </button>
                 <button
                   onClick={() => fetchCustomers(totalPages)}
                   disabled={currentPage >= totalPages || loading}
-                  className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="px-3 py-1 text-sm border border-neutral-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-neutral-50"
                 >
                   Last
                 </button>
@@ -1166,22 +1130,22 @@ const CustomersPage = () => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Customer Type</label>
               <select
                 {...register('customerType')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="Credit">Credit (Can have outstanding balance)</option>
                 <option value="Cash">Cash (Must pay immediately)</option>
               </select>
-              <p className="mt-1 text-xs text-gray-500">Credit customers can have outstanding balance, Cash customers must pay immediately</p>
+              <p className="mt-1 text-xs text-neutral-500">Credit customers can have outstanding balance, Cash customers must pay immediately</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
               <select
                 {...register('paymentTerms')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select payment terms</option>
                 <option value="Cash on Delivery">Cash on Delivery</option>
@@ -1192,43 +1156,64 @@ const CustomersPage = () => {
                 <option value="Net 90">Net 90</option>
                 <option value="Custom">Custom</option>
               </select>
-              <p className="mt-1 text-xs text-amber-600">Required when Credit Limit &gt; 0</p>
+              <p className="mt-1 text-xs text-warning">Required when Credit Limit &gt; 0</p>
             </div>
 
             {/* Branch and Route (PRODUCTION_MASTER_TODO #10) */}
             {branches.length > 0 && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                  {/* Same rule as the edit form. Both forms share one useForm, so the edit form's
+                      rule already applied here; the add form just never said so or showed the error. */}
+                  <label htmlFor="add-customer-branch" className="block text-sm font-medium text-neutral-700 mb-1">
+                    Branch {branches.length > 0 && <span className="text-error" aria-hidden>*</span>}
+                  </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.branchId ? 'border-red-500' : 'border-gray-300'}`}
+                    id="add-customer-branch"
+                    aria-invalid={!!errors.branchId}
+                    aria-describedby={errors.branchId ? 'add-customer-branch-error' : undefined}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.branchId ? 'border-error' : 'border-neutral-300'}`}
                     {...register('branchId', {
+                      required: branches.length > 0 ? 'Branch is required when company has branches' : false,
                       onChange: (e) => {
                         setValue('branchId', e.target.value)
                         setValue('routeId', '')
                       }
                     })}
                   >
-                    <option value="">Select branch (optional)</option>
+                    <option value="">Select branch</option>
                     {branches.map(b => (
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
+                  {errors.branchId && (
+                    <p id="add-customer-branch-error" role="alert" className="mt-1 text-xs font-medium text-error-fg">{errors.branchId.message}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Route</label>
+                  <label htmlFor="add-customer-route" className="block text-sm font-medium text-neutral-700 mb-1">
+                    Route {selectedBranchId && <span className="text-error" aria-hidden>*</span>}
+                  </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.routeId ? 'border-red-500' : 'border-gray-300'}`}
-                    {...register('routeId')}
+                    id="add-customer-route"
+                    aria-invalid={!!errors.routeId}
+                    aria-describedby={errors.routeId ? 'add-customer-route-error' : undefined}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed ${errors.routeId ? 'border-error' : 'border-neutral-300'}`}
+                    {...register('routeId', {
+                      required: selectedBranchId ? 'Route is required when branch is selected' : false
+                    })}
                     disabled={!selectedBranchId}
                   >
                     <option value="">
-                      {selectedBranchId ? 'Select route (optional)' : 'Select branch first'}
+                      {selectedBranchId ? 'Select route' : 'Select branch first'}
                     </option>
                     {(selectedBranchId ? routes.filter(r => r.branchId === parseInt(selectedBranchId, 10)) : []).map(r => (
                       <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
+                  {errors.routeId && (
+                    <p id="add-customer-route-error" role="alert" className="mt-1 text-xs font-medium text-error-fg">{errors.routeId.message}</p>
+                  )}
                 </div>
               </>
             )}
@@ -1299,7 +1284,7 @@ const CustomersPage = () => {
                 setShowAddModal(false)
                 reset()
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               Cancel
             </button>
@@ -1317,14 +1302,14 @@ const CustomersPage = () => {
           title="Duplicate phone or email"
           onClose={() => setDuplicateConfirm({ isOpen: false, data: null, existingName: '' })}
         >
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-neutral-600 mb-4">
             A customer named <strong>{duplicateConfirm.existingName}</strong> already has this phone number or email. Add anyway?
           </p>
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setDuplicateConfirm({ isOpen: false, data: null, existingName: '' })}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               Cancel
             </button>
@@ -1332,7 +1317,7 @@ const CustomersPage = () => {
               type="button"
               onClick={handleDuplicateConfirmAdd}
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50"
             >
               {saving ? 'Adding...' : 'Add anyway'}
             </button>
@@ -1397,15 +1382,15 @@ const CustomersPage = () => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Customer Type</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Customer Type</label>
               <select
                 {...register('customerType')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="Credit">Credit (Can have outstanding balance)</option>
                 <option value="Cash">Cash (Must pay immediately)</option>
               </select>
-              <p className="mt-1 text-xs text-gray-500">Credit customers can have outstanding balance, Cash customers must pay immediately</p>
+              <p className="mt-1 text-xs text-neutral-500">Credit customers can have outstanding balance, Cash customers must pay immediately</p>
             </div>
 
             <div className="md:col-span-2">
@@ -1475,11 +1460,11 @@ const CustomersPage = () => {
             {branches.length > 0 && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Branch {branches.length > 0 && <span className="text-red-500">*</span>}
                   </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.branchId ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.branchId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...register('branchId', {
                       required: branches.length > 0 ? 'Branch is required when company has branches' : false,
                       onChange: (e) => {
@@ -1494,15 +1479,15 @@ const CustomersPage = () => {
                     ))}
                   </select>
                   {errors.branchId && (
-                    <p className="mt-1 text-sm text-red-600">{errors.branchId.message}</p>
+                    <p className="mt-1 text-sm text-error">{errors.branchId.message}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Route {selectedBranchId && <span className="text-red-500">*</span>}
                   </label>
                   <select
-                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed ${errors.routeId ? 'border-red-500' : 'border-gray-300'}`}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed ${errors.routeId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...register('routeId', {
                       required: selectedBranchId ? 'Route is required when branch is selected' : false
                     })}
@@ -1516,7 +1501,7 @@ const CustomersPage = () => {
                     ))}
                   </select>
                   {errors.routeId && (
-                    <p className="mt-1 text-sm text-red-600">{errors.routeId.message}</p>
+                    <p className="mt-1 text-sm text-error">{errors.routeId.message}</p>
                   )}
                 </div>
               </>
@@ -1524,10 +1509,10 @@ const CustomersPage = () => {
 
             {/* Payment Terms */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Payment Terms</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Payment Terms</label>
               <select
                 {...register('paymentTerms')}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
               >
                 <option value="">Select payment terms</option>
                 <option value="Cash on Delivery">Cash on Delivery</option>
@@ -1538,7 +1523,7 @@ const CustomersPage = () => {
                 <option value="Net 90">Net 90</option>
                 <option value="Custom">Custom</option>
               </select>
-              <p className="mt-1 text-xs text-gray-500">Required when credit limit &gt; 0</p>
+              <p className="mt-1 text-xs text-neutral-500">Required when credit limit &gt; 0</p>
             </div>
           </div>
 
@@ -1550,7 +1535,7 @@ const CustomersPage = () => {
                 setSelectedCustomer(null)
                 reset()
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               Cancel
             </button>
@@ -1574,24 +1559,24 @@ const CustomersPage = () => {
       >
         <div className="space-y-6">
           {/* Customer Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
+          <div className="bg-neutral-50 rounded-lg p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-500">Current Balance</p>
-                <p className={`text-lg font-semibold ${selectedCustomer?.balance < 0 ? 'text-green-600' : selectedCustomer?.balance > 0 ? 'text-red-600' : 'text-gray-600'
+                <p className="text-sm font-medium text-neutral-500">Current Balance</p>
+                <p className={`text-lg font-semibold ${selectedCustomer?.balance < 0 ? 'text-success' : selectedCustomer?.balance > 0 ? 'text-error' : 'text-neutral-600'
                   }`}>
                   {formatBalance(selectedCustomer?.balance || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Credit Limit</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm font-medium text-neutral-500">Credit Limit</p>
+                <p className="text-lg font-semibold text-neutral-900">
                   {formatCurrency(selectedCustomer?.creditLimit || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-500">Available Credit</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm font-medium text-neutral-500">Available Credit</p>
+                <p className="text-lg font-semibold text-neutral-900">
                   {formatCurrency((selectedCustomer?.creditLimit || 0) - (selectedCustomer?.balance || 0))}
                 </p>
               </div>
@@ -1617,7 +1602,7 @@ const CustomersPage = () => {
               to={buildCustomerLedgerHref({ customerId: selectedCustomer?.id })}
               state={{ returnTo: location.pathname + location.search }}
               onClick={() => setShowLedgerModal(false)}
-              className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700"
+              className="inline-flex min-h-[44px] items-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700"
             >
               <CreditCard className="h-4 w-4 mr-2" aria-hidden />
               Open Ledger
@@ -1626,55 +1611,55 @@ const CustomersPage = () => {
 
           {/* Ledger Table */}
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-neutral-200">
+              <thead className="bg-neutral-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Type
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Reference
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Debit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Credit
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                     Balance
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white divide-y divide-neutral-200">
                 {ledgerData.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500 text-sm">
+                    <td colSpan="6" className="px-6 py-8 text-center text-neutral-500 text-sm">
                       No transactions found
                     </td>
                   </tr>
                 ) : (
                   ledgerData.map((entry, idx) => (
                     <tr key={idx}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                         {new Date(entry.date).toLocaleDateString('en-GB')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                         {entry.type}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                         {entry.reference}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                         {entry.debit > 0 ? formatCurrency(entry.debit) : '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                         {entry.credit > 0 ? formatCurrency(entry.credit) : '-'}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${entry.balance < 0 ? 'text-green-600' : entry.balance > 0 ? 'text-red-600' : 'text-gray-900'
+                      <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${entry.balance < 0 ? 'text-success' : entry.balance > 0 ? 'text-error' : 'text-neutral-900'
                         }`}>
                         {formatBalance(entry.balance)}
                       </td>
@@ -1689,14 +1674,14 @@ const CustomersPage = () => {
           <div className="flex justify-end space-x-3">
             <button
               onClick={handleShareWhatsApp}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <Phone className="h-4 w-4 mr-2" />
               Share via WhatsApp
             </button>
             <button
               onClick={handleExportStatement}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
             >
               <Download className="h-4 w-4 mr-2" />
               Export Statement

@@ -16,7 +16,9 @@ import {
   Clock,
   Repeat,
   Eye,
-  MoreHorizontal
+  MoreHorizontal,
+  Filter,
+  ChevronDown
 } from 'lucide-react'
 import { formatCurrency, roundMoney } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -63,7 +65,7 @@ function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Interpretation</p>
+        <p className="text-sm font-medium text-neutral-700 mb-2">Interpretation</p>
         <label className="flex items-center gap-2 mb-1">
           <input type="radio" name="bulkVatInterp" value="add-on-top" checked={interpretation === 'add-on-top'} onChange={() => setInterpretation('add-on-top')} />
           <span className="text-sm">Add VAT on top (amount was net)</span>
@@ -74,10 +76,10 @@ function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
         </label>
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-700 mb-2">Preview (first {preview.length} of {noVatExpenses.length})</p>
-        <div className="overflow-x-auto border border-gray-200 rounded text-xs">
+        <p className="text-sm font-medium text-neutral-700 mb-2">Preview (first {preview.length} of {noVatExpenses.length})</p>
+        <div className="overflow-x-auto border border-neutral-200 rounded text-xs">
           <table className="min-w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-neutral-50">
               <tr>
                 <th className="px-2 py-1 text-left">Category</th>
                 <th className="px-2 py-1 text-right">Old amount</th>
@@ -88,7 +90,7 @@ function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
             </thead>
             <tbody>
               {preview.map(row => (
-                <tr key={row.id} className="border-t border-gray-100">
+                <tr key={row.id} className="border-t border-neutral-100">
                   <td className="px-2 py-1">{row.categoryName || '-'}</td>
                   <td className="px-2 py-1 text-right">{formatCurrency(row.oldAmount)}</td>
                   <td className="px-2 py-1 text-right">{formatCurrency(row.newNet)}</td>
@@ -104,7 +106,7 @@ function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
         <LoadingButton type="button" loading={submitting} onClick={handleApply} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
           Apply VAT to {noVatExpenses.length} expense(s)
         </LoadingButton>
-        <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50">Cancel</button>
       </div>
     </div>
   )
@@ -129,22 +131,22 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Default VAT rate</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">Default VAT rate</label>
         <select
           value={defaultVatRate}
           onChange={(e) => setDefaultVatRate(Number(e.target.value))}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          className="w-full border border-neutral-300 rounded-lg px-3 py-2"
         >
           <option value={0}>0%</option>
           <option value={0.05}>5%</option>
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tax type</label>
+        <label className="block text-sm font-medium text-neutral-700 mb-1">Tax type</label>
         <select
           value={defaultTaxType}
           onChange={(e) => setDefaultTaxType(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
+          className="w-full border border-neutral-300 rounded-lg px-3 py-2"
         >
           <option value="Standard">Standard</option>
           <option value="Petroleum">Petroleum</option>
@@ -153,20 +155,20 @@ function CategoryVatEditInline ({ category, onSave, onCancel }) {
         </select>
       </div>
       <div className="flex items-center gap-2">
-        <input type="checkbox" id="catItc" checked={defaultIsTaxClaimable} onChange={(e) => setDefaultIsTaxClaimable(e.target.checked)} className="rounded border-gray-300" />
-        <label htmlFor="catItc" className="text-sm text-gray-700">ITC claimable</label>
+        <input type="checkbox" id="catItc" checked={defaultIsTaxClaimable} onChange={(e) => setDefaultIsTaxClaimable(e.target.checked)} className="rounded border-neutral-300" />
+        <label htmlFor="catItc" className="text-sm text-neutral-700">ITC claimable</label>
       </div>
       <div className="flex items-center gap-2">
-        <input type="checkbox" id="catEnt" checked={defaultIsEntertainment} onChange={(e) => setDefaultIsEntertainment(e.target.checked)} className="rounded border-gray-300" />
-        <label htmlFor="catEnt" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+        <input type="checkbox" id="catEnt" checked={defaultIsEntertainment} onChange={(e) => setDefaultIsEntertainment(e.target.checked)} className="rounded border-neutral-300" />
+        <label htmlFor="catEnt" className="text-sm text-neutral-700">Entertainment (50% cap)</label>
       </div>
       <div className="flex items-center gap-2">
-        <input type="checkbox" id="catLock" checked={vatDefaultLocked} onChange={(e) => setVatDefaultLocked(e.target.checked)} className="rounded border-gray-300" />
-        <label htmlFor="catLock" className="text-sm text-gray-700">Lock VAT for this category</label>
+        <input type="checkbox" id="catLock" checked={vatDefaultLocked} onChange={(e) => setVatDefaultLocked(e.target.checked)} className="rounded border-neutral-300" />
+        <label htmlFor="catLock" className="text-sm text-neutral-700">Lock VAT for this category</label>
       </div>
       <div className="flex gap-2 pt-2">
         <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
-        <button type="button" onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50">Cancel</button>
       </div>
     </form>
   )
@@ -280,6 +282,8 @@ const ExpensesPage = () => {
   const [showVatReadiness, setShowVatReadiness] = useState(false)
   const [listError, setListError] = useState(false)
   const [searchDraft, setSearchDraft] = useState('')
+  // Phones: secondary filters collapse behind a toggle so the ledger stays in view.
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
 
   const {
@@ -311,7 +315,7 @@ const ExpensesPage = () => {
   }, [])
 
   const categoryOptions = [
-    { value: '', label: categories.length === 0 ? 'No categories â€“ add one first' : 'Select category...' },
+    { value: '', label: categories.length === 0 ? 'No categories – add one first' : 'Select category...' },
     ...categories.map(cat => ({
       value: String(cat.id),
       label: cat.name,
@@ -998,7 +1002,7 @@ const ExpensesPage = () => {
   }
   const presetActive = (next) => dateRange.from === next.from && dateRange.to === next.to
   const presetChip = (active) =>
-    `min-h-[44px] rounded-md px-3 text-sm font-medium ${active ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'}`
+    `min-h-[44px] shrink-0 rounded-md px-3 text-sm font-medium ${active ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800 hover:bg-neutral-50'}`
   const todayDate = new Date()
   const quarterYear = todayDate.getFullYear()
   const presetRanges = {
@@ -1057,10 +1061,10 @@ const ExpensesPage = () => {
                 {moreOpen && (
                   <div className="absolute right-0 z-20 mt-1 w-44 rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportCsv() }}>
-                      {exportingCsv ? 'Exportingâ€¦' : 'Export CSV'}
+                      {exportingCsv ? 'Exporting…' : 'Export CSV'}
                     </button>
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={exportingCsv || exportingPdf} onClick={() => { setMoreOpen(false); handleExportPdf() }}>
-                      {exportingPdf ? 'Exportingâ€¦' : 'Export PDF'}
+                      {exportingPdf ? 'Exporting…' : 'Export PDF'}
                     </button>
                     <button type="button" className="block w-full px-3 py-2 text-left text-sm hover:bg-neutral-50" onClick={() => { setMoreOpen(false); setShowCategorySettingsModal(true) }}>
                       Category VAT
@@ -1079,7 +1083,7 @@ const ExpensesPage = () => {
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-full px-0 sm:px-1">
         <div className="shrink-0">
         <div className="mb-4 space-y-2 rounded-lg border border-neutral-200 bg-white p-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
             <button type="button" className={presetChip(presetActive(presetRanges['7']))} onClick={() => applyRange(presetRanges['7'])}>Last 7 days</button>
             <button type="button" className={presetChip(presetActive(presetRanges.week))} onClick={() => applyRange(presetRanges.week)}>Week</button>
             <button type="button" className={presetChip(presetActive(presetRanges.month))} onClick={() => applyRange(presetRanges.month)}>Month</button>
@@ -1093,7 +1097,23 @@ const ExpensesPage = () => {
               )
             })}
           </div>
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="expense-filters"
+            className="btn btn-secondary w-full justify-between md:hidden"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Filter className="h-4 w-4" aria-hidden />
+              Filters
+              {[selectedBranchId, groupBy, searchDraft, filterNoVatOnly].filter(Boolean).length > 0 && (
+                <span className="rounded-full bg-primary-100 px-1.5 text-xs tabular-nums text-primary-700">{[selectedBranchId, groupBy, searchDraft, filterNoVatOnly].filter(Boolean).length}</span>
+              )}
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${mobileFiltersOpen ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
+          <div id="expense-filters" className={`${mobileFiltersOpen ? 'grid' : 'hidden'} grid-cols-1 gap-2 md:grid md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end`}>
             <label className="text-xs font-medium text-neutral-500">
               From
               <input type="date" value={pendingDateRange.from} aria-label="From" onChange={(e) => applyRange({ ...pendingDateRange, from: e.target.value })} className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" />
@@ -1150,14 +1170,14 @@ const ExpensesPage = () => {
                 type="button"
                 aria-pressed={filterNoVatOnly}
                 onClick={() => setFilterNoVatOnly((prev) => !prev)}
-                className={`min-h-[44px] rounded-md border px-3 text-sm ${filterNoVatOnly ? 'border-amber-600 bg-amber-50 text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
+                className={`min-h-[44px] rounded-md border px-3 text-sm ${filterNoVatOnly ? 'border-warning bg-warning-bg text-amber-800' : 'border-neutral-300 bg-white text-neutral-800'}`}
               >
                 VAT missing
               </button>
             )}
           </div>
-          <p className="text-xs text-neutral-500">Searches the rows on this page.</p>
-          {rangeInvalid && <p className="text-xs text-red-700">End date is before the start date.</p>}
+          <p className={`${mobileFiltersOpen ? 'block' : 'hidden'} text-xs text-neutral-500 md:block`}>Searches the rows on this page.</p>
+          {rangeInvalid && <p className="text-xs text-error-fg">End date is before the start date.</p>}
         </div>
 
         {expenseSummary && (
@@ -1165,7 +1185,7 @@ const ExpensesPage = () => {
             <p className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="text-xs font-medium text-neutral-500">Total <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.total)}</span></span>
               <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
-              <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-emerald-700">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
+              <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-success-fg">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
               <span>Average per day {formatCurrency(averagePerDay)}</span>
@@ -1215,19 +1235,19 @@ const ExpensesPage = () => {
           </p>
         )}
         {noVatCount > 0 && isAdminOrOwner(user) && (
-          <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-600 bg-white px-3">
-            <p className="text-sm text-amber-700">Missing VAT · {noVatCount} expenses need VAT</p>
+          <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-warning bg-white px-3">
+            <p className="text-sm text-warning-fg">Missing VAT · {noVatCount} expenses need VAT</p>
             <span className="flex gap-2">
-              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-amber-50" onClick={() => setFilterNoVatOnly(true)}>Review</button>
+              <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-warning-bg" onClick={() => setFilterNoVatOnly(true)}>Review</button>
               <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
             </span>
           </div>
         )}
         {/* Aggregated View */}
         {showAggregated && aggregatedData.length > 0 && (
-          <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden mb-6">
+          <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden mb-6">
             <div className="p-3 border-b border-neutral-200 bg-neutral-50">
-              <h3 className="text-sm font-bold text-gray-900">
+              <h3 className="text-sm font-bold text-neutral-900">
                 Expenses Aggregated by {groupBy.charAt(0).toUpperCase() + groupBy.slice(1)}
               </h3>
             </div>
@@ -1237,22 +1257,22 @@ const ExpensesPage = () => {
               <table className="min-w-full text-xs">
                 <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Period</th>
-                    <th className="px-4 py-3 text-right font-semibold text-gray-700">Total Amount</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-700">Count</th>
-                    <th className="px-4 py-3 text-left font-semibold text-gray-700">By Category</th>
+                    <th className="px-4 py-3 text-left font-semibold text-neutral-700">Period</th>
+                    <th className="px-4 py-3 text-right font-semibold text-neutral-700">Total Amount</th>
+                    <th className="px-4 py-3 text-center font-semibold text-neutral-700">Count</th>
+                    <th className="px-4 py-3 text-left font-semibold text-neutral-700">By Category</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {aggregatedData.map((agg, idx) => (
                     <tr key={idx} className="hover:bg-neutral-50">
-                      <td className="px-4 py-4 whitespace-nowrap font-medium text-gray-900">
+                      <td className="px-4 py-4 whitespace-nowrap font-medium text-neutral-900">
                         {agg.period}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right font-bold text-gray-900">
+                      <td className="px-4 py-4 whitespace-nowrap text-right font-bold text-neutral-900">
                         {formatCurrency(agg.totalAmount || 0)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-center text-gray-600">
+                      <td className="px-4 py-4 whitespace-nowrap text-center text-neutral-600">
                         {agg.count || 0}
                       </td>
                       <td className="px-4 py-4">
@@ -1260,14 +1280,14 @@ const ExpensesPage = () => {
                           {agg.byCategory && agg.byCategory.length > 0 ? (
                             agg.byCategory.map((cat, catIdx) => (
                               <div key={catIdx} className="flex justify-between text-xs">
-                                <span className="text-gray-700">{cat.categoryName}:</span>
-                                <span className="font-medium text-gray-900 ml-2">
+                                <span className="text-neutral-700">{cat.categoryName}:</span>
+                                <span className="font-medium text-neutral-900 ml-2">
                                   {formatCurrency(cat.totalAmount || 0)} ({cat.count || 0})
                                 </span>
                               </div>
                             ))
                           ) : (
-                            <span className="text-gray-500 text-xs">No categories</span>
+                            <span className="text-neutral-500 text-xs">No categories</span>
                           )}
                         </div>
                       </td>
@@ -1280,28 +1300,28 @@ const ExpensesPage = () => {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3 p-4">
               {aggregatedData.map((agg, idx) => (
-                <div key={idx} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div key={idx} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{agg.period}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{agg.count || 0} expense{agg.count !== 1 ? 's' : ''}</p>
+                      <p className="text-sm font-semibold text-neutral-900">{agg.period}</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">{agg.count || 0} expense{agg.count !== 1 ? 's' : ''}</p>
                     </div>
-                    <p className="text-base font-bold text-red-600">{formatCurrency(agg.totalAmount || 0)}</p>
+                    <p className="text-base font-bold text-error">{formatCurrency(agg.totalAmount || 0)}</p>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-xs font-medium text-gray-700 mb-2">By Category:</p>
+                  <div className="mt-3 pt-3 border-t border-neutral-200">
+                    <p className="text-xs font-medium text-neutral-700 mb-2">By Category:</p>
                     <div className="space-y-1">
                       {agg.byCategory && agg.byCategory.length > 0 ? (
                         agg.byCategory.map((cat, catIdx) => (
                           <div key={catIdx} className="flex justify-between text-xs">
-                            <span className="text-gray-600">{cat.categoryName}:</span>
-                            <span className="font-medium text-gray-900">
+                            <span className="text-neutral-600">{cat.categoryName}:</span>
+                            <span className="font-medium text-neutral-900">
                               {formatCurrency(cat.totalAmount || 0)} ({cat.count || 0})
                             </span>
                           </div>
                         ))
                       ) : (
-                        <span className="text-gray-500 text-xs">No categories</span>
+                        <span className="text-neutral-500 text-xs">No categories</span>
                       )}
                     </div>
                   </div>
@@ -1317,18 +1337,18 @@ const ExpensesPage = () => {
           const selectedNoVatCount = selectedExpenses.filter(e => e.vatAmount == null).length
           const allSelectedAreNoVat = selectedNoVatCount === selectedExpenseIds.length && selectedNoVatCount > 0
           return (
-          <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 mb-4 flex flex-wrap items-center gap-3">
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3 mb-4 flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium text-primary-800">{selectedExpenseIds.length} selected</span>
             {isAdminOrOwner(user) && (
               <>
                 {allSelectedAreNoVat && (
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-gray-600 mr-1">VAT:</span>
+                    <span className="text-xs text-neutral-600 mr-1">VAT:</span>
                     <div className="inline-flex rounded-lg border border-amber-300 overflow-hidden">
                       <button
                         type="button"
                         onClick={() => setQuickBulkVatInterpretation('add-on-top')}
-                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'add-on-top' ? 'bg-amber-600 text-white' : 'bg-white text-gray-700 hover:bg-amber-50'}`}
+                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'add-on-top' ? 'bg-warning text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
                         title="Amount was net; add 5% on top"
                       >
                         Add on top
@@ -1336,7 +1356,7 @@ const ExpensesPage = () => {
                       <button
                         type="button"
                         onClick={() => setQuickBulkVatInterpretation('extract-from-amount')}
-                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'extract-from-amount' ? 'bg-amber-600 text-white' : 'bg-white text-gray-700 hover:bg-amber-50'}`}
+                        className={`px-2.5 py-1.5 text-xs font-medium ${quickBulkVatInterpretation === 'extract-from-amount' ? 'bg-warning text-white' : 'bg-white text-neutral-700 hover:bg-warning-bg'}`}
                         title="Amount included VAT; extract net and VAT"
                       >
                         Extract from amount
@@ -1364,7 +1384,7 @@ const ExpensesPage = () => {
                           toast.error(err?.response?.data?.message || 'Update failed')
                         }
                       }}
-                      className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded-lg hover:bg-amber-700"
+                      className="px-3 py-1.5 bg-warning text-white text-sm font-medium rounded-lg hover:bg-amber-700"
                     >
                       Apply 5% VAT to selected ({selectedNoVatCount})
                     </button>
@@ -1385,7 +1405,7 @@ const ExpensesPage = () => {
                       toast.error(err?.response?.data?.message || 'Update failed')
                     }
                   }}
-                  className="px-3 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                  className="px-3 py-1.5 bg-success text-white text-sm font-medium rounded-lg hover:bg-green-700"
                 >
                   Mark as VAT claimable
                 </button>
@@ -1434,7 +1454,7 @@ const ExpensesPage = () => {
                       }
                     }
                   })}
-                  className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                  className="px-3 py-1.5 bg-error text-white text-sm font-medium rounded-lg hover:bg-red-700"
                 >
                   Delete selected ({selectedExpenseIds.length})
                 </button>
@@ -1443,7 +1463,7 @@ const ExpensesPage = () => {
             <button
               type="button"
               onClick={() => setSelectedExpenseIds([])}
-              className="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm text-gray-700 hover:bg-neutral-100"
+              className="px-3 py-1.5 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-100"
             >
               Clear selection
             </button>
@@ -1452,11 +1472,11 @@ const ExpensesPage = () => {
         })()}
         </div>
 
-        {/* Expenses Table - Tally Ledger Style â€” grows to fill remaining viewport */}
+        {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
         {!showAggregated && expenseView === 'ledger' && (
-          <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-xl border border-neutral-200 overflow-hidden shadow-sm">
+          <div className="flex flex-col flex-1 min-h-0 mt-4 bg-white rounded-lg border border-neutral-200 overflow-hidden shadow-sm">
             <div className="shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
-              <h3 className="text-sm font-bold text-gray-900">Expenses Ledger</h3>
+              <h3 className="text-sm font-bold text-neutral-900">Expenses Ledger</h3>
             </div>
 
             {/* Desktop Table */}
@@ -1465,7 +1485,7 @@ const ExpensesPage = () => {
               <table className="min-w-max w-full text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-2 py-2 text-center font-semibold text-gray-700 w-10 bg-neutral-50">
+                    <th className="px-2 py-2 text-center font-semibold text-neutral-700 w-10 bg-neutral-50">
                       <input
                         type="checkbox"
                         checked={displayExpenses.length > 0 && displayExpenses.every(e => selectedExpenseIds.includes(e.id))}
@@ -1473,29 +1493,29 @@ const ExpensesPage = () => {
                           if (e.target.checked) setSelectedExpenseIds(displayExpenses.map(ex => ex.id))
                           else setSelectedExpenseIds(prev => prev.filter(id => !displayExpenses.some(ex => ex.id === id)))
                         }}
-                        className="rounded border-gray-300"
+                        className="rounded border-neutral-300"
                       />
                     </th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700 bg-neutral-50">Category</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Branch</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Route</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Amount</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700">VAT</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Claimable VAT</th>
-                    <th className="px-2 py-2 text-right font-semibold text-gray-700">Total</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Date</th>
-                    <th className="px-2 py-2 text-center font-semibold text-gray-700">VAT Period</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Status</th>
-                    <th className="px-2 py-2 text-left font-semibold text-gray-700">Note</th>
-                    <th className="px-2 py-2 text-center font-semibold text-gray-700">Actions</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700 bg-neutral-50">Category</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Branch</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Route</th>
+                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">Amount</th>
+                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">Claimable VAT</th>
+                    <th className="px-2 py-2 text-right font-semibold text-neutral-700">Total</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Date</th>
+                    <th className="px-2 py-2 text-center font-semibold text-neutral-700">VAT Period</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Status</th>
+                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Note</th>
+                    <th className="px-2 py-2 text-center font-semibold text-neutral-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-neutral-100">
                   {displayExpenses.length === 0 ? (
                     <tr>
-                      <td colSpan="14" className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan="14" className="px-6 py-8 text-center text-neutral-500">
                         {loading && displayExpenses.length === 0 && !listError
-                          ? 'Loading expensesâ€¦'
+                          ? 'Loading expenses…'
                           : listError
                           ? 'Unable to load expenses.'
                           : user && !isAdminOrOwner(user)
@@ -1517,12 +1537,12 @@ const ExpensesPage = () => {
                               if (e.target.checked) setSelectedExpenseIds(prev => [...prev, expense.id])
                               else setSelectedExpenseIds(prev => prev.filter(id => id !== expense.id))
                             }}
-                            className="rounded border-gray-300"
+                            className="rounded border-neutral-300"
                           />
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap">
                           <div className="flex items-center">
-                            <span className="font-medium text-gray-900">{expense.categoryName}</span>
+                            <span className="font-medium text-neutral-900">{expense.categoryName}</span>
                             {expense.isTaxClaimable && (expense.claimableVat > 0 || expense.ClaimableVat > 0) ? (
                               <span className="ml-1.5 flex-shrink-0" title="VAT Claimable (ITC)">
                                 <CheckCircle className="h-3.5 w-3.5 text-green-500" />
@@ -1533,41 +1553,41 @@ const ExpensesPage = () => {
                               </span>
                             ) : (
                               <span className="ml-1.5 flex-shrink-0" title="No VAT data">
-                                <XCircle className="h-3.5 w-3.5 text-gray-300" />
+                                <XCircle className="h-3.5 w-3.5 text-neutral-300" />
                               </span>
                             )}
                             {expense.taxType && expense.taxType !== 'Standard' && (
-                              <span className="ml-1 px-1 py-0.5 text-[10px] rounded bg-gray-100 text-gray-600">{expense.taxType}</span>
+                              <span className="ml-1 px-1 py-0.5 text-micro rounded bg-neutral-100 text-neutral-600">{expense.taxType}</span>
                             )}
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-sm text-gray-700">
+                        <td className="px-2 py-2 text-sm text-neutral-700">
                           {expense.branchName || '-'}
                         </td>
-                        <td className="px-2 py-2 text-sm text-gray-700">
+                        <td className="px-2 py-2 text-sm text-neutral-700">
                           {expense.routeName || '-'}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-neutral-900">
                           {formatCurrency(expense.amount)}
                           {expense.vatAmount != null && expense.vatAmount > 0 && ((expense.vatInclusive ?? expense.VatInclusive) === true || (expense.vatInclusive ?? expense.VatInclusive) === false) && (
-                            <span className={`ml-1 text-xs font-normal ${(expense.vatInclusive ?? expense.VatInclusive) ? 'text-blue-600' : 'text-gray-500'}`} title={(expense.vatInclusive ?? expense.VatInclusive) ? 'Amount was entered VAT-inclusive' : 'Amount was entered VAT-exclusive'}>
+                            <span className={`ml-1 text-xs font-normal ${(expense.vatInclusive ?? expense.VatInclusive) ? 'text-primary-600' : 'text-neutral-500'}`} title={(expense.vatInclusive ?? expense.VatInclusive) ? 'Amount was entered VAT-inclusive' : 'Amount was entered VAT-exclusive'}>
                               ({(expense.vatInclusive ?? expense.VatInclusive) ? 'Incl.' : 'Excl.'})
                             </span>
                           )}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right text-gray-700">
+                        <td className="px-2 py-2 whitespace-nowrap text-right text-neutral-700">
                           {expense.vatAmount != null && expense.vatAmount !== 0 ? formatCurrency(expense.vatAmount) : ''}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right text-green-700">
+                        <td className="px-2 py-2 whitespace-nowrap text-right text-success-fg">
                           {expense.claimableVat != null || expense.ClaimableVat != null ? formatCurrency(expense.claimableVat ?? expense.ClaimableVat) : '-'}
                           {expense.isEntertainment && (expense.claimableVat != null || expense.ClaimableVat != null) && (
-                            <span className="ml-1 text-xs text-amber-600" title="50% cap">50%</span>
+                            <span className="ml-1 text-xs text-warning" title="50% cap">50%</span>
                           )}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-neutral-900">
                           {expense.totalAmount != null ? formatCurrency(expense.totalAmount) : (expense.vatAmount != null ? formatCurrency((Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0)) : formatCurrency(expense.amount))}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-gray-900">
+                        <td className="px-2 py-2 whitespace-nowrap text-neutral-900">
                           {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-center">
@@ -1585,7 +1605,7 @@ const ExpensesPage = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="px-2 py-2 text-gray-900 max-w-[220px] truncate" title={expense.note || ''}>
+                        <td className="px-2 py-2 text-neutral-900 max-w-[220px] truncate" title={expense.note || ''}>
                           {expense.note || '-'}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-center space-x-2">
@@ -1593,7 +1613,7 @@ const ExpensesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleDownloadAttachment(expense)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-primary-600 hover:text-primary-900"
                               title="View Receipt"
                             >
                               <FileText className="h-4 w-4" />
@@ -1604,7 +1624,7 @@ const ExpensesPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleApproveExpense(expense.id)}
-                                className="text-green-600 hover:text-green-900"
+                                className="text-success hover:text-green-900"
                                 title="Approve"
                               >
                                 <CheckCircle className="h-4 w-4" />
@@ -1612,7 +1632,7 @@ const ExpensesPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleRejectExpense(expense.id)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-error hover:text-red-900"
                                 title="Reject"
                               >
                                 <XCircle className="h-4 w-4" />
@@ -1633,7 +1653,7 @@ const ExpensesPage = () => {
                               <button
                                 type="button"
                                 onClick={() => handleDelete(expense.id)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-error hover:text-red-900"
                                 title="Delete expense"
                                 aria-label="Delete expense"
                               >
@@ -1658,7 +1678,7 @@ const ExpensesPage = () => {
                     <ListSkeleton count={5} />
                   </div>
                 ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-neutral-500">
                   {user && !isAdminOrOwner(user)
                     ? 'No expenses in your assigned branch(es) for this period.'
                     : listError
@@ -1668,7 +1688,7 @@ const ExpensesPage = () => {
                 )
               ) : (
                 displayExpenses.map((expense) => (
-                  <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div key={expense.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-start gap-2 flex-1">
                         <input
@@ -1678,15 +1698,15 @@ const ExpensesPage = () => {
                             if (e.target.checked) setSelectedExpenseIds(prev => [...prev, expense.id])
                             else setSelectedExpenseIds(prev => prev.filter(id => id !== expense.id))
                           }}
-                          className="mt-1 rounded border-gray-300"
+                          className="mt-1 rounded border-neutral-300"
                         />
                         <div className="flex-1 min-w-0">
                         <div className="flex items-center mb-1">
-                          <p className="text-sm font-semibold text-gray-900">{expense.categoryName || 'Uncategorized'}</p>
+                          <p className="text-sm font-semibold text-neutral-900">{expense.categoryName || 'Uncategorized'}</p>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{expense.note || 'No description'}</p>
+                        <p className="text-xs text-neutral-500 mt-0.5">{expense.note || 'No description'}</p>
                         {(expense.branchName || expense.routeName) && (
-                          <p className="text-xs text-blue-600 mt-1">
+                          <p className="text-xs text-primary-600 mt-1">
                             {expense.branchName && `Branch: ${expense.branchName}`}
                             {expense.branchName && expense.routeName && ' · '}
                             {expense.routeName && `Route: ${expense.routeName}`}
@@ -1697,14 +1717,14 @@ const ExpensesPage = () => {
                           {expense.status === 'Rejected' && <XCircle className="h-3 w-3 text-red-500" />}
                           {expense.status === 'Pending' && <Clock className="h-3 w-3 text-yellow-500" />}
                           <span className={`text-xs font-semibold ${
-                            expense.status === 'Approved' ? 'text-green-700' :
-                            expense.status === 'Rejected' ? 'text-red-700' :
+                            expense.status === 'Approved' ? 'text-success-fg' :
+                            expense.status === 'Rejected' ? 'text-error-fg' :
                             'text-yellow-700'
                           }`}>
                             {expense.status || 'Approved'}
                           </span>
                           {expense.date && (
-                            <span className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
+                            <span className="inline-flex px-1.5 py-0.5 text-micro font-semibold rounded bg-purple-100 text-purple-800">
                               {getVatQuarter(expense.date).label}
                             </span>
                           )}
@@ -1712,7 +1732,7 @@ const ExpensesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleDownloadAttachment(expense)}
-                              className="text-blue-600 hover:text-blue-900"
+                              className="text-primary-600 hover:text-primary-900"
                               title="View receipt"
                             >
                               <FileText className="h-3 w-3" />
@@ -1722,11 +1742,11 @@ const ExpensesPage = () => {
                         </div>
                       </div>
                       <div className="text-right ml-2">
-                        <p className="text-base font-bold text-red-600">{formatCurrency(expense.totalAmount != null ? expense.totalAmount : (expense.vatAmount != null ? (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) : expense.amount))}</p>
-                        {expense.vatAmount != null && <p className="text-xs text-gray-500">VAT {formatCurrency(expense.vatAmount)}</p>}
+                        <p className="text-base font-bold text-error">{formatCurrency(expense.totalAmount != null ? expense.totalAmount : (expense.vatAmount != null ? (Number(expense.amount) || 0) + (Number(expense.vatAmount) || 0) : expense.amount))}</p>
+                        {expense.vatAmount != null && <p className="text-xs text-neutral-500">VAT {formatCurrency(expense.vatAmount)}</p>}
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">
+                    <div className="flex items-center justify-between text-xs text-neutral-500 mt-3 pt-3 border-t border-neutral-200">
                       <div className="flex items-center gap-3">
                         <span>{expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}</span>
                       </div>
@@ -1736,7 +1756,7 @@ const ExpensesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleApproveExpense(expense.id)}
-                              className="text-green-600 hover:text-green-900 p-1"
+                              className="text-success hover:text-green-900 p-1"
                               title="Approve"
                             >
                               <CheckCircle className="h-4 w-4" />
@@ -1744,7 +1764,7 @@ const ExpensesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleRejectExpense(expense.id)}
-                              className="text-red-600 hover:text-red-900 p-1"
+                              className="text-error hover:text-red-900 p-1"
                               title="Reject"
                             >
                               <XCircle className="h-4 w-4" />
@@ -1764,7 +1784,7 @@ const ExpensesPage = () => {
                             <button
                               type="button"
                               onClick={() => handleDelete(expense.id)}
-                              className="text-red-600 hover:text-red-900 p-1"
+                              className="text-error hover:text-red-900 p-1"
                               title="Delete expense"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -1822,7 +1842,7 @@ const ExpensesPage = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-neutral-700">
                   Category <span className="text-red-500">*</span>
                 </label>
                 {isAdminOrOwner(user) && (
@@ -1830,7 +1850,7 @@ const ExpensesPage = () => {
                     type="button"
                     onClick={openCategoryPrompt}
                     disabled={creatingCategory}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
+                    className="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1 disabled:opacity-50"
                     title="Create new category"
                   >
                     <Plus className="h-3 w-3" />
@@ -1865,28 +1885,28 @@ const ExpensesPage = () => {
               const vat = inclusive ? roundMoney(amt - net) : roundMoney(amt * 0.05)
               const total = inclusive ? amt : roundMoney(amt + vat)
               return (
-                <div className="rounded bg-gray-50 border border-gray-200 px-2 py-1 text-xs col-span-2 lg:col-span-4 flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span><span className="text-gray-600">Net:</span> <span className="font-medium">{formatCurrency(net)}</span></span>
-                  <span><span className="text-gray-600">VAT:</span> <span className="font-medium">{formatCurrency(vat)}</span></span>
-                  <span><span className="text-gray-600">Total:</span> <span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' âœ“' : ''}</span>
+                <div className="rounded bg-neutral-50 border border-neutral-200 px-2 py-1 text-xs col-span-2 lg:col-span-4 flex flex-wrap gap-x-3 gap-y-0.5">
+                  <span><span className="text-neutral-600">Net:</span> <span className="font-medium">{formatCurrency(net)}</span></span>
+                  <span><span className="text-neutral-600">VAT:</span> <span className="font-medium">{formatCurrency(vat)}</span></span>
+                  <span><span className="text-neutral-600">Total:</span> <span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</span>
                 </div>
               )
             })()}
 
             {vatLockedByCategory ? (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 col-span-2 lg:col-span-4">
+              <p className="text-xs text-warning-fg bg-warning-bg border border-warning-border rounded px-2 py-1.5 col-span-2 lg:col-span-4">
                 VAT from category ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
                 {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ''}{selectedCategory?.defaultIsEntertainment ? ', 50% cap' : ''})
               </p>
             ) : (
               <>
                 <div className="flex items-center gap-2 col-span-2 lg:col-span-4">
-                  <input type="checkbox" id="withVat" {...register('withVat')} className="rounded border-gray-300" />
-                  <label htmlFor="withVat" className="text-sm text-gray-700">Include VAT (5%)</label>
+                  <input type="checkbox" id="withVat" {...register('withVat')} className="rounded border-neutral-300" />
+                  <label htmlFor="withVat" className="text-sm text-neutral-700">Include VAT (5%)</label>
                   {watch('withVat') && (
                     <span className="flex items-center gap-1.5 ml-2">
-                      <input type="checkbox" id="vatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
-                      <label htmlFor="vatInclusive" className="text-xs text-blue-700">VAT-inclusive</label>
+                      <input type="checkbox" id="vatInclusive" {...register('vatInclusive')} className="rounded border-neutral-300" />
+                      <label htmlFor="vatInclusive" className="text-xs text-primary-700">VAT-inclusive</label>
                     </span>
                   )}
                 </div>
@@ -1894,12 +1914,12 @@ const ExpensesPage = () => {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 col-span-2 lg:col-span-4">
                     <Select label="Tax type" options={[{ value: 'Standard', label: 'Standard' }, { value: 'Petroleum', label: 'Petroleum' }, { value: 'Exempt', label: 'Exempt' }]} {...register('taxType')} />
                     <div className="flex items-center gap-1.5 self-center">
-                      <input type="checkbox" id="isTaxClaimable" {...register('isTaxClaimable')} className="rounded border-gray-300" />
-                      <label htmlFor="isTaxClaimable" className="text-xs text-gray-700">ITC claimable</label>
+                      <input type="checkbox" id="isTaxClaimable" {...register('isTaxClaimable')} className="rounded border-neutral-300" />
+                      <label htmlFor="isTaxClaimable" className="text-xs text-neutral-700">ITC claimable</label>
                     </div>
                     <div className="flex items-center gap-1.5 self-center">
-                      <input type="checkbox" id="isEntertainment" {...register('isEntertainment')} className="rounded border-gray-300" />
-                      <label htmlFor="isEntertainment" className="text-xs text-gray-700">Entertainment (50%)</label>
+                      <input type="checkbox" id="isEntertainment" {...register('isEntertainment')} className="rounded border-neutral-300" />
+                      <label htmlFor="isEntertainment" className="text-xs text-neutral-700">Entertainment (50%)</label>
                     </div>
                     <Input label="Partial %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} className="py-1.5" />
                   </div>
@@ -1969,7 +1989,7 @@ const ExpensesPage = () => {
             {/* Receipt/Attachment - inline */}
             <div className="col-span-2 lg:col-span-4">
               <div className="flex flex-wrap items-center gap-3">
-                <label className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-gray-300 rounded text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <label className="cursor-pointer inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50">
                   <Upload className="h-3.5 w-3.5 mr-1.5" />
                   {attachmentFile ? attachmentFile.name : 'Receipt (opt)'}
                   <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleAttachmentChange} />
@@ -1978,16 +1998,16 @@ const ExpensesPage = () => {
                   <span className="flex items-center gap-1">
                     {attachmentFile?.type?.startsWith('image/') ? (
                       <img src={attachmentPreview} alt="" className="h-8 w-8 object-cover rounded" />
-                    ) : <FileText className="h-5 w-5 text-blue-600" />}
-                    <button type="button" onClick={() => { setAttachmentFile(null); setAttachmentPreview(null) }} className="text-red-600 p-0.5"><X className="h-4 w-4" /></button>
+                    ) : <FileText className="h-5 w-5 text-primary-600" />}
+                    <button type="button" onClick={() => { setAttachmentFile(null); setAttachmentPreview(null) }} className="text-error p-0.5"><X className="h-4 w-4" /></button>
                   </span>
                 )}
-                <span className="text-xs text-gray-500">JPG, PNG, PDF (10MB)</span>
+                <span className="text-xs text-neutral-500">JPG, PNG, PDF (10MB)</span>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-200">
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-neutral-200">
             <button
               type="button"
               onClick={() => {
@@ -1996,14 +2016,14 @@ const ExpensesPage = () => {
                 setAttachmentPreview(null)
                 reset()
               }}
-              className="px-4 py-2 border border-neutral-200 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-neutral-50"
+              className="px-4 py-2 border border-neutral-200 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               Cancel
             </button>
             <LoadingButton
               type="submit"
               loading={uploadingAttachment}
-              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center min-h-[44px]"
+              className="px-4 py-2 bg-success text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center min-h-[44px]"
             >
               <Save className="h-4 w-4 mr-2" />
               {uploadingAttachment ? 'Uploading...' : 'Add Expense'}
@@ -2027,7 +2047,7 @@ const ExpensesPage = () => {
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-neutral-700">
                   Category <span className="text-red-500">*</span>
                 </label>
                 {isAdminOrOwner(user) && (
@@ -2035,7 +2055,7 @@ const ExpensesPage = () => {
                     type="button"
                     onClick={openCategoryPrompt}
                     disabled={creatingCategory}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 disabled:opacity-50"
+                    className="text-xs text-primary-600 hover:text-primary-800 font-medium flex items-center gap-1 disabled:opacity-50"
                     title="Create new category"
                   >
                     <Plus className="h-3 w-3" />
@@ -2088,23 +2108,23 @@ const ExpensesPage = () => {
               const vat = inclusive ? roundMoney(amt - net) : roundMoney(amt * 0.05)
               const total = inclusive ? amt : roundMoney(amt + vat)
               return (
-                <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm space-y-0.5">
-                  <p><span className="text-gray-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
-                  <p><span className="text-gray-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
-                  <p><span className="text-gray-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' âœ“' : ''}</p>
+                <div className="rounded-lg bg-neutral-50 border border-neutral-200 px-3 py-2 text-sm space-y-0.5">
+                  <p><span className="text-neutral-600">Net: </span><span className="font-medium">{formatCurrency(net)}</span></p>
+                  <p><span className="text-neutral-600">VAT (5%): </span><span className="font-medium">{formatCurrency(vat)}</span></p>
+                  <p><span className="text-neutral-600">Total: </span><span className="font-semibold">{formatCurrency(total)}</span>{inclusive ? ' ✓' : ''}</p>
                 </div>
               )
             })()}
 
             {selectedExpense && selectedExpense.vatAmount == null && !vatLockedByCategory && (
-              <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
+              <div className="rounded-lg bg-warning-bg border border-warning-border px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
                 <span className="text-sm text-amber-800">No VAT data.</span>
-                <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-amber-600 text-white rounded hover:bg-amber-700">Add 5% VAT</button>
+                <button type="button" onClick={() => { setValue('withVat', true); setValue('taxType', 'Standard'); setValue('isTaxClaimable', true); }} className="text-sm px-2 py-1 bg-warning text-white rounded hover:bg-amber-700">Add 5% VAT</button>
                 <button type="button" onClick={() => { setValue('withVat', false); }} className="text-sm px-2 py-1 border border-amber-300 rounded hover:bg-amber-100">Keep as No VAT</button>
               </div>
             )}
             {vatLockedByCategory ? (
-              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              <p className="text-sm text-warning-fg bg-warning-bg border border-warning-border rounded px-3 py-2">
                 VAT auto-set from category default ({selectedCategory?.defaultVatRate ? `${(selectedCategory.defaultVatRate * 100).toFixed(0)}%` : '0%'}
                 {selectedCategory?.defaultIsTaxClaimable ? ', Claimable' : ', Non-claimable'}
                 {selectedCategory?.defaultIsEntertainment ? ', Entertainment (50% cap)' : ''}).
@@ -2112,19 +2132,19 @@ const ExpensesPage = () => {
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <input type="checkbox" id="editWithVat" {...register('withVat')} className="rounded border-gray-300" />
-                  <label htmlFor="editWithVat" className="text-sm text-gray-700">Include VAT (5%)</label>
+                  <input type="checkbox" id="editWithVat" {...register('withVat')} className="rounded border-neutral-300" />
+                  <label htmlFor="editWithVat" className="text-sm text-neutral-700">Include VAT (5%)</label>
                 </div>
                 {watch('withVat') && (
-                  <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                    <p className="text-xs text-blue-800">
+                  <div className="mt-2 p-3 bg-primary-50 border border-primary-200 rounded-lg space-y-2">
+                    <p className="text-xs text-primary-800">
                       Select whether the amount you enter is <strong>inclusive</strong> (total with VAT) or <strong>exclusive</strong> (net, VAT added on top).
                     </p>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <input type="checkbox" id="editVatInclusive" {...register('vatInclusive')} className="rounded border-gray-300" />
-                      <label htmlFor="editVatInclusive" className="text-sm text-blue-800 font-medium">Amount includes VAT (VAT-inclusive)</label>
+                      <input type="checkbox" id="editVatInclusive" {...register('vatInclusive')} className="rounded border-neutral-300" />
+                      <label htmlFor="editVatInclusive" className="text-sm text-primary-800 font-medium">Amount includes VAT (VAT-inclusive)</label>
                       <span
-                        className="text-blue-600 cursor-help border border-blue-400 rounded-full w-4 h-4 inline-flex items-center justify-center text-xs font-bold"
+                        className="text-primary-600 cursor-help border border-primary-400 rounded-full w-4 h-4 inline-flex items-center justify-center text-xs font-bold"
                         title="Inclusive: enter the total on the receipt (e.g. 105 AED); VAT is extracted. Exclusive: enter net only (e.g. 100 AED); 5% VAT is added."
                       >
                         ?
@@ -2133,7 +2153,7 @@ const ExpensesPage = () => {
                   </div>
                 )}
                 {watch('withVat') && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 border-l-2 border-neutral-200">
                     <Select
                       label="Tax type"
                       options={[
@@ -2144,12 +2164,12 @@ const ExpensesPage = () => {
                       {...register('taxType')}
                     />
                     <div className="flex items-center gap-2 pt-6">
-                      <input type="checkbox" id="editIsTaxClaimable" {...register('isTaxClaimable')} className="rounded border-gray-300" />
-                      <label htmlFor="editIsTaxClaimable" className="text-sm text-gray-700">Tax claimable (ITC)</label>
+                      <input type="checkbox" id="editIsTaxClaimable" {...register('isTaxClaimable')} className="rounded border-neutral-300" />
+                      <label htmlFor="editIsTaxClaimable" className="text-sm text-neutral-700">Tax claimable (ITC)</label>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" id="editIsEntertainment" {...register('isEntertainment')} className="rounded border-gray-300" />
-                      <label htmlFor="editIsEntertainment" className="text-sm text-gray-700">Entertainment (50% cap)</label>
+                      <input type="checkbox" id="editIsEntertainment" {...register('isEntertainment')} className="rounded border-neutral-300" />
+                      <label htmlFor="editIsEntertainment" className="text-sm text-neutral-700">Entertainment (50% cap)</label>
                     </div>
                     <Input label="Partial credit %" type="number" min={0} max={100} step={1} placeholder="100" {...register('partialCreditPct')} />
                   </div>
@@ -2200,11 +2220,11 @@ const ExpensesPage = () => {
 
             {/* ATTACHMENT FIX: Add receipt/attachment upload in edit modal */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">
                 Receipt/Attachment (Optional)
               </label>
               <div className="mt-1 flex items-center gap-3">
-                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                <label className="cursor-pointer inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50">
                   <Upload className="h-4 w-4 mr-2" />
                   {attachmentFile ? attachmentFile.name : (selectedExpense?.attachmentUrl ? 'Change File' : 'Choose File')}
                   <input
@@ -2219,7 +2239,7 @@ const ExpensesPage = () => {
                     {attachmentFile?.type?.startsWith('image/') ? (
                       <img src={attachmentPreview} alt="Preview" className="h-12 w-12 object-cover rounded border" />
                     ) : (
-                      <FileText className="h-8 w-8 text-blue-600" />
+                      <FileText className="h-8 w-8 text-primary-600" />
                     )}
                     <button
                       type="button"
@@ -2227,7 +2247,7 @@ const ExpensesPage = () => {
                         setAttachmentFile(null)
                         setAttachmentPreview(null)
                       }}
-                      className="text-red-600 hover:text-red-800"
+                      className="text-error hover:text-red-800"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -2237,14 +2257,14 @@ const ExpensesPage = () => {
                   <button
                     type="button"
                     onClick={() => handleDownloadAttachment(selectedExpense)}
-                    className="text-blue-600 hover:text-blue-800 flex items-center gap-1 text-sm"
+                    className="text-primary-600 hover:text-primary-800 flex items-center gap-1 text-sm"
                   >
                     <Eye className="h-4 w-4" />
                     View Current
                   </button>
                 )}
               </div>
-              <p className="mt-1 text-xs text-gray-500">Supported: JPG, PNG, GIF, PDF (Max 10MB)</p>
+              <p className="mt-1 text-xs text-neutral-500">Supported: JPG, PNG, GIF, PDF (Max 10MB)</p>
             </div>
           </div>
 
@@ -2258,14 +2278,14 @@ const ExpensesPage = () => {
                 setAttachmentPreview(null)
                 reset()
               }}
-              className="px-4 py-2 border border-neutral-200 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-neutral-50"
+              className="px-4 py-2 border border-neutral-200 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               Cancel
             </button>
             <LoadingButton
               type="submit"
               loading={uploadingAttachment}
-              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center min-h-[44px]"
+              className="px-4 py-2 bg-success text-white rounded-md text-sm font-medium hover:bg-green-700 flex items-center min-h-[44px]"
             >
               <Save className="h-4 w-4 mr-2" />
               {uploadingAttachment ? 'Uploading...' : 'Update Expense'}
@@ -2284,25 +2304,25 @@ const ExpensesPage = () => {
           size="lg"
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-neutral-600 mb-4">
               Set up expenses that repeat automatically (e.g., monthly rent, weekly fuel).
             </p>
             
             {recurringExpenses.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Repeat className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <div className="text-center py-8 text-neutral-500">
+                <Repeat className="h-12 w-12 mx-auto mb-4 text-neutral-400" />
                 <p>No recurring expenses configured</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {recurringExpenses.map((recurring) => (
-                  <div key={recurring.id} className="border border-gray-200 rounded-lg p-4">
+                  <div key={recurring.id} className="border border-neutral-200 rounded-lg p-4">
                     <div className="flex items-start justify-between">
                       <div>
-                        <p className="font-semibold text-gray-900">{recurring.categoryName}</p>
-                        <p className="text-sm text-gray-600">{formatCurrency(recurring.amount)}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {recurring.frequency} â€¢ {recurring.isActive ? 'Active' : 'Inactive'}
+                        <p className="font-semibold text-neutral-900">{recurring.categoryName}</p>
+                        <p className="text-sm text-neutral-600">{formatCurrency(recurring.amount)}</p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {recurring.frequency} • {recurring.isActive ? 'Active' : 'Inactive'}
                         </p>
                       </div>
                     </div>
@@ -2321,7 +2341,7 @@ const ExpensesPage = () => {
         title="Bulk VAT update"
       >
         {noVatCount === 0 ? (
-          <p className="text-gray-600">No expenses with missing VAT data.</p>
+          <p className="text-neutral-600">No expenses with missing VAT data.</p>
         ) : (
           <BulkVatForm
             noVatExpenses={noVatExpenses}
@@ -2355,15 +2375,15 @@ const ExpensesPage = () => {
       >
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {categories.map(cat => (
-            <div key={cat.id} className="flex items-center justify-between py-2 border-b border-gray-100">
+            <div key={cat.id} className="flex items-center justify-between py-2 border-b border-neutral-100">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium text-gray-900">{cat.name}</span>
-                <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600">
+                <span className="font-medium text-neutral-900">{cat.name}</span>
+                <span className="text-xs px-2 py-0.5 rounded bg-neutral-100 text-neutral-600">
                   {cat.defaultVatRate ? `${(cat.defaultVatRate * 100).toFixed(0)}% VAT` : '0% VAT'}
                 </span>
-                {cat.defaultIsTaxClaimable && <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-700">Claimable</span>}
-                {cat.defaultIsEntertainment && <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-700">Entertainment</span>}
-                {cat.vatDefaultLocked && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700">Locked</span>}
+                {cat.defaultIsTaxClaimable && <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-success-fg">Claimable</span>}
+                {cat.defaultIsEntertainment && <span className="text-xs px-2 py-0.5 rounded bg-amber-100 text-warning-fg">Entertainment</span>}
+                {cat.vatDefaultLocked && <span className="text-xs px-2 py-0.5 rounded bg-primary-100 text-primary-700">Locked</span>}
               </div>
               <button
                 type="button"
@@ -2374,7 +2394,7 @@ const ExpensesPage = () => {
               </button>
             </div>
           ))}
-          {categories.length === 0 && <p className="text-gray-500 text-sm">No categories yet.</p>}
+          {categories.length === 0 && <p className="text-neutral-500 text-sm">No categories yet.</p>}
         </div>
       </Modal>
 

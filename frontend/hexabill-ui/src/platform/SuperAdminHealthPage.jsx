@@ -83,7 +83,7 @@ const SuperAdminHealthPage = () => {
         <button
           onClick={handleCheckAgain}
           disabled={checking}
-          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
+          className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
         >
           <RefreshCw className={`h-5 w-5 ${checking ? 'animate-spin' : ''}`} />
           <span>{checking ? 'Checking…' : 'Check again'}</span>
@@ -91,11 +91,11 @@ const SuperAdminHealthPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <XCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg flex items-start gap-3">
+          <XCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-800">Error</p>
-            <p className="text-red-700 text-sm">{error}</p>
+            <p className="text-error-fg text-sm">{error}</p>
           </div>
         </div>
       )}
@@ -103,25 +103,25 @@ const SuperAdminHealthPage = () => {
       {health && !error && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Database */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-lg bg-blue-100">
-                <Database className="h-6 w-6 text-blue-600" />
+              <div className="p-2.5 rounded-lg bg-primary-100">
+                <Database className="h-6 w-6 text-primary-600" />
               </div>
               <h2 className="text-lg font-semibold text-neutral-900">Database</h2>
             </div>
             {health.database?.connected ? (
-              <div className="flex items-center gap-2 text-green-700">
+              <div className="flex items-center gap-2 text-success-fg">
                 <CheckCircle className="h-5 w-5" />
                 <span className="font-medium">Connected</span>
               </div>
             ) : (
-              <div className="flex items-start gap-2 text-red-700">
+              <div className="flex items-start gap-2 text-error-fg">
                 <XCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium">Not connected</p>
                   {health.database?.error && (
-                    <p className="text-sm mt-1 text-red-600">{health.database.error}</p>
+                    <p className="text-sm mt-1 text-error">{health.database.error}</p>
                   )}
                 </div>
               </div>
@@ -129,7 +129,7 @@ const SuperAdminHealthPage = () => {
           </div>
 
           {/* Migrations */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-lg bg-purple-100">
                 <Hash className="h-6 w-6 text-purple-600" />
@@ -142,7 +142,7 @@ const SuperAdminHealthPage = () => {
             </p>
             {health.migrations?.pending?.length > 0 ? (
               <div className="space-y-3">
-                <div className="flex items-start gap-2 text-amber-700">
+                <div className="flex items-start gap-2 text-warning-fg">
                   <AlertTriangle className="h-5 w-5 flex-shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">Pending migrations</p>
@@ -156,13 +156,13 @@ const SuperAdminHealthPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowMigrateModal(true)}
-                  className="inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-xl hover:bg-amber-700 transition-all"
+                  className="inline-flex items-center justify-center px-4 py-2 bg-warning text-white text-sm font-semibold rounded-lg hover:bg-amber-700 transition-all"
                 >
                   Run migrations
                 </button>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-green-700">
+              <div className="flex items-center gap-2 text-success-fg">
                 <CheckCircle className="h-5 w-5" />
                 <span className="text-sm font-medium">No pending migrations</span>
               </div>
@@ -170,10 +170,10 @@ const SuperAdminHealthPage = () => {
           </div>
 
           {/* Company count */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-lg bg-green-100">
-                <Building2 className="h-6 w-6 text-green-600" />
+                <Building2 className="h-6 w-6 text-success" />
               </div>
               <h2 className="text-lg font-semibold text-neutral-900">Companies</h2>
             </div>
@@ -182,7 +182,7 @@ const SuperAdminHealthPage = () => {
           </div>
 
           {/* Timestamp */}
-          <div className="bg-white rounded-xl border border-neutral-200 shadow-sm p-6">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-lg bg-neutral-100">
                 <Server className="h-6 w-6 text-neutral-600" />
@@ -208,7 +208,7 @@ const SuperAdminHealthPage = () => {
       {/* Run migrations confirmation modal */}
       {showMigrateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" aria-modal="true">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <h3 className="text-lg font-semibold text-neutral-900 mb-2">Apply pending migrations?</h3>
             <p className="text-neutral-600 text-sm mb-4">
               {health?.migrations?.pending?.length ?? 0} migration(s) will be applied. This may take a moment. Do not close the app.
@@ -218,7 +218,7 @@ const SuperAdminHealthPage = () => {
                 type="button"
                 onClick={() => setShowMigrateModal(false)}
                 disabled={migrating}
-                className="px-4 py-2 text-neutral-700 font-medium rounded-xl hover:bg-neutral-100 transition-colors"
+                className="px-4 py-2 text-neutral-700 font-medium rounded-lg hover:bg-neutral-100 transition-colors"
               >
                 Cancel
               </button>
@@ -226,7 +226,7 @@ const SuperAdminHealthPage = () => {
                 type="button"
                 onClick={handleRunMigrations}
                 disabled={migrating}
-                className="inline-flex items-center justify-center px-4 py-2 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 disabled:opacity-60 transition-all"
+                className="inline-flex items-center justify-center px-4 py-2 bg-warning text-white font-semibold rounded-lg hover:bg-amber-700 disabled:opacity-60 transition-all"
               >
                 {migrating ? 'Applying…' : 'Apply'}
               </button>

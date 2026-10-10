@@ -123,14 +123,14 @@ const SuperAdminAuditLogsPage = () => {
         <button
           onClick={() => fetchLogs()}
           disabled={loading}
-          className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex items-center justify-center px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
-      <div className="mb-4 p-4 bg-white rounded-xl border border-neutral-200 shadow-sm">
+      <div className="mb-4 p-4 bg-white rounded-lg border border-neutral-200 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <Filter className="h-4 w-4 text-neutral-500" />
           <span className="text-sm font-medium text-neutral-700">Filters</span>
@@ -179,7 +179,7 @@ const SuperAdminAuditLogsPage = () => {
         <div className="flex flex-wrap gap-2 mt-3">
           <button
             onClick={handleApplyFilters}
-            className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-lg hover:bg-primary-700"
           >
             Apply
           </button>
@@ -200,12 +200,12 @@ const SuperAdminAuditLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+        <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg">
           <p className="font-medium text-red-800">{error}</p>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
@@ -301,7 +301,7 @@ const SuperAdminAuditLogsPage = () => {
                 setPage(nextPage)
               }}
               disabled={page >= (totalPages || 1) || loading || loadingMore}
-              className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 disabled:opacity-50 disabled:pointer-events-none"
+              className="px-4 py-2 text-sm font-medium text-primary-700 bg-primary-50 rounded-lg border border-primary-200 hover:bg-primary-100 disabled:opacity-50 disabled:pointer-events-none"
             >
               {loadingMore ? 'Loading…' : 'Load more'}
             </button>

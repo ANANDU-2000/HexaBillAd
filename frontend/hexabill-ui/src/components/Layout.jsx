@@ -265,6 +265,8 @@ const Layout = () => {
     '/returns/create': 'Returns',
   }
   const getPageTitle = (pathname) => {
+    // Exact list routes first, so /quotations reads "Quotations", not the detail-page "Quotation".
+    if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname]
     if (pathname.startsWith('/products/')) return 'Product'
     if (pathname.startsWith('/suppliers/')) return 'Supplier'
     if (pathname.startsWith('/branches/')) return 'Branch'
@@ -278,6 +280,9 @@ const Layout = () => {
     return PAGE_TITLES[pathname] || ''
   }
   const mobilePageTitle = getPageTitle(location.pathname)
+  // On list pages the mobile top bar already names the page, so in-page <h1>s are visually hidden
+  // below md (index.css). Detail pages keep theirs: the h1 carries the record name.
+  const shellOwnsTitle = Boolean(PAGE_TITLES[location.pathname])
 
   const isSalesLedger = location.pathname === '/sales-ledger'
   const isExpensesLedger = location.pathname === '/expenses'
@@ -320,7 +325,7 @@ const Layout = () => {
       {/* Skip Link */}
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:text-primary-600"
+        className="no-print sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded-md focus:shadow-lg focus:text-primary-600"
       >
         Skip to main content
       </a>
@@ -365,7 +370,7 @@ const Layout = () => {
       )}
 
       {/* Sidebar: icon rail from 768px, 240px labels from 1024px unless collapsed */}
-      <div className={`hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
+      <div className={`no-print hidden md:fixed md:flex md:flex-col md:min-h-0 md:w-20 transition-all duration-150 motion-reduce:transition-none ${userIsSystemAdmin && selectedTenantId ? 'md:top-10 md:bottom-0' : 'md:inset-y-0'} ${isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60'}`}>
         <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r border-primary-800 bg-primary-900 text-white">
           <div className={`flex h-16 shrink-0 items-center border-b border-primary-800 px-2 ${labelsVisible ? 'justify-between gap-2' : 'justify-center'}`}>
             <Link to="/dashboard" className={`flex min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
@@ -393,7 +398,7 @@ const Layout = () => {
                     <button
                       type="button"
                       onClick={() => toggleGroup(group)}
-                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-[11px] font-semibold uppercase tracking-wide text-primary-300 hover:text-white"
+                      className="flex min-h-8 w-full items-center justify-between rounded-md px-2 text-left text-micro font-semibold uppercase tracking-wide text-primary-300 hover:text-white"
                       aria-expanded={open}
                     >
                       <span className="truncate">{group.label}</span>
@@ -449,7 +454,7 @@ const Layout = () => {
       {/* Main content - Full viewport after sidebar; pt-10 when impersonation banner visible so content not covered */}
       <div className={`flex min-h-screen w-full min-w-0 flex-col transition-all duration-150 motion-reduce:transition-none md:pl-20 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'} ${userIsSystemAdmin && selectedTenantId ? 'pt-10' : ''}`}>
         {backendUnavailable && (
-          <div className="px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-sm">
+          <div className="px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm">
             Service temporarily unavailable. Try again in a moment, or contact your company administrator.
           </div>
         )}
@@ -467,7 +472,7 @@ const Layout = () => {
             >
               <Search className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} aria-hidden />
               <span className="flex-1 truncate text-left">Search pages, customers, products…</span>
-              <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-[11px] text-neutral-500 lg:block">Ctrl K</kbd>
+              <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-micro text-neutral-500 lg:block">Ctrl K</kbd>
             </button>
             <div className="ml-auto flex shrink-0 items-center gap-1 text-neutral-600">
               {isAdminOrOwner(user) && <AlertNotifications />}
@@ -510,7 +515,7 @@ const Layout = () => {
                       >
                         <ItemIcon className="h-4 w-4 text-neutral-500" strokeWidth={1.75} aria-hidden />
                         <span className="flex-1">{label}</span>
-                        {hint && <kbd className="rounded border border-surface-border px-1 font-sans text-[11px] text-neutral-500">{hint}</kbd>}
+                        {hint && <kbd className="rounded border border-surface-border px-1 font-sans text-micro text-neutral-500">{hint}</kbd>}
                       </button>
                     ))}
                     <div className="my-1 border-t border-surface-border" />
@@ -518,7 +523,7 @@ const Layout = () => {
                       type="button"
                       role="menuitem"
                       onClick={() => { setShowProfileDropdown(false); logout() }}
-                      className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-error hover:bg-red-50"
+                      className="flex min-h-[40px] w-full items-center gap-2.5 px-4 text-left text-sm text-error hover:bg-error-bg"
                     >
                       <LogOut className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                       Log out
@@ -531,7 +536,7 @@ const Layout = () => {
         </header>
         )}
         {/* Page content — POS has no top header padding for full viewport */}
-        <main id="main-content" className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] pb-[4.75rem] md:pb-6 ${userIsSystemAdmin && selectedTenantId
+        <main id="main-content" data-shell-title={shellOwnsTitle ? 'page' : undefined} className={`flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-[#F8FAFC] pb-[4.75rem] md:pb-6 ${userIsSystemAdmin && selectedTenantId
           ? (isPosRoute ? 'pt-10' : 'pt-24 md:pt-[6.5rem]')
           : (isPosRoute ? 'pt-0' : 'pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] md:pt-16')
           }`}>

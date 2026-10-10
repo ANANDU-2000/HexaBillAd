@@ -116,7 +116,7 @@ const Modal = ({
         {/* Modal */}
         <div
           ref={modalRef}
-          className={`relative bg-white rounded-xl border border-neutral-200 shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} max-h-[92dvh] rounded-b-none safe-area-bottom md:max-h-[calc(100dvh-2rem)] md:rounded-b-xl`}`}
+          className={`relative bg-white border border-surface-border shadow-lg w-full flex flex-col ${isFullscreen ? 'max-w-full h-full max-h-full m-0 rounded-none' : `${sizeClasses[size]} rounded-t-lg md:rounded-lg max-h-[92dvh] safe-area-bottom md:max-h-[calc(100dvh-2rem)]`}`}
           onKeyDown={handleKeyDown}
           role="dialog"
           aria-modal="true"
@@ -126,27 +126,30 @@ const Modal = ({
           {(title || showCloseButton || allowFullscreen) && (
             <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-200 shrink-0">
               {title && (
-                <h3 id={titleId} className="text-lg font-semibold text-text-primary">
+                <h2 id={titleId} className="min-w-0 truncate text-base font-semibold text-text-primary md:text-lg">
                   {title}
-                </h3>
+                </h2>
               )}
               <div className="flex items-center gap-2">
                 {allowFullscreen && (
                   <button
+                    type="button"
+                    aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}
                     onClick={() => setIsFullscreen(!isFullscreen)}
-                    className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-500 transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-700"
                     title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                   >
-                    {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                    {isFullscreen ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}
                   </button>
                 )}
                 {showCloseButton && (
                   <button
+                    type="button"
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-500 transition-colors duration-150 hover:bg-neutral-100 hover:text-neutral-700"
                     aria-label="Close"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-5 w-5" aria-hidden />
                   </button>
                 )}
               </div>

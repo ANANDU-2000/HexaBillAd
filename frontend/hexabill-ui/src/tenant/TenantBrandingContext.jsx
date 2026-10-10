@@ -9,6 +9,9 @@ import { getSetting } from '../utils/settingsKeys'
 
 const BrandingContext = createContext()
 
+// Only #rgb / #rrggbb reach CSS; anything else from settings falls back to the default.
+export const isValidHexColor = (value) => typeof value === 'string' && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim())
+
 export const useBranding = () => {
   const context = useContext(BrandingContext)
   if (!context) {
@@ -130,6 +133,12 @@ export const BrandingProvider = ({ children }) => {
   useEffect(() => {
     loadBranding()
   }, [loadBranding])
+
+  // Expose the tenant colour as --tenant-brand for identity accents only (see DESIGN-SYSTEM.md).
+  useEffect(() => {
+    const color = isValidHexColor(branding.primaryColor) ? branding.primaryColor : '#2563EB'
+    document.documentElement.style.setProperty('--tenant-brand', color)
+  }, [branding.primaryColor])
 
   // After login or refresh: refetch branding when user navigates into the app (so logo/settings show)
   useEffect(() => {

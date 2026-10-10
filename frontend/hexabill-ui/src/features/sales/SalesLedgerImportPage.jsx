@@ -164,7 +164,7 @@ export default function SalesLedgerImportPage() {
             </button>
           </div>
           {parsed?.error && (
-            <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+            <p className="mt-2 text-sm text-error flex items-center gap-1">
               <AlertCircle className="h-4 w-4" />
               {parsed.error}
             </p>
@@ -234,7 +234,7 @@ export default function SalesLedgerImportPage() {
                 type="button"
                 onClick={handleApply}
                 disabled={applying}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-success text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
               >
                 {applying ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                 {applying ? 'Importing…' : `Import ${parsed.rows?.length ?? 0} rows`}
@@ -245,9 +245,9 @@ export default function SalesLedgerImportPage() {
 
         {/* Result */}
         {result && (
-          <section className="bg-white rounded-lg border border-green-200 p-4 sm:p-6">
+          <section className="bg-white rounded-lg border border-success-border p-4 sm:p-6">
             <h2 className="text-lg font-semibold text-neutral-900 mb-2 flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-success" />
               Import result
             </h2>
             <ul className="text-sm text-neutral-700 space-y-1">
@@ -257,7 +257,7 @@ export default function SalesLedgerImportPage() {
               <li>Skipped (duplicates): <strong>{result.skipped}</strong></li>
             </ul>
             {result.errors?.length > 0 && (
-              <div className="mt-3 text-sm text-red-600">
+              <div className="mt-3 text-sm text-error">
                 <span className="font-medium">Errors ({result.errors.length}):</span>
                 <ul className="list-disc pl-5 mt-1">
                   {result.errors.slice(0, 10).map((err, i) => (

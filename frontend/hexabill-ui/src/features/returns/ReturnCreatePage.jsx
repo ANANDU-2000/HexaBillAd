@@ -1,5 +1,5 @@
 ﻿/*
- * Return Create Page â€“ ERP-style sales return from an invoice.
+ * Return Create Page – ERP-style sales return from an invoice.
  * Route: /returns/create?saleId=...
  */
 import { useState, useEffect } from 'react'
@@ -165,7 +165,7 @@ export default function ReturnCreatePage() {
           window.open(url, '_blank')
           setTimeout(() => URL.revokeObjectURL(url), 100)
         } catch {
-          toast.success('Return saved. Open Reports â†’ Returns to print credit note.')
+          toast.success('Return saved. Open Reports → Returns to print credit note.')
         }
       }
       navigate(returnTo || '/reports?tab=returns')
@@ -189,7 +189,7 @@ export default function ReturnCreatePage() {
   }
 
   if (loading) {
-    return <p className="p-4 text-sm text-neutral-500">Loading returnâ€¦</p>
+    return <p className="p-4 text-sm text-neutral-500">Loading return…</p>
   }
 
   if (loadError || !sale) {
@@ -203,7 +203,7 @@ export default function ReturnCreatePage() {
   }
 
   const invoiceNo = sale.invoiceNo ?? sale.invoiceNumber ?? sale.id
-  const customerName = sale.customerName ?? sale.customer?.name ?? 'â€”'
+  const customerName = sale.customerName ?? sale.customer?.name ?? '—'
 
   return (
     <div className="p-3 sm:p-6">
@@ -245,7 +245,7 @@ export default function ReturnCreatePage() {
               }}
               className="mt-1 block w-full min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm"
             >
-              <option value="">â€” Select â€”</option>
+              <option value="">— Select —</option>
               {damageCategories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
@@ -283,7 +283,7 @@ export default function ReturnCreatePage() {
                         className="w-24 min-h-[44px] rounded-md border border-neutral-300 px-2 text-sm text-right tabular-nums"
                       />
                       {line.alreadyReturned > 0 && (
-                        <span className="ml-1 text-xs text-amber-600">(max {line.maxReturnable})</span>
+                        <span className="ml-1 text-xs text-warning">(max {line.maxReturnable})</span>
                       )}
                     </td>
                     <td className="px-4 py-2">
@@ -322,7 +322,7 @@ export default function ReturnCreatePage() {
             className="inline-flex min-h-11 items-center gap-2 px-4 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-40 text-sm font-medium"
           >
             <Save className="h-4 w-4" />
-            {saving ? 'Savingâ€¦' : 'Save Return'}
+            {saving ? 'Saving…' : 'Save Return'}
           </button>
           <button
             type="button"

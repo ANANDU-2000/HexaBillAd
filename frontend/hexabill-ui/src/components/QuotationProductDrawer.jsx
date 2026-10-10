@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { Search, X } from 'lucide-react'
+import { useBranding } from '../tenant/TenantBrandingContext'
 
 /**
  * Right-side product search for quotation line items (lighter than POS drawer).
@@ -15,6 +16,7 @@ export default function QuotationProductDrawer({
   products = [],
   onSelect,
 }) {
+  const { currency = 'AED' } = useBranding()
   if (!open) return null
 
   const panel = (
@@ -29,7 +31,7 @@ export default function QuotationProductDrawer({
         <div className="flex items-center justify-between px-3 py-2 border-b shrink-0">
           <div>
             <p className="text-sm font-bold">Products</p>
-            <p className="text-[10px] text-neutral-500">Row {(rowIndex ?? 0) + 1} · select to fill line</p>
+            <p className="text-micro text-neutral-500">Row {(rowIndex ?? 0) + 1} · select to fill line</p>
           </div>
           <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-neutral-100" aria-label="Close">
             <X className="h-5 w-5" />
@@ -65,7 +67,7 @@ export default function QuotationProductDrawer({
               >
                 <p className="font-medium text-sm truncate">{product.nameEn || product.name || product.NameEn}</p>
                 <div className="flex justify-between text-xs text-neutral-600 mt-0.5">
-                  <span>AED {Number(product.sellPrice ?? product.SellPrice ?? 0).toFixed(2)}</span>
+                  <span>{currency} {Number(product.sellPrice ?? product.SellPrice ?? 0).toFixed(2)}</span>
                   {(product.sku || product.Sku) && <span className="text-neutral-400">{product.sku || product.Sku}</span>}
                 </div>
               </button>

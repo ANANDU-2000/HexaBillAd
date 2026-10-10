@@ -62,13 +62,13 @@ const SuperAdminGlobalSearchPage = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Invoice #, customer name, phone, or email (min 2 characters)..."
-            className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-xl bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             autoFocus
           />
         </div>
 
         {showHint && (
-          <p className="text-sm text-amber-600 mb-4">Enter at least 2 characters to search.</p>
+          <p className="text-sm text-warning mb-4">Enter at least 2 characters to search.</p>
         )}
 
         {loading && <LoadingCard />}
@@ -87,7 +87,7 @@ const SuperAdminGlobalSearchPage = () => {
                       <FileText className="h-5 w-5 text-indigo-600" />
                       Invoices ({result.invoices.length})
                     </h2>
-                    <ul className="bg-white rounded-xl border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
+                    <ul className="bg-white rounded-lg border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
                       {result.invoices.map((inv) => (
                         <li key={`inv-${inv.tenantId}-${inv.saleId}`} className="p-4 hover:bg-neutral-50">
                           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -123,7 +123,7 @@ const SuperAdminGlobalSearchPage = () => {
                       <Users className="h-5 w-5 text-indigo-600" />
                       Customers ({result.customers.length})
                     </h2>
-                    <ul className="bg-white rounded-xl border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
+                    <ul className="bg-white rounded-lg border border-neutral-200 shadow-sm divide-y divide-neutral-100 overflow-hidden">
                       {result.customers.map((c) => (
                         <li key={`cust-${c.tenantId}-${c.customerId}`} className="p-4 hover:bg-neutral-50">
                           <div className="flex flex-wrap items-center justify-between gap-2">

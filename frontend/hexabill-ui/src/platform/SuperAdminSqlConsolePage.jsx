@@ -54,14 +54,14 @@ const SuperAdminSqlConsolePage = () => {
           <Database className="h-6 w-6 text-indigo-600" />
           <h1 className="text-xl font-semibold text-neutral-900">SQL Console</h1>
         </div>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 mb-4 text-sm text-amber-800">
+        <div className="rounded-lg border border-warning-border bg-warning-bg px-4 py-3 mb-4 text-sm text-amber-800">
           <strong>Read-Only Mode:</strong> Only SELECT queries allowed. DROP, DELETE, UPDATE, INSERT and other write operations are blocked.
         </div>
         <p className="text-sm text-neutral-600 mb-4">
           Timeout 30s, max 1000 rows. PostgreSQL only.
         </p>
 
-        <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden mb-6">
+        <div className="bg-white border border-neutral-200 rounded-lg shadow-sm overflow-hidden mb-6">
           <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -84,14 +84,14 @@ const SuperAdminSqlConsolePage = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 text-error shrink-0 mt-0.5" />
             <p className="text-sm text-red-800 font-mono break-all">{error}</p>
           </div>
         )}
 
         {result && (
-          <div className="bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+          <div className="bg-white border border-neutral-200 rounded-lg shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-neutral-200 bg-neutral-50 flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm text-neutral-600">
                 {result.rowCount} row{result.rowCount !== 1 ? 's' : ''}

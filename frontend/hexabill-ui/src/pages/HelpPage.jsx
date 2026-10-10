@@ -120,19 +120,19 @@ const HelpPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
         {/* Sidebar — sticky on desktop */}
         <aside className="lg:w-56 flex-shrink-0">
-          <nav className="lg:sticky lg:top-4 bg-white rounded-lg shadow p-4 border border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">On this page</h2>
+          <nav className="lg:sticky lg:top-4 bg-white rounded-lg shadow p-4 border border-neutral-200">
+            <h2 className="text-sm font-semibold text-neutral-500 uppercase tracking-wider mb-3">On this page</h2>
             <ul className="space-y-1">
               {helpSections.map(({ id, label }) => (
                 <li key={id}>
                   <button
                     type="button"
                     onClick={() => scrollToSection(id)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md transition"
+                    className="w-full text-left px-3 py-2 text-sm text-neutral-700 hover:bg-primary-50 hover:text-primary-700 rounded-md transition"
                   >
                     {label}
                   </button>
@@ -147,18 +147,18 @@ const HelpPage = () => {
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center space-x-3 mb-4">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <HelpCircle className="h-6 w-6 text-blue-600" />
+            <div className="p-2 bg-primary-100 rounded-lg">
+              <HelpCircle className="h-6 w-6 text-primary-600" />
             </div>
             <div>
               <h1 className="text-xl font-semibold text-neutral-900">Help & Support</h1>
-              <p className="text-gray-600">Find answers and get help with {companyName}</p>
+              <p className="text-neutral-600">Find answers and get help with {companyName}</p>
             </div>
           </div>
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
             <Input
               type="text"
               placeholder="Search for help..."
@@ -172,69 +172,69 @@ const HelpPage = () => {
         {/* Getting started — mirrors OWNER_WORKFLOW.md */}
         <div id="getting-started" className="bg-white rounded-lg shadow p-6 scroll-mt-4">
           <div className="flex items-center space-x-2 mb-4">
-            <BookOpen className="h-5 w-5 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Getting started (recommended order)</h2>
+            <BookOpen className="h-5 w-5 text-primary-600" />
+            <h2 className="text-xl font-semibold text-neutral-900">Getting started (recommended order)</h2>
           </div>
-          <p className="text-gray-600 text-sm mb-4">
+          <p className="text-neutral-600 text-sm mb-4">
             Set up your company in this order: company & VAT first, then branches and routes, then staff, products, customers, and your first invoice.
           </p>
           <ol className="space-y-2">
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">1</span>
-              <Link to="/settings" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">1</span>
+              <Link to="/settings" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Company info & VAT
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">2</span>
-              <Link to="/branches" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">2</span>
+              <Link to="/branches" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Branches
                 <MapPin className="h-4 w-4" />
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">3</span>
-              <Link to="/branches" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">3</span>
+              <Link to="/branches" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Routes (optional)
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">4</span>
-              <Link to="/users" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">4</span>
+              <Link to="/users" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Users (staff)
                 <Users className="h-4 w-4" />
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">5</span>
-              <Link to="/products" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">5</span>
+              <Link to="/products" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Products
                 <Package className="h-4 w-4" />
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">6</span>
-              <Link to="/purchases" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">6</span>
+              <Link to="/purchases" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Purchases (optional)
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">7</span>
-              <Link to="/customers" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">7</span>
+              <Link to="/customers" className="flex items-center gap-2 text-primary-600 hover:underline">
                 Customers
                 <UserPlus className="h-4 w-4" />
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </li>
             <li className="flex items-center gap-3">
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-200 text-gray-700 text-xs font-medium flex items-center justify-center">8</span>
-              <Link to="/pos" className="flex items-center gap-2 text-blue-600 hover:underline">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-neutral-200 text-neutral-700 text-xs font-medium flex items-center justify-center">8</span>
+              <Link to="/pos" className="flex items-center gap-2 text-primary-600 hover:underline">
                 First invoice (POS or Sales Ledger)
                 <FilePlus className="h-4 w-4" />
                 <ArrowRight className="h-4 w-4" />
@@ -249,14 +249,14 @@ const HelpPage = () => {
             {filteredFAQs.map((category, idx) => (
               <div key={idx} className="bg-white rounded-lg shadow p-6">
                 <div className="flex items-center space-x-2 mb-4">
-                  <div className="text-blue-600">{category.icon}</div>
-                  <h2 className="text-xl font-semibold text-gray-900">{category.title}</h2>
+                  <div className="text-primary-600">{category.icon}</div>
+                  <h2 className="text-xl font-semibold text-neutral-900">{category.title}</h2>
                 </div>
                 <div className="space-y-4">
                   {category.questions.map((faq, qIdx) => (
-                    <div key={qIdx} className="border-l-4 border-blue-500 pl-4">
-                      <h3 className="font-semibold text-gray-900 mb-2">{faq.q}</h3>
-                      <p className="text-gray-600 text-sm">{faq.a}</p>
+                    <div key={qIdx} className="border-l-4 border-primary-500 pl-4">
+                      <h3 className="font-semibold text-neutral-900 mb-2">{faq.q}</h3>
+                      <p className="text-neutral-600 text-sm">{faq.a}</p>
                     </div>
                   ))}
                 </div>
@@ -266,9 +266,9 @@ const HelpPage = () => {
         )}
 
         {/* Quick tips — daily-work tips */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Tips for everyday work</h2>
-          <ul className="text-gray-600 text-sm space-y-1.5 list-disc list-inside">
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-primary-500">
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Tips for everyday work</h2>
+          <ul className="text-neutral-600 text-sm space-y-1.5 list-disc list-inside">
             <li>Complete company & VAT in Settings first, then add branches and routes.</li>
             <li>Use the <strong>Get started</strong> checklist on the Dashboard to track setup progress.</li>
             <li>Use <strong>Reports</strong> for sales, profit, and aging to make data-driven decisions.</li>
@@ -278,8 +278,8 @@ const HelpPage = () => {
 
         {/* Contact Support */}
         <div id="contact-support" className="bg-white rounded-lg shadow p-6 scroll-mt-4">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Contact Support</h2>
-          <p className="text-gray-600 mb-5">
+          <h2 className="text-xl font-semibold text-neutral-900 mb-2">Contact Support</h2>
+          <p className="text-neutral-600 mb-5">
             Can't find what you're looking for? Our support team is here to help.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -287,20 +287,20 @@ const HelpPage = () => {
               <a
                 key={idx}
                 href={method.action}
-                className="p-5 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50/50 transition shadow-sm"
+                className="p-5 border border-neutral-200 rounded-lg hover:border-primary-500 hover:bg-primary-50/50 transition shadow-sm"
               >
                 <div className="flex items-center space-x-3 mb-2">
-                  <div className="text-blue-600">{method.icon}</div>
-                  <h3 className="font-semibold text-gray-900">{method.title}</h3>
+                  <div className="text-primary-600">{method.icon}</div>
+                  <h3 className="font-semibold text-neutral-900">{method.title}</h3>
                 </div>
-                <p className="text-sm text-gray-600 font-medium">{method.description}</p>
+                <p className="text-sm text-neutral-600 font-medium">{method.description}</p>
               </a>
             ))}
           </div>
         </div>
 
         {/* Quick Links */}
-        <div id="quick-links" className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow p-6 text-white scroll-mt-4">
+        <div id="quick-links" className="bg-gradient-to-r from-primary-600 to-indigo-600 rounded-lg shadow p-6 text-white scroll-mt-4">
           <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <a href="/feedback" className="flex items-center justify-between p-3 bg-white/10 rounded-lg hover:bg-white/20 transition">

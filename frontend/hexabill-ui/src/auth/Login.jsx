@@ -18,7 +18,7 @@ const AuthField = forwardRef(function AuthField({ id, label, error, icon: Icon, 
     <div className="space-y-1 text-start">
       <label htmlFor={id} className="block text-xs font-medium leading-[1.4] text-neutral-700 dark:text-[#8B9BB4]">
         {label}
-        <span className="ms-1 text-red-600" aria-hidden="true">*</span>
+        <span className="ms-1 text-error" aria-hidden="true">*</span>
       </label>
       <div className="relative">
         {Icon && (
@@ -35,7 +35,7 @@ const AuthField = forwardRef(function AuthField({ id, label, error, icon: Icon, 
         {end && <div className="absolute inset-y-0 end-0 flex items-center">{end}</div>}
       </div>
       {error && (
-        <p id={errorId} className="text-xs leading-[1.4] text-red-600 dark:text-red-400">{error}</p>
+        <p id={errorId} className="text-xs leading-[1.4] text-error dark:text-red-400">{error}</p>
       )}
     </div>
   )
@@ -58,7 +58,7 @@ function PasswordToggle({ shown, onClick, label }) {
 function AuthAlert({ children, onRetry }) {
   if (!children) return null
   return (
-    <div role="alert" className="flex gap-2 rounded-md border border-red-200 bg-[#FEF2F2] px-3 py-2 text-xs leading-[1.4] text-red-700 dark:border-red-900 dark:bg-[#450A0A] dark:text-red-200">
+    <div role="alert" className="flex gap-2 rounded-md border border-error-border bg-[#FEF2F2] px-3 py-2 text-xs leading-[1.4] text-error-fg dark:border-red-900 dark:bg-[#450A0A] dark:text-red-200">
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden="true" />
       <div>
         <p>{children}</p>
@@ -264,7 +264,7 @@ const Login = ({ isSuperAdminLogin = false }) => {
                 onLogoError={() => setLogoFailed(true)}
               />
               <h1 className="mt-3 text-xl font-semibold leading-[1.25] text-[#0F172A] dark:text-[#F8FAFC]">{heading}</h1>
-              {context && <p className="mt-1 text-[13px] leading-[1.4] text-neutral-500 dark:text-[#8B9BB4]">{context}</p>}
+              {context && <p className="mt-1 text-sm leading-[1.4] text-neutral-500 dark:text-[#8B9BB4]">{context}</p>}
             </>
           )}
         </header>

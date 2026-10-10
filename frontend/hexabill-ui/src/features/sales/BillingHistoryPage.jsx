@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Square
 } from 'lucide-react'
+import { OverflowMenu } from '../../components/ui'
 import { useAuth } from '../../hooks/useAuth'
 import { salesAPI, paymentsAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
@@ -346,14 +347,14 @@ const BillingHistoryPage = () => {
         <div className="flex flex-wrap justify-between items-center gap-2">
           <div>
             <h1 className="text-lg sm:text-xl font-semibold text-neutral-900">Billing History</h1>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-neutral-500">
               Showing {sales.length} of {totalCount} invoices
             </p>
           </div>
           {selectedInvoices.length > 0 && (
             <button
               onClick={handleCombinedPdf}
-              className="inline-flex items-center px-3 py-1.5 bg-green-600 text-white rounded-md text-xs font-medium hover:bg-green-700"
+              className="inline-flex items-center px-3 py-1.5 bg-success text-white rounded-md text-xs font-medium hover:bg-green-700"
             >
               <Download className="h-3.5 w-3.5 mr-1.5" />
               Combined PDF ({selectedInvoices.length})
@@ -361,36 +362,36 @@ const BillingHistoryPage = () => {
           )}
         </div>
 
-        <form onSubmit={handleSearch} className="bg-white border border-gray-200 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5">
+        <form onSubmit={handleSearch} className="bg-white border border-neutral-200 rounded-lg px-2 py-1.5 flex flex-wrap items-center gap-1.5">
           <div className="relative flex-1 min-w-[10rem]">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-neutral-400 h-3.5 w-3.5" />
             <input
               type="search"
               placeholder="Invoice #, customer, status, method…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded pl-7 pr-2 py-2 min-h-11 text-sm"
+              className="w-full border border-neutral-300 rounded pl-7 pr-2 py-2 min-h-11 text-sm"
             />
           </div>
           <input
             type="date"
             value={dateFilter.from}
             onChange={(e) => { setDateFilter({ ...dateFilter, from: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
+            className="border border-neutral-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
             title="From"
           />
           <input
             type="date"
             value={dateFilter.to}
             onChange={(e) => { setDateFilter({ ...dateFilter, to: e.target.value }); setCurrentPage(1) }}
-            className="border border-gray-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
+            className="border border-neutral-300 rounded px-2 min-h-[44px] text-sm md:text-xs w-[8.5rem]"
             title="To"
           />
           {(searchTerm || dateFilter.from || dateFilter.to) && (
             <button
               type="button"
               onClick={clearFilters}
-              className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-2 py-1 border border-neutral-300 rounded text-xs text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -398,7 +399,7 @@ const BillingHistoryPage = () => {
           <button
             type="button"
             onClick={fetchSales}
-            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-2 py-1 border border-neutral-300 rounded text-xs text-neutral-700 bg-white hover:bg-neutral-50"
             title="Refresh"
           >
             <RefreshCw className="h-3.5 w-3.5" />
@@ -407,7 +408,7 @@ const BillingHistoryPage = () => {
       </div>
 
       {/* Sales Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
         {loading && sales.length === 0 && !listError ? (
           <p className="px-4 py-8 text-center text-sm text-neutral-500">Loading billing history…</p>
         ) : listError && sales.length === 0 ? (
@@ -417,9 +418,9 @@ const BillingHistoryPage = () => {
           </div>
         ) : sales.length === 0 ? (
           <div className="text-center py-12">
-            <FileText className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices found</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <FileText className="mx-auto h-12 w-12 text-neutral-400" />
+            <h3 className="mt-2 text-sm font-medium text-neutral-900">No invoices found</h3>
+            <p className="mt-1 text-sm text-neutral-500">
               {searchTerm || dateFilter.from || dateFilter.to
                 ? 'Try adjusting your filters'
                 : 'Start by creating your first invoice from POS'}
@@ -435,13 +436,13 @@ const BillingHistoryPage = () => {
             )}
             {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-neutral-200">
+                <thead className="bg-neutral-50">
                   <tr>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       <button
                         onClick={toggleSelectAll}
-                        className="text-gray-500 hover:text-gray-700"
+                        className="text-neutral-500 hover:text-neutral-700"
                       >
                         {selectedInvoices.length === sales.length && sales.length > 0 ? (
                           <CheckSquare className="h-4 w-4" />
@@ -450,74 +451,74 @@ const BillingHistoryPage = () => {
                         )}
                       </button>
                     </th>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Invoice #
                     </th>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Date
                     </th>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Customer
                     </th>
-                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Subtotal
                     </th>
-                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       VAT
                     </th>
-                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Total
                     </th>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" title="First cleared payment mode (Cash, Debit, …). Not the same as Paid/Partial.">
+                    <th className="px-3 py-1.5 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider" title="First cleared payment mode (Cash, Debit, …). Not the same as Paid/Partial.">
                       Method
                     </th>
-                    <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider sticky right-0 z-20 bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
+                    <th className="px-3 py-1.5 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider sticky right-0 z-20 bg-neutral-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.15)]">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-neutral-200">
                   {sales.map((sale) => {
                     const payBadge = getInvoicePaymentBadge(sale)
                     return (
-                    <tr key={sale.id} className="group hover:bg-gray-50">
+                    <tr key={sale.id} className="group hover:bg-neutral-50">
                       <td className="px-3 py-1.5 whitespace-nowrap">
                         <button
                           onClick={() => toggleSelectInvoice(sale.id)}
-                          className="text-gray-500 hover:text-blue-600"
+                          className="text-neutral-500 hover:text-primary-600"
                         >
                           {selectedInvoices.includes(sale.id) ? (
-                            <CheckSquare className="h-4 w-4 text-blue-600" />
+                            <CheckSquare className="h-4 w-4 text-primary-600" />
                           ) : (
                             <Square className="h-4 w-4" />
                           )}
                         </button>
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-neutral-900">
                           {sale.invoiceNo || `#${sale.id}`}
                         </div>
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-neutral-900">
                           {formatDate(sale.invoiceDate)}
                         </div>
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-neutral-900">
                           {sale.customerName || 'Cash Customer'}
                         </div>
                       </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-neutral-900">
                         {formatCurrency(sale.subtotal || 0)}
                       </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm text-neutral-900">
                         {formatCurrency(sale.vatTotal || 0)}
                       </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium text-neutral-900">
                         {formatCurrency(sale.grandTotal || 0)}
                       </td>
                       <td className="px-3 py-1.5 whitespace-nowrap">
@@ -525,18 +526,18 @@ const BillingHistoryPage = () => {
                           {payBadge.label}
                         </span>
                       </td>
-                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-3 py-1.5 whitespace-nowrap text-sm text-neutral-600">
                         {sale.primaryPaymentMode ? (
                           <span title="Payment mode from first cleared line">{sale.primaryPaymentMode}</span>
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-neutral-400">—</span>
                         )}
                       </td>
-                      <td className="px-4 sm:px-3 py-1.5 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium sticky right-0 z-10 bg-white group-hover:bg-gray-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.08)]">
+                      <td className="px-4 sm:px-3 py-1.5 sm:py-4 whitespace-nowrap text-right text-xs sm:text-sm font-medium sticky right-0 z-10 bg-white group-hover:bg-neutral-50 shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.08)]">
                         <div className="flex items-center justify-end gap-1.5 sm:gap-2">
                           <button
                             onClick={() => handleViewInvoice(sale)}
-                            className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                            className="text-primary-600 hover:text-primary-900 p-1 hover:bg-primary-50 rounded transition-colors"
                             title="View Invoice"
                             aria-label="View Invoice"
                           >
@@ -546,7 +547,7 @@ const BillingHistoryPage = () => {
                             <button
                               type="button"
                               onClick={() => openCustomerLedgerForSale(sale)}
-                              className="inline-flex h-8 w-8 items-center justify-center text-emerald-700 hover:bg-emerald-50 rounded-md"
+                              className="inline-flex h-8 w-8 items-center justify-center text-success-fg hover:bg-success-bg rounded-md"
                               title={isInvoiceFullySettled(sale) ? 'Customer ledger' : 'Customer ledger — collect payment'}
                               aria-label={isInvoiceFullySettled(sale) ? 'Customer ledger' : 'Collect payment in ledger'}
                             >
@@ -577,7 +578,7 @@ const BillingHistoryPage = () => {
                           {isAdmin && (
                             <button
                               onClick={() => handleDeleteSale(sale.id)}
-                              className="bg-red-50 text-red-600 hover:text-white hover:bg-red-600 border border-red-300 p-1.5 rounded transition-colors shadow-sm"
+                              className="bg-error-bg text-error hover:text-white hover:bg-error border border-red-300 p-1.5 rounded transition-colors shadow-sm"
                               title="Delete Invoice (Admin Only)"
                               aria-label="Delete Invoice (Admin Only)"
                             >
@@ -594,17 +595,17 @@ const BillingHistoryPage = () => {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden divide-y divide-gray-200">
+            <div className="md:hidden divide-y divide-neutral-200">
               {sales.map((sale) => {
                 const payBadge = getInvoicePaymentBadge(sale)
                 return (
                 <div key={sale.id} className="p-4 space-y-3">
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium text-neutral-900">
                         {sale.invoiceNo || `#${sale.id}`}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="text-xs text-neutral-500 mt-1">
                         {formatDate(sale.invoiceDate)}
                       </div>
                     </div>
@@ -613,70 +614,48 @@ const BillingHistoryPage = () => {
                         {payBadge.label}
                       </span>
                       {sale.primaryPaymentMode && (
-                        <div className="text-xs text-gray-500 mt-1">Method: {sale.primaryPaymentMode}</div>
+                        <div className="text-xs text-neutral-500 mt-1">Method: {sale.primaryPaymentMode}</div>
                       )}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <div className="text-gray-500">Customer</div>
-                      <div className="font-medium text-gray-900">
+                      <div className="text-neutral-500">Customer</div>
+                      <div className="font-medium text-neutral-900">
                         {sale.customerName || 'Cash Customer'}
                       </div>
                     </div>
                     <div>
-                      <div className="text-gray-500">Total</div>
-                      <div className="font-medium text-gray-900">
+                      <div className="text-neutral-500">Total</div>
+                      <div className="font-semibold tabular-nums text-neutral-900">
                         {formatCurrency(sale.grandTotal || 0)}
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <button
-                      onClick={() => handleViewInvoice(sale)}
-                      className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-primary-300 rounded-md text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100"
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
+                  {/* View plus the ledger/collect action; receipt, edit and delete live in More. */}
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => handleViewInvoice(sale)} className="btn btn-secondary flex-1">
+                      <Eye className="h-4 w-4" aria-hidden />
                       View
                     </button>
                     {sale.customerId && (
                       <button
                         type="button"
                         onClick={() => openCustomerLedgerForSale(sale)}
-                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-emerald-200 rounded-md text-sm font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
+                        className={`btn flex-1 ${isInvoiceFullySettled(sale) ? 'btn-secondary' : 'btn-primary'}`}
                       >
-                        <Wallet className="h-4 w-4 mr-2" aria-hidden />
+                        <Wallet className="h-4 w-4" aria-hidden />
                         {isInvoiceFullySettled(sale) ? 'Ledger' : 'Collect'}
                       </button>
                     )}
-                    {saleHasReceipt(sale) && (
-                      <button
-                        onClick={() => handlePrintPaymentReceipt(sale)}
-                        disabled={loadingReceiptSaleId === sale.id}
-                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-800 bg-white hover:bg-neutral-50 disabled:opacity-50"
-                      >
-                        <Printer className="h-4 w-4 mr-2" />
-                        Receipt
-                      </button>
-                    )}
-                    {canEdit && (
-                      <button
-                        onClick={() => handleEditSale(sale)}
-                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-800 bg-white hover:bg-neutral-50"
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </button>
-                    )}
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleDeleteSale(sale.id)}
-                        className="min-h-11 inline-flex items-center justify-center px-3 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-red-50 hover:bg-red-100"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </button>
-                    )}
+                    <OverflowMenu
+                      label={`More actions for ${sale.invoiceNo || `invoice ${sale.id}`}`}
+                      items={[
+                        { label: 'Print receipt', icon: Printer, hidden: !saleHasReceipt(sale), disabled: loadingReceiptSaleId === sale.id, onClick: () => handlePrintPaymentReceipt(sale) },
+                        { label: 'Edit invoice', icon: Edit, hidden: !canEdit, onClick: () => handleEditSale(sale) },
+                        { label: 'Delete invoice', icon: Trash2, hidden: !isAdmin, danger: true, separatorBefore: true, onClick: () => handleDeleteSale(sale.id) },
+                      ]}
+                    />
                   </div>
                 </div>
                 )
@@ -685,23 +664,23 @@ const BillingHistoryPage = () => {
 
             {/* Pagination */}
             {(totalPages > 1 || totalCount > 10) && (
-              <div className="bg-gray-50 px-3 py-1.5 flex items-center justify-between border-t border-gray-200 flex-wrap gap-2">
+              <div className="bg-neutral-50 px-3 py-1.5 flex items-center justify-between border-t border-neutral-200 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm text-gray-600">Rows per page:</span>
+                  <span className="text-sm text-neutral-600">Rows per page:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value))
                       setCurrentPage(1)
                     }}
-                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    className="border border-neutral-300 rounded px-2 py-1 text-sm"
                   >
                     {[10, 20, 50, 100].map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
                 </div>
-                <div className="text-sm text-gray-700">
+                <div className="text-sm text-neutral-700">
                   Page <span className="font-medium">{currentPage}</span> of{' '}
                   <span className="font-medium">{totalPages}</span>
                 </div>
@@ -709,7 +688,7 @@ const BillingHistoryPage = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" />
                     Previous
@@ -717,7 +696,7 @@ const BillingHistoryPage = () => {
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="inline-flex items-center px-3 py-2 border border-neutral-300 rounded-md text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-1" />

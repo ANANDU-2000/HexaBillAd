@@ -55,12 +55,12 @@ const FeedbackPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       <div className="w-full space-y-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow p-6">
           <h1 className="text-xl font-semibold text-neutral-900 mb-2">Share Your Feedback</h1>
-          <p className="text-gray-600">
+          <p className="text-neutral-600">
             Your feedback helps us improve {companyName}. We value your input and suggestions.
           </p>
         </div>
@@ -69,7 +69,7 @@ const FeedbackPage = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="bg-white rounded-lg shadow p-6 space-y-6">
           {/* Feedback Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-neutral-700 mb-3">
               What type of feedback is this?
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -80,16 +80,16 @@ const FeedbackPage = () => {
                   onClick={() => setFeedbackType(type.id)}
                   className={`p-4 border-2 rounded-lg transition ${
                     feedbackType === type.id
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'border-primary-600 bg-primary-50'
+                      : 'border-neutral-200 hover:border-neutral-300'
                   }`}
                 >
                   <div className="flex flex-col items-center space-y-2">
-                    <div className={`${feedbackType === type.id ? 'text-blue-600' : 'text-gray-400'}`}>
+                    <div className={`${feedbackType === type.id ? 'text-primary-600' : 'text-neutral-400'}`}>
                       {type.icon}
                     </div>
                     <span className={`text-sm font-medium ${
-                      feedbackType === type.id ? 'text-blue-600' : 'text-gray-700'
+                      feedbackType === type.id ? 'text-primary-600' : 'text-neutral-700'
                     }`}>
                       {type.label}
                     </span>
@@ -102,7 +102,7 @@ const FeedbackPage = () => {
           {/* Rating (skip for bug reports) */}
           {feedbackType !== 'bug' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">
+              <label className="block text-sm font-medium text-neutral-700 mb-3">
                 How would you rate your experience?
               </label>
               <div className="flex items-center space-x-2">
@@ -114,14 +114,14 @@ const FeedbackPage = () => {
                     className={`p-2 rounded transition ${
                       rating >= star
                         ? 'text-yellow-400 hover:text-yellow-500'
-                        : 'text-gray-300 hover:text-gray-400'
+                        : 'text-neutral-300 hover:text-neutral-400'
                     }`}
                   >
                     <Star className="h-8 w-8 fill-current" />
                   </button>
                 ))}
                 {rating > 0 && (
-                  <span className="ml-3 text-sm text-gray-600">
+                  <span className="ml-3 text-sm text-neutral-600">
                     {rating === 5 ? 'Excellent!' : rating === 4 ? 'Good' : rating === 3 ? 'Average' : rating === 2 ? 'Below Average' : 'Poor'}
                   </span>
                 )}
@@ -145,12 +145,12 @@ const FeedbackPage = () => {
 
           {/* Message */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Details <span className="text-red-500">*</span>
             </label>
             <textarea
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               placeholder="Please provide detailed feedback..."
               {...register('message', {
                 required: 'Message is required',
@@ -158,7 +158,7 @@ const FeedbackPage = () => {
               })}
             />
             {errors.message && (
-              <p className="mt-1 text-sm text-red-600">{errors.message.message}</p>
+              <p className="mt-1 text-sm text-error">{errors.message.message}</p>
             )}
           </div>
 
@@ -177,7 +177,7 @@ const FeedbackPage = () => {
                 }
               })}
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-neutral-500">
               We'll only use this to follow up if needed
             </p>
           </div>
@@ -187,7 +187,7 @@ const FeedbackPage = () => {
             <LoadingButton
               type="submit"
               loading={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary-600 hover:bg-primary-700 text-white"
             >
               <Send className="h-4 w-4 mr-2" />
               Submit Feedback
@@ -196,8 +196,8 @@ const FeedbackPage = () => {
         </form>
 
         {/* Thank You Message */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-800">
+        <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+          <p className="text-sm text-primary-800">
             <strong>Thank you for taking the time to share your feedback!</strong> We read every 
             submission and use it to improve {companyName}. Your input makes a difference.
           </p>

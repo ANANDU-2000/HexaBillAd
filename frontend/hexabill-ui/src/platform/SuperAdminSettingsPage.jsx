@@ -197,7 +197,7 @@ const SuperAdminSettingsPage = () => {
         <div className="space-y-4">
           <p className="text-sm text-neutral-500">Variables: {'{companyName}'}, {'{trialEndDate}'}, {'{ownerEmail}'}</p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Welcome Email</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Welcome Email</label>
             <textarea
               value={form.welcomeEmail}
               onChange={(e) => setForm({ ...form, welcomeEmail: e.target.value })}
@@ -207,7 +207,7 @@ const SuperAdminSettingsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Suspension Notice</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Suspension Notice</label>
             <textarea
               value={form.suspensionEmail}
               onChange={(e) => setForm({ ...form, suspensionEmail: e.target.value })}
@@ -217,7 +217,7 @@ const SuperAdminSettingsPage = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Trial Expiry Warning</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Trial Expiry Warning</label>
             <textarea
               value={form.trialExpiryEmail}
               onChange={(e) => setForm({ ...form, trialExpiryEmail: e.target.value })}
@@ -256,7 +256,7 @@ const SuperAdminSettingsPage = () => {
     if (activeTab === 'security') {
       return (
         <div className="space-y-4">
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="p-4 bg-warning-bg border border-warning-border rounded-lg">
             <label className="flex items-center justify-between cursor-pointer">
               <span className="flex items-center gap-2 font-medium text-amber-900">
                 <Construction className="h-5 w-5" />
@@ -269,7 +269,7 @@ const SuperAdminSettingsPage = () => {
                 className="rounded"
               />
             </label>
-            <p className="text-sm text-amber-700 mt-2">When ON, all tenant users see a maintenance screen. SuperAdmin can still access.</p>
+            <p className="text-sm text-warning-fg mt-2">When ON, all tenant users see a maintenance screen. SuperAdmin can still access.</p>
             {form.maintenanceMode && (
               <Input
                 label="Maintenance Message"
@@ -313,7 +313,7 @@ const SuperAdminSettingsPage = () => {
         <div className="space-y-4">
           <Link
             to="/help"
-            className="flex items-center justify-between p-4 bg-white rounded-xl border border-neutral-200 shadow-sm hover:border-neutral-300 transition"
+            className="flex items-center justify-between p-4 bg-white rounded-lg border border-neutral-200 shadow-sm hover:border-neutral-300 transition"
           >
             <span className="flex items-center gap-3">
               <HelpCircle className="h-5 w-5 text-neutral-500" />
@@ -323,7 +323,7 @@ const SuperAdminSettingsPage = () => {
           </Link>
           <Link
             to="/feedback"
-            className="flex items-center justify-between p-4 bg-white rounded-xl border border-neutral-200 shadow-sm hover:border-neutral-300 transition"
+            className="flex items-center justify-between p-4 bg-white rounded-lg border border-neutral-200 shadow-sm hover:border-neutral-300 transition"
           >
             <span className="flex items-center gap-3">
               <MessageSquare className="h-5 w-5 text-neutral-500" />
@@ -364,7 +364,7 @@ const SuperAdminSettingsPage = () => {
               )
             })}
           </nav>
-          <div className="flex-1 bg-white rounded-xl border border-neutral-200 p-6">
+          <div className="flex-1 bg-white rounded-lg border border-neutral-200 p-6">
             <TabContent />
             {activeTab !== 'links' && (
               <div className="mt-6 pt-6 border-t flex justify-end">

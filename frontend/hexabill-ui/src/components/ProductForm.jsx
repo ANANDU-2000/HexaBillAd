@@ -293,14 +293,14 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg w-full max-w-5xl max-h-[92vh] flex flex-col shadow-xl">
-        <div className="flex justify-between items-center px-4 py-3 border-b border-gray-200 shrink-0">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="flex justify-between items-center px-4 py-3 border-b border-neutral-200 shrink-0">
+          <h2 className="text-lg font-semibold text-neutral-900">
             {product ? 'Edit Product' : 'Add New Product'}
           </h2>
           <button
             type="button"
             onClick={onCancel}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-neutral-400 hover:text-neutral-600"
           >
             <X className="h-5 w-5" />
           </button>
@@ -310,7 +310,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
           <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   SKU *
                 </label>
                 <input
@@ -324,8 +324,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Barcode <span className="text-xs text-gray-500 font-normal">(box code — Scan or type, then Save)</span>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Barcode <span className="text-xs text-neutral-500 font-normal">(box code — Scan or type, then Save)</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   <input
@@ -339,7 +339,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   <button
                     type="button"
                     onClick={handleAutoCreateBarcode}
-                    className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0"
+                    className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50 inline-flex items-center gap-1 shrink-0"
                     title="Set barcode from SKU"
                   >
                     <Wand2 className="h-4 w-4" />
@@ -350,8 +350,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     onClick={() => setBarcodeScanOn((v) => !v)}
                     className={`px-2.5 py-1.5 text-sm font-medium rounded-lg border inline-flex items-center gap-1 shrink-0 ${
                       barcodeScanOn
-                        ? 'bg-amber-500 text-white border-amber-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        ? 'bg-amber-500 text-white border-warning'
+                        : 'bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50'
                     }`}
                     title={barcodeScanOn ? 'Stop camera' : 'Scan barcode with camera'}
                   >
@@ -364,7 +364,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                         type="button"
                         disabled={barcodePdfBusy}
                         onClick={() => handleBarcodePdf(false)}
-                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
                         title="Download barcode PDF"
                       >
                         <Printer className="h-4 w-4" />
@@ -374,7 +374,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                         type="button"
                         disabled={barcodePdfBusy}
                         onClick={() => handleBarcodePdf(true)}
-                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
+                        className="px-2.5 py-1.5 text-sm font-medium rounded-lg border bg-white text-neutral-700 border-neutral-300 hover:bg-neutral-50 inline-flex items-center gap-1 shrink-0 disabled:opacity-50"
                         title="Share barcode PDF"
                       >
                         <Share2 className="h-4 w-4" />
@@ -384,7 +384,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   )}
                 </div>
                 {barcodeScanOn && (
-                  <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-300 bg-black max-w-[220px]">
+                  <div className="mt-2 relative rounded-lg overflow-hidden border border-neutral-300 bg-black max-w-[220px]">
                     <video
                       ref={barcodeVideoRef}
                       className="w-full aspect-[4/3] object-cover"
@@ -402,7 +402,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                         <SwitchCamera className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="px-2 py-1.5 text-[11px] text-neutral-200 bg-neutral-900 flex items-center justify-between gap-2">
+                    <div className="px-2 py-1.5 text-micro text-neutral-200 bg-neutral-900 flex items-center justify-between gap-2">
                       <span>{scanStatusText}</span>
                       {barcodeScanStatus === 'timeout' && (
                         <button
@@ -422,7 +422,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Name (English) *
                 </label>
                 <input
@@ -436,7 +436,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Name (Arabic)
                 </label>
                 <input
@@ -449,8 +449,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Category <span className="text-xs text-neutral-500 font-normal">(Optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <select
@@ -489,7 +489,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                       type="button"
                       onClick={handleCreateCategory}
                       disabled={creatingCategory || !newCategoryName.trim()}
-                      className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                      className="px-3 py-1.5 text-sm bg-success text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
                     >
                       {creatingCategory ? '…' : 'Create'}
                     </button>
@@ -498,7 +498,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Qty Type *
                 </label>
                 <select
@@ -524,7 +524,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Conversion to Base *
                 </label>
                 <input
@@ -540,7 +540,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Cost Price *
                 </label>
                 <input
@@ -556,7 +556,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Sell Price *
                 </label>
                 <input
@@ -572,8 +572,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Expiry Date <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Expiry Date <span className="text-xs text-neutral-500 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="date"
@@ -585,8 +585,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div className="sm:col-span-2 lg:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Product Image <span className="text-xs text-gray-500 font-normal">(Optional — product photo, not barcode)</span>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Product Image <span className="text-xs text-neutral-500 font-normal">(Optional — product photo, not barcode)</span>
                 </label>
                 <div className="flex flex-wrap items-center gap-3">
                   {imagePreview && (
@@ -596,7 +596,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                           ? imagePreview
                           : imagePreview}
                         alt="Product preview"
-                        className="h-16 w-16 object-cover rounded-lg border border-gray-300"
+                        className="h-16 w-16 object-cover rounded-lg border border-neutral-300"
                       />
                       {product?.id && (
                         <button
@@ -605,7 +605,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                             setImageFile(null)
                             setImagePreview(null)
                           }}
-                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-error"
                           title="Remove image"
                         >
                           <X className="h-3 w-3" />
@@ -613,7 +613,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                       )}
                     </div>
                   )}
-                  <label className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
+                  <label className="flex items-center gap-2 px-3 py-1.5 bg-neutral-100 border border-neutral-300 rounded-lg cursor-pointer hover:bg-neutral-200 transition-colors">
                     <Upload className="h-4 w-4" />
                     <span className="text-sm">{imageFile ? imageFile.name : product?.id ? 'Change Image' : 'Upload Image'}</span>
                     <input
@@ -625,13 +625,13 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     />
                   </label>
                   {uploadingImage && (
-                    <span className="text-sm text-gray-500">Uploading...</span>
+                    <span className="text-sm text-neutral-500">Uploading...</span>
                   )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Description (English)
                 </label>
                 <textarea
@@ -644,7 +644,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
                   Description (Arabic)
                 </label>
                 <textarea
@@ -657,12 +657,12 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
             </div>
 
-            <p className="text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+            <p className="text-xs text-primary-800 bg-primary-50 border border-primary-200 rounded-md px-3 py-2">
               Stock is calculated from purchases and sales. New products start at 0 — use Stock Adjustment (Opening Stock) after create.
             </p>
           </div>
 
-          <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200 shrink-0 bg-white">
+          <div className="flex justify-end gap-2 px-4 py-3 border-t border-neutral-200 shrink-0 bg-white">
             <button
               type="button"
               onClick={onCancel}

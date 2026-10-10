@@ -632,7 +632,7 @@ const PaymentsPage = () => {
     if (state === 'CLEARED') return 'bg-green-100 text-green-800'
     if (state === 'RETURNED') return 'bg-red-100 text-red-800'
     if (state === 'PENDING') return 'bg-yellow-100 text-yellow-800'
-    return 'bg-gray-100 text-gray-800'
+    return 'bg-neutral-100 text-neutral-800'
   }
 
   if (loading) {
@@ -652,26 +652,26 @@ const PaymentsPage = () => {
         </button>
       )}
       {/* Header */}
-      {recoveryError && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800">{recoveryError}</p>}
+      {recoveryError && <p role="alert" className="rounded-lg border border-red-300 bg-error-bg p-3 text-sm text-red-800">{recoveryError}</p>}
       {unconfirmedPayments.map(intent => (
-        <div key={intent.idempotencyKey} role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        <div key={intent.idempotencyKey} role="status" className="rounded-lg border border-amber-300 bg-warning-bg p-3 text-sm text-amber-950">
           <p>Previous payment of {money(intent.request.amount)} for customer {intent.request.customerId ?? 'Cash Customer'} is unconfirmed. Confirm it before recording another payment for this customer.</p>
           <button type="button" disabled={submitting} onClick={() => executePayment(intent)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Retry previous payment</button>
         </div>
       ))}
-      {savedBatch && <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+      {savedBatch && <div role="status" className="rounded-lg border border-amber-300 bg-warning-bg p-3 text-sm text-amber-950">
         <p>Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.</p>
         <button type="button" disabled={submitting} onClick={() => setShowBulkPaymentModal(true)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Resume bulk payments</button>
       </div>}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-600">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
+          <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
+          <p className="text-neutral-600">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
         </div>
         <div className="mt-4 sm:mt-0 flex space-x-3">
           <button
             onClick={() => fetchData()}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+            className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
           >
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
@@ -679,7 +679,7 @@ const PaymentsPage = () => {
           <button
             onClick={() => setShowAddModal(true)}
             disabled={submitting || Boolean(user?.supportReadOnly)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 min-h-[44px]"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 min-h-[44px]"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Payment
@@ -687,7 +687,7 @@ const PaymentsPage = () => {
           <button
             onClick={() => setShowBulkPaymentModal(true)}
             disabled={submitting || Boolean(user?.supportReadOnly)}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 min-h-[44px]"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-success hover:bg-green-700 min-h-[44px]"
             title="Add multiple payments at once"
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -697,17 +697,17 @@ const PaymentsPage = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-6">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Search payments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
           </div>
@@ -715,7 +715,7 @@ const PaymentsPage = () => {
             <select
               value={filterMethod}
               onChange={(e) => setFilterMethod(e.target.value)}
-              className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="w-32 px-3 py-2 border border-neutral-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             >
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
@@ -725,7 +725,7 @@ const PaymentsPage = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="w-32 px-3 py-2 border border-neutral-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -740,7 +740,7 @@ const PaymentsPage = () => {
                   setFilterMethod('')
                   setFilterStatus('')
                 }}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
               >
                 <Filter className="h-4 w-4 mr-2" />
                 Clear
@@ -750,13 +750,13 @@ const PaymentsPage = () => {
         </div>
       </div>
 
-      <p className="text-xs text-gray-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
+      <p className="text-xs text-neutral-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
 
       {/* Payments Table - Desktop */}
-      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-neutral-200">
+            <thead className="bg-neutral-50">
               <tr>
                 <th className="px-4 py-3 text-left">
                   <input
@@ -764,44 +764,44 @@ const PaymentsPage = () => {
                     checked={selectionSummary.allVisibleSelected}
                     disabled={eligibleFilteredReceiptIds.length === 0}
                     onChange={toggleSelectAllPayments}
-                    className="rounded border-gray-300 disabled:opacity-40"
+                    className="rounded border-neutral-300 disabled:opacity-40"
                     aria-label="Select all eligible payments for receipt"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Invoice
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Reference
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white divide-y divide-neutral-200">
               {filteredPayments.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
-                      <CreditCard className="h-12 w-12 text-gray-400 mb-4" />
-                      <p className="text-gray-500 text-lg font-medium">No payments found</p>
-                      <p className="text-gray-500 text-sm mt-1">
+                      <CreditCard className="h-12 w-12 text-neutral-400 mb-4" />
+                      <p className="text-neutral-500 text-lg font-medium">No payments found</p>
+                      <p className="text-neutral-500 text-sm mt-1">
                         {searchTerm ? 'Try adjusting your search criteria' : 'Get started by adding a new payment'}
                       </p>
                     </div>
@@ -809,32 +809,32 @@ const PaymentsPage = () => {
                 </tr>
               ) : (
                 filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-gray-50">
+                  <tr key={payment.id} className="hover:bg-neutral-50">
                     <td className="px-4 py-4 whitespace-nowrap">
                       {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && <input
                         type="checkbox"
                         checked={receiptSelectedIds.includes(payment.id)}
                         onChange={() => togglePaymentSelection(payment.id)}
-                        className="rounded border-gray-300 disabled:opacity-40"
+                        className="rounded border-neutral-300 disabled:opacity-40"
                         aria-label={`Select payment ${payment.id} for receipt`}
                       />}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{payment.invoiceNo || '-'}</div>
+                      <div className="text-sm font-medium text-neutral-900">{payment.invoiceNo || '-'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{payment.customerName || '-'}</div>
+                      <div className="text-sm text-neutral-900">{payment.customerName || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {money(payment.amount)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-900">{getPaymentMethod(payment)}</span>
+                        <CreditCard className="h-4 w-4 text-neutral-400 mr-2" />
+                        <span className="text-sm text-neutral-900">{getPaymentMethod(payment)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {payment.ref || payment.reference || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -845,7 +845,7 @@ const PaymentsPage = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {formatDate(payment.paymentDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -864,7 +864,7 @@ const PaymentsPage = () => {
                           <button
                             type="button"
                             onClick={() => handleDeletePayment(payment)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-error hover:text-red-900"
                             title="Void payment"
                             aria-label="Void payment"
                           >
@@ -884,13 +884,13 @@ const PaymentsPage = () => {
                           <div className="inline-flex space-x-1 ml-2">
                             <button
                               onClick={() => handleChequeStatusUpdate(payment.id, 'Cleared')}
-                              className="text-green-600 hover:text-green-900 text-xs px-2 py-1 border border-green-300 rounded"
+                              className="text-success hover:text-green-900 text-xs px-2 py-1 border border-green-300 rounded"
                             >
                               Mark cleared
                             </button>
                             <button
                               onClick={() => handleChequeStatusUpdate(payment.id, 'Returned')}
-                              className="text-red-600 hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded"
+                              className="text-error hover:text-red-900 text-xs px-2 py-1 border border-red-300 rounded"
                             >
                               Return
                             </button>
@@ -899,7 +899,7 @@ const PaymentsPage = () => {
                         {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Cleared' && (
                           <button
                             onClick={() => handleChequeStatusUpdate(payment.id, 'Pending')}
-                            className="text-amber-600 hover:text-amber-900 text-xs px-2 py-1 border border-amber-300 rounded"
+                            className="text-warning hover:text-amber-900 text-xs px-2 py-1 border border-amber-300 rounded"
                             title="Revert to pending (e.g. cheque not yet cleared)"
                           >
                             Mark pending
@@ -917,8 +917,8 @@ const PaymentsPage = () => {
 
       {/* Selection action bar - Generate Receipt */}
       {receiptSelectedIds.length > 0 && (
-        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-sm font-medium text-gray-700">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-0 left-0 right-0 z-40 bg-white border-t border-neutral-200 shadow-lg px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-sm font-medium text-neutral-700">
             {receiptSelectedIds.length} payment(s) selected — Total: {money(selectedTotal)}
           </span>
           <div className="flex gap-2">
@@ -933,7 +933,7 @@ const PaymentsPage = () => {
             <button
               type="button"
               onClick={() => setSelectedPaymentIds([])}
-              className="min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="min-h-[44px] px-4 py-2 border border-neutral-300 rounded-lg hover:bg-neutral-50 text-sm font-medium"
             >
               Cancel
             </button>
@@ -956,28 +956,28 @@ const PaymentsPage = () => {
       {/* Payments Cards - Mobile */}
       <div className="md:hidden space-y-3">
         {filteredPayments.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
-            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg font-medium">No payments found</p>
-            <p className="text-gray-500 text-sm mt-1">
+          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
+            <CreditCard className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+            <p className="text-neutral-500 text-lg font-medium">No payments found</p>
+            <p className="text-neutral-500 text-sm mt-1">
               {searchTerm ? 'Try adjusting your search criteria' : 'Get started by adding a new payment'}
             </p>
           </div>
         ) : (
           filteredPayments.map((payment) => (
-            <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div key={payment.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
               <div className="flex items-start justify-between mb-3">
                 {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && (
                   <input type="checkbox" checked={receiptSelectedIds.includes(payment.id)} onChange={() => togglePaymentSelection(payment.id)}
-                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-3 min-h-[24px] min-w-[24px] rounded border-gray-300" />
+                    aria-label={`Select payment ${payment.id} for receipt`} className="mt-1 mr-3 min-h-[24px] min-w-[24px] rounded border-neutral-300" />
                 )}
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{payment.customerName || 'Unknown'}</p>
-                  <p className="text-xs text-gray-500">{payment.invoiceNo || 'General Payment'}</p>
+                  <p className="text-sm font-semibold text-neutral-900">{payment.customerName || 'Unknown'}</p>
+                  <p className="text-xs text-neutral-500">{payment.invoiceNo || 'General Payment'}</p>
                 </div>
-                <p className="text-base font-bold text-gray-900">{money(payment.amount)}</p>
+                <p className="text-base font-bold text-neutral-900">{money(payment.amount)}</p>
               </div>
-              <div className="flex items-center gap-3 mb-3 text-xs text-gray-500">
+              <div className="flex items-center gap-3 mb-3 text-xs text-neutral-500">
                 <div className="flex items-center gap-1">
                   <CreditCard className="h-3.5 w-3.5" />
                   <span>{getPaymentMethod(payment)}</span>
@@ -1012,7 +1012,7 @@ const PaymentsPage = () => {
                     <button
                       type="button"
                       onClick={() => handleDeletePayment(payment)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      className="p-2 text-error hover:bg-error-bg rounded-lg"
                       title="Void payment"
                       aria-label="Void payment"
                     >
@@ -1032,13 +1032,13 @@ const PaymentsPage = () => {
                     <>
                       <button
                         onClick={() => handleChequeStatusUpdate(payment.id, 'Cleared')}
-                        className="text-xs px-2 py-1 text-green-700 bg-green-50 border border-green-200 rounded-lg"
+                        className="text-xs px-2 py-1 text-success-fg bg-success-bg border border-success-border rounded-lg"
                       >
                         Mark cleared
                       </button>
                       <button
                         onClick={() => handleChequeStatusUpdate(payment.id, 'Returned')}
-                        className="text-xs px-2 py-1 text-red-700 bg-red-50 border border-red-200 rounded-lg"
+                        className="text-xs px-2 py-1 text-error-fg bg-error-bg border border-error-border rounded-lg"
                       >
                         Return
                       </button>
@@ -1047,7 +1047,7 @@ const PaymentsPage = () => {
                   {getPaymentMethod(payment) === 'Cheque' && getChequeStatus(payment) === 'Cleared' && (
                     <button
                       onClick={() => handleChequeStatusUpdate(payment.id, 'Pending')}
-                      className="text-xs px-2 py-1 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg"
+                      className="text-xs px-2 py-1 text-warning-fg bg-warning-bg border border-warning-border rounded-lg"
                     >
                       Mark pending
                     </button>
@@ -1151,8 +1151,8 @@ const PaymentsPage = () => {
             {/* Auto-fill amount from selected invoice */}
             {selectedSaleId && outstandingInvoices.length > 0 && (
               <div className="md:col-span-2">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-blue-900 mb-2">Selected Invoice Details:</p>
+                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                  <p className="text-sm font-medium text-primary-900 mb-2">Selected Invoice Details:</p>
                   {(() => {
                     const selectedInv = outstandingInvoices.find(inv => inv.id === parseInt(selectedSaleId))
                     if (selectedInv) {
@@ -1161,7 +1161,7 @@ const PaymentsPage = () => {
                           <p><span className="font-medium">Invoice:</span> {selectedInv.invoiceNo}</p>
                           <p><span className="font-medium">Total:</span> {money(selectedInv.grandTotal)}</p>
                           <p><span className="font-medium">Paid:</span> {money(selectedInv.paidAmount)}</p>
-                          <p className="text-red-600 font-semibold">
+                          <p className="text-error font-semibold">
                             <span className="font-medium">Balance Due:</span> {money(selectedInv.balanceAmount)}
                             {selectedInv.daysOverdue > 0 && (
                               <span className="ml-2 text-orange-600">({selectedInv.daysOverdue} days overdue)</span>
@@ -1170,7 +1170,7 @@ const PaymentsPage = () => {
                           <button
                             type="button"
                             onClick={() => setValue('amount', selectedInv.balanceAmount)}
-                            className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                            className="mt-2 text-xs text-primary-600 hover:text-primary-800 underline"
                           >
                             Fill Full Balance Amount
                           </button>
@@ -1195,24 +1195,24 @@ const PaymentsPage = () => {
                       <div key={inv.id} className="bg-white border border-yellow-200 rounded p-3 flex justify-between items-center hover:bg-yellow-50">
                         <div>
                           <p className="font-medium text-sm">{inv.invoiceNo}</p>
-                          <p className="text-xs text-gray-600">
+                          <p className="text-xs text-neutral-600">
                             {new Date(inv.invoiceDate).toLocaleDateString()} • 
                             {inv.daysOverdue > 0 ? (
-                              <span className="text-red-600 font-semibold"> {inv.daysOverdue} days overdue</span>
+                              <span className="text-error font-semibold"> {inv.daysOverdue} days overdue</span>
                             ) : (
-                              <span className="text-green-600"> Not due yet</span>
+                              <span className="text-success"> Not due yet</span>
                             )}
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-semibold text-red-600">{money(inv.balanceAmount)}</p>
+                          <p className="text-sm font-semibold text-error">{money(inv.balanceAmount)}</p>
                           <button
                             type="button"
                             onClick={() => {
                               setValue('saleId', inv.id)
                               setValue('amount', inv.balanceAmount)
                             }}
-                            className="text-xs text-blue-600 hover:text-blue-800 underline mt-1"
+                            className="text-xs text-primary-600 hover:text-primary-800 underline mt-1"
                           >
                             Select & Fill
                           </button>
@@ -1263,60 +1263,60 @@ const PaymentsPage = () => {
           {/* Customer Details Section */}
           {selectedCustomerDetails && (
             <div className="mt-6 border-t pt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <h3 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center">
                 <User className="h-5 w-5 mr-2" />
                 Customer Details
               </h3>
-              <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-neutral-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex items-start">
-                  <User className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                  <User className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                   <div>
-                    <p className="text-xs text-gray-500">Name</p>
-                    <p className="text-sm font-medium text-gray-900">{selectedCustomerDetails.name}</p>
+                    <p className="text-xs text-neutral-500">Name</p>
+                    <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.name}</p>
                   </div>
                 </div>
                 {selectedCustomerDetails.phone && (
                   <div className="flex items-start">
-                    <Phone className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                    <Phone className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">Phone</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedCustomerDetails.phone}</p>
+                      <p className="text-xs text-neutral-500">Phone</p>
+                      <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.phone}</p>
                     </div>
                   </div>
                 )}
                 {selectedCustomerDetails.email && (
                   <div className="flex items-start">
-                    <Mail className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                    <Mail className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">Email</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedCustomerDetails.email}</p>
+                      <p className="text-xs text-neutral-500">Email</p>
+                      <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.email}</p>
                     </div>
                   </div>
                 )}
                 {selectedCustomerDetails.address && (
                   <div className="flex items-start md:col-span-2">
-                    <MapPin className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                    <MapPin className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">Address</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedCustomerDetails.address}</p>
+                      <p className="text-xs text-neutral-500">Address</p>
+                      <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.address}</p>
                     </div>
                   </div>
                 )}
                 <div className="flex items-start">
-                  <DollarSign className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                  <DollarSign className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                   <div>
-                    <p className="text-xs text-gray-500">Account Balance</p>
-                    <p className={`text-sm font-medium ${(selectedCustomerDetails.balance || 0) < 0 ? 'text-green-600' : (selectedCustomerDetails.balance || 0) > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                    <p className="text-xs text-neutral-500">Account Balance</p>
+                    <p className={`text-sm font-medium ${(selectedCustomerDetails.balance || 0) < 0 ? 'text-success' : (selectedCustomerDetails.balance || 0) > 0 ? 'text-error' : 'text-neutral-600'}`}>
                       {balance(selectedCustomerDetails.balance || 0)}
                     </p>
                   </div>
                 </div>
                 {selectedCustomerDetails.trn && (
                   <div className="flex items-start">
-                    <FileText className="h-4 w-4 text-gray-400 mt-1 mr-2" />
+                    <FileText className="h-4 w-4 text-neutral-400 mt-1 mr-2" />
                     <div>
-                      <p className="text-xs text-gray-500">TRN</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedCustomerDetails.trn}</p>
+                      <p className="text-xs text-neutral-500">TRN</p>
+                      <p className="text-sm font-medium text-neutral-900">{selectedCustomerDetails.trn}</p>
                     </div>
                   </div>
                 )}
@@ -1329,7 +1329,7 @@ const PaymentsPage = () => {
               type="button"
               onClick={closeAddPaymentModal}
               disabled={submitting}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
@@ -1381,20 +1381,20 @@ const PaymentsPage = () => {
         size="lg"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 mb-4">
+          <p className="text-sm text-neutral-600 mb-4">
             Add multiple payments at once. Each row represents one payment.
           </p>
           {bulkRows.map((payment, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <div key={index} className="border border-neutral-200 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Payment #{index + 1}{savedBatch ? (payment.confirmed ? ' · Confirmed' : ' · Awaiting confirmation') : ''}</span>
+                <span className="text-sm font-medium text-neutral-700">Payment #{index + 1}{savedBatch ? (payment.confirmed ? ' · Confirmed' : ' · Awaiting confirmation') : ''}</span>
                 {!savedBatch && bulkPayments.length > 1 && (
                   <button
                     type="button"
                     onClick={() => {
                       setBulkPayments(bulkPayments.filter((_, i) => i !== index))
                     }}
-                    className="text-red-600 hover:text-red-800 text-sm"
+                    className="text-error hover:text-red-800 text-sm"
                   >
                     Remove
                   </button>
@@ -1472,7 +1472,7 @@ const PaymentsPage = () => {
               onClick={() => {
                 setBulkPayments([...bulkPayments, { customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
               }}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
             >
               <Plus className="h-4 w-4 inline mr-2" />
               Add Another Payment
@@ -1485,7 +1485,7 @@ const PaymentsPage = () => {
                   setShowBulkPaymentModal(false)
                   if (!savedBatch) setBulkPayments([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                className="px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
               >
                 Cancel
               </button>

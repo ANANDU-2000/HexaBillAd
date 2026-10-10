@@ -111,8 +111,8 @@ export default function StampSignaturePlacementPreview({
         onPointerCancel={onPointerUp}
       >
         <div className="absolute inset-x-3 top-3 bottom-10 border border-dashed border-neutral-200 pointer-events-none" />
-        <div className="absolute left-2 top-2 text-[10px] text-neutral-400 pointer-events-none">A4 body area</div>
-        <div className={`absolute bottom-2 text-[10px] text-neutral-400 pointer-events-none ${alignLeft ? 'left-2' : 'right-2'}`}>
+        <div className="absolute left-2 top-2 text-micro text-neutral-400 pointer-events-none">A4 body area</div>
+        <div className={`absolute bottom-2 text-micro text-neutral-400 pointer-events-none ${alignLeft ? 'left-2' : 'right-2'}`}>
           {alignLeft ? 'First Party / stamp' : 'For company'}
         </div>
 

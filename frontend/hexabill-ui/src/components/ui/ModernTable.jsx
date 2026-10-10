@@ -1,6 +1,37 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, Inbox } from 'lucide-react'
-import { LoadingOverlay } from '../Loading'
+import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react'
+import EmptyState from './EmptyState'
+import { TableSkeleton } from './TableSkeleton'
+
+/**
+ * Data table with an optional phone layout.
+ *
+ * columns: [{ key, label, render?, align?: 'right', sortable?, mobile?: 'title' | 'subtitle' | 'hidden' }]
+ *
+ * `mobileCards` (opt-in): below md each row renders as a card. The column marked
+ * mobile:'title' (default: the first column) is the card heading, 'subtitle'
+ * sits under it, right-aligned columns become the amount on the end side, and
+ * the rest are label/value pairs. Without it the table scrolls inside its card.
+ */
+const pageWindow = (current, total) => {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const pages = new Set([1, total, current - 1, current, current + 1])
+  const list = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b)
+  const out = []
+  list.forEach((p, i) => {
+    if (i > 0 && p - list[i - 1] > 1) out.push(`gap-${p}`)
+    out.push(p)
+  })
+  return out
+}
+
+const compare = (a, b) => {
+  if (a == null && b == null) return 0
+  if (a == null) return 1
+  if (b == null) return -1
+  if (typeof a === 'number' && typeof b === 'number') return a - b
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' })
+}
 
 const ModernTable = ({
   data = [],
@@ -8,12 +39,17 @@ const ModernTable = ({
   loading = false,
   onRowClick,
   actions = null,
-  pagination = null, // Support for object-based pagination { currentPage, totalPages, ... }
+  rowKey = 'id',
+  mobileCards = false,
+  emptyTitle = 'No records found',
+  emptyDescription,
+  emptyAction,
+  pagination = null, // { currentPage, totalPages, onPageChange }
   currentPage: propCurrentPage,
   totalPages: propTotalPages,
-  onPageChange: propOnPageChange
+  onPageChange: propOnPageChange,
+  caption,
 }) => {
-  // Use either flat props or pagination object
   const currentPage = propCurrentPage || pagination?.currentPage || 1
   const totalPages = propTotalPages || pagination?.totalPages || 1
   const onPageChange = propOnPageChange || pagination?.onPageChange
@@ -29,79 +65,136 @@ const ModernTable = ({
     }
   }
 
-  const sortedData = sortColumn ? [...data].sort((a, b) => {
-    const aVal = a[sortColumn]
-    const bVal = b[sortColumn]
-    if (typeof aVal === 'string') {
-      return sortDirection === 'asc'
-        ? aVal.localeCompare(bVal)
-        : bVal.localeCompare(aVal)
-    }
-    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal
-  }) : data
+  const sortedData = sortColumn
+    ? [...data].sort((a, b) => (sortDirection === 'asc' ? 1 : -1) * compare(a[sortColumn], b[sortColumn]))
+    : data
+
+  const keyOf = (row, index) => (typeof rowKey === 'function' ? rowKey(row) : row[rowKey]) ?? index
+  const cell = (column, row) => (column.render ? column.render(row) : row[column.key])
+
+  if (loading) return <TableSkeleton rows={6} />
+
+  const empty = (
+    <EmptyState compact title={emptyTitle} description={emptyDescription} primaryAction={emptyAction} />
+  )
+
+  const titleCol = columns.find((c) => c.mobile === 'title') || columns[0]
+  const subtitleCol = columns.find((c) => c.mobile === 'subtitle')
+  const amountCol = columns.find((c) => c.align === 'right' && c !== titleCol && c.mobile !== 'hidden')
+  const detailCols = columns.filter(
+    (c) => c !== titleCol && c !== subtitleCol && c !== amountCol && c.mobile !== 'hidden'
+  )
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="overflow-x-auto -mx-1.5 sm:mx-0">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              {columns.map((column) => (
-                  <th
-                  key={column.key}
-                  className={`px-2 sm:px-3 py-2 text-xs font-semibold text-neutral-600 uppercase tracking-wider ${column.align === 'right' ? 'text-right' : 'text-left'} ${column.sortable ? 'cursor-pointer hover:bg-neutral-100' : ''
-                    }`}
-                  onClick={() => column.sortable && handleSort(column.key)}
-                >
-                  <div className="flex items-center">
-                    {column.label}
-                    {column.sortable && sortColumn === column.key && (
-                      <span className="ml-1">
-                        {sortDirection === 'asc' ? (
-                          <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4 inline" />
-                        ) : (
-                          <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 inline" />
-                        )}
-                      </span>
+    <div className="overflow-hidden rounded-lg border border-surface-border bg-white">
+      {mobileCards && (
+        <ul className="divide-y divide-surface-border md:hidden">
+          {sortedData.length === 0 ? (
+            <li>{empty}</li>
+          ) : (
+            sortedData.map((row, index) => {
+              const Body = onRowClick ? 'button' : 'div'
+              return (
+                <li key={keyOf(row, index)} className="p-3">
+                  <Body
+                    type={onRowClick ? 'button' : undefined}
+                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    className={`block w-full text-start ${onRowClick ? '-m-1 rounded-md p-1 active:bg-neutral-50' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-text-primary">{cell(titleCol, row)}</div>
+                        {subtitleCol && <div className="truncate text-xs text-neutral-500">{cell(subtitleCol, row)}</div>}
+                      </div>
+                      {amountCol && (
+                        <div className="shrink-0 text-end text-sm font-semibold tabular-nums text-text-primary">
+                          {cell(amountCol, row)}
+                        </div>
+                      )}
+                    </div>
+                    {detailCols.length > 0 && (
+                      <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+                        {detailCols.map((column) => (
+                          <div key={column.key} className="min-w-0">
+                            <dt className="text-neutral-500">{column.label}</dt>
+                            <dd className={`truncate text-text-primary ${column.align === 'right' ? 'tabular-nums' : ''}`}>
+                              {cell(column, row)}
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
                     )}
-                  </div>
+                  </Body>
+                  {actions && <div className="mt-2 flex flex-wrap justify-end gap-1.5">{actions(row)}</div>}
+                </li>
+              )
+            })
+          )}
+        </ul>
+      )}
+
+      {/* relative: keeps absolutely positioned content (e.g. the sr-only Actions label) inside the
+          scroll box; without it that label escaped the clip and widened the whole page. */}
+      <div className={`${mobileCards ? 'hidden md:block' : ''} relative overflow-x-auto`}>
+        <table className="min-w-full">
+          {caption && <caption className="sr-only">{caption}</caption>}
+          <thead className="bg-neutral-50">
+            <tr>
+              {columns.map((column) => {
+                const active = sortColumn === column.key
+                return (
+                  <th
+                    key={column.key}
+                    scope="col"
+                    aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
+                    className={`whitespace-nowrap border-b border-surface-border px-3 py-2.5 text-xs font-semibold uppercase tracking-wide text-neutral-600 ${column.align === 'right' ? 'text-right' : 'text-left'}`}
+                  >
+                    {column.sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSort(column.key)}
+                        className={`-my-1 inline-flex min-h-[32px] items-center gap-1 rounded uppercase tracking-wide hover:text-text-primary ${column.align === 'right' ? 'flex-row-reverse' : ''}`}
+                      >
+                        {column.label}
+                        {active && (sortDirection === 'asc'
+                          ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+                          : <ChevronDown className="h-3.5 w-3.5" aria-hidden />)}
+                      </button>
+                    ) : (
+                      column.label
+                    )}
+                  </th>
+                )
+              })}
+              {actions && (
+                <th scope="col" className="border-b border-surface-border px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-neutral-600">
+                  <span className="sr-only">Actions</span>
                 </th>
-              ))}
-              {actions && <th className="px-2 sm:px-3 py-1.5 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>}
+              )}
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {loading ? (
+          <tbody>
+            {sortedData.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-2 sm:px-4 lg:px-6 py-8 sm:py-12 text-center">
-                  <div className="flex justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                </td>
-              </tr>
-            ) : sortedData.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length + (actions ? 1 : 0)} className="px-2 sm:px-4 lg:px-6 py-8 sm:py-12 text-center">
-                  <div className="flex flex-col items-center justify-center">
-                    <Inbox className="h-12 w-12 text-gray-400 mb-3" />
-                    <p className="text-gray-500 text-sm font-medium">No data available</p>
-                  </div>
-                </td>
+                <td colSpan={columns.length + (actions ? 1 : 0)}>{empty}</td>
               </tr>
             ) : (
               sortedData.map((row, index) => (
                 <tr
-                  key={row.id || index}
-                  className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
-                  onClick={() => onRowClick && onRowClick(row)}
+                  key={keyOf(row, index)}
+                  className={`border-b border-surface-border last:border-b-0 transition-colors duration-150 hover:bg-neutral-50 ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className={`px-2 sm:px-3 py-2 whitespace-nowrap text-sm text-neutral-900 ${column.align === 'right' ? 'text-right tabular-nums' : ''}`}>
-                      {column.render ? column.render(row) : row[column.key]}
+                    <td
+                      key={column.key}
+                      className={`whitespace-nowrap px-3 py-2.5 text-sm text-text-primary ${column.align === 'right' ? 'text-right tabular-nums' : ''}`}
+                    >
+                      {cell(column, row)}
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-2 sm:px-3 py-1.5 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
+                    <td className="whitespace-nowrap px-3 py-1.5 text-right text-sm" onClick={(e) => e.stopPropagation()}>
                       {actions(row)}
                     </td>
                   )}
@@ -112,72 +205,58 @@ const ModernTable = ({
         </table>
       </div>
 
-      {/* Pagination Footer */}
       {onPageChange && totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b-xl">
-          <div className="flex-1 flex justify-between sm:hidden">
+        <nav
+          className="flex items-center justify-between gap-3 border-t border-surface-border bg-white px-3 py-2"
+          aria-label="Pagination"
+        >
+          <p className="text-xs text-neutral-500">
+            Page <span className="font-medium tabular-nums text-text-primary">{currentPage}</span> of{' '}
+            <span className="tabular-nums">{totalPages}</span>
+          </p>
+          <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => onPageChange(Math.max(1, currentPage - 1))}
               disabled={currentPage === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-neutral-300 text-sm font-medium rounded-md text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50"
+              className="btn btn-ghost px-2"
+              aria-label="Previous page"
             >
-              Previous
+              <ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />
             </button>
+            <span className="hidden items-center gap-1 sm:flex">
+              {pageWindow(currentPage, totalPages).map((p) =>
+                typeof p === 'string' ? (
+                  <span key={p} className="px-1 text-neutral-400" aria-hidden>…</span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => onPageChange(p)}
+                    aria-current={p === currentPage ? 'page' : undefined}
+                    className={`min-h-[32px] min-w-[32px] rounded-md px-2 text-sm tabular-nums ${
+                      p === currentPage ? 'bg-primary-600 font-semibold text-white' : 'text-neutral-700 hover:bg-neutral-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            </span>
             <button
+              type="button"
               onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
               disabled={currentPage === totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-neutral-300 text-sm font-medium rounded-md text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50"
+              className="btn btn-ghost px-2"
+              aria-label="Next page"
             >
-              Next
+              <ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden />
             </button>
           </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-neutral-700">
-                Showing Page <span className="font-semibold text-primary-600">{currentPage}</span> of{' '}
-                <span className="font-semibold">{totalPages}</span>
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                <button
-                  onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-neutral-300 bg-white text-sm font-medium text-neutral-500 hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  <span className="sr-only">Previous</span>
-                  <ChevronDown className="h-5 w-5 rotate-90" />
-                </button>
-
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => onPageChange(i + 1)}
-                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-semibold ${currentPage === i + 1
-                        ? 'z-10 bg-primary-50 border-primary-500 text-primary-600'
-                        : 'bg-white border-neutral-300 text-neutral-700 hover:bg-neutral-50'
-                      }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-
-                <button
-                  onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-neutral-300 bg-white text-sm font-medium text-neutral-500 hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  <span className="sr-only">Next</span>
-                  <ChevronDown className="h-5 w-5 -rotate-90" />
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
+        </nav>
       )}
     </div>
   )
 }
 
 export default ModernTable
-

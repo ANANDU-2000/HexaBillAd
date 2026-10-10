@@ -71,7 +71,7 @@ export function SubscriptionGraceBanner() {
       <button
         type="button"
         onClick={() => setDismissed(true)}
-        className="ml-2 p-1 hover:bg-amber-600/30 rounded"
+        className="ml-2 p-1 hover:bg-warning/30 rounded"
         aria-label="Dismiss"
       >
         <X className="h-4 w-4" />

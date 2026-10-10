@@ -179,22 +179,22 @@ const ProfilePage = () => {
   }
 
   const role = profile?.role || currentUser?.role
-  const roleChipClass = role === 'Owner' ? 'bg-amber-100 text-amber-800' : role === 'Admin' ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700'
+  const roleChipClass = role === 'Owner' ? 'bg-amber-100 text-amber-800' : role === 'Admin' ? 'bg-primary-100 text-primary-800' : 'bg-slate-100 text-slate-700'
   const photoUrl = getUploadsUrl(profile?.profilePhotoUrl)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-primary-50/30">
       <div className="p-4 sm:p-6 w-full">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-xl font-semibold text-neutral-900 flex items-center gap-2">
-            <User className="h-6 w-6 text-blue-600" />
+            <User className="h-6 w-6 text-primary-600" />
             My Profile
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Account details and security</p>
+          <p className="text-sm text-neutral-500 mt-1">Account details and security</p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-6 sm:px-6 sm:py-7">
+        <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden mb-6">
+          <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-5 py-6 sm:px-6 sm:py-7">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
                 <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-white/20 flex items-center justify-center overflow-hidden border-2 border-white/40">
@@ -216,7 +216,7 @@ const ProfilePage = () => {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingPhoto}
-                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-blue-800 text-white hover:bg-blue-900 border-2 border-white shadow transition disabled:opacity-50"
+                  className="absolute bottom-0 right-0 p-1.5 rounded-full bg-primary-800 text-white hover:bg-primary-900 border-2 border-white shadow transition disabled:opacity-50"
                   title="Change photo"
                 >
                   <Camera className="h-4 w-4" />
@@ -224,7 +224,7 @@ const ProfilePage = () => {
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg sm:text-xl font-bold truncate">{profile?.name || currentUser?.name}</h2>
-                <p className="text-blue-100 text-sm truncate mt-0.5">{profile?.email || currentUser?.email}</p>
+                <p className="text-primary-100 text-sm truncate mt-0.5">{profile?.email || currentUser?.email}</p>
                 <span className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-medium ${roleChipClass}`}>
                   <Shield className="h-3.5 w-3.5" />
                   {role || 'User'}
@@ -235,63 +235,63 @@ const ProfilePage = () => {
 
           <form onSubmit={handleSubmit(handleUpdateProfile)} className="p-5 sm:p-6 space-y-5">
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-                <Mail className="h-4 w-4 text-gray-500" />
+              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                <Mail className="h-4 w-4 text-neutral-500" />
                 Email
               </label>
               <input
                 type="email"
                 value={profile?.email || currentUser?.email || ''}
                 readOnly
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg bg-neutral-50 text-neutral-600 cursor-not-allowed"
               />
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-warning mt-1">
                 Email cannot be changed here. If you need a new email, ask your admin to update or recreate your account.
               </p>
             </div>
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-                <User className="h-4 w-4 text-gray-500" />
+              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                <User className="h-4 w-4 text-neutral-500" />
                 Name
               </label>
               <input
                 type="text"
                 {...register('name', { required: 'Name is required' })}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
             </div>
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-                <Phone className="h-4 w-4 text-gray-500" />
+              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                <Phone className="h-4 w-4 text-neutral-500" />
                 Phone
               </label>
               <input
                 type="text"
                 {...register('phone')}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>
             <div>
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-                <Globe className="h-4 w-4 text-gray-500" />
+              <label className="flex items-center gap-2 text-sm font-medium text-neutral-700 mb-1.5">
+                <Globe className="h-4 w-4 text-neutral-500" />
                 Language / اللغة
               </label>
               <select
                 {...register('languagePreference')}
-                className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
                 {LANGUAGES.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <p className="text-xs text-gray-500 mt-1">Interface language (English / Arabic). Targets Arabic-speaking markets.</p>
+              <p className="text-xs text-neutral-500 mt-1">Interface language (English / Arabic). Targets Arabic-speaking markets.</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-60"
               >
                 <Save className="h-4 w-4" />
                 {loading ? 'Saving…' : 'Save changes'}
@@ -299,7 +299,7 @@ const ProfilePage = () => {
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(true)}
-                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] text-sm font-medium bg-white border border-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-50"
               >
                 <Lock className="h-4 w-4" />
                 Change password
@@ -309,39 +309,39 @@ const ProfilePage = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-4 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <CheckCircle className="h-5 w-5 text-success" />
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Status</p>
-              <p className="text-sm font-semibold text-gray-900">Active</p>
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Status</p>
+              <p className="text-sm font-semibold text-neutral-900">Active</p>
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <User className="h-5 w-5 text-blue-600" />
+          <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
+              <User className="h-5 w-5 text-primary-600" />
             </div>
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Account</p>
-              <p className="text-sm font-semibold text-gray-900">{companyName || currentUser?.name || 'Your account'}</p>
+              <p className="text-xs font-medium text-neutral-500 uppercase tracking-wide">Account</p>
+              <p className="text-sm font-semibold text-neutral-900">{companyName || currentUser?.name || 'Your account'}</p>
             </div>
           </div>
         </div>
 
         {isAdminOrOwner(currentUser) && (
-          <div className="bg-white rounded-xl border-2 border-red-200 shadow-sm p-4">
+          <div className="bg-white rounded-lg border-2 border-error-border shadow-sm p-4">
             <h3 className="text-sm font-bold text-red-900 uppercase tracking-wider flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Danger zone
             </h3>
-            <p className="text-sm text-red-700 mt-1 mb-3">
+            <p className="text-sm text-error-fg mt-1 mb-3">
               Reset company data: wipe sales, purchases, expenses. Keeps users, products, customers; resets stock and balances.
             </p>
             <button
               type="button"
               onClick={() => navigate('/settings', { state: { tab: 'backup' } })}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-red-600 bg-white border-2 border-red-300 rounded-xl hover:bg-red-50 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-error bg-white border-2 border-red-300 rounded-lg hover:bg-error-bg transition-colors"
             >
               <History className="h-4 w-4" />
               Clear all data
@@ -356,25 +356,25 @@ const ProfilePage = () => {
         title="Change Password"
       >
         <form onSubmit={handleSubmitPassword(handleChangePasswordSubmit)} className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <p className="text-sm text-gray-700 flex items-center">
-              <AlertCircle className="h-4 w-4 mr-2 text-blue-600 flex-shrink-0" />
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+            <p className="text-sm text-neutral-700 flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2 text-primary-600 flex-shrink-0" />
               Use at least 8 characters with upper and lower case and a number. Avoid common passwords.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Current Password *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Current Password *</label>
             <input
               type="password"
               {...registerPassword('currentPassword', { required: 'Current password is required' })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {errorsPassword.currentPassword && <p className="text-red-500 text-xs mt-1">{errorsPassword.currentPassword.message}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">New Password *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">New Password *</label>
             <input
               type="password"
               {...registerPassword('newPassword', {
@@ -389,7 +389,7 @@ const ProfilePage = () => {
                   return true
                 }
               })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {errorsPassword.newPassword && <p className="text-red-500 text-xs mt-1">{errorsPassword.newPassword.message}</p>}
             {newPassword && (
@@ -397,7 +397,7 @@ const ProfilePage = () => {
                 {[1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className={`h-1 flex-1 rounded ${getPasswordStrength(newPassword) >= i ? 'bg-green-500' : 'bg-gray-200'}`}
+                    className={`h-1 flex-1 rounded ${getPasswordStrength(newPassword) >= i ? 'bg-green-500' : 'bg-neutral-200'}`}
                   />
                 ))}
               </div>
@@ -405,11 +405,11 @@ const ProfilePage = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password *</label>
+            <label className="block text-sm font-medium text-neutral-700 mb-1">Confirm New Password *</label>
             <input
               type="password"
               {...registerPassword('confirmPassword', { required: 'Please confirm your new password' })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
             {errorsPassword.confirmPassword && <p className="text-red-500 text-xs mt-1">{errorsPassword.confirmPassword.message}</p>}
           </div>
@@ -418,14 +418,14 @@ const ProfilePage = () => {
             <button
               type="button"
               onClick={() => { setShowPasswordModal(false); resetPassword() }}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
+              className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition"
               disabled={loading}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition"
+              className="px-4 py-2 bg-success hover:bg-green-700 text-white rounded-lg transition"
               disabled={loading}
             >
               {loading ? 'Changing...' : 'Change Password'}

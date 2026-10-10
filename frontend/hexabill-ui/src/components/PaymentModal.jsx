@@ -349,14 +349,14 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-green-600" />
+            <Wallet className="w-5 h-5 text-success" />
             <h2 className="text-xl font-semibold">
               {invoiceId ? 'Make Payment' : 'Add Balance Adjustment'}
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
+            className="text-neutral-400 hover:text-neutral-600 transition-colors min-h-[44px] min-w-[44px] -mr-2 -my-2 flex items-center justify-center"
             disabled={loading}
             aria-label="Close"
           >
@@ -364,32 +364,32 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
           </button>
         </div>
 
-        {paymentRecoveryError && <p role="alert" className="p-4 text-sm text-red-700">{paymentRecoveryError}</p>}
+        {paymentRecoveryError && <p role="alert" className="p-4 text-sm text-error-fg">{paymentRecoveryError}</p>}
         {unconfirmedPayment && (
-          <div role="status" className="p-4 bg-amber-50 border-b border-amber-200 text-sm text-amber-950">
+          <div role="status" className="p-4 bg-warning-bg border-b border-warning-border text-sm text-amber-950">
             <p>Previous payment of {money(unconfirmedPayment.request.amount)} is unconfirmed. Retry it to confirm the result before recording another payment.</p>
             <button type="button" disabled={loading} onClick={() => doSubmitPayment(unconfirmedPayment)} className="mt-2 min-h-[44px] px-3 border border-amber-400 rounded-md font-medium">Retry previous payment</button>
           </div>
         )}
         {/* Invoice Info */}
         {invoice && (
-          <div className="p-6 bg-gray-50 border-b">
+          <div className="p-6 bg-neutral-50 border-b">
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Invoice Number:</span>
+                <span className="text-sm text-neutral-600">Invoice Number:</span>
                 <span className="font-medium">{invoice.invoiceNo}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Amount:</span>
+                <span className="text-sm text-neutral-600">Total Amount:</span>
                 <span className="font-medium">{money(invoice.totalAmount)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Paid So Far:</span>
-                <span className="font-medium text-blue-600">{money(invoice.paidAmount)}</span>
+                <span className="text-sm text-neutral-600">Paid So Far:</span>
+                <span className="font-medium text-primary-600">{money(invoice.paidAmount)}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-sm font-semibold text-gray-700">Outstanding:</span>
-                <span className="font-bold text-red-600">{money(invoice.outstandingAmount)}</span>
+                <span className="text-sm font-semibold text-neutral-700">Outstanding:</span>
+                <span className="font-bold text-error">{money(invoice.outstandingAmount)}</span>
               </div>
             </div>
           </div>
@@ -399,7 +399,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Amount */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               <DollarSign className="w-4 h-4 inline mr-1" />
               Payment Amount *
             </label>
@@ -411,22 +411,22 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               inputMode="decimal"
               value={formData.amount}
               onChange={(e) => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))}
-              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
               disabled={loading}
             />
             {invoice && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-neutral-500">
                 Outstanding: {money(invoice.outstandingAmount)}
                 {formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && !settlementShortfall && (
-                  <span className="block mt-1 text-amber-600 font-medium">
+                  <span className="block mt-1 text-warning font-medium">
                     Excess will be added as customer credit
                   </span>
                 )}
               </p>
             )}
             {settlementAdjustmentsEnabled && settlementShortfall > 0 && (
-              <div className="mt-3 p-3 border border-amber-200 bg-amber-50 rounded-lg space-y-2">
+              <div className="mt-3 p-3 border border-warning-border bg-warning-bg rounded-lg space-y-2">
                 <p className="text-sm text-amber-900">
                   Cash is {money(settlementShortfall)} short of closing this invoice. You can record an authorized settlement adjustment (not counted as cash received).
                 </p>
@@ -456,13 +456,13 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
 
           {/* Payment Mode */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               Payment Mode *
             </label>
             <select
               value={formData.mode}
               onChange={(e) => setFormData(prev => ({ ...prev, mode: e.target.value }))}
-              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
               disabled={loading}
             >
@@ -475,7 +475,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
 
           {/* Reference - required for Cheque and Online Transfer */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               <FileText className="w-4 h-4 inline mr-1" />
               Reference (Cheque No / Transaction ID) {(formData.mode === 'CHEQUE' || formData.mode === 'ONLINE') && <span className="text-red-500">*</span>}
             </label>
@@ -483,7 +483,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               type="text"
               value={formData.reference}
               onChange={(e) => setFormData(prev => ({ ...prev, reference: e.target.value }))}
-              className="w-full px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               placeholder={(formData.mode === 'CHEQUE' || formData.mode === 'ONLINE') ? 'Required for Cheque/Bank Transfer' : 'Optional'}
               maxLength={200}
               disabled={loading}
@@ -492,7 +492,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
 
           {/* Payment Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-neutral-700 mb-2">
               <Calendar className="w-4 h-4 inline mr-1" />
               Payment Date *
             </label>
@@ -500,7 +500,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
               type="date"
               value={formData.paymentDate}
               onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+              className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
               required
               disabled={loading}
             />
@@ -514,7 +514,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors"
                   disabled={loading}
                 >
                   Cancel
@@ -522,7 +522,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                 <button
                   type="submit"
                   ref={submitButtonRef}
-                  className="flex-1 px-4 py-2.5 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2.5 min-h-[44px] bg-success text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading || formData.amount <= 0 || ((formData.mode === 'CHEQUE' || formData.mode === 'ONLINE') && !formData.reference?.trim())}
                 >
                   {loading ? 'Processing...' : 'Continue'}
@@ -548,7 +548,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                     {formData.mode === 'CHEQUE' && <span className="text-orange-600"> (Pending Clearance)</span>}
                   </p>
                   {invoice && formData.amount > (Number(invoice.outstandingAmount) || 0) + 0.01 && (
-                    <p className="text-sm text-amber-700 mt-2 font-medium">
+                    <p className="text-sm text-warning-fg mt-2 font-medium">
                       This payment exceeds outstanding by {money(formData.amount - (Number(invoice.outstandingAmount) || 0))}. The excess will be added as customer credit.
                     </p>
                   )}
@@ -560,7 +560,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   <button
                     type="button"
                     onClick={handleCancelConfirmation}
-                    className="flex-1 px-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-4 py-2.5 min-h-[44px] border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50 transition-colors"
                     disabled={loading}
                   >
                     ← Go Back
@@ -568,7 +568,7 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
                   <button
                     type="submit"
                     ref={submitButtonRef}
-                    className="flex-1 px-4 py-2.5 min-h-[44px] bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    className="flex-1 px-4 py-2.5 min-h-[44px] bg-success text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     disabled={loading}
                   >
                     {loading ? (

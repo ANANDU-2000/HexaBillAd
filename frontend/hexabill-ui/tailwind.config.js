@@ -17,6 +17,17 @@ module.exports = {
         'h3': ['16px', { lineHeight: '1.3' }],
         'body': ['14px', { lineHeight: '1.5' }],
         'caption': ['12px', { lineHeight: '1.4' }],
+        'micro': ['11px', { lineHeight: '1.3' }], // smallest permitted size (--micro-size)
+      },
+      zIndex: {
+        // Mirrors --z-* in tokens.css.
+        'sticky': '20',
+        'nav': '30',
+        'dropdown': '40',
+        'modal': '50',
+        'sheet': '60',
+        'toast': '80',
+        'tooltip': '90',
       },
       spacing: {
         'grid-1': '8px',
@@ -64,13 +75,21 @@ module.exports = {
           800: '#262626',
           900: '#171717',
         },
-        success: '#059669',
-        warning: '#d97706',
-        error: '#dc2626',
-        info: '#3b82f6',
+        // Status: DEFAULT is the solid colour; fg/bg/border are the tinted trio
+        // (mirrors --{status}-fg/-bg/-border). Always pair colour with text or an icon.
+        success: { DEFAULT: '#059669', fg: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
+        warning: { DEFAULT: '#d97706', fg: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+        error: { DEFAULT: '#dc2626', fg: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+        info: { DEFAULT: '#3b82f6', fg: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+        tenant: 'var(--tenant-brand)',
       },
       transitionDuration: {
+        'fast': '100ms',
         'ui': '150ms',
+        'panel': '200ms',
+      },
+      transitionTimingFunction: {
+        'standard': 'cubic-bezier(0.2, 0, 0, 1)',
       },
       keyframes: {
         slideUp: {

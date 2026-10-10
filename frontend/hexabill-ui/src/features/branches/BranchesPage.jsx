@@ -244,7 +244,7 @@ const BranchesPage = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="inline-flex items-center justify-center p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
             title="Go Back"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -410,7 +410,7 @@ const BranchesPage = () => {
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); setRouteToDelete(r) }}
-                          className="p-2 text-neutral-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          className="p-2 text-neutral-500 hover:text-error hover:bg-error-bg rounded-lg transition"
                           title="Delete route"
                         >
                           <Trash2 className="h-4 w-4" />

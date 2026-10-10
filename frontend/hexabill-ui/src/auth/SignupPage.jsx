@@ -118,7 +118,7 @@ const SignupPage = () => {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
         <div className="max-w-[400px] w-full bg-white rounded-lg border border-[#E5E7EB] p-8 text-center">
-          <CheckCircle className="h-8 w-8 text-green-700 mx-auto mb-4" />
+          <CheckCircle className="h-8 w-8 text-success-fg mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">Account created</h2>
           <p className="text-sm text-neutral-600 mb-6">
             {formData.companyName} is ready. Sign in to open the workspace.

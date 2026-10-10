@@ -89,7 +89,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                       aria-hidden
                     />
                     <span
-                      className={`text-[11px] leading-tight text-center truncate max-w-full ${
+                      className={`text-micro leading-tight text-center truncate max-w-full ${
                         moreActive ? 'font-semibold text-primary-700' : 'font-medium'
                       }`}
                     >
@@ -121,7 +121,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                     >
                       <Icon className="h-5 w-5 shrink-0" strokeWidth={2.25} aria-hidden />
                     </span>
-                    <span className={`max-w-full truncate px-0.5 text-[11px] leading-tight ${posActive ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'}`}>
+                    <span className={`max-w-full truncate px-0.5 text-micro leading-tight ${posActive ? 'font-semibold text-primary-700' : 'font-medium text-[#475569]'}`}>
                       {item.name}
                     </span>
                   </Link>
@@ -143,7 +143,7 @@ const BottomNav = ({ moreOpen, onOpenMore, onCloseMore }) => {
                     aria-hidden
                   />
                   <span
-                    className={`text-[11px] leading-tight text-center truncate max-w-full ${
+                    className={`text-micro leading-tight text-center truncate max-w-full ${
                       active ? 'font-semibold text-primary-700' : 'font-medium'
                     }`}
                   >

@@ -82,7 +82,7 @@ const SuperAdminErrorLogsPage = () => {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
+            className="inline-flex items-center justify-center px-5 py-2.5 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 shadow-sm hover:shadow-md transition-all space-x-2 disabled:opacity-60"
           >
             <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
             <span>{refreshing ? 'Refreshing…' : 'Refresh'}</span>
@@ -91,16 +91,16 @@ const SuperAdminErrorLogsPage = () => {
       </div>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
-          <AlertCircle className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="mb-6 p-4 bg-error-bg border border-error-border rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-6 w-6 text-error flex-shrink-0 mt-0.5" />
           <div>
             <p className="font-semibold text-red-800">Error</p>
-            <p className="text-red-700 text-sm">{error}</p>
+            <p className="text-error-fg text-sm">{error}</p>
           </div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-neutral-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-lg border border-neutral-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
@@ -149,7 +149,7 @@ const SuperAdminErrorLogsPage = () => {
                         type="button"
                         onClick={() => handleResolve(log.id)}
                         disabled={resolvingId === log.id}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded hover:bg-green-100 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-success-fg bg-success-bg rounded hover:bg-green-100 disabled:opacity-50"
                         title="Mark as resolved (hide from default list)"
                       >
                         <CheckCircle className="h-4 w-4" />

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useBranding } from '../../../tenant/TenantBrandingContext'
 
 /** Invoice-level discount popup (% / flat AED). Writes discount / discountInput only. */
 export default function DiscountPopup({
@@ -16,6 +17,7 @@ export default function DiscountPopup({
   vatPercent,
   disabled,
 }) {
+  const { currency = 'AED' } = useBranding()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -39,7 +41,7 @@ export default function DiscountPopup({
               onClick={() => setDiscountMode('flat')}
               className={`flex-1 h-9 text-xs font-medium rounded ${discountMode === 'flat' ? 'bg-white shadow text-neutral-900' : 'text-neutral-600'}`}
             >
-              Flat AED
+              Flat {currency}
             </button>
             <button
               type="button"
@@ -51,7 +53,7 @@ export default function DiscountPopup({
           </div>
           {discountMode === 'flat' ? (
             <div>
-              <label className="block text-xs font-medium text-neutral-600 mb-1">Discount (AED)</label>
+              <label className="block text-xs font-medium text-neutral-600 mb-1">Discount ({currency})</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -97,19 +99,19 @@ export default function DiscountPopup({
           <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 space-y-1.5 text-xs">
             <div className="flex justify-between">
               <span className="text-neutral-600">Gross</span>
-              <span className="font-semibold tabular-nums">AED {(totals.subtotal + totals.vatTotal).toFixed(2)}</span>
+              <span className="font-semibold tabular-nums">{currency} {(totals.subtotal + totals.vatTotal).toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-red-600">Discount</span>
-              <span className="font-semibold text-red-600 tabular-nums">-AED {Number(discount || 0).toFixed(2)}</span>
+              <span className="text-error">Discount</span>
+              <span className="font-semibold text-error tabular-nums">-{currency} {Number(discount || 0).toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-600">VAT {vatPercent}%</span>
-              <span className="font-semibold tabular-nums">AED {totals.vatTotal.toFixed(2)}</span>
+              <span className="font-semibold tabular-nums">{currency} {totals.vatTotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between border-t border-neutral-200 pt-1.5">
               <span className="font-bold text-neutral-900">Net</span>
-              <span className="font-bold tabular-nums">AED {totals.grandTotal.toFixed(2)}</span>
+              <span className="font-bold tabular-nums">{currency} {totals.grandTotal.toFixed(2)}</span>
             </div>
           </div>
           <button

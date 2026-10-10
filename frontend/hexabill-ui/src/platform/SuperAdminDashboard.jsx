@@ -119,7 +119,7 @@ const SuperAdminDashboard = () => {
     return (
       <div className="min-h-screen bg-[#F8FAFC] p-4 sm:p-6">
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white border border-neutral-200 rounded-xl p-6">
+          <div className="bg-white border border-neutral-200 rounded-lg p-6">
             <p className="text-neutral-800 font-medium">Failed to load dashboard data</p>
           </div>
         </div>
@@ -191,7 +191,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         {/* Platform & connection – Backend URL + DB status (from platform-health) */}
-        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-xl">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-lg">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-3">
             <Server className="h-5 w-5 text-indigo-600" />
             Platform & connection
@@ -214,7 +214,7 @@ const SuperAdminDashboard = () => {
               </div>
               <div>
                 <p className="text-neutral-500 mb-1">Database</p>
-                <span className={`flex items-center gap-1.5 ${platformHealth.database?.connected ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`flex items-center gap-1.5 ${platformHealth.database?.connected ? 'text-success' : 'text-error'}`}>
                   {platformHealth.database?.connected ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                   {platformHealth.database?.connected ? 'Connected' : (platformHealth.database?.error || 'Disconnected')}
                 </span>
@@ -236,14 +236,14 @@ const SuperAdminDashboard = () => {
                 <div>
                   <p className="text-neutral-500">Memory</p>
                   <p className="font-semibold">{platformHealth.resourceUsage.memoryUsedMb} MB / ~{platformHealth.resourceUsage.workingSetMb} MB</p>
-                  <p className={`text-xs ${platformHealth.resourceUsage.limitsHint === 'critical' ? 'text-red-600' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'text-amber-600' : 'text-neutral-500'}`}>
+                  <p className={`text-xs ${platformHealth.resourceUsage.limitsHint === 'critical' ? 'text-error' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'text-warning' : 'text-neutral-500'}`}>
                     {platformHealth.resourceUsage.memoryUsagePercent}% — {platformHealth.resourceUsage.limitsHint === 'critical' ? 'Critical' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'Warning' : 'OK'}
                   </p>
                 </div>
                 <div>
                   <p className="text-neutral-500">DB connections</p>
                   <p className="font-semibold">{platformHealth.resourceUsage.activeConnections} / {platformHealth.resourceUsage.maxConnections}</p>
-                  <p className={`text-xs ${platformHealth.resourceUsage.connectionPoolUsagePercent > 90 ? 'text-red-600' : platformHealth.resourceUsage.connectionPoolUsagePercent > 75 ? 'text-amber-600' : 'text-neutral-500'}`}>
+                  <p className={`text-xs ${platformHealth.resourceUsage.connectionPoolUsagePercent > 90 ? 'text-error' : platformHealth.resourceUsage.connectionPoolUsagePercent > 75 ? 'text-warning' : 'text-neutral-500'}`}>
                     {platformHealth.resourceUsage.connectionPoolUsagePercent}% pool
                   </p>
                 </div>
@@ -257,14 +257,14 @@ const SuperAdminDashboard = () => {
                 </p>
               )}
               {platformHealth.resourceUsage.connectionStatsAvailable === false && (
-                <p className="text-xs text-amber-700 mt-1">DB connection stats unavailable (not PostgreSQL or query failed) — not shown as zero.</p>
+                <p className="text-xs text-warning-fg mt-1">DB connection stats unavailable (not PostgreSQL or query failed) — not shown as zero.</p>
               )}
             </div>
           )}
         </div>
 
         {/* Live Activity - Top tenants by API calls (last 60 min). In-memory; resets on server restart. */}
-        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-xl">
+        <div className="mb-6 p-4 bg-white border border-neutral-200 rounded-lg">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-1">
             <Zap className="h-5 w-5 text-amber-500" />
             Live Activity — Top 10 by API calls (last 60 min)
@@ -281,7 +281,7 @@ const SuperAdminDashboard = () => {
                   key={t.tenantId}
                   className={`flex items-center justify-between p-2 rounded-lg border transition-colors ${
                     t.isHighVolume
-                      ? 'bg-red-50 border-red-200 hover:bg-red-100'
+                      ? 'bg-error-bg border-error-border hover:bg-red-100'
                       : 'bg-neutral-50 border-neutral-100 hover:bg-neutral-100'
                   }`}
                 >
@@ -292,7 +292,7 @@ const SuperAdminDashboard = () => {
                     <span className="text-neutral-500 font-mono text-sm w-6">#{idx + 1}</span>
                     <span className="font-medium text-neutral-900 truncate">{t.tenantName}</span>
                     {t.isHighVolume && (
-                      <span className="text-xs font-medium text-red-600 bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                      <span className="text-xs font-medium text-error bg-red-100 px-1.5 py-0.5 rounded flex-shrink-0">
                         High volume
                       </span>
                     )}
@@ -337,7 +337,7 @@ const SuperAdminDashboard = () => {
         </div>
 
         {dashboard?.trialsExpiringThisWeek?.length > 0 && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="mb-6 p-4 bg-warning-bg border border-warning-border rounded-lg">
             <h3 className="font-semibold text-amber-800 flex items-center gap-2 mb-3">
               <AlertTriangle className="h-5 w-5" />
               Trials Expiring This Week ({dashboard.trialsExpiringThisWeek.length})
@@ -349,7 +349,7 @@ const SuperAdminDashboard = () => {
                 return (
                   <li
                     key={t.tenantId}
-                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100 hover:bg-amber-50"
+                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-amber-100 hover:bg-warning-bg"
                   >
                     <span
                       className="font-medium text-neutral-900 cursor-pointer flex-1"
@@ -357,7 +357,7 @@ const SuperAdminDashboard = () => {
                     >
                       {t.name}
                     </span>
-                    <span className="text-sm text-amber-700 mr-2">
+                    <span className="text-sm text-warning-fg mr-2">
                       {endDate.toLocaleDateString()} · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
                     </span>
                     <button
@@ -386,7 +386,7 @@ const SuperAdminDashboard = () => {
                           setExtendingTrialId(null)
                         }
                       }}
-                      className="px-3 py-1 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 py-1 text-xs font-medium bg-success text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {extendingTrialId === t.tenantId ? 'Extending…' : 'Extend 7 days'}
                     </button>
@@ -399,7 +399,7 @@ const SuperAdminDashboard = () => {
               })}
             </ul>
             {dashboard.trialsExpiringThisWeek.length > 10 && (
-              <p className="mt-2 text-sm text-amber-700">
+              <p className="mt-2 text-sm text-warning-fg">
                 +{dashboard.trialsExpiringThisWeek.length - 10} more. View in{' '}
                 <button
                   type="button"
@@ -419,7 +419,7 @@ const SuperAdminDashboard = () => {
             return (
               <div
                 key={m.title}
-                className="bg-white rounded-xl border border-neutral-200 p-6"
+                className="bg-white rounded-lg border border-neutral-200 p-6"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -440,9 +440,9 @@ const SuperAdminDashboard = () => {
 
         {/* Platform revenue report: MRR trend, churn, new signups (#45) */}
         {revenueReport && (
-          <div className="mt-8 p-4 sm:p-6 bg-white border border-neutral-200 rounded-xl">
+          <div className="mt-8 p-4 sm:p-6 bg-white border border-neutral-200 rounded-lg">
             <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-4">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
+              <TrendingUp className="h-5 w-5 text-success" />
               Platform revenue report
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
@@ -456,7 +456,7 @@ const SuperAdminDashboard = () => {
               </div>
               <div className="p-3 bg-neutral-50 rounded-lg">
                 <p className="text-xs text-neutral-500">Churned (30 days)</p>
-                <p className="text-lg font-bold text-red-600">{revenueReport.churnedLast30Days ?? 0}</p>
+                <p className="text-lg font-bold text-error">{revenueReport.churnedLast30Days ?? 0}</p>
               </div>
               <div className="p-3 bg-neutral-50 rounded-lg">
                 <p className="text-xs text-neutral-500">Churn rate</p>
@@ -487,9 +487,9 @@ const SuperAdminDashboard = () => {
         )}
 
         {/* Tenant onboarding tracker: who completed setup, who stuck (#46) */}
-        <div className="mt-8 p-4 sm:p-6 bg-white border border-neutral-200 rounded-xl">
+        <div className="mt-8 p-4 sm:p-6 bg-white border border-neutral-200 rounded-lg">
           <h3 className="font-semibold text-neutral-800 flex items-center gap-2 mb-4">
-            <ClipboardCheck className="h-5 w-5 text-blue-600" />
+            <ClipboardCheck className="h-5 w-5 text-primary-600" />
             Tenant onboarding tracker
           </h3>
           <p className="text-sm text-neutral-500 mb-3">
@@ -513,12 +513,12 @@ const SuperAdminDashboard = () => {
                   <p className="text-xs text-neutral-500">Total tenants</p>
                   <p className="text-lg font-bold text-neutral-900">{onboardingReport.totalTenants ?? 0}</p>
                 </div>
-                <div className="p-3 bg-emerald-50 rounded-lg">
-                  <p className="text-xs text-emerald-700">Complete (5/5)</p>
+                <div className="p-3 bg-success-bg rounded-lg">
+                  <p className="text-xs text-success-fg">Complete (5/5)</p>
                   <p className="text-lg font-bold text-emerald-800">{onboardingReport.completeCount ?? 0}</p>
                 </div>
-                <div className="p-3 bg-amber-50 rounded-lg">
-                  <p className="text-xs text-amber-700">Incomplete</p>
+                <div className="p-3 bg-warning-bg rounded-lg">
+                  <p className="text-xs text-warning-fg">Incomplete</p>
                   <p className="text-lg font-bold text-amber-800">{onboardingReport.incompleteCount ?? 0}</p>
                 </div>
                 <div className="p-3 bg-neutral-50 rounded-lg">
@@ -550,22 +550,22 @@ const SuperAdminDashboard = () => {
                         <td className="py-2 font-medium text-neutral-900">{row.tenantName}</td>
                         <td className="py-2 text-neutral-600">{row.status ?? '—'}</td>
                         <td className="py-2 text-center">
-                          {row.step1CompanyInfo ? <CheckCircle className="h-4 w-4 text-emerald-600 inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step1CompanyInfo ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step2VatSetup ? <CheckCircle className="h-4 w-4 text-emerald-600 inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step2VatSetup ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step3HasProduct ? <CheckCircle className="h-4 w-4 text-emerald-600 inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step3HasProduct ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step4HasCustomer ? <CheckCircle className="h-4 w-4 text-emerald-600 inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step4HasCustomer ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
                         </td>
                         <td className="py-2 text-center">
-                          {row.step5HasInvoice ? <CheckCircle className="h-4 w-4 text-emerald-600 inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
+                          {row.step5HasInvoice ? <CheckCircle className="h-4 w-4 text-success inline" /> : <XCircle className="h-4 w-4 text-neutral-300 inline" />}
                         </td>
                         <td className="py-2 text-right font-medium">
-                          {row.completedSteps}/5 {row.isComplete && <span className="text-emerald-600">Done</span>}
+                          {row.completedSteps}/5 {row.isComplete && <span className="text-success">Done</span>}
                         </td>
                       </tr>
                     ))}

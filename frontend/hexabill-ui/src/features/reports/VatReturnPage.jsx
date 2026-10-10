@@ -540,22 +540,22 @@ const VatReturnPage = () => {
           <button
             type="button"
             onClick={() => navigate('/dashboard')}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg"
             aria-label="Back to Dashboard"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <h1 className="text-xl font-semibold text-neutral-900">VAT Management Report</h1>
-            <p className="text-sm text-gray-500">Internal management report</p>
+            <p className="text-sm text-neutral-500">Internal management report</p>
           </div>
         </div>
       </div>
-      <div role="note" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950">
+      <div role="note" className="rounded-md border border-amber-300 bg-warning-bg px-4 py-3 text-sm font-medium text-amber-950">
         Management report. Not an FTA filing.
       </div>
       {actionAcknowledgement && (
-        <div role="status" className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-950">
+        <div role="status" className="rounded-md border border-green-300 bg-success-bg px-4 py-3 text-sm text-green-950">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">{actionAcknowledgement.action} complete</p>
@@ -573,7 +573,7 @@ const VatReturnPage = () => {
         </div>
       )}
       {actionError && (
-        <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950">
+        <div role="alert" className="rounded-md border border-red-300 bg-error-bg px-4 py-3 text-sm text-red-950">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="font-semibold">VAT action failed</p>
@@ -595,11 +595,11 @@ const VatReturnPage = () => {
       )}
 
       {/* Period selector */}
-      <div className="bg-white rounded-lg border border-gray-200 p-3">
+      <div className="bg-white rounded-lg border border-neutral-200 p-3">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700">Period</span>
+            <Calendar className="h-4 w-4 text-neutral-500" />
+            <span className="text-sm font-medium text-neutral-700">Period</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {[1, 2, 3, 4].map(q => (
@@ -607,7 +607,7 @@ const VatReturnPage = () => {
                 key={q}
                 type="button"
                 onClick={() => handlePeriodPreset(`Q${q}`)}
-                className={`px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 ${activePreset === `Q${q}` ? 'border-primary-600 bg-primary-50 text-primary-800' : 'border-gray-300'}`}
+                className={`px-3 py-1.5 text-sm border rounded-md hover:bg-neutral-50 ${activePreset === `Q${q}` ? 'border-primary-600 bg-primary-50 text-primary-800' : 'border-neutral-300'}`}
               >
                 Q{q}
               </button>
@@ -615,7 +615,7 @@ const VatReturnPage = () => {
             <button
               type="button"
               onClick={() => handlePeriodPreset('thisYear')}
-              className={`px-3 py-1.5 text-sm border rounded-md hover:bg-gray-50 ${activePreset === 'thisYear' ? 'border-primary-600 bg-primary-50 text-primary-800' : 'border-gray-300'}`}
+              className={`px-3 py-1.5 text-sm border rounded-md hover:bg-neutral-50 ${activePreset === 'thisYear' ? 'border-primary-600 bg-primary-50 text-primary-800' : 'border-neutral-300'}`}
             >
               This Year
             </button>
@@ -626,20 +626,20 @@ const VatReturnPage = () => {
               value={fromDate}
               onChange={(e) => setFromDate(e.target.value)}
               onBlur={handleFromToChange}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="border border-neutral-300 rounded-md px-3 py-2 text-sm"
             />
-            <span className="text-gray-500">to</span>
+            <span className="text-neutral-500">to</span>
             <input
               type="date"
               value={toDate}
               onChange={(e) => setToDate(e.target.value)}
               onBlur={handleFromToChange}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="border border-neutral-300 rounded-md px-3 py-2 text-sm"
             />
             <button
               type="button"
               onClick={handleCustomApply}
-              className="px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700"
+              className="px-4 py-2 bg-neutral-800 text-white rounded-md text-sm hover:bg-neutral-700"
             >
               Apply
             </button>
@@ -648,7 +648,7 @@ const VatReturnPage = () => {
                 type="button"
                 onClick={() => fetchVatReturn(fromDate, toDate)}
                 disabled={loading}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50 disabled:opacity-50"
                 title="Refresh VAT data"
               >
                 {loading ? 'Loading…' : 'Refresh'}
@@ -658,18 +658,18 @@ const VatReturnPage = () => {
           <select
             value={year}
             onChange={(e) => setYear(parseInt(e.target.value, 10))}
-            className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+            className="border border-neutral-300 rounded-md px-3 py-2 text-sm"
           >
             {[2024, 2025, 2026, 2027].map(y => (
               <option key={y} value={y}>{y}</option>
             ))}
           </select>
         </div>
-        <p className="mt-2 text-xs text-gray-500">
+        <p className="mt-2 text-xs text-neutral-500">
           Use the Q1–Q4 management period presets (Feb-Apr, May-Jul, Aug-Oct, Nov-Jan) or <strong>This Year</strong>. If values show 0.00, check the selected period and transaction details. Custom range must be a full quarter or full year (e.g. 2025-11-01 to 2026-01-31 for Q4).
         </p>
         {loadError && (
-          <p className="mt-3 text-sm text-red-600">
+          <p className="mt-3 text-sm text-error">
             VAT data could not be loaded. Check your connection and period.
           </p>
         )}
@@ -679,21 +679,21 @@ const VatReturnPage = () => {
         <LoadingCard message="Loading VAT return..." />
       ) : loadError === 'access' ? (
         <div className="py-12 text-center">
-          <div className="max-w-md mx-auto rounded-lg border border-amber-200 bg-amber-50 p-6">
+          <div className="max-w-md mx-auto rounded-lg border border-warning-border bg-warning-bg p-6">
             <p className="text-amber-800 font-medium">You don&apos;t have access to VAT Return</p>
-            <p className="mt-2 text-sm text-amber-700">This report is for Admin, Owner, or Manager.</p>
+            <p className="mt-2 text-sm text-warning-fg">This report is for Admin, Owner, or Manager.</p>
           </div>
         </div>
       ) : loadError && typeof loadError === 'object' ? (
         <div className="py-12 text-center">
-          <div className="max-w-md mx-auto rounded-lg border border-red-200 bg-red-50 p-6">
+          <div className="max-w-md mx-auto rounded-lg border border-error-border bg-error-bg p-6">
             <p className="text-red-800 font-medium">Error loading VAT return</p>
-            <p className="mt-2 text-sm text-red-700">{loadError.message}</p>
+            <p className="mt-2 text-sm text-error-fg">{loadError.message}</p>
             {loadError.status != null && (
-              <p className="mt-1 text-xs text-red-600 font-mono">HTTP {loadError.status}</p>
+              <p className="mt-1 text-xs text-error font-mono">HTTP {loadError.status}</p>
             )}
             {loadError.correlationId && (
-              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-red-700">
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-error-fg">
                 <span className="font-mono">Reference ID: {loadError.correlationId}</span>
                 <button
                   type="button"
@@ -712,10 +712,10 @@ const VatReturnPage = () => {
               </div>
             )}
             {loadError.url && (
-              <p className="mt-1 text-xs text-red-600 font-mono break-all" title={loadError.url}>{loadError.url}</p>
+              <p className="mt-1 text-xs text-error font-mono break-all" title={loadError.url}>{loadError.url}</p>
             )}
             {(loadError.errors && loadError.errors.length > 0) && (
-              <p className="mt-2 text-xs text-red-600 font-mono">Details: {loadError.errors[0]}</p>
+              <p className="mt-2 text-xs text-error font-mono">Details: {loadError.errors[0]}</p>
             )}
             <button
               type="button"
@@ -727,12 +727,12 @@ const VatReturnPage = () => {
           </div>
         </div>
       ) : !vatReturn ? (
-        <div className="py-12 text-center bg-white rounded-lg border border-gray-200">
-          <p className="text-gray-500">No VAT data for this period. Set date range or quarter/year and load.</p>
+        <div className="py-12 text-center bg-white rounded-lg border border-neutral-200">
+          <p className="text-neutral-500">No VAT data for this period. Set date range or quarter/year and load.</p>
           <button
             type="button"
             onClick={() => fromDate && toDate && fetchVatReturn(fromDate, toDate)}
-            className="mt-4 px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            className="mt-4 px-4 py-2 border border-neutral-300 rounded-md text-sm text-neutral-700 hover:bg-neutral-50"
           >
             Refresh / Load report
           </button>
@@ -741,7 +741,7 @@ const VatReturnPage = () => {
         <>
           {/* Actions bar – hidden when printing */}
           <div className="no-print flex flex-wrap items-center gap-3">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-neutral-600">
               Showing: {fromDate} – {toDate} ({periodLabel})
               {(v.status || '').toLowerCase() === 'locked' && (
                 <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Locked</span>
@@ -756,7 +756,7 @@ const VatReturnPage = () => {
                 setTrackingExpanded(prev => !prev)
                 trackVatEvent('TrackingPanel', { action: trackingExpanded ? 'collapse' : 'expand', periodFrom: fromDate, periodTo: toDate })
               }}
-              className={`inline-flex items-center gap-1 px-3 py-2 border rounded-md text-sm ${trackingExpanded ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-gray-300 hover:bg-gray-50'}`}
+              className={`inline-flex items-center gap-1 px-3 py-2 border rounded-md text-sm ${trackingExpanded ? 'border-primary-600 bg-primary-50 text-primary-700' : 'border-neutral-300 hover:bg-neutral-50'}`}
             >
               <Activity className="h-4 w-4" /> VAT Tracking
               {trackingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -792,7 +792,7 @@ const VatReturnPage = () => {
                   } else throw { response: { data: { message: res?.message || 'Recalculate returned no data' } } }
                 }, 'Calculate failed')
               }}
-              className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 px-3 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
             >
               <RefreshCw className="h-4 w-4" /> Recalculate
             </button>
@@ -816,7 +816,7 @@ const VatReturnPage = () => {
                   }}
                   disabled={blocking.length > 0 || !canFreezeVatReport || ['locked', 'submitted'].includes((v.status || '').toLowerCase())}
                   title={!canFreezeVatReport ? 'Add a valid 15-digit non-sample VAT TRN to freeze this report.' : undefined}
-                  className="inline-flex items-center gap-1 px-3 py-2 border border-amber-500 text-amber-700 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 border border-amber-500 text-warning-fg rounded-md text-sm hover:bg-warning-bg disabled:opacity-50"
                 >
                   <Lock className="h-4 w-4" /> Lock period
                 </button>
@@ -836,7 +836,7 @@ const VatReturnPage = () => {
                       await fetchVatReturn(fromDate, toDate)
                     }, 'Submit failed')
                   }}
-                  className="inline-flex items-center gap-1 px-3 py-2 border border-green-600 text-green-700 rounded-md text-sm hover:bg-green-50 disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-3 py-2 border border-success text-success-fg rounded-md text-sm hover:bg-success-bg disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" /> Mark as filed (local record)
                 </button>
@@ -877,7 +877,7 @@ const VatReturnPage = () => {
                   toast.success('CSV exported')
                 }, 'CSV export failed')
               }}
-              className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 px-3 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
             >
               <Download className="h-4 w-4" /> Export CSV
             </button>
@@ -898,14 +898,14 @@ const VatReturnPage = () => {
                   toast.success('Management PDF exported')
                 }, 'PDF export failed')
               }}
-              className="inline-flex min-h-[44px] items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              className="inline-flex min-h-[44px] items-center gap-1 px-3 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
             >
               <Download className="h-4 w-4" /> Export PDF
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 px-3 py-2 border border-neutral-300 rounded-md text-sm hover:bg-neutral-50"
             >
               Print / PDF
             </button>
@@ -913,11 +913,11 @@ const VatReturnPage = () => {
 
           {/* SYS001 calculation error banner */}
           {hasSys001 && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-4 flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="rounded-md border border-error-border bg-error-bg p-4 flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 text-error flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-red-800">Calculation error — partial data shown.</p>
-                <p className="text-sm text-red-700 mt-1">{issues.find(i => i.ruleId === 'SYS001')?.message}</p>
+                <p className="text-sm text-error-fg mt-1">{issues.find(i => i.ruleId === 'SYS001')?.message}</p>
               </div>
             </div>
           )}
@@ -932,7 +932,7 @@ const VatReturnPage = () => {
             }, {})
             const groups = Object.values(grouped)
             return (
-            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3">
+            <div className="rounded-md border border-error-border bg-error-bg px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-medium text-red-800">
                   {blocking.length} blocking issue{blocking.length !== 1 ? 's' : ''} — resolve before locking period.
@@ -943,18 +943,18 @@ const VatReturnPage = () => {
                       type="button"
                       onClick={handleBackfillVatScenario}
                       disabled={backfilling}
-                      className="px-3 py-1.5 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
+                      className="px-3 py-1.5 bg-error text-white text-sm font-medium rounded-md hover:bg-red-700 disabled:opacity-50"
                     >
                       {backfilling ? 'Fixing…' : 'Fix missing VatScenario'}
                     </button>
                   )}
-                  <button type="button" onClick={() => setValidationExpanded(!validationExpanded)} className="text-red-600 text-xs font-medium">
+                  <button type="button" onClick={() => setValidationExpanded(!validationExpanded)} className="text-error text-xs font-medium">
                     {validationExpanded ? 'Hide details' : 'Show details'}
                   </button>
                 </div>
               </div>
               {validationExpanded && (
-                <ul className="mt-2 space-y-1 text-sm text-red-700">
+                <ul className="mt-2 space-y-1 text-sm text-error-fg">
                   {groups.map((g, idx) => (
                     <li key={idx} className="flex items-baseline gap-2">
                       <span className="font-medium text-red-800">{g.ruleId}</span>
@@ -967,30 +967,30 @@ const VatReturnPage = () => {
             )
           })()}
           {issues.length > 0 && blocking.length === 0 && !hasSys001 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-sm text-amber-800">
               <span className="font-medium">Warnings:</span>
               <ul className="mt-1 list-disc list-inside space-y-0.5">
                 {issues.slice(0, 5).map((i, idx) => (
                   <li key={idx}>{i.message}</li>
                 ))}
                 {issues.length > 5 && (
-                  <li className="text-amber-600">…and {issues.length - 5} more</li>
+                  <li className="text-warning">…and {issues.length - 5} more</li>
                 )}
               </ul>
             </div>
           )}
           {issues.length === 0 && v && (
-            <div className="rounded-md border border-green-200 bg-green-50 px-4 py-2 flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
+            <div className="rounded-md border border-success-border bg-success-bg px-4 py-2 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-success" />
               <p className="text-sm text-green-800 font-medium">All validation checks passed</p>
             </div>
           )}
 
           {/* No transactions info – actionable message and period clarity */}
           {v && !outputLines.length && !inputLines.length && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+            <div className="rounded-md border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800">
               <p className="font-medium">No transactions in this period.</p>
-              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. If you have sales/expenses in another year, pick <strong>This Year</strong> for that year and click <strong>Refresh</strong>. Report totals remain zero until the period includes your transaction dates.</p>
+              <p className="mt-1 text-primary-700">Showing: {fromDate} – {toDate}. If you have sales/expenses in another year, pick <strong>This Year</strong> for that year and click <strong>Refresh</strong>. Report totals remain zero until the period includes your transaction dates.</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -1016,14 +1016,14 @@ const VatReturnPage = () => {
                       toast.error(err?.response?.data?.message || 'Failed to load period')
                     }
                   }}
-                  className="px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700"
+                  className="px-3 py-1.5 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700"
                 >
                   Load period where I have data
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePeriodPreset('thisYear')}
-                  className="px-3 py-1.5 border border-blue-600 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50"
+                  className="px-3 py-1.5 border border-primary-600 text-primary-700 text-sm font-medium rounded-md hover:bg-primary-50"
                 >
                   Load This Year ({year || new Date().getFullYear()})
                 </button>
@@ -1040,7 +1040,7 @@ const VatReturnPage = () => {
                       setSearchParams({ from, to })
                       fetchVatReturn(from, to)
                     }}
-                    className="px-3 py-1.5 border border-blue-600 text-blue-700 text-sm font-medium rounded-md hover:bg-blue-50"
+                    className="px-3 py-1.5 border border-primary-600 text-primary-700 text-sm font-medium rounded-md hover:bg-primary-50"
                   >
                     Try previous year ({(year || new Date().getFullYear()) - 1})
                   </button>
@@ -1051,9 +1051,9 @@ const VatReturnPage = () => {
 
           {/* Hint when Total Sales is 0: suggest the year that contains the out-of-period invoice dates */}
           {v && standardOutputNet === 0 && standardOutputVat === 0 && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="rounded-md border border-warning-border bg-warning-bg p-4 text-sm text-amber-800">
               <p className="font-medium">Total Sales is 0.00 for this period ({fromDate} – {toDate}).</p>
-              <p className="mt-1 text-amber-700">VAT only includes invoices whose <strong>invoice date</strong> falls in this range. If your dashboard shows sales for other dates, pick a period that includes those dates.</p>
+              <p className="mt-1 text-warning-fg">VAT only includes invoices whose <strong>invoice date</strong> falls in this range. If your dashboard shows sales for other dates, pick a period that includes those dates.</p>
               {issues.some(i => (i.message || '').toLowerCase().includes('outside')) && (() => {
                 const dateMatch = issues.find(i => (i.message || '').match(/\d{4}-\d{2}-\d{2}/))
                 const fullMatch = dateMatch?.message?.match(/(\d{4})-(\d{2})-(\d{2})/)
@@ -1073,7 +1073,7 @@ const VatReturnPage = () => {
                 const ftaRange = ftaQ ? quarterToRangeFta(ftaQ, ftaY) : null
                 return (
                   <>
-                    <p className="mt-2 text-amber-700">To include those invoices, choose a period that contains their dates.</p>
+                    <p className="mt-2 text-warning-fg">To include those invoices, choose a period that contains their dates.</p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {ftaRange && (
                         <button
@@ -1139,28 +1139,28 @@ const VatReturnPage = () => {
                 <Activity className="h-4 w-4 text-primary-600" /> VAT Tracking & Workflow
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <div className={`p-2 rounded border ${standardOutputNet > 0 || standardOutputVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${standardOutputNet > 0 || standardOutputVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Overview / Sales</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(standardOutputNet)} / {formatCurrency(standardOutputVat)}</p>
                   <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${standardOutputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
                     {standardOutputVat > 0 ? 'OK' : 'Zero'}
                   </span>
                 </div>
-                <div className={`p-2 rounded border ${totalPurchasesVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${totalPurchasesVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Purchases</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(totalPurchasesVat)}</p>
                   <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalPurchasesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
                     {totalPurchasesVat > 0 ? 'OK' : purchaseCountInPeriod > 0 ? 'Action' : 'Zero'}
                   </span>
                 </div>
-                <div className={`p-2 rounded border ${totalExpensesVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${totalExpensesVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Expenses</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(totalExpensesVat)}</p>
                   <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${totalExpensesVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
                     {totalExpensesVat > 0 ? 'OK' : expenseCountInPeriod > 0 ? 'Action' : 'Zero'}
                   </span>
                 </div>
-                <div className={`p-2 rounded border ${recoverableInputVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${recoverableInputVat > 0 ? 'bg-success-bg border-success-border' : 'bg-warning-bg border-warning-border'}`}>
                   <p className="text-xs font-medium text-slate-600">Box 12 (Input VAT)</p>
                   <p className="text-sm font-bold text-slate-800">{formatCurrency(recoverableInputVat)}</p>
                   <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${recoverableInputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
@@ -1199,7 +1199,7 @@ const VatReturnPage = () => {
                 <span className="text-xs text-slate-500 self-center ml-1">Mark ITC on Purchases/Expenses, then Refresh.</span>
               </div>
               {(purchasesExcludedReasons || expensesExcludedReasons) && (
-                <p className="mt-2 text-xs text-amber-700">
+                <p className="mt-2 text-xs text-warning-fg">
                   {[purchasesExcludedReasons?.TaxClaimableNo && `${purchasesExcludedReasons.TaxClaimableNo} purchase(s) not tax claimable`, purchasesExcludedReasons?.VatZero && `${purchasesExcludedReasons.VatZero} with zero VAT`, expensesExcludedReasons?.TaxClaimableNo && `${expensesExcludedReasons.TaxClaimableNo} expense(s) not tax claimable`].filter(Boolean).join('; ')}
                 </p>
               )}
@@ -1207,7 +1207,7 @@ const VatReturnPage = () => {
           )}
 
           {/* Tabs navigation */}
-          <div className="mt-4 border-b border-gray-200">
+          <div className="mt-4 border-b border-neutral-200">
             <nav className="-mb-px flex flex-nowrap gap-1 overflow-x-auto text-sm" aria-label="VAT tabs">
               {[
                 { id: 'overview', label: 'Summary' },
@@ -1223,7 +1223,7 @@ const VatReturnPage = () => {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`min-h-11 flex-none whitespace-nowrap border-b-2 px-3 py-2 ${
-                    activeTab === tab.id ? 'border-primary-600 text-primary-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    activeTab === tab.id ? 'border-primary-600 text-primary-700 font-medium' : 'border-transparent text-neutral-500 hover:text-neutral-700 hover:border-neutral-300'
                   }`}
                 >
                   {tab.label}
@@ -1234,51 +1234,51 @@ const VatReturnPage = () => {
 
           {/* VAT Return Summary – always rendered for print from any tab; visible in flow when Overview active */}
           <div
-            className={`vat-return-print-area bg-white rounded-lg border border-gray-200 overflow-hidden ${activeTab !== 'overview' ? 'hidden' : 'mt-4'}`}
+            className={`vat-return-print-area bg-white rounded-lg border border-neutral-200 overflow-hidden ${activeTab !== 'overview' ? 'hidden' : 'mt-4'}`}
           >
             <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Management summary</h2>
+              <h2 className="text-lg font-semibold text-neutral-900 mb-1">Management summary</h2>
               <p className="text-sm font-medium">{v?.companyName ?? v?.CompanyName ?? 'Company'} · TRN: {v?.vatTrn ?? v?.VatTrn ?? 'Not provided'} · {v?.trnStatus ?? v?.TrnStatus ?? 'Registration unverified'}</p>
               {(v?.warnings ?? v?.Warnings ?? []).map((warning, index) => (
-                <p key={index} className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{warning}</p>
+                <p key={index} className="mt-2 rounded border border-warning-border bg-warning-bg px-3 py-2 text-sm text-amber-900">{warning}</p>
               ))}
-              <p className="text-xs text-gray-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
+              <p className="text-xs text-neutral-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
               <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Output VAT</p><p className="text-xl font-semibold">{formatCurrency(standardOutputVat)}</p></div>
-                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Input VAT</p><p className="text-xl font-semibold">{formatCurrency(recoverableInputVat)}</p></div>
-                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Net VAT payable</p><p className="text-xl font-semibold">{formatCurrency(netVatPayable)}</p></div>
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-neutral-500">Output VAT</p><p className="text-xl font-semibold">{formatCurrency(standardOutputVat)}</p></div>
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-neutral-500">Input VAT</p><p className="text-xl font-semibold">{formatCurrency(recoverableInputVat)}</p></div>
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-neutral-500">Net VAT payable</p><p className="text-xl font-semibold">{formatCurrency(netVatPayable)}</p></div>
               </div>
               {!outputLines.length && !inputLines.length && !creditNoteLines.length && (
-                <p className="text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4 mb-4">No data for this period.</p>
+                <p className="text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4 mb-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto">
-                <table className="min-w-full text-sm border border-gray-200 rounded-lg">
+                <table className="min-w-full text-sm border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
-                      <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">S#</th>
-                      <th className="px-3 py-2 text-left font-medium text-gray-700 border-b border-gray-200">Description</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-700 border-b border-gray-200">Amount (AED)</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-700 border-b border-gray-200">VAT (AED)</th>
+                    <tr className="bg-neutral-50">
+                      <th className="px-3 py-2 text-left font-medium text-neutral-700 border-b border-neutral-200">S#</th>
+                      <th className="px-3 py-2 text-left font-medium text-neutral-700 border-b border-neutral-200">Description</th>
+                      <th className="px-3 py-2 text-right font-medium text-neutral-700 border-b border-neutral-200">Amount (AED)</th>
+                      <th className="px-3 py-2 text-right font-medium text-neutral-700 border-b border-neutral-200">VAT (AED)</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-neutral-100">
                     <tr>
                       <td className="px-3 py-2 font-medium">1</td>
-                      <td className="px-3 py-2 text-gray-700">Standard-rated sales</td>
+                      <td className="px-3 py-2 text-neutral-700">Standard-rated sales</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(standardOutputNet)}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(standardOutputVat)}</td>
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-medium">2</td>
-                      <td className="px-3 py-2 text-gray-700">Total Purchase and Expense (net)</td>
+                      <td className="px-3 py-2 text-neutral-700">Total Purchase and Expense (net)</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(totalInputNet || totalPurchasesNet + totalExpensesNet)}</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(recoverableInputVat)}</td>
                     </tr>
-                    <tr className={netVatPayable >= 0 ? 'bg-red-50' : 'bg-green-50'}>
+                    <tr className={netVatPayable >= 0 ? 'bg-error-bg' : 'bg-success-bg'}>
                       <td className="px-3 py-2 font-medium">3</td>
                       <td className="px-3 py-2 font-medium">Net VAT to Pay / Refundable</td>
                       <td className="px-3 py-2 text-right font-medium" colSpan="2">
-                        <span className={netVatPayable >= 0 ? 'text-red-700 font-bold' : 'text-green-700 font-bold'}>
+                        <span className={netVatPayable >= 0 ? 'text-error-fg font-bold' : 'text-success-fg font-bold'}>
                           {formatCurrency(Math.abs(netVatPayable))}
                           {netVatPayable >= 0 ? ' (Payable)' : ' (Receivable)'}
                         </span>
@@ -1288,36 +1288,36 @@ const VatReturnPage = () => {
                 </table>
               </div>
               <VatProfitEstimateCard report={v} />
-              <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
-                <p className="font-medium text-gray-800">Management report. Not an FTA filing.</p>
+              <div className="mt-2 p-2 rounded bg-neutral-50 border border-neutral-200 text-xs text-neutral-700">
+                <p className="font-medium text-neutral-800">Management report. Not an FTA filing.</p>
                 <p className="mt-1">Summary amounts are returned by the server. Incomplete transaction detail is shown as a check warning and is never substituted into totals.</p>
               </div>
               {(v?.petroleumExcluded ?? 0) > 0 && (
-                <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
+                <p className="mt-3 text-xs text-warning-fg">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
               )}
             </div>
-            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${netVatPayable >= 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className={`border-t border-neutral-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${netVatPayable >= 0 ? 'bg-error-bg' : 'bg-success-bg'}`}>
               <div>
-                <p className="text-sm font-medium text-gray-700">Net VAT {netVatPayable >= 0 ? 'payable' : 'receivable'}</p>
-                <p className={`text-2xl font-bold mt-0.5 ${netVatPayable >= 0 ? 'text-red-700' : 'text-green-700'}`}>
+                <p className="text-sm font-medium text-neutral-700">Net VAT {netVatPayable >= 0 ? 'payable' : 'receivable'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${netVatPayable >= 0 ? 'text-error-fg' : 'text-success-fg'}`}>
                   {formatCurrency(Math.abs(netVatPayable))}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">Estimated period deadline</p>
+                <p className="text-sm font-medium text-neutral-700">Estimated period deadline</p>
                 <p className="text-lg font-semibold text-amber-900 mt-0.5">
                   {v?.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
-                {daysUntilDue != null && daysUntilDue <= 0 && <p className="text-xs font-medium text-red-600">Overdue</p>}
-                {daysUntilDue != null && daysUntilDue > 0 && <p className="text-xs text-gray-500">{daysUntilDue} days left</p>}
+                {daysUntilDue != null && daysUntilDue <= 0 && <p className="text-xs font-medium text-error">Overdue</p>}
+                {daysUntilDue != null && daysUntilDue > 0 && <p className="text-xs text-neutral-500">{daysUntilDue} days left</p>}
               </div>
             </div>
           </div>
 
           {activeTab === 'returnBoxes' && (
             <section className="mt-4 rounded-lg border border-amber-300 bg-white p-4" aria-label="Draft return boxes">
-              <h2 className="font-semibold text-gray-900">Return boxes (draft — not FTA mapping)</h2>
-              <p className="my-2 rounded bg-amber-50 p-3 text-sm text-amber-900">These legacy box fields are retained for compatibility. They are not an FTA filing projection.</p>
+              <h2 className="font-semibold text-neutral-900">Return boxes (draft — not FTA mapping)</h2>
+              <p className="my-2 rounded bg-warning-bg p-3 text-sm text-amber-900">These legacy box fields are retained for compatibility. They are not an FTA filing projection.</p>
               <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {[["Box 1a", box1a], ["Box 1b", box1b], ["Box 2", box2], ["Box 3", box3], ["Box 9b", box9b], ["Box 12", box12], ["Box 13a", box13a], ["Box 13b", box13b]].map(([label, amount]) => (
                   <div key={label} className="flex justify-between rounded border p-3"><dt>{label}</dt><dd className="font-medium">{formatCurrency(amount)}</dd></div>
@@ -1328,16 +1328,16 @@ const VatReturnPage = () => {
 
           {/* Transactions-related tabs – simple tables, no dashboards */}
           {activeTab === 'transactions' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4 space-y-4">
-              <h2 className="text-sm font-semibold text-gray-900">All VAT Transactions</h2>
-              <p className="text-xs text-gray-500 mb-2">Combined view of sales outputs and purchase/expense inputs used in this VAT period.</p>
+            <div className="mt-4 bg-white rounded-lg border border-neutral-200 p-4 space-y-4">
+              <h2 className="text-sm font-semibold text-neutral-900">All VAT Transactions</h2>
+              <p className="text-xs text-neutral-500 mb-2">Combined view of sales outputs and purchase/expense inputs used in this VAT period.</p>
               {!outputLines.length && !inputLines.length && (
-                <p className="text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No data for this period.</p>
+                <p className="text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto">
-                <table className="min-w-full text-xs border border-gray-200 rounded-lg">
+                <table className="min-w-full text-xs border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-neutral-50">
                       <th className="px-2 py-1 text-left border-b">Type</th>
                       <th className="px-2 py-1 text-left border-b">Reference</th>
                       <th className="px-2 py-1 text-left border-b">Date</th>
@@ -1348,7 +1348,7 @@ const VatReturnPage = () => {
                   <tbody>
                     {outputLines.map((line, idx) => (
                       <tr key={`out-${idx}`} className="border-t">
-                        <td className="px-2 py-1 text-gray-700">Output</td>
+                        <td className="px-2 py-1 text-neutral-700">Output</td>
                         <td className="px-2 py-1">{line.reference ?? line.Reference ?? ''}</td>
                         <td className="px-2 py-1">{(line.date ?? line.Date) && new Date(line.date ?? line.Date).toLocaleDateString('en-GB')}</td>
                         <td className="px-2 py-1 text-right">{formatCurrency(line.netAmount ?? line.NetAmount ?? 0)}</td>
@@ -1357,7 +1357,7 @@ const VatReturnPage = () => {
                     ))}
                     {inputLines.map((line, idx) => (
                       <tr key={`in-${idx}`} className="border-t">
-                        <td className="px-2 py-1 text-gray-700">Input</td>
+                        <td className="px-2 py-1 text-neutral-700">Input</td>
                         <td className="px-2 py-1">{line.reference ?? line.Reference ?? ''}</td>
                         <td className="px-2 py-1">{(line.date ?? line.Date) && new Date(line.date ?? line.Date).toLocaleDateString('en-GB')}</td>
                         <td className="px-2 py-1 text-right">{formatCurrency(line.netAmount ?? line.NetAmount ?? 0)}</td>
@@ -1371,15 +1371,15 @@ const VatReturnPage = () => {
           )}
 
           {activeTab === 'sales' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Sales Invoices (Output VAT)</h2>
+            <div className="mt-4 bg-white rounded-lg border border-neutral-200 p-4">
+              <h2 className="text-sm font-semibold text-neutral-900">Sales Invoices (Output VAT)</h2>
               {salesLinesForTotal.length === 0 && (
-                <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No data for this period.</p>
+                <p className="mt-2 text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto mt-2">
-                <table className="min-w-full text-xs border border-gray-200 rounded-lg">
+                <table className="min-w-full text-xs border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-neutral-50">
                       <th className="px-2 py-1 text-left border-b">Invoice</th>
                       <th className="px-2 py-1 text-left border-b">Customer</th>
                       <th className="px-2 py-1 text-left border-b">Scenario</th>
@@ -1401,7 +1401,7 @@ const VatReturnPage = () => {
                       ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-300 bg-gray-100 font-semibold">
+                    <tr className="border-t-2 border-neutral-300 bg-neutral-100 font-semibold">
                       <td className="px-2 py-2" colSpan={3}>Total</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalSalesNet)}</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalSalesVat)}</td>
@@ -1413,14 +1413,14 @@ const VatReturnPage = () => {
           )}
 
           {activeTab === 'purchases' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Purchases (Input VAT)</h2>
+            <div className="mt-4 bg-white rounded-lg border border-neutral-200 p-4">
+              <h2 className="text-sm font-semibold text-neutral-900">Purchases (Input VAT)</h2>
               {purchaseLines.length === 0 && (
                 <>
-                  <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No data for this period.</p>
-                  <p className="mt-2 text-xs text-gray-600">Only purchases in this period with <strong>Tax claimable</strong> and VAT &gt; 0 appear. Check that purchase dates fall in {fromDate} – {toDate} and that items are marked tax claimable on the Purchases page.</p>
+                  <p className="mt-2 text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4">No data for this period.</p>
+                  <p className="mt-2 text-xs text-neutral-600">Only purchases in this period with <strong>Tax claimable</strong> and VAT &gt; 0 appear. Check that purchase dates fall in {fromDate} – {toDate} and that items are marked tax claimable on the Purchases page.</p>
                   {purchaseCountInPeriod > 0 && purchasesExcludedReasons && Object.keys(purchasesExcludedReasons).length > 0 && (
-                    <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    <p className="mt-2 text-xs text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
                       {purchaseCountInPeriod} purchase(s) in this period: {[
                         purchasesExcludedReasons.TaxClaimableNo > 0 && `${purchasesExcludedReasons.TaxClaimableNo} not marked Tax claimable`,
                         purchasesExcludedReasons.VatZero > 0 && `${purchasesExcludedReasons.VatZero} with zero VAT`
@@ -1430,9 +1430,9 @@ const VatReturnPage = () => {
                 </>
               )}
               <div className="overflow-x-auto mt-2">
-                <table className="min-w-full text-xs border border-gray-200 rounded-lg">
+                <table className="min-w-full text-xs border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-neutral-50">
                       <th className="px-2 py-1 text-left border-b">Bill</th>
                       <th className="px-2 py-1 text-left border-b">Supplier</th>
                       <th className="px-2 py-1 text-left border-b">Tax Type</th>
@@ -1452,7 +1452,7 @@ const VatReturnPage = () => {
                       ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-300 bg-gray-100 font-semibold">
+                    <tr className="border-t-2 border-neutral-300 bg-neutral-100 font-semibold">
                       <td className="px-2 py-2" colSpan={3}>Total</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalPurchasesNet)}</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalPurchasesVat)}</td>
@@ -1464,22 +1464,22 @@ const VatReturnPage = () => {
           )}
 
           {activeTab === 'expenses' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Expenses (Input VAT)</h2>
+            <div className="mt-4 bg-white rounded-lg border border-neutral-200 p-4">
+              <h2 className="text-sm font-semibold text-neutral-900">Expenses (Input VAT)</h2>
               {expenseLines.length === 0 && (
                 <>
-                  <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No claimable expenses found for this period.</p>
+                  <p className="mt-2 text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4">No claimable expenses found for this period.</p>
                 </>
               )}
               {expenseCountInPeriod > 0 && (
-                <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="mt-3 bg-primary-50 border border-primary-200 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-blue-900">
+                    <h3 className="text-sm font-semibold text-primary-900">
                       {expenseCountInPeriod} expense(s) in this period
                     </h3>
                     <a
                       href={`/expenses?from=${fromDate}&to=${toDate}`}
-                      className="text-xs font-medium text-blue-700 hover:text-blue-900 underline"
+                      className="text-xs font-medium text-primary-700 hover:text-primary-900 underline"
                     >
                       View in Expenses page →
                     </a>
@@ -1487,45 +1487,45 @@ const VatReturnPage = () => {
                   {expensesExcludedReasons && Object.keys(expensesExcludedReasons).length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
                       {expensesExcludedReasons.TaxClaimableNo > 0 && (
-                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-red-200">
-                          <span className="w-6 h-6 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.TaxClaimableNo}</span>
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-error-border">
+                          <span className="w-6 h-6 rounded-full bg-red-100 text-error-fg flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.TaxClaimableNo}</span>
                           <div>
                             <p className="text-xs font-medium text-red-800">Not Tax Claimable</p>
-                            <p className="text-[10px] text-red-600">Mark as ITC on Expenses page</p>
+                            <p className="text-micro text-error">Mark as ITC on Expenses page</p>
                           </div>
                         </div>
                       )}
                       {expensesExcludedReasons.ClaimableZero > 0 && (
-                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-amber-200">
-                          <span className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.ClaimableZero}</span>
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-warning-border">
+                          <span className="w-6 h-6 rounded-full bg-amber-100 text-warning-fg flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.ClaimableZero}</span>
                           <div>
                             <p className="text-xs font-medium text-amber-800">Zero Claimable VAT</p>
-                            <p className="text-[10px] text-amber-600">Enable VAT on these expenses</p>
+                            <p className="text-micro text-warning">Enable VAT on these expenses</p>
                           </div>
                         </div>
                       )}
                       {expensesExcludedReasons.Petroleum > 0 && (
-                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-gray-200">
-                          <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.Petroleum}</span>
+                        <div className="flex items-center gap-2 bg-white rounded px-3 py-2 border border-neutral-200">
+                          <span className="w-6 h-6 rounded-full bg-neutral-100 text-neutral-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.Petroleum}</span>
                           <div>
-                            <p className="text-xs font-medium text-gray-800">Petroleum</p>
-                            <p className="text-[10px] text-gray-600">Excluded from recoverable input VAT by the current rule</p>
+                            <p className="text-xs font-medium text-neutral-800">Petroleum</p>
+                            <p className="text-micro text-neutral-600">Excluded from recoverable input VAT by the current rule</p>
                           </div>
                         </div>
                       )}
                     </div>
                   )}
                   {expenseLines.length > 0 && (
-                    <p className="mt-2 text-xs text-green-700">
+                    <p className="mt-2 text-xs text-success-fg">
                       <strong>{expenseLines.length}</strong> expense(s) included in VAT Return calculation.
                     </p>
                   )}
                 </div>
               )}
               <div className="overflow-x-auto mt-2">
-                <table className="min-w-full text-xs border border-gray-200 rounded-lg">
+                <table className="min-w-full text-xs border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-neutral-50">
                       <th className="px-2 py-1 text-left border-b">Expense</th>
                       <th className="px-2 py-1 text-left border-b">Category</th>
                       <th className="px-2 py-1 text-left border-b">Tax Type</th>
@@ -1547,7 +1547,7 @@ const VatReturnPage = () => {
                       ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-300 bg-gray-100 font-semibold">
+                    <tr className="border-t-2 border-neutral-300 bg-neutral-100 font-semibold">
                       <td className="px-2 py-2" colSpan={3}>Total</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalExpensesNet)}</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalExpensesVat)}</td>
@@ -1559,15 +1559,15 @@ const VatReturnPage = () => {
           )}
 
           {activeTab === 'creditNotes' && (
-            <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="text-sm font-semibold text-gray-900">Credit Notes (Sales & Purchases)</h2>
+            <div className="mt-4 bg-white rounded-lg border border-neutral-200 p-4">
+              <h2 className="text-sm font-semibold text-neutral-900">Credit Notes (Sales & Purchases)</h2>
               {creditNoteLines.length === 0 && (
-                <p className="mt-2 text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4">No data for this period.</p>
+                <p className="mt-2 text-neutral-600 py-4 rounded-lg bg-neutral-50 border border-neutral-200 px-4">No data for this period.</p>
               )}
               <div className="overflow-x-auto mt-2">
-                <table className="min-w-full text-xs border border-gray-200 rounded-lg">
+                <table className="min-w-full text-xs border border-neutral-200 rounded-lg">
                   <thead>
-                    <tr className="bg-gray-50">
+                    <tr className="bg-neutral-50">
                       <th className="px-2 py-1 text-left border-b">Reference</th>
                       <th className="px-2 py-1 text-left border-b">Side</th>
                       <th className="px-2 py-1 text-left border-b">Date</th>
@@ -1587,7 +1587,7 @@ const VatReturnPage = () => {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-300 bg-gray-100 font-semibold">
+                    <tr className="border-t-2 border-neutral-300 bg-neutral-100 font-semibold">
                       <td className="px-2 py-2" colSpan={3}>Total</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalCreditNotesNet)}</td>
                       <td className="px-2 py-2 text-right">{formatCurrency(totalCreditNotesVat)}</td>
@@ -1602,7 +1602,7 @@ const VatReturnPage = () => {
             <div className="mt-4 bg-white rounded-lg border border-amber-300 p-4">
               <h2 className="text-sm font-semibold text-amber-950">Estimate, not for filing</h2>
               <p className="text-xs text-amber-900 mt-1 mb-3">Sales minus cost of goods minus expenses. This is an operating estimate only — not UAE VAT. Use the Standard VAT boxes for filing.</p>
-              <table className="min-w-full text-sm border border-amber-200 rounded-lg">
+              <table className="min-w-full text-sm border border-warning-border rounded-lg">
                 <tbody className="divide-y divide-amber-100">
                   <tr><td className="px-3 py-2">Sales</td><td className="px-3 py-2 text-right">{formatCurrency(profitSales)}</td></tr>
                   <tr><td className="px-3 py-2">Cost of goods</td><td className="px-3 py-2 text-right">{formatCurrency(profitCogs)}</td></tr>
@@ -1620,12 +1620,12 @@ const VatReturnPage = () => {
               {blocking.length > 0 || hasSys001 || issues.length > 0 ? (
                 <div className="space-y-3">
                   {/* existing banners already rendered above; just show a short reminder here */}
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-neutral-600">
                     Validation issues for this VAT period are shown above. Resolve all <span className="font-medium">Blocking</span> items before locking or submitting.
                   </p>
                 </div>
               ) : (
-                <div className="bg-white rounded-lg border border-green-200 p-4 text-sm text-green-800">
+                <div className="bg-white rounded-lg border border-success-border p-4 text-sm text-green-800">
                   <p className="font-medium">No validation issues for this period.</p>
                 </div>
               )}

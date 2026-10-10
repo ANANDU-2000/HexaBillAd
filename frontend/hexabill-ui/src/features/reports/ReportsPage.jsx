@@ -1226,7 +1226,7 @@ const ReportsPage = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center justify-center p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="inline-flex items-center justify-center p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
             title="Back to Dashboard"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -1274,7 +1274,7 @@ const ReportsPage = () => {
               const today = localDateString(new Date())
               setDateRange({ from: today, to: today })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             Today
           </button>
@@ -1285,7 +1285,7 @@ const ReportsPage = () => {
               const yesterdayStr = localDateString(yesterday)
               setDateRange({ from: yesterdayStr, to: yesterdayStr })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             Yesterday
           </button>
@@ -1296,7 +1296,7 @@ const ReportsPage = () => {
               from.setDate(from.getDate() - 7)
               setDateRange({ from: localDateString(from), to })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             Last 7 Days
           </button>
@@ -1307,7 +1307,7 @@ const ReportsPage = () => {
               from.setDate(from.getDate() - from.getDay()) // Start of week (Sunday)
               setDateRange({ from: localDateString(from), to: localDateString(to) })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             This Week
           </button>
@@ -1318,7 +1318,7 @@ const ReportsPage = () => {
               from.setDate(1) // First day of month
               setDateRange({ from: localDateString(from), to })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             This Month
           </button>
@@ -1329,7 +1329,7 @@ const ReportsPage = () => {
               from.setFullYear(from.getFullYear(), 0, 1) // First day of year
               setDateRange({ from: localDateString(from), to })
             }}
-            className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
           >
             This Year
           </button>
@@ -1452,7 +1452,7 @@ const ReportsPage = () => {
         <div className="px-3 sm:px-4 py-3 space-y-3">
           {tabGroups.map((group) => (
             <div key={group.label} className="flex flex-wrap items-center gap-2">
-              <span className="w-full text-xs font-semibold text-[#64748B] sm:w-auto sm:min-w-[6.5rem]">{group.label}</span>
+              <span className="w-full text-xs font-semibold text-neutral-500 sm:w-auto sm:min-w-[6.5rem]">{group.label}</span>
               {group.tabs.map((tab) => {
                 const active = activeTab === tab.id
                 return (
@@ -1462,9 +1462,9 @@ const ReportsPage = () => {
                     role="tab"
                     aria-selected={active}
                     onClick={() => handleTabChange(tab.id)}
-                    className={`min-h-9 rounded-full px-3 text-sm font-medium ${active
+                    className={`min-h-11 md:min-h-9 rounded-full px-3 text-sm font-medium ${active
                       ? 'bg-primary-600 text-white'
-                      : 'border border-[#E5E7EB] bg-[#F8FAFC] text-[#475569] hover:border-primary-200 hover:text-primary-700'
+                      : 'border border-surface-border bg-surface text-neutral-600 hover:border-primary-200 hover:text-primary-700'
                     }`}
                   >
                     {tab.shortLabel || tab.name}
@@ -1484,11 +1484,11 @@ const ReportsPage = () => {
           {activeTab === 'summary' && reportData.summary && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                <div className="bg-green-50 rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-success-bg rounded-lg p-3 sm:p-4 lg:p-6">
                   <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-green-600 flex-shrink-0" />
+                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-success flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-green-600">Total Sales</p>
+                      <p className="text-xs sm:text-sm font-medium text-success">Total Sales</p>
                       <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-900 truncate">
                         {formatCurrency(reportData.summary.totalSales || 0)}
                       </p>
@@ -1496,23 +1496,23 @@ const ReportsPage = () => {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-primary-50 rounded-lg p-3 sm:p-4 lg:p-6">
                   <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-blue-600 flex-shrink-0" />
+                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary-600 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-blue-600">Total Purchases</p>
-                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-blue-900 truncate">
+                      <p className="text-xs sm:text-sm font-medium text-primary-600">Total Purchases</p>
+                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-primary-900 truncate">
                         {formatCurrency(reportData.summary.totalPurchases || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-red-50 rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-error-bg rounded-lg p-3 sm:p-4 lg:p-6">
                   <div className="flex items-center">
-                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-red-600 flex-shrink-0" />
+                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-error flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
-                      <p className="text-xs sm:text-sm font-medium text-red-600">Total Expenses</p>
+                      <p className="text-xs sm:text-sm font-medium text-error">Total Expenses</p>
                       <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-900 truncate">
                         {formatCurrency(reportData.summary.totalExpenses || 0)}
                       </p>
@@ -1534,8 +1534,8 @@ const ReportsPage = () => {
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Trend</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Sales Trend</h3>
                   {reportData.sales.length > 0 ? (
                     <ResponsiveContainer width="100%" height={400}>
                       <LineChart data={reportData.sales}>
@@ -1547,25 +1547,25 @@ const ReportsPage = () => {
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="flex items-center justify-center h-64 text-neutral-500">
                       No sales in this date range
                     </div>
                   )}
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense breakdown</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Expense breakdown</h3>
                   {reportData.expenses?.length > 0 ? (
                     <ul className="space-y-2">
                       {reportData.expenses.slice(0, 8).map((row) => (
                         <li key={row.categoryId} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="truncate text-gray-800">{row.categoryName}</span>
-                          <span className="shrink-0 font-semibold tabular-nums text-gray-900">{formatCurrency(row.totalAmount)}</span>
+                          <span className="truncate text-neutral-800">{row.categoryName}</span>
+                          <span className="shrink-0 font-semibold tabular-nums text-neutral-900">{formatCurrency(row.totalAmount)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="flex items-center justify-center h-32 text-gray-500">
+                    <div className="flex items-center justify-center h-32 text-neutral-500">
                       {(reportData.summary?.totalExpenses || 0) > 0 ? 'Category totals are not available' : 'No expenses in this date range'}
                     </div>
                   )}
@@ -1581,8 +1581,8 @@ const ReportsPage = () => {
                 <LoadingCard message="Loading sales data..." />
               ) : (
                 <>
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Performance</h3>
+                  <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Sales Performance</h3>
                     {reportData.sales.length > 0 ? (
                       <ResponsiveContainer width="100%" height={400}>
                         <BarChart data={reportData.sales}>
@@ -1594,7 +1594,7 @@ const ReportsPage = () => {
                         </BarChart>
                       </ResponsiveContainer>
                     ) : (
-                      <div className="flex items-center justify-center h-64 text-gray-500">
+                      <div className="flex items-center justify-center h-64 text-neutral-500">
                         No sales data available for the selected period
                       </div>
                     )}
@@ -1602,24 +1602,24 @@ const ReportsPage = () => {
 
                   {/* Sales Table with Status Colors */}
                   {reportData.salesList && reportData.salesList.length > 0 && (
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <div className="px-6 py-4 border-b border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900">Sales Details</h3>
+                    <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                      <div className="px-6 py-4 border-b border-neutral-200">
+                        <h3 className="text-lg font-semibold text-neutral-900">Sales Details</h3>
                       </div>
                       <div className="overflow-x-auto">
-                        <table className="w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                        <table className="w-full divide-y divide-neutral-200">
+                          <thead className="bg-neutral-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice No</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Paid</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
-                              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Invoice No</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Customer</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Total</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Paid</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-neutral-500 uppercase">Status</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-white divide-y divide-neutral-200">
                             {reportData.salesList.map((sale, idx) => {
                               // Color coding: Paid = green, Pending = orange, Overdue = red
                               const statusColor = sale.status === 'Paid'
@@ -1631,24 +1631,24 @@ const ReportsPage = () => {
                                     : 'bg-orange-100 text-orange-800'
 
                               return (
-                                <tr key={idx} className="hover:bg-gray-50">
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                <tr key={idx} className="hover:bg-neutral-50">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-neutral-900">
                                     {sale.invoiceNo}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
                                     {new Date(sale.invoiceDate).toLocaleDateString()}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
                                     {sale.customerName || 'Cash Customer'}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                                     {formatCurrency(sale.grandTotal || 0)}
                                   </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-600">
+                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-600">
                                     {formatCurrency(sale.paidAmount || 0)}
                                   </td>
                                   <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                    <span className={sale.balance > 0.01 ? 'text-red-600' : 'text-green-600'}>
+                                    <span className={sale.balance > 0.01 ? 'text-error' : 'text-success'}>
                                       {formatCurrency(sale.balance || 0)}
                                     </span>
                                   </td>
@@ -1675,35 +1675,35 @@ const ReportsPage = () => {
           {activeTab === 'products' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Products by Sales</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Top Products by Sales</h3>
                   {reportData.products && reportData.products.length > 0 ? (
                     <div className="space-y-4">
                       {reportData.products.map((product, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div key={index} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
                           <div className="flex items-center flex-1">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                              <span className="text-blue-600 font-semibold">#{index + 1}</span>
+                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center mr-3">
+                              <span className="text-primary-600 font-semibold">#{index + 1}</span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{product.name}</p>
+                              <p className="font-medium text-neutral-900">{product.name}</p>
                               {product.qty > 0 && (
-                                <p className="text-sm text-gray-600">
+                                <p className="text-sm text-neutral-600">
                                   Quantity Sold: {product.qty.toLocaleString()}
                                 </p>
                               )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-gray-900">{formatCurrency(product.sales)}</p>
-                            <p className="text-sm text-gray-600">Total Sales</p>
+                            <p className="font-semibold text-neutral-900">{formatCurrency(product.sales)}</p>
+                            <p className="text-sm text-neutral-600">Total Sales</p>
                           </div>
                         </div>
                       ))}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="mt-4 pt-4 border-t border-neutral-200">
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-gray-900">Total Sales</p>
-                          <p className="font-bold text-lg text-green-600">
+                          <p className="font-semibold text-neutral-900">Total Sales</p>
+                          <p className="font-bold text-lg text-success">
                             {formatCurrency(
                               reportData.products.reduce((sum, p) => sum + (p.sales || 0), 0)
                             )}
@@ -1712,16 +1712,16 @@ const ReportsPage = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                      <PieChart className="h-12 w-12 mb-2 text-gray-400" />
+                    <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
+                      <PieChart className="h-12 w-12 mb-2 text-neutral-400" />
                       <p>No product sales data available</p>
                       <p className="text-sm mt-1">Try selecting a different date range</p>
                     </div>
                   )}
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Sales Distribution</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Product Sales Distribution</h3>
                   {reportData.products && reportData.products.length > 0 ? (
                     <ResponsiveContainer width="100%" height={400}>
                       <BarChart data={reportData.products.slice(0, 10)}>
@@ -1741,7 +1741,7 @@ const ReportsPage = () => {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="flex items-center justify-center h-64 text-neutral-500">
                       No product sales data available for chart
                     </div>
                   )}
@@ -1753,8 +1753,8 @@ const ReportsPage = () => {
           {/* Customers / Overdue tabs */}
           {(activeTab === 'customers' || activeTab === 'overdue') && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-neutral-900 mb-4">
                   {activeTab === 'overdue'
                     ? 'Overdue accounts (invoice date 30+ days ago, unpaid)'
                     : 'Outstanding customers (unpaid invoice at least 1 day old)'}
@@ -1762,55 +1762,55 @@ const ReportsPage = () => {
                 {reportData.customers && reportData.customers.length > 0 ? (
                   <div className="space-y-4">
                     {reportData.customers.map((customer, index) => (
-                      <div key={customer.id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div key={customer.id || index} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition-colors">
                         <div className="flex-1">
-                          <p className="font-medium text-gray-900">{customer.name}</p>
+                          <p className="font-medium text-neutral-900">{customer.name}</p>
                           {customer.phone && (
-                            <p className="text-sm text-gray-600">
+                            <p className="text-sm text-neutral-600">
                               Phone: {customer.phone}
                             </p>
                           )}
                           {customer.creditLimit > 0 && (
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-neutral-500">
                               Credit Limit: {formatCurrency(customer.creditLimit)}
                             </p>
                           )}
                         </div>
                         <div className="text-right">
                           <p className={`font-semibold text-lg ${customer.total > (customer.creditLimit * 0.8)
-                            ? 'text-red-600'
+                            ? 'text-error'
                             : customer.total > (customer.creditLimit * 0.5)
                               ? 'text-yellow-600'
-                              : 'text-gray-900'
+                              : 'text-neutral-900'
                             }`}>
                             {formatCurrency(customer.total)}
                           </p>
-                          <p className="text-sm text-gray-600">Outstanding Balance</p>
+                          <p className="text-sm text-neutral-600">Outstanding Balance</p>
                           {customer.creditLimit > 0 && (
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs text-neutral-500 mt-1">
                               {((customer.total / customer.creditLimit) * 100).toFixed(1)}% of limit
                             </p>
                           )}
                         </div>
                       </div>
                     ))}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="mt-4 pt-4 border-t border-neutral-200">
                       <div className="flex items-center justify-between">
-                        <p className="font-semibold text-gray-900">Total Outstanding</p>
-                        <p className="font-bold text-lg text-red-600">
+                        <p className="font-semibold text-neutral-900">Total Outstanding</p>
+                        <p className="font-bold text-lg text-error">
                           {formatCurrency(
                             reportData.customers.reduce((sum, c) => sum + (c.total || 0), 0)
                           )}
                         </p>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-neutral-600 mt-1">
                         {reportData.customers.length} {reportData.customers.length === 1 ? 'customer' : 'customers'} with outstanding balance
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                    <FileText className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
+                    <FileText className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>No matching customers found</p>
                     <p className="text-sm mt-1">
                       {activeTab === 'overdue'
@@ -1827,27 +1827,27 @@ const ReportsPage = () => {
           {activeTab === 'expenses' && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Breakdown by Category</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Expense Breakdown by Category</h3>
                   {reportData.expenses && reportData.expenses.length > 0 ? (
                     <div className="space-y-4">
                       {reportData.expenses.map((expense, index) => (
-                        <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div key={index} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
                           <div className="flex items-center">
                             <div
                               className="w-4 h-4 rounded-full mr-3"
                               style={{ backgroundColor: expense.categoryColor }}
                             />
                             <div>
-                              <p className="font-medium text-gray-900">{expense.categoryName}</p>
-                              <p className="text-sm text-gray-600">
+                              <p className="font-medium text-neutral-900">{expense.categoryName}</p>
+                              <p className="text-sm text-neutral-600">
                                 {expense.expenseCount} {expense.expenseCount === 1 ? 'expense' : 'expenses'}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="font-semibold text-gray-900">{formatCurrency(expense.totalAmount)}</p>
-                            <p className="text-sm text-gray-600">
+                            <p className="font-semibold text-neutral-900">{formatCurrency(expense.totalAmount)}</p>
+                            <p className="text-sm text-neutral-600">
                               {reportData.summary && reportData.summary.totalExpenses > 0
                                 ? ((expense.totalAmount / reportData.summary.totalExpenses) * 100).toFixed(1)
                                 : 0}%
@@ -1855,10 +1855,10 @@ const ReportsPage = () => {
                           </div>
                         </div>
                       ))}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="mt-4 pt-4 border-t border-neutral-200">
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-gray-900">Total Expenses</p>
-                          <p className="font-bold text-lg text-gray-900">
+                          <p className="font-semibold text-neutral-900">Total Expenses</p>
+                          <p className="font-bold text-lg text-neutral-900">
                             {formatCurrency(
                               reportData.expenses.reduce((sum, e) => sum + (e.totalAmount || 0), 0)
                             )}
@@ -1867,7 +1867,7 @@ const ReportsPage = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                    <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
                       <p>No data found for {dateRange.from} to {dateRange.to}</p>
                       <p className="text-sm mt-1">Try expanding the date range or check that expenses exist in this period.</p>
                       <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
@@ -1877,8 +1877,8 @@ const ReportsPage = () => {
                   )}
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Expense Distribution</h3>
+                <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Expense Distribution</h3>
                   {reportData.expenses && reportData.expenses.length > 0 ? (
                     <ResponsiveContainer width="100%" height={400}>
                       <RechartsPieChart>
@@ -1908,7 +1908,7 @@ const ReportsPage = () => {
                       </RechartsPieChart>
                     </ResponsiveContainer>
                   ) : (
-                    <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                    <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
                       <p>No data found for {dateRange.from} to {dateRange.to}</p>
                       <p className="text-sm mt-1">Try expanding the date range or check that expenses exist in this period.</p>
                       <button onClick={() => fetchReportData(true)} className="mt-3 px-4 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700">
@@ -1923,12 +1923,12 @@ const ReportsPage = () => {
                 <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-red-600">Total Expenses for Selected Period</p>
+                      <p className="text-sm font-medium text-error">Total Expenses for Selected Period</p>
                       <p className="text-3xl font-bold text-red-900 mt-2">
                         {formatCurrency(reportData.summary.totalExpenses || 0)}
                       </p>
                     </div>
-                    <TrendingDown className="h-12 w-12 text-red-600" />
+                    <TrendingDown className="h-12 w-12 text-error" />
                   </div>
                 </div>
               )}
@@ -1939,8 +1939,8 @@ const ReportsPage = () => {
           {activeTab === 'branch' && (
             <div className="space-y-6">
               {/* FIX: Add export button for Branch Report */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4 flex items-center justify-between">
-                <p className="text-sm text-gray-600">Branch comparison with profitability metrics</p>
+              <div className="bg-white border border-neutral-200 rounded-lg p-4 flex items-center justify-between">
+                <p className="text-sm text-neutral-600">Branch comparison with profitability metrics</p>
                 <button
                   onClick={async () => {
                     try {
@@ -1954,7 +1954,7 @@ const ReportsPage = () => {
                       if (!error?._handledByInterceptor) toast.error('Failed to export branch report')
                     }
                   }}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+                  className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 transition-colors"
                   disabled={!reportData.branchComparison || reportData.branchComparison.length === 0}
                 >
                   <Download className="h-4 w-4" />
@@ -1975,94 +1975,94 @@ const ReportsPage = () => {
                     )
                     const isTopByMargin = topBranch.branchId === topByMargin.branchId
                     return (
-                      <div className={`rounded-xl p-6 border-2 ${isTopByMargin ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200'}`}>
-                        <p className="text-sm font-medium text-amber-700">🏆 Top Branch {isTopByMargin ? '(by Profitability)' : '(by Sales Volume)'}</p>
+                      <div className={`rounded-lg p-6 border-2 ${isTopByMargin ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-success-border' : 'bg-gradient-to-r from-amber-50 to-yellow-50 border-warning-border'}`}>
+                        <p className="text-sm font-medium text-warning-fg">🏆 Top Branch {isTopByMargin ? '(by Profitability)' : '(by Sales Volume)'}</p>
                         <p className="text-xl font-bold text-amber-900 mt-1">{topBranch.branchName}</p>
                         <p className="text-2xl font-bold text-amber-800 mt-2">{formatCurrency(topBranch.totalSales || 0)}</p>
                         {topBranch.totalSales > 0 && (
-                          <p className="text-sm text-gray-600 mt-1">
+                          <p className="text-sm text-neutral-600 mt-1">
                             Profit Margin: <span className={`font-semibold ${
-                              ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 20 ? 'text-green-600' :
+                              ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 20 ? 'text-success' :
                               ((topBranch.profit || 0) / topBranch.totalSales * 100) >= 10 ? 'text-yellow-600' :
-                              'text-red-600'
+                              'text-error'
                             }`}>
                               {((topBranch.profit || 0) / topBranch.totalSales * 100).toFixed(1)}%
                             </span>
                           </p>
                         )}
                         {topBranch.growthPercent != null && (
-                          <span className={`inline-flex items-center mt-2 text-sm font-medium ${(topBranch.growthPercent || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`inline-flex items-center mt-2 text-sm font-medium ${(topBranch.growthPercent || 0) >= 0 ? 'text-success' : 'text-error'}`}>
                             {(topBranch.growthPercent || 0) >= 0 ? '↑' : '↓'} {Math.abs(topBranch.growthPercent || 0).toFixed(1)}% vs previous period
                           </span>
                         )}
                       </div>
                     )
                   })()}
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-neutral-200">
+                        <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8" />
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
-                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sales</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">COGS</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Margin %</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Growth</th>
+                            <th className="px-2 py-3 text-left text-xs font-medium text-neutral-500 uppercase w-8" />
+                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Rank</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Branch</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Sales</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">COGS</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Expenses</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Profit</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Margin %</th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Growth</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-neutral-200">
                           {reportData.branchComparison.map((row, idx) => {
                             const routes = row.routes || []
                             const hasRoutes = routes.length > 0
                             const isExpanded = expandedBranchId === row.branchId
                             return (
                               <React.Fragment key={row.branchId}>
-                                <tr className="hover:bg-blue-50">
+                                <tr className="hover:bg-primary-50">
                                   <td className="px-2 py-3">
                                     {hasRoutes ? (
                                       <button type="button" onClick={() => setExpandedBranchId(isExpanded ? null : row.branchId)} className="p-0.5 cursor-pointer">
-                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-500" /> : <ChevronRight className="h-4 w-4 text-gray-500" />}
+                                        {isExpanded ? <ChevronDown className="h-4 w-4 text-neutral-500" /> : <ChevronRight className="h-4 w-4 text-neutral-500" />}
                                       </button>
                                     ) : <span className="w-4 inline-block" />}
                                   </td>
-                                  <td className="px-4 py-3 text-sm font-medium text-gray-900">#{idx + 1}</td>
+                                  <td className="px-4 py-3 text-sm font-medium text-neutral-900">#{idx + 1}</td>
                                   <td
-                                    className="px-4 py-3 text-sm font-medium text-blue-600 cursor-pointer hover:underline"
+                                    className="px-4 py-3 text-sm font-medium text-primary-600 cursor-pointer hover:underline"
                                     onClick={() => navigate(`/branches/${row.branchId}?from=${dateRange.from}&to=${dateRange.to}`)}
                                   >
                                     {row.branchName}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(row.totalSales || 0)}</td>
-                                  <td className="px-4 py-3 text-sm text-right text-amber-700">{formatCurrency(row.costOfGoodsSold || 0)}</td>
-                                  <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(row.totalExpenses || 0)}</td>
-                                  <td className={`px-4 py-3 text-sm text-right font-medium ${(row.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  <td className="px-4 py-3 text-sm text-right text-neutral-900">{formatCurrency(row.totalSales || 0)}</td>
+                                  <td className="px-4 py-3 text-sm text-right text-warning-fg">{formatCurrency(row.costOfGoodsSold || 0)}</td>
+                                  <td className="px-4 py-3 text-sm text-right text-error">{formatCurrency(row.totalExpenses || 0)}</td>
+                                  <td className={`px-4 py-3 text-sm text-right font-medium ${(row.profit || 0) >= 0 ? 'text-success' : 'text-error'}`}>
                                     {formatCurrency(row.profit || 0)}
                                   </td>
                                   <td className="px-4 py-3 text-right text-sm">
                                     {/* FIX: Add profitability/margin metric instead of just sales volume */}
                                     {row.totalSales > 0 ? (
                                       <span className={`font-medium ${
-                                        ((row.profit || 0) / row.totalSales * 100) >= 20 ? 'text-green-600' :
+                                        ((row.profit || 0) / row.totalSales * 100) >= 20 ? 'text-success' :
                                         ((row.profit || 0) / row.totalSales * 100) >= 10 ? 'text-yellow-600' :
-                                        'text-red-600'
+                                        'text-error'
                                       }`}>
                                         {((row.profit || 0) / row.totalSales * 100).toFixed(1)}%
                                       </span>
                                     ) : (
-                                      <span className="text-gray-400">—</span>
+                                      <span className="text-neutral-400">—</span>
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-right">
                                     {row.growthPercent != null ? (
-                                      <span className={row.growthPercent >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                      <span className={row.growthPercent >= 0 ? 'text-success' : 'text-error'}>
                                         {row.growthPercent >= 0 ? '↑' : '↓'} {Math.abs(row.growthPercent).toFixed(1)}%
                                       </span>
                                     ) : (
-                                      <span className="text-gray-400">—</span>
+                                      <span className="text-neutral-400">—</span>
                                     )}
                                   </td>
                                 </tr>
@@ -2070,15 +2070,15 @@ const ReportsPage = () => {
                                   <tr
                                     key={rt.routeId}
                                     onClick={() => navigate(`/routes/${rt.routeId}?from=${dateRange.from}&to=${dateRange.to}`)}
-                                    className="bg-gray-50 hover:bg-blue-50/50 cursor-pointer"
+                                    className="bg-neutral-50 hover:bg-primary-50/50 cursor-pointer"
                                   >
                                     <td className="px-2 py-2" />
-                                    <td className="px-4 py-2 text-sm text-gray-500" />
-                                    <td className="px-4 py-2 text-sm text-gray-700 pl-8">↳ {rt.routeName || rt.name}</td>
-                                    <td className="px-4 py-2 text-sm text-right text-gray-700">{formatCurrency(rt.totalSales || 0)}</td>
-                                    <td className="px-4 py-2 text-sm text-right text-amber-700">{formatCurrency(rt.costOfGoodsSold || 0)}</td>
-                                    <td className="px-4 py-2 text-sm text-right text-red-600">{formatCurrency(rt.totalExpenses || 0)}</td>
-                                    <td className={`px-4 py-2 text-sm text-right font-medium ${(rt.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    <td className="px-4 py-2 text-sm text-neutral-500" />
+                                    <td className="px-4 py-2 text-sm text-neutral-700 pl-8">↳ {rt.routeName || rt.name}</td>
+                                    <td className="px-4 py-2 text-sm text-right text-neutral-700">{formatCurrency(rt.totalSales || 0)}</td>
+                                    <td className="px-4 py-2 text-sm text-right text-warning-fg">{formatCurrency(rt.costOfGoodsSold || 0)}</td>
+                                    <td className="px-4 py-2 text-sm text-right text-error">{formatCurrency(rt.totalExpenses || 0)}</td>
+                                    <td className={`px-4 py-2 text-sm text-right font-medium ${(rt.profit || 0) >= 0 ? 'text-success' : 'text-error'}`}>
                                       {formatCurrency(rt.profit || 0)}
                                     </td>
                                     <td className="px-4 py-2" />
@@ -2091,8 +2091,8 @@ const ReportsPage = () => {
                       </table>
                     </div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Branch Comparison Chart</h3>
+                  <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Branch Comparison Chart</h3>
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={reportData.branchComparison.map(b => ({ name: b.branchName, sales: Number(b.totalSales || 0), expenses: Number(b.totalExpenses || 0), profit: Number(b.profit || 0) }))} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -2108,7 +2108,7 @@ const ReportsPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center text-neutral-500">
                   {loading ? 'Loading branch report...' : (
                       <>
                         <p>No data found for {dateRange.from} to {dateRange.to}</p>
@@ -2139,33 +2139,33 @@ const ReportsPage = () => {
                 )
                 return routeRows.length > 0 ? (
                   <>
-                    <p className="text-sm text-gray-500">All routes across branches. COGS uses product cost from purchases.</p>
-                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                    <p className="text-sm text-neutral-500">All routes across branches. COGS uses product cost from purchases.</p>
+                    <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
                       <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                          <thead className="bg-gray-50">
+                        <table className="min-w-full divide-y divide-neutral-200">
+                          <thead className="bg-neutral-50">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Branch</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sales</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">COGS</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Expenses</th>
-                              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Profit</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Branch</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase">Route</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Sales</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">COGS</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Expenses</th>
+                              <th className="px-4 py-3 text-right text-xs font-medium text-neutral-500 uppercase">Profit</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-200">
+                          <tbody className="divide-y divide-neutral-200">
                             {routeRows.map((rt) => (
                               <tr
                                 key={`${rt.branchId}-${rt.routeId}`}
                                 onClick={() => navigate(`/routes/${rt.routeId}?from=${dateRange.from}&to=${dateRange.to}`)}
-                                className="hover:bg-blue-50 cursor-pointer"
+                                className="hover:bg-primary-50 cursor-pointer"
                               >
-                                <td className="px-4 py-3 text-sm text-gray-700">{rt.branchName}</td>
-                                <td className="px-4 py-3 text-sm font-medium text-blue-600">{rt.routeName || rt.name}</td>
-                                <td className="px-4 py-3 text-sm text-right text-gray-900">{formatCurrency(rt.totalSales || 0)}</td>
-                                <td className="px-4 py-3 text-sm text-right text-amber-700">{formatCurrency(rt.costOfGoodsSold ?? 0)}</td>
-                                <td className="px-4 py-3 text-sm text-right text-red-600">{formatCurrency(rt.totalExpenses || 0)}</td>
-                                <td className={`px-4 py-3 text-sm text-right font-medium ${(rt.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                <td className="px-4 py-3 text-sm text-neutral-700">{rt.branchName}</td>
+                                <td className="px-4 py-3 text-sm font-medium text-primary-600">{rt.routeName || rt.name}</td>
+                                <td className="px-4 py-3 text-sm text-right text-neutral-900">{formatCurrency(rt.totalSales || 0)}</td>
+                                <td className="px-4 py-3 text-sm text-right text-warning-fg">{formatCurrency(rt.costOfGoodsSold ?? 0)}</td>
+                                <td className="px-4 py-3 text-sm text-right text-error">{formatCurrency(rt.totalExpenses || 0)}</td>
+                                <td className={`px-4 py-3 text-sm text-right font-medium ${(rt.profit ?? 0) >= 0 ? 'text-success' : 'text-error'}`}>
                                   {formatCurrency(rt.profit ?? 0)}
                                 </td>
                               </tr>
@@ -2176,7 +2176,7 @@ const ReportsPage = () => {
                     </div>
                   </>
                 ) : (
-                  <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                  <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center text-neutral-500">
                     {loading ? 'Loading route report...' : (
                       <>
                         <p>No data found for {dateRange.from} to {dateRange.to}</p>
@@ -2196,10 +2196,10 @@ const ReportsPage = () => {
           {activeTab === 'aging' && (
             <div className="space-y-6">
               {/* FIX: Add "as of date" selector for historical aging analysis */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-center gap-4 flex-wrap justify-between">
                   <div className="flex items-center gap-4 flex-wrap">
-                    <label className="text-sm font-medium text-gray-700">As of Date:</label>
+                    <label className="text-sm font-medium text-neutral-700">As of Date:</label>
                     <Input
                       type="date"
                       value={agingAsOfDate}
@@ -2215,7 +2215,7 @@ const ReportsPage = () => {
                         setAgingAsOfDate(today)
                         tabDataCacheRef.current = {}
                       }}
-                      className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                      className="px-3 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
                     >
                       Reset to Today
                     </button>
@@ -2234,24 +2234,24 @@ const ReportsPage = () => {
                         if (!error?._handledByInterceptor) toast.error('Failed to export aging report')
                       }
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 transition-colors"
                     disabled={!reportData.agingReport || !reportData.agingReport.invoices || reportData.agingReport.invoices.length === 0}
                   >
                     <Download className="h-4 w-4" />
                     <span>Export Excel</span>
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-neutral-500 mt-2">
                   Set a past date to see historical aging (e.g., "What was our aging on Dec 31?")
                 </p>
               </div>
               {reportData.agingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <p className="text-xs font-medium text-green-700">0-30 Days</p>
+                    <div className="bg-success-bg rounded-lg p-4 border border-success-border">
+                      <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.agingReport.bucket0_30?.total || 0)}</p>
-                      <p className="text-xs text-green-600">{reportData.agingReport.bucket0_30?.count || 0} invoices</p>
+                      <p className="text-xs text-success">{reportData.agingReport.bucket0_30?.count || 0} invoices</p>
                     </div>
                     <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
@@ -2263,37 +2263,37 @@ const ReportsPage = () => {
                       <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.agingReport.bucket61_90?.total || 0)}</p>
                       <p className="text-xs text-orange-600">{reportData.agingReport.bucket61_90?.count || 0} invoices</p>
                     </div>
-                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                      <p className="text-xs font-medium text-red-700">90+ Days</p>
+                    <div className="bg-error-bg rounded-lg p-4 border border-error-border">
+                      <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.agingReport.bucket90Plus?.total || 0)}</p>
-                      <p className="text-xs text-red-600">{reportData.agingReport.bucket90Plus?.count || 0} invoices</p>
+                      <p className="text-xs text-error">{reportData.agingReport.bucket90Plus?.count || 0} invoices</p>
                     </div>
                     <div className="bg-neutral-100 rounded-lg p-4 border border-neutral-200">
                       <p className="text-xs font-medium text-neutral-600">Total Outstanding</p>
                       <p className="text-lg font-bold text-neutral-900">{formatCurrency(reportData.agingReport.totalOutstanding || 0)}</p>
                     </div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <h3 className="px-4 py-3 bg-gray-50 font-medium">Invoice Details</h3>
+                  <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                    <h3 className="px-4 py-3 bg-neutral-50 font-medium">Invoice Details</h3>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-neutral-200">
+                        <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Invoice</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Days Overdue</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Invoice</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Customer</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Date</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Days Overdue</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-neutral-200">
                           {(reportData.agingReport.invoices || []).map((inv) => (
                             <tr key={inv.id}>
                               <td className="px-4 py-2 text-sm font-medium">{inv.invoiceNo || inv.invoice_no}</td>
                               <td className="px-4 py-2 text-sm">{inv.customerName || inv.customer_name || '—'}</td>
                               <td className="px-4 py-2 text-sm">{inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : '—'}</td>
                               <td className="px-4 py-2 text-sm text-right font-medium">{formatCurrency(inv.balanceAmount ?? inv.balance_amount ?? 0)}</td>
-                              <td className={`px-4 py-2 text-sm text-right ${(inv.daysOverdue ?? inv.days_overdue ?? 0) > 90 ? 'text-red-600 font-medium' : ''}`}>
+                              <td className={`px-4 py-2 text-sm text-right ${(inv.daysOverdue ?? inv.days_overdue ?? 0) > 90 ? 'text-error font-medium' : ''}`}>
                                 {inv.daysOverdue ?? inv.days_overdue ?? 0}
                               </td>
                             </tr>
@@ -2302,12 +2302,12 @@ const ReportsPage = () => {
                       </table>
                     </div>
                     {(!reportData.agingReport.invoices || reportData.agingReport.invoices.length === 0) && (
-                      <p className="px-4 py-8 text-center text-gray-500">No outstanding invoices</p>
+                      <p className="px-4 py-8 text-center text-neutral-500">No outstanding invoices</p>
                     )}
                   </div>
                 </>
               ) : (
-                <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center text-neutral-500">
                   {loading ? 'Loading aging report...' : 'No aging data available.'}
                 </div>
               )}
@@ -2317,10 +2317,10 @@ const ReportsPage = () => {
           {/* AP Aging Tab */}
           {activeTab === 'ap-aging' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-center gap-4 flex-wrap justify-between">
                   <div className="flex items-center gap-4 flex-wrap">
-                    <label className="text-sm font-medium text-gray-700">As of Date:</label>
+                    <label className="text-sm font-medium text-neutral-700">As of Date:</label>
                     <Input
                       type="date"
                       value={agingAsOfDate}
@@ -2335,23 +2335,23 @@ const ReportsPage = () => {
                         setAgingAsOfDate(localDateString(new Date()))
                         tabDataCacheRef.current = {}
                       }}
-                      className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
+                      className="px-3 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
                     >
                       Reset to Today
                     </button>
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-neutral-500 mt-2">
                   What we owe to suppliers by age (based on last purchase date).
                 </p>
               </div>
               {reportData.apAgingReport ? (
                 <>
                   <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <p className="text-xs font-medium text-green-700">0-30 Days</p>
+                    <div className="bg-success-bg rounded-lg p-4 border border-success-border">
+                      <p className="text-xs font-medium text-success-fg">0-30 Days</p>
                       <p className="text-lg font-bold text-green-900">{formatCurrency(reportData.apAgingReport.bucket0_30?.total || 0)}</p>
-                      <p className="text-xs text-green-600">{reportData.apAgingReport.bucket0_30?.count || 0} suppliers</p>
+                      <p className="text-xs text-success">{reportData.apAgingReport.bucket0_30?.count || 0} suppliers</p>
                     </div>
                     <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                       <p className="text-xs font-medium text-yellow-700">31-60 Days</p>
@@ -2363,34 +2363,34 @@ const ReportsPage = () => {
                       <p className="text-lg font-bold text-orange-900">{formatCurrency(reportData.apAgingReport.bucket61_90?.total || 0)}</p>
                       <p className="text-xs text-orange-600">{reportData.apAgingReport.bucket61_90?.count || 0} suppliers</p>
                     </div>
-                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                      <p className="text-xs font-medium text-red-700">90+ Days</p>
+                    <div className="bg-error-bg rounded-lg p-4 border border-error-border">
+                      <p className="text-xs font-medium text-error-fg">90+ Days</p>
                       <p className="text-lg font-bold text-red-900">{formatCurrency(reportData.apAgingReport.bucket90Plus?.total || 0)}</p>
-                      <p className="text-xs text-red-600">{reportData.apAgingReport.bucket90Plus?.count || 0} suppliers</p>
+                      <p className="text-xs text-error">{reportData.apAgingReport.bucket90Plus?.count || 0} suppliers</p>
                     </div>
                     <div className="bg-neutral-100 rounded-lg p-4 border border-neutral-200">
                       <p className="text-xs font-medium text-neutral-600">Total Outstanding</p>
                       <p className="text-lg font-bold text-neutral-900">{formatCurrency(reportData.apAgingReport.totalOutstanding || 0)}</p>
                     </div>
                   </div>
-                  <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                    <h3 className="px-4 py-3 bg-gray-50 font-medium">Supplier Details</h3>
+                  <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                    <h3 className="px-4 py-3 bg-neutral-50 font-medium">Supplier Details</h3>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-neutral-200">
+                        <thead className="bg-neutral-50">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Supplier</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Balance</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Days</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Bucket</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Supplier</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Balance</th>
+                            <th className="px-4 py-2 text-right text-xs font-medium text-neutral-500 uppercase">Days</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-neutral-500 uppercase">Bucket</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200">
+                        <tbody className="divide-y divide-neutral-200">
                           {(reportData.apAgingReport.items || []).map((item, idx) => (
                             <tr key={item.supplierName + idx}>
                               <td className="px-4 py-2 text-sm font-medium">{item.supplierName}</td>
                               <td className="px-4 py-2 text-sm text-right font-medium">{formatCurrency(item.balance || 0)}</td>
-                              <td className={`px-4 py-2 text-sm text-right ${(item.daysOverdue ?? 0) > 90 ? 'text-red-600 font-medium' : ''}`}>{item.daysOverdue ?? 0}</td>
+                              <td className={`px-4 py-2 text-sm text-right ${(item.daysOverdue ?? 0) > 90 ? 'text-error font-medium' : ''}`}>{item.daysOverdue ?? 0}</td>
                               <td className="px-4 py-2 text-sm">{item.agingBucket || '—'}</td>
                             </tr>
                           ))}
@@ -2398,12 +2398,12 @@ const ReportsPage = () => {
                       </table>
                     </div>
                     {(!reportData.apAgingReport.items || reportData.apAgingReport.items.length === 0) && (
-                      <p className="px-4 py-8 text-center text-gray-500">No payables outstanding</p>
+                      <p className="px-4 py-8 text-center text-neutral-500">No payables outstanding</p>
                     )}
                   </div>
                 </>
               ) : (
-                <div className="bg-white border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                <div className="bg-white border border-neutral-200 rounded-lg p-12 text-center text-neutral-500">
                   {loading ? 'Loading AP aging report...' : 'No AP aging data available.'}
                 </div>
               )}
@@ -2416,7 +2416,7 @@ const ReportsPage = () => {
               {reportData.profitLoss ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Profit & Loss</h3>
+                    <h3 className="text-lg font-semibold text-neutral-900">Profit & Loss</h3>
                     <button
                       type="button"
                       onClick={async () => {
@@ -2439,27 +2439,27 @@ const ReportsPage = () => {
                           if (!error?._handledByInterceptor) toast.error('Failed to export P&L PDF')
                         }
                       }}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
+                      className="px-4 py-2 bg-success text-white rounded-lg hover:bg-green-700 flex items-center gap-2 transition-colors"
                     >
                       <Download className="h-4 w-4" />
                       <span>Export PDF</span>
                     </button>
                   </div>
                   {reportData.profitLoss.estimatedCostLineCount > 0 && (
-                    <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                    <div role="status" className="rounded-lg border border-warning-border bg-warning-bg p-3 text-sm text-amber-900">
                       Cost estimates are included for {reportData.profitLoss.estimatedCostLineCount} invoice lines without saved historical costs. Those estimates use current product costs and may change when products are updated.
                     </div>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-                      <p className="text-sm font-medium text-green-600">Total Sales</p>
+                    <div className="bg-success-bg rounded-lg p-6 border border-success-border">
+                      <p className="text-sm font-medium text-success">Total Sales</p>
                       <p className="text-2xl font-bold text-green-900 mt-2">
                         {formatCurrency(reportData.profitLoss.totalSales || 0)}
                       </p>
                     </div>
-                    <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                      <p className="text-sm font-medium text-blue-600">Total Purchases</p>
-                      <p className="text-2xl font-bold text-blue-900 mt-2">
+                    <div className="bg-primary-50 rounded-lg p-6 border border-primary-200">
+                      <p className="text-sm font-medium text-primary-600">Total Purchases</p>
+                      <p className="text-2xl font-bold text-primary-900 mt-2">
                         {formatCurrency(reportData.profitLoss.totalPurchases || 0)}
                       </p>
                     </div>
@@ -2474,37 +2474,37 @@ const ReportsPage = () => {
                           : '0.0')}%
                       </p>
                     </div>
-                    <div className="bg-red-50 rounded-lg p-6 border border-red-200">
-                      <p className="text-sm font-medium text-red-600">Total Expenses</p>
+                    <div className="bg-error-bg rounded-lg p-6 border border-error-border">
+                      <p className="text-sm font-medium text-error">Total Expenses</p>
                       <p className="text-2xl font-bold text-red-900 mt-2">
                         {formatCurrency(reportData.profitLoss.totalExpenses || 0)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border-2 border-green-300">
+                  <div className="bg-gradient-to-r from-green-50 to-primary-50 rounded-lg p-6 border-2 border-green-300">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium text-gray-600">Net Profit / Loss</p>
-                        <p className={`text-4xl font-bold mt-2 ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'
+                        <p className="text-sm font-medium text-neutral-600">Net Profit / Loss</p>
+                        <p className={`text-4xl font-bold mt-2 ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-success-fg' : 'text-error-fg'
                           }`}>
                           {formatCurrency(reportData.profitLoss.netProfit || 0)}
                         </p>
-                        <p className="text-sm text-gray-600 mt-2">
+                        <p className="text-sm text-neutral-600 mt-2">
                           Net Profit Margin: {reportData.profitLoss.netProfitMargin?.toFixed(2) || (reportData.profitLoss.totalSales > 0
                             ? ((reportData.profitLoss.netProfit / reportData.profitLoss.totalSales) * 100).toFixed(2)
                             : '0.00')}%
                         </p>
                       </div>
                       {(reportData.profitLoss.netProfit || 0) >= 0
-                        ? <TrendingUp className="h-16 w-16 text-green-600" />
-                        : <TrendingDown className="h-16 w-16 text-red-600" />}
+                        ? <TrendingUp className="h-16 w-16 text-success" />
+                        : <TrendingDown className="h-16 w-16 text-error" />}
                     </div>
                   </div>
 
                   {reportData.profitLoss.dailyProfit && reportData.profitLoss.dailyProfit.length > 0 ? (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Profit Trend</h3>
+                    <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-neutral-900 mb-4">Daily Profit Trend</h3>
                       <ResponsiveContainer width="100%" height={400}>
                         <LineChart data={reportData.profitLoss.dailyProfit}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
@@ -2539,36 +2539,36 @@ const ReportsPage = () => {
                       </ResponsiveContainer>
                     </div>
                   ) : (
-                    <div className="bg-white border border-gray-200 rounded-lg p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Profit Trend</h3>
-                      <div className="flex items-center justify-center h-64 text-gray-500">
+                    <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-neutral-900 mb-4">Daily Profit Trend</h3>
+                      <div className="flex items-center justify-center h-64 text-neutral-500">
                         <p>No daily profit data available for the selected period</p>
                       </div>
                     </div>
                   )}
 
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Profit & Loss Summary</h3>
+                  <div className="bg-white border border-neutral-200 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Profit & Loss Summary</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-gray-700">Total Sales Revenue</span>
-                        <span className="font-semibold text-gray-900">{formatCurrency(reportData.profitLoss.totalSales || 0)}</span>
+                        <span className="text-neutral-700">Total Sales Revenue</span>
+                        <span className="font-semibold text-neutral-900">{formatCurrency(reportData.profitLoss.totalSales || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-gray-700">Less: Cost of Goods Sold (COGS)</span>
-                        <span className="font-semibold text-red-600">-{formatCurrency(reportData.profitLoss.costOfGoodsSold || 0)}</span>
+                        <span className="text-neutral-700">Less: Cost of Goods Sold (COGS)</span>
+                        <span className="font-semibold text-error">-{formatCurrency(reportData.profitLoss.costOfGoodsSold || 0)}</span>
                       </div>
-                      <div className="flex justify-between items-center py-2 border-b-2 border-gray-300">
-                        <span className="font-semibold text-gray-900">Gross Profit</span>
-                        <span className="font-bold text-green-600">{formatCurrency(reportData.profitLoss.grossProfit || 0)}</span>
+                      <div className="flex justify-between items-center py-2 border-b-2 border-neutral-300">
+                        <span className="font-semibold text-neutral-900">Gross Profit</span>
+                        <span className="font-bold text-success">{formatCurrency(reportData.profitLoss.grossProfit || 0)}</span>
                       </div>
                       <div className="flex justify-between items-center py-2 border-b">
-                        <span className="text-gray-700">Less: Operating Expenses</span>
-                        <span className="font-semibold text-red-600">-{formatCurrency(reportData.profitLoss.totalExpenses || 0)}</span>
+                        <span className="text-neutral-700">Less: Operating Expenses</span>
+                        <span className="font-semibold text-error">-{formatCurrency(reportData.profitLoss.totalExpenses || 0)}</span>
                       </div>
-                      <div className="flex justify-between items-center py-3 border-t-2 border-gray-400 bg-gray-50 rounded px-3">
-                        <span className="font-bold text-lg text-gray-900">Net Profit / Loss</span>
-                        <span className={`font-bold text-2xl ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-green-700' : 'text-red-700'
+                      <div className="flex justify-between items-center py-3 border-t-2 border-neutral-400 bg-neutral-50 rounded px-3">
+                        <span className="font-bold text-lg text-neutral-900">Net Profit / Loss</span>
+                        <span className={`font-bold text-2xl ${(reportData.profitLoss.netProfit || 0) >= 0 ? 'text-success-fg' : 'text-error-fg'
                           }`}>
                           {formatCurrency(reportData.profitLoss.netProfit || 0)}
                         </span>
@@ -2577,8 +2577,8 @@ const ReportsPage = () => {
                   </div>
                 </>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500">
-                  <TrendingUp className="h-12 w-12 mb-2 text-gray-400" />
+                <div className="flex flex-col items-center justify-center h-64 text-neutral-500">
+                  <TrendingUp className="h-12 w-12 mb-2 text-neutral-400" />
                   <p>No profit & loss data available</p>
                   <p className="text-sm mt-1">Try selecting a different date range</p>
                 </div>
@@ -2589,36 +2589,36 @@ const ReportsPage = () => {
           {/* Branch Profit Tab (#57) */}
           {activeTab === 'branch-profit' && (
             <div className="space-y-6">
-              <p className="text-sm text-gray-600">Profit by branch for the selected date range. Net = Sales − COGS − Expenses.</p>
+              <p className="text-sm text-neutral-600">Profit by branch for the selected date range. Net = Sales − COGS − Expenses.</p>
               {reportData.branchProfit && reportData.branchProfit.length > 0 ? (
-                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full min-w-[800px] divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-100">
+                    <table className="w-full min-w-[800px] divide-y divide-neutral-200 text-sm">
+                      <thead className="bg-neutral-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Branch</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Invoices</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Sales</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">COGS</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Gross Profit</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Expenses</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Net Profit</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Net Margin %</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Branch</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Invoices</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Sales</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">COGS</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Gross Profit</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Expenses</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Net Profit</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Net Margin %</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-neutral-200">
                         {reportData.branchProfit.map((row) => (
-                          <tr key={row.branchId} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 font-medium text-gray-900">{row.branchName}</td>
-                            <td className="px-4 py-3 text-right text-gray-600">{row.invoiceCount ?? 0}</td>
-                            <td className="px-4 py-3 text-right font-medium text-green-700">{formatCurrency(row.sales ?? 0)}</td>
-                            <td className="px-4 py-3 text-right text-red-600">{formatCurrency(row.costOfGoodsSold ?? 0)}</td>
-                            <td className="px-4 py-3 text-right font-medium text-blue-700">{formatCurrency(row.grossProfit ?? 0)}</td>
-                            <td className="px-4 py-3 text-right text-red-600">{formatCurrency(row.expenses ?? 0)}</td>
-                            <td className={`px-4 py-3 text-right font-bold ${(row.netProfit ?? 0) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          <tr key={row.branchId} className="hover:bg-neutral-50">
+                            <td className="px-4 py-3 font-medium text-neutral-900">{row.branchName}</td>
+                            <td className="px-4 py-3 text-right text-neutral-600">{row.invoiceCount ?? 0}</td>
+                            <td className="px-4 py-3 text-right font-medium text-success-fg">{formatCurrency(row.sales ?? 0)}</td>
+                            <td className="px-4 py-3 text-right text-error">{formatCurrency(row.costOfGoodsSold ?? 0)}</td>
+                            <td className="px-4 py-3 text-right font-medium text-primary-700">{formatCurrency(row.grossProfit ?? 0)}</td>
+                            <td className="px-4 py-3 text-right text-error">{formatCurrency(row.expenses ?? 0)}</td>
+                            <td className={`px-4 py-3 text-right font-bold ${(row.netProfit ?? 0) >= 0 ? 'text-success-fg' : 'text-error-fg'}`}>
                               {formatCurrency(row.netProfit ?? 0)}
                             </td>
-                            <td className="px-4 py-3 text-right text-gray-600">
+                            <td className="px-4 py-3 text-right text-neutral-600">
                               {(row.netProfitMarginPercent ?? 0).toFixed(1)}%
                             </td>
                           </tr>
@@ -2628,22 +2628,22 @@ const ReportsPage = () => {
                   </div>
 
                   {/* Mobile branch-profit summary cards (md:hidden) */}
-                  <div className="md:hidden divide-y divide-gray-100">
+                  <div className="md:hidden divide-y divide-neutral-100">
                     {reportData.branchProfit.map((row) => {
                       const netProfit = row.netProfit ?? 0
                       return (
                         <div key={row.branchId} className="px-4 py-3.5">
                           <div className="flex items-center justify-between gap-2 mb-2">
-                            <span className="font-semibold text-gray-900 truncate">{row.branchName}</span>
-                            <span className="shrink-0 text-xs text-gray-500">{row.invoiceCount ?? 0} invoices</span>
+                            <span className="font-semibold text-neutral-900 truncate">{row.branchName}</span>
+                            <span className="shrink-0 text-xs text-neutral-500">{row.invoiceCount ?? 0} invoices</span>
                           </div>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500">Sales</span><span className="font-medium text-green-700 tabular-nums">{formatCurrency(row.sales ?? 0)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">COGS</span><span className="text-red-600 tabular-nums">{formatCurrency(row.costOfGoodsSold ?? 0)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Gross profit</span><span className="font-medium text-blue-700 tabular-nums">{formatCurrency(row.grossProfit ?? 0)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Expenses</span><span className="text-red-600 tabular-nums">{formatCurrency(row.expenses ?? 0)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Net profit</span><span className={`font-bold tabular-nums ${netProfit >= 0 ? 'text-green-700' : 'text-red-700'}`}>{formatCurrency(netProfit)}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500">Net margin</span><span className="text-gray-700 tabular-nums">{(row.netProfitMarginPercent ?? 0).toFixed(1)}%</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">Sales</span><span className="font-medium text-success-fg tabular-nums">{formatCurrency(row.sales ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">COGS</span><span className="text-error tabular-nums">{formatCurrency(row.costOfGoodsSold ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">Gross profit</span><span className="font-medium text-primary-700 tabular-nums">{formatCurrency(row.grossProfit ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">Expenses</span><span className="text-error tabular-nums">{formatCurrency(row.expenses ?? 0)}</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">Net profit</span><span className={`font-bold tabular-nums ${netProfit >= 0 ? 'text-success-fg' : 'text-error-fg'}`}>{formatCurrency(netProfit)}</span></div>
+                            <div className="flex justify-between"><span className="text-neutral-500">Net margin</span><span className="text-neutral-700 tabular-nums">{(row.netProfitMarginPercent ?? 0).toFixed(1)}%</span></div>
                           </div>
                         </div>
                       )
@@ -2651,8 +2651,8 @@ const ReportsPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-500 bg-white border border-gray-200 rounded-lg">
-                  <Building2 className="h-12 w-12 mb-2 text-gray-400" />
+                <div className="flex flex-col items-center justify-center h-64 text-neutral-500 bg-white border border-neutral-200 rounded-lg">
+                  <Building2 className="h-12 w-12 mb-2 text-neutral-400" />
                   <p>{loading ? 'Loading branch profit...' : (
                       <>
                         No data found for {dateRange.from} to {dateRange.to}
@@ -2674,9 +2674,9 @@ const ReportsPage = () => {
           {activeTab === 'outstanding' && (
             <div className="space-y-6">
               {/* FIX: Add days overdue filter */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
+              <div className="bg-white border border-neutral-200 rounded-lg p-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                  <label className="text-sm font-medium text-gray-700">Filter by Days Overdue:</label>
+                  <label className="text-sm font-medium text-neutral-700">Filter by Days Overdue:</label>
                   <Select
                     options={[
                       { value: '', label: 'All Outstanding Bills' },
@@ -2693,21 +2693,21 @@ const ReportsPage = () => {
                   />
                   <button
                     onClick={() => fetchReportData(true)}
-                    className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded hover:bg-green-100 flex items-center gap-1"
+                    className="px-3 py-1 text-xs bg-success-bg text-success-fg rounded hover:bg-green-100 flex items-center gap-1"
                   >
                     <RefreshCw className="h-3 w-3" />
                     Apply Filter
                   </button>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
+                <p className="text-xs text-neutral-500 mt-2">
                   Filter bills by days overdue to prioritize collection calls
                 </p>
               </div>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-red-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Pending Bills & Outstanding Invoices</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold text-neutral-900">Pending Bills & Outstanding Invoices</h3>
+                    <p className="text-sm text-neutral-600 mt-1">
                       {outstandingDaysFilter
                         ? `Invoices with ${outstandingDaysFilter}+ days overdue`
                         : 'Invoices with unpaid or partially paid balances'}
@@ -2738,7 +2738,7 @@ const ReportsPage = () => {
                         if (!error?._handledByInterceptor) toast.error('Failed to export PDF')
                       }
                     }}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 flex items-center gap-2 transition-colors"
+                    className="px-4 py-2 bg-error text-white rounded-lg hover:bg-red-700 flex items-center gap-2 transition-colors"
                     disabled={!reportData.outstandingBills || reportData.outstandingBills.length === 0}
                   >
                     <Download className="h-4 w-4" />
@@ -2750,39 +2750,39 @@ const ReportsPage = () => {
                   <>
                   {/* CRITICAL FIX: Ensure table doesn't overflow on mobile/tablet - add horizontal scroll wrapper */}
                   <div className="hidden md:block overflow-x-auto w-full">
-                    <table className="min-w-[1000px] w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
+                    <table className="min-w-[1000px] w-full divide-y divide-neutral-200">
+                      <thead className="bg-neutral-50 sticky top-0 z-10">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Invoice No</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Total</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Paid</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Balance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Days Overdue</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Invoice No</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Total</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Paid</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Balance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Days Overdue</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 uppercase tracking-wider">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {reportData.outstandingBills.map((bill) => (
-                          <tr key={bill.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <tr key={bill.id} className="hover:bg-neutral-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
                               {bill.invoiceNo}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                               {bill.customerName || 'Cash Customer'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                               {new Date(bill.invoiceDate).toLocaleDateString('en-GB')}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-neutral-900">
                               {formatCurrency(bill.grandTotal)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-success">
                               {formatCurrency(bill.paidAmount)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-red-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-error">
                               {formatCurrency(bill.balanceAmount)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -2793,21 +2793,21 @@ const ReportsPage = () => {
                                 {bill.paymentStatus}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                               {(() => {
                                 const dueDate = bill.dueDate ? new Date(bill.dueDate) : (bill.planDate ? new Date(bill.planDate) : null)
                                 const daysOverdue = bill.daysOverdue ?? (dueDate
                                   ? Math.max(0, Math.floor((Date.now() - dueDate.getTime()) / 86400000))
                                   : 0)
                                 return daysOverdue > 0 ? (
-                                  <span className={`font-medium ${daysOverdue > 90 ? 'text-red-600' :
+                                  <span className={`font-medium ${daysOverdue > 90 ? 'text-error' :
                                     daysOverdue > 60 ? 'text-orange-600' :
                                       'text-yellow-600'
                                     }`}>
                                     {daysOverdue} days
                                   </span>
                                 ) : (
-                                  <span className="text-gray-400">-</span>
+                                  <span className="text-neutral-400">-</span>
                                 )
                               })()}
                             </td>
@@ -2815,7 +2815,7 @@ const ReportsPage = () => {
                               <button
                                 type="button"
                                 onClick={() => openOutstandingBillLedger(bill)}
-                                className="text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
+                                className="text-primary-600 hover:text-primary-800 font-medium hover:underline transition"
                                 title={bill.customerName || 'View customer ledger'}
                               >
                                 {(Number(bill.balanceAmount) || 0) > 0 ? 'Collect' : (bill.customerName || 'View ledger')}
@@ -2824,15 +2824,15 @@ const ReportsPage = () => {
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="bg-gray-50">
+                      <tfoot className="bg-neutral-50">
                         <tr>
-                          <td colSpan="4" className="px-6 py-4 text-right text-sm font-semibold text-gray-900">
+                          <td colSpan="4" className="px-6 py-4 text-right text-sm font-semibold text-neutral-900">
                             Total Outstanding:
                           </td>
-                          <td className="px-6 py-4 text-right text-sm font-semibold text-green-600">
+                          <td className="px-6 py-4 text-right text-sm font-semibold text-success">
                             {formatCurrency(reportData.outstandingBills.reduce((sum, b) => sum + b.paidAmount, 0))}
                           </td>
-                          <td className="px-6 py-4 text-right text-sm font-bold text-red-600">
+                          <td className="px-6 py-4 text-right text-sm font-bold text-error">
                             {formatCurrency(reportData.outstandingBills.reduce((sum, b) => sum + b.balanceAmount, 0))}
                           </td>
                           <td colSpan="3"></td>
@@ -2842,46 +2842,46 @@ const ReportsPage = () => {
                   </div>
 
                   {/* Mobile outstanding-bills cards (md:hidden) */}
-                  <div className="md:hidden divide-y divide-gray-100">
+                  <div className="md:hidden divide-y divide-neutral-100">
                     {reportData.outstandingBills.map((bill) => {
                       const daysOverdue = bill.daysOverdue ?? 0
                       return (
                         <div key={bill.id} className="px-4 py-3.5">
                           <div className="flex items-start justify-between gap-2 mb-1.5">
                             <div className="min-w-0">
-                              <p className="font-semibold text-gray-900 truncate">{bill.invoiceNo}</p>
-                              <p className="text-sm text-gray-600 truncate">{bill.customerName || 'Cash Customer'}</p>
+                              <p className="font-semibold text-neutral-900 truncate">{bill.invoiceNo}</p>
+                              <p className="text-sm text-neutral-600 truncate">{bill.customerName || 'Cash Customer'}</p>
                             </div>
                             <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bill.paymentStatus === 'Paid' ? 'bg-green-100 text-green-800' : bill.paymentStatus === 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
                               {bill.paymentStatus}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-500 mb-2">{new Date(bill.invoiceDate).toLocaleDateString('en-GB')}
+                          <p className="text-xs text-neutral-500 mb-2">{new Date(bill.invoiceDate).toLocaleDateString('en-GB')}
                             {daysOverdue > 0 && (
-                              <span className={`ml-2 font-medium ${daysOverdue > 90 ? 'text-red-600' : daysOverdue > 60 ? 'text-orange-600' : 'text-yellow-600'}`}>
+                              <span className={`ml-2 font-medium ${daysOverdue > 90 ? 'text-error' : daysOverdue > 60 ? 'text-orange-600' : 'text-yellow-600'}`}>
                                 {daysOverdue} days overdue
                               </span>
                             )}
                           </p>
                           <div className="grid grid-cols-3 gap-2 text-sm">
                             <div>
-                              <p className="text-xs text-gray-500">Total</p>
-                              <p className="text-gray-900 tabular-nums">{formatCurrency(bill.grandTotal)}</p>
+                              <p className="text-xs text-neutral-500">Total</p>
+                              <p className="text-neutral-900 tabular-nums">{formatCurrency(bill.grandTotal)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Paid</p>
-                              <p className="text-green-600 tabular-nums">{formatCurrency(bill.paidAmount)}</p>
+                              <p className="text-xs text-neutral-500">Paid</p>
+                              <p className="text-success tabular-nums">{formatCurrency(bill.paidAmount)}</p>
                             </div>
                             <div>
-                              <p className="text-xs text-gray-500">Balance</p>
-                              <p className="font-semibold text-red-600 tabular-nums">{formatCurrency(bill.balanceAmount)}</p>
+                              <p className="text-xs text-neutral-500">Balance</p>
+                              <p className="font-semibold text-error tabular-nums">{formatCurrency(bill.balanceAmount)}</p>
                             </div>
                           </div>
                           {bill.customerId && (
                             <button
                               type="button"
                               onClick={() => openOutstandingBillLedger(bill)}
-                              className="mt-2.5 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800 min-h-[44px] px-1 -ml-1"
+                              className="mt-2.5 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-800 min-h-[44px] px-1 -ml-1"
                             >
                               {(Number(bill.balanceAmount) || 0) > 0 ? 'Collect payment' : 'View ledger'}
                             </button>
@@ -2892,8 +2892,8 @@ const ReportsPage = () => {
                   </div>
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <DollarSign className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <DollarSign className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>No outstanding bills found</p>
                     <p className="text-sm mt-1">All invoices are fully paid</p>
                   </div>
@@ -2906,18 +2906,18 @@ const ReportsPage = () => {
           {activeTab === 'returns' && (
             <div className="space-y-6">
               {!returnsFeatureFlags.returnsEnabled ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-amber-800">
+                <div className="bg-warning-bg border border-warning-border rounded-lg p-4 text-amber-800">
                   <p className="font-medium">Sales returns are disabled</p>
                   <p className="text-sm mt-1">Contact your administrator to enable returns.</p>
                 </div>
               ) : (
                 <>
-              <p className="text-sm text-gray-600">Sales returns for the selected date range. Use filters to narrow by branch, route, damage category, or staff.</p>
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <p className="text-sm text-neutral-600">Sales returns for the selected date range. Use filters to narrow by branch, route, damage category, or staff.</p>
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Sales Returns</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold text-neutral-900">Sales Returns</h3>
+                    <p className="text-sm text-neutral-600 mt-1">
                       Total: {reportData.returnsReport?.totalCount ?? 0} return(s) · Total value: {formatCurrency((reportData.returnsReport?.items || []).reduce((s, r) => s + (parseFloat(r.grandTotal) || 0), 0))}
                     </p>
                   </div>
@@ -2970,7 +2970,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('Returns report exported to CSV')
                       }}
-                      className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
+                      className="px-4 py-2 bg-success text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm"
                       disabled={!reportData.returnsReport?.items?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -2979,7 +2979,7 @@ const ReportsPage = () => {
                     <button
                       type="button"
                       onClick={() => window.print()}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2 text-sm"
+                      className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 flex items-center gap-2 text-sm"
                     >
                       <FileText className="h-4 w-4" />
                       Print
@@ -2990,26 +2990,26 @@ const ReportsPage = () => {
                   <LoadingCard />
                 ) : reportData.returnsReport?.items?.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-100">
+                    <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                      <thead className="bg-neutral-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Invoice No</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Qty Returned</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Reason / Damage</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Staff</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Branch</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Route</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Invoice No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Qty Returned</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Reason / Damage</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Staff</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Branch</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Route</th>
                           {returnsFeatureFlags.returnsRequireApproval && isAdminOrOwner(user) && (
-                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Actions</th>
+                            <th className="px-4 py-3 text-left font-semibold text-neutral-700">Actions</th>
                           )}
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">PDF</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">PDF</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-neutral-200">
                         {reportData.returnsReport.items.flatMap((ret) => {
                           const items = ret.items || ret.Items || []
                           const status = (ret.status || ret.Status || '').toLowerCase()
@@ -3029,7 +3029,7 @@ const ReportsPage = () => {
                                       toast.error(e?.response?.data?.message || 'Failed to approve')
                                     }
                                   }}
-                                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                                  className="px-2 py-1 text-xs bg-success text-white rounded hover:bg-green-700"
                                 >
                                   Approve
                                 </button>
@@ -3044,7 +3044,7 @@ const ReportsPage = () => {
                                       toast.error(e?.response?.data?.message || 'Failed to reject')
                                     }
                                   }}
-                                  className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                  className="px-2 py-1 text-xs bg-error text-white rounded hover:bg-red-700"
                                 >
                                   Reject
                                 </button>
@@ -3071,7 +3071,7 @@ const ReportsPage = () => {
                                     if (!e?._handledByInterceptor) toast.error('Failed to generate PDF')
                                   }
                                 }}
-                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                                className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-primary-600 text-white rounded hover:bg-primary-700"
                                 title="Download return bill PDF"
                               >
                                 <FileText className="h-3 w-3" />
@@ -3081,8 +3081,8 @@ const ReportsPage = () => {
                           )
                           if (items.length === 0) {
                             return [(
-                              <tr key={ret.id} className="hover:bg-gray-50">
-                                <td className="px-4 py-3 whitespace-nowrap text-gray-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
+                              <tr key={ret.id} className="hover:bg-neutral-50">
+                                <td className="px-4 py-3 whitespace-nowrap text-neutral-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap font-medium">{ret.saleInvoiceNo ?? '—'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">{ret.customerName ?? '—'}</td>
                                 <td className="px-4 py-3">—</td>
@@ -3098,8 +3098,8 @@ const ReportsPage = () => {
                             )]
                           }
                           return items.map((line, idx) => (
-                            <tr key={`${ret.id}-${line.id || idx}`} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 whitespace-nowrap text-gray-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
+                            <tr key={`${ret.id}-${line.id || idx}`} className="hover:bg-neutral-50">
+                              <td className="px-4 py-3 whitespace-nowrap text-neutral-600">{ret.returnDate ? new Date(ret.returnDate).toLocaleDateString() : '—'}</td>
                               <td className="px-4 py-3 whitespace-nowrap font-medium">{ret.saleInvoiceNo ?? '—'}</td>
                               <td className="px-4 py-3 whitespace-nowrap">{ret.customerName ?? '—'}</td>
                               <td className="px-4 py-3">{line.productName ?? line.ProductName ?? '—'}</td>
@@ -3118,8 +3118,8 @@ const ReportsPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <RotateCcw className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <RotateCcw className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>{loading ? 'Loading returns...' : 'No returns in this period. Adjust the date range or filters.'}</p>
                   </div>
                 )}
@@ -3132,11 +3132,11 @@ const ReportsPage = () => {
           {/* Damage Report – return lines where condition = damaged or write-off */}
           {activeTab === 'damage' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Damage Report</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold text-neutral-900">Damage Report</h3>
+                    <p className="text-sm text-neutral-600 mt-1">
                       Return lines with condition Damaged or Write-off. Product, qty, amount, branch, route.
                     </p>
                   </div>
@@ -3172,13 +3172,13 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('Damage report exported to CSV')
                       }}
-                      className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
                       disabled={!reportData.damageReport?.length}
                     >
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
-                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Print
                     </button>
@@ -3188,26 +3188,26 @@ const ReportsPage = () => {
                   <LoadingCard />
                 ) : (reportData.damageReport?.length ?? 0) > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-100">
+                    <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                      <thead className="bg-neutral-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Return No</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Invoice No</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Qty</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Condition</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Branch</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Route</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Return No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Invoice No</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Product</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Qty</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Condition</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Branch</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Route</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-neutral-200">
                         {(reportData.damageReport || []).map((r, idx) => (
-                          <tr key={`${r.returnId}-${idx}`} className="hover:bg-gray-50">
+                          <tr key={`${r.returnId}-${idx}`} className="hover:bg-neutral-50">
                             <td className="px-4 py-3 whitespace-nowrap font-medium">{r.returnNo ?? '—'}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-neutral-600">{r.returnDate ? new Date(r.returnDate).toLocaleDateString() : '—'}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{r.invoiceNo ?? '—'}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{r.customerName ?? '—'}</td>
                             <td className="px-4 py-3">{r.productName ?? '—'}</td>
@@ -3222,8 +3222,8 @@ const ReportsPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <AlertTriangle className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <AlertTriangle className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>{loading ? 'Loading...' : 'No damage or write-off return lines in this period.'}</p>
                   </div>
                 )}
@@ -3234,11 +3234,11 @@ const ReportsPage = () => {
           {/* Credit Note Report */}
           {activeTab === 'credit-notes' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-indigo-50 to-primary-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Credit Note Report</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold text-neutral-900">Credit Note Report</h3>
+                    <p className="text-sm text-neutral-600 mt-1">
                       Credit notes linked to returns (cash/paid invoice flow). Status: unused / used / cancelled.
                     </p>
                   </div>
@@ -3277,7 +3277,7 @@ const ReportsPage = () => {
                       <Download className="h-4 w-4" />
                       Export CSV
                     </button>
-                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2">
+                    <button type="button" onClick={() => window.print()} className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Print
                     </button>
@@ -3287,27 +3287,27 @@ const ReportsPage = () => {
                   <LoadingCard />
                 ) : (reportData.creditNotesReport?.length ?? 0) > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 text-sm">
-                      <thead className="bg-gray-100">
+                    <table className="min-w-full divide-y divide-neutral-200 text-sm">
+                      <thead className="bg-neutral-100">
                         <tr>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Date</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Customer</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Linked Return No</th>
-                          <th className="px-4 py-3 text-right font-semibold text-gray-700">Amount</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Currency</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Status</th>
-                          <th className="px-4 py-3 text-left font-semibold text-gray-700">Created By</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Date</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Customer</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Linked Return No</th>
+                          <th className="px-4 py-3 text-right font-semibold text-neutral-700">Amount</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Currency</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Status</th>
+                          <th className="px-4 py-3 text-left font-semibold text-neutral-700">Created By</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-neutral-200">
                         {(reportData.creditNotesReport || []).map((c) => (
-                          <tr key={c.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
+                          <tr key={c.id} className="hover:bg-neutral-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-neutral-600">{c.createdAt ? new Date(c.createdAt).toLocaleDateString() : '—'}</td>
                             <td className="px-4 py-3 whitespace-nowrap font-medium">{c.customerName ?? '—'}</td>
                             <td className="px-4 py-3 whitespace-nowrap">{c.linkedReturnNo ?? '—'}</td>
                             <td className="px-4 py-3 text-right font-medium">{formatCurrency(c.amount ?? 0)}</td>
                             <td className="px-4 py-3">{c.currency ?? 'AED'}</td>
-                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(c.status || '').toLowerCase() === 'used' ? 'bg-green-100 text-green-800' : (c.status || '').toLowerCase() === 'cancelled' ? 'bg-gray-100 text-gray-800' : 'bg-indigo-100 text-indigo-800'}`}>{c.status ?? 'unused'}</span></td>
+                            <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-xs font-medium ${(c.status || '').toLowerCase() === 'used' ? 'bg-green-100 text-green-800' : (c.status || '').toLowerCase() === 'cancelled' ? 'bg-neutral-100 text-neutral-800' : 'bg-indigo-100 text-indigo-800'}`}>{c.status ?? 'unused'}</span></td>
                             <td className="px-4 py-3">{c.createdByName ?? '—'}</td>
                           </tr>
                         ))}
@@ -3315,8 +3315,8 @@ const ReportsPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <FileText className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <FileText className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>{loading ? 'Loading...' : 'No credit notes in this period.'}</p>
                   </div>
                 )}
@@ -3327,10 +3327,10 @@ const ReportsPage = () => {
           {/* Net Sales Report – Total Sales − Returns by period */}
           {activeTab === 'net-sales' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900">Net Sales & Refunds Report</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-primary-50 to-indigo-50 px-6 py-4 border-b border-neutral-200">
+                  <h3 className="text-lg font-semibold text-neutral-900">Net Sales & Refunds Report</h3>
+                  <p className="text-sm text-neutral-600 mt-1">
                     Net Sales = Total Sales − Returns. Refunds Paid shows cash refunded to customers for the selected period and filters.
                   </p>
                 </div>
@@ -3339,27 +3339,27 @@ const ReportsPage = () => {
                 ) : reportData.netSalesReport ? (
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                      <div className="bg-green-50 rounded-lg p-4 border border-green-100">
-                        <p className="text-sm font-medium text-green-700">Total Sales</p>
+                      <div className="bg-success-bg rounded-lg p-4 border border-green-100">
+                        <p className="text-sm font-medium text-success-fg">Total Sales</p>
                         <p className="text-2xl font-bold text-green-900 mt-1">{formatCurrency(reportData.netSalesReport.totalSales ?? 0)}</p>
                       </div>
-                      <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
-                        <p className="text-sm font-medium text-amber-700">Total Returns</p>
+                      <div className="bg-warning-bg rounded-lg p-4 border border-amber-100">
+                        <p className="text-sm font-medium text-warning-fg">Total Returns</p>
                         <p className="text-2xl font-bold text-amber-900 mt-1">{formatCurrency(reportData.netSalesReport.totalReturns ?? 0)}</p>
                       </div>
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                        <p className="text-sm font-medium text-blue-700">Net Sales</p>
-                        <p className="text-2xl font-bold text-blue-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
+                      <div className="bg-primary-50 rounded-lg p-4 border border-primary-100">
+                        <p className="text-sm font-medium text-primary-700">Net Sales</p>
+                        <p className="text-2xl font-bold text-primary-900 mt-1">{formatCurrency(reportData.netSalesReport.netSales ?? 0)}</p>
                       </div>
-                      <div className="bg-red-50 rounded-lg p-4 border border-red-100">
-                        <p className="text-sm font-medium text-red-700">Refunds Paid</p>
+                      <div className="bg-error-bg rounded-lg p-4 border border-red-100">
+                        <p className="text-sm font-medium text-error-fg">Refunds Paid</p>
                         <p className="text-2xl font-bold text-red-900 mt-1">{formatCurrency(reportData.netSalesReport.refundsPaid ?? 0)}</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <TrendingUp className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <TrendingUp className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>{loading ? 'Loading...' : 'No data for the selected period.'}</p>
                   </div>
                 )}
@@ -3370,11 +3370,11 @@ const ReportsPage = () => {
           {/* Collections list (customers with balance > 0 and phone) – #53 */}
           {activeTab === 'collections' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between flex-wrap gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Outstanding Collections</h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <h3 className="text-lg font-semibold text-neutral-900">Outstanding Collections</h3>
+                    <p className="text-sm text-neutral-600 mt-1">
                       Customers with balance &gt; 0 — use for collection calls. Export or print to take on the go.
                     </p>
                   </div>
@@ -3404,7 +3404,7 @@ const ReportsPage = () => {
                         URL.revokeObjectURL(url)
                         toast.success('CSV downloaded')
                       }}
-                      className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-warning text-white rounded-lg hover:bg-amber-700 flex items-center gap-2"
                       disabled={!reportData.collectionsList?.length}
                     >
                       <Download className="h-4 w-4" />
@@ -3413,7 +3413,7 @@ const ReportsPage = () => {
                     <button
                       type="button"
                       onClick={() => window.print()}
-                      className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+                      className="px-4 py-2 bg-neutral-600 text-white rounded-lg hover:bg-neutral-700 flex items-center gap-2"
                     >
                       <FileText className="h-4 w-4" />
                       Print
@@ -3424,25 +3424,25 @@ const ReportsPage = () => {
                   <LoadingCard />
                 ) : reportData.collectionsList && reportData.collectionsList.length > 0 ? (
                   <div className="overflow-x-auto" id="collections-print">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-neutral-200">
+                      <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Phone</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Balance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase hidden sm:table-cell">Address</th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Phone</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Balance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase hidden sm:table-cell">Address</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-neutral-700 uppercase">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {reportData.collectionsList.map((c) => (
-                          <tr key={c.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{c.name || '—'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-gray-700">{c.phone || '—'}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-red-700">
+                          <tr key={c.id} className="hover:bg-neutral-50">
+                            <td className="px-6 py-4 whitespace-nowrap font-medium text-neutral-900">{c.name || '—'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-neutral-700">{c.phone || '—'}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right font-semibold text-error-fg">
                               {formatCurrency(c.pendingBalance ?? c.balance ?? 0)}
                             </td>
-                            <td className="px-6 py-4 text-gray-600 hidden sm:table-cell max-w-xs truncate">{c.address || '—'}</td>
+                            <td className="px-6 py-4 text-neutral-600 hidden sm:table-cell max-w-xs truncate">{c.address || '—'}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-center">
                               {c.id ? (
                                 <button
@@ -3456,17 +3456,17 @@ const ReportsPage = () => {
                                   Collect
                                 </button>
                               ) : (
-                                <span className="text-xs text-gray-400">—</span>
+                                <span className="text-xs text-neutral-400">—</span>
                               )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="bg-gray-50">
+                      <tfoot className="bg-neutral-50">
                         <tr>
-                          <td className="px-6 py-4 font-semibold text-gray-900">Total</td>
+                          <td className="px-6 py-4 font-semibold text-neutral-900">Total</td>
                           <td></td>
-                          <td className="px-6 py-4 text-right font-bold text-red-700">
+                          <td className="px-6 py-4 text-right font-bold text-error-fg">
                             {formatCurrency((reportData.collectionsList || []).reduce((s, c) => s + (Number(c.pendingBalance ?? c.balance) || 0), 0))}
                           </td>
                           <td className="hidden sm:table-cell"></td>
@@ -3476,8 +3476,8 @@ const ReportsPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <Phone className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <Phone className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>No customers with outstanding balance</p>
                     <p className="text-sm mt-1">All customer balances are settled</p>
                   </div>
@@ -3490,11 +3490,11 @@ const ReportsPage = () => {
           {/* Cheque Report Tab */}
           {activeTab === 'cheque' && (
             <div className="space-y-6">
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-primary-50 to-indigo-50 px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Cheque Report</h3>
-                    <p className="text-sm text-gray-600 mt-1">All cheque payments and their status</p>
+                    <h3 className="text-lg font-semibold text-neutral-900">Cheque Report</h3>
+                    <p className="text-sm text-neutral-600 mt-1">All cheque payments and their status</p>
                   </div>
                   <button
                     onClick={async () => {
@@ -3509,7 +3509,7 @@ const ReportsPage = () => {
                         if (!error?._handledByInterceptor) toast.error('Failed to export cheque report')
                       }
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition-colors"
+                    className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center gap-2 transition-colors"
                     disabled={!reportData.chequeReport || reportData.chequeReport.length === 0}
                   >
                     <Download className="h-4 w-4" />
@@ -3518,34 +3518,34 @@ const ReportsPage = () => {
                 </div>
                 {reportData.chequeReport && reportData.chequeReport.length > 0 ? (
                   <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-neutral-200">
+                      <thead className="bg-neutral-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Cheque No</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Customer</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Invoice</th>
-                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">Amount</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Cheque Date</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Status</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">Actions</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Cheque No</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Customer</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Invoice</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase">Amount</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Cheque Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Status</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
+                      <tbody className="bg-white divide-y divide-neutral-200">
                         {reportData.chequeReport.map((cheque) => (
-                          <tr key={cheque.id} className="hover:bg-gray-50">
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          <tr key={cheque.id} className="hover:bg-neutral-50">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
                               {cheque.chequeNumber || cheque.referenceNumber || '-'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
                               {cheque.customerName || 'Cash Customer'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                               {cheque.invoiceNo || '-'}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-neutral-900">
                               {formatCurrency(cheque.amount || 0)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
                               {cheque.chequeDate ? new Date(cheque.chequeDate).toLocaleDateString('en-GB') : '-'}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -3575,7 +3575,7 @@ const ReportsPage = () => {
                                         toast.error(error?.response?.data?.message || 'Failed to clear cheque')
                                       }
                                     }}
-                                    className="text-green-600 hover:text-green-800 font-medium"
+                                    className="text-success hover:text-green-800 font-medium"
                                   >
                                     Clear
                                   </button>
@@ -3594,7 +3594,7 @@ const ReportsPage = () => {
                                         toast.error(error?.response?.data?.message || 'Failed to bounce cheque')
                                       }
                                     }}
-                                    className="text-red-600 hover:text-red-800 font-medium"
+                                    className="text-error hover:text-red-800 font-medium"
                                   >
                                     Bounce
                                   </button>
@@ -3607,8 +3607,8 @@ const ReportsPage = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                    <ShieldCheck className="h-12 w-12 mb-2 text-gray-400" />
+                  <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                    <ShieldCheck className="h-12 w-12 mb-2 text-neutral-400" />
                     <p>No cheque payments found</p>
                     <p className="text-sm mt-1">No cheques recorded for the selected period</p>
                   </div>
@@ -3619,48 +3619,48 @@ const ReportsPage = () => {
 
           {activeTab === 'staff' && (
             <div className="space-y-6">
-              <h3 className="text-lg font-semibold text-gray-900">Staff Performance Report</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="text-lg font-semibold text-neutral-900">Staff Performance Report</h3>
+              <p className="text-sm text-neutral-600">
                 Per-staff sales and collection metrics (Owner view). Uses the shared date range above; filter by route to see performance for a single route.
               </p>
               {reportData.staffReport && reportData.staffReport.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50 sticky top-0">
+                  <table className="min-w-full divide-y divide-neutral-200">
+                    <thead className="bg-neutral-50 sticky top-0">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Staff Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Assigned Routes</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Invoices</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Total Billed</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Collected</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Collection Rate</th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">Avg Days to Pay</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Staff Name</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-700 uppercase tracking-wider">Assigned Routes</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Invoices</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Total Billed</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Collected</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Collection Rate</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-neutral-700 uppercase tracking-wider">Avg Days to Pay</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white divide-y divide-neutral-200">
                       {reportData.staffReport.map((staff, idx) => (
-                        <tr key={staff.userId} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <tr key={staff.userId} className="hover:bg-neutral-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-900">
                             {staff.userName}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={staff.assignedRoutes}>
+                          <td className="px-6 py-4 text-sm text-neutral-600 max-w-xs truncate" title={staff.assignedRoutes}>
                             {staff.assignedRoutes}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-neutral-900">
                             {staff.invoicesCreated}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-neutral-900">
                             {formatCurrency(staff.totalBilled)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-success">
                             {formatCurrency(staff.cashCollected)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                            <span className={staff.collectionRatePercent >= 80 ? 'text-green-600 font-medium' : staff.collectionRatePercent >= 50 ? 'text-yellow-600' : 'text-red-600'}>
+                            <span className={staff.collectionRatePercent >= 80 ? 'text-success font-medium' : staff.collectionRatePercent >= 50 ? 'text-yellow-600' : 'text-error'}>
                               {staff.collectionRatePercent}%
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-neutral-600">
                             {staff.avgDaysToPay > 0 ? `${staff.avgDaysToPay} days` : '-'}
                           </td>
                         </tr>
@@ -3668,7 +3668,7 @@ const ReportsPage = () => {
                     </tbody>
                   </table>
                   {reportData.staffReport.length > 0 && (
-                    <div className="mt-3 flex items-center justify-between text-sm text-gray-500">
+                    <div className="mt-3 flex items-center justify-between text-sm text-neutral-500">
                       <span>Best Collector: {reportData.staffReport.reduce((best, s) =>
                         (s.totalBilled > 0 && (s.collectionRatePercent > (best?.collectionRatePercent ?? -1))) ? s : best
                       , reportData.staffReport[0] || null)?.userName ?? '-'}</span>
@@ -3676,8 +3676,8 @@ const ReportsPage = () => {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                  <Users className="h-12 w-12 mb-2 text-gray-400" />
+                <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
+                  <Users className="h-12 w-12 mb-2 text-neutral-400" />
                   <p>No staff performance data for this period</p>
                   <p className="text-sm mt-1">Add Staff users and assign them to routes to see metrics</p>
                 </div>
@@ -3688,28 +3688,28 @@ const ReportsPage = () => {
           {/* AI Insights Tab */}
           {activeTab === 'ai' && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+              <div className="bg-gradient-to-r from-primary-50 to-purple-50 rounded-lg p-6">
                 <div className="flex items-center mb-4">
-                  <Eye className="h-6 w-6 text-blue-600 mr-2" />
-                  <h3 className="text-lg font-semibold text-gray-900">AI Business Insights</h3>
+                  <Eye className="h-6 w-6 text-primary-600 mr-2" />
+                  <h3 className="text-lg font-semibold text-neutral-900">AI Business Insights</h3>
                 </div>
-                <p className="text-gray-600 mb-6">
+                <p className="text-neutral-600 mb-6">
                   AI-powered recommendations to optimize your business performance
                 </p>
 
                 {reportData.aiSuggestions && reportData.aiSuggestions.length > 0 ? (
                   <div className="space-y-4">
                     {reportData.aiSuggestions.map((suggestion, index) => (
-                      <div key={index} className={`p-4 rounded-lg border-l-4 ${suggestion.priority === 'high' ? 'bg-red-50 border-red-400' :
+                      <div key={index} className={`p-4 rounded-lg border-l-4 ${suggestion.priority === 'high' ? 'bg-error-bg border-red-400' :
                         suggestion.priority === 'medium' ? 'bg-yellow-50 border-yellow-400' :
-                          'bg-green-50 border-green-400'
+                          'bg-success-bg border-green-400'
                         }`}>
                         <div className="flex items-start justify-between">
                           <div className="flex-1">
-                            <h4 className="font-medium text-gray-900">{suggestion.title}</h4>
-                            <p className="text-sm text-gray-600 mt-1">{suggestion.description}</p>
+                            <h4 className="font-medium text-neutral-900">{suggestion.title}</h4>
+                            <p className="text-sm text-neutral-600 mt-1">{suggestion.description}</p>
                           </div>
-                          <button className="ml-4 px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+                          <button className="ml-4 px-3 py-1 bg-primary-600 text-white text-sm rounded-md hover:bg-primary-700">
                             {suggestion.action}
                           </button>
                         </div>
@@ -3717,7 +3717,7 @@ const ReportsPage = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center py-12 text-gray-500">
+                  <div className="flex items-center justify-center py-12 text-neutral-500">
                     No AI suggestions available at this time
                   </div>
                 )}

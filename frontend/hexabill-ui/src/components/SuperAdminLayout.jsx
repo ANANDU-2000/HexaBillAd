@@ -87,7 +87,7 @@ const SuperAdminLayout = () => {
   const isActive = (href) => location.pathname === href
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-neutral-50">
       {/* Mobile Header - Premium Design */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-primary-900 text-white shadow-xl z-50 border-b border-primary-700">
         <div className="flex items-center justify-between px-4 py-3">
@@ -98,7 +98,7 @@ const SuperAdminLayout = () => {
               e.stopPropagation()
               setSidebarOpen(true)
             }}
-            className="p-2.5 rounded-xl hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
             aria-label="Open menu"
           >
             <Menu className="h-6 w-6" />
@@ -113,12 +113,12 @@ const SuperAdminLayout = () => {
               e.preventDefault()
               navigate('/superadmin/error-logs')
             }}
-            className="relative p-2.5 rounded-xl hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="relative p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
             aria-label="Alerts"
           >
             <Bell className="h-5 w-5" />
             {(alertSummary?.unresolvedCount ?? 0) > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold text-white bg-red-500 rounded-full">
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-micro font-bold text-white bg-red-500 rounded-full">
                 {alertSummary.unresolvedCount > 99 ? '99+' : alertSummary.unresolvedCount}
               </span>
             )}
@@ -129,7 +129,7 @@ const SuperAdminLayout = () => {
               e.preventDefault()
               navigate('/profile')
             }}
-            className="p-2.5 rounded-xl hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
+            className="p-2.5 rounded-lg hover:bg-primary-700 active:bg-primary-600 transition-all duration-200 touch-manipulation shadow-md"
             aria-label="Profile"
           >
             <User className="h-5 w-5" />
@@ -157,7 +157,7 @@ const SuperAdminLayout = () => {
               <button
                 type="button"
                 onClick={() => setSidebarOpen(false)}
-                className="p-2 rounded-xl hover:bg-primary-700 active:bg-primary-600 touch-manipulation transition-all duration-200"
+                className="p-2 rounded-lg hover:bg-primary-700 active:bg-primary-600 touch-manipulation transition-all duration-200"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -170,7 +170,7 @@ const SuperAdminLayout = () => {
                     key={item.name}
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center px-4 py-3.5 text-base font-semibold rounded-xl touch-manipulation transition-all duration-200 ${isActive(item.href)
+                    className={`flex items-center px-4 py-3.5 text-base font-semibold rounded-lg touch-manipulation transition-all duration-200 ${isActive(item.href)
                       ? 'bg-primary-700 text-white'
                       : 'text-primary-100 hover:bg-primary-700/50 active:bg-primary-600'
                       }`}
@@ -185,7 +185,7 @@ const SuperAdminLayout = () => {
               <Link
                 to="/profile"
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center px-4 py-3 text-base font-semibold rounded-xl text-primary-100 hover:bg-primary-700 active:bg-primary-600 touch-manipulation transition-all duration-200"
+                className="flex items-center px-4 py-3 text-base font-semibold rounded-lg text-primary-100 hover:bg-primary-700 active:bg-primary-600 touch-manipulation transition-all duration-200"
               >
                 <User className="mr-4 h-5 w-5" />
                 My Profile
@@ -196,7 +196,7 @@ const SuperAdminLayout = () => {
                   setSidebarOpen(false)
                   logout()
                 }}
-                className="flex items-center w-full px-4 py-3 text-base font-semibold text-red-300 hover:text-white hover:bg-red-600/20 rounded-xl touch-manipulation transition-all duration-200"
+                className="flex items-center w-full px-4 py-3 text-base font-semibold text-red-300 hover:text-white hover:bg-error/20 rounded-lg touch-manipulation transition-all duration-200"
               >
                 <LogOut className="mr-4 h-5 w-5" />
                 Sign out
@@ -238,7 +238,7 @@ const SuperAdminLayout = () => {
                   key={item.name}
                   to={item.href}
                   title={sidebarCollapsed ? item.name : undefined}
-                  className={`group flex items-center rounded-xl transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+                  className={`group flex items-center rounded-lg transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
                     } ${isActive(item.href)
                       ? 'bg-primary-700 text-white'
                       : 'text-primary-100 hover:bg-primary-700/50 hover:text-white'
@@ -256,7 +256,7 @@ const SuperAdminLayout = () => {
             <button
               onClick={logout}
               title={sidebarCollapsed ? 'Sign Out' : undefined}
-              className={`flex items-center w-full text-sm font-semibold text-red-200 hover:text-white hover:bg-red-600/20 rounded-xl transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
+              className={`flex items-center w-full text-sm font-semibold text-red-200 hover:text-white hover:bg-error/20 rounded-lg transition-all duration-200 ${sidebarCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'
                 }`}
             >
               <LogOut className="h-5 w-5 flex-shrink-0" />
@@ -269,18 +269,18 @@ const SuperAdminLayout = () => {
       {/* Main content - full width, dynamic padding for sidebar */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-60'}`}>
         {backendUnavailable && (
-          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-100 border-b border-amber-200 text-amber-900 text-sm text-left">
+          <div className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-100 border-b border-warning-border text-amber-900 text-sm text-left">
             <span className="font-medium">Service temporarily unavailable.</span>
             <span>Service is temporarily unavailable. Please try again in a moment or contact your administrator.</span>
           </div>
         )}
         {/* Top Header Bar - Premium Design */}
-        <div className={`hidden lg:block fixed top-0 right-0 bg-white border-b border-gray-200 shadow-sm z-30 transition-all duration-300 ${sidebarCollapsed ? 'left-20' : 'left-72'}`}>
+        <div className={`hidden lg:block fixed top-0 right-0 bg-white border-b border-neutral-200 shadow-sm z-30 transition-all duration-150 ${sidebarCollapsed ? 'left-20' : 'left-60'}`}>
           <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center space-x-4 flex-1 min-w-0">
               <div className="min-w-0 flex-1">
-                <h1 className="text-xl font-bold text-gray-900">Platform Administration</h1>
-                <p className="text-sm text-gray-500">Manage tenants, subscriptions, and platform metrics</p>
+                <h1 className="text-xl font-bold text-neutral-900">Platform Administration</h1>
+                <p className="text-sm text-neutral-500">Manage tenants, subscriptions, and platform metrics</p>
               </div>
             </div>
             <div className="flex items-center space-x-3 flex-shrink-0">
@@ -289,10 +289,10 @@ const SuperAdminLayout = () => {
                 <button
                   type="button"
                   onClick={() => setShowAlertDropdown(!showAlertDropdown)}
-                  className="relative p-2.5 hover:bg-gray-100 rounded-xl transition-all"
+                  className="relative p-2.5 hover:bg-neutral-100 rounded-lg transition-all"
                   aria-label="Critical alerts"
                 >
-                  <Bell className="h-5 w-5 text-gray-600" />
+                  <Bell className="h-5 w-5 text-neutral-600" />
                   {(alertSummary?.unresolvedCount ?? 0) > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center text-xs font-bold text-white bg-red-500 rounded-full">
                       {alertSummary.unresolvedCount > 99 ? '99+' : alertSummary.unresolvedCount}
@@ -300,10 +300,10 @@ const SuperAdminLayout = () => {
                   )}
                 </button>
                 {showAlertDropdown && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-semibold text-gray-900">Critical events</p>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50">
+                    <div className="px-4 py-2 border-b border-neutral-100">
+                      <p className="text-sm font-semibold text-neutral-900">Critical events</p>
+                      <p className="text-xs text-neutral-500 mt-0.5">
                         {alertSummary?.unresolvedCount ?? 0} unresolved · {(alertSummary?.last24hCount ?? 0)} in last 24h
                         {(alertSummary?.last1hCount ?? 0) > 0 && ` · ${alertSummary.last1hCount} in last 1h`}
                       </p>
@@ -311,9 +311,9 @@ const SuperAdminLayout = () => {
                     {(alertSummary?.recent?.length ?? 0) > 0 && (
                       <div className="max-h-48 overflow-y-auto px-4 py-2 space-y-2">
                         {alertSummary.recent.map((r) => (
-                          <div key={r.id} className="text-xs text-gray-700 border-l-2 border-red-200 pl-2 py-1">
+                          <div key={r.id} className="text-xs text-neutral-700 border-l-2 border-error-border pl-2 py-1">
                             <p className="truncate font-medium">{r.message || 'Error'}</p>
-                            <p className="text-gray-500">{r.tenantName ? `${r.tenantName}` : 'Platform'} · {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</p>
+                            <p className="text-neutral-500">{r.tenantName ? `${r.tenantName}` : 'Platform'} · {r.createdAt ? new Date(r.createdAt).toLocaleString() : ''}</p>
                           </div>
                         ))}
                       </div>
@@ -338,22 +338,22 @@ const SuperAdminLayout = () => {
               <div className="relative" ref={profileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center space-x-3 px-4 py-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                  className="flex items-center space-x-3 px-4 py-2 hover:bg-neutral-100 rounded-lg transition-all duration-200"
                 >
                   <div className="hidden md:block text-right">
-                    <p className="text-sm font-semibold text-gray-900">{user?.name || 'Admin'}</p>
-                    <p className="text-xs text-gray-500">Super Admin</p>
+                    <p className="text-sm font-semibold text-neutral-900">{user?.name || 'Admin'}</p>
+                    <p className="text-xs text-neutral-500">Super Admin</p>
                   </div>
                   <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center">
                     <User className="h-5 w-5 text-white" />
                   </div>
-                  <ChevronDown className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`h-4 w-4 text-neutral-600 transition-transform duration-200 ${showProfileDropdown ? 'rotate-180' : ''}`} />
                 </button>
 
                 {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-neutral-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="px-3 py-2 border-b border-neutral-200 bg-primary-50">
-                      <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                      <p className="text-sm font-semibold text-neutral-900">{user?.name}</p>
                       <p className="text-xs text-primary-600">Super Admin</p>
                     </div>
                     <button
@@ -361,18 +361,18 @@ const SuperAdminLayout = () => {
                         navigate('/profile')
                         setShowProfileDropdown(false)
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center transition-colors"
+                      className="w-full px-4 py-3 text-left text-sm text-neutral-700 hover:bg-neutral-50 flex items-center transition-colors"
                     >
-                      <User className="h-4 w-4 mr-3 text-gray-500" />
+                      <User className="h-4 w-4 mr-3 text-neutral-500" />
                       My Profile
                     </button>
-                    <div className="border-t border-gray-200 my-1"></div>
+                    <div className="border-t border-neutral-200 my-1"></div>
                     <button
                       onClick={() => {
                         logout()
                         setShowProfileDropdown(false)
                       }}
-                      className="w-full px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50 flex items-center transition-colors"
+                      className="w-full px-4 py-3 text-left text-sm text-error hover:bg-error-bg flex items-center transition-colors"
                     >
                       <LogOut className="h-4 w-4 mr-3" />
                       Sign Out

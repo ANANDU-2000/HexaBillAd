@@ -78,7 +78,7 @@ const MoreMenuSheet = ({ open, onClose }) => {
     : groups
 
   const box = (active) =>
-    `flex items-center gap-3 min-h-11 px-4 py-3 rounded-xl bg-white border transition-colors active:bg-neutral-50 ${
+    `flex items-center gap-3 min-h-11 px-4 py-3 rounded-lg bg-white border transition-colors active:bg-neutral-50 ${
       active ? 'border-primary-300 bg-primary-50/50' : 'border-neutral-200'
     }`
 

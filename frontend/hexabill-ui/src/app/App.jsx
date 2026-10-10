@@ -17,6 +17,10 @@ import { MaintenanceOverlay } from '../components/MaintenanceOverlay'
 
 // Route-level code splitting. The initial bundle stays lean; each route chunk
 // loads on first visit. Login/Signup stay eager so the landing screen paints fast.
+// Dev-only component reference (docs/uiux/DESIGN-SYSTEM.md). Tree-shaken out of production builds,
+// so it is deliberately not in docs/plan/ROUTE-MANIFEST.json (that lists production routes only).
+const DesignSystemPage = import.meta.env.DEV ? lazy(() => import('../pages/dev/DesignSystemPage')) : null
+const DESIGN_SYSTEM_PATH = '/__design'
 const Dashboard = lazy(() => import('../features/dashboard/DashboardTally'))
 const ProductsPage = lazy(() => import('../features/products/ProductsPage'))
 const ProductDetailPage = lazy(() => import('../features/products/ProductDetailPage'))
@@ -113,7 +117,7 @@ function App() {
   }
 
   // Public routes (no auth required) - Marketing pages moved to separate site
-  const publicRoutes = ['/signup', '/login', '/Admin26']
+  const publicRoutes = ['/signup', '/login', '/Admin26', ...(DesignSystemPage ? [DESIGN_SYSTEM_PATH] : [])]
   const isPublicRoute = publicRoutes.includes(location.pathname)
 
   if (isPublicRoute && !isLocalHost) {
@@ -134,6 +138,9 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/Admin26" element={<Login isSuperAdminLogin={true} />} />
+          {DesignSystemPage && (
+            <Route path={DESIGN_SYSTEM_PATH} element={<Suspense fallback={<RouteFallback />}><DesignSystemPage /></Suspense>} />
+          )}
         </Routes>
       </ErrorBoundary>
     )

@@ -59,14 +59,14 @@ const DataImportPage = () => {
   if (!isAdmin) {
     return (
       <div className="p-4 w-full">
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-          <HelpCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="bg-warning-bg border border-warning-border rounded-lg p-4 flex items-start gap-3">
+          <HelpCircle className="h-6 w-6 text-warning flex-shrink-0 mt-0.5" />
           <div>
             <h2 className="font-semibold text-amber-900">Access required</h2>
             <p className="text-sm text-amber-800 mt-1">Data import and backup restore are available to Admins and Owners. Ask your admin or go to Settings for user roles.</p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="mt-3 text-sm font-medium text-amber-700 hover:text-amber-900 underline"
+              className="mt-3 text-sm font-medium text-warning-fg hover:text-amber-900 underline"
             >
               Back to Dashboard
             </button>
@@ -77,16 +77,16 @@ const DataImportPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden max-w-full">
+    <div className="min-h-screen bg-neutral-50 overflow-x-hidden max-w-full">
       <div className="w-full px-4 py-6 sm:py-8">
         {/* Header - works on mobile and desktop */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900 flex items-center gap-2">
               <Upload className="h-8 w-8 sm:h-9 sm:w-9 text-primary-600" aria-hidden />
               Import & migrate data
             </h1>
-            <p className="mt-1 text-gray-600 text-sm sm:text-base">
+            <p className="mt-1 text-neutral-600 text-sm sm:text-base">
               Bring data from your old app: backup restore, Excel, and more. Same bills, tables, and data in HexaBill.
             </p>
           </div>
@@ -99,7 +99,7 @@ const DataImportPage = () => {
             return (
               <div
                 key={card.title}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:border-primary-300 transition-colors"
+                className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:border-primary-300 transition-colors"
               >
                 <div
                   className="p-4 sm:p-5 cursor-pointer"
@@ -119,10 +119,10 @@ const DataImportPage = () => {
                       <Icon className="h-6 w-6 text-primary-600" aria-hidden />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h2 className="font-semibold text-gray-900 text-lg">{card.title}</h2>
-                      <p className="mt-1 text-sm text-gray-600">{card.description}</p>
+                      <h2 className="font-semibold text-neutral-900 text-lg">{card.title}</h2>
+                      <p className="mt-1 text-sm text-neutral-600">{card.description}</p>
                       <span
-                        className={`mt-3 inline-flex items-center gap-1.5 text-sm font-medium ${card.primary ? 'text-primary-600' : 'text-gray-600'}`}
+                        className={`mt-3 inline-flex items-center gap-1.5 text-sm font-medium ${card.primary ? 'text-primary-600' : 'text-neutral-600'}`}
                       >
                         {card.label}
                         <ArrowRight className="h-4 w-4" aria-hidden />
@@ -136,17 +136,17 @@ const DataImportPage = () => {
         </div>
 
         {/* Short tips */}
-        <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-          <h3 className="font-semibold text-blue-900 text-sm flex items-center gap-2">
+        <div className="mt-8 p-4 bg-primary-50 border border-primary-100 rounded-lg">
+          <h3 className="font-semibold text-primary-900 text-sm flex items-center gap-2">
             <RefreshCw className="h-4 w-4" aria-hidden />
             Tip
           </h3>
-          <p className="mt-1 text-sm text-blue-800">
+          <p className="mt-1 text-sm text-primary-800">
             For a full copy of your old app (all tables, Excel, PDF data): create a backup in the old system if it supports export, then re-enter or import the main lists (products, customers) here. Use <strong>Backup & Restore</strong> to save and restore HexaBill data anytime.
           </p>
         </div>
 
-        <p className="mt-6 text-sm text-gray-500">
+        <p className="mt-6 text-sm text-neutral-500">
           PDF/HTML import for sales ledger is planned; for now use Excel or CSV export from your old app and import here.
         </p>
       </div>

@@ -5,7 +5,7 @@ import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../se
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { TabNavigation, FilterPanel, ModernTable } from '../../components/ui/index'
+import { TabNavigation, FilterPanel, ModernTable, OverflowMenu, Badge, Alert } from '../../components/ui/index'
 import { MobileFilterSheet, ListSkeleton } from '../../components/mobile/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
@@ -13,8 +13,10 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
 import toast from 'react-hot-toast'
 import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
+import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const ProductsPage = () => {
+  const { currency = 'AED' } = useBranding()
   const navigate = useNavigate()
   const { user } = useAuth()
   const canManageInventory = isAdminOrOwner(user)
@@ -210,7 +212,7 @@ const ProductsPage = () => {
           <span>{msg}</span>
           <button
             type="button"
-            className="self-start font-semibold text-blue-700 underline hover:text-blue-900"
+            className="self-start font-semibold text-primary-700 underline hover:text-primary-900"
             onClick={async () => {
               toast.dismiss(t.id)
               try {
@@ -660,96 +662,61 @@ const ProductsPage = () => {
     }
   }
 
+  // Same API call the header and banner always made; kept in one place.
+  const handleRecomputeStock = async () => {
+    try {
+      const res = await productsAPI.recomputeStock()
+      if (res?.success) {
+        const n = res?.data?.productsUpdated ?? res?.data?.ProductsUpdated ?? 0
+        toast.success(res?.message || `Stock recomputed from inventory movements (${n} products).`)
+        window.dispatchEvent(new CustomEvent('dataUpdated'))
+        await loadProducts()
+      } else toast.error(res?.message || 'Recompute failed')
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Recompute failed')
+    }
+  }
+
   return (
     <div className="w-full space-y-3 h-full min-h-0 flex flex-col">
-      {/* Header — title left, actions right; full width */}
-      <div className="bg-white border border-neutral-200 rounded-lg px-3 sm:px-4 py-3 shrink-0">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg sm:text-xl lg:text-xl font-semibold text-neutral-900">Products</h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-700">
-                {totalCount} Total
-              </span>
+      {/* Header: one primary action; maintenance actions live in the More menu. */}
+      <div className="bg-white border border-surface-border rounded-lg px-3 sm:px-4 py-3 shrink-0">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="hidden md:block text-h2 font-semibold text-text-primary">Products</h1>
+              <Badge variant="info">{totalCount} total</Badge>
             </div>
-            <p className="text-xs sm:text-sm text-neutral-600 mt-0.5">Manage your inventory</p>
+            <p className="hidden md:block text-sm text-neutral-500 mt-0.5">Manage your inventory</p>
           </div>
-          {/* Toolbar: wrap between sm and xl so tablet widths don't clip buttons; single row at xl+ */}
-          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto xl:flex-nowrap">
-            <button
-              onClick={() => loadProducts()}
-              className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px]"
-            >
-              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Refresh</span>
+          <div className="flex items-center gap-2">
+            {canManageInventory && (
+              <button type="button" onClick={() => setShowImportModal(true)} className="btn btn-secondary flex-1 md:flex-none">
+                <Upload className="h-4 w-4" aria-hidden />
+                Import
+              </button>
+            )}
+            <button type="button" onClick={() => setShowForm(true)} className="btn btn-primary flex-1 md:flex-none">
+              <Plus className="h-4 w-4" aria-hidden />
+              Add product
             </button>
-            {canManageInventory && (
-              <button
-                onClick={async () => {
-                  try {
-                    const res = await productsAPI.recomputeStock()
-                    if (res?.success) {
-                      const n = res?.data?.productsUpdated ?? 0
-                      toast.success(`Stock recomputed from inventory movements (${n} products).`)
-                      window.dispatchEvent(new CustomEvent('dataUpdated'))
-                      await loadProducts()
-                    } else toast.error(res?.message || 'Recompute failed')
-                  } catch (e) {
-                    toast.error(e?.response?.data?.message || 'Recompute failed')
-                  }
-                }}
-                className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-primary-300 rounded-lg text-xs sm:text-sm font-medium text-primary-700 bg-primary-50 hover:bg-primary-100 transition-colors flex-1 sm:flex-none min-h-[44px]"
-                title="Recompute stock from purchase/sale movements (fix drift)"
-              >
-                <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Recompute Stock</span>
-                <span className="sm:hidden">Recompute</span>
-              </button>
-            )}
-            {canManageInventory && (
-              <button
-                onClick={handleResetAllStock}
-                className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-error/30 rounded-lg text-xs sm:text-sm font-medium text-error bg-error/10 hover:bg-error/20 transition-colors flex-1 sm:flex-none min-h-[44px]"
-                title="Reset all product stock to zero (Admin/Owner only)"
-              >
-                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Reset Stock</span>
-                <span className="sm:hidden">Reset</span>
-              </button>
-            )}
-            {canManageInventory && (
-              <>
-                <button
-                  onClick={() => {
+            <OverflowMenu
+              items={[
+                { label: 'Refresh', icon: RefreshCw, onClick: () => loadProducts() },
+                {
+                  label: 'Categories',
+                  icon: Tag,
+                  hidden: !canManageInventory,
+                  onClick: () => {
                     setEditingCategory(null)
                     setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
                     setShowCategoryModal(true)
-                  }}
-                  className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px]"
-                  title="Manage Categories"
-                >
-                  <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Categories</span>
-                  <span className="sm:hidden">Cats</span>
-                </button>
-                <button
-                  onClick={() => setShowImportModal(true)}
-                  className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-neutral-300 rounded-lg text-xs sm:text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors flex-1 sm:flex-none min-h-[44px]"
-                >
-                  <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Import Excel</span>
-                  <span className="sm:hidden">Import</span>
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center justify-center px-2 sm:px-3 lg:px-4 py-1.5 sm:py-2 border border-transparent rounded-lg text-xs sm:text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors flex-1 sm:flex-none min-h-[44px]"
-            >
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Product</span>
-              <span className="sm:hidden">Add</span>
-            </button>
+                  },
+                },
+                { label: 'Recompute stock', icon: RotateCw, hidden: !canManageInventory, onClick: handleRecomputeStock },
+                { label: 'Reset all stock to zero', icon: Trash2, hidden: !canManageInventory, danger: true, separatorBefore: true, onClick: handleResetAllStock },
+              ]}
+            />
           </div>
         </div>
 
@@ -759,32 +726,19 @@ const ProductsPage = () => {
           const showBanner = zeroCount > 0 && canManageInventory
           if (!showBanner) return null
           return (
-            <div className="mt-4 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-amber-900">
-                <AlertTriangle className="inline h-4 w-4 mr-1.5 align-middle text-amber-600" />
-                <strong>Stocks showing zero after purchases?</strong> Click <strong>Recompute Stock</strong> below to sync from purchase and sales movements ({zeroCount} product{zeroCount !== 1 ? 's' : ''} with 0 stock).
-              </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    const res = await productsAPI.recomputeStock()
-                    if (res?.success) {
-                      const n = res?.data?.productsUpdated ?? res?.data?.ProductsUpdated ?? 0
-                      toast.success(res?.message || `Stock recomputed (${n} products).`)
-                      window.dispatchEvent(new CustomEvent('dataUpdated'))
-                      await loadProducts()
-                    } else toast.error(res?.message || 'Recompute failed')
-                  } catch (e) {
-                    toast.error(e?.response?.data?.message || 'Recompute failed')
-                  }
-                }}
-                className="shrink-0 inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-200 text-amber-900 hover:bg-amber-300"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Recompute Stock
-              </button>
-            </div>
+            <Alert
+              tone="warning"
+              className="mt-3"
+              title={`${zeroCount} product${zeroCount !== 1 ? 's' : ''} show zero stock`}
+              action={
+                <button type="button" onClick={handleRecomputeStock} className="btn btn-secondary btn-sm">
+                  <RotateCw className="h-4 w-4" aria-hidden />
+                  Recompute stock
+                </button>
+              }
+            >
+              If purchases were recorded, recompute stock from purchase and sales movements.
+            </Alert>
           )
         })()}
 
@@ -804,19 +758,19 @@ const ProductsPage = () => {
       {activeTab === 'movements' ? (
         /* Stock Movement Tab Content */
         <div className="space-y-4">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">From</label>
-                <input type="date" value={movementsFilter.fromDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, fromDate: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                <label className="block text-xs font-medium text-neutral-600 mb-1">From</label>
+                <input type="date" value={movementsFilter.fromDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, fromDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">To</label>
-                <input type="date" value={movementsFilter.toDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, toDate: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                <label className="block text-xs font-medium text-neutral-600 mb-1">To</label>
+                <input type="date" value={movementsFilter.toDate} onChange={(e) => { setMovementsFilter(f => ({ ...f, toDate: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
-                <select value={movementsFilter.transactionType} onChange={(e) => { setMovementsFilter(f => ({ ...f, transactionType: e.target.value })); setMovementsPage(1) }} className="border border-gray-300 rounded px-2 py-1.5 text-sm">
+                <label className="block text-xs font-medium text-neutral-600 mb-1">Type</label>
+                <select value={movementsFilter.transactionType} onChange={(e) => { setMovementsFilter(f => ({ ...f, transactionType: e.target.value })); setMovementsPage(1) }} className="border border-neutral-300 rounded px-2 py-1.5 text-sm">
                   <option value="">All Types</option>
                   <option value="Sale">Sale</option>
                   <option value="Purchase">Purchase</option>
@@ -826,11 +780,11 @@ const ProductsPage = () => {
                 </select>
               </div>
               <div className="flex items-end">
-                <button onClick={() => { setMovementsFilter({ fromDate: '', toDate: '', transactionType: '' }); setMovementsPage(1) }} className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded text-gray-700 font-medium mt-4">
+                <button onClick={() => { setMovementsFilter({ fromDate: '', toDate: '', transactionType: '' }); setMovementsPage(1) }} className="px-3 py-1.5 text-xs bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 rounded text-neutral-700 font-medium mt-4">
                   Clear
                 </button>
               </div>
-              <div className="ml-auto text-sm text-gray-500">
+              <div className="ml-auto text-sm text-neutral-500">
                 {movementsTotalCount} movement{movementsTotalCount !== 1 ? 's' : ''}
               </div>
             </div>
@@ -840,8 +794,8 @@ const ProductsPage = () => {
                 <RefreshCw className="h-6 w-6 animate-spin text-primary-600" />
               </div>
             ) : movements.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <History className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-12 text-neutral-500">
+                <History className="h-10 w-10 mx-auto mb-2 text-neutral-300" />
                 <p className="font-medium">No stock movements found</p>
                 <p className="text-sm mt-1">Stock movements are recorded when sales, purchases, adjustments, or returns occur.</p>
               </div>
@@ -849,41 +803,41 @@ const ProductsPage = () => {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Date</th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Product</th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">SKU</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-700">Type</th>
-                      <th className="px-3 py-2.5 text-right font-semibold text-gray-700">Qty Change</th>
-                      <th className="px-3 py-2.5 text-left font-semibold text-gray-700">Reason</th>
-                      <th className="px-3 py-2.5 text-center font-semibold text-gray-700">Ref</th>
+                    <tr className="border-b border-neutral-200 bg-neutral-50">
+                      <th className="px-3 py-2.5 text-left font-semibold text-neutral-700">Date</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-neutral-700">Product</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-neutral-700">SKU</th>
+                      <th className="px-3 py-2.5 text-center font-semibold text-neutral-700">Type</th>
+                      <th className="px-3 py-2.5 text-right font-semibold text-neutral-700">Qty Change</th>
+                      <th className="px-3 py-2.5 text-left font-semibold text-neutral-700">Reason</th>
+                      <th className="px-3 py-2.5 text-center font-semibold text-neutral-700">Ref</th>
                     </tr>
                   </thead>
                   <tbody>
                     {movements.map((m) => (
-                      <tr key={m.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="px-3 py-2.5 text-gray-600 whitespace-nowrap">{new Date(m.createdAt).toLocaleDateString('en-GB')} {new Date(m.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
-                        <td className="px-3 py-2.5 font-medium text-gray-900">{m.productName}</td>
-                        <td className="px-3 py-2.5 text-gray-500">{m.productSku || '—'}</td>
+                      <tr key={m.id} className="border-b border-neutral-100 hover:bg-neutral-50">
+                        <td className="px-3 py-2.5 text-neutral-600 whitespace-nowrap">{new Date(m.createdAt).toLocaleDateString('en-GB')} {new Date(m.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="px-3 py-2.5 font-medium text-neutral-900">{m.productName}</td>
+                        <td className="px-3 py-2.5 text-neutral-500">{m.productSku || '—'}</td>
                         <td className="px-3 py-2.5 text-center">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                            m.transactionType === 'Sale' ? 'bg-red-100 text-red-700' :
-                            m.transactionType === 'Purchase' ? 'bg-green-100 text-green-700' :
-                            m.transactionType === 'Adjustment' ? 'bg-blue-100 text-blue-700' :
-                            m.transactionType === 'Return' ? 'bg-amber-100 text-amber-700' :
-                            'bg-gray-100 text-gray-700'
+                            m.transactionType === 'Sale' ? 'bg-red-100 text-error-fg' :
+                            m.transactionType === 'Purchase' ? 'bg-green-100 text-success-fg' :
+                            m.transactionType === 'Adjustment' ? 'bg-primary-100 text-primary-700' :
+                            m.transactionType === 'Return' ? 'bg-amber-100 text-warning-fg' :
+                            'bg-neutral-100 text-neutral-700'
                           }`}>
                             {m.transactionType}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 text-right font-mono font-semibold">
-                          <span className={`inline-flex items-center gap-1 ${m.changeQty > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`inline-flex items-center gap-1 ${m.changeQty > 0 ? 'text-success' : 'text-error'}`}>
                             {m.changeQty > 0 ? <ArrowUpCircle className="h-3.5 w-3.5" /> : <ArrowDownCircle className="h-3.5 w-3.5" />}
                             {m.changeQty > 0 ? '+' : ''}{m.changeQty}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-gray-600 max-w-xs truncate">{m.reason || '—'}</td>
-                        <td className="px-3 py-2.5 text-center text-gray-400">{m.refId || '—'}</td>
+                        <td className="px-3 py-2.5 text-neutral-600 max-w-xs truncate">{m.reason || '—'}</td>
+                        <td className="px-3 py-2.5 text-center text-neutral-400">{m.refId || '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -892,12 +846,12 @@ const ProductsPage = () => {
             )}
 
             {movementsTotalPages > 1 && (
-              <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-                <button onClick={() => setMovementsPage(p => Math.max(1, p - 1))} disabled={movementsPage === 1} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+              <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-neutral-100">
+                <button onClick={() => setMovementsPage(p => Math.max(1, p - 1))} disabled={movementsPage === 1} className="px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50">
                   Previous
                 </button>
-                <span className="text-sm text-gray-600">Page {movementsPage} of {movementsTotalPages}</span>
-                <button onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))} disabled={movementsPage === movementsTotalPages} className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50">
+                <span className="text-sm text-neutral-600">Page {movementsPage} of {movementsTotalPages}</span>
+                <button onClick={() => setMovementsPage(p => Math.min(movementsTotalPages, p + 1))} disabled={movementsPage === movementsTotalPages} className="px-4 py-2 border border-neutral-300 rounded-lg text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50 disabled:opacity-50">
                   Next
                 </button>
               </div>
@@ -907,7 +861,7 @@ const ProductsPage = () => {
       ) : (
       <>
       {activeTab === 'missingBarcode' && canManageInventory && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-warning-border bg-warning-bg px-3 py-2.5">
           <ScanBarcode className="h-4 w-4 text-amber-800 shrink-0" />
           <p className="text-sm text-amber-900 flex-1 min-w-[12rem]">
             Products without a barcode ({totalCount}). Auto-fill uses SKU when unique, otherwise HB(tenant)-id. Then print or share labels.
@@ -915,7 +869,7 @@ const ProductsPage = () => {
           <button
             type="button"
             onClick={handleAutoFillMissingBarcodes}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg bg-warning text-white hover:bg-amber-700"
           >
             <Wand2 className="h-4 w-4" />
             Auto-fill missing
@@ -976,7 +930,7 @@ const ProductsPage = () => {
       {/* Mobile search + filter trigger (md:hidden) */}
       <div className="md:hidden flex items-center gap-2 mb-3">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" aria-hidden />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" aria-hidden />
           <input
             type="search"
             value={searchTerm}
@@ -995,7 +949,7 @@ const ProductsPage = () => {
           <Filter className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">Filters</span>
           {activeFilterCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary-600 text-white text-micro font-bold flex items-center justify-center">
               {activeFilterCount}
             </span>
           )}
@@ -1057,22 +1011,22 @@ const ProductsPage = () => {
                         ? product.imageUrl 
                         : `/uploads/${product.imageUrl}`}
                       alt={product.nameEn}
-                      className="h-8 w-8 object-cover rounded border border-gray-200"
+                      className="h-8 w-8 object-cover rounded border border-neutral-200"
                       onError={(e) => {
                         e.target.style.display = 'none'
                         const placeholder = e.target.parentElement.querySelector('.image-placeholder')
                         if (placeholder) placeholder.style.display = 'flex'
                       }}
                     />
-                    <div className="image-placeholder h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center" style={{ display: 'none' }}>
-                      <ImageIcon className="h-4 w-4 text-gray-400" />
+                    <div className="image-placeholder h-8 w-8 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center" style={{ display: 'none' }}>
+                      <ImageIcon className="h-4 w-4 text-neutral-400" />
                     </div>
                   </div>
                 )
               }
               return (
-                <div className="h-8 w-8 bg-gray-100 rounded border border-gray-200 flex items-center justify-center">
-                  <ImageIcon className="h-4 w-4 text-gray-400" />
+                <div className="h-8 w-8 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center">
+                  <ImageIcon className="h-4 w-4 text-neutral-400" />
                 </div>
               )
             }
@@ -1095,7 +1049,7 @@ const ProductsPage = () => {
                   {product.nameEn}
                 </button>
                 {product.isActive === false && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
                     Inactive
                   </span>
                 )}
@@ -1108,9 +1062,9 @@ const ProductsPage = () => {
             sortable: true,
             render: (product) => (
               product.barcode ? (
-                <span className="font-mono text-xs text-gray-600">{product.barcode}</span>
+                <span className="font-mono text-xs text-neutral-600">{product.barcode}</span>
               ) : (
-                <span className="text-gray-400 text-xs">—</span>
+                <span className="text-neutral-400 text-xs">—</span>
               )
             )
           },
@@ -1120,11 +1074,11 @@ const ProductsPage = () => {
             sortable: true,
             render: (product) => (
               product.categoryName ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
                   {product.categoryName}
                 </span>
               ) : (
-                <span className="text-gray-400 text-xs">—</span>
+                <span className="text-neutral-400 text-xs">—</span>
               )
             )
           },
@@ -1135,7 +1089,7 @@ const ProductsPage = () => {
             sortable: true,
             render: (product) => (
               <div className="flex items-center">
-                <span className={product.stockQty <= (product.reorderLevel || 0) ? 'text-red-600 font-medium' : ''}>
+                <span className={product.stockQty <= (product.reorderLevel || 0) ? 'text-error font-medium' : ''}>
                   {product.stockQty ?? 0}
                 </span>
                 {product.stockQty <= (product.reorderLevel || 0) && (
@@ -1144,23 +1098,23 @@ const ProductsPage = () => {
               </div>
             )
           },
-          { key: 'sellPrice', label: 'Price', sortable: true, render: (p) => `AED ${Number(p.sellPrice || 0).toFixed(2)}` },
+          { key: 'sellPrice', label: 'Price', sortable: true, render: (p) => `${currency} ${Number(p.sellPrice || 0).toFixed(2)}` },
           {
             key: 'expiryDate',
             label: 'Expiry',
             sortable: true,
             render: (product) => {
-              if (!product.expiryDate) return <span className="text-gray-500 text-xs">No expiry</span>;
+              if (!product.expiryDate) return <span className="text-neutral-500 text-xs">No expiry</span>;
               const expiryDate = new Date(product.expiryDate);
               const today = new Date();
               const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
 
               if (daysUntilExpiry < 0) {
-                return <span className="text-red-600 font-medium text-xs">Expired</span>;
+                return <span className="text-error font-medium text-xs">Expired</span>;
               } else if (daysUntilExpiry <= 30) {
                 return <span className="text-orange-600 font-medium text-xs">{daysUntilExpiry}d left</span>;
               } else {
-                return <span className="text-gray-600 text-xs">{expiryDate.toLocaleDateString()}</span>;
+                return <span className="text-neutral-600 text-xs">{expiryDate.toLocaleDateString()}</span>;
               }
             }
           }
@@ -1213,7 +1167,7 @@ const ProductsPage = () => {
                   e.stopPropagation()
                   handleStockAdjustment(product)
                 }}
-                className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
+                className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                 title="Adjust Stock"
                 aria-label="Adjust Stock"
               >
@@ -1240,7 +1194,7 @@ const ProductsPage = () => {
                     e.stopPropagation()
                     handleActivateProduct(product.id)
                   }}
-                  className="bg-green-50 text-green-600 hover:text-white hover:bg-green-600 border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
+                  className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
                   title="Activate Product"
                   aria-label="Activate Product"
                 >
@@ -1281,7 +1235,7 @@ const ProductsPage = () => {
               <div
                 key={product.id}
                 onClick={() => navigate(`/products/${product.id}`)}
-                className="bg-white rounded-xl border border-neutral-200 p-3.5 cursor-pointer active:bg-neutral-50 transition-colors"
+                className="bg-white rounded-lg border border-neutral-200 p-3.5 cursor-pointer active:bg-neutral-50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <button
@@ -1293,45 +1247,45 @@ const ProductsPage = () => {
                       <img
                         src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') ? product.imageUrl : `/uploads/${product.imageUrl}`}
                         alt={product.nameEn}
-                        className="h-9 w-9 object-cover rounded border border-gray-200 mb-1.5"
+                        className="h-9 w-9 object-cover rounded border border-neutral-200 mb-1.5"
                         onError={(e) => { e.target.style.display = 'none' }}
                       />
                     ) : (
-                      <div className="h-9 w-9 bg-gray-100 rounded border border-gray-200 flex items-center justify-center mb-1.5">
-                        <ImageIcon className="h-4 w-4 text-gray-400" />
+                      <div className="h-9 w-9 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center mb-1.5">
+                        <ImageIcon className="h-4 w-4 text-neutral-400" />
                       </div>
                     )}
-                    <span className="font-medium text-gray-900 leading-snug line-clamp-2">{product.nameEn}</span>
+                    <span className="font-medium text-neutral-900 leading-snug line-clamp-2">{product.nameEn}</span>
                   </button>
-                  <span className="text-base font-bold text-gray-900 tabular-nums shrink-0">AED {Number(product.sellPrice || 0).toFixed(2)}</span>
+                  <span className="text-base font-bold text-neutral-900 tabular-nums shrink-0">{currency} {Number(product.sellPrice || 0).toFixed(2)}</span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">{product.categoryName || 'Uncategorized'}</span>
-                  {product.sku && <span className="text-xs text-gray-500 font-mono">{product.sku}</span>}
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">{product.categoryName || 'Uncategorized'}</span>
+                  {product.sku && <span className="text-xs text-neutral-500 font-mono">{product.sku}</span>}
                   {product.isActive === false && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Inactive</span>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">Inactive</span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 text-sm border-t border-neutral-100 pt-2">
                   <div>
-                    <p className="text-xs text-gray-500">Stock</p>
-                    <p className={`font-medium tabular-nums ${lowStock || outOfStock ? 'text-red-600' : 'text-gray-900'}`}>
+                    <p className="text-xs text-neutral-500">Stock</p>
+                    <p className={`font-medium tabular-nums ${lowStock || outOfStock ? 'text-error' : 'text-neutral-900'}`}>
                       {product.stockQty ?? 0} {product.unitType || ''}
                       {lowStock && <AlertTriangle className="h-3.5 w-3.5 inline ml-1 text-red-500" />}
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Qty</p>
-                    <p className="text-gray-900">{product.unitType || '—'}</p>
+                    <p className="text-xs text-neutral-500">Qty</p>
+                    <p className="text-neutral-900">{product.unitType || '—'}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Expiry</p>
+                    <p className="text-xs text-neutral-500">Expiry</p>
                     {product.expiryDate ? (() => {
                       const days = Math.ceil((new Date(product.expiryDate) - new Date()) / (1000 * 60 * 60 * 24))
-                      return <p className={days < 0 ? 'text-red-600 font-medium' : days <= 30 ? 'text-orange-600' : 'text-gray-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
-                    })() : <p className="text-gray-500 text-xs">No expiry</p>}
+                      return <p className={days < 0 ? 'text-error font-medium' : days <= 30 ? 'text-orange-600' : 'text-neutral-900'}>{days < 0 ? 'Expired' : days <= 30 ? `${days}d left` : new Date(product.expiryDate).toLocaleDateString()}</p>
+                    })() : <p className="text-neutral-500 text-xs">No expiry</p>}
                   </div>
                 </div>
 
@@ -1449,7 +1403,7 @@ const ProductsPage = () => {
                       setImportFile(null)
                       setImportResult(null)
                     }}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-neutral-400 hover:text-neutral-600"
                   >
                     ✕
                   </button>
@@ -1457,9 +1411,9 @@ const ProductsPage = () => {
 
                 {!importResult ? (
                   <div className="space-y-4">
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                      <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                      <p className="text-sm text-gray-600 mb-2">
+                    <div className="border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center">
+                      <Upload className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
+                      <p className="text-sm text-neutral-600 mb-2">
                         Upload Excel file (.xlsx or .xls)
                       </p>
                       <input
@@ -1471,28 +1425,28 @@ const ProductsPage = () => {
                       />
                       <label
                         htmlFor="excel-file-input"
-                        className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700"
+                        className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg cursor-pointer hover:bg-primary-700"
                       >
                         Choose File
                       </label>
                       {importFile && (
-                        <p className="mt-2 text-sm text-gray-700">
+                        <p className="mt-2 text-sm text-neutral-700">
                           Selected: {importFile.name}
                         </p>
                       )}
                     </div>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-800 mb-2">
+                    <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
+                      <p className="text-sm text-primary-800 mb-2">
                         <strong>How to Import Products:</strong>
                       </p>
-                      <ol className="text-sm text-blue-800 list-decimal list-inside space-y-1 mb-3">
+                      <ol className="text-sm text-primary-800 list-decimal list-inside space-y-1 mb-3">
                         <li>Prepare your Excel file (.xlsx or .xls)</li>
                         <li>Include columns: Product Name, SKU, Price, Cost Price, Category, Brand, Unit</li>
                         <li>Click "Choose File" and select your Excel file</li>
                         <li>Click "Import" to automatically create products</li>
                       </ol>
-                      <p className="text-sm text-blue-800">
+                      <p className="text-sm text-primary-800">
                         <strong>Auto-Detection:</strong> The system automatically detects columns even if headers differ:
                         <br />• Product Name / Item Name / Description
                         <br />• SKU / Code / Barcode
@@ -1502,7 +1456,7 @@ const ProductsPage = () => {
                         <br />• Unit / Size / Weight
                         <br />• Tax / GST / VAT percentage
                       </p>
-                      <p className="text-xs text-blue-700 mt-2 italic">
+                      <p className="text-xs text-primary-700 mt-2 italic">
                         Tip: Existing products with same SKU will be updated, new products will be created automatically.
                       </p>
                     </div>
@@ -1513,14 +1467,14 @@ const ProductsPage = () => {
                           setShowImportModal(false)
                           setImportFile(null)
                         }}
-                        className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                        className="px-4 py-2 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-50"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleImportExcel}
                         disabled={!importFile || importing}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {importing ? 'Importing...' : 'Import'}
                       </button>
@@ -1528,43 +1482,43 @@ const ProductsPage = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className={`p-4 rounded-lg ${importResult.errors > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200'}`}>
+                    <div className={`p-4 rounded-lg ${importResult.errors > 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-success-bg border border-success-border'}`}>
                       <h3 className="font-semibold mb-3 text-lg">Import Completed Successfully!</h3>
                       <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                         <div className="bg-white p-2 rounded">
-                          <div className="text-gray-600">Total Rows Processed</div>
+                          <div className="text-neutral-600">Total Rows Processed</div>
                           <div className="text-xl font-semibold text-neutral-900">{importResult.totalRows}</div>
                         </div>
                         <div className="bg-white p-2 rounded">
-                          <div className="text-green-600">New Products Created</div>
-                          <div className="text-xl font-bold text-green-600">{importResult.imported}</div>
+                          <div className="text-success">New Products Created</div>
+                          <div className="text-xl font-bold text-success">{importResult.imported}</div>
                         </div>
                         <div className="bg-white p-2 rounded">
-                          <div className="text-blue-600">Existing Products Updated</div>
-                          <div className="text-xl font-bold text-blue-600">{importResult.updated}</div>
+                          <div className="text-primary-600">Existing Products Updated</div>
+                          <div className="text-xl font-bold text-primary-600">{importResult.updated}</div>
                         </div>
                         <div className="bg-white p-2 rounded">
-                          <div className="text-gray-600">Skipped (Duplicates)</div>
-                          <div className="text-xl font-bold text-gray-600">{importResult.skipped}</div>
+                          <div className="text-neutral-600">Skipped (Duplicates)</div>
+                          <div className="text-xl font-bold text-neutral-600">{importResult.skipped}</div>
                         </div>
                         {importResult.errors > 0 && (
                           <div className="bg-white p-2 rounded col-span-2 border-2 border-red-300">
-                            <div className="text-red-600 font-semibold">Errors Found</div>
-                            <div className="text-xl font-bold text-red-600">{importResult.errors}</div>
+                            <div className="text-error font-semibold">Errors Found</div>
+                            <div className="text-xl font-bold text-error">{importResult.errors}</div>
                           </div>
                         )}
                       </div>
                       {importResult.createdCategories && importResult.createdCategories.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <p className="text-xs text-gray-600 mb-1">Auto-created categories:</p>
+                        <div className="mt-3 pt-3 border-t border-neutral-200">
+                          <p className="text-xs text-neutral-600 mb-1">Auto-created categories:</p>
                           <div className="flex flex-wrap gap-1">
                             {importResult.createdCategories.slice(0, 10).map((cat, idx) => (
-                              <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded">
+                              <span key={idx} className="px-2 py-1 bg-primary-100 text-primary-700 text-xs rounded">
                                 {cat}
                               </span>
                             ))}
                             {importResult.createdCategories.length > 10 && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                              <span className="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs rounded">
                                 +{importResult.createdCategories.length - 10} more
                               </span>
                             )}
@@ -1573,15 +1527,15 @@ const ProductsPage = () => {
                       )}
                       {importResult.createdBrands && importResult.createdBrands.length > 0 && (
                         <div className="mt-2">
-                          <p className="text-xs text-gray-600 mb-1">Auto-created brands:</p>
+                          <p className="text-xs text-neutral-600 mb-1">Auto-created brands:</p>
                           <div className="flex flex-wrap gap-1">
                             {importResult.createdBrands.slice(0, 10).map((brand, idx) => (
-                              <span key={idx} className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                              <span key={idx} className="px-2 py-1 bg-green-100 text-success-fg text-xs rounded">
                                 {brand}
                               </span>
                             ))}
                             {importResult.createdBrands.length > 10 && (
-                              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded">
+                              <span className="px-2 py-1 bg-neutral-100 text-neutral-600 text-xs rounded">
                                 +{importResult.createdBrands.length - 10} more
                               </span>
                             )}
@@ -1591,9 +1545,9 @@ const ProductsPage = () => {
                     </div>
 
                     {importResult.errorMessages && importResult.errorMessages.length > 0 && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                      <div className="bg-error-bg border border-error-border rounded-lg p-4 max-h-40 overflow-y-auto">
                         <h4 className="font-semibold text-red-800 mb-2">Errors:</h4>
-                        <ul className="text-sm text-red-700 space-y-1">
+                        <ul className="text-sm text-error-fg space-y-1">
                           {importResult.errorMessages.slice(0, 10).map((msg, idx) => (
                             <li key={idx}>• {msg}</li>
                           ))}
@@ -1612,7 +1566,7 @@ const ProductsPage = () => {
                           setImportResult(null)
                           loadProducts()
                         }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
                       >
                         Close
                       </button>
@@ -1640,7 +1594,7 @@ const ProductsPage = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-neutral-900">
                 {editingCategory ? 'Edit Category' : 'Manage Categories'}
               </h2>
               <button
@@ -1649,20 +1603,20 @@ const ProductsPage = () => {
                   setEditingCategory(null)
                   setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
                 }}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-neutral-400 hover:text-neutral-600"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             {/* Create/Edit Category Form */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">
+            <div className="mb-6 p-4 bg-neutral-50 rounded-lg">
+              <h3 className="text-sm font-medium text-neutral-700 mb-4">
                 {editingCategory ? 'Edit Category' : 'Create New Category'}
               </h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Category Name *
                   </label>
                   <input
@@ -1674,7 +1628,7 @@ const ProductsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Description (Optional)
                   </label>
                   <textarea
@@ -1686,14 +1640,14 @@ const ProductsPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  <label className="block text-sm font-medium text-neutral-700 mb-1.5">
                     Color
                   </label>
                   <input
                     type="color"
                     value={categoryFormData.colorCode}
                     onChange={(e) => setCategoryFormData({ ...categoryFormData, colorCode: e.target.value })}
-                    className="h-10 w-20 rounded border border-gray-300"
+                    className="h-10 w-20 rounded border border-neutral-300"
                   />
                 </div>
                 <div className="flex gap-2">
@@ -1710,7 +1664,7 @@ const ProductsPage = () => {
                         setEditingCategory(null)
                         setCategoryFormData({ name: '', description: '', colorCode: '#3B82F6' })
                       }}
-                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                      className="px-4 py-2 bg-neutral-300 text-neutral-700 rounded-lg hover:bg-neutral-400 transition-colors"
                     >
                       Cancel Edit
                     </button>
@@ -1721,24 +1675,24 @@ const ProductsPage = () => {
 
             {/* Categories List */}
             <div>
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Existing Categories</h3>
+              <h3 className="text-sm font-medium text-neutral-700 mb-4">Existing Categories</h3>
               {categories.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-4">No categories created yet</p>
+                <p className="text-sm text-neutral-500 text-center py-4">No categories created yet</p>
               ) : (
                 <div className="space-y-2">
                   {categories.map(cat => (
-                    <div key={cat.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                    <div key={cat.id} className="flex items-center justify-between p-3 bg-white border border-neutral-200 rounded-lg">
                       <div className="flex items-center gap-3">
                         <div 
                           className="w-4 h-4 rounded"
                           style={{ backgroundColor: cat.colorCode || '#3B82F6' }}
                         />
                         <div>
-                          <div className="font-medium text-gray-900">{cat.name}</div>
+                          <div className="font-medium text-neutral-900">{cat.name}</div>
                           {cat.description && (
-                            <div className="text-xs text-gray-500">{cat.description}</div>
+                            <div className="text-xs text-neutral-500">{cat.description}</div>
                           )}
-                          <div className="text-xs text-gray-400">{cat.productCount || 0} products</div>
+                          <div className="text-xs text-neutral-400">{cat.productCount || 0} products</div>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -1757,7 +1711,7 @@ const ProductsPage = () => {
                         </button>
                         <button
                           onClick={() => setCategoryToDelete(cat)}
-                          className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100 transition-colors"
+                          className="px-3 py-1 text-sm bg-error-bg text-error rounded hover:bg-red-100 transition-colors"
                         >
                           Delete
                         </button>
