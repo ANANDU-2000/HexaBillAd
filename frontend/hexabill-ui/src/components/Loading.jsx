@@ -27,9 +27,13 @@ const LoadingOverlay = ({ message = 'Loading...', show = true }) => {
 }
 
 const LoadingButton = ({ loading, children, className = '', ...props }) => {
+  // A caller's background class replaces the primary fill. Before, both classes applied and the CSS order
+  // decided the colour (DC-04): indigo, amber and slate overrides lost to the primary blue.
+  const hasBgOverride = /(^|\s)bg-/.test(className)
+  const fill = hasBgOverride ? '' : 'bg-primary-600 hover:bg-primary-700'
   return (
     <button
-      className={`inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] ${className}`}
+      className={`inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${fill} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] ${className}`}
       disabled={loading}
       {...props}
     >
