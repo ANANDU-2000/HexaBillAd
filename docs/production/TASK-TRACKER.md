@@ -6,7 +6,8 @@
 | T-002b | P0 | Payments | Payments page single/bulk fresh keys (PS-004) | Register entry is stale: PaymentsPage now uses ledgerPaymentIntent journals (single + batch) that persist and replay key+body | PaymentsPage.jsx 374/455-476 | none needed | paymentsPageRecovery.test.js (3), paymentBatchRecovery.test.js (7) pass in npm test | code read + tests | PASS (already fixed) |
 | T-003 | P0 | Auth | Cross-tenant login lockout (PS-010) | Lockout row keyed by bare email for all workspaces | LoginLockoutKey.cs, LoginLockoutService.cs, AuthController.cs, SuperAdminTenantController.cs | key = workspace-scoped (t{id}:/p:), admin lock global, admin unlock clears all scopes; unknown host keeps legacy key; no schema change | LoginLockoutTenantScopeTests (red→green), auth suite 24 pass | in-memory only, PG pending | PASS |
 | T-004a | P0 | Products | Product edit reset stock to 0 | UpdateProductAsync copied request.StockQty (defaults 0; the form never sends it) | ProductService.cs | update no longer touches stock (only purchases/sales/returns/adjustment) | ProductPersistenceHttpTests (4; stock test red→green); full 718 pass | SQLite HTTP harness | PASS |
-| T-004b | P0 | Customers/Sales/Purchases/Expenses/Payments/Returns | CRUD persistence sweep | | | | | | TODO |
+| T-004b | P0 | Sales | Editing a credit invoice (no payment) left customer balance at the old total | UpdateSaleAsync recalculated balance from persisted rows before saving the new GrandTotal (only saved earlier when payments existed) | SaleService.cs | SaveChanges inside the same transaction before RecalculateCustomerBalanceAsync | SalePersistenceHttpTests create/edit/delete stock+balance (red→green) | SQLite HTTP harness | PASS |
+| T-004c | P0 | Purchases/Expenses/Payments/Returns | CRUD persistence sweep | | | | | | TODO |
 | T-005 | P0 | Dashboard | Totals reconcile with persisted rows | | | | | | TODO |
 | T-010 | P1 | Print | 3-column monochrome bilingual header + doc coverage | | | | | | TODO |
 | T-020 | P2 | VAT UI | Review/Lock, period picker, Form 201 tab | | | | | | TODO |
@@ -14,4 +15,4 @@
 | T-040 | P4 | E2E | Playwright workflows | | | | | | TODO |
 
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
-Next: T-004b sales/purchases/expenses round-trip + balances.
+Next: T-004c purchases (supplier payable + stock), expenses, payments, returns round-trips.

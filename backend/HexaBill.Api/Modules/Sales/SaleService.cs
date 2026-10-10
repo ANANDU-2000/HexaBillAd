@@ -2288,6 +2288,9 @@ namespace HexaBill.Api.Modules.Sales
                 // Recalculate customer balance with new amount
                 if (request.CustomerId.HasValue)
                 {
+                    // Recalculation sums persisted rows, so flush the edited totals first (inside the same transaction);
+                    // otherwise an edit without payments recalculates from the old GrandTotal.
+                    await _context.SaveChangesAsync();
                     var customerService = new CustomerService(_context);
                     await customerService.RecalculateCustomerBalanceAsync(request.CustomerId.Value, tenantId);
                     
