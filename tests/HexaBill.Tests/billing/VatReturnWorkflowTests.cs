@@ -7,15 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace HexaBill.Tests;
 
 /// <summary>Reviewed-state machine and stale-calculation protection (synthetic Zayogya fixture).</summary>
-public sealed class VatReturnWorkflowTests : IDisposable
+public sealed class VatReturnWorkflowTests
 {
-    private readonly string? _oldEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-    private readonly string? _oldFlag = Environment.GetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN");
-    public void Dispose()
-    {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", _oldEnv);
-        Environment.SetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN", _oldFlag);
-    }
 
     private const int Tenant = ZayogyaVatManagementGoldenBaselineTests.ZayogyaTenantId;
 
@@ -29,17 +22,11 @@ public sealed class VatReturnWorkflowTests : IDisposable
             To = ZayogyaVatManagementGoldenBaselineTests.PeriodTo
         })).Result);
         var period = await context.VatReturnPeriods.SingleAsync(p => p.TenantId == Tenant);
-        context.Settings.Add(new Setting { Key = "COMPANY_TRN", TenantId = Tenant, OwnerId = Tenant, Value = HexaBill.Api.Core.Tenancy.SampleVatTrn.UnitFixture });
+        context.Settings.Add(new Setting { Key = "COMPANY_TRN", TenantId = Tenant, OwnerId = Tenant, Value = "100555666777888" }); // synthetic, format-valid, not a sample: no process-wide env opt-in needed
         await context.SaveChangesAsync();
         return (context, controller, period);
     }
 
-    // Lock requires a filing-grade TRN; the synthetic fixture TRN is only accepted under this opt-in.
-    public VatReturnWorkflowTests()
-    {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
-        Environment.SetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN", "true");
-    }
 
     [Theory]
     [InlineData("Draft", "Locked", false)]

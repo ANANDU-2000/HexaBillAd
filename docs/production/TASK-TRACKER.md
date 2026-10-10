@@ -14,5 +14,7 @@
 | T-030 | P3 | UI | Responsive pass | | | | | | TODO |
 | T-040 | P4 | E2E | Playwright workflows | | | | | | TODO |
 
+| T-050 | P2 | Tests | Intermittent failures under parallel run (statement PDF, VAT export) | suspected process-wide env vars (ASPNETCORE_ENVIRONMENT, HEXABILL_ALLOW_SAMPLE_VAT_TRN) set by legacy VAT tests in parallel | | | | | TODO |
+
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
 Next: T-004c purchases (supplier payable + stock), expenses, payments, returns round-trips.
