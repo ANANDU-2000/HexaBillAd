@@ -1085,7 +1085,8 @@ const ExpensesPage = () => {
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-full px-0 sm:px-1">
         <div className="shrink-0">
         <div className="mb-4 space-y-2 rounded-lg border border-neutral-200 bg-white p-3">
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+          <div className="flex items-center gap-2">
+          <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
             <button type="button" className={presetChip(presetActive(presetRanges['7']))} onClick={() => applyRange(presetRanges['7'])}>Last 7 days</button>
             <button type="button" className={presetChip(presetActive(presetRanges.week))} onClick={() => applyRange(presetRanges.week)}>Week</button>
             <button type="button" className={presetChip(presetActive(presetRanges.month))} onClick={() => applyRange(presetRanges.month)}>Month</button>
@@ -1104,7 +1105,7 @@ const ExpensesPage = () => {
             onClick={() => setMobileFiltersOpen((v) => !v)}
             aria-expanded={mobileFiltersOpen}
             aria-controls="expense-filters"
-            className="btn btn-secondary w-full justify-between md:hidden"
+            className="btn btn-secondary shrink-0 md:hidden"
           >
             <span className="inline-flex items-center gap-2">
               <Filter className="h-4 w-4" aria-hidden />
@@ -1115,6 +1116,7 @@ const ExpensesPage = () => {
             </span>
             <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${mobileFiltersOpen ? 'rotate-180' : ''}`} aria-hidden />
           </button>
+          </div>
           <div id="expense-filters" className={`${mobileFiltersOpen ? 'grid' : 'hidden'} grid-cols-1 gap-2 md:grid md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end`}>
             <label className="text-xs font-medium text-neutral-500">
               From
@@ -1189,7 +1191,7 @@ const ExpensesPage = () => {
               <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
               <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-success-fg">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
             </p>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500">
+            <p className="mt-1 hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500 md:flex">
               <span>Average per day {formatCurrency(averagePerDay)}</span>
               {isAdminOrOwner(user) && dateRange.to && (
                 <Link
