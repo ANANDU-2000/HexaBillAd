@@ -66,3 +66,22 @@ Roles: **All** means any tenant user who has page access. **A/O** means Admin or
 | /onboarding | pages/OnboardingWizard | new Owner | H |
 
 The module letters match the groups in [UI-TASK-TRACKER.md](UI-TASK-TRACKER.md). Test coverage for these routes is tracked in [RESPONSIVE-TESTS.md](RESPONSIVE-TESTS.md).
+
+## Phase 1 audit recount (2026-10-10, `origin/main` `c6ba249`)
+
+Counts are **source occurrences** in `frontend/hexabill-ui/src` (`*.js`, `*.jsx`), excluding tests and the dev-only `DesignSystemPage`. Each line is a grep count, not a count of unique screens. Route counts come from `docs/plan/ROUTE-MANIFEST.json`, which has `uniqueRoutePathCount` 62, was verified 2026-10-08, and matches App.jsx.
+
+| Item | Files | Occurrences | Pattern |
+|---|---|---|---|
+| Forms | 25 | 46 | `<form` |
+| Shared dialog components in use | 32 | 98 | `<Modal`, `<ConfirmDangerModal`, `<DeleteConfirmModal` |
+| Sheets | 4 | 5 | `<MobileSheet`, `<MobileFilterSheet`, `<MoreMenuSheet` |
+| Hand-rolled overlays | 22 | 43 | `fixed inset-0` |
+| Elements marked as dialogs | 12 | 22 | `role="dialog"` / `aria-modal` |
+| HTML tables | 43 | 86 | `<table` |
+| `ModernTable` uses | 3 | 5 | `<ModernTable` |
+| Print call sites | 8 | 16 | `window.print`, `contentWindow.print`, `.print()` |
+| Raw buttons | 96 | 964 | `<button` |
+| Shared `<Button>` | 1 (`DashboardTally.jsx`) | 25 | `<Button` |
+
+Defects found with these counts are tracked in [PREMIUM-UX-TRACKER.md](PREMIUM-UX-TRACKER.md), which is now the active UX tracker.

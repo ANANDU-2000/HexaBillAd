@@ -1,5 +1,7 @@
 # UI Audit
 
+> **2026-10-10:** live re-verification of the four priority pages is in [PREMIUM-UX-TRACKER.md](PREMIUM-UX-TRACKER.md). The "62 reviewed" figure below is not backed by `UI-SCREENSHOT-INVENTORY.csv`; the CSV now records 22 screenshots mapped to the target screens.
+
 Findings come from three sources: the reference screenshots in `HEXABILL IMAGES UI/` (62 of 331 reviewed), the code inventory, and live checks on the current build.
 
 Old screenshots are not proof. A finding seen only in a screenshot stays **TODO** until it has been re-checked on the current build.

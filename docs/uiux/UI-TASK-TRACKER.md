@@ -1,5 +1,7 @@
 # UI Task Tracker
 
+> **Superseded 2026-10-10:** active UX work is tracked in [PREMIUM-UX-TRACKER.md](PREMIUM-UX-TRACKER.md). This file is kept as history.
+
 The work runs in three stages:
 
 1. **Stage 1, design system.** Tokens, shared components, docs. Status: PASS for the shared layer (2026-10-10).

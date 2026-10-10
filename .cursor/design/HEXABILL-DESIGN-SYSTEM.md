@@ -1,5 +1,7 @@
 # HexaBill design system
 
+> **Reference only (2026-10-10).** The authoritative design system is `docs/uiux/DESIGN-SYSTEM.md`. If the two disagree, that file wins.
+
 ERP density. One identity. Tokens live in `frontend/hexabill-ui/src/styles/tokens.css` and `tailwind.config.js`. Do not add a second palette. Do not hardcode a tenant name.
 
 ## Color

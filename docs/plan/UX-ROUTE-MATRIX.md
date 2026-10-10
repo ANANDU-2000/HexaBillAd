@@ -1,6 +1,6 @@
 # UX route matrix
 
-8 October 2026: App.jsx static map reconciles 61 unique route patterns against the existing manifest; see CURRENT-ARCHITECTURE-MAP.md. Runtime acceptance remains separate.
+8 October 2026: App.jsx static map reconciled 61 unique route patterns against the existing manifest (2026-10-10: now 62 after `/payments`; see ROUTE-MANIFEST.json); see CURRENT-ARCHITECTURE-MAP.md. Runtime acceptance remains separate.
 
 Screenshot inventory: 331 supplied PNGs in UI-SCREENSHOT-INVENTORY.csv. First 24 inspected through a contact sheet and grouped; remaining 307 NOT REVIEWED. Image dimensions are metadata, not verified browser viewports.
 
