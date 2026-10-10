@@ -1121,6 +1121,11 @@ export const reportsAPI = {
     return response.data
   },
 
+  reviewVatReturnPeriod: async (periodId) => {
+    const response = await api.post(`/reports/vat-return/periods/${periodId}/review`)
+    return response.data
+  },
+
   lockVatReturnPeriod: async (periodId) => {
     const response = await api.post(`/reports/vat-return/periods/${periodId}/lock`)
     return response.data

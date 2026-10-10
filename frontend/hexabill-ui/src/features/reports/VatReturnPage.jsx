@@ -807,6 +807,8 @@ const VatReturnPage = () => {
                     const trn = v.vatTrn ?? v.VatTrn ?? 'Not provided'
                     if (!window.confirm(`Freeze this management report?\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}\nNo further transaction changes in this period will be allowed.`)) return
                     await runVatAction(async () => {
+                      // Interim until the explicit Review step lands in the VAT UI milestone.
+                      if (String(v.status ?? v.Status) !== 'Reviewed') await reportsAPI.reviewVatReturnPeriod(v.periodId)
                       const res = await reportsAPI.lockVatReturnPeriod(v.periodId)
                       if (res?.success) { setVatReturn(prev => ({ ...prev, status: 'Locked' })); acknowledgeVatAction('Lock'); toast.success('Report frozen') }
                       else throw { response: { data: { message: res?.message || 'Lock failed' } } }

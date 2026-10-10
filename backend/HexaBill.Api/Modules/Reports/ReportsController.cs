@@ -316,7 +316,9 @@ namespace HexaBill.Api.Modules.Reports
                         Box13a = dto.Box13a,
                         Box13b = dto.Box13b,
                         PetroleumExcluded = dto.PetroleumExcluded,
-                        CalculatedAt = DateTime.UtcNow
+                        CalculatedAt = DateTime.UtcNow,
+                        CalculationVersion = 1,
+                        SourceFingerprint = VatReturnWorkflow.Fingerprint(dto)
                     };
                     _context.VatReturnPeriods.Add(period);
                 }
@@ -335,6 +337,11 @@ namespace HexaBill.Api.Modules.Reports
                     period.Box13b = dto.Box13b;
                     period.PetroleumExcluded = dto.PetroleumExcluded;
                     period.CalculatedAt = DateTime.UtcNow;
+                    if (!VatReturnWorkflow.CanTransition(period.Status, "Calculated"))
+                        return Conflict(new ApiResponse<VatReturn201Dto> { Success = false, Message = $"A {period.Status} period cannot be recalculated." });
+                    VatReturnWorkflow.InvalidateReview(period, "Period recalculated; a new review is required.");
+                    period.CalculationVersion += 1;
+                    period.SourceFingerprint = VatReturnWorkflow.Fingerprint(dto);
                     period.Status = "Calculated";
                 }
                 await _context.SaveChangesAsync();
@@ -421,6 +428,43 @@ namespace HexaBill.Api.Modules.Reports
             return false;
         }
 
+        /// <summary>Same tenant-local day boundaries as CalculateVatReturn, so fingerprints are comparable.</summary>
+        private (DateTime From, DateTime ToExclusive) CalculationBounds(VatReturnPeriod period)
+        {
+            var startLocal = new DateTime(period.PeriodStart.Year, period.PeriodStart.Month, period.PeriodStart.Day, 0, 0, 0, DateTimeKind.Unspecified);
+            var endLocal = new DateTime(period.PeriodEnd.Year, period.PeriodEnd.Month, period.PeriodEnd.Day, 0, 0, 0, DateTimeKind.Unspecified).AddDays(1);
+            return (_timeZoneService.ConvertToUtc(startLocal).ToUtcKind(), _timeZoneService.ConvertToUtc(endLocal).ToUtcKind());
+        }
+
+        [HttpPost("vat-return/periods/{id:int}/review")]
+        [Authorize(Roles = "Owner,Admin")]
+        public async Task<ActionResult<ApiResponse<object>>> ReviewVatReturnPeriod(int id)
+        {
+            var tenantId = CurrentTenantId;
+            if (tenantId <= 0) return Forbid();
+            await using var periodTransaction = _context.Database.IsRelational()
+                ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
+                : null;
+            await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
+            var period = await _context.VatReturnPeriods.FirstOrDefaultAsync(p => p.Id == id && p.TenantId == tenantId);
+            if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
+            if (!VatReturnWorkflow.CanTransition(period.Status, "Reviewed"))
+                return Conflict(new ApiResponse<object> { Success = false, Message = $"A {period.Status} period cannot be reviewed. Calculate it first." });
+            var (calcFrom, calcTo) = CalculationBounds(period);
+            var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, calcFrom, calcTo);
+            if (period.SourceFingerprint != VatReturnWorkflow.Fingerprint(dto))
+                return Conflict(new ApiResponse<object> { Success = false, Message = "Source transactions changed since the last calculation. Recalculate before reviewing." });
+            period.Status = "Reviewed";
+            period.ReviewedAt = DateTime.UtcNow;
+            period.ReviewedByUserId = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var uid) ? uid : 0;
+            period.ReviewedCalculationVersion = period.CalculationVersion;
+            period.ReviewInvalidatedAt = null;
+            period.ReviewInvalidatedReason = null;
+            await _context.SaveChangesAsync();
+            if (periodTransaction != null) await periodTransaction.CommitAsync();
+            return Ok(new ApiResponse<object> { Success = true, Message = "Period reviewed. Source changes will invalidate this review." });
+        }
+
         [HttpPost("vat-return/periods/{id:int}/lock")]
         [Authorize(Roles = "Owner,Admin")]
         public async Task<ActionResult<ApiResponse<object>>> LockVatReturnPeriod(int id)
@@ -435,11 +479,21 @@ namespace HexaBill.Api.Modules.Reports
             if (period == null) return NotFound(new ApiResponse<object> { Success = false, Message = "Period not found." });
             if (period.Status is "Locked" or "Submitted")
                 return Conflict(new ApiResponse<object> { Success = false, Message = "Period is already frozen." });
+            if (!VatReturnWorkflow.CanTransition(period.Status, "Locked"))
+                return Conflict(new ApiResponse<object> { Success = false, Message = $"A {period.Status} period must be calculated and reviewed before it can be frozen." });
             if (!await HasAcceptableVatTrnFormatAsync(tenantId))
                 return UnprocessableEntity(new ApiResponse<object> { Success = false, Message = "A valid 15-digit non-sample VAT TRN is required to freeze this management report." });
-            var from = period.PeriodStart;
-            var toExclusive = period.PeriodEnd.Date.AddDays(1).ToUtcKind();
+            var (from, toExclusive) = CalculationBounds(period);
             var dto = await _vatReturnReportService.GetVatReturn201Async(tenantId, from, toExclusive);
+            if (period.ReviewedCalculationVersion != period.CalculationVersion
+                || period.SourceFingerprint != VatReturnWorkflow.Fingerprint(dto))
+            {
+                period.Status = "Calculated";
+                VatReturnWorkflow.InvalidateReview(period, "Source transactions changed after the review.");
+                await _context.SaveChangesAsync();
+                if (periodTransaction != null) await periodTransaction.CommitAsync();
+                return Conflict(new ApiResponse<object> { Success = false, Message = "The reviewed calculation is stale. Recalculate and review again before freezing." });
+            }
             var issues = await _vatValidation.ValidatePeriodAsync(tenantId, from, toExclusive, dto);
             if (dto.HasDerivedValues || dto.ReverseChargeLines.Count > 0)
                 return StatusCode(422, new ApiResponse<object> { Success = false, Message = "Resolve derived VAT values and reverse-charge activity before freezing this management report." });
@@ -530,6 +584,9 @@ namespace HexaBill.Api.Modules.Reports
             amendedReport.ValidationIssues = issues;
 
             period.Status = "Calculated";
+            VatReturnWorkflow.InvalidateReview(period, "Period amended; a new review is required.");
+            period.CalculationVersion += 1;
+            period.SourceFingerprint = VatReturnWorkflow.Fingerprint(amendedReport);
             period.SnapshotVersion = amendedReport.SnapshotVersion;
             period.SnapshotAt = amendedReport.SnapshotAt;
             period.SnapshotHistoryJson = JsonSerializer.Serialize(history);

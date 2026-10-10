@@ -270,6 +270,7 @@ public sealed class VatManagementPdfSyntheticTenantTests
             });
             Assert.IsType<OkObjectResult>(calculation.Result);
             var period = await context.VatReturnPeriods.SingleAsync(item => item.TenantId == tenant.Id);
+            Assert.IsType<OkObjectResult>((await controller.ReviewVatReturnPeriod(period.Id)).Result);
             Assert.IsType<OkObjectResult>((await controller.LockVatReturnPeriod(period.Id)).Result);
             Assert.Equal("Locked", period.Status);
             await Assert.ThrowsAsync<InvalidOperationException>(() => VatReturnWriteGuard.EnsurePeriodOpenAsync(

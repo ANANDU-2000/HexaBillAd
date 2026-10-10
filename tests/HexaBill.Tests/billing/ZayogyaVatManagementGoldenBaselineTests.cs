@@ -105,6 +105,7 @@ public sealed class ZayogyaVatManagementGoldenBaselineTests
         {
             Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
             Environment.SetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN", "true");
+            Assert.IsType<OkObjectResult>((await controller.ReviewVatReturnPeriod(period.Id)).Result);
             var lockResult = await controller.LockVatReturnPeriod(period.Id);
             Assert.IsType<OkObjectResult>(lockResult.Result);
             Assert.Equal("Locked", (await context.VatReturnPeriods.SingleAsync(p => p.Id == period.Id)).Status);

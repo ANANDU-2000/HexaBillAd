@@ -382,6 +382,8 @@ public sealed class VatManagementPhase0ExpectedRedTests
         Assert.IsType<OkObjectResult>(calculated.Result);
         var period = await context.VatReturnPeriods.SingleAsync(item => item.TenantId == ZayogyaVatManagementGoldenBaselineTests.ZayogyaTenantId);
 
+        Assert.IsType<OkObjectResult>((await controller.ReviewVatReturnPeriod(period.Id)).Result);
+
         var lockResult = await controller.LockVatReturnPeriod(period.Id);
         Assert.IsType<OkObjectResult>(lockResult.Result);
         var frozenHash = period.SnapshotHash;

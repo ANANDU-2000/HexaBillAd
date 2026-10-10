@@ -46,5 +46,16 @@ namespace HexaBill.Api.Models
         public string? SnapshotHistoryJson { get; set; }
         public int SnapshotVersion { get; set; }
         public DateTime? SnapshotAt { get; set; }
+
+        // Staleness control: every calculation gets a new version and a fingerprint of the source data it saw.
+        public int CalculationVersion { get; set; }
+        [MaxLength(64)]
+        public string? SourceFingerprint { get; set; }
+        public DateTime? ReviewedAt { get; set; }
+        public int? ReviewedByUserId { get; set; }
+        public int? ReviewedCalculationVersion { get; set; }
+        public DateTime? ReviewInvalidatedAt { get; set; }
+        [MaxLength(200)]
+        public string? ReviewInvalidatedReason { get; set; }
     }
 }
