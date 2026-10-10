@@ -132,7 +132,7 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 
 Source: [COVERAGE-MATRIX.md](COVERAGE-MATRIX.md), generated from `App.jsx`.
 
-- Discovered routes: 62 (5 public-tenant app pages incl. onboarding and error page, 43 tenant pages, 10 SuperAdmin, 2 redirects, plus shared help/feedback/profile/more).
+- Discovered routes: 62 = 5 public (login, signup, Admin26, onboarding, error page) + 45 app pages (tenant, shared, profile/more) + 10 SuperAdmin + 2 redirects (`/`, `/recurring-invoices`).
 - Verified locally with an interaction test: 5 routes (`/login`, `/billing-history`, `/customers`, `/ledger`, `/expenses`).
 - Layout sweep only: 10 routes.
 - Not verified: 45 routes.
