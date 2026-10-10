@@ -1169,6 +1169,33 @@ export const reportsAPI = {
     return response.data
   },
 
+  exportVatManagementPdf: async (params = {}) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    else if (params.from && params.to) {
+      p.from = toYYYYMMDD(params.from)
+      p.to = toYYYYMMDD(params.to)
+    }
+    const response = await api.get('/reports/vat-management/export/pdf', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
+  exportVatManagementExcel: async (params = {}) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    else if (params.from && params.to) { p.from = toYYYYMMDD(params.from); p.to = toYYYYMMDD(params.to) }
+    const response = await api.get('/reports/vat-management/export/excel', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
+  exportVatManagementCsv: async (params = {}) => {
+    const p = {}
+    if (params.periodId != null) p.periodId = params.periodId
+    else if (params.from && params.to) { p.from = toYYYYMMDD(params.from); p.to = toYYYYMMDD(params.to) }
+    const response = await api.get('/reports/vat-management/export/csv', { params: p, responseType: 'blob' })
+    return response.data
+  },
+
   exportVatReturn: async (quarter = 1, year = 2026) => {
     const response = await api.get('/reports/vat-return/export', { params: { quarter, year }, responseType: 'blob' })
     return response.data

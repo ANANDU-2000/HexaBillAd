@@ -113,6 +113,14 @@ public class GulfHarvestDocumentFamilyTests
                 SignatoryName = "Authorized Signatory", SignatoryTitle = "Manager",
                 BodyText = "This is to certify employment for salary purposes."
             }, TenantId),
+            ["17-vat-management"] = await pdf.GenerateVatManagementReportPdfAsync(new VatReturn201Dto
+            {
+                PeriodLabel = "Q3-2026", PeriodStart = from, PeriodEnd = to, Status = "Draft",
+                StandardOutputVat = 5m, RecoverableInputVat = 2m, NetVatPayable = 3m,
+                Warnings = ["Synthetic review warning"],
+                OutputLines = [new VatReturnOutputLineDto { Reference = "GH-VAT-1", Date = from, NetAmount = 100m, VatAmount = 5m }],
+                InputLines = [new VatReturnInputLineDto { Reference = "GH-PUR-1", Date = from, NetAmount = 40m, VatAmount = 2m, ClaimableVat = 2m }]
+            }, TenantId),
             ["17-barcode-labels"] = new ProductBarcodeLabelService().GenerateLabelsPdf(
             [
                 new ProductDto { Id = 1, NameEn = "Synthetic GH item", Sku = "GH-SKU-1", Barcode = "6281000000001" }

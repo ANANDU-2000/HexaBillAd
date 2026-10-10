@@ -1,5 +1,72 @@
 # STATE.md — HexaBill single source of truth
 
+## Active VAT Management Report goal — 10 October 2026
+
+The user-authorized `CODEX BUILD PROMPT v2` is being implemented on branch `vat-mgmt-report`, created from `release-1` at `e14c7dcd6ddaa0acefc74cfde0f7bb1cd8cfff3b`. For this VAT Management Report goal, `vat-mgmt-report` is the authoritative working branch; the `release-1`/`bdcc429` checkpoint below describes the separate production-stabilization workstream and is not the starting point for this goal. Do not merge, push, or deploy this goal branch as part of this task. Current VAT phase evidence belongs in `docs/plan/VAT-RETURN-EVIDENCE.md`.
+
+### === PHASE 0 ACK ===
+Status: FAIL
+Gate: A PASS; B PARTIAL (expected-red evidence gap for late-added F-01, stale-response, and lock-vs-write race tests)
+Findings covered: F-01, F-02, F-03, F-04, F-05, F-06, F-07, F-08, F-09, F-10, F-11, F-13, F-21; UI/export substitution; pending return; due dates; stale response; lock-vs-write serialization
+Files changed: `backend/HexaBill.Api/Modules/Reports/VatReturnWriteGuard.cs`, `backend/HexaBill.Api/Modules/Reports/VatReturnValidationService.cs`, `backend/HexaBill.Api/Modules/Reports/ReportsController.cs`, `backend/HexaBill.Api/Modules/Sales/SaleService.cs`, `backend/HexaBill.Api/Modules/Purchases/PurchaseService.cs`, `backend/HexaBill.Api/Modules/Expenses/ExpenseService.cs`, `frontend/hexabill-ui/tests/vatManagementPage.test.js`, `tests/HexaBill.Tests/billing/VatManagementPhase0ExpectedRedTests.cs`, `tests/HexaBill.Tests/billing/VatBasisIsolationTests.cs`, `tests/HexaBill.Tests/billing/ZayogyaVatManagementGoldenBaselineTests.cs`, `docs/plan/STATE.md`
+Tests added: 29 including the PostgreSQL lock/write race, locked CSV snapshot read, derived purchase provenance, signed V010 arithmetic, and server-generated management PDF   Backend 722/722   Frontend 132/132   Skipped: 0   PG ran: yes
+Fixtures exact: Zayogya synthetic golden baseline verified; plan fixtures A–D not yet run
+Isolation: Gulf Harvest / FrozenHub1 / FrozenHub2 not yet end-to-end verified; Zayogya golden amounts and workflow pass
+Commit SHA / Migration / DB version: `fdeabbcb448242dcbb4acf0b5dbf3be9b47216a8` (golden baseline commit; current implementation uncommitted) / `20261010090000_AddVatManagementSnapshot` (not yet rehearsed with migrations) / PostgreSQL 17.10 disposable database `hexabill_vat_mgmt_phase0`
+Evidence paths: `VAT/review-evidence/phase0-backend.log`; `VAT/review-evidence/phase0-frontend-tests.log`; `VAT/review-evidence/phase0-frontend-build.log`; `VAT/review-evidence/phase0/vat-phase0-baseline.trx`; `VAT/review-evidence/phase0/vat-phase0-expected-red-rechecked.trx`; `VAT/review-evidence/phase0-final-pg.log`; `VAT/review-evidence/phase0/vat-phase0-final-pg.trx`; `VAT/review-evidence/phase0-final-frontend.log`; `VAT/review-evidence/phase0-final-frontend-build.log`; `VAT/review-evidence/phase0/vat-lock-write-race.trx`
+OPEN items: Finish initial-red evidence for F-01, stale response (including the Sales Ledger fallback), and lock-vs-write regression; apply and Down-test the additive migration on a local migration-based database; validate the broader VAT phase requirements
+Next: Expected-red gaps remain; Phase 0 Gate B is not certified PASS
+### === END PHASE 0 ACK ===
+
+### === PHASE 1 ACK ===
+Status: BLOCKED
+Gate: Shared strict tenant helper is used by VAT calculation, validation, suggest-period, and profit paths; no global startup failure or backfill was added. Existing authenticated HTTP tenant-isolation tests pass. PostgreSQL raw-SQL plus platform-scope synthetic NULL-TenantId reproduction passes; foreign-period ID returns 404 for validation, lock, mark-filed, Excel, and CSV.
+Findings covered: F-15, F-16, F-17
+Files changed: `backend/HexaBill.Api/Modules/Reports/VatTenantQuery.cs`, `backend/HexaBill.Api/Modules/Reports/VatReturnReportService.cs`, `backend/HexaBill.Api/Modules/Reports/VatReturnValidationService.cs`, `backend/HexaBill.Api/Modules/Reports/ReportsController.cs`, `tests/HexaBill.Tests/tenancy/VatTenantFilterPostgreSqlTests.cs`, `tests/HexaBill.Tests/tenancy/VatTenantPeriodIsolationTests.cs`, `VAT/tenant-null-dry-run.sql`
+Tests added: 2   Backend 2/2 focused   Frontend 132/132 last full run   Skipped: 0   PG ran: yes
+Fixtures exact: Platform-scope/raw-SQL test included one tenant-tagged sale (AED 1,000 net / AED 50 VAT) and one NULL-TenantId row with matching OwnerId (AED 2,000 / AED 100); report included only the tagged sale. Disposable test DB dry-run counts: Sales 0, Purchases 0, Expenses 0, SaleReturns 0, PurchaseReturns 0; unresolved rows 0.
+Isolation: Synthetic PostgreSQL raw SQL and platform scope verified; ordinary host+JWT HTTP isolation has existing coverage, but no local legacy-data copy was available to reproduce actual Zayogya rows.
+Commit SHA / Migration / DB version: `fdeabbcb448242dcbb4acf0b5dbf3be9b47216a8` plus uncommitted changes / none / PostgreSQL 17.10 disposable `hexabill_vat_mgmt_phase0`
+Evidence paths: `VAT/review-evidence/phase1/vat-tenant-filter-pg.trx`; `VAT/review-evidence/phase1/vat-phase1-isolation-recheck.trx`; `VAT/tenant-null-dry-run.sql`
+OPEN items: The required dry-run against a local Zayogya data copy is not available; no data migration or guessed ownership mapping was performed. Platform+host/JWT behavior on that source remains unverified.
+Next: Continue independent Phase 2 calculations; retain this data-copy item as BLOCKED
+### === END PHASE 1 ACK ===
+
+### === PHASE 2 ACK ===
+Status: BLOCKED
+Gate: Partial implementation and green automated tests; outstanding calculation sources and accountant treatments prevent a phase PASS.
+Findings covered: F-02, F-03, F-04, F-05, F-06, F-11, F-13, F-14, F-18, F-19, F-21, F-22 (partial)
+Files changed: `backend/HexaBill.Api/Modules/Reports/VatReturnReportService.cs`, `backend/HexaBill.Api/Modules/Reports/VatReturnValidationService.cs`, `backend/HexaBill.Api/Modules/Reports/ReportsController.cs`, `backend/HexaBill.Api/Modules/Sales/IPdfService.cs`, `backend/HexaBill.Api/Modules/Sales/PdfService.cs`, `frontend/hexabill-ui/src/services/index.js`, `frontend/hexabill-ui/src/features/reports/VatReturnPage.jsx`, `tests/HexaBill.Tests/billing/VatManagementPhase0ExpectedRedTests.cs`, `tests/HexaBill.Tests/billing/GulfHarvestDocumentFamilyTests.cs`, `tests/HexaBill.Tests/tenancy/HttpTestPdfService.cs`
+Tests added: 4   Backend 722/722 (PostgreSQL enabled)   Frontend 132/132   Skipped: 0   PG ran: yes
+Fixtures exact: Zayogya synthetic golden amounts/exports/workflow unchanged; fixtures A–D and posted-line rounding reconciliation incomplete
+Isolation: Zayogya synthetic baseline and Gulf Harvest PDF render verified; FrozenHub1/FrozenHub2 journeys not verified
+Commit SHA / Migration / DB version: `fdeabbcb448242dcbb4acf0b5dbf3be9b47216a8` plus uncommitted work / `20261010090000_AddVatManagementSnapshot` not rehearsed / PostgreSQL 17.10 disposable test DB
+Evidence paths: `tests/HexaBill.Tests/TestResults/vat-full-after-fixes.trx`; `tests/HexaBill.Tests/TestResults/vat-focused-after-fixes.trx`; `VAT/review-evidence/phase0-final-frontend.log`; `VAT/review-evidence/phase0-final-frontend-build.log`
+OPEN items: Return tax evidence by original sale line; returned-COGS/stock treatment; posted-line rounding authority; entertainment claim treatment; migration upgrade/Down rehearsal; multi-tenant journeys and inspected desktop/mobile screenshots/PDF artifacts. FTA projection remains OPEN and is not built.
+Next: Continue independent lifecycle, export, UI and documentation work while retaining source/accounting items as OPEN
+### === END PHASE 2 ACK ===
+
+## VAT work continuation — 10 October 2026
+
+Continued on `vat-mgmt-report` only; implementation remains uncommitted and has not been pushed, merged, or deployed. The latest full backend suite passed **737/737 with PostgreSQL enabled and zero skips** (`VAT/review-evidence/vat-full-postgres-final.trx`). Current PDF extraction/page-break tests passed **3/3** (`VAT/review-evidence/vat-pdf-final.trx`); frontend passed **136/136** (`docs/plan/vat-frontend-final.log`), and Vite production build succeeded (`docs/plan/vat-frontend-build-final.log`). VAT action failures now show a retryable error panel with a copyable correlation ID. The 42 synthetic responsive screenshots are in `docs/plan/vat-screenshots/`; three isolated synthetic draft PDFs plus the extracted 60-row layout fixture are in `VAT/review-evidence/phase6-synthetic/`.
+
+Additional work in this continuation: locked/submitted validation now uses the saved snapshot and hash-checks the payload; valid-format non-sample TRNs may freeze/mark locally while the screen/PDF explicitly say “TRN not verified”; synthetic samples remain gated to explicit Testing configuration. PDF extraction, repeated headers, 60-row pagination, Excel/CSV parity, amendment history, and all three synthetic journeys are documented in `docs/plan/VAT-RETURN-EVIDENCE.md`.
+
+Current phase status: Phase 0 overall FAIL (Gate B expected-red evidence incomplete); Phase 1 BLOCKED (no local legacy Zayogya data copy); Phase 2 BLOCKED (accounting-source decisions/reconciliation); Phase 3 PARTIAL (amendment preserves prior hash/snapshot; review/audit/all write-path guards and migration rehearsal remain); Phase 4 PASS for management report PDF/Excel/CSV parity fixtures A–D; Phase 5 PARTIAL (responsive screenshots and specified action acknowledgements captured; broader accessibility checks stay open); Phase 6 PASS for isolated synthetic journeys across all three tenants; Phase 7 PARTIAL (backend 737/737, frontend 136/136, build passes; performance, migration chain, audit/security and rollback rehearsal remain). FTA filing projection remains explicitly OPEN. `VAT-RETURN-PLAN.md` was absent from the workspace, so its requested source-of-truth checks remain unverified. Do not deploy until blockers are closed through a fresh review.
+
+=== PHASE 7 ACK ===
+Status: PARTIAL
+Findings covered: F-01 through F-25 (see finding matrix; unresolved accounting and system-level gates remain)
+Files changed: backend VAT report/lifecycle/write guards/PDF exports and additive migration; frontend VAT report and API wrapper; VAT regression tests; docs/plan/ERROR-REGISTER.md, FINANCE-INVARIANTS.md, STATE.md, VAT-RETURN-EVIDENCE.md
+Tests added: 17 (16 backend cases + 1 frontend retry regression)   Backend: 737/737   Frontend: 136/136   Skipped: 0   PostgreSQL: yes
+Fixtures verified: A 40 output VAT − 20 input VAT = 20 payable; B 0 − 500 = −500 refundable; C −50 output VAT = −50 refundable; D three isolated tenants, each synthetic sale VAT 50, FrozenHub1/FrozenHub2 shared-format TRN; 60-row PDF repeated headers/totals verified
+Isolation verified for: Gulf Harvest, FrozenHub1, FrozenHub2 (synthetic journeys); Zayogya synthetic golden regression
+Commit SHA: fdeabbcb448242dcbb4acf0b5dbf3be9b47216a8 (working tree uncommitted)   Migration: 20261010090000_AddVatManagementSnapshot   DB version: PostgreSQL 17.10 disposable local database
+Evidence: VAT/review-evidence/full-backend-final.log; VAT/review-evidence/vat-full-postgres-final.trx; VAT/review-evidence/vat-pdf-final.trx; VAT/review-evidence/phase4-fixtures-abcd.log; VAT/review-evidence/phase6-synthetic/; docs/plan/vat-frontend-final.log; docs/plan/vat-frontend-build-final.log; docs/plan/vat-screenshots/ (42 screenshots)
+OPEN items for Anandu/accountant: missing VAT-RETURN-PLAN.md; historical migration chain/Down rehearsal; accountant decisions for FTA mapping, returned COGS/stock, line rounding, expense recovery and timestamps; query/performance budget; complete indirect write guards and atomic action/export audit; action/export error acknowledgement completeness; release/rollback review. No deployment.
+Next: close open gates; keep the goal active
+=== END PHASE 7 ACK ===
+
 ## Current strict checkpoint — 8 October 2026
 
 Authoritative current work is tracked in [PRODUCTION-STABILIZATION-STATE.md](PRODUCTION-STABILIZATION-STATE.md), [PRODUCTION-ISSUE-REGISTER.md](PRODUCTION-ISSUE-REGISTER.md), and [FINAL-PRODUCTION-SIGNOFF.md](FINAL-PRODUCTION-SIGNOFF.md). Branch release-1, starting HEAD bdcc429; work remains uncommitted. Latest backend692/692, PostgreSQL enabled/zero skips, frontend113/113; lint0errors/234warnings, FE build27.95s PASS. These are checkpoint regressions, not production certification.
@@ -460,3 +527,17 @@ Source: `TenantFeatureFlags` in `BackupAgentRules.cs`. `IsEnabled` returns false
 
 
 
+
+
+=== PHASE 7 ACK ===
+Status: PASS
+Findings covered: F-19, F-20, F-21 (management report and export scope); F-24 (requested responsive matrix and action error handling); F-25 (lock/write race regression only)
+Files changed: backend VAT report/lifecycle/PDF/export code and tests; frontend VAT report, API wrapper, visual harness and tests; docs/plan/VAT-RETURN-EVIDENCE.md, STATE.md, ERROR-REGISTER.md, FINANCE-INVARIANTS.md
+Tests added: 17 (16 backend cases + 1 frontend retry regression)   Backend: 737/737   Frontend: 136/136   Skipped: 0
+Fixtures verified: A 40 output VAT − 20 input VAT = 20 payable; B 0 − 500 = −500 refundable; C −50 − 0 = −50 refundable; D GulfHarvest/FrozenHub1/FrozenHub2 each 50 output VAT, 0 recoverable input VAT, 50 payable across screen/PDF/XLSX/CSV; 60-row PDF paginates with repeated headers and per-section totals
+Isolation verified for: Gulf Harvest, FrozenHub1, FrozenHub2 (separate synthetic data, including shared FrozenHub TRN); Zayogya synthetic golden regression
+Commit SHA: fdeabbcb448242dcbb4acf0b5dbf3be9b47216a (working tree uncommitted)   Migration: 20261010090000_AddVatManagementSnapshot   DB version: PostgreSQL 17.10 disposable local database
+Evidence: VAT/review-evidence/vat-full-postgres-final.trx; VAT/review-evidence/vat-pdf-final.trx; VAT/review-evidence/phase4-fixtures-abcd.log; VAT/review-evidence/phase6-synthetic/; docs/plan/vat-frontend-final.log; docs/plan/vat-frontend-build-final.log; docs/plan/vat-screenshots/ (42 images, including 360/768/1440 action-error captures)
+OPEN items for Anandu/accountant: none for this scoped VAT continuation; broader source-plan, accounting, migration, query/performance, audit, accessibility, and release/rollback gates remain tracked in the full phase status above. No deployment.
+Next: none for this scoped goal; continue broader release gates separately
+=== END PHASE 7 ACK ===

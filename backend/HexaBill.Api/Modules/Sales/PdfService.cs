@@ -2623,6 +2623,155 @@ if (hasLogo)
             }
         }
 
+        public async Task<byte[]> GenerateVatManagementReportPdfAsync(VatReturn201Dto report, int tenantId)
+        {
+            if (report == null) throw new ArgumentNullException(nameof(report));
+            var settings = await GetCompanySettingsAsync(tenantId);
+            var currency = settings.Currency ?? "AED";
+            var frozen = string.Equals(report.Status, "Locked", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(report.Status, "Submitted", StringComparison.OrdinalIgnoreCase);
+            var periodText = $"Period: {report.PeriodStart:dd-MMM-yyyy} to {report.PeriodEnd:dd-MMM-yyyy} | Status: {report.Status}";
+            var gstZone = GetGulfStandardTimeZone();
+            var generatedAtGst = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, gstZone);
+            var trnDisplay = HexaBill.Api.Core.Tenancy.SampleVatTrn.IsRealVatTrn(report.VatTrn)
+                ? $"TRN not verified: {report.VatTrn}"
+                : HexaBill.Api.Core.Tenancy.SampleVatTrn.IsSample(report.VatTrn)
+                    ? $"TRN not verified (sample TRN): {report.VatTrn}"
+                    : string.IsNullOrWhiteSpace(report.VatTrn) ? "TRN not provided" : $"Invalid TRN format: {report.VatTrn}";
+            var document = Document.Create(container => container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(15, Unit.Millimetre);
+                page.PageColor(Colors.White);
+                page.DefaultTextStyle(style => style.FontFamily(_englishFont).FontSize(9));
+                page.Header().Column(header =>
+                {
+                    header.Item().Column(column => RenderCompanyHeader(column, settings, "VAT MANAGEMENT REPORT", string.Empty));
+                    header.Item().Text(periodText).FontSize(8);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyAddress))
+                        header.Item().Text($"Address: {settings.CompanyAddress}").FontSize(8);
+                    if (!string.IsNullOrWhiteSpace(settings.CompanyPhone))
+                        header.Item().Text($"Phone: {settings.CompanyPhone}").FontSize(8);
+                    header.Item().PaddingTop(4).Text("Management report. Not an FTA filing.").Bold();
+                    if (!frozen)
+                        header.Item().PaddingTop(2).Background(Colors.Grey.Lighten3).Padding(4).Text("DRAFT — figures may change").Bold();
+                    header.Item().Text(trnDisplay);
+                    if (report.Warnings.Count > 0)
+                        header.Item().PaddingTop(3).Text(string.Join("  •  ", report.Warnings)).FontSize(8);
+                });
+                page.Content().PaddingTop(8).Column(content =>
+                {
+                    content.Item().Table(table =>
+                    {
+                        table.ColumnsDefinition(columns => { columns.RelativeColumn(2); columns.ConstantColumn(115); });
+                        void Row(string label, decimal amount, bool emphasize = false)
+                        {
+                            var labelCell = table.Cell().Border(1).Padding(5);
+                            var amountCell = table.Cell().Border(1).Padding(5).AlignRight();
+                            if (emphasize)
+                            {
+                                labelCell.Text(label).Bold();
+                                amountCell.Text($"{amount:N2} {currency}").Bold();
+                            }
+                            else
+                            {
+                                labelCell.Text(label);
+                                amountCell.Text($"{amount:N2} {currency}");
+                            }
+                        }
+                        Row("Standard output VAT", report.StandardOutputVat);
+                        Row("Recoverable input VAT", report.RecoverableInputVat);
+                        Row(report.NetVatPayable < 0 ? "Net VAT refundable" : "Net VAT payable", report.NetVatPayable, true);
+                    });
+                    var outputRows = report.OutputLines.Select(line => (
+                        line.Reference, line.Date.ToString("dd/MM/yyyy"), line.CustomerName,
+                        line.NetAmount, line.VatAmount, line.NetAmount + line.VatAmount)).ToList();
+                    RenderVatDetailTable(content.Item(), "Sales", outputRows, currency);
+
+                    var purchaseRows = report.InputLines.Where(line => !string.Equals(line.Type, "Expense", StringComparison.OrdinalIgnoreCase))
+                        .Select(line => (line.Reference, line.Date.ToString("dd/MM/yyyy"), line.SupplierName,
+                            line.NetAmount, line.ClaimableVat, line.NetAmount + line.VatAmount)).ToList();
+                    RenderVatDetailTable(content.Item(), "Purchases", purchaseRows, currency);
+
+                    var expenseRows = report.InputLines.Where(line => string.Equals(line.Type, "Expense", StringComparison.OrdinalIgnoreCase))
+                        .Select(line => (line.Reference, line.Date.ToString("dd/MM/yyyy"), line.CategoryName,
+                            line.NetAmount, line.ClaimableVat, line.NetAmount + line.VatAmount)).ToList();
+                    RenderVatDetailTable(content.Item(), "Expenses", expenseRows, currency);
+
+                    var creditRows = report.CreditNoteLines.Select(line => (
+                        line.Reference, line.Date.ToString("dd/MM/yyyy"), line.Side,
+                        -line.NetAmount, -line.VatAmount, -(line.NetAmount + line.VatAmount))).ToList();
+                    RenderVatDetailTable(content.Item(), "Credit notes", creditRows, currency);
+                    content.Item().PaddingTop(4).Text("Amounts are shown as management summaries. Return-box fields are not an FTA mapping.").FontSize(8);
+                });
+                page.Footer().AlignCenter().DefaultTextStyle(style => style.FontSize(8)).Text(text =>
+                {
+                    text.Span($"{(frozen ? "Snapshot" : "Draft")} • {report.PeriodLabel} • Generated {generatedAtGst:dd-MMM-yyyy HH:mm} GST • Page ");
+                    text.CurrentPageNumber();
+                    text.Span(" of ");
+                    text.TotalPages();
+                });
+            }));
+            return document.GeneratePdf();
+        }
+
+        private static void RenderVatDetailTable(
+            IContainer parent,
+            string title,
+            IReadOnlyCollection<(string Reference, string Date, string Party, decimal Taxable, decimal Vat, decimal Total)> rows,
+            string currency)
+        {
+            parent.Column(section =>
+            {
+                section.Item().PaddingTop(11).PaddingBottom(3).Text(title).Bold().FontSize(11);
+                section.Item().Table(table =>
+                {
+                    table.ColumnsDefinition(columns =>
+                    {
+                        columns.RelativeColumn(1.6f);
+                        columns.RelativeColumn(1.0f);
+                        columns.RelativeColumn(2.0f);
+                        columns.RelativeColumn(1.15f);
+                        columns.RelativeColumn(1.0f);
+                        columns.RelativeColumn(1.15f);
+                    });
+                    table.Header(header =>
+                    {
+                        foreach (var heading in new[] { "Reference", "Date", "Party", "Taxable", "VAT", "Total" })
+                            header.Cell().Border(1).Background(Colors.Grey.Lighten3).Padding(3).Text(heading).Bold().FontSize(8);
+                    });
+                    foreach (var row in rows)
+                    {
+                        table.Cell().Border(1).Padding(3).Text(row.Reference).FontSize(8);
+                        table.Cell().Border(1).Padding(3).Text(row.Date).FontSize(8);
+                        table.Cell().Border(1).Padding(3).Text(row.Party).FontSize(8);
+                        table.Cell().Border(1).Padding(3).AlignRight().Text(row.Taxable.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().Border(1).Padding(3).AlignRight().Text(row.Vat.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).FontSize(8);
+                        table.Cell().Border(1).Padding(3).AlignRight().Text(row.Total.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).FontSize(8);
+                    }
+                    var totalTaxable = rows.Sum(row => row.Taxable);
+                    var totalVat = rows.Sum(row => row.Vat);
+                    var totalGross = rows.Sum(row => row.Total);
+                    table.Cell().ColumnSpan(3).Border(1).Background(Colors.Grey.Lighten4).Padding(3).Text("TOTAL").Bold().FontSize(8);
+                    table.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalTaxable.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).Bold().FontSize(8);
+                    table.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalVat.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).Bold().FontSize(8);
+                    table.Cell().Border(1).Background(Colors.Grey.Lighten4).Padding(3).AlignRight().Text(totalGross.ToString("N2", System.Globalization.CultureInfo.InvariantCulture)).Bold().FontSize(8);
+                });
+                section.Item().AlignRight().Text($"Amounts in {currency}").FontSize(7).FontColor(Colors.Grey.Darken1);
+            });
+        }
+
+        private static TimeZoneInfo GetGulfStandardTimeZone()
+        {
+            foreach (var id in new[] { "Asia/Dubai", "Arabian Standard Time" })
+            {
+                try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+                catch (TimeZoneNotFoundException) { }
+                catch (InvalidTimeZoneException) { }
+            }
+            return TimeZoneInfo.CreateCustomTimeZone("GST", TimeSpan.FromHours(4), "GST", "GST");
+        }
+
         public async Task<byte[]> GenerateExpensesRegisterPdfAsync(IReadOnlyList<ExpenseDto> expenses, DateTime fromDate, DateTime toDate, int tenantId)
         {
             try

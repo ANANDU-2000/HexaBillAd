@@ -19,9 +19,9 @@ namespace HexaBill.Tests;
 /// </summary>
 public sealed class ZayogyaVatManagementGoldenBaselineTests
 {
-    private const int ZayogyaTenantId = 60006;
-    private static readonly DateTime PeriodFrom = new(2025, 1, 1);
-    private static readonly DateTime PeriodTo = new(2025, 3, 31);
+    internal const int ZayogyaTenantId = 60006;
+    internal static readonly DateTime PeriodFrom = new(2025, 1, 1);
+    internal static readonly DateTime PeriodTo = new(2025, 3, 31);
 
     [Fact]
     public async Task ZayogyaSyntheticStandardVatReturn_AmountsApiFieldsExportsAndWorkflowStayFrozen()
@@ -49,7 +49,7 @@ public sealed class ZayogyaVatManagementGoldenBaselineTests
 
         var json = JsonSerializer.SerializeToElement(report, new JsonSerializerOptions(JsonSerializerDefaults.Web));
         var jsonFields = json.EnumerateObject().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
-        Assert.Equal(new HashSet<string>([
+        var frozenFields = new HashSet<string>([
             "periodLabel", "periodStart", "periodEnd", "dueDate", "status", "vatCalculationBasis",
             "profitSales", "profitCogs", "estimatedCostLineCount", "profitExpenses", "profitAmount",
             "profitVat", "profitVatEstimate", "profitEstimateNotForFiling", "calculatedAt", "periodId",
@@ -57,12 +57,17 @@ public sealed class ZayogyaVatManagementGoldenBaselineTests
             "box13a", "box13b", "petroleumExcluded", "transactionCount", "purchaseCountInPeriod",
             "expenseCountInPeriod", "purchasesExcludedReasons", "expensesExcludedReasons", "outputLines",
             "inputLines", "creditNoteLines", "reverseChargeLines", "validationIssues"
-        ], StringComparer.Ordinal), jsonFields);
+        ], StringComparer.Ordinal);
+        Assert.Subset(jsonFields, frozenFields);
+        Assert.Contains("reportKind", jsonFields);
+        Assert.Contains("standardOutputVat", jsonFields);
+        Assert.Contains("recoverableInputVat", jsonFields);
+        Assert.Contains("netVatPayable", jsonFields);
 
         var csvAction = await controller.ExportVatReturnCsv(PeriodFrom, PeriodTo, null);
         var csv = Assert.IsType<FileContentResult>(csvAction);
         var csvText = Encoding.UTF8.GetString(csv.FileContents);
-        Assert.StartsWith("Type,Reference,Date,NetAmount,VatAmount,ClaimableVat,VatScenario\r\n", csvText);
+        Assert.StartsWith("\uFEFFType,Reference,Date,NetAmount,VatAmount,ClaimableVat,VatScenario\r\n", csvText);
         Assert.Contains("Output,ZY-1,2025-01-15,1000,50,,Standard", csvText);
         Assert.Contains("CreditNote,ZY-RET-1,2025-02-15,200,10,Output,", csvText);
         Assert.Contains("Input,ZY-PUR-1,2025-01-15,400,20,20,Standard", csvText);
@@ -92,16 +97,30 @@ public sealed class ZayogyaVatManagementGoldenBaselineTests
         Assert.Equal(report.Box1a, calculateBody.Data.Box1a);
 
         var period = await context.VatReturnPeriods.SingleAsync(p => p.TenantId == ZayogyaTenantId);
-        var lockResult = await controller.LockVatReturnPeriod(period.Id);
-        Assert.IsType<OkObjectResult>(lockResult.Result);
-        Assert.Equal("Locked", (await context.VatReturnPeriods.SingleAsync(p => p.Id == period.Id)).Status);
+        context.Settings.Add(new Setting { Key = "COMPANY_TRN", TenantId = ZayogyaTenantId, OwnerId = ZayogyaTenantId, Value = HexaBill.Api.Core.Tenancy.SampleVatTrn.UnitFixture });
+        await context.SaveChangesAsync();
+        var oldEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        var oldSampleFlag = Environment.GetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN");
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
+            Environment.SetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN", "true");
+            var lockResult = await controller.LockVatReturnPeriod(period.Id);
+            Assert.IsType<OkObjectResult>(lockResult.Result);
+            Assert.Equal("Locked", (await context.VatReturnPeriods.SingleAsync(p => p.Id == period.Id)).Status);
 
-        var submitResult = await controller.SubmitVatReturnPeriod(period.Id);
-        Assert.IsType<OkObjectResult>(submitResult.Result);
-        Assert.Equal("Submitted", (await context.VatReturnPeriods.SingleAsync(p => p.Id == period.Id)).Status);
+            var submitResult = await controller.SubmitVatReturnPeriod(period.Id);
+            Assert.IsType<OkObjectResult>(submitResult.Result);
+            Assert.Equal("Submitted", (await context.VatReturnPeriods.SingleAsync(p => p.Id == period.Id)).Status);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", oldEnvironment);
+            Environment.SetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN", oldSampleFlag);
+        }
     }
 
-    private static async Task<AppDbContext> CreateFixtureAsync()
+    internal static async Task<AppDbContext> CreateFixtureAsync()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase("ZayogyaVatGolden_" + Guid.NewGuid())
@@ -171,7 +190,7 @@ public sealed class ZayogyaVatManagementGoldenBaselineTests
         return context;
     }
 
-    private static ReportsController CreateController(AppDbContext context)
+    internal static ReportsController CreateController(AppDbContext context)
     {
         var report = new VatReturnReportService(context, NullLogger<VatReturnReportService>.Instance);
         var controller = new ReportsController(

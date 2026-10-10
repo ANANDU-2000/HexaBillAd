@@ -14,6 +14,41 @@ namespace HexaBill.Tests;
 public class StagingSnapshotMigrationsTests
 {
     [Fact]
+    public async Task VatManagementSnapshotMigration_AddsColumnsLocallyAndGeneratesPostgresDownScript()
+    {
+        await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite("Data Source=:memory:").Options);
+        await db.Database.OpenConnectionAsync();
+        Assert.Contains("20261010090000_AddVatManagementSnapshot", db.Database.GetMigrations());
+
+        var migration = new AddVatManagementSnapshot();
+        Assert.Equal(5, migration.UpOperations.OfType<AddColumnOperation>().Count());
+        Assert.Equal(5, migration.DownOperations.OfType<DropColumnOperation>().Count());
+        await db.Database.ExecuteSqlRawAsync("CREATE TABLE VatReturnPeriods (Id INTEGER PRIMARY KEY, PeriodLabel TEXT NOT NULL);");
+        var generator = db.GetService<IMigrationsSqlGenerator>();
+        foreach (var command in generator.Generate(migration.UpOperations))
+            await db.Database.ExecuteSqlRawAsync(command.CommandText);
+        var upColumns = await db.Database.SqlQueryRaw<string>("SELECT name AS Value FROM pragma_table_info('VatReturnPeriods')")
+            .ToListAsync();
+        Assert.Contains("SnapshotJson", upColumns);
+        Assert.Contains("SnapshotHash", upColumns);
+        Assert.Contains("SnapshotHistoryJson", upColumns);
+        Assert.Contains("SnapshotVersion", upColumns);
+        Assert.Contains("SnapshotAt", upColumns);
+
+        var postgresOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseNpgsql("Host=127.0.0.1;Database=vat_down_script_generation;Username=postgres").Options;
+        await using var postgresContext = new AppDbContext(postgresOptions);
+        var postgresGenerator = postgresContext.GetService<IMigrationsSqlGenerator>();
+        var downSql = postgresGenerator.Generate(migration.DownOperations).Select(command => command.CommandText).ToList();
+        Assert.Equal(5, downSql.Count);
+        Assert.All(downSql, command => Assert.Contains("DROP COLUMN", command, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("SnapshotJson", string.Join("\n", downSql));
+        Assert.Contains("SnapshotHash", string.Join("\n", downSql));
+        Assert.Contains("SnapshotHistoryJson", string.Join("\n", downSql));
+    }
+
+    [Fact]
     public async Task ReceiptAndCostSnapshotMigrations_AreRegisteredAndAdditiveOnly()
     {
         await using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite("Data Source=:memory:").Options);

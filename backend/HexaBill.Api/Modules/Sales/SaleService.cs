@@ -1579,6 +1579,10 @@ namespace HexaBill.Api.Modules.Sales
 
                 if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, existingSale.InvoiceDate))
                     throw new VatPeriodLockedException("VAT return period is locked for this invoice date. You cannot add or edit transactions in a locked period.");
+                var requestedInvoiceDate = (request.InvoiceDate ?? existingSale.InvoiceDate).ToUtcKind();
+                if (requestedInvoiceDate.Date != existingSale.InvoiceDate.Date
+                    && await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, requestedInvoiceDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for the requested invoice date. Amend the report before moving this invoice.");
 
                 // PROD-4: Verify user exists and belongs to tenant
                 var user = await _context.Users

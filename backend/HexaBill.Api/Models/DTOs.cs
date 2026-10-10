@@ -1757,6 +1757,24 @@ namespace HexaBill.Api.Models
     /// <summary>FTA Form 201 VAT return with boxes 1a–13b and detail lines.</summary>
     public class VatReturn201Dto
     {
+        public string ReportKind { get; set; } = "management";
+        public string? CompanyName { get; set; }
+        public string? CompanyNameAr { get; set; }
+        public string? VatTrn { get; set; }
+        public string? TrnStatus { get; set; }
+        public string? Address { get; set; }
+        public string? Phone { get; set; }
+        public bool CanFreezeVatReport { get; set; }
+        public string FilingCycle { get; set; } = "Custom";
+        public List<string> Warnings { get; set; } = new();
+        public bool IsEstimatedDueDate { get; set; } = true;
+        public decimal StandardOutputVat { get; set; }
+        public decimal StandardOutputNet { get; set; }
+        public decimal RecoverableInputVat { get; set; }
+        public decimal NetVatPayable { get; set; }
+        public bool HasDerivedValues { get; set; }
+        public DateTime? SnapshotAt { get; set; }
+        public int SnapshotVersion { get; set; }
         public string PeriodLabel { get; set; } = string.Empty;
         public DateTime PeriodStart { get; set; }
         public DateTime PeriodEnd { get; set; }
@@ -1814,6 +1832,7 @@ namespace HexaBill.Api.Models
         public string? VatScenario { get; set; }
         public string CustomerName { get; set; } = string.Empty;
         public int? SaleId { get; set; }
+        public bool IsDerived { get; set; }
     }
 
     public class VatReturnInputLineDto
@@ -1830,6 +1849,7 @@ namespace HexaBill.Api.Models
         public int? SourceId { get; set; }
         public bool IsEntertainment { get; set; }
         public bool IsTaxClaimable { get; set; }
+        public bool IsDerived { get; set; }
     }
 
     public class VatReturnCreditNoteLineDto
@@ -1880,6 +1900,12 @@ namespace HexaBill.Api.Models
         /// This is intended for support/debug scenarios and is optional.
         /// </summary>
         public bool Diagnostics { get; set; }
+    }
+
+    public class VatReturnAmendRequest
+    {
+        [Required, MinLength(5), MaxLength(1000)]
+        public string Reason { get; set; } = string.Empty;
     }
 
     /// <summary>VAT workflow tracking: tab views, button clicks, zero-value states (stored in AuditLog).</summary>

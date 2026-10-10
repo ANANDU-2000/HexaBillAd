@@ -67,24 +67,7 @@ namespace HexaBill.Api.Modules.Reports
             catch (Exception ex)
             {
                 _logger.LogError(ex, "VAT return calculation failed for tenant {TenantId}. {Message}", tenantId, ex.Message);
-                var (periodLabel, dueDate) = GetPeriodLabelAndDue(fromDate.ToUtcKind(), toDate.Date.AddDays(1).ToUtcKind());
-                return new VatReturn201Dto
-                {
-                    PeriodLabel = periodLabel,
-                    PeriodStart = fromDate,
-                    PeriodEnd = toDate,
-                    DueDate = dueDate,
-                    Status = "Draft",
-                    ValidationIssues = new List<ValidationIssueDto>
-                    {
-                        new ValidationIssueDto
-                        {
-                            RuleId = "SYS001",
-                            Severity = "Blocking",
-                            Message = $"Calculation error: {ex.Message}. Check for missing VatScenario on sales or NULL Subtotal/VatTotal."
-                        }
-                    }
-                };
+                throw new VatCalculationException(Guid.NewGuid().ToString("N"), ex);
             }
         }
 
@@ -93,10 +76,9 @@ namespace HexaBill.Api.Modules.Reports
         {
             if (!_context.Database.IsNpgsql())
             {
-                return await _context.Sales
+                return await _context.Sales.ForTenant(tenantId)
                     .Include(s => s.Customer)
-                    .Where(s => (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId))
-                        && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to)
+                    .Where(s => !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to)
                     .OrderBy(s => s.InvoiceDate)
                     .ToListAsync();
             }
@@ -106,7 +88,7 @@ namespace HexaBill.Api.Modules.Reports
             try
             {
                 // Exact same WHERE as ReportService.GetSalesLedgerSalesRawAsync so VAT Return shows same sales as Sales Ledger
-                const string sql = @"SELECT ""Id"" FROM ""Sales"" WHERE (""TenantId"" = @p0 OR (""TenantId"" IS NULL AND ""OwnerId"" = @p0)) AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p1 AND ""InvoiceDate"" < @p2 ORDER BY ""InvoiceDate"", ""Id""";
+                const string sql = @"SELECT ""Id"" FROM ""Sales"" WHERE ""TenantId"" = @p0 AND ""IsDeleted"" = false AND ""InvoiceDate"" >= @p1 AND ""InvoiceDate"" < @p2 ORDER BY ""InvoiceDate"", ""Id""";
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = sql;
                 var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = tenantId; cmd.Parameters.Add(p0);
@@ -143,7 +125,7 @@ namespace HexaBill.Api.Modules.Reports
             var salesInPeriod = await GetSalesInPeriodForVatAsync(tenantId, from, to);
             if (salesInPeriod.Count == 0)
             {
-                var anyForTenant = await _context.Sales.CountAsync(s => (s.TenantId == tenantId || s.OwnerId == tenantId) && !s.IsDeleted);
+                var anyForTenant = await _context.Sales.ForTenant(tenantId).CountAsync(s => !s.IsDeleted);
                 _logger.LogWarning("VAT return: 0 sales in period {From}–{To} for tenant {TenantId}. Total sales for tenant in DB: {Total}. Check InvoiceDate (calendar) and tenant scope.", from.ToString("yyyy-MM-dd"), to.AddDays(-1).ToString("yyyy-MM-dd"), tenantId, anyForTenant);
             }
 
@@ -159,16 +141,19 @@ namespace HexaBill.Api.Modules.Reports
                 // FIX: When Subtotal/VatTotal are 0 but GrandTotal > 0 (legacy or bad data), derive so VAT Return shows correct totals
                 decimal net = s.Subtotal;
                 decimal vat = s.VatTotal;
+                var isDerived = false;
                 if (net == 0 && vat == 0 && s.GrandTotal > 0)
                 {
-                    net = Math.Round(s.GrandTotal / 1.05m, 2);
-                    vat = Math.Round(s.GrandTotal - net, 2);
+                    net = VatCalculator.Round(s.GrandTotal / (1m + VatCalculator.StandardRate));
+                    vat = VatCalculator.Round(s.GrandTotal - net);
+                    isDerived = true;
                 }
                 // FIX: Zayoga-style migration stored VAT-inclusive gross in Subtotal with VatTotal=0 (Subtotal≈GrandTotal)
                 else if (isStandard && vat == 0 && s.GrandTotal > 0 && Math.Abs(s.Subtotal - s.GrandTotal) < 0.01m)
                 {
                     net = VatCalculator.Round(s.GrandTotal / (1m + VatCalculator.StandardRate));
                     vat = VatCalculator.Round(s.GrandTotal - net);
+                    isDerived = true;
                 }
                 if (isStandard)
                 {
@@ -184,7 +169,8 @@ namespace HexaBill.Api.Modules.Reports
                         VatAmount = vat,
                         VatScenario = s.VatScenario ?? "Standard",
                         CustomerName = s.Customer?.Name ?? "",
-                        SaleId = s.Id
+                        SaleId = s.Id,
+                        IsDerived = isDerived
                     });
                 }
                 else if (string.Equals(s.VatScenario, VatScenarios.ZeroRated, StringComparison.OrdinalIgnoreCase))
@@ -203,37 +189,67 @@ namespace HexaBill.Api.Modules.Reports
                 _logger.LogInformation("VAT Return: 0 standard-rated sales in period (from {Count} sales). Check VatScenario on sales.", salesInPeriod.Count);
 
             // Sale returns (output credit notes): reduce Box 1a/1b
-            var returnsInPeriod = await _context.SaleReturns
-                .Where(sr => (sr.TenantId != null ? sr.TenantId == tenantId : sr.OwnerId == tenantId)
-                    && sr.ReturnDate >= from && sr.ReturnDate < to)
+            var returnsInPeriod = await _context.SaleReturns.ForTenant(tenantId)
+                .Include(sr => sr.Items).ThenInclude(item => item.SaleItem)
+                .Where(sr => sr.Status == ReturnStatus.Approved && sr.ReturnDate >= from && sr.ReturnDate < to)
                 .ToListAsync();
             decimal returnsNet = 0, returnsVat = 0;
+            var returnedSaleIds = returnsInPeriod.Select(r => r.SaleId).Distinct().ToList();
+            var saleScenarios = await _context.Sales.ForTenant(tenantId).AsNoTracking()
+                .Where(s => returnedSaleIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => string.IsNullOrWhiteSpace(s.VatScenario) ? "Standard" : s.VatScenario!);
             foreach (var sr in returnsInPeriod)
             {
-                var srNet = sr.Subtotal;
-                var srVat = sr.VatTotal;
-                returnsNet += VatCalculator.Round(srNet);
-                returnsVat += VatCalculator.Round(srVat);
-                creditNoteLines.Add(new VatReturnCreditNoteLineDto
+                var defaultScenario = saleScenarios.GetValueOrDefault(sr.SaleId, "Standard");
+                var returnLines = sr.Items.Count > 0
+                    ? sr.Items.Select(item =>
+                    {
+                        return (Net: VatCalculator.Round(item.Qty * item.UnitPrice),
+                            Vat: VatCalculator.Round(item.VatAmount),
+                            Scenario: string.IsNullOrWhiteSpace(item.SaleItem?.VatScenario)
+                                ? defaultScenario : item.SaleItem!.VatScenario!);
+                    }).ToList()
+                    : new List<(decimal Net, decimal Vat, string Scenario)>
+                    {
+                        (VatCalculator.Round(sr.Subtotal), VatCalculator.Round(sr.VatTotal), defaultScenario)
+                    };
+                foreach (var returnLine in returnLines)
                 {
-                    Reference = sr.ReturnNo ?? sr.Id.ToString(),
-                    Date = sr.ReturnDate,
-                    NetAmount = srNet,
-                    VatAmount = srVat,
-                    Side = "Output"
-                });
+                    var srNet = returnLine.Net;
+                    var scenario = returnLine.Scenario;
+                    var srVat = string.Equals(scenario, VatScenarios.Standard, StringComparison.OrdinalIgnoreCase)
+                        ? returnLine.Vat : 0m;
+                    if (string.Equals(scenario, VatScenarios.Standard, StringComparison.OrdinalIgnoreCase))
+                    {
+                        box1a -= srNet;
+                        box1b -= srVat;
+                    }
+                    else if (string.Equals(scenario, VatScenarios.ZeroRated, StringComparison.OrdinalIgnoreCase))
+                        box2 -= srNet;
+                    else if (string.Equals(scenario, VatScenarios.Exempt, StringComparison.OrdinalIgnoreCase))
+                        box3 -= srNet;
+                    else if (!string.Equals(scenario, "OutOfScope", StringComparison.OrdinalIgnoreCase))
+                        _logger.LogWarning("Sale return {ReturnId} has unsupported original VAT scenario {Scenario}; no management box was adjusted.", sr.Id, scenario);
+                    returnsNet += srNet;
+                    returnsVat += srVat;
+                    creditNoteLines.Add(new VatReturnCreditNoteLineDto
+                    {
+                        Reference = sr.ReturnNo ?? sr.Id.ToString(),
+                        Date = sr.ReturnDate,
+                        NetAmount = srNet,
+                        VatAmount = srVat,
+                        Side = "Output"
+                    });
+                }
             }
-            box1a = Math.Max(0, box1a - returnsNet);
-            box1b = Math.Max(0, box1b - returnsVat);
 
             // Box 4: Reverse charge base (purchases) - use calendar date comparison to avoid timezone edge cases
             var fromDateOnly = DateOnly.FromDateTime((fromCalendarInclusive ?? from).Date);
             var toDateOnly = DateOnly.FromDateTime((toCalendarInclusive ?? to.AddDays(-1)).Date);
-            var purchasesInPeriod = await _context.Purchases
+            var purchasesInPeriod = await _context.Purchases.ForTenant(tenantId)
                 .Include(p => p.Supplier)
                 .Include(p => p.Items)
-                .Where(p => (p.TenantId != null ? p.TenantId == tenantId : p.OwnerId == tenantId)
-                    && DateOnly.FromDateTime(p.PurchaseDate) >= fromDateOnly
+                .Where(p => DateOnly.FromDateTime(p.PurchaseDate) >= fromDateOnly
                     && DateOnly.FromDateTime(p.PurchaseDate) <= toDateOnly)
                 .ToListAsync();
 
@@ -261,6 +277,7 @@ namespace HexaBill.Api.Modules.Reports
                 {
                     // FIX: Derive VAT when null - legacy purchases may have missing VatTotal/Subtotal
                     var pVat = p.VatTotal ?? (p.Subtotal.HasValue && p.TotalAmount > 0 ? Math.Max(0, p.TotalAmount - p.Subtotal.Value) : 0);
+                    var purchaseVatDerived = !p.VatTotal.HasValue && pVat > 0;
                     if (pVat == 0 && p.Items != null && p.Items.Count > 0)
                     {
                         // Fallback: sum VAT from items (Qty * VatAmount) when VatTotal is null
@@ -269,7 +286,10 @@ namespace HexaBill.Api.Modules.Reports
                             pVat = itemsVat;
                         else if (p.TotalAmount > 0)
                             // Last resort: assume 5% VAT-inclusive (TotalAmount = net * 1.05)
+                        {
                             pVat = VatCalculator.Round(p.TotalAmount - (p.TotalAmount / 1.05m));
+                            purchaseVatDerived = pVat != 0;
+                        }
                     }
                     if (pVat > 0)
                     {
@@ -285,7 +305,8 @@ namespace HexaBill.Api.Modules.Reports
                             TaxType = "Standard",
                             SupplierName = p.SupplierName ?? p.Supplier?.Name ?? "",
                             SourceId = p.Id,
-                            IsTaxClaimable = p.IsTaxClaimable
+                            IsTaxClaimable = p.IsTaxClaimable,
+                            IsDerived = purchaseVatDerived
                         });
                     }
                     else
@@ -296,10 +317,9 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             // Expenses: Box 9b (claimable, non-petroleum) and PetroleumExcluded - use calendar date comparison
-            var expensesInPeriod = await _context.Expenses
+            var expensesInPeriod = await _context.Expenses.ForTenant(tenantId)
                 .Include(e => e.Category)
-                .Where(e => (e.TenantId != null ? e.TenantId == tenantId : e.OwnerId == tenantId)
-                    && e.Status == ExpenseStatus.Approved
+                .Where(e => e.Status == ExpenseStatus.Approved
                     && DateOnly.FromDateTime(e.Date) >= fromDateOnly
                     && DateOnly.FromDateTime(e.Date) <= toDateOnly)
                 .ToListAsync();
@@ -317,13 +337,7 @@ namespace HexaBill.Api.Modules.Reports
                     continue;
                 }
                 // Use ClaimableVat when set; when marked claimable but 0/null, use VatAmount; else derive from TotalAmount - Amount (VAT = total - net)
-                var claimable = e.ClaimableVat ?? 0;
-                if (e.IsTaxClaimable && claimable == 0 && (e.VatAmount ?? 0) > 0)
-                    claimable = e.VatAmount ?? 0;
-                if (e.IsTaxClaimable && claimable == 0 && (e.TotalAmount ?? 0) > 0 && e.Amount > 0 && (e.TotalAmount ?? 0) > e.Amount)
-                    claimable = VatCalculator.Round((e.TotalAmount ?? 0) - e.Amount);
-                if (e.IsTaxClaimable && claimable == 0 && e.Amount > 0 && (e.VatRate ?? 0) > 0)
-                    claimable = VatCalculator.Round(e.Amount * (e.VatRate ?? 0) / 100m);
+                var (claimable, claimableDerived) = ResolveExpenseClaimableVat(e);
                 if (e.IsTaxClaimable && claimable > 0)
                 {
                     box9b += VatCalculator.Round(claimable);
@@ -344,7 +358,8 @@ namespace HexaBill.Api.Modules.Reports
                         CategoryName = e.Category?.Name ?? "",
                         SourceId = e.Id,
                         IsEntertainment = e.IsEntertainment,
-                        IsTaxClaimable = e.IsTaxClaimable
+                        IsTaxClaimable = e.IsTaxClaimable,
+                        IsDerived = claimableDerived
                     });
                 }
                 else if (e.IsTaxClaimable)
@@ -355,16 +370,21 @@ namespace HexaBill.Api.Modules.Reports
 
             // Box 11: Input credit notes (purchase returns VAT) - if we support input credit note VAT later
             decimal box11 = 0;
-            var purchaseReturnsInPeriod = await _context.PurchaseReturns
-                .Where(pr => (pr.TenantId != null ? pr.TenantId == tenantId : pr.OwnerId == tenantId)
-                    && pr.ReturnDate >= from && pr.ReturnDate < to)
+            var purchaseReturnsInPeriod = await _context.PurchaseReturns.ForTenant(tenantId)
+                .Where(pr => pr.Status == ReturnStatus.Approved && pr.ReturnDate >= from && pr.ReturnDate < to)
                 .ToListAsync();
-            foreach (var pr in purchaseReturnsInPeriod)
-                box11 += VatCalculator.Round(pr.VatTotal);
+            var purchaseReturnIds = purchaseReturnsInPeriod.Select(pr => pr.PurchaseId).Distinct().ToList();
+            var claimedPurchaseVat = await _context.Purchases.ForTenant(tenantId).AsNoTracking()
+                .Where(p => purchaseReturnIds.Contains(p.Id) && p.IsTaxClaimable)
+                .ToDictionaryAsync(p => p.Id, p => p.VatTotal ?? 0m);
+            foreach (var group in purchaseReturnsInPeriod.GroupBy(pr => pr.PurchaseId))
+            {
+                var originallyClaimed = claimedPurchaseVat.GetValueOrDefault(group.Key);
+                box11 += Math.Min(originallyClaimed, group.Sum(pr => VatCalculator.Round(pr.VatTotal)));
+            }
 
             // Box 12 = Box9b + Box10 - Box11
             var box12 = box9b + box10 - box11;
-            if (box12 < 0) box12 = 0;
 
             var box13a = Math.Max(0, box1b - box12);
             var box13b = Math.Max(0, box12 - box1b);
@@ -376,57 +396,6 @@ namespace HexaBill.Api.Modules.Reports
             int txCount = salesInPeriod.Count + returnsInPeriod.Count + purchasesInPeriod.Count + expensesInPeriod.Count;
             _logger.LogInformation("VAT return: tenant {TenantId}, period {From} to {To}: Sales={Sales}, Purchases={Purchases}, Expenses={Expenses}, TotalLines={Total}.",
                 tenantId, fromDate.ToString("yyyy-MM-dd"), periodEndInclusive.ToString("yyyy-MM-dd"), salesInPeriod.Count, purchasesInPeriod.Count, expensesInPeriod.Count, txCount);
-
-            // Assurance: pre-round box totals for DTO so validation (V009–V011) can cross-check
-            // Defensive fallback: if box totals are non-zero but detail arrays are empty (e.g. older data or
-            // partial deployments), emit synthetic summary lines so the frontend tabs never show all-zero tables
-            // when Box1/Box12 have values. This keeps VAT Return UI consistent with Overview even if some
-            // transactions could not be broken down line-by-line.
-            if (outputLines.Count == 0 && (box1a != 0 || box1b != 0 || box2 != 0 || box3 != 0))
-            {
-                outputLines.Add(new VatReturnOutputLineDto
-                {
-                    Type = "Sale",
-                    Reference = "Summary",
-                    Date = periodEndInclusive,
-                    NetAmount = box1a + box2 + box3,
-                    VatAmount = box1b,
-                    VatScenario = "Summary",
-                    CustomerName = string.Empty,
-                    SaleId = null
-                });
-            }
-
-            if (inputLines.Count == 0 && box12 != 0)
-            {
-                inputLines.Add(new VatReturnInputLineDto
-                {
-                    Type = "Expense",
-                    Reference = "Summary",
-                    Date = periodEndInclusive,
-                    NetAmount = 0,
-                    VatAmount = box12,
-                    ClaimableVat = box12,
-                    TaxType = "Summary",
-                    SupplierName = string.Empty,
-                    CategoryName = string.Empty,
-                    SourceId = null,
-                    IsEntertainment = false,
-                    IsTaxClaimable = true
-                });
-            }
-
-            if (creditNoteLines.Count == 0 && (returnsNet != 0 || returnsVat != 0))
-            {
-                creditNoteLines.Add(new VatReturnCreditNoteLineDto
-                {
-                    Reference = "Summary",
-                    Date = periodEndInclusive,
-                    NetAmount = returnsNet,
-                    VatAmount = returnsVat,
-                    Side = "Output"
-                });
-            }
 
             var dto = new VatReturn201Dto
             {
@@ -446,6 +415,11 @@ namespace HexaBill.Api.Modules.Reports
                 Box12 = VatCalculator.Round(box12),
                 Box13a = VatCalculator.Round(box13a),
                 Box13b = VatCalculator.Round(box13b),
+                StandardOutputVat = VatCalculator.Round(box1b),
+                StandardOutputNet = VatCalculator.Round(box1a),
+                RecoverableInputVat = VatCalculator.Round(box12),
+                NetVatPayable = VatCalculator.Round(box1b - box12),
+                HasDerivedValues = outputLines.Any(l => l.IsDerived) || inputLines.Any(l => l.IsDerived),
                 PetroleumExcluded = VatCalculator.Round(petroleumExcluded),
                 TransactionCount = txCount,
                 PurchaseCountInPeriod = purchasesInPeriod.Count,
@@ -457,6 +431,39 @@ namespace HexaBill.Api.Modules.Reports
                 CreditNoteLines = creditNoteLines,
                 ReverseChargeLines = reverseChargeLines
             };
+            if ((box1a != 0 || box1b != 0 || box2 != 0 || box3 != 0) && outputLines.Count == 0)
+                dto.Warnings.Add("Sales totals exist without transaction detail. The report does not synthesize missing lines.");
+            if (box12 != 0 && inputLines.Count == 0)
+                dto.Warnings.Add("Input VAT totals exist without transaction detail. The report does not synthesize missing lines.");
+            if ((returnsNet != 0 || returnsVat != 0) && creditNoteLines.Count == 0)
+                dto.Warnings.Add("Return totals exist without credit-note detail. The report does not synthesize missing lines.");
+            var tenantIdentity = await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == tenantId);
+            var tenantSettings = await _context.Settings.AsNoTracking()
+                .Where(s => s.TenantId == tenantId)
+                .ToDictionaryAsync(s => s.Key, s => s.Value);
+            dto.CompanyName = tenantSettings.GetValueOrDefault("COMPANY_NAME_EN") ?? tenantIdentity?.CompanyNameEn ?? tenantIdentity?.Name;
+            dto.CompanyNameAr = tenantSettings.GetValueOrDefault("COMPANY_NAME_AR") ?? tenantIdentity?.CompanyNameAr;
+            dto.VatTrn = tenantSettings.GetValueOrDefault("COMPANY_TRN") ?? tenantIdentity?.VatNumber;
+            dto.TrnStatus = string.IsNullOrWhiteSpace(dto.VatTrn) ? "Missing" :
+                HexaBill.Api.Core.Tenancy.SampleVatTrn.IsRealVatTrn(dto.VatTrn) ? "TRN not verified" :
+                HexaBill.Api.Core.Tenancy.SampleVatTrn.IsSample(dto.VatTrn) ? "Sample TRN" : "Invalid format";
+            dto.Address = tenantSettings.GetValueOrDefault("COMPANY_ADDRESS") ?? tenantIdentity?.Address;
+            dto.Phone = tenantSettings.GetValueOrDefault("COMPANY_PHONE") ?? tenantIdentity?.Phone;
+            dto.CanFreezeVatReport = VatTrnReportPolicy.CanFreeze(dto.VatTrn,
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                Environment.GetEnvironmentVariable("HEXABILL_ALLOW_SAMPLE_VAT_TRN"));
+            dto.FilingCycle = "Custom / management period";
+            if (dto.ReverseChargeLines.Count > 0)
+                dto.Warnings.Add("Reverse-charge activity is present. It is shown separately and blocks freezing this report.");
+            if (dto.HasDerivedValues)
+                dto.Warnings.Add("Some VAT amounts were derived from gross values. Review source records; freezing is disabled.");
+            if (!string.IsNullOrWhiteSpace(dto.VatTrn))
+            {
+                var sharedTenantCount = await _context.Settings.AsNoTracking()
+                    .CountAsync(s => s.Key == "COMPANY_TRN" && s.Value == dto.VatTrn && s.TenantId != null);
+                if (sharedTenantCount > 1)
+                    dto.Warnings.Add("Tenant contribution, not a consolidated return.");
+            }
             _logger.LogDebug("VAT return assurance: tenant {TenantId} Box1a={Box1a}, Box1b={Box1b}, Box9b={Box9b}, Box12={Box12}, Box13a={Box13a}, Box13b={Box13b}.",
                 tenantId, dto.Box1a, dto.Box1b, dto.Box9b, dto.Box12, dto.Box13a, dto.Box13b);
             await FillProfitFormAsync(dto, tenantId, from, to);
@@ -483,20 +490,23 @@ namespace HexaBill.Api.Modules.Reports
                 return;
 
             dto.VatCalculationBasis = nameof(VatCalculationBasis.ProfitBased);
-            var sales = _context.Sales.AsNoTracking()
-                .Where(s => s.TenantId == tenantId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
-            var profitSales = await sales.SumAsync(s => (decimal?)s.GrandTotal) ?? 0;
+            var sales = _context.Sales.AsNoTracking().ForTenant(tenantId)
+                .Where(s => !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate < to);
+            var profitSales = await sales.SumAsync(s => (decimal?)s.Subtotal) ?? 0;
             var saleIds = await sales.Select(s => s.Id).ToListAsync();
             var saleItems = await _context.SaleItems.AsNoTracking()
                 .Include(si => si.Product)
                 .Where(si => saleIds.Contains(si.SaleId))
                 .ToListAsync();
             var cogs = saleItems.Sum(SaleCostBasis.Calculate);
-            var expenses = await _context.Expenses.AsNoTracking()
-                .Where(e => e.TenantId == tenantId && e.Date >= from && e.Date < to)
+            var expenses = await _context.Expenses.AsNoTracking().ForTenant(tenantId)
+                .Where(e => e.Status == ExpenseStatus.Approved && e.Date >= from && e.Date < to)
                 .SumAsync(e => (decimal?)e.Amount) ?? 0;
-            var profit = profitSales - cogs - expenses;
-            dto.ProfitSales = VatCalculator.Round(profitSales);
+            var returns = await _context.SaleReturns.AsNoTracking().ForTenant(tenantId)
+                .Where(r => r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate < to)
+                .SumAsync(r => (decimal?)r.Subtotal) ?? 0;
+            var profit = profitSales - returns - cogs - expenses;
+            dto.ProfitSales = VatCalculator.Round(profitSales - returns);
             dto.ProfitCogs = VatCalculator.Round(cogs);
             dto.EstimatedCostLineCount = saleItems.Count(si => !SaleCostBasis.HasSnapshot(si));
             dto.ProfitExpenses = VatCalculator.Round(expenses);
@@ -520,6 +530,19 @@ namespace HexaBill.Api.Modules.Reports
             return s.VatTotal > 0;
         }
 
+        private static (decimal Amount, bool IsDerived) ResolveExpenseClaimableVat(Expense expense)
+        {
+            if (!expense.IsTaxClaimable) return (0m, false);
+            // A stored zero is an explicit decision and must not fall through to a gross-VAT guess.
+            if (expense.ClaimableVat.HasValue) return (expense.ClaimableVat.Value, false);
+            if (expense.VatAmount.HasValue) return (expense.VatAmount.Value, true);
+            if (expense.TotalAmount.HasValue && expense.Amount > 0 && expense.TotalAmount.Value > expense.Amount)
+                return (VatCalculator.Round(expense.TotalAmount.Value - expense.Amount), true);
+            if (expense.Amount > 0 && expense.VatRate.GetValueOrDefault() > 0)
+                return (VatCalculator.Round(expense.Amount * expense.VatRate!.Value / 100m), true);
+            return (0m, false);
+        }
+
         /// <summary>Compute period label and due date from calendar (inclusive) dates. Supports both standard and FTA quarters.</summary>
         public static (string label, DateTime due) GetPeriodLabelAndDue(DateTime fromInclusive, DateTime toInclusive)
         {
@@ -529,7 +552,7 @@ namespace HexaBill.Api.Modules.Reports
             if (months <= 1)
             {
                 var label = from.ToString("MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture);
-                var due = new DateTime(from.Year, from.Month, 1).AddMonths(2).AddDays(27);
+                var due = to.AddDays(28);
                 return (label, due);
             }
             if (months <= 4) // quarter (3 months) or slightly more
@@ -615,14 +638,13 @@ namespace HexaBill.Api.Modules.Reports
                     if (t < now.AddYears(-2) || f > now) continue;
                     var fromOnly = DateOnly.FromDateTime(f);
                     var toOnly = DateOnly.FromDateTime(t);
-                    var salesCount = await _context.Sales
-                        .CountAsync(s => (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)) && !s.IsDeleted
+                    var salesCount = await _context.Sales.ForTenant(tenantId)
+                        .CountAsync(s => !s.IsDeleted
                             && DateOnly.FromDateTime(s.InvoiceDate) >= fromOnly && DateOnly.FromDateTime(s.InvoiceDate) <= toOnly);
-                    var purchCount = await _context.Purchases
-                        .CountAsync(p => (p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId))
-                            && DateOnly.FromDateTime(p.PurchaseDate) >= fromOnly && DateOnly.FromDateTime(p.PurchaseDate) <= toOnly);
-                    var expCount = await _context.Expenses
-                        .CountAsync(e => (e.TenantId == tenantId || (e.TenantId == null && e.OwnerId == tenantId)) && e.Status == ExpenseStatus.Approved
+                    var purchCount = await _context.Purchases.ForTenant(tenantId)
+                        .CountAsync(p => DateOnly.FromDateTime(p.PurchaseDate) >= fromOnly && DateOnly.FromDateTime(p.PurchaseDate) <= toOnly);
+                    var expCount = await _context.Expenses.ForTenant(tenantId)
+                        .CountAsync(e => e.Status == ExpenseStatus.Approved
                             && DateOnly.FromDateTime(e.Date) >= fromOnly && DateOnly.FromDateTime(e.Date) <= toOnly);
                     var total = salesCount + purchCount + expCount;
                     if (total > bestCount)
@@ -637,14 +659,13 @@ namespace HexaBill.Api.Modules.Reports
                 var (fy, fyEnd) = (new DateTime(y, 1, 1), new DateTime(y, 12, 31));
                 var fyFrom = DateOnly.FromDateTime(fy);
                 var fyTo = DateOnly.FromDateTime(fyEnd);
-                var fySales = await _context.Sales
-                    .CountAsync(s => (s.TenantId == tenantId || (s.TenantId == null && s.OwnerId == tenantId)) && !s.IsDeleted
+                var fySales = await _context.Sales.ForTenant(tenantId)
+                    .CountAsync(s => !s.IsDeleted
                         && DateOnly.FromDateTime(s.InvoiceDate) >= fyFrom && DateOnly.FromDateTime(s.InvoiceDate) <= fyTo);
-                var fyPurch = await _context.Purchases
-                    .CountAsync(p => (p.TenantId == tenantId || (p.TenantId == null && p.OwnerId == tenantId))
-                        && DateOnly.FromDateTime(p.PurchaseDate) >= fyFrom && DateOnly.FromDateTime(p.PurchaseDate) <= fyTo);
-                var fyExp = await _context.Expenses
-                    .CountAsync(e => (e.TenantId == tenantId || (e.TenantId == null && e.OwnerId == tenantId)) && e.Status == ExpenseStatus.Approved
+                var fyPurch = await _context.Purchases.ForTenant(tenantId)
+                    .CountAsync(p => DateOnly.FromDateTime(p.PurchaseDate) >= fyFrom && DateOnly.FromDateTime(p.PurchaseDate) <= fyTo);
+                var fyExp = await _context.Expenses.ForTenant(tenantId)
+                    .CountAsync(e => e.Status == ExpenseStatus.Approved
                         && DateOnly.FromDateTime(e.Date) >= fyFrom && DateOnly.FromDateTime(e.Date) <= fyTo);
                 var fyTotal = fySales + fyPurch + fyExp;
                 if (fyTotal > bestCount)

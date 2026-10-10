@@ -423,7 +423,7 @@ namespace HexaBill.Api.Modules.Expenses
                     }
 
                     if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, request.Date))
-                        throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot add or edit transactions in a locked period.");
+                        throw new VatPeriodLockedException("VAT return period is locked for this date. Amend the report before posting this expense.");
 
                     // Determine status: Staff expenses are Pending, Owner/Admin are Approved
                     var isStaff = staffAllowedBranchIds != null;
@@ -594,8 +594,10 @@ namespace HexaBill.Api.Modules.Expenses
                         throw new InvalidOperationException($"Category with ID {request.CategoryId} not found");
                     }
 
-                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, request.Date))
-                        throw new VatPeriodLockedException("VAT return period is locked for this date. You cannot add or edit transactions in a locked period.");
+                    if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, expense.Date)
+                        || (request.Date.Date != expense.Date.Date
+                            && await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, request.Date)))
+                        throw new VatPeriodLockedException("VAT return period is locked for the original or requested expense date. Amend the report before moving this expense.");
 
                     expense.BranchId = request.BranchId;
                     expense.RouteId = request.RouteId;

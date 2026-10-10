@@ -28,6 +28,7 @@ namespace HexaBill.Api.Core.Infrastructure
         {
             var correlationId = Guid.NewGuid().ToString("N")[..12];
             context.Items["CorrelationId"] = correlationId;
+            context.Response.Headers["X-Correlation-ID"] = correlationId;
 
             var stopwatch = Stopwatch.StartNew();
             var path = context.Request.Path.Value ?? "";

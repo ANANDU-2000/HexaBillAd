@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   RefreshCw,
@@ -147,14 +147,19 @@ const VatReturnPage = () => {
   const [year, setYear] = useState(initY)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(null) // null | 'access' | { message: string }
+  const [copiedCorrelationId, setCopiedCorrelationId] = useState(false)
   const [vatReturn, setVatReturn] = useState(null)
+  const [actionAcknowledgement, setActionAcknowledgement] = useState(null)
+  const [actionError, setActionError] = useState(null)
   const [ledgerFallback, setLedgerFallback] = useState(null) // { totalSalesNet, totalSalesVat } when VAT return has 0 sales but ledger has data
   const [validationExpanded, setValidationExpanded] = useState(false)
   const [trackingExpanded, setTrackingExpanded] = useState(false)
+  const requestIdRef = useRef(0)
 
   const isValidDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
 
   const fetchVatReturn = useCallback(async (fromOverride, toOverride) => {
+    const requestId = ++requestIdRef.current
     const f = fromOverride ?? fromDate
     const t = toOverride ?? toDate
     if (!f || !t) {
@@ -213,6 +218,7 @@ const VatReturnPage = () => {
       // CRITICAL: Unwrap inner DTO (API returns { success, data: dto } or nested { data: { data: dto } })
       const dto = res?.data?.data ?? res?.data ?? null
       const success = res?.success !== false && dto != null
+      if (requestId !== requestIdRef.current) return
       if (success) {
         setVatReturn(dto)
         setLoadError(null)
@@ -226,6 +232,7 @@ const VatReturnPage = () => {
         if (hasNoSales && fromFinal && toFinal) {
           try {
             const ledgerRes = await reportsAPI.getComprehensiveSalesLedger({ fromDate: fromFinal, toDate: toFinal })
+            if (requestId !== requestIdRef.current) return
             const summary = ledgerRes?.data?.summary ?? ledgerRes?.data?.Summary ?? ledgerRes?.summary ?? null
             if (summary) {
               const totalSales = Number(summary.totalSales ?? summary.TotalSales ?? 0)
@@ -247,6 +254,7 @@ const VatReturnPage = () => {
         }
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return
       const status = err?.response?.status
       const data = err?.response?.data
       const msg = data?.message || 'Failed to load VAT return'
@@ -256,18 +264,22 @@ const VatReturnPage = () => {
         setLoadError('access')
         if (!err?._handledByInterceptor) toast.error("You don't have permission to view VAT Return.")
       } else {
+        const responseHeaders = err?.response?.headers
+        const correlationId = data?.correlationId ?? data?.CorrelationId
+          ?? responseHeaders?.['x-correlation-id'] ?? responseHeaders?.['X-Correlation-ID']
         setLoadError({
           message: msg,
           errors: Array.isArray(errors) ? errors : undefined,
           status: status ?? null,
-          url: typeof url === 'string' ? url : null
+          url: typeof url === 'string' && url !== '(request URL not available)' ? url : null,
+          correlationId: typeof correlationId === 'string' ? correlationId : null
         })
         if (!err?._handledByInterceptor) toast.error(msg)
       }
       setVatReturn(null)
       setLedgerFallback(null)
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [fromDate, toDate])
 
@@ -387,9 +399,6 @@ const VatReturnPage = () => {
   const profitExpenses = Number(v?.profitExpenses ?? v?.ProfitExpenses ?? 0)
   const profitAmount = Number(v?.profitAmount ?? v?.ProfitAmount ?? 0)
   const profitVatEstimate = v?.profitVatEstimate ?? v?.ProfitVatEstimate
-  useEffect(() => {
-    if (isProfitBasis && !['overview', 'profit', 'validation'].includes(activeTab)) setActiveTab('overview')
-  }, [isProfitBasis, activeTab])
   // Normalize API response: support both camelCase and PascalCase; coerce to number so totals always display correctly
   const box1a = v != null ? Number(v.box1a ?? v.Box1a ?? 0) : 0
   const box1b = v != null ? Number(v.box1b ?? v.Box1b ?? 0) : 0
@@ -404,35 +413,8 @@ const VatReturnPage = () => {
   const rawInputLines = Array.isArray(v?.inputLines) ? v.inputLines : (Array.isArray(v?.InputLines) ? v.InputLines : [])
   const rawCreditNoteLines = Array.isArray(v?.creditNoteLines) ? v.creditNoteLines : (Array.isArray(v?.CreditNoteLines) ? v.CreditNoteLines : [])
 
-  // Fallback: some older deployments only populate box totals (Box1/Box12) but not detail arrays.
-  // In that case, synthesize one summary line per side so tabs never look "all zero" when Overview has values.
-  const outputLines = rawOutputLines.length > 0 || (box1a === 0 && box1b === 0 && box2 === 0 && box3 === 0)
-    ? rawOutputLines
-    : [{
-        type: 'Sale',
-        reference: 'Summary',
-        date: v?.periodEnd || (fromDate ? new Date(fromDate) : new Date()),
-        netAmount: box1a + box2 + box3,
-        vatAmount: box1b,
-        vatScenario: 'Summary',
-        customerName: ''
-      }]
-
-  const inputLines = rawInputLines.length > 0 || box12 === 0
-    ? rawInputLines
-    : [{
-        type: 'Expense',
-        reference: 'Summary',
-        date: v?.periodEnd || (fromDate ? new Date(fromDate) : new Date()),
-        netAmount: 0,
-        vatAmount: box12,
-        claimableVat: box12,
-        taxType: 'Summary',
-        supplierName: '',
-        categoryName: '',
-        isEntertainment: false,
-        isTaxClaimable: true
-      }]
+  const outputLines = rawOutputLines
+  const inputLines = rawInputLines
 
   const creditNoteLines = rawCreditNoteLines
   const purchaseCountInPeriod = v != null ? (v.purchaseCountInPeriod ?? v.PurchaseCountInPeriod ?? 0) : 0
@@ -458,17 +440,12 @@ const VatReturnPage = () => {
   const totalExpensesVat = expenseLines.reduce((s, l) => s + (Number(l.claimableVat ?? l.ClaimableVat) || 0), 0)
   const totalCreditNotesNet = creditNoteLines.reduce((s, l) => s + (Number(l.netAmount ?? l.NetAmount) || 0), 0)
   const totalCreditNotesVat = creditNoteLines.reduce((s, l) => s + (Number(l.vatAmount ?? l.VatAmount) || 0), 0)
-  // REAL CALCULATION FLOW: Use (1) line totals when API boxes are 0 but we have lines, (2) Sales Ledger fallback when VAT return has 0 sales but ledger has data.
-  const displayBox1a = (box1a === 0 && salesLinesForTotal.length > 0)
-    ? totalSalesNet
-    : (box1a === 0 && ledgerFallback) ? (ledgerFallback.totalSalesNet ?? 0) : box1a
-  const displayBox1b = (box1b === 0 && salesLinesForTotal.length > 0)
-    ? totalSalesVat
-    : (box1b === 0 && ledgerFallback) ? (ledgerFallback.totalSalesVat ?? 0) : box1b
-  const displayBox12 = (box12 === 0 && (purchaseLines.length > 0 || expenseLines.length > 0)) ? (totalPurchasesVat + totalExpensesVat) : box12
-  const displayBox13a = Math.max(0, displayBox1b - displayBox12)
-  const displayBox13b = Math.max(0, displayBox12 - displayBox1b)
-  const hasFta201 = v && (typeof box1a === 'number' || typeof v.box1a === 'number')
+  const standardOutputNet = Number(v?.standardOutputNet ?? v?.StandardOutputNet ?? box1a)
+  const standardOutputVat = Number(v?.standardOutputVat ?? v?.StandardOutputVat ?? box1b)
+  const recoverableInputVat = Number(v?.recoverableInputVat ?? v?.RecoverableInputVat ?? box12)
+  const netVatPayable = Number(v?.netVatPayable ?? v?.NetVatPayable ?? (standardOutputVat - recoverableInputVat))
+  const canFreezeVatReport = v?.canFreezeVatReport === true || v?.CanFreezeVatReport === true
+  const hasFta201 = v != null
   const issues = (v?.validationIssues ?? v?.ValidationIssues ?? []).filter(Boolean)
   const blocking = issues.filter(i => (i.severity || '').toString() === 'Blocking')
   const hasV002 = issues.some(i => i.ruleId === 'V002')
@@ -524,6 +501,38 @@ const VatReturnPage = () => {
     return null
   })()
 
+  const acknowledgeVatAction = (action, report = v) => {
+    const now = new Date()
+    setActionAcknowledgement({
+      action,
+      actor: user?.name || user?.displayName || user?.email || 'Current user',
+      when: new Intl.DateTimeFormat('en-AE', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Dubai' }).format(now) + ' GST',
+      period: report?.periodLabel ?? report?.PeriodLabel ?? periodLabel,
+      net: Number(report?.netVatPayable ?? report?.NetVatPayable ?? netVatPayable),
+      reference: report?.periodId ?? report?.PeriodId ?? 'management report'
+    })
+  }
+
+  const runVatAction = async (operation, fallbackMessage) => {
+    setActionError(null)
+    setActionAcknowledgement(null)
+    try {
+      return await operation()
+    } catch (err) {
+      const data = err?.response?.data
+      const headers = err?.response?.headers
+      const correlationId = data?.correlationId ?? data?.CorrelationId
+        ?? headers?.['x-correlation-id'] ?? headers?.['X-Correlation-ID'] ?? null
+      const message = data?.message || data?.errors?.[0] || fallbackMessage
+      setActionError({
+        message,
+        correlationId: typeof correlationId === 'string' ? correlationId : null,
+        retry: () => runVatAction(operation, fallbackMessage)
+      })
+      return null
+    }
+  }
+
   return (
     <div className="w-full px-4 sm:px-6 py-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -537,11 +546,53 @@ const VatReturnPage = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">VAT Return (FTA Form 201)</h1>
-            <p className="text-sm text-gray-500">UAE Federal Tax Authority VAT return</p>
+            <h1 className="text-xl font-semibold text-neutral-900">VAT Management Report</h1>
+            <p className="text-sm text-gray-500">Internal management report</p>
           </div>
         </div>
       </div>
+      <div role="note" className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-950">
+        Management report. Not an FTA filing.
+      </div>
+      {actionAcknowledgement && (
+        <div role="status" className="rounded-md border border-green-300 bg-green-50 px-4 py-3 text-sm text-green-950">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">{actionAcknowledgement.action} complete</p>
+              <p>{actionAcknowledgement.actor} · {actionAcknowledgement.when} · {actionAcknowledgement.period} · Net VAT payable {formatCurrency(actionAcknowledgement.net)} · Ref {actionAcknowledgement.reference}</p>
+            </div>
+            <button type="button" className="min-h-[44px] rounded border border-green-700 px-3 py-2 font-medium" onClick={async () => {
+              await runVatAction(async () => {
+                const blob = await reportsAPI.exportVatManagementPdf(v?.periodId != null ? { periodId: v.periodId } : { from: fromDate, to: toDate })
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement('a'); a.href = url; a.download = `VAT-Management-${periodLabel.replace(/\s/g, '-')}.pdf`; a.click(); window.URL.revokeObjectURL(url)
+                acknowledgeVatAction('PDF export')
+              }, 'PDF export failed')
+            }}>Download PDF</button>
+          </div>
+        </div>
+      )}
+      {actionError && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-950">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">VAT action failed</p>
+              <p>{actionError.message}</p>
+              {actionError.correlationId && <p className="mt-1 font-mono">Reference ID: {actionError.correlationId}</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              {actionError.correlationId && <button type="button" className="min-h-[44px] rounded border border-red-700 px-3 py-2 font-medium" onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(actionError.correlationId)
+                  setCopiedCorrelationId(true)
+                  window.setTimeout(() => setCopiedCorrelationId(false), 1800)
+                } catch (_) { /* Clipboard permissions may be unavailable. */ }
+              }}>{copiedCorrelationId ? 'Copied' : 'Copy reference ID'}</button>}
+              <button type="button" className="min-h-[44px] rounded bg-red-800 px-3 py-2 font-medium text-white" onClick={actionError.retry}>Retry</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Period selector */}
       <div className="bg-white rounded-lg border border-gray-200 p-3">
@@ -615,7 +666,7 @@ const VatReturnPage = () => {
           </select>
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          Use Q1–Q4 (Feb-Apr, May-Jul, Aug-Oct, Nov-Jan) or <strong>This Year</strong> for FTA returns. If all values show 0.00, try the suggested period above or the quarter when you had sales/purchases. Custom range must be a full quarter or full year (e.g. 2025-11-01 to 2026-01-31 for Q4).
+          Use the Q1–Q4 management period presets (Feb-Apr, May-Jul, Aug-Oct, Nov-Jan) or <strong>This Year</strong>. If values show 0.00, check the selected period and transaction details. Custom range must be a full quarter or full year (e.g. 2025-11-01 to 2026-01-31 for Q4).
         </p>
         {loadError && (
           <p className="mt-3 text-sm text-red-600">
@@ -640,6 +691,25 @@ const VatReturnPage = () => {
             <p className="mt-2 text-sm text-red-700">{loadError.message}</p>
             {loadError.status != null && (
               <p className="mt-1 text-xs text-red-600 font-mono">HTTP {loadError.status}</p>
+            )}
+            {loadError.correlationId && (
+              <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-red-700">
+                <span className="font-mono">Reference ID: {loadError.correlationId}</span>
+                <button
+                  type="button"
+                  className="min-h-11 rounded border border-red-300 px-3 py-2 font-medium hover:bg-red-100"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(loadError.correlationId)
+                      setCopiedCorrelationId(true)
+                    } catch {
+                      setCopiedCorrelationId(false)
+                    }
+                  }}
+                >
+                  {copiedCorrelationId ? 'Copied' : 'Copy reference ID'}
+                </button>
+              </div>
             )}
             {loadError.url && (
               <p className="mt-1 text-xs text-red-600 font-mono break-all" title={loadError.url}>{loadError.url}</p>
@@ -677,7 +747,7 @@ const VatReturnPage = () => {
                 <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">Locked</span>
               )}
               {(v.status || '').toLowerCase() === 'submitted' && (
-                <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Submitted</span>
+                <span className="ml-2 inline-flex px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Filed locally</span>
               )}
             </span>
             <button
@@ -696,12 +766,13 @@ const VatReturnPage = () => {
               onClick={async () => {
                 if (!fromDate || !toDate) { toast.error('Set From/To dates then recalculate'); return }
                 trackVatEvent('Recalculate', { periodFrom: fromDate, periodTo: toDate })
-                try {
+                await runVatAction(async () => {
                   const res = await reportsAPI.calculateVatReturn(fromDate, toDate)
                   const dto = res?.data?.data ?? res?.data ?? null
                   const ok = res?.success === true || (res?.success !== false && dto != null)
                   if (ok && dto) {
                     setVatReturn(dto)
+                    acknowledgeVatAction('Calculation', dto)
                     setSearchParams({ from: fromDate, to: toDate })
                     toast.success('Recalculated')
                     // When API returns 0 sales, fetch Sales Ledger for same period so Overview shows real totals
@@ -718,11 +789,8 @@ const VatReturnPage = () => {
                         } else setLedgerFallback(null)
                       } catch (_) { setLedgerFallback(null) }
                     } else setLedgerFallback(null)
-                  } else if (!dto) toast.error(res?.message || 'Recalculate returned no data')
-                } catch (err) {
-                  const msg = err?.response?.data?.message || err?.response?.data?.errors?.[0] || 'Calculate failed'
-                  toast.error(msg)
-                }
+                  } else throw { response: { data: { message: res?.message || 'Recalculate returned no data' } } }
+                }, 'Calculate failed')
               }}
               className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
             >
@@ -734,50 +802,58 @@ const VatReturnPage = () => {
                   type="button"
                   onClick={async () => {
                     if (blocking.length > 0) { toast.error('Resolve blocking validation issues before locking'); return }
-                    if ((v.status || '').toLowerCase() === 'locked') { toast.error('Period is already locked'); return }
-                    if (!window.confirm('Lock this VAT period? No further edits to transactions in this period will be allowed.')) return
-                    try {
+                    if ((v.status || '').toLowerCase() === 'locked' || (v.status || '').toLowerCase() === 'submitted') { toast.error('Period is already frozen'); return }
+                    const company = v.companyName ?? v.CompanyName ?? 'Company not configured'
+                    const trn = v.vatTrn ?? v.VatTrn ?? 'Not provided'
+                    if (!window.confirm(`Freeze this management report?\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}\nNo further transaction changes in this period will be allowed.`)) return
+                    await runVatAction(async () => {
                       const res = await reportsAPI.lockVatReturnPeriod(v.periodId)
-                      if (res?.success) { setVatReturn(prev => ({ ...prev, status: 'Locked' })); toast.success('Period locked') }
-                      else toast.error(res?.message || 'Lock failed')
-                    } catch (err) { toast.error(err?.response?.data?.message || 'Lock failed') }
+                      if (res?.success) { setVatReturn(prev => ({ ...prev, status: 'Locked' })); acknowledgeVatAction('Lock'); toast.success('Report frozen') }
+                      else throw { response: { data: { message: res?.message || 'Lock failed' } } }
+                    }, 'Lock failed')
                   }}
-                  disabled={blocking.length > 0 || (v.status || '').toLowerCase() === 'locked'}
+                  disabled={blocking.length > 0 || !canFreezeVatReport || ['locked', 'submitted'].includes((v.status || '').toLowerCase())}
+                  title={!canFreezeVatReport ? 'Add a valid 15-digit non-sample VAT TRN to freeze this report.' : undefined}
                   className="inline-flex items-center gap-1 px-3 py-2 border border-amber-500 text-amber-700 rounded-md text-sm hover:bg-amber-50 disabled:opacity-50"
                 >
                   <Lock className="h-4 w-4" /> Lock period
                 </button>
                 <button
                   type="button"
-                  disabled={(v.status || '').toLowerCase() !== 'locked'}
+                  disabled={(v.status || '').toLowerCase() !== 'locked' || !canFreezeVatReport}
+                  title={!canFreezeVatReport ? 'Add a valid 15-digit non-sample VAT TRN to mark this report as filed locally.' : undefined}
                   onClick={async () => {
                     if ((v.status || '').toLowerCase() !== 'locked') return
-                    try {
+                    const company = v.companyName ?? v.CompanyName ?? 'Company not configured'
+                    const trn = v.vatTrn ?? v.VatTrn ?? 'Not provided'
+                    if (!window.confirm(`Mark as filed locally? This does not file with the FTA.\nCompany: ${company}\nVAT TRN: ${trn}\nPeriod: ${periodLabel}\nNet VAT payable: ${formatCurrency(netVatPayable)}`)) return
+                    await runVatAction(async () => {
                       const res = await reportsAPI.submitVatReturnPeriod(v.periodId)
-                      if (res?.success) toast.success(`VAT return submitted for ${periodLabel}`)
-                      else toast.error(res?.message || 'Submit failed')
-                    } catch (err) { toast.error(err?.response?.data?.message || 'Submit failed') }
-                    await fetchVatReturn(fromDate, toDate)
+                      if (res?.success) { acknowledgeVatAction('Marked as filed locally'); toast.success('Marked as filed locally') }
+                      else throw { response: { data: { message: res?.message || 'Submit failed' } } }
+                      await fetchVatReturn(fromDate, toDate)
+                    }, 'Submit failed')
                   }}
                   className="inline-flex items-center gap-1 px-3 py-2 border border-green-600 text-green-700 rounded-md text-sm hover:bg-green-50 disabled:opacity-50"
                 >
-                  <Send className="h-4 w-4" /> Submit
+                  <Send className="h-4 w-4" /> Mark as filed (local record)
                 </button>
               </>
             )}
             <button
               type="button"
               onClick={async () => {
-                try {
-                  const blob = await reportsAPI.exportVatReturnExcel(fromDate && toDate ? { from: fromDate, to: toDate } : { quarter, year })
+                await runVatAction(async () => {
+                  const blob = await reportsAPI.exportVatManagementExcel(v.periodId != null ? { periodId: v.periodId } : { from: fromDate, to: toDate })
                   const url = window.URL.createObjectURL(blob)
                   const a = document.createElement('a')
                   a.href = url
-                  a.download = `VAT-Return-${periodLabel.replace(/\s/g, '-')}.xlsx`
+                  a.download = `VAT-Management-${periodLabel.replace(/\s/g, '-')}.xlsx`
                   a.click()
                   window.URL.revokeObjectURL(url)
+                  acknowledgeVatAction('Excel export')
                   toast.success('Excel exported')
-                } catch (err) { toast.error(err?.response?.data?.message || 'Export failed') }
+                }, 'Excel export failed')
               }}
               className="inline-flex items-center gap-1 px-3 py-2 bg-primary-600 text-white rounded-md text-sm hover:bg-primary-700"
             >
@@ -787,20 +863,42 @@ const VatReturnPage = () => {
               type="button"
               onClick={async () => {
                 trackVatEvent('ExportCsv', { periodFrom: fromDate, periodTo: toDate })
-                try {
-                  const blob = await reportsAPI.exportVatReturnCsv(fromDate && toDate ? { from: fromDate, to: toDate } : { quarter, year })
+                await runVatAction(async () => {
+                  const blob = await reportsAPI.exportVatManagementCsv(v.periodId != null ? { periodId: v.periodId } : { from: fromDate, to: toDate })
                   const url = window.URL.createObjectURL(blob)
                   const a = document.createElement('a')
                   a.href = url
-                  a.download = `VAT-Return-${periodLabel.replace(/\s/g, '-')}.csv`
+                  a.download = `VAT-Management-${periodLabel.replace(/\s/g, '-')}.csv`
                   a.click()
                   window.URL.revokeObjectURL(url)
+                  acknowledgeVatAction('CSV export')
                   toast.success('CSV exported')
-                } catch (err) { toast.error(err?.response?.data?.message || 'Export failed') }
+                }, 'CSV export failed')
               }}
               className="inline-flex items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
             >
               <Download className="h-4 w-4" /> Export CSV
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                await runVatAction(async () => {
+                  const blob = await reportsAPI.exportVatManagementPdf(v.periodId != null
+                    ? { periodId: v.periodId }
+                    : { from: fromDate, to: toDate })
+                  const url = window.URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `VAT-Management-${periodLabel.replace(/\s/g, '-')}.pdf`
+                  a.click()
+                  window.URL.revokeObjectURL(url)
+                  acknowledgeVatAction('PDF export')
+                  toast.success('Management PDF exported')
+                }, 'PDF export failed')
+              }}
+              className="inline-flex min-h-[44px] items-center gap-1 px-3 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50"
+            >
+              <Download className="h-4 w-4" /> Export PDF
             </button>
             <button
               type="button"
@@ -890,7 +988,7 @@ const VatReturnPage = () => {
           {v && !outputLines.length && !inputLines.length && (
             <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
               <p className="font-medium">No transactions in this period.</p>
-              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. If you have sales/expenses in another year, pick <strong>This Year</strong> for that year and click <strong>Refresh</strong>. FTA boxes show zeros until the period includes your invoice/purchase/expense dates.</p>
+              <p className="mt-1 text-blue-700">Showing: {fromDate} – {toDate}. If you have sales/expenses in another year, pick <strong>This Year</strong> for that year and click <strong>Refresh</strong>. Report totals remain zero until the period includes your transaction dates.</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -950,7 +1048,7 @@ const VatReturnPage = () => {
           )}
 
           {/* Hint when Total Sales is 0: suggest the year that contains the out-of-period invoice dates */}
-          {v && displayBox1a === 0 && displayBox1b === 0 && (
+          {v && standardOutputNet === 0 && standardOutputVat === 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
               <p className="font-medium">Total Sales is 0.00 for this period ({fromDate} – {toDate}).</p>
               <p className="mt-1 text-amber-700">VAT only includes invoices whose <strong>invoice date</strong> falls in this range. If your dashboard shows sales for other dates, pick a period that includes those dates.</p>
@@ -988,7 +1086,7 @@ const VatReturnPage = () => {
                           }}
                           className="text-amber-800 font-semibold underline hover:no-underline"
                         >
-                          Try: FTA Q{ftaQ} {ftaY} ({ftaRange.from} – {ftaRange.to})
+                          Try: Q{ftaQ} {ftaY} ({ftaRange.from} – {ftaRange.to})
                         </button>
                       )}
                       <button
@@ -1039,11 +1137,11 @@ const VatReturnPage = () => {
                 <Activity className="h-4 w-4 text-primary-600" /> VAT Tracking & Workflow
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-                <div className={`p-2 rounded border ${displayBox1a > 0 || displayBox1b > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${standardOutputNet > 0 || standardOutputVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
                   <p className="text-xs font-medium text-slate-600">Overview / Sales</p>
-                  <p className="text-sm font-bold text-slate-800">{formatCurrency(displayBox1a)} / {formatCurrency(displayBox1b)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${displayBox1b > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
-                    {displayBox1b > 0 ? 'OK' : 'Zero'}
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(standardOutputNet)} / {formatCurrency(standardOutputVat)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${standardOutputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {standardOutputVat > 0 ? 'OK' : 'Zero'}
                   </span>
                 </div>
                 <div className={`p-2 rounded border ${totalPurchasesVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
@@ -1060,11 +1158,11 @@ const VatReturnPage = () => {
                     {totalExpensesVat > 0 ? 'OK' : expenseCountInPeriod > 0 ? 'Action' : 'Zero'}
                   </span>
                 </div>
-                <div className={`p-2 rounded border ${displayBox12 > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                <div className={`p-2 rounded border ${recoverableInputVat > 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
                   <p className="text-xs font-medium text-slate-600">Box 12 (Input VAT)</p>
-                  <p className="text-sm font-bold text-slate-800">{formatCurrency(displayBox12)}</p>
-                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${displayBox12 > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
-                    {displayBox12 > 0 ? 'OK' : 'Zero'}
+                  <p className="text-sm font-bold text-slate-800">{formatCurrency(recoverableInputVat)}</p>
+                  <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${recoverableInputVat > 0 ? 'bg-green-200 text-green-800' : 'bg-amber-200 text-amber-800'}`}>
+                    {recoverableInputVat > 0 ? 'OK' : 'Zero'}
                   </span>
                 </div>
               </div>
@@ -1108,28 +1206,21 @@ const VatReturnPage = () => {
 
           {/* Tabs navigation */}
           <div className="mt-4 border-b border-gray-200">
-            <nav className="-mb-px flex flex-wrap gap-4 text-sm" aria-label="VAT tabs">
-              {(isProfitBasis
-                ? [
-                    { id: 'overview', label: 'Overview' },
-                    { id: 'profit', label: 'Profit Calculation' },
-                    { id: 'validation', label: 'Validation' }
-                  ]
-                : [
-                    { id: 'overview', label: 'Overview' },
-                    { id: 'transactions', label: 'Transactions' },
-                    { id: 'sales', label: 'Sales' },
-                    { id: 'purchases', label: 'Purchases' },
-                    { id: 'expenses', label: 'Expenses' },
-                    { id: 'creditNotes', label: 'Credit Notes' },
-                    { id: 'validation', label: 'Validation' }
-                  ]
-              ).map(tab => (
+            <nav className="-mb-px flex flex-nowrap gap-1 overflow-x-auto text-sm" aria-label="VAT tabs">
+              {[
+                { id: 'overview', label: 'Summary' },
+                { id: 'sales', label: 'Sales' },
+                { id: 'purchases', label: 'Purchases' },
+                { id: 'expenses', label: 'Expenses' },
+                { id: 'creditNotes', label: 'Credit Notes' },
+                { id: 'returnBoxes', label: 'Return boxes (draft)' },
+                { id: 'validation', label: 'Checks' }
+              ].map(tab => (
                 <button
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap border-b-2 pb-2 px-1 ${
+                  className={`min-h-11 flex-none whitespace-nowrap border-b-2 px-3 py-2 ${
                     activeTab === tab.id ? 'border-primary-600 text-primary-700 font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -1141,12 +1232,20 @@ const VatReturnPage = () => {
 
           {/* VAT Return Summary – always rendered for print from any tab; visible in flow when Overview active */}
           <div
-            className={`vat-return-print-area bg-white rounded-lg border border-gray-200 overflow-hidden ${activeTab !== 'overview' ? 'fixed -left-[9999px] w-[210mm] overflow-hidden opacity-0 pointer-events-none' : 'mt-4'}`}
-            aria-hidden={activeTab !== 'overview'}
+            className={`vat-return-print-area bg-white rounded-lg border border-gray-200 overflow-hidden ${activeTab !== 'overview' ? 'hidden' : 'mt-4'}`}
           >
             <div className="p-4">
-              <h2 className="text-lg font-semibold text-gray-900 mb-1">Standard VAT Return Summary</h2>
+              <h2 className="text-lg font-semibold text-gray-900 mb-1">Management summary</h2>
+              <p className="text-sm font-medium">{v?.companyName ?? v?.CompanyName ?? 'Company'} · TRN: {v?.vatTrn ?? v?.VatTrn ?? 'Not provided'} · {v?.trnStatus ?? v?.TrnStatus ?? 'Registration unverified'}</p>
+              {(v?.warnings ?? v?.Warnings ?? []).map((warning, index) => (
+                <p key={index} className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">{warning}</p>
+              ))}
               <p className="text-xs text-gray-500 mb-4">Period: {periodLabel} ({fromDate} – {toDate})</p>
+              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Output VAT</p><p className="text-xl font-semibold">{formatCurrency(standardOutputVat)}</p></div>
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Input VAT</p><p className="text-xl font-semibold">{formatCurrency(recoverableInputVat)}</p></div>
+                <div className="rounded-lg border bg-white p-3"><p className="text-xs text-gray-500">Net VAT payable</p><p className="text-xl font-semibold">{formatCurrency(netVatPayable)}</p></div>
+              </div>
               {!outputLines.length && !inputLines.length && !creditNoteLines.length && (
                 <p className="text-gray-600 py-4 rounded-lg bg-gray-50 border border-gray-200 px-4 mb-4">No data for this period.</p>
               )}
@@ -1163,23 +1262,23 @@ const VatReturnPage = () => {
                   <tbody className="divide-y divide-gray-100">
                     <tr>
                       <td className="px-3 py-2 font-medium">1</td>
-                      <td className="px-3 py-2 text-gray-700">Total Sales (Standard VAT)</td>
-                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox1a)}</td>
-                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox1b)}</td>
+                      <td className="px-3 py-2 text-gray-700">Standard-rated sales</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(standardOutputNet)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(standardOutputVat)}</td>
                     </tr>
                     <tr>
                       <td className="px-3 py-2 font-medium">2</td>
                       <td className="px-3 py-2 text-gray-700">Total Purchase and Expense (net)</td>
                       <td className="px-3 py-2 text-right font-medium">{formatCurrency(totalInputNet || totalPurchasesNet + totalExpensesNet)}</td>
-                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(displayBox12)}</td>
+                      <td className="px-3 py-2 text-right font-medium">{formatCurrency(recoverableInputVat)}</td>
                     </tr>
-                    <tr className={displayBox13a > 0 ? 'bg-red-50' : 'bg-green-50'}>
+                    <tr className={netVatPayable >= 0 ? 'bg-red-50' : 'bg-green-50'}>
                       <td className="px-3 py-2 font-medium">3</td>
                       <td className="px-3 py-2 font-medium">Net VAT to Pay / Refundable</td>
                       <td className="px-3 py-2 text-right font-medium" colSpan="2">
-                        <span className={displayBox13a > 0 ? 'text-red-700 font-bold' : 'text-green-700 font-bold'}>
-                          {displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
-                          {displayBox13a > 0 ? ' (Payable)' : ' (Refundable)'}
+                        <span className={netVatPayable >= 0 ? 'text-red-700 font-bold' : 'text-green-700 font-bold'}>
+                          {formatCurrency(Math.abs(netVatPayable))}
+                          {netVatPayable >= 0 ? ' (Payable)' : ' (Receivable)'}
                         </span>
                       </td>
                     </tr>
@@ -1188,22 +1287,22 @@ const VatReturnPage = () => {
               </div>
               <VatProfitEstimateCard report={v} />
               <div className="mt-2 p-2 rounded bg-gray-50 border border-gray-200 text-xs text-gray-700">
-                <p className="font-medium text-gray-800">Standard VAT summary — review with your accountant before filing.</p>
-                <p className="mt-1">Net VAT to Pay = Sales VAT (Box 1b) − Input VAT (Box 12: purchases + claimable expenses). If Expense VAT shows 0, only expenses marked <strong>Tax claimable (ITC)</strong> on the Expenses page with VAT in this period are included. After adding or editing expenses, click <strong>Refresh</strong> or <strong>Recalculate</strong> to update.</p>
+                <p className="font-medium text-gray-800">Management report. Not an FTA filing.</p>
+                <p className="mt-1">Summary amounts are returned by the server. Incomplete transaction detail is shown as a check warning and is never substituted into totals.</p>
               </div>
               {(v?.petroleumExcluded ?? 0) > 0 && (
                 <p className="mt-3 text-xs text-amber-700">Petroleum excluded: {formatCurrency(v.petroleumExcluded)}</p>
               )}
             </div>
-            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${displayBox13a > 0 ? 'bg-red-50' : 'bg-green-50'}`}>
+            <div className={`border-t border-gray-200 px-4 py-4 flex flex-wrap items-center justify-between gap-4 ${netVatPayable >= 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <div>
-                <p className="text-sm font-medium text-gray-700">{displayBox13a > 0 ? 'Amount Due to FTA' : 'Refund from FTA'}</p>
-                <p className={`text-2xl font-bold mt-0.5 ${displayBox13a > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                  {displayBox13a > 0 ? formatCurrency(displayBox13a) : formatCurrency(displayBox13b)}
+                <p className="text-sm font-medium text-gray-700">Net VAT {netVatPayable >= 0 ? 'payable' : 'receivable'}</p>
+                <p className={`text-2xl font-bold mt-0.5 ${netVatPayable >= 0 ? 'text-red-700' : 'text-green-700'}`}>
+                  {formatCurrency(Math.abs(netVatPayable))}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">Filing deadline</p>
+                <p className="text-sm font-medium text-gray-700">Estimated period deadline</p>
                 <p className="text-lg font-semibold text-amber-900 mt-0.5">
                   {v?.dueDate ? new Date(v.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                 </p>
@@ -1212,6 +1311,18 @@ const VatReturnPage = () => {
               </div>
             </div>
           </div>
+
+          {activeTab === 'returnBoxes' && (
+            <section className="mt-4 rounded-lg border border-amber-300 bg-white p-4" aria-label="Draft return boxes">
+              <h2 className="font-semibold text-gray-900">Return boxes (draft — not FTA mapping)</h2>
+              <p className="my-2 rounded bg-amber-50 p-3 text-sm text-amber-900">These legacy box fields are retained for compatibility. They are not an FTA filing projection.</p>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {[["Box 1a", box1a], ["Box 1b", box1b], ["Box 2", box2], ["Box 3", box3], ["Box 9b", box9b], ["Box 12", box12], ["Box 13a", box13a], ["Box 13b", box13b]].map(([label, amount]) => (
+                  <div key={label} className="flex justify-between rounded border p-3"><dt>{label}</dt><dd className="font-medium">{formatCurrency(amount)}</dd></div>
+                ))}
+              </dl>
+            </section>
+          )}
 
           {/* Transactions-related tabs – simple tables, no dashboards */}
           {activeTab === 'transactions' && (
@@ -1396,7 +1507,7 @@ const VatReturnPage = () => {
                           <span className="w-6 h-6 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center text-xs font-bold">{expensesExcludedReasons.Petroleum}</span>
                           <div>
                             <p className="text-xs font-medium text-gray-800">Petroleum</p>
-                            <p className="text-[10px] text-gray-600">Excluded from Box 9b per FTA</p>
+                            <p className="text-[10px] text-gray-600">Excluded from recoverable input VAT by the current rule</p>
                           </div>
                         </div>
                       )}

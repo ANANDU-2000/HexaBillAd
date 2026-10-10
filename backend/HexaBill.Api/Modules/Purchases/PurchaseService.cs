@@ -572,9 +572,6 @@ namespace HexaBill.Api.Modules.Purchases
             if (purchase == null)
                 return null;
 
-            if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchase.PurchaseDate))
-                throw new VatPeriodLockedException("VAT return period is locked for this purchase date. You cannot add or edit transactions in a locked period.");
-
             // NpgsqlRetryingExecutionStrategy does not support user-initiated transactions; wrap in execution strategy.
             var strategy = _context.Database.CreateExecutionStrategy();
             return await strategy.ExecuteAsync(async () =>
@@ -583,6 +580,9 @@ namespace HexaBill.Api.Modules.Purchases
                 try
                 {
                 var targetPurchaseDate = request.PurchaseDate == default ? purchase.PurchaseDate : request.PurchaseDate.ToUtcKind();
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, purchase.PurchaseDate)
+                    || await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, targetPurchaseDate))
+                    throw new VatPeriodLockedException("VAT return period is locked for the original or requested purchase date. Amend the report before changing this purchase.");
                 await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, new[]
                 {
                     (purchase.PurchaseDate, (int?)null),

@@ -10,6 +10,7 @@ using HexaBill.Api.Modules.Customers;
 using HexaBill.Api.Modules.Purchases;
 using HexaBill.Api.Modules.SuperAdmin;
 using HexaBill.Api.Modules.DailyClose;
+using HexaBill.Api.Modules.Reports;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -86,6 +87,7 @@ namespace HexaBill.Api.Modules.Returns
                 bool returnsEnabled = await GetReturnsEnabledAsync(tenantId);
                 if (!returnsEnabled)
                     throw new InvalidOperationException("Sales returns are disabled for your company. Contact your administrator.");
+                await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, DateTime.UtcNow);
                 bool requireApproval = string.Equals(settings.GetValueOrDefault("Returns_RequireApproval", "false"), "true", StringComparison.OrdinalIgnoreCase);
 
                 // Get original sale (always schema-safe: never SELECT BranchId/RouteId to avoid 42703 on DBs that don't have those columns)
@@ -401,6 +403,7 @@ namespace HexaBill.Api.Modules.Returns
 
                 if (purchase == null)
                     throw new InvalidOperationException("Original purchase not found");
+                await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, DateTime.UtcNow);
 
                 var alreadyReturnedByPurchaseItemId = await _context.PurchaseReturnItems
                     .Where(pri => pri.PurchaseReturn.PurchaseId == request.PurchaseId
@@ -791,6 +794,7 @@ namespace HexaBill.Api.Modules.Returns
                         .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
                     if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending approval");
+                    await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, ret.ReturnDate);
                     await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, DateTime.UtcNow, ret.BranchId);
 
                     var inventoryTransactions = new List<InventoryTransaction>();
@@ -893,6 +897,7 @@ namespace HexaBill.Api.Modules.Returns
                     ret = await _context.SaleReturns.FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
                     if (ret.Status != ReturnStatus.Pending) throw new InvalidOperationException("Return is not pending");
+                    await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, ret.ReturnDate);
                     ret.Status = ReturnStatus.Rejected;
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
@@ -930,6 +935,7 @@ namespace HexaBill.Api.Modules.Returns
                     if (ret == null) throw new InvalidOperationException("Return not found");
                     if (ret.Status != ReturnStatus.Approved)
                         throw new InvalidOperationException("Only approved returns can be reversed.");
+                    await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, ret.ReturnDate);
 
                     var branchId = ret.BranchId;
                     var inventoryTransactions = new List<InventoryTransaction>();
@@ -1036,6 +1042,7 @@ namespace HexaBill.Api.Modules.Returns
                         .Include(r => r.Items).ThenInclude(i => i.SaleItem).ThenInclude(i => i.Product)
                         .FirstOrDefaultAsync(r => r.Id == returnId && r.TenantId == tenantId);
                     if (ret == null) throw new InvalidOperationException("Return not found");
+                    await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, ret.ReturnDate);
                     if (ret.Status == ReturnStatus.Approved || ret.Status == ReturnStatus.Reversed)
                         throw new InvalidOperationException("Approved returns cannot be deleted. Use an audited reversal to correct posted return history.");
 

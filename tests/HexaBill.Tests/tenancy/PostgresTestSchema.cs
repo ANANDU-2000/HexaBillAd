@@ -10,7 +10,15 @@ internal static class PostgresTestSchema
     public static async Task EnsureCreatedAsync(DbContext db)
     {
         await BootstrapLock.WaitAsync();
-        try { await db.Database.EnsureCreatedAsync(); }
+        try
+        {
+            await db.Database.EnsureCreatedAsync();
+            // Tests may reuse a disposable PostgreSQL database created by an earlier checkout.
+            // Keep the test schema current without treating EnsureCreated as migration rehearsal.
+            if (db.Database.IsNpgsql())
+                await db.Database.ExecuteSqlRawAsync(
+                    "ALTER TABLE IF EXISTS \"VatReturnPeriods\" ADD COLUMN IF NOT EXISTS \"SnapshotHistoryJson\" text NULL");
+        }
         finally { BootstrapLock.Release(); }
     }
 

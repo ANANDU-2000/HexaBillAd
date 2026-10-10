@@ -41,5 +41,10 @@ namespace HexaBill.Api.Models
         public DateTime? LockedAt { get; set; }
         public int? LockedByUserId { get; set; }
         public string? Notes { get; set; }
+        public string? SnapshotJson { get; set; }
+        public string? SnapshotHash { get; set; }
+        public string? SnapshotHistoryJson { get; set; }
+        public int SnapshotVersion { get; set; }
+        public DateTime? SnapshotAt { get; set; }
     }
 }

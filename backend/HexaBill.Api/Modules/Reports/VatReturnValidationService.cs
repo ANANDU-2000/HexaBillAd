@@ -33,11 +33,14 @@ namespace HexaBill.Api.Modules.Reports
         /// <remarks>Compares timestamps only (no .Date on column) to avoid date_trunc(unknown, text) when column was ever TEXT.</remarks>
         public async Task<bool> IsTransactionDateInLockedPeriodAsync(int tenantId, DateTime transactionDate)
         {
+            // Writers and period freezes share this transaction-scoped tenant lock.
+            // The caller must already have opened its transaction before checking.
+            await VatReturnWriteGuard.AcquireTenantWriteLockAsync(_context, tenantId);
             var startOfDay = DateTime.SpecifyKind(transactionDate.Date, DateTimeKind.Utc);
             var endOfDay = startOfDay.AddDays(1).AddTicks(-1);
             var locked = await _context.VatReturnPeriods
                 .AnyAsync(p => p.TenantId == tenantId
-                    && p.Status == "Locked"
+                    && (p.Status == "Locked" || p.Status == "Submitted")
                     && p.PeriodStart <= endOfDay
                     && p.PeriodEnd >= startOfDay);
             return locked;
@@ -70,18 +73,37 @@ namespace HexaBill.Api.Modules.Reports
                 }
             }
 
+            if (precomputed?.HasDerivedValues == true)
+            {
+                issues.Add(new ValidationIssueDto
+                {
+                    RuleId = "V015",
+                    Severity = "Blocking",
+                    Message = "Derived VAT amounts require source records to be corrected before this report can be frozen.",
+                    EntityRef = "VatManagementReport:Derived"
+                });
+            }
+            if (precomputed?.ReverseChargeLines.Count > 0)
+            {
+                issues.Add(new ValidationIssueDto
+                {
+                    RuleId = "V016",
+                    Severity = "Blocking",
+                    Message = "Reverse-charge activity is present. This management report cannot freeze it as an FTA box projection.",
+                    EntityRef = "VatManagementReport:ReverseCharge"
+                });
+            }
+
             // V-PERIOD-DATE: sales outside selected VAT period — one aggregated message (not one per invoice)
-            var outOfRangeSales = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted
+            var outOfRangeSales = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted
                     && (s.InvoiceDate < fromUtc || s.InvoiceDate >= toEnd))
                 .Select(s => new { s.InvoiceNo, s.InvoiceDate })
                 .OrderBy(s => s.InvoiceDate)
                 .Take(3)
                 .ToListAsync();
-            var outOfRangeCount = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted
+            var outOfRangeCount = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted
                     && (s.InvoiceDate < fromUtc || s.InvoiceDate >= toEnd))
                 .CountAsync();
             if (outOfRangeCount > 0)
@@ -102,9 +124,8 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             // V002: All sales in period have VatScenario
-            var salesWithoutScenario = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
+            var salesWithoutScenario = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
                     && string.IsNullOrWhiteSpace(s.VatScenario))
                 .Select(s => new { s.Id, s.InvoiceNo })
                 .ToListAsync();
@@ -120,9 +141,8 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             // V012: Zero invoice has 0 VAT
-            var zeroInvoicesWithVat = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
+            var zeroInvoicesWithVat = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
                     && s.IsZeroInvoice && s.VatTotal != 0)
                 .Select(s => new { s.Id, s.InvoiceNo })
                 .ToListAsync();
@@ -138,9 +158,8 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             // V004: No duplicate ExternalReference in period
-            var dupRefs = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
+            var dupRefs = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
                     && s.ExternalReference != null)
                 .GroupBy(s => s.ExternalReference)
                 .Where(g => g.Count() > 1)
@@ -159,9 +178,8 @@ namespace HexaBill.Api.Modules.Reports
 
             // V005: Petroleum expense should not be claimable (informational)
             // EF cannot translate string.Equals(..., OrdinalIgnoreCase) to SQL; use exact match so it translates.
-            var petroleumClaimable = await _context.Expenses
-                .Where(e => (e.TenantId != null ? e.TenantId == tenantId : e.OwnerId == tenantId)
-                    && e.Date >= fromUtc && e.Date < toEnd
+            var petroleumClaimable = await _context.Expenses.ForTenant(tenantId)
+                .Where(e => e.Date >= fromUtc && e.Date < toEnd
                     && e.TaxType == TaxTypes.Petroleum
                     && e.IsTaxClaimable)
                 .Select(e => new { e.Id })
@@ -178,9 +196,8 @@ namespace HexaBill.Api.Modules.Reports
             }
 
             // V001: VatAmount vs Net×Rate tolerance (per sale line - simplified: sale level)
-            var salesForV001 = await _context.Sales
-                .Where(s => (s.TenantId != null ? s.TenantId == tenantId : s.OwnerId == tenantId)
-                    && !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
+            var salesForV001 = await _context.Sales.ForTenant(tenantId)
+                .Where(s => !s.IsDeleted && s.InvoiceDate >= fromUtc && s.InvoiceDate < toEnd
                     && !s.IsZeroInvoice && s.VatTotal > 0)
                 .ToListAsync();
             foreach (var s in salesForV001)
@@ -237,7 +254,6 @@ namespace HexaBill.Api.Modules.Reports
 
                 // V010: Box12 = Box9b + Box10 - Box11 (recoverable tax formula)
                 var expectedBox12 = precomputed.Box9b + precomputed.Box10 - precomputed.Box11;
-                if (expectedBox12 < 0) expectedBox12 = 0;
                 if (Math.Abs(precomputed.Box12 - expectedBox12) > tolerance)
                 {
                     issues.Add(new ValidationIssueDto

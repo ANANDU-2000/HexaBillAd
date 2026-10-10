@@ -408,11 +408,12 @@ public class VatBasisIsolationTests
         var dto = await new VatReturnReportService(context, NullLogger<VatReturnReportService>.Instance)
             .GetVatReturn201Async(1, new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
 
-        const decimal expectedProfit = 105m - 80m - 15m;
+        // VAT-inclusive GrandTotal is not profit revenue; use posted net sales.
+        const decimal expectedProfit = 100m - 80m - 15m;
         Assert.Equal(VatCalculator.Round(expectedProfit), dto.ProfitAmount);
         // D5: never treat profit × 5% as VAT. Standard boxes remain the filing figures.
         Assert.Equal(0m, dto.ProfitVat);
-        Assert.Equal(0.50m, dto.ProfitVatEstimate);
+        Assert.Equal(0.25m, dto.ProfitVatEstimate);
         Assert.True(dto.ProfitEstimateNotForFiling);
         Assert.True(dto.Box1b > 0);
         Assert.NotEqual(VatCalculator.Round(expectedProfit * VatCalculator.StandardRate), dto.ProfitVat);

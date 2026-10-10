@@ -198,6 +198,7 @@ namespace HexaBill.Api.Core.Authorization
                           IsAllowedProductionOrigin(origin, configuration))
                           .AllowAnyMethod()
                           .WithHeaders("Content-Type", "Authorization", "Idempotency-Key")
+                          .WithExposedHeaders("X-Correlation-ID")
                           .AllowCredentials();
                 });
 
@@ -217,6 +218,7 @@ namespace HexaBill.Api.Core.Authorization
                           )
                           .AllowAnyMethod()
                           .AllowAnyHeader()
+                          .WithExposedHeaders("X-Correlation-ID")
                           .AllowCredentials();
                 });
                 
@@ -236,6 +238,7 @@ namespace HexaBill.Api.Core.Authorization
                           )
                           .AllowAnyMethod()
                           .AllowAnyHeader()
+                          .WithExposedHeaders("X-Correlation-ID")
                           .AllowCredentials();
                 });
             });
