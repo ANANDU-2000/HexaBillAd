@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
-import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard, Filter, ChevronDown } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -43,6 +43,9 @@ const PurchasesPage = () => {
   const [supplierSearch, setSupplierSearch] = useState(() => searchParams.get('supplier') || '')
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') || '')
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all')
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  // A failed load is shown as an error, never as an empty list (the list keeps its last rows).
+  const [listError, setListError] = useState(false)
   const [exportingCsv, setExportingCsv] = useState(false)
   const [bulkFixingItc, setBulkFixingItc] = useState(false)
 
@@ -236,9 +239,13 @@ const PurchasesPage = () => {
       if (response.success) {
         setPurchases(response.data.items)
         setTotalPages(response.data.totalPages)
+        setListError(false)
+      } else {
+        setListError(true)
       }
     } catch (error) {
-      toast.error('Failed to load purchases')
+      setListError(true)
+      toast.error('Purchases could not be loaded. Check your connection, then try again.')
     } finally {
       setLoading(false)
     }
@@ -706,9 +713,12 @@ const PurchasesPage = () => {
     setStatusFilter('all')
   }
 
+  const activeFilterCount = [statusFilter !== 'all', filterPeriod !== 'all', !!supplierSearch, !!categoryFilter].filter(Boolean).length
+
   const statusChip = (id, label, count) => {
     const active = statusFilter === id
-    const tone = id === 'paid' ? 'text-green-800' : id === 'unpaid' || id === 'overdue' ? 'text-red-800' : 'text-amber-800'
+    // Red only for overdue items that exist. Unpaid is an ordinary open balance, so it is neutral.
+    const tone = id === 'paid' ? 'text-green-800' : id === 'partial' ? 'text-amber-800' : id === 'overdue' && count > 0 ? 'text-red-800' : 'text-neutral-900'
     return (
       <button
         type="button"
@@ -742,7 +752,7 @@ const PurchasesPage = () => {
             <button
               type="button"
               onClick={() => navigate('/suppliers')}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 md:flex-none"
             >
               <Users className="h-4 w-4" />
               Add Supplier
@@ -750,7 +760,7 @@ const PurchasesPage = () => {
             <button
               type="button"
               onClick={handleNewPurchase}
-              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 rounded-md bg-primary-600 px-3 text-sm font-medium text-white md:flex-none"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-md bg-primary-600 px-3 text-sm font-medium text-white md:flex-none"
             >
               <Plus className="h-4 w-4" />
               New Purchase
@@ -761,6 +771,24 @@ const PurchasesPage = () => {
 
       <div className="p-2 sm:p-4 w-full">
         <div className="mb-3 rounded-lg border border-neutral-200 bg-white p-3">
+          {/* Below 1024px the filters sit behind one button (count of active filters), as on Expenses */}
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((v) => !v)}
+            aria-expanded={mobileFiltersOpen}
+            aria-controls="purchase-filters"
+            className="btn btn-secondary mb-2 flex w-full items-center justify-between lg:hidden"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Filter className="h-4 w-4" aria-hidden />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="rounded-full bg-primary-100 px-1.5 text-xs tabular-nums text-primary-700">{activeFilterCount}</span>
+              )}
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${mobileFiltersOpen ? 'rotate-180' : ''}`} aria-hidden />
+          </button>
+          <div id="purchase-filters" className={`${mobileFiltersOpen ? 'block' : 'hidden'} lg:block`}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
             <label className="text-xs font-medium text-neutral-500 lg:col-span-2">
               Supplier
@@ -815,14 +843,15 @@ const PurchasesPage = () => {
               </label>
             </div>
           )}
+          </div>
           {loading && <p className="mt-2 text-xs text-neutral-500">Loading…</p>}
         </div>
 
         {pendingSummary && (
-          <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending') }} aria-pressed={statusFilter === 'pending'} className={`min-h-[44px] rounded-md border px-3 text-left ${statusFilter === 'pending' ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}>
+          <div className="mb-3 grid grid-cols-4 gap-2 lg:grid-cols-5">
+            <button type="button" onClick={() => { setCurrentPage(1); setStatusFilter(statusFilter === 'pending' ? 'all' : 'pending') }} aria-pressed={statusFilter === 'pending'} className={`col-span-4 min-h-[44px] rounded-md border px-3 text-left lg:col-span-1 ${statusFilter === 'pending' ? 'border-primary-600 bg-primary-50' : 'border-neutral-200 bg-white'}`}>
               <span className="block text-xs text-neutral-500">Pending</span>
-              <span className="block text-sm font-semibold tabular-nums text-amber-800">{formatCurrency(pendingSummary.totalPendingToPay ?? 0)}</span>
+              <span className="block text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(pendingSummary.totalPendingToPay ?? 0)}</span>
             </button>
             {statusChip('unpaid', 'Unpaid', pendingSummary.unpaidCount ?? 0)}
             {statusChip('partial', 'Partial', pendingSummary.partialCount ?? 0)}
@@ -1278,6 +1307,12 @@ const PurchasesPage = () => {
               </div>
             </div>
           </div>
+          {listError && !loading && (
+            <div role="alert" className="flex flex-wrap items-center justify-between gap-2 border-b border-error-border bg-error-bg px-3 py-2 text-sm">
+              <p className="text-error-fg">Purchases could not be loaded. Check your connection, then try again.</p>
+              <button type="button" onClick={() => loadPurchases()} className="btn btn-secondary">Try again</button>
+            </div>
+          )}
           {loading ? (
             <div className="p-3" aria-busy="true" aria-label="Loading purchases">
               <ListSkeleton count={6} />
@@ -1285,7 +1320,7 @@ const PurchasesPage = () => {
           ) : (
             <>
               {/* Desktop Table - scroll contained, no page overflow */}
-              <div className="hidden md:block overflow-x-auto max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="hidden xl:block overflow-x-auto max-w-full" style={{ WebkitOverflowScrolling: 'touch' }}>
                 <table className="w-full text-xs min-w-[700px]">
                   <thead className="bg-neutral-50">
                     <tr>
@@ -1305,7 +1340,7 @@ const PurchasesPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-lime-200">
-                    {purchases.length === 0 ? (
+                    {purchases.length === 0 && !listError ? (
                       <tr>
                         <td colSpan="13" className="px-4 py-8 text-center">
                           <div className="text-primary-500">
@@ -1336,19 +1371,19 @@ const PurchasesPage = () => {
                     ) : (
                       purchases.map((purchase) => (
                         <tr key={purchase.id} className="hover:bg-neutral-50">
-                          <td className="px-3 py-2 font-medium">{purchase.invoiceNo}</td>
+                          <td className="whitespace-nowrap px-3 py-2 font-medium text-neutral-900">{purchase.invoiceNo}</td>
                           <td className="px-3 py-2">{purchase.supplierName}</td>
                           <td className="px-3 py-2">{new Date(purchase.purchaseDate).toLocaleDateString('en-GB')}</td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
                             {purchase.subtotal ? (
-                              <span className="text-primary-700">{formatCurrency(purchase.subtotal)}</span>
+                              <span className="text-neutral-900">{formatCurrency(purchase.subtotal)}</span>
                             ) : (
                               <span className="text-primary-400 text-xs">-</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right">
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums">
                             {purchase.vatTotal ? (
-                              <span className="text-orange-600 font-medium">{formatCurrency(purchase.vatTotal)}</span>
+                              <span className="text-neutral-900">{formatCurrency(purchase.vatTotal)}</span>
                             ) : (
                               <span className="text-primary-400 text-xs">-</span>
                             )}
@@ -1360,12 +1395,12 @@ const PurchasesPage = () => {
                               {(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}
                             </span>
                           </td>
-                          <td className="px-3 py-2 text-right font-bold text-success-fg">{formatCurrency(purchase.totalAmount)}</td>
-                          <td className="px-3 py-2 text-right text-purple-600">
+                          <td className="whitespace-nowrap px-3 py-2 text-right font-semibold tabular-nums text-neutral-900">{formatCurrency(purchase.totalAmount)}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-neutral-900">
                             {(purchase.vendorDiscountAmount ?? 0) > 0 ? formatCurrency(purchase.vendorDiscountAmount) : <span className="text-primary-400">-</span>}
                           </td>
-                          <td className="px-3 py-2 text-right text-primary-600">{formatCurrency(purchase.paidAmount ?? 0)}</td>
-                          <td className="px-3 py-2 text-right font-medium text-warning-fg">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-neutral-900">{formatCurrency(purchase.paidAmount ?? 0)}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
                               (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
@@ -1377,8 +1412,8 @@ const PurchasesPage = () => {
                             </span>
                           </td>
                           <td className="px-3 py-2 text-center">{purchase.items?.length || 0}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex flex-wrap justify-center gap-1">
+                          <td className="whitespace-nowrap px-3 py-2">
+                            <div className="flex flex-nowrap justify-center gap-1">
                               {(canPayPurchase(purchase) && (
                                 <button
                                   onClick={() => openPay(purchase)}
@@ -1423,8 +1458,8 @@ const PurchasesPage = () => {
               </div>
 
               {/* Mobile Cards */}
-              <div className="md:hidden space-y-3 p-4">
-                {purchases.length === 0 ? (
+              <div className="xl:hidden space-y-3 p-4">
+                {purchases.length === 0 && !listError ? (
                   <div className="text-center py-8">
                     <div className="text-primary-500">
                       {statusFilter && statusFilter !== 'all' ? (
@@ -1453,113 +1488,106 @@ const PurchasesPage = () => {
                 ) : (
                   purchases.map((purchase) => {
                     const isExpanded = expandedPurchaseId === purchase.id
+                    const status = (purchase.paymentStatus || '').toLowerCase()
+                    const balance = purchase.balanceAmount ?? purchase.totalAmount ?? 0
+                    const statusClass = purchase.isOverdue ? 'bg-red-100 text-red-800'
+                      : status === 'paid' ? 'bg-green-100 text-green-800'
+                      : status === 'partial' || status === 'pending' ? 'bg-amber-100 text-amber-800'
+                      : 'bg-neutral-100 text-neutral-700'
                     return (
-                    <div key={purchase.id} className="bg-white rounded-lg shadow-sm border border-neutral-200 p-4">
+                    <div key={purchase.id} className="rounded-lg border border-neutral-200 bg-white">
                       <button
                         type="button"
                         onClick={() => setExpandedPurchaseId(isExpanded ? null : purchase.id)}
-                        className="w-full text-left"
+                        aria-expanded={isExpanded}
+                        className="flex w-full flex-col gap-1 px-3 py-2.5 text-left"
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <p className="text-sm font-semibold text-neutral-900">{purchase.invoiceNo}</p>
-                            <p className="text-xs text-neutral-500">{purchase.supplierName}</p>
-                            <p className="text-xs text-neutral-500">{formatDate(purchase.purchaseDate)}</p>
-                            <span className={`mt-1 inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
-                              (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
-                              (purchase.paymentStatus || '').toLowerCase() === 'partial' || (purchase.paymentStatus || '').toLowerCase() === 'pending' ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>{purchase.paymentStatus || 'Unpaid'}</span>
-                          </div>
-                          <p className="text-base font-bold text-primary-800">{formatCurrency(purchase.totalAmount || 0)}</p>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-neutral-500">
-                          <span>{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)} due</span>
-                          <span>{isExpanded ? 'Hide' : 'View'}</span>
-                        </div>
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="min-w-0 truncate text-sm font-semibold text-neutral-900">{purchase.invoiceNo}</span>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(purchase.totalAmount || 0)}</span>
+                        </span>
+                        <span className="flex items-center justify-between gap-2 text-xs text-neutral-500">
+                          <span className="min-w-0 truncate">{purchase.supplierName} · {formatDate(purchase.purchaseDate)}</span>
+                          <span className={`shrink-0 rounded px-1.5 py-0.5 font-medium ${statusClass}`}>{purchase.isOverdue ? 'Overdue' : (purchase.paymentStatus || 'Unpaid')}</span>
+                        </span>
+                        {balance > 0 && (
+                          <span className="text-xs tabular-nums text-neutral-600">{formatCurrency(balance)} due</span>
+                        )}
                       </button>
-                      {isExpanded && purchase.items?.length > 0 && (
-                        <div className="mt-3 pt-3 border-t border-neutral-100 space-y-1">
-                          <p className="text-xs font-medium text-primary-600 mb-2">Items</p>
-                          {purchase.items.map((item, idx) => (
-                            <div key={idx} className="flex flex-col sm:flex-row sm:justify-between gap-1 text-xs py-1">
-                              <span className="text-primary-700 min-w-0 break-words">{item.productName || item.product?.nameEn || 'Item'}</span>
-                              <span>{item.qty} × {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
+                      {isExpanded && (
+                        <div className="space-y-3 border-t border-neutral-100 px-3 py-3">
+                          {purchase.items?.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-neutral-600">Items</p>
+                              {purchase.items.map((item, idx) => (
+                                <div key={idx} className="flex flex-col gap-1 text-xs sm:flex-row sm:justify-between">
+                                  <span className="min-w-0 break-words text-neutral-800">{item.productName || item.product?.nameEn || 'Item'}</span>
+                                  <span className="tabular-nums text-neutral-700">{item.qty} × {formatCurrency(item.unitCost || 0)} = {formatCurrency((item.qty || 0) * (item.unitCost || 0))}</span>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
+                          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                            <div>
+                              <dt className="text-neutral-500">Paid</dt>
+                              <dd className="font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.paidAmount ?? 0)}</dd>
+                            </div>
+                            <div>
+                              <dt className="text-neutral-500">Balance</dt>
+                              <dd className="font-medium tabular-nums text-neutral-900">{formatCurrency(balance)}</dd>
+                            </div>
+                            {purchase.subtotal != null && purchase.vatTotal != null && (
+                              <>
+                                <div>
+                                  <dt className="text-neutral-500">Subtotal</dt>
+                                  <dd className="font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.subtotal)}</dd>
+                                </div>
+                                <div>
+                                  <dt className="text-neutral-500">VAT ({vatPercent}%)</dt>
+                                  <dd className="font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.vatTotal)}</dd>
+                                </div>
+                              </>
+                            )}
+                            <div>
+                              <dt className="text-neutral-500">Claimable VAT (ITC)</dt>
+                              <dd className="font-medium text-neutral-900">{(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}</dd>
+                            </div>
+                          </dl>
+                          <div className="flex flex-wrap justify-end gap-2 border-t border-neutral-100 pt-3">
+                            {canPayPurchase(purchase) && (
+                              <button
+                                type="button"
+                                onClick={() => openPay(purchase)}
+                                className="inline-flex min-h-[44px] items-center gap-1 rounded-md bg-primary-600 px-3 text-xs font-medium text-white"
+                                title={`Pay ${formatCurrency(balance)}`}
+                              >
+                                <CreditCard className="h-3.5 w-3.5" aria-hidden /> Pay supplier
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
+                              className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-800"
+                            >
+                              <Eye className="h-3.5 w-3.5" aria-hidden /> Supplier ledger
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEditPurchase(purchase)}
+                              className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-800"
+                            >
+                              <Edit className="h-3.5 w-3.5" aria-hidden /> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePurchase(purchase)}
+                              className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-3 text-xs font-medium text-error-fg"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" aria-hidden /> Delete
+                            </button>
+                          </div>
                         </div>
                       )}
-                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-neutral-100 text-xs">
-                        <div>
-                          <p className="text-primary-500">Paid</p>
-                          <p className="font-medium text-success">{formatCurrency(purchase.paidAmount ?? 0)}</p>
-                        </div>
-                        <div>
-                          <p className="text-primary-500">Balance</p>
-                          <p className="font-medium text-warning">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</p>
-                        </div>
-                        <div>
-                          <p className="text-primary-500">Status</p>
-                          <span className={`inline-block px-1.5 py-0.5 rounded ${(purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' : (purchase.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-amber-800' : 'bg-neutral-100 text-neutral-700'}`}>
-                            {purchase.paymentStatus || 'Unpaid'}
-                          </span>
-                          {purchase.isOverdue && (
-                            <span className="inline-block ml-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-xs font-medium">Overdue</span>
-                          )}
-                        </div>
-                        {purchase.subtotal != null && purchase.vatTotal != null && (
-                          <>
-                            <div>
-                              <p className="text-primary-500">Subtotal</p>
-                              <p className="font-medium text-primary-700">{formatCurrency(purchase.subtotal)}</p>
-                            </div>
-                            <div>
-                              <p className="text-primary-500">VAT ({vatPercent}%)</p>
-                              <p className="font-medium text-orange-600">{formatCurrency(purchase.vatTotal)}</p>
-                            </div>
-                          </>
-                        )}
-                        <div>
-                          <p className="text-primary-500">ITC</p>
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'bg-green-100 text-green-800' : 'bg-neutral-200 text-neutral-600'}`}>
-                            {(purchase.isTaxClaimable ?? purchase.IsTaxClaimable) !== false ? 'Yes' : 'No'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap items-center justify-end gap-2 mt-3 pt-3 border-t border-neutral-100">
-                        {canPayPurchase(purchase) && (
-                          <button
-                            onClick={() => openPay(purchase)}
-                            className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
-                            title={`Pay ${formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}`}
-                          >
-                            <CreditCard className="h-3.5 w-3.5" /> Pay
-                          </button>
-                        )}
-                        <button
-                          onClick={() => navigate(`/suppliers/${encodeURIComponent(purchase.supplierName || '')}`, { state: { returnTo: location.pathname + location.search } })}
-                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
-                          title="Supplier Ledger"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> Ledger
-                        </button>
-                        <button
-                          onClick={() => handleEditPurchase(purchase)}
-                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-neutral-300 bg-white px-2 text-xs font-medium text-neutral-800"
-                          title="Edit Purchase"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeletePurchase(purchase)}
-                          className="inline-flex min-h-[44px] items-center gap-1 rounded-md border border-red-300 bg-white px-2 text-xs font-medium text-error-fg"
-                          title="Delete Purchase"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          Delete
-                        </button>
-                      </div>
                     </div>
                     )
                   })

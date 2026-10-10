@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { signIn, feOrigin } from './session.js'
 
 const SLUG = process.env.HEXABILL_AUDIT_TENANT || 'gulfharvest'
-const ROUTES = ['/customers', '/billing-history', '/expenses', '/ledger', '/pos']
+const ROUTES = ['/customers', '/billing-history', '/expenses', '/ledger', '/pos', '/purchases', '/suppliers']
 const here = path.dirname(fileURLToPath(import.meta.url))
 // Not under .results: Playwright empties its outputDir on every run.
 const outDir = path.join(here, '.shots', 'ux-audit')
@@ -22,7 +22,7 @@ function record (vp, row) {
 }
 
 // Pages whose record lists are not divided lists/table bodies.
-const ROW_LISTS = 'main tbody, main ul.divide-y, main div.divide-y, main div.md\\:hidden.space-y-3, main div.p-1.space-y-0\\.5'
+const ROW_LISTS = 'main tbody, main ul.divide-y, main div.divide-y, main div.md\\:hidden.space-y-3, main div.xl\\:hidden.space-y-3, main div.p-1.space-y-0\\.5'
 
 // Runs in the page. Returns layout facts for the visible list.
 function measure (ROW_LISTS) {

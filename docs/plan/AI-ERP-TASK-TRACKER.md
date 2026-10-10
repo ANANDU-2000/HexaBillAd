@@ -75,6 +75,19 @@
 - **Next task:** UX-E01 phone first-record target (decision needed: keep the period chips for quick switching, or move them into the Filters sheet as the audit proposed), then Purchases.
 - **STOP HERE** — one checkpoint per session.
 
+### 2026-10-10 — Checkpoint 5: Purchases list (P1-06, PARTIAL)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). Seeded 12 synthetic purchases and 2 suppliers through the local API (`seed-purchases` script in the local UI-test folder, not committed). No production access.
+- **Decision recorded:** UX-E01 phone period chips are kept (recommended option). The 35% target is not reached, and the trade-off is noted in the UX tracker.
+- **Changed:** `PurchasesPage.jsx` (filters collapse below 1024px; compact expandable rows below 1280px; status colours; desktop numbers no-wrap and neutral; failed-load error with Try again). New spec: `e2e/purchases-list.spec.js`. `ux-audit.spec.js` now also audits `/purchases` and `/suppliers`.
+- **Results (before → after):** 360px first record 823→491 px (103%→61%), row 410→86 px. 768px 593→421 px (58%→41%), row 205→86 px. 1440px row 106→59 px. Target 35% not met on any width.
+- **Commands and results:**
+  - `npx playwright test e2e/purchases-list.spec.js` at m360, t768 (one batch, 5 passed each), d1440 (3 passed, 2 mobile-only skipped, on a clean run).
+  - `npx playwright test e2e/ux-audit.spec.js -g "audit /purchases"` → 3 passed (final).
+  - `npm test` → 147 pass, 0 fail. `npx vite build` → exit 0. ESLint on PurchasesPage: 0 errors, 3 warnings (pre-existing).
+- **Open risks:** the local per-IP rate limit (300/min) caused 429s on one retry in a batch run (see Checkpoint 3). The desktop purchase rows still have 4 buttons (PU-08). Create, edit, delete, pay and print/export on Purchases are not tested (PU-10). Suppliers only has a baseline measurement.
+- **Next task:** PU-08 (desktop row actions) and PU-10 (Purchases create/edit/delete/pay with DB persistence checks), then Suppliers.
+- **STOP HERE** — one checkpoint per session.
+
 ## Start-of-session template
 ```
 CHECKOUT SHA: <verified>

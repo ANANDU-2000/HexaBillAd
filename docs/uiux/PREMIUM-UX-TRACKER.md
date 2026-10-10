@@ -114,6 +114,36 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 | ↳ fix | | Selects full width on phones in a 2-column grid (no clipping); placeholder shortened (F2 hint in tooltip). | `audit-ledger-selected-m360.png` | | |
 | ↳ note | | Add customer now compact (icon on phone). Selected-customer filter row still clips "Main Wareho…" — handled with UX-L02. | | | |
 
+### Purchases (`/purchases`, `features/purchases/PurchasesPage.jsx`)
+
+Audited at Checkpoint 5 (2026-10-10) with 12 synthetic purchases and 2 synthetic suppliers seeded into the local tenant (`seed-purchases` script, local API only). Create, edit, delete and pay were **not** exercised in this checkpoint, so they stay NOT TESTED.
+
+Baseline (before): first record 360px **823 px (103%, below the fold)**, row 410 px with 5 buttons; 768px 593 px (58%), row 205 px; 1440px 372 px (41%), row 106 px.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| PU-01 | P1 | At 360px the filter block (search, Status, Period, Category, Export, Clear) is always expanded, about 360 px tall, before the status tiles and the list. | `audit-purchases-m360.png` (before) | Filters behind one Filters button below 1024px, with an active-filter count (same pattern as Expenses). | PARTIAL |
+| ↳ fix | | Filters collapse below 1024px (`purchase-filters`, `aria-expanded`, count badge). **360px first record 823→491 px (103%→61%).** Target 35% not met; the remaining stack is the header (about 70 px), the Filters button, the status tiles and the Purchase List title row with its two buttons (VAT Return and the bulk "Mark all with VAT as claimable"). | `audit-purchases-m360.png` | `e2e/purchases-list.spec.js` "filters sit behind one button" (m360, t768 passed) | |
+| PU-02 | P1 | Each mobile purchase card is 410 px tall: a 6-field detail grid and 4 buttons are always visible. | `audit-purchases-m360.png` (before) | Compact two-to-three-line row (invoice and total, supplier and date with status, due amount). Items, details and actions appear when the row opens. | PASS |
+| ↳ fix | | Rows are 86 px with one button each. Items, details and actions (Pay supplier, Supplier ledger, Edit, Delete) appear on expand. Mobile and tablet use the compact list below 1280px (same breakpoint as Expenses). | `audit-purchases-m360.png`, `audit-purchases-t768.png` | `e2e/purchases-list.spec.js` "a purchase row stays compact and opens" (m360, t768 passed) | |
+| PU-03 | P2 | Overdue 0 and Unpaid 12 were red, and the Pending amount was amber. Red appeared for an ordinary open balance and for a zero count. | `audit-purchases-m360.png` (before) | Red only for overdue items that exist. Unpaid and Pending are neutral. Partial stays amber. | PASS |
+| ↳ fix | | `statusChip` tone and Pending amount changed. Test asserts the Overdue count is not red when there are none. | | `e2e/purchases-list.spec.js` "overdue is red only when overdue purchases exist" (m360, t768, d1440 passed) | |
+| PU-04 | P2 | "Add Supplier" and "New Purchase" wrapped onto two lines at 360px. | `audit-purchases-m360.png` (before) | Keep both labels on one line (`whitespace-nowrap`). | PASS |
+| PU-05 | P1 | When the list request fails, the page shows "No purchases found. Create your first purchase to get started." with a toast that disappears. A failed load looks like an empty business. | Code: `loadPurchases` catch → `toast.error` only; empty branch unconditional | Persistent error in the list card with "Try again" and the same wording on every width. Empty-state text is hidden while the error shows. The list keeps its last rows. | PASS |
+| ↳ fix | | `listError` state, `role="alert"` banner, `loadPurchases()` retry, empty branches gated by `!listError`. Test asserts the alert and Try again on a 500, the request re-issued on retry, rows return, and no "No purchases found". | | `e2e/purchases-list.spec.js` "a failed load shows an error" (m360, t768 passed; d1440 passed on a clean run). Trace showed a 429 on one retry from the local per-IP limit, see Expenses ↳ env | |
+| PU-06 | P2 | Desktop: money values wrapped ("AED" on a second line), invoice numbers split across two lines, and ordinary amounts were coloured (Total green, Paid blue, Balance amber, VAT orange, discount purple). | `audit-purchases-d1440.png` (before) | Numbers never wrap (`whitespace-nowrap tabular-nums`). Ordinary amounts neutral. | PASS |
+| ↳ fix | | Desktop cells changed (invoice, subtotal, VAT, total, discount, paid, balance). | `audit-purchases-d1440.png` (after) | `ux-audit` purchases 1440 (run passes); screenshot reviewed | |
+| PU-07 | P2 | Desktop: 4 action buttons wrapped into two rows, so each row was 106 px. | `audit-purchases-d1440.png` (before) | Actions on one line (`flex-nowrap`, `whitespace-nowrap`). | PASS |
+| ↳ fix | | Desktop row 106→59 px. | `audit-purchases-d1440.png` (after) | `ux-audit` purchases 1440 | |
+| PU-08 | P2 | Desktop rows still show 4 buttons (Pay, Ledger, Edit, Delete). The brief asks for one primary row action and a menu for the rest. Smallest text in rows is 10.5 px (UX-S06). | `audit-purchases-d1440.png` | One primary action (Pay when owed) plus a "…" menu. Text 12 px minimum. | TODO |
+| PU-09 | P3 | The phone list header wraps: the "Purchase List" title, the VAT Return link and the bulk "Mark all with VAT as claimable" banner each take a row (about 110 px). Bulk-claim wording is also awkward. | `audit-purchases-m360.png` | Move VAT Return to the page header or menu. Rephrase the bulk action (copy review). | TODO |
+| PU-10 | — | Create, edit, delete, pay, supplier selection, VAT calculations, print and export on this page were not tested in Checkpoint 5. | — | Verify each with synthetic data in a later checkpoint, with DB persistence checks. | NOT TESTED |
+| PU-11 | P3 | UX copy: row buttons renamed "Pay supplier" and "Supplier ledger" (was "Pay" and "Ledger"). Filter and tile labels were unchanged. | `purchases-list.spec.js` names | Keep consistent with the glossary when the copy review runs. | PASS |
+
+### Suppliers (`/suppliers`)
+
+Baseline only (Checkpoint 5, same seeded data): 360px first record 295 px (37%), 5 controls, row 136 px with 1 button; 768px 296 px (29%); 1440px 249 px (28%). Not yet audited beyond the baseline. Supplier create, edit, ledger and payments are TODO.
+
 ### Shared shell and navigation
 
 | ID | Sev | Issue | Evidence | Proposed solution | Status |
