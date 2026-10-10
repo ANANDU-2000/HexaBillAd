@@ -29,5 +29,10 @@ namespace HexaBill.Api.Modules.Sales
         Task<byte[]> GenerateAgreementPdfAsync(AgreementDto agreement, int tenantId, string format = "A4", string? layout = null);
         /// <summary>Salary Certificate PDF (A4 or A5). layout=body for letterhead paper; layout=full for digital header/footer.</summary>
         Task<byte[]> GenerateSalaryCertificatePdfAsync(SalaryCertificateDto certificate, int tenantId, string format = "A4", string? layout = null);
-    }
+        /// <summary>
+    /// Tenant's bilingual monochrome letterhead (English | logo | Arabic) for documents rendered outside this service
+    /// (statements, credit notes). Null when the tenant uses the legacy header style.
+    /// </summary>
+    Task<QuestPDF.Infrastructure.IComponent?> CreateTenantLetterheadAsync(int tenantId);
+}
 }

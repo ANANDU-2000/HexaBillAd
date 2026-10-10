@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 /*
 Purpose: Suppliers controller for supplier ledger
 Author: AI Assistant
@@ -262,7 +263,8 @@ namespace HexaBill.Api.Modules.Purchases
                 var to = (toDate ?? DateTime.UtcNow).Date;
                 if (from > to)
                     return BadRequest(new ApiResponse<object> { Success = false, Message = "From date must be on or before To date." });
-                var pdfBytes = await _supplierService.GenerateSupplierStatementAsync(tenantId, name, from, to);
+                var letterhead = await HttpContext.RequestServices.GetRequiredService<HexaBill.Api.Modules.Sales.IPdfService>().CreateTenantLetterheadAsync(tenantId);
+                var pdfBytes = await _supplierService.GenerateSupplierStatementAsync(tenantId, name, from, to, letterhead);
                 if (pdfBytes == null || pdfBytes.Length == 0)
                     return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Could not generate the statement." });
                 return File(pdfBytes, "application/pdf", $"supplier_statement_{DateTime.UtcNow:yyyyMMdd}.pdf");

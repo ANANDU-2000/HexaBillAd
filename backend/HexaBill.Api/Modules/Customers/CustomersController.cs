@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 /*
 Purpose: Customers controller for customer management
 Author: AI Assistant
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using HexaBill.Api.Core.Tenancy;
 using HexaBill.Api.Data;
 using HexaBill.Api.Modules.Customers;
+using HexaBill.Api.Modules.Sales;
 using HexaBill.Api.Models;
 using HexaBill.Api.Modules.SuperAdmin;
 
@@ -497,7 +499,8 @@ namespace HexaBill.Api.Modules.Customers
                 var (tenantId, denial) = await ResolveCustomerTenantAsync(id);
                 if (denial != null)
                     return denial;
-                var pdfBytes = await _customerService.GenerateCustomerStatementAsync(id, from, to, tenantId);
+                var letterhead = await HttpContext.RequestServices.GetRequiredService<IPdfService>().CreateTenantLetterheadAsync(tenantId);
+                var pdfBytes = await _customerService.GenerateCustomerStatementAsync(id, from, to, tenantId, letterhead);
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
                     return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Statement PDF generation returned empty data." });

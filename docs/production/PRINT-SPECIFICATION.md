@@ -6,5 +6,6 @@ Identity source: authenticated tenant context only.
 | Document | Gulf Harvest | FrozenHub1 | FrozenHub2 | Notes |
 |----------|--------------|------------|------------|-------|
 | Sales invoice A4/A5/80/58mm, combined, delivery note, receipt, pending bills, sales ledger, P&L, worksheet, expense register, quotation, agreement, salary certificate, VAT management, barcode labels | PASS (text identity test + PNG review of invoice, receipt, expense register) | not rendered | not rendered | GulfHarvestDocumentFamilyTests |
-| Customer statement, supplier statement, credit note | header path separate (own QuestPDF code); foreign-address fallback fixed | | | T-010b |
+| Customer statement, supplier statement | PASS (shared letterhead, monochrome, PNG review) | not rendered | not rendered | T-010c |
+| Credit note | own bilingual-aware header, not visually reviewed | | | |
 Logo assets: Gulf Harvest BW = clients/documents of clents/Gulf_Harvest_Logo_BW.png. FrozenHub BW = MISSING.

@@ -56,6 +56,8 @@ internal sealed class HttpTestPdfService : IPdfService
     public Task<byte[]> GenerateSummaryReportPdfAsync(SummaryReportDto summary, DateTime fromDate, DateTime toDate, int tenantId) =>
         _inner.GenerateSummaryReportPdfAsync(summary, fromDate, toDate, tenantId);
 
+    public Task<QuestPDF.Infrastructure.IComponent?> CreateTenantLetterheadAsync(int tenantId) => _inner.CreateTenantLetterheadAsync(tenantId);
+
     public Task<byte[]> GenerateVatManagementReportPdfAsync(VatReturn201Dto report, int tenantId) =>
         _inner.GenerateVatManagementReportPdfAsync(report, tenantId);
 

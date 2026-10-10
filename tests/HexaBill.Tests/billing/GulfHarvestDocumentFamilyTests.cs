@@ -34,8 +34,16 @@ public class GulfHarvestDocumentFamilyTests
         var from = new DateTime(2026, 10, 1);
         var to = new DateTime(2026, 10, 6);
 
+        db.Customers.Add(new Customer { Id = 901, TenantId = TenantId, OwnerId = TenantId, Name = "Statement customer" });
+        db.Suppliers.Add(new Supplier { TenantId = TenantId, Name = "Statement supplier", NormalizedName = "statement supplier" });
+        await db.SaveChangesAsync();
+        var letterhead = await pdf.CreateTenantLetterheadAsync(TenantId);
+        Assert.NotNull(letterhead);
+
         var outputs = new Dictionary<string, byte[]>
         {
+            ["05-customer-statement"] = await new HexaBill.Api.Modules.Customers.CustomerService(db).GenerateCustomerStatementAsync(901, from, to, TenantId, letterhead),
+            ["06-supplier-statement"] = await new HexaBill.Api.Modules.Purchases.SupplierService(db).GenerateSupplierStatementAsync(TenantId, "Statement supplier", from, to, letterhead),
             ["01-sales-invoice-A4"] = await pdf.GenerateInvoicePdfAsync(sale, "A4", "full"),
             ["01b-sales-invoice-A5"] = await pdf.GenerateInvoicePdfAsync(sale, "A5", "full"),
             ["01c-sales-invoice-80mm"] = await pdf.GenerateInvoicePdfAsync(sale, "80mm", "full"),

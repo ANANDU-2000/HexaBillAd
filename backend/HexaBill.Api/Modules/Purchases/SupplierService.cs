@@ -28,7 +28,7 @@ namespace HexaBill.Api.Modules.Purchases
         Task<SupplierDto?> GetSupplierByNameAsync(int tenantId, string supplierName);
         Task<SupplierDto> UpdateSupplierAsync(int tenantId, string supplierName, UpdateSupplierRequest request);
         Task DeleteSupplierAsync(int tenantId, string supplierName);
-        Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate);
+        Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate, QuestPDF.Infrastructure.IComponent? letterhead = null);
     }
 
     public class SupplierService : ISupplierService
@@ -676,7 +676,7 @@ namespace HexaBill.Api.Modules.Purchases
             await _context.SaveChangesAsync();
         }
 
-        public async Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate)
+        public async Task<byte[]> GenerateSupplierStatementAsync(int tenantId, string supplierName, DateTime fromDate, DateTime toDate, QuestPDF.Infrastructure.IComponent? letterhead = null)
         {
             QuestPDF.Settings.License = LicenseType.Community;
             QuestPDF.Settings.CheckIfAllTextGlyphsAreAvailable = false;
@@ -731,11 +731,16 @@ namespace HexaBill.Api.Modules.Purchases
 
                     page.Header().Column(column =>
                     {
-                        column.Item().Text(companyName).FontSize(14).SemiBold();
-                        if (!string.IsNullOrWhiteSpace(companyAddress))
-                            column.Item().Text(companyAddress).FontSize(9).FontColor(Colors.Grey.Darken2);
-                        if (!string.IsNullOrWhiteSpace(companyTrn))
-                            column.Item().Text($"TRN: {companyTrn}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                        if (letterhead != null)
+                            column.Item().Component(letterhead);
+                        else
+                        {
+                            column.Item().Text(companyName).FontSize(14).SemiBold();
+                            if (!string.IsNullOrWhiteSpace(companyAddress))
+                                column.Item().Text(companyAddress).FontSize(9).FontColor(Colors.Grey.Darken2);
+                            if (!string.IsNullOrWhiteSpace(companyTrn))
+                                column.Item().Text($"TRN: {companyTrn}").FontSize(9).FontColor(Colors.Grey.Darken2);
+                        }
                         column.Item().PaddingTop(8).Text("Supplier statement").FontSize(12).SemiBold();
                         column.Item().Text(name).FontSize(11);
                         column.Item().Text($"{fromDate:dd MMM yyyy} to {toDate:dd MMM yyyy}").FontColor(Colors.Grey.Darken2);

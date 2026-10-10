@@ -1146,6 +1146,25 @@ namespace HexaBill.Api.Modules.Sales
             }
         }
 
+        public async Task<IComponent?> CreateTenantLetterheadAsync(int tenantId)
+        {
+            if (tenantId <= 0) return null;
+            var settings = await GetCompanySettingsAsync(tenantId);
+            return settings.BilingualMonochromeHeader ? new TenantLetterhead(this, settings) : null;
+        }
+
+        private sealed class TenantLetterhead : IComponent
+        {
+            private readonly PdfService _owner;
+            private readonly InvoiceTemplateService.CompanySettings _settings;
+            public TenantLetterhead(PdfService owner, InvoiceTemplateService.CompanySettings settings)
+            {
+                _owner = owner;
+                _settings = settings;
+            }
+            public void Compose(IContainer container) => _owner.RenderCompanyHeader(container, _settings, 14, a4Letterhead: true);
+        }
+
         internal static byte[]? MonochromeLogo(byte[]? bytes)
         {
             if (bytes == null || bytes.Length == 0) return null;

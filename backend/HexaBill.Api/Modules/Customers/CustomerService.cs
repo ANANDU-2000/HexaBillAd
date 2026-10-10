@@ -27,7 +27,7 @@ namespace HexaBill.Api.Modules.Customers
         Task<(bool Success, string Message, DeleteCustomerSummary? Summary)> ForceDeleteCustomerWithAllDataAsync(int customerId, int userId, int tenantId);
         Task<List<CustomerLedgerEntry>> GetCustomerLedgerAsync(int customerId, int tenantId, int? branchId = null, int? routeId = null, int? staffId = null, DateTime? fromDate = null, DateTime? toDate = null);
         Task<List<CustomerLedgerEntry>> GetCashCustomerLedgerAsync(int tenantId);
-        Task<byte[]> GenerateCustomerStatementAsync(int customerId, DateTime fromDate, DateTime toDate, int tenantId);
+        Task<byte[]> GenerateCustomerStatementAsync(int customerId, DateTime fromDate, DateTime toDate, int tenantId, QuestPDF.Infrastructure.IComponent? letterhead = null);
         Task<List<CustomerDto>> SearchCustomersAsync(string query, int tenantId, int limit = 20);
         Task RecalculateCustomerBalanceAsync(int customerId, int tenantId);
         Task RecalculateAllCustomerBalancesAsync(int tenantId);
@@ -1351,7 +1351,7 @@ namespace HexaBill.Api.Modules.Customers
             }
         }
 
-        public async Task<byte[]> GenerateCustomerStatementAsync(int customerId, DateTime fromDate, DateTime toDate, int tenantId)
+        public async Task<byte[]> GenerateCustomerStatementAsync(int customerId, DateTime fromDate, DateTime toDate, int tenantId, QuestPDF.Infrastructure.IComponent? letterhead = null)
         {
             try
             {
@@ -1667,8 +1667,11 @@ namespace HexaBill.Api.Modules.Customers
                             // Top border line
                             column.Item().BorderTop(2).BorderColor(Colors.Black).PaddingBottom(5);
                             
+                            if (letterhead != null)
+                                column.Item().PaddingBottom(4).Component(letterhead);
                             column.Item().Row(row =>
                             {
+                                if (letterhead == null)
                                 row.RelativeItem().Column(col =>
                                 {
                                     col.Item().Text(companyName)
