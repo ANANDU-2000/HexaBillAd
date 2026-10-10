@@ -46,11 +46,12 @@ export function getInvoicePaymentBadge(sale) {
   const paid = Number(sale?.paidAmount) || 0
   const status = sale?.paymentStatus
   if (isInvoiceFullySettled({ grandTotal: gt, paidAmount: paid, paymentStatus: status })) {
-    return { label: 'Paid', colorClass: 'bg-green-100 text-green-800' }
+    return { label: 'Paid', colorClass: 'bg-success-bg text-success-fg ring-1 ring-inset ring-success-border' }
   }
   const s = String(status || '').toLowerCase()
   if (s.includes('partial')) {
-    return { label: 'Partial', colorClass: 'bg-yellow-100 text-yellow-800' }
+    return { label: 'Partial', colorClass: 'bg-warning-bg text-warning-fg ring-1 ring-inset ring-warning-border' }
   }
-  return { label: 'Pending', colorClass: 'bg-red-100 text-red-800' }
+  // Open invoices are routine: neutral, not danger red (reserve red for overdue/errors).
+  return { label: 'Pending', colorClass: 'bg-neutral-100 text-neutral-700 ring-1 ring-inset ring-neutral-200' }
 }

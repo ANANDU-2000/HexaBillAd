@@ -65,10 +65,14 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 
 | ID | Sev | Issue | Evidence | Proposed solution | Status |
 |---|---|---|---|---|---|
-| UX-B01 | P1 | Each invoice card on a phone is 204px tall, with full-width View and a blue Collect on every row, so only about 3 invoices fit per screen. | `audit-billing-history-m360.png`; screenshot 2026-10-04 161424 | Compact row: invoice no. and date on the left, total and status on the right, customer below. Tapping the row opens it. Collect is an inline action only when an amount is outstanding. | TODO |
-| UX-B02 | P1 | At 360px the search placeholder is clipped ("Invoice #, custor") and the date inputs are clipped, with the calendar icon overlapping the text. | `audit-billing-history-m360.png` | Search goes full width. Dates move into a date-range control (presets plus a custom sheet). | TODO |
-| UX-B03 | P2 | Status colours: unpaid "Pending" uses danger red and "Partial" uses bright yellow. Red should mean overdue or error, not a normal open invoice. | same | Map status to tokens: Paid = success, Partial = warning, Unpaid = neutral, Overdue = danger. Always pair colour with a text label. | TODO |
-| UX-B04 | — | Behaviour with many invoices (pagination, scroll) | local data has only 2 invoices | Re-test after seeding synthetic sales | NOT TESTED |
+| UX-B01 | P1 | Each invoice card on a phone is 204px tall, with full-width View and a blue Collect on every row, so only about 3 invoices fit per screen. | `audit-billing-history-m360.png`; screenshot 2026-10-04 161424 | Compact row: invoice no. and date on the left, total and status on the right, customer below. Tapping the row opens it. Collect is an inline action only when an amount is outstanding. | PASS |
+| ↳ fix | | Phone rows: two lines (number + total; customer + status + date), tap opens the invoice, **Collect only while money is owed**, one "…". **After @360: row 204→60 px; 3 rows per screen → 8+.** Tests: `e2e/billing-history.spec.js` (row height ≤72, Collect exactly on non-paid rows). | | | |
+| UX-B02 | P1 | At 360px the search placeholder is clipped ("Invoice #, custor") and the date inputs are clipped, with the calendar icon overlapping the text. | `audit-billing-history-m360.png` | Search goes full width. Dates move into a date-range control (presets plus a custom sheet). | PASS |
+| ↳ fix | | Search full width; dates behind a calendar button on phones (summary label), inline from 768px. Nothing clips at 360. | `e2e/billing-history.spec.js` (date range empties a future range) | | |
+| UX-B03 | P2 | Status colours: unpaid "Pending" uses danger red and "Partial" uses bright yellow. Red should mean overdue or error, not a normal open invoice. | same | Map status to tokens: Paid = success, Partial = warning, Unpaid = neutral, Overdue = danger. Always pair colour with a text label. | PASS |
+| ↳ fix | | `salePaymentSettlement.getInvoicePaymentBadge`: Paid = success, Partial = warning, open ("Pending") = neutral. Red reserved for errors/overdue. Shared with POS/receipt badges, so they change too. | | | |
+| UX-B04 | — | Behaviour with many invoices (pagination, scroll) | local data has only 2 invoices | Re-test after seeding synthetic sales | PASS |
+| ↳ fix | | 27 synthetic invoices: pagination (10/page, Next), search (server-side, debounced) and date range verified. Found and fixed: the list had no scroll container, so rows below the fold and pagination were unreachable (same class as UX-E08 scroll check). | `e2e/billing-history.spec.js` | | |
 
 ### Expenses (`/expenses`, `features/expenses/ExpensesPage.jsx`)
 
