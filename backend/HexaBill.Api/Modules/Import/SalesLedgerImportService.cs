@@ -1,3 +1,4 @@
+using HexaBill.Api.Modules.Reports;
 /*
  * Sales Ledger Import - Parse Excel/CSV from old app (ZAYOGA-style) and create customers, sales, payments.
  */
@@ -148,6 +149,14 @@ namespace HexaBill.Api.Modules.Import
             }
         }
 
+        private static DateTime TryReadInvoiceDate(List<string> row, int payDateCol)
+        {
+            var text = payDateCol >= 0 ? GetCell(row, payDateCol) : null;
+            if (!string.IsNullOrWhiteSpace(text) && DateTime.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+                return parsed.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(parsed, DateTimeKind.Utc) : parsed.ToUniversalTime();
+            return DateTime.UtcNow.Date;
+        }
+
         public async Task<SalesLedgerApplyResult> ApplyImportAsync(int tenantId, int userId, SalesLedgerApplyRequest request)
         {
             var res = new SalesLedgerApplyResult();
@@ -192,6 +201,19 @@ namespace HexaBill.Api.Modules.Import
                     if (request.SkipDuplicates && existingInvoices.Contains(invoiceNo.Trim()))
                     {
                         res.Skipped++;
+                        continue;
+                    }
+
+                    var rowDate = TryReadInvoiceDate(row, payDateCol);
+                    try
+                    {
+                        // Takes the tenant VAT write lock inside this import transaction.
+                        await VatReturnWriteGuard.EnsurePeriodOpenAsync(_context, tenantId, rowDate);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        res.Skipped++;
+                        res.Errors.Add($"Invoice {invoiceNo.Trim()}: VAT period for {rowDate:yyyy-MM-dd} is locked or marked as filed; row not imported.");
                         continue;
                     }
 

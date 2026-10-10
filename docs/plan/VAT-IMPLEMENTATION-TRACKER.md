@@ -59,3 +59,21 @@ Rules: no deploy, no push to main, no destructive migrations, no production data
 
 ## Next action
 Session 2 FIRST tasks: (a) run the PG tests with 0 skips and apply/rollback the migration on a disposable local PostgreSQL; (b) in M2 replace the interim Freeze=Review+Lock handler with separate Review and Lock buttons. Then: enable PG env and rerun full suite (0 skips); tax-period config; guard matrix for DELETE/IMPORT/BULK/PAYMENT ADJUSTMENT inside write transactions; Form 201 box states.
+
+## Infrastructure findings (read-only, 2026-10-10)
+- Render service `HexaBill` runs `bdcc429` (auto-deploy off, manual API deploys). DB `hexabill` (PG 18.6, 21 MB, only DB = production). `/health` 200.
+- Production skips EF migrations at startup (Program.cs). **Both** `20261010090000` and `20261010120000` are unapplied (12 columns missing on `VatReturnPeriods`, 10 rows). New code on old schema fails (42703): migrate BEFORE deploy.
+- Backup: NOT VERIFIED (app alert "No backup found in last 24 hours"). Vercel: BLOCKED (403, needs re-auth).
+- Prepared script: `docs/plan/migration-scripts/vat-20261010-prod.sql` (idempotent, additive). NOT APPLIED. `ProductVersion` literal `9.0.0` should be matched to existing history rows before running.
+- Order: backup -> rehearse locally (needs local PG credentials) -> apply script -> merge/push main -> manual Render deploy -> Vercel last.
+
+## Session 2 progress (write-guard matrix)
+| Path | Verdict | Evidence |
+|------|---------|----------|
+| Sale/Purchase/Expense create, update (both dates), delete | already guarded | `_vatValidation.IsTransactionDateInLockedPeriodAsync` |
+| Expense bulk VAT / bulk delete / bulk claimable | already guarded | ExpenseService 794/882/942 |
+| Sales ledger IMPORT (backdated rows) | **GAP FIXED**: rows in Locked/Submitted periods skipped + reported; guard runs inside the import transaction (takes advisory lock) | `VatPeriodWriteGuardGapTests` red -> green |
+| Purchase BULK set-claimable | **GAP FIXED**: locked-period purchases left unchanged | same tests |
+| Returns / credit notes | already guarded (`EnsurePeriodOpenAsync`) | ReturnService |
+| PAYMENT adjustment | not applicable to current VAT bases (invoice-dated); re-check if a cash basis is ever added | accountant to confirm |
+Open: tenant tax-period config, Form 201 box states, PG concurrency tests (still need local PG credentials), production migration (see infrastructure section).

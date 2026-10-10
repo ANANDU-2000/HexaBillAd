@@ -888,6 +888,9 @@ namespace HexaBill.Api.Modules.Purchases
             var updated = 0;
             foreach (var p in purchases)
             {
+                // Recoverability changes input VAT, so purchases in a Locked/Submitted period are left untouched.
+                if (await _vatValidation.IsTransactionDateInLockedPeriodAsync(tenantId, p.PurchaseDate))
+                    continue;
                 var hasVat = (p.VatTotal ?? 0) > 0 || (p.Subtotal.HasValue && p.TotalAmount > 0 && p.TotalAmount > p.Subtotal.Value);
                 if (!hasVat && p.Items != null && p.Items.Count > 0)
                 {
