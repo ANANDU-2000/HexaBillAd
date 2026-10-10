@@ -62,8 +62,18 @@
   - `npm test` (frontend unit) → 147 pass, 0 fail. ESLint on ExpensesPage: 0 errors, 7 warnings, all pre-existing (none on changed lines).
 - **Open risk (not fixed):** the API's global rate limiter is 300 requests/min per IP (`backend/HexaBill.Api/Core/Authorization/SecurityConfiguration.cs:254`, skipped for HTTP integration-test hosts). The Playwright suites exceed it, and in 3 of 4 three-viewport runs the list GET returned 429. This is a test-environment limit, but shared-NAT offices could hit the same limit in production. Owner decision needed on the limit or per-user keying.
 - **Not tested:** Arabic/RTL, real phone keyboard, large datasets for the Expenses list, print and export of the changed view.
-- **Next task:** finish P1-06 Expenses (UX-E01 target 35%, UX-E06 tablet table columns), then Purchases, POS and the other modules in the coverage matrix.
+- **Next task:** finish P1-06 Expenses (UX-E01 target 35%), then Purchases, POS and the other modules in the coverage matrix.
 - **STOP HERE** — one checkpoint per session; do not begin the next phase automatically.
+
+### 2026-10-10 — Checkpoint 4: Expenses tablet layout (P1-06, UX-E06 PASS)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). No production access.
+- **Changed:** `ExpensesPage.jsx` ledger switch moved from `md` to `xl` (table ≥1280px, compact list below). `e2e/expenses-crud.spec.js` row selector threshold 768→1280.
+- **Results:** 768px first record 498→392 px (49%→38%). 360px 387 px (48%, unchanged). 1440px 528 px (59%). UX-E01 stays PARTIAL: the 35% target is not met at any width.
+- **Commands:** `ux-audit` expenses → 6 passed. `expenses-states` → 6 passed. `npm test` → 147 pass. `expenses-crud` batch (m360, t768, d1440) → 2 passed, 1 failed at d1440 (edit-dialog amount locator timed out). d1440 alone → 1 passed. Failure not isolated, recorded as OPEN.
+- **Open risk (carried):** API limit 300 req/min per IP causes 429s in batch runs. See Checkpoint 3.
+- **Not tested:** Arabic/RTL, real keyboard, large Expenses datasets, print/export of the changed view.
+- **Next task:** UX-E01 phone first-record target (decision needed: keep the period chips for quick switching, or move them into the Filters sheet as the audit proposed), then Purchases.
+- **STOP HERE** — one checkpoint per session.
 
 ## Start-of-session template
 ```

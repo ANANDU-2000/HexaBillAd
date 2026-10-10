@@ -1481,12 +1481,12 @@ const ExpensesPage = () => {
         {/* Expenses Table - Tally Ledger Style — grows to fill remaining viewport */}
         {!showAggregated && expenseView === 'ledger' && (
           <div className="flex flex-col flex-1 min-h-0 mt-3 md:mt-4 md:bg-white md:rounded-lg md:border md:border-neutral-200 overflow-hidden md:shadow-sm">
-            <div className="hidden md:block shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
+            <div className="hidden xl:block shrink-0 p-3 border-b border-neutral-200 bg-neutral-50">
               <h3 className="text-sm font-bold text-neutral-900">Expenses ledger</h3>
             </div>
 
-            {/* Desktop Table */}
-            <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 w-full">
+            {/* Desktop Table: 12 columns need ~1290px, so tablets (below xl) use the compact list */}
+            <div className="hidden xl:flex xl:flex-col xl:flex-1 xl:min-h-0 w-full">
               <div className="flex-1 min-h-0 overflow-auto">
               <table className="min-w-max w-full text-xs">
                 <thead className="bg-neutral-50 sticky top-0 z-10 shadow-sm">
@@ -1685,7 +1685,7 @@ const ExpensesPage = () => {
             {/* Mobile rows (UX-E02/E03): one compact row per expense; category and note on the left,
                 amount and date on the right, status as text. Actions: edit and delete as icons with
                 labels; approve/reject only for pending items. Amounts stay neutral. */}
-            <div className="md:hidden">
+            <div className="xl:hidden">
               {displayExpenses.length === 0 ? (
                 loading && !listError ? (
                   <div aria-busy="true" aria-label="Loading expenses" className="p-3">

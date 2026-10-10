@@ -42,7 +42,7 @@ test('expense create -> persisted -> edit -> persisted -> delete -> gone', async
 
   // Refresh: the row is still there with the saved amount.
   await page.reload({ waitUntil: 'networkidle' })
-  const row = page.locator(info.project.use.viewport.width < 768 ? 'main li' : 'main tbody tr').filter({ hasText: NOTE }).first()
+  const row = page.locator(info.project.use.viewport.width < 1280 ? 'main li' : 'main tbody tr').filter({ hasText: NOTE }).first()
   await expect(row).toBeVisible()
 
   // EDIT
@@ -58,7 +58,7 @@ test('expense create -> persisted -> edit -> persisted -> delete -> gone', async
 
   // DELETE (confirmation required)
   await page.reload({ waitUntil: 'networkidle' })
-  await page.locator(info.project.use.viewport.width < 768 ? 'main li' : 'main tbody tr').filter({ hasText: NOTE }).first()
+  await page.locator(info.project.use.viewport.width < 1280 ? 'main li' : 'main tbody tr').filter({ hasText: NOTE }).first()
     .getByRole('button', { name: /^Delete / }).click()
   await page.getByRole('dialog').first().getByRole('button', { name: /delete|confirm/i }).last().click()
   await expect.poll(async () => (await apiExpenses(page)).some((e) => e.note === NOTE)).toBe(false)
