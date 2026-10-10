@@ -3,9 +3,10 @@
 |----|-----|--------|---------|-----------|-------|-----|------|----------|--------|
 | T-001 | P0 | Print | PDF identity source | Invoice/delivery/combined/receipt/credit-note/statement PDFs already load the document filtered by auth tenant and read settings for that tenant (verified in SaleService 2600, SalesController 296, PaymentsController 541, ReturnService 1386, CustomerService 1367). Defect found: customer statement fell back to hard-coded "Mussafah 44 - Abu Dhabi" address | CustomerService.cs | omit address when tenant has none | StatementForeignIdentityTests (red→green) | see TEST-EVIDENCE | PASS |
 | T-002a | P0 | POS | Lost-response retry creates duplicate invoice (PS-007) | POS never sent ExternalReference although the API dedupes on it (SaleService 657, covered by SaleIdempotencyTests) | saleSubmitKey.js, PosEnterprisePage.jsx | stable key per identical payload, reset on success/new invoice | saleSubmitKey.test.js (red→green); npm test 138/138; build OK | browser retry not yet exercised | PASS |
-| T-002b | P0 | Payments | Payments page single/bulk fresh keys (PS-004) | | | | | | TODO |
+| T-002b | P0 | Payments | Payments page single/bulk fresh keys (PS-004) | Register entry is stale: PaymentsPage now uses ledgerPaymentIntent journals (single + batch) that persist and replay key+body | PaymentsPage.jsx 374/455-476 | none needed | paymentsPageRecovery.test.js (3), paymentBatchRecovery.test.js (7) pass in npm test | code read + tests | PASS (already fixed) |
 | T-003 | P0 | Auth | Cross-tenant login lockout (PS-010) | Lockout row keyed by bare email for all workspaces | LoginLockoutKey.cs, LoginLockoutService.cs, AuthController.cs, SuperAdminTenantController.cs | key = workspace-scoped (t{id}:/p:), admin lock global, admin unlock clears all scopes; unknown host keeps legacy key; no schema change | LoginLockoutTenantScopeTests (red→green), auth suite 24 pass | in-memory only, PG pending | PASS |
-| T-004 | P0 | All | CRUD persistence sweep | | | | | | TODO |
+| T-004a | P0 | Products | Product edit reset stock to 0 | UpdateProductAsync copied request.StockQty (defaults 0; the form never sends it) | ProductService.cs | update no longer touches stock (only purchases/sales/returns/adjustment) | ProductPersistenceHttpTests (4; stock test red→green); full 718 pass | SQLite HTTP harness | PASS |
+| T-004b | P0 | Customers/Sales/Purchases/Expenses/Payments/Returns | CRUD persistence sweep | | | | | | TODO |
 | T-005 | P0 | Dashboard | Totals reconcile with persisted rows | | | | | | TODO |
 | T-010 | P1 | Print | 3-column monochrome bilingual header + doc coverage | | | | | | TODO |
 | T-020 | P2 | VAT UI | Review/Lock, period picker, Form 201 tab | | | | | | TODO |
@@ -13,4 +14,4 @@
 | T-040 | P4 | E2E | Playwright workflows | | | | | | TODO |
 
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
-Next: T-002 (PS-007 POS retry, PS-004 payments page keys).
+Next: T-004b sales/purchases/expenses round-trip + balances.

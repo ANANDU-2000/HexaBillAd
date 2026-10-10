@@ -427,7 +427,8 @@ namespace HexaBill.Api.Modules.Products
             product.ConversionToBase = request.ConversionToBase > 0 ? request.ConversionToBase : product.ConversionToBase;
             product.CostPrice = request.CostPrice >= 0 ? request.CostPrice : product.CostPrice;
             product.SellPrice = request.SellPrice >= 0 ? request.SellPrice : product.SellPrice;
-            product.StockQty = request.StockQty >= 0 ? request.StockQty : product.StockQty;
+            // Stock is never edited here: it changes only through purchases, sales, returns and Stock Adjustment
+            // (which write InventoryTransactions). The form omits stockQty, so honouring it would zero stock on every edit.
             product.ReorderLevel = request.ReorderLevel >= 0 ? request.ReorderLevel : product.ReorderLevel;
             product.ExpiryDate = request.ExpiryDate.HasValue ? request.ExpiryDate.Value.ToUtcKind() : null;
             product.DescriptionEn = InputValidator.SanitizeString(request.DescriptionEn, 1000);
