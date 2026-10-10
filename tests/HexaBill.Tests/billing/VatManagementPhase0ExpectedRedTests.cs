@@ -13,6 +13,8 @@ using UglyToad.PdfPig;
 namespace HexaBill.Tests;
 
 /// <summary>Expected-red regressions for the VAT management report build, assigned to owning phases.</summary>
+// Serialized: these tests read or set process-wide environment (DATA_PATH, ASPNETCORE_ENVIRONMENT) used by PDF/TRN code.
+[Collection("HttpIntegration")]
 public sealed class VatManagementPhase0ExpectedRedTests
 {
     [Fact(DisplayName = "VATMGMT_F02_ProfitUsesNetSalesApprovedExpensesAndPostedReturns")]

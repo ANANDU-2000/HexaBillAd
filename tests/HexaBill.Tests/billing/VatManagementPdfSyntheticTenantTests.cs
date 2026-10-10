@@ -13,6 +13,8 @@ using UglyToad.PdfPig;
 
 namespace HexaBill.Tests;
 
+// Serialized: these tests read or set process-wide environment (DATA_PATH, ASPNETCORE_ENVIRONMENT) used by PDF/TRN code.
+[Collection("HttpIntegration")]
 public sealed class VatManagementPdfSyntheticTenantTests
 {
     [Fact]

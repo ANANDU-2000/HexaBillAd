@@ -899,10 +899,10 @@ namespace HexaBill.Api.Modules.Sales
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Round-off: Â±1.00 AED max; applied after VAT (VAT unchanged)
+                // Round-off: ±1.00 AED max; applied after VAT (VAT unchanged)
                 var roundOff = request.RoundOff;
                 if (Math.Abs(roundOff) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
                 // Apply global discount and round-off: FinalTotal = SubTotal + VatTotal - Discount + RoundOff
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOff), 2);
 
@@ -1350,10 +1350,10 @@ namespace HexaBill.Api.Modules.Sales
                     inventoryTransactions.Add(inventoryTransaction);
                 }
 
-                // Round-off: Â±1.00 AED max
+                // Round-off: ±1.00 AED max
                 var roundOffOverride = request.RoundOff;
                 if (Math.Abs(roundOffOverride) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffOverride), 2);
 
                 bool isCashCustomerOverride = !request.CustomerId.HasValue;
@@ -1963,7 +1963,7 @@ namespace HexaBill.Api.Modules.Sales
 
                 var roundOffUpdate = request.RoundOff;
                 if (Math.Abs(roundOffUpdate) > 1.0m)
-                    throw new InvalidOperationException("Round-off cannot exceed Â±AED 1.00");
+                    throw new InvalidOperationException("Round-off cannot exceed ±AED 1.00");
                 var grandTotal = Math.Round((subtotal + vatTotal - request.Discount + roundOffUpdate), 2);
 
                 // Delete old sale items

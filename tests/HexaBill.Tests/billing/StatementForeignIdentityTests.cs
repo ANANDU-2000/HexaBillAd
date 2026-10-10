@@ -7,6 +7,8 @@ using UglyToad.PdfPig;
 namespace HexaBill.Tests;
 
 /// <summary>Printed documents must never fall back to another business's identity.</summary>
+// Serialized: these tests read or set process-wide environment (DATA_PATH, ASPNETCORE_ENVIRONMENT) used by PDF/TRN code.
+[Collection("HttpIntegration")]
 public sealed class StatementForeignIdentityTests
 {
     private const int Tenant = 70001;

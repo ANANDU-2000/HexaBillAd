@@ -483,7 +483,7 @@ const DashboardTally = () => {
     const profitHelper = [
         canShow('purchasesToday') !== false ? `Purchases ${formatCurrency(stats.purchasesToday)}` : null,
         showExpenses ? `Expenses ${formatCurrency(stats.expensesToday)}` : null
-    ].filter(Boolean).join(' Â· ')
+    ].filter(Boolean).join(' · ')
 
     const setupSteps = [
         { done: setupStatus?.hasBranch, label: 'Add branch', path: '/branches' },
@@ -603,7 +603,7 @@ const DashboardTally = () => {
                     <MetricCard
                         label="Net sales"
                         value={stats.netSalesToday}
-                        helper={`Gross ${formatCurrency(stats.salesToday)} Â· Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
+                        helper={`Gross ${formatCurrency(stats.salesToday)} · Returns ${formatCurrency(stats.returnsToday)} (${stats.returnsCountToday})`}
                         icon={DollarSign}
                         emphasis
                         loading={showSkeleton}

@@ -172,7 +172,12 @@ public class GulfHarvestDocumentFamilyTests
         db.SetRequestTenantScope(null, true);
         using var logo = new Image<Rgba32>(80, 40, new Rgba32(10, 10, 10));
         using var ms = new MemoryStream();
-        logo.SaveAsPng(ms);
+        // Evidence runs may supply the tenant's real monochrome logo; normal runs use the synthetic block.
+        var evidenceLogo = Environment.GetEnvironmentVariable("HEXABILL_EVIDENCE_LOGO");
+        if (!string.IsNullOrWhiteSpace(evidenceLogo) && File.Exists(evidenceLogo))
+            ms.Write(File.ReadAllBytes(evidenceLogo));
+        else
+            logo.SaveAsPng(ms);
         foreach (var pair in new Dictionary<string, string>
         {
             ["COMPANY_NAME_EN"] = "GULF HARVEST GENERAL TRADING - L.L.C - S.P.C",

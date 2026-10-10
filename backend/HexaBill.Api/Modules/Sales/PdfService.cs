@@ -341,10 +341,14 @@ namespace HexaBill.Api.Modules.Sales
                                             text.Span(string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName).FontSize(10).Bold();
                                         });
                                     });
-                                    custRow.RelativeItem(35).AlignRight().Text(text => {
-                                        text.Span("CUSTOMER TRN : NO : ").FontSize(10).Bold();
-                                        text.Span(trnDisplay).FontSize(10).Bold();
-                                    });
+                                    // Unregistered customers: no empty "CUSTOMER TRN" label.
+                                    if (!string.IsNullOrWhiteSpace(trnDisplay))
+                                        custRow.RelativeItem(35).AlignRight().Text(text => {
+                                            text.Span("CUSTOMER TRN : NO : ").FontSize(10).Bold();
+                                            text.Span(trnDisplay).FontSize(10).Bold();
+                                        });
+                                    else
+                                        custRow.RelativeItem(35);
                                 });
 
                                 innerColumn.Item().Border(0.5f).Table(table =>
@@ -1327,7 +1331,11 @@ if (hasLogo)
                     innerColumn.Item().PaddingTop(4).Row(meta =>
                     {
                         meta.RelativeItem().AlignLeft().Text($"INVOICE : NO : {sale.InvoiceNo}").FontSize(8.5f).Bold();
-                        meta.RelativeItem().AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(8.5f).Bold();
+                        // Omit the customer TRN label for unregistered customers instead of printing an empty value.
+                        if (!string.IsNullOrWhiteSpace(trnDisplay))
+                            meta.RelativeItem().AlignRight().Text($"CUSTOMER TRN : NO : {trnDisplay}").FontSize(8.5f).Bold();
+                        else
+                            meta.RelativeItem();
                     });
                     var customerDisplayName = string.IsNullOrWhiteSpace(sale.CustomerName) ? "Cash Customer" : sale.CustomerName;
                     innerColumn.Item().PaddingTop(2).AlignLeft().Text($"Customer Name : {customerDisplayName}").FontSize(8.5f).Bold();
@@ -2808,7 +2816,7 @@ if (hasLogo)
                             contentCol.Item().PaddingBottom(4).Row(r =>
                             {
                                 r.RelativeItem().Text($"Generated: {DateTime.UtcNow:dd-MMM-yyyy HH:mm} UTC").FontSize(8).FontColor(Colors.Grey.Medium);
-                                r.RelativeItem().AlignRight().Text($"{list.Count} line(s) Â· Currency: {currency}").FontSize(8);
+                                r.RelativeItem().AlignRight().Text($"{list.Count} line(s) · Currency: {currency}").FontSize(8);
                             });
 
                             if (list.Count == 0)

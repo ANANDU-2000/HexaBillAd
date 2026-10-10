@@ -10,12 +10,13 @@
 | T-004c | P0 | Purchases/Expenses/Payments | CRUD persistence sweep | no defect found | — | — | PurchasePersistenceHttpTests (stock + supplier payable create/edit/delete), ExpensePersistenceHttpTests (all fields, VAT, delete), payment partial/idempotent replay/delete in SalePersistenceHttpTests | SQLite HTTP harness | PASS |
 | T-004d | P1 | Returns | Return round-trip via HTTP | | | | existing service-level ReturnStockTests/CreditNoteDailyCloseTests only | | TODO |
 | T-005 | P0 | Dashboard | Multi-day dashboard totals stale for 5 minutes after a sale/expense | summary cache key had no data version; no invalidation on writes | TenantDataVersion.cs, AppDbContext.cs, ReportService.cs | per-tenant version bumped on every tenant-row save, included in cache key | DashboardFreshnessHttpTests (red→green) | in-process; assumes single Render instance (true today) | PASS |
-| T-010 | P1 | Print | 3-column monochrome bilingual header + doc coverage | | | | | | TODO |
+| T-010a | P1 | Print | Header/visual review | 3-column bilingual monochrome header already exists (RenderCompanyHeader, INVOICE_HEADER_STYLE=BilingualMonochrome, set for Tier-0 tenants). Real Gulf Harvest BW logo renders centred and crisp. Defects: mojibake "Â·"/"Â±" in expense register PDF, round-off errors, dashboard & expenses UI; empty "CUSTOMER TRN : NO :" label on invoices | PdfService.cs, SaleService.cs, DashboardTally.jsx, ExpensesPage.jsx | fixed encoding; omit empty customer TRN label | print/PDF suites 156 pass; PNG review docs/production/print-evidence/gulfharvest | | PASS |
+| T-010b | P1 | Print | Statements, credit note, supplier statement not in tenant family test; FrozenHub1/2 family not rendered | | | | | | TODO |
 | T-020 | P2 | VAT UI | Review/Lock, period picker, Form 201 tab | | | | | | TODO |
 | T-030 | P3 | UI | Responsive pass | | | | | | TODO |
 | T-040 | P4 | E2E | Playwright workflows | | | | | | TODO |
 
-| T-050 | P2 | Tests | Intermittent failures under parallel run (statement PDF, VAT export) | suspected process-wide env vars (ASPNETCORE_ENVIRONMENT, HEXABILL_ALLOW_SAMPLE_VAT_TRN) set by legacy VAT tests in parallel | | | | | TODO |
+| T-050 | P2 | Tests | Intermittent failures under parallel run (statement PDF, VAT export/PDF) | process-wide env vars (DATA_PATH set by HTTP factory; ASPNETCORE_ENVIRONMENT by VAT golden test) read by PDF/TRN code while other classes ran in parallel | 4 test classes | joined the serialized HttpIntegration collection | 3 consecutive full runs green | | PASS |
 
 Blockers: local PG connection string; FrozenHub BW logo; Vercel re-auth; prod backup/approval; accountant Form 201 review.
-Next: P1 print header (T-010).
+Next: T-010b.

@@ -17,6 +17,8 @@ namespace HexaBill.Tests;
 /// Phase 0 Zayogya compatibility checkpoint for the current management-return API,
 /// legacy exports, and local period workflow. The inputs are synthetic and isolated.
 /// </summary>
+// Serialized: these tests read or set process-wide environment (DATA_PATH, ASPNETCORE_ENVIRONMENT) used by PDF/TRN code.
+[Collection("HttpIntegration")]
 public sealed class ZayogyaVatManagementGoldenBaselineTests
 {
     internal const int ZayogyaTenantId = 60006;

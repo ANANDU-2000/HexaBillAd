@@ -1216,7 +1216,7 @@ const ExpensesPage = () => {
         )}
         {noVatCount > 0 && isAdminOrOwner(user) && (
           <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-amber-600 bg-white px-3">
-            <p className="text-sm text-amber-700">Missing VAT Â· {noVatCount} expenses need VAT</p>
+            <p className="text-sm text-amber-700">Missing VAT · {noVatCount} expenses need VAT</p>
             <span className="flex gap-2">
               <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-amber-50" onClick={() => setFilterNoVatOnly(true)}>Review</button>
               <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-neutral-700 hover:bg-neutral-50" onClick={() => setShowBulkVatModal(true)}>Update VAT</button>
@@ -1688,7 +1688,7 @@ const ExpensesPage = () => {
                         {(expense.branchName || expense.routeName) && (
                           <p className="text-xs text-blue-600 mt-1">
                             {expense.branchName && `Branch: ${expense.branchName}`}
-                            {expense.branchName && expense.routeName && ' Â· '}
+                            {expense.branchName && expense.routeName && ' · '}
                             {expense.routeName && `Route: ${expense.routeName}`}
                           </p>
                         )}
