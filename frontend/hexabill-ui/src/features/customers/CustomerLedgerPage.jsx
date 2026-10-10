@@ -48,7 +48,7 @@ import toast from 'react-hot-toast'
 import PaymentModal from '../../components/PaymentModal'
 import EditPaymentModal from '../../components/EditPaymentModal'
 import { mobilePageShellClass, mobileFilterGridClass, mobileDateInputClass } from '../../components/tallyFormClasses'
-import { MobileIconTabBar, MobileActionStrip, mobileActionBtnClass, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
+import { MobileIconTabBar, mobilePageTitleClass, mobileLedgerCardClass, mobileLedgerAmountClass, mobileLedgerLabelClass } from '../../components/mobilePageUi'
 import InvoicePreviewModal from '../../components/InvoicePreviewModal'
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal'
 import { isAdminOrOwner } from '../../utils/roles'
@@ -181,6 +181,7 @@ const CustomerLedgerPage = () => {
   const [ledgerStaffId, setLedgerStaffId] = useState(() => searchParams.get('staffId') || '')
   // Staged filter values; applied values above drive API calls
   const [pickerFiltersOpen, setPickerFiltersOpen] = useState(false)
+  const [ledgerFiltersOpen, setLedgerFiltersOpen] = useState(false)
   const [filterDraft, setFilterDraft] = useState(() => {
     const now = new Date()
     const yearsAgo = new Date(now)
@@ -637,6 +638,22 @@ const CustomerLedgerPage = () => {
     // Staff can only see themselves
     return staffUsers.filter(u => u.id === user.id)
   }, [staffUsers, user])
+  // One-line summary of the period/branch/route/staff filters for the phone toggle (UX-L02).
+  const ledgerFilterSummary = (() => {
+    const fmt = (d) => {
+      if (!d) return '…'
+      const [y, m, day] = String(d).split('-')
+      return day && m && y ? `${day}/${m}/${y.slice(2)}` : d
+    }
+    const parts = [`${fmt(filterDraft.from)}–${fmt(filterDraft.to)}`]
+    const branch = availableBranches.find((b) => String(b.id) === String(filterDraft.branchId))
+    const route = availableRoutes.find((r) => String(r.id) === String(filterDraft.routeId))
+    const staff = availableStaff.find((u) => String(u.id) === String(filterDraft.staffId))
+    parts.push(branch ? branch.name : 'All branches')
+    if (route) parts.push(route.name)
+    if (staff) parts.push(staff.name || staff.email)
+    return parts.join(' · ')
+  })()
 
   // Auto-select filters for Staff: default to first assigned branch and first route of that branch
   useEffect(() => {
@@ -2095,11 +2112,77 @@ const CustomerLedgerPage = () => {
     selectedNormalizedId != null && loadedForCustomerId === selectedNormalizedId
   const showLedgerLoading = Boolean(selectedCustomer) && (loading || !ledgerDataReady)
 
+  const openEditSelectedCustomer = () => {
+    setEditingCustomer(selectedCustomer)
+    customerForm.setValue('name', selectedCustomer.name)
+    customerForm.setValue('phone', selectedCustomer.phone || '')
+    customerForm.setValue('email', selectedCustomer.email || '')
+    customerForm.setValue('trn', selectedCustomer.trn || '')
+    customerForm.setValue('address', selectedCustomer.address || '')
+    customerForm.setValue('location', selectedCustomer.location || '')
+    customerForm.setValue('creditLimit', selectedCustomer.creditLimit || 0)
+    customerForm.setValue('paymentTerms', selectedCustomer.paymentTerms || '')
+    customerForm.setValue('branchId', selectedCustomer.branchId || '')
+    customerForm.setValue('routeId', selectedCustomer.routeId || '')
+    setShowEditCustomerModal(true)
+  }
+
+  const openPayAllOutstanding = () => {
+    setPayAllOutstandingMode(true)
+    setPaymentModalInvoiceId(null)
+    const total = outstandingInvoices.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
+    setPaymentValue('amount', total)
+    setPaymentValue('saleId', '')
+    setPaymentValue('paymentDate', localDateString(new Date()))
+    setPaymentValue('method', 'CASH')
+    setShowPaymentModal(true)
+  }
+
+  const handlePendingBillsPdf = async () => {
+    if (pdfLoading) return
+    if (!selectedCustomer || !selectedCustomer.id) {
+      toast.error('Please select a customer first')
+      return
+    }
+    const loadingToast = toast.loading('Generating PDF...')
+    setPdfLoading(true)
+    try {
+      const fromDate = dateRange.from
+      const toDate = dateRange.to
+      const pdfBlob = await customersAPI.getCustomerPendingBillsPdf(
+        selectedCustomer.id,
+        fromDate,
+        toDate
+      )
+
+      const url = window.URL.createObjectURL(pdfBlob)
+      const opened = window.open(url, '_blank')
+      if (!opened) {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `Pending_Bills_${selectedCustomer.name}_${fromDate}_to_${toDate}.pdf`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+      }
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000)
+      toast.success('Pending Bills PDF ready', { id: 'invoice-pdf-download', duration: 3000 })
+    } catch (error) {
+      console.error('Failed to export pending bills PDF:', error)
+      if (!error?._handledByInterceptor) {
+        toast.error('Failed to export PDF')
+      }
+    } finally {
+      toast.dismiss(loadingToast)
+      setPdfLoading(false)
+    }
+  }
+
   return (
     <div className={`h-full min-h-0 flex flex-col bg-neutral-50 overflow-x-hidden w-full max-w-full ${mobilePageShellClass}`}>
       {/* TOP BAR (UX-L01): back + title; record actions live in one menu once a customer is open.
           Phones show it only for an open customer — the shell top bar already names the page. */}
-      <div className={`bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 shrink-0 ${selectedCustomer ? '' : 'hidden md:block'}`}>
+      <div className="hidden md:block bg-white border-b border-neutral-200 px-3 sm:px-6 py-2 shrink-0">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -2159,12 +2242,23 @@ const CustomerLedgerPage = () => {
             toggle that shows how many are active, so they never push the list down by default. */}
         <div className="shrink-0 border-b border-neutral-200 bg-neutral-50 px-3 py-2">
           <div className="flex items-center gap-2">
+            {selectedCustomer && (
+              <button
+                type="button"
+                onClick={() => clearSelectedCustomer({ keepSearch: false })}
+                className="md:hidden inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100"
+                aria-label="Back to customer list"
+              >
+                <ArrowLeft className="h-5 w-5" aria-hidden />
+              </button>
+            )}
             <div className="relative min-w-0 flex-1 lg:max-w-xl">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" aria-hidden />
             <input
               ref={searchInputRef}
               type="search"
-              placeholder="Search customer (F2)"
+              placeholder="Search customer"
+              title="Search customer (F2)"
               value={searchTerm}
               onFocus={() => {
                 if (selectedCustomerIdRef.current != null) {
@@ -2247,7 +2341,7 @@ const CustomerLedgerPage = () => {
           )}
           <div className="mt-1 flex items-center gap-2 text-xs text-neutral-600">
             {selectedCustomer && (
-              <span className="min-w-0 truncate font-semibold text-primary-800" title={selectedCustomer.name}>{selectedCustomer.name}</span>
+              <span className="hidden md:inline min-w-0 truncate font-semibold text-primary-800" title={selectedCustomer.name}>{selectedCustomer.name}</span>
             )}
             <span className="ml-auto whitespace-nowrap" aria-live="polite">
               {searchDropdownLoading ? 'Searching…' : (searchTerm || !selectedCustomer ? `${searchDropdownTotal} customer(s)` : `Total: ${customers.length}`)}
@@ -2341,7 +2435,7 @@ const CustomerLedgerPage = () => {
               )}
               {/* Compact customer + balance + actions */}
               <div className="sticky top-0 z-20 shrink-0 bg-white border-b border-neutral-200 px-3 py-2 sm:px-4">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 flex-wrap">
+                <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 sm:items-center">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="min-w-0">
                       <h2 className="text-sm sm:text-base font-bold text-neutral-900 truncate">{selectedCustomer.name}</h2>
@@ -2358,152 +2452,58 @@ const CustomerLedgerPage = () => {
                     {balanceRefreshSkeleton ? (
                       <p className="text-sm text-neutral-500 animate-pulse">Refreshing…</p>
                     ) : (
-                      <p className={`text-base sm:text-lg font-bold ${(selectedCustomer.balance ?? 0) < 0 ? 'text-success' : (selectedCustomer.balance ?? 0) > 0 ? 'text-error' : 'text-neutral-900'}`}>
+                      <p className="text-base sm:text-lg font-semibold tabular-nums text-text-primary">
                         {formatCurrency(Math.abs(selectedCustomer.balance ?? 0))}
                         <span className="text-micro font-medium text-neutral-500 ml-1">{(selectedCustomer.balance ?? 0) < 0 ? 'Cr' : (selectedCustomer.balance ?? 0) > 0 ? 'Dr' : ''}</span>
                       </p>
                     )}
                   </div>
 
-                  <MobileActionStrip className="w-full sm:w-auto flex-shrink-0 md:flex-wrap md:overflow-visible">
+                  {/* UX-L02: one labelled primary action, Pay all only when invoices are open, the rest in a menu. */}
+                  <div className="flex w-full items-center gap-2 sm:w-auto">
                     {selectedCustomer.id !== 'cash' && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingCustomer(selectedCustomer)
-                            customerForm.setValue('name', selectedCustomer.name)
-                            customerForm.setValue('phone', selectedCustomer.phone || '')
-                            customerForm.setValue('email', selectedCustomer.email || '')
-                            customerForm.setValue('trn', selectedCustomer.trn || '')
-                            customerForm.setValue('address', selectedCustomer.address || '')
-                            customerForm.setValue('location', selectedCustomer.location || '')
-                            customerForm.setValue('creditLimit', selectedCustomer.creditLimit || 0)
-                            customerForm.setValue('paymentTerms', selectedCustomer.paymentTerms || '')
-                            customerForm.setValue('branchId', selectedCustomer.branchId || '')
-                            customerForm.setValue('routeId', selectedCustomer.routeId || '')
-                            setShowEditCustomerModal(true)
-                          }}
-                          className={`${mobileActionBtnClass} min-h-[44px] bg-primary-600 text-white hover:bg-primary-700`}
-                          title="Edit Customer (F3)"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Edit</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setPayAllOutstandingMode(false)
-                            setPaymentModalInvoiceId(null)
-                            setShowPaymentModal(true)
-                          }}
-                          className="min-h-[44px] px-3 py-2 bg-primary-600 text-white text-xs rounded-md hover:bg-primary-700 flex items-center gap-1 transition-colors"
-                          title="Add Payment (F4)"
-                        >
-                          <Plus className="h-3 w-3" />
-                          <span className="hidden sm:inline">Payment</span>
-                        </button>
-                        {outstandingInvoices.length > 0 && (selectedCustomer.balance ?? 0) > 0 && (
-                          <button
-                            onClick={() => {
-                              setPayAllOutstandingMode(true)
-                              setPaymentModalInvoiceId(null)
-                              const total = outstandingInvoices.reduce((s, inv) => s + (Number(inv.balanceAmount) || 0), 0)
-                              setPaymentValue('amount', total)
-                              setPaymentValue('saleId', '')
-                              setPaymentValue('paymentDate', localDateString(new Date()))
-                              setPaymentValue('method', 'CASH')
-                              setShowPaymentModal(true)
-                            }}
-                            className="min-h-[44px] px-3 py-2 bg-accent text-white text-xs rounded-md hover:bg-accent/90 flex items-center gap-1 transition-colors"
-                            title="Pay all outstanding invoices in one payment"
-                          >
-                            <Wallet className="h-3 w-3" />
-                            <span className="hidden sm:inline">Pay All</span>
-                          </button>
-                        )}
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPayAllOutstandingMode(false)
+                          setPaymentModalInvoiceId(null)
+                          setShowPaymentModal(true)
+                        }}
+                        className="btn btn-primary flex-1 sm:flex-none"
+                        title="Receive payment (F4)"
+                      >
+                        <Plus className="h-4 w-4" aria-hidden />
+                        Receive payment
+                      </button>
                     )}
-                    <button
-                      onClick={handleExportStatement}
-                      disabled={pdfLoading}
-                      className="min-h-[44px] px-2 py-1 bg-success text-white text-xs rounded hover:bg-green-700 flex items-center gap-1 transition-colors disabled:opacity-50"
-                      title="Ledger Statement (F5)"
-                    >
-                      <FileText className="h-3 w-3" />
-                      <span className="hidden lg:inline">{pdfLoading ? 'Loading...' : 'Statement'}</span>
-                    </button>
-                    <button
-                      disabled={pdfLoading}
-                      onClick={async () => {
-                        if (pdfLoading) return
-                        if (!selectedCustomer || !selectedCustomer.id) {
-                          toast.error('Please select a customer first')
-                          return
-                        }
-                        const loadingToast = toast.loading('Generating PDF...')
-                        setPdfLoading(true)
-                        try {
-                          const fromDate = dateRange.from
-                          const toDate = dateRange.to
-                          const pdfBlob = await customersAPI.getCustomerPendingBillsPdf(
-                            selectedCustomer.id,
-                            fromDate,
-                            toDate
-                          )
-
-                          const url = window.URL.createObjectURL(pdfBlob)
-                          const opened = window.open(url, '_blank')
-                          if (!opened) {
-                            const a = document.createElement('a')
-                            a.href = url
-                            a.download = `Pending_Bills_${selectedCustomer.name}_${fromDate}_to_${toDate}.pdf`
-                            document.body.appendChild(a)
-                            a.click()
-                            document.body.removeChild(a)
-                          }
-                          setTimeout(() => window.URL.revokeObjectURL(url), 60000)
-                          toast.success('Pending Bills PDF ready', { id: 'invoice-pdf-download', duration: 3000 })
-                        } catch (error) {
-                          console.error('Failed to export pending bills PDF:', error)
-                          if (!error?._handledByInterceptor) {
-                            toast.error('Failed to export PDF')
-                          }
-                        } finally {
-                          toast.dismiss(loadingToast)
-                          setPdfLoading(false)
-                        }
-                      }}
-                      className="min-h-[44px] px-2 py-1 bg-error text-white text-xs rounded hover:bg-red-700 flex items-center gap-1 transition-colors disabled:opacity-50"
-                      title="Pending Bills PDF (Outstanding Invoices Only) - Uses Date Filter"
-                    >
-                      <DollarSign className="h-3 w-3" />
-                      <span className="hidden lg:inline">{pdfLoading ? 'Loading...' : 'Pending Bills'}</span>
-                    </button>
-                    <button
-                      onClick={handleExportPDF}
-                      disabled={pdfLoading}
-                      className="min-h-[44px] px-2 py-1 bg-neutral-700 text-white text-xs rounded hover:bg-neutral-800 flex items-center gap-1 transition-colors disabled:opacity-50"
-                      title="Full Ledger PDF (F7)"
-                    >
-                      <Download className="h-3 w-3" />
-                      <span className="hidden lg:inline">{pdfLoading ? 'Loading...' : 'PDF'}</span>
-                    </button>
-                    <button
-                      onClick={handleShareWhatsApp}
-                      className="min-h-[44px] min-w-[44px] px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-success flex items-center justify-center transition-colors"
-                      title="WhatsApp"
-                    >
-                      <Send className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => selectedCustomer && customerLedger.length > 0 && setShowSendStatementModal(true)}
-                      disabled={!selectedCustomer || customerLedger.length === 0}
-                      className="min-h-[44px] px-2 py-1 bg-primary-600 text-white text-xs rounded hover:bg-primary-700 flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Send statement via WhatsApp, email, or download PDF"
-                    >
-                      <Send className="h-3 w-3" />
-                      <span className="hidden lg:inline">Send Statement</span>
-                    </button>
-                  </MobileActionStrip>
+                    {selectedCustomer.id !== 'cash' && outstandingInvoices.length > 0 && (selectedCustomer.balance ?? 0) > 0 && (
+                      <button type="button" onClick={openPayAllOutstanding} className="btn btn-secondary flex-1 sm:flex-none" title="Pay all outstanding invoices in one payment">
+                        <Wallet className="h-4 w-4" aria-hidden />
+                        Pay all
+                      </button>
+                    )}
+                    <OverflowMenu
+                      label={`More actions for ${selectedCustomer.name}`}
+                      items={[
+                        { label: 'Edit customer (F3)', icon: Edit, hidden: selectedCustomer.id === 'cash', onClick: openEditSelectedCustomer },
+                        { label: 'Statement PDF (F5)', icon: FileText, disabled: pdfLoading, onClick: handleExportStatement },
+                        { label: 'Pending bills PDF', icon: DollarSign, disabled: pdfLoading, onClick: handlePendingBillsPdf },
+                        { label: 'Full ledger PDF (F7)', icon: Download, disabled: pdfLoading, onClick: handleExportPDF },
+                        { label: 'Share on WhatsApp', icon: Send, separatorBefore: true, onClick: handleShareWhatsApp },
+                        { label: 'Send statement…', icon: Send, disabled: customerLedger.length === 0, onClick: () => setShowSendStatementModal(true) },
+                        {
+                          label: 'Refresh',
+                          icon: RefreshCw,
+                          separatorBefore: true,
+                          onClick: () => {
+                            ledgerLoadInProgressRef.current = null
+                            loadCustomerData(selectedCustomer.id)
+                          },
+                        },
+                        { label: 'Reconcile & verify balance', icon: CheckCircle, disabled: loading, onClick: handleManualReconciliation },
+                      ]}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -2572,27 +2572,45 @@ const CustomerLedgerPage = () => {
                 </Modal>
               )}
 
-              {/* Date + branch/route/staff — one compact horizontal strip */}
+              {/* Date + branch/route/staff (UX-L02): phones see a one-line summary that opens the
+                  filters; from 768px the strip stays inline. Values still auto-apply (debounced). */}
               {selectedCustomer && (
-                <div className="shrink-0 bg-neutral-50 border-b border-neutral-200 px-3 py-1.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
-                  <input
-                    type="date"
-                    value={filterDraft.from}
-                    onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
-                    className="w-auto min-w-0 px-2 py-1 min-h-8 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
-                  <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
-                  <input
-                    type="date"
-                    value={filterDraft.to}
-                    onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
-                    className="w-auto min-w-0 px-2 py-1 min-h-8 text-xs border border-neutral-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary-500"
-                  />
+                <button
+                  type="button"
+                  onClick={() => setLedgerFiltersOpen((v) => !v)}
+                  className="md:hidden shrink-0 flex min-h-11 w-full items-center gap-2 border-b border-neutral-200 bg-neutral-50 px-3 text-left text-xs text-neutral-700"
+                  aria-expanded={ledgerFiltersOpen}
+                  aria-controls="ledger-period-filters"
+                >
+                  <Filter className="h-4 w-4 shrink-0 text-neutral-500" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate">{ledgerFilterSummary}</span>
+                  <span className="shrink-0 font-medium text-primary-700">{ledgerFiltersOpen ? 'Done' : 'Change'}</span>
+                </button>
+              )}
+              {selectedCustomer && (
+                <div id="ledger-period-filters" className={`${ledgerFiltersOpen ? 'grid' : 'hidden'} md:flex shrink-0 grid-cols-2 gap-2 bg-neutral-50 border-b border-neutral-200 px-3 py-2 md:py-1.5 md:flex-wrap md:items-center`}>
+                  <label className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-1.5">
+                    <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">From</span>
+                    <input
+                      type="date"
+                      value={filterDraft.from}
+                      onChange={(e) => setFilterDraft(prev => ({ ...prev, from: e.target.value }))}
+                      className="input min-w-0 text-sm md:min-h-9 md:w-auto"
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-0.5 md:flex-row md:items-center md:gap-1.5">
+                    <span className="text-micro font-medium text-neutral-500 uppercase shrink-0">To</span>
+                    <input
+                      type="date"
+                      value={filterDraft.to}
+                      onChange={(e) => setFilterDraft(prev => ({ ...prev, to: e.target.value }))}
+                      className="input min-w-0 text-sm md:min-h-9 md:w-auto"
+                    />
+                  </label>
                   <select
                     value={filterDraft.branchId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, branchId: e.target.value, routeId: '' }))}
-                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableBranches.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableBranches.length <= 1}
                     title="Filter by branch"
                   >
@@ -2602,7 +2620,7 @@ const CustomerLedgerPage = () => {
                   <select
                     value={filterDraft.routeId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, routeId: e.target.value }))}
-                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user) && availableRoutes.length <= 1) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user) && availableRoutes.length <= 1}
                     title="Filter by route"
                   >
@@ -2614,7 +2632,7 @@ const CustomerLedgerPage = () => {
                   <select
                     value={filterDraft.staffId}
                     onChange={(e) => setFilterDraft(prev => ({ ...prev, staffId: e.target.value }))}
-                    className={`min-h-8 py-1 px-2 text-xs border border-neutral-300 rounded-md bg-white max-w-[140px] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
+                    className={`input min-w-0 text-sm md:min-h-9 md:max-w-[11rem] ${(!isAdminOrOwner(user)) ? 'bg-neutral-100 text-neutral-500 cursor-not-allowed' : ''}`}
                     disabled={!isAdminOrOwner(user)}
                     title="Filter by staff"
                   >
@@ -3743,71 +3761,47 @@ const LedgerStatementTab = ({ ledgerEntries, customer, onExportExcel, onGenerate
       {/* Compact metrics strip */}
       <div className="shrink-0 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-1.5 bg-white border-b border-neutral-200 text-xs">
         <span className="text-neutral-500">Sales <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalDebit) || 0)}</strong></span>
-        <span className="text-neutral-500">Paid <strong className="text-success-fg tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
-        <span className="text-neutral-500">Closing <strong className={`tabular-nums ${closingBalance < 0 ? 'text-success' : closingBalance > 0 ? 'text-error' : 'text-neutral-900'}`}>{formatBalance(Number(closingBalance) || 0)}</strong></span>
+        <span className="text-neutral-500">Paid <strong className="text-neutral-900 tabular-nums">{formatCurrency(Number(totalCredit) || 0)}</strong></span>
+        <span className="text-neutral-500">Closing <strong className="tabular-nums text-neutral-900">{formatBalance(Number(closingBalance) || 0)}</strong></span>
       </div>
 
-      {/* Action Bar with Filters */}
+      {/* Filters + statement actions (UX-L02): two selects and one menu instead of four coloured buttons. */}
       <div className="shrink-0 bg-white border-b border-neutral-200 px-2 py-1.5">
-        <div className="flex flex-wrap items-center justify-between gap-1.5">
-          <span className="text-xs font-medium text-neutral-700">Ledger Statement</span>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <select
-              value={safeFilters.statusFilterValue || 'all'}
-              onChange={(e) => safeOnFilterChange('status', e.target.value)}
-              className="px-1.5 py-0.5 text-micro border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="paid">Paid</option>
-              <option value="partial">Partial</option>
-              <option value="unpaid">Unpaid</option>
-            </select>
-            <select
-              value={safeFilters.typeFilterValue || 'all'}
-              onChange={(e) => safeOnFilterChange('type', e.target.value)}
-              className="px-1.5 py-0.5 text-micro border border-neutral-300 rounded focus:outline-none focus:ring-1 focus:ring-primary-500"
-            >
-              <option value="all">All Types</option>
-              <option value="Invoice">Invoices</option>
-              <option value="Payment">Payments</option>
-              <option value="Sale Return">Returns</option>
-            </select>
-            <button
-              onClick={onPrintPreview}
-              className="px-2 py-1 text-micro bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
-              title="Print Preview"
-            >
-              <Eye className="h-3 w-3" />
-              <span className="hidden sm:inline">Preview</span>
-            </button>
-            <button
-              onClick={onExportExcel}
-              className="px-2 py-1 text-micro bg-success text-white rounded hover:bg-green-700 flex items-center gap-1"
-              title="Export to Excel"
-            >
-              <FileText className="h-3 w-3" />
-              <span className="hidden sm:inline">Excel</span>
-            </button>
-            <button
-              onClick={onGeneratePDF}
-              className="px-2 py-1 text-micro bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-1"
-              title="Download PDF Statement"
-            >
-              <Printer className="h-3 w-3" />
-              <span className="hidden sm:inline">PDF</span>
-            </button>
-            <button
-              onClick={onShareWhatsApp}
-              className="px-2 py-1 text-micro bg-success text-white rounded hover:bg-green-700 flex items-center gap-1"
-              title="Share via WhatsApp"
-            >
-              <Send className="h-3 w-3" />
-              <span className="hidden sm:inline">WhatsApp</span>
-            </button>
-          </div>
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline text-xs font-medium text-neutral-700">Ledger statement</span>
+          <select
+            value={safeFilters.statusFilterValue || 'all'}
+            onChange={(e) => safeOnFilterChange('status', e.target.value)}
+            className="input min-w-0 flex-1 text-sm sm:ml-auto sm:max-w-[9rem] md:min-h-9"
+            aria-label="Filter by status"
+          >
+            <option value="all">All status</option>
+            <option value="paid">Paid</option>
+            <option value="partial">Partial</option>
+            <option value="unpaid">Unpaid</option>
+          </select>
+          <select
+            value={safeFilters.typeFilterValue || 'all'}
+            onChange={(e) => safeOnFilterChange('type', e.target.value)}
+            className="input min-w-0 flex-1 text-sm sm:max-w-[9rem] md:min-h-9"
+            aria-label="Filter by type"
+          >
+            <option value="all">All types</option>
+            <option value="Invoice">Invoices</option>
+            <option value="Payment">Payments</option>
+            <option value="Sale Return">Returns</option>
+          </select>
+          <OverflowMenu
+            label="Statement actions"
+            items={[
+              { label: 'Print preview', icon: Eye, onClick: onPrintPreview },
+              { label: 'Export to Excel', icon: FileText, onClick: onExportExcel },
+              { label: 'Download PDF statement', icon: Printer, onClick: onGeneratePDF },
+              { label: 'Share on WhatsApp', icon: Send, onClick: onShareWhatsApp },
+            ]}
+          />
         </div>
       </div>
-
       {/* Ledger Table - Desktop - full width */}
       <div className="hidden md:flex bg-white flex-1 flex-col overflow-hidden min-w-0 min-h-0">
         <div className="overflow-y-auto flex-1 min-w-0">
