@@ -21,7 +21,28 @@ Improve the EXISTING multi-tenant .NET + React + PostgreSQL HexaBill ERP for rea
 2. Pick ONE P0/P1 task; reproduce first (failing test where practical), identify root cause, propose narrowly scoped files, implement smallest fix, test targeted cases, update tracker.
 3. Budget context: read named files/line ranges not full repo repeatedly; avoid full-stack parallel subagent sessions and duplicate skill invocations. Specialist subagent only for independent bounded reviews, concise results, no concurrent edits to same files; note added token cost.
 4. Run .NET, React and PostgreSQL/Playwright tests as appropriate; full suites at milestone gates. Do not count skipped tests as passes. Capture exact commands/exit statuses.
-5. Finish each session with explicit CHECKPOINT and stop; resume from tracker rather than reconstructing from chat. Never execute endlessly, bypass safeguards or claim PASS because builds succeeded.
+5. Work follows the CONTINUOUS LOCAL EXECUTION POLICY below. Record progress in the tracker after each verified task, resume from the tracker rather than reconstructing from chat, and never bypass safeguards or claim PASS because builds succeeded.
+
+## CONTINUOUS LOCAL EXECUTION POLICY
+This policy replaces the earlier "one checkpoint, then stop" rule. It does not weaken any safety requirement in this file.
+
+1. Execute approved local development tasks sequentially, one bounded task at a time.
+2. After each task: run its targeted tests, record PASS/FAIL/BLOCKED with evidence in the tracker, and commit the verified checkpoint locally. Do not push.
+3. Then continue to the next independent approved task. Do not ask permission after routine checkpoints, and do not ask "should I continue?".
+4. Before any context reset or usage limit, persist progress: branch, last commit, current task ID, next failing test, blockers, and the exact next action in the tracker.
+5. Do not repeat completed audits or plans. Read only what the current task needs.
+6. Do not claim PASS without evidence. Report skipped or unrun tests as NOT TESTED, not PASS.
+
+Stop and ask only for:
+- Production deployment, production database changes, or production migrations.
+- Paid external services or any paid API call.
+- Missing essential credentials or configuration that cannot be read from the repository.
+- Destructive operations (deleting live data, dropping tables, removing customer assets or migrations).
+- Security-sensitive decisions (auth model, tenant isolation rules, key handling, data sharing with third parties).
+- Genuine blockers that prevent the next task.
+- Execution or usage limits.
+
+Everything else is routine local work and proceeds without a stop.
 
 ## Architecture principles
 - One authoritative ERP backend for financial rules and permissions; AI is an orchestrator, not source of truth.
