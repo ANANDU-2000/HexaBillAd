@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft , RefreshCw } from 'lucide-react'
 import { getReturnLabel } from '../../utils/returnNavigation'
 import toast from 'react-hot-toast'
 import { dailyCloseAPI, subscriptionAPI } from '../../services'
@@ -259,7 +259,7 @@ const DailyClosePage = () => {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl space-y-6">
+    <div data-shell-hides-nav className="p-4 md:p-6 max-w-3xl space-y-6">
       <div>
         {returnTo && (
           <button
@@ -402,15 +402,26 @@ const DailyClosePage = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <LoadingButton type="button" loading={loading} onClick={loadPreview} className="min-h-[44px] px-4 border rounded-lg">Refresh expected</LoadingButton>
+      {/* Phones: the actions stay at the bottom of the screen while the count is entered (sticky footer). */}
+      <div className="sticky bottom-0 -mx-4 flex items-center gap-2 border-t border-neutral-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:static md:mx-0 md:gap-3 md:border-0 md:bg-transparent md:p-0">
+        <button
+          type="button"
+          disabled={loading}
+          onClick={loadPreview}
+          aria-label="Refresh expected"
+          title="Refresh expected"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white text-neutral-800 disabled:opacity-50 md:h-auto md:w-auto md:px-4 md:min-h-[44px]"
+        >
+          <RefreshCw className="h-4 w-4 md:hidden" aria-hidden />
+          <span className="hidden md:inline">{loading ? 'Refreshing…' : 'Refresh expected'}</span>
+        </button>
         {!closedForDate && (
           <>
-            <LoadingButton type="button" loading={saving} onClick={() => submit(false)} className="min-h-[44px] px-4 border rounded-lg">Save draft</LoadingButton>
+            <button type="button" disabled={saving} onClick={() => submit(false)} className="min-h-[44px] flex-1 rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-800 disabled:opacity-50 md:flex-none">{saving ? 'Saving…' : 'Save draft'}</button>
             {canManageClose ? (
-              <LoadingButton type="button" loading={saving} onClick={() => submit(true)} className="min-h-[44px] px-4 bg-success text-white rounded-lg">Submit close</LoadingButton>
+              <button type="button" disabled={saving} onClick={() => submit(true)} className="min-h-[44px] flex-1 rounded-lg bg-success px-4 text-sm font-medium text-white disabled:opacity-50 md:flex-none">{saving ? 'Submitting…' : 'Submit close'}</button>
             ) : (
-              <p className="text-xs text-neutral-500 self-center">Submit close requires owner or admin.</p>
+              <p className="min-w-0 flex-1 text-xs text-neutral-500 md:flex-none md:self-center">Submit close requires owner or admin.</p>
             )}
           </>
         )}

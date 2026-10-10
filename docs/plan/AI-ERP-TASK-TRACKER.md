@@ -170,3 +170,13 @@ STOP HERE — do not begin next phase automatically.
 - **Next task:** Suppliers ledger tabs and supplier edit/statement checks (SU-07), then the next module in the coverage matrix.
 - **Continue:** next approved local task, per AGENTS.md CONTINUOUS LOCAL EXECUTION POLICY.
 
+### 2026-10-11 — Checkpoint 10: Daily close phone layout and actions (DC-01, DC-02, DC-03 PASS)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). Local setup: the synthetic tenant's `FeaturesJson` set to `["daily_close"]` in the UI-test DB (see PREMIUM-UX-TRACKER, Daily close). No production access.
+- **Changed:** `DailyClosePage.jsx` (page root hides the bottom nav; sticky footer on phones; plain buttons with explicit styles and pending labels). `e2e/daily-close.spec.js` (new). `e2e/ux-audit.spec.js` (adds `/daily-close` to the audit list).
+- **Measured:** 360px page height 1,574 px, Submit close at 1,430 px before the change. After: footer in viewport at the bottom of the page with the nav hidden.
+- **Commands and results:**
+  - `npx playwright test e2e/daily-close.spec.js` → m360 2 passed; t768 1 passed (1 mobile-only skipped); d1440 1 passed (1 skipped).
+  - `npx vite build` → exit 0. ESLint on the page: 0 errors.
+- **Not done:** Submit close, reopen, Add movement and capital transfers (they would change the synthetic day). Shared `LoadingButton` override problem (DC-04) is open.
+- **Next task:** Daily close close-and-reopen fixture (DC-06), then the Payments and Receipts module surface discovery.
+

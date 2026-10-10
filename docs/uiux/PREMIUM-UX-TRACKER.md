@@ -114,6 +114,23 @@ Evidence images are in `frontend/hexabill-ui/e2e/.shots/`; "screenshot" refers t
 | ↳ fix | | Selects full width on phones in a 2-column grid (no clipping); placeholder shortened (F2 hint in tooltip). | `audit-ledger-selected-m360.png` | | |
 | ↳ note | | Add customer now compact (icon on phone). Selected-customer filter row still clips "Main Wareho…" — handled with UX-L02. | | | |
 
+### Daily close (`/daily-close`, `features/dailyClose/DailyClosePage.jsx`)
+
+Local setup (not in source): the page is gated by the tenant feature `daily_close` (`Tenants.FeaturesJson` = `["daily_close"]`, read by `TenantFeatureFlags.IsEnabled`). Without it the page shows "Daily close is not enabled for this workspace". For the synthetic `gulfharvest` tenant (id 5) in `%TEMP%/hexabill-uitest/hexabill-uitest.db` this was set once with a local SQLite update. It is not a production change. Baseline below is with the flag on.
+
+Baseline (360px): 1,574 px page height; "Submit close" at 1,430 px; the bottom navigation covered the lower part of the form.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| DC-01 | P1 | The close form ran under the phone bottom navigation. The actions (Refresh expected, Save draft, Submit close) sat at the end of a 1,574 px page, so the user had to scroll to the bottom to close the day. | `e2e/.shots/audit-daily-close-m360.png`; probe: Submit close at y=1,430 | The close task owns the phone screen (`data-shell-hides-nav` on the page root). Actions move into a sticky footer on phones with safe-area padding. From md they sit inline again. | PASS |
+| ↳ fix | | `DailyClosePage.jsx`. `daily-close.spec.js` "the bottom nav is hidden and the close actions stay on screen" (m360 passed): nav count 0; after scrolling to the end, Save draft, Submit close and Refresh are in the viewport. | `e2e/.shots/review/daily-close-m360-bottom.png` | | |
+| DC-02 | P1 | Save draft and Refresh expected rendered white on white, so they were invisible in the footer. `LoadingButton` always applies its primary variant (`bg-primary-600`, `text-white`) and only appends the page's classes, so the override did not win. | Probe: buttons present with `border-transparent`; screenshot showed only Submit close | On this page, use plain buttons with explicit outline and primary styles, and a pending label ("Saving…", "Submitting…"). Shared `LoadingButton` left unchanged (see DC-04). | PASS |
+| ↳ fix | | Footer reviewed in the browser at 360px: refresh icon (44px), Save draft, Submit close (the only green action). | `e2e/.shots/review/daily-close-m360-bottom.png` | `daily-close.spec.js` (m360, t768, d1440) | |
+| DC-03 | P2 | Draft persistence: a saved count was not verified after refresh. | Spec: Save draft → POST 2xx → reload → counted cash equals 123.45 | Verified after reload from the server, not from local state. | PASS |
+| DC-04 | P2 | Shared `LoadingButton` cannot be restyled from outside: "Add movement" renders dark slate (`bg-slate-800`) and "Reopen day" amber (`bg-amber-700`), so the page has two unrelated button colours next to the blue/green primaries. | `daily-close-m360-bottom.png` ("Add movement") | Fix the shared component (variant prop with clean defaults) after a consumer check, or move these two to the shared Button. | TODO |
+| DC-05 | P3 | The intro paragraph takes three lines before the first input. The sentence about settlement adjustments is an accounting rule and must stay. | `audit-daily-close-m360.png` | Keep the wording; move the rule next to "Expected in drawer" as a one-line note. | TODO |
+| DC-06 | — | Not exercised yet: Submit close (variance reason, persisted close, Recent closes row, reports), Reopen day, Add movement, Capital and transfers rows, desktop visual review. Submit and reopen would change the synthetic business day, so they need a dedicated fixture per run. | — | Add a fixture that creates a closed day and a reopen path, then verify totals against the ledger. | NOT TESTED |
+
 ### Purchases (`/purchases`, `features/purchases/PurchasesPage.jsx`)
 
 Audited at Checkpoint 5 (2026-10-10) with 12 synthetic purchases and 2 synthetic suppliers seeded into the local tenant (`seed-purchases` script, local API only). Create, edit, delete and pay were **not** exercised in this checkpoint, so they stay NOT TESTED.
