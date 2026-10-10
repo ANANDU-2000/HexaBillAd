@@ -21,7 +21,7 @@
 | P1-03 | P1 | 1 | Last finalized customer-product-unit price reuse, returns/void/edit edge cases | TODO | historical price tests |
 | P1-04 | P1 | 1 | Daily opening/closing cash UX, tender reconciliation, branch/cashier | TODO | expected vs counted and role tests |
 | P1-05 | P1 | 1 | Frozen Hub header only + common print identity/Arabic/monochrome design | TODO | PDFs and image diff |
-| P1-06 | P1 | 2 | Inventory routes/screens/modal/form count and premium shared design tokens | IN_PROGRESS (audit PASS, implementation TODO) | 2026-10-10 Checkpoint 1: `docs/uiux/PAGE-INVENTORY.md` recount + `docs/uiux/PREMIUM-UX-TRACKER.md` (25 confirmed defects (8 P1, 14 P2, 3 P3) + 1 NOT REPRODUCED + 1 NOT TESTED, baseline metrics at 360/390/768/1440); `e2e/ux-audit.spec.js` 28/28 passed on synthetic local data |
+| P1-06 | P1 | 2 | Inventory routes/screens/modal/form count and premium shared design tokens | IN_PROGRESS (audit PASS; Expenses slice PARTIAL, Checkpoint 3: list states PASS, first-record target 35% not met; other modules TODO) | 2026-10-10 Checkpoint 1: `docs/uiux/PAGE-INVENTORY.md` recount + `docs/uiux/PREMIUM-UX-TRACKER.md` (25 confirmed defects (8 P1, 14 P2, 3 P3) + 1 NOT REPRODUCED + 1 NOT TESTED, baseline metrics at 360/390/768/1440); `e2e/ux-audit.spec.js` 28/28 passed on synthetic local data |
 | P1-07 | P1 | 2 | Desktop navigation, tablet, mobile quick create, no duplicate chrome | TODO | Playwright viewport matrix |
 | P1-08 | P1 | 2 | Tenant global search + indexed results + shortcuts | TODO | permission and latency tests |
 | P1-09 | P1 | 2 | Faster invoice/POS/purchase/expense workflows; explicit save confirmation | TODO | click/time and DB E2E |
@@ -50,6 +50,20 @@
   - 25 defects confirmed: 8 P1, 14 P2, 3 P3. One suspected defect was not reproduced (UX-E08, expense list scroll). No P0 UX defect.
   - Not tested: large datasets (only 2 invoices), RTL, a real device keyboard.
 - **Next task:** Checkpoint 2, P0-02.
+
+### 2026-10-10 — Checkpoint 3: Expenses UX slice (P1-06, PARTIAL)
+- **Source:** branch `uiux-audit-p1`; local Vite on 127.0.0.1:5173 over the local API on 127.0.0.1:5000 (SQLite synthetic copy, tenant `gulfharvest`). No production access.
+- **Changed:** `frontend/hexabill-ui/src/features/expenses/ExpensesPage.jsx` (filters collapse below 1024px; totals and Ledger/By category tabs share one row; tablet chips scroll; Route and VAT Period hidden below 1280px; desktop empty state gets Add expense; list error gets "Try again" on all widths with one copy). New spec: `frontend/hexabill-ui/e2e/expenses-states.spec.js`. Tracker: `docs/uiux/PREMIUM-UX-TRACKER.md`.
+- **Results (before → after):** first record 360px 411→387 px (51%→48%); 768px 752→498 px (73%→49%); 1440px 566→528 px (63%→59%). The 35% target was **not** met.
+- **Commands and results:**
+  - `npx playwright test e2e/ux-audit.spec.js -g "audit /expenses" --project=m360 --project=m390 --project=t768 --project=d1440` → 8 passed.
+  - `npx playwright test e2e/expenses-states.spec.js --project=m360 --project=t768 --project=d1440` → 6 passed.
+  - `npx playwright test e2e/expenses-crud.spec.js --project=m360 --project=t768 --project=d1440` → one clean run 3 passed; reruns failed on HTTP 429 (see open risk). Single-viewport d1440 clean rerun → 1 passed.
+  - `npm test` (frontend unit) → 147 pass, 0 fail. ESLint on ExpensesPage: 0 errors, 7 warnings, all pre-existing (none on changed lines).
+- **Open risk (not fixed):** the API's global rate limiter is 300 requests/min per IP (`backend/HexaBill.Api/Core/Authorization/SecurityConfiguration.cs:254`, skipped for HTTP integration-test hosts). The Playwright suites exceed it, and in 3 of 4 three-viewport runs the list GET returned 429. This is a test-environment limit, but shared-NAT offices could hit the same limit in production. Owner decision needed on the limit or per-user keying.
+- **Not tested:** Arabic/RTL, real phone keyboard, large datasets for the Expenses list, print and export of the changed view.
+- **Next task:** finish P1-06 Expenses (UX-E01 target 35%, UX-E06 tablet table columns), then Purchases, POS and the other modules in the coverage matrix.
+- **STOP HERE** — one checkpoint per session; do not begin the next phase automatically.
 
 ## Start-of-session template
 ```

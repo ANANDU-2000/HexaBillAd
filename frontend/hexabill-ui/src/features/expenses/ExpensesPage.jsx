@@ -1018,7 +1018,7 @@ const ExpensesPage = () => {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden bg-neutral-50">
-      <div className="shrink-0 border-b border-neutral-200 bg-white px-3 py-3 md:px-4">
+      <div className="shrink-0 border-b border-neutral-200 bg-white px-3 py-2 md:px-4 md:py-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="hidden text-xl font-semibold text-neutral-900 md:block">Expenses</h1>
@@ -1084,9 +1084,9 @@ const ExpensesPage = () => {
 
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden w-full max-w-full px-0 sm:px-1">
         <div className="shrink-0">
-        <div className="mb-4 space-y-2 rounded-lg border border-neutral-200 bg-white p-3">
+        <div className="mb-3 space-y-2 rounded-lg border border-neutral-200 bg-white p-3">
           <div className="flex items-center gap-2">
-          <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide md:mx-0 md:flex-wrap md:overflow-visible md:px-0 md:pb-0">
+          <div className="-mx-1 flex min-w-0 flex-1 gap-2 overflow-x-auto px-1 pb-0.5 scrollbar-hide lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0 lg:pb-0">
             <button type="button" className={presetChip(presetActive(presetRanges['7']))} onClick={() => applyRange(presetRanges['7'])}>Last 7 days</button>
             <button type="button" className={presetChip(presetActive(presetRanges.week))} onClick={() => applyRange(presetRanges.week)}>Week</button>
             <button type="button" className={presetChip(presetActive(presetRanges.month))} onClick={() => applyRange(presetRanges.month)}>Month</button>
@@ -1105,7 +1105,7 @@ const ExpensesPage = () => {
             onClick={() => setMobileFiltersOpen((v) => !v)}
             aria-expanded={mobileFiltersOpen}
             aria-controls="expense-filters"
-            className="btn btn-secondary shrink-0 md:hidden"
+            className="btn btn-secondary shrink-0 lg:hidden"
           >
             <span className="inline-flex items-center gap-2">
               <Filter className="h-4 w-4" aria-hidden />
@@ -1117,7 +1117,7 @@ const ExpensesPage = () => {
             <ChevronDown className={`h-4 w-4 transition-transform duration-150 ${mobileFiltersOpen ? 'rotate-180' : ''}`} aria-hidden />
           </button>
           </div>
-          <div id="expense-filters" className={`${mobileFiltersOpen ? 'grid' : 'hidden'} grid-cols-1 gap-2 md:grid md:grid-cols-2 lg:flex lg:flex-wrap lg:items-end`}>
+          <div id="expense-filters" className={`${mobileFiltersOpen ? 'grid' : 'hidden'} grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end`}>
             <label className="text-xs font-medium text-neutral-500">
               From
               <input type="date" value={pendingDateRange.from} aria-label="From" onChange={(e) => applyRange({ ...pendingDateRange, from: e.target.value })} className="mt-1 block min-h-[44px] w-full rounded-md border border-neutral-300 px-2 text-base md:text-sm" />
@@ -1180,17 +1180,23 @@ const ExpensesPage = () => {
               </button>
             )}
           </div>
-          <p className={`${mobileFiltersOpen ? 'block' : 'hidden'} text-xs text-neutral-500 md:block`}>Searches the rows on this page.</p>
+          <p className={`${mobileFiltersOpen ? 'block' : 'hidden'} text-xs text-neutral-500 lg:block`}>Searches the rows on this page.</p>
           {rangeInvalid && <p className="text-xs text-error-fg">End date is before the start date.</p>}
         </div>
 
         {expenseSummary && (
-          <div className="mb-4 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+          <div className="mb-3 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <p className="flex flex-wrap gap-x-4 gap-y-1">
               <span className="text-xs font-medium text-neutral-500">Total <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.total)}</span></span>
               <span className="text-xs font-medium text-neutral-500">VAT <span className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(expenseSummary.totalVat || 0)}</span></span>
               <span className="text-xs font-medium text-neutral-500">Claimable VAT <span className="text-sm font-semibold tabular-nums text-success-fg">{formatCurrency(expenseSummary.totalClaimableVat || 0)}</span></span>
             </p>
+            <div className="flex shrink-0 gap-2" role="tablist" aria-label="Expense view">
+              <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
+              <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
+            </div>
+            </div>
             <p className="mt-1 hidden flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-500 md:flex">
               <span>Average per day {formatCurrency(averagePerDay)}</span>
               {isAdminOrOwner(user) && dateRange.to && (
@@ -1203,10 +1209,6 @@ const ExpensesPage = () => {
                 </Link>
               )}
             </p>
-            <div className="mt-3 flex gap-2" role="tablist" aria-label="Expense view">
-              <button type="button" role="tab" aria-selected={expenseView === 'ledger'} onClick={() => setExpenseView('ledger')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'ledger' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>Ledger</button>
-              <button type="button" role="tab" aria-selected={expenseView === 'category'} onClick={() => setExpenseView('category')} className={`min-h-[44px] rounded-md px-3 text-sm font-medium ${expenseView === 'category' ? 'bg-primary-600 text-white' : 'border border-neutral-300 bg-white text-neutral-800'}`}>By category</button>
-            </div>
             {expenseView === 'category' && (
               <ul className="mt-3 space-y-2">
                 {categoryPeriod.length === 0 ? (
@@ -1230,7 +1232,7 @@ const ExpensesPage = () => {
           </div>
         )}
         {vatReadiness && (vatReadiness.vatReturnEligible > 0 || vatReadiness.petroleum > 0 || vatReadiness.exempt > 0 || vatReadiness.pending > 0 || vatReadiness.rejected > 0) && (
-          <p className="mb-4 text-xs text-neutral-500">
+          <p className="mb-3 text-xs text-neutral-500">
             {vatReadiness.vatReturnEligible > 0 && <span>{vatReadiness.vatReturnEligible} eligible for VAT return. </span>}
             {vatReadiness.petroleum > 0 && <span>{vatReadiness.petroleum} petroleum, excluded from box 9b. </span>}
             {vatReadiness.exempt > 0 && <span>{vatReadiness.exempt} exempt. </span>}
@@ -1239,7 +1241,7 @@ const ExpensesPage = () => {
           </p>
         )}
         {noVatCount > 0 && isAdminOrOwner(user) && (
-          <div className="mb-4 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-warning bg-white px-3">
+          <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-200 border-l-2 border-l-warning bg-white px-3">
             <p className="text-sm text-warning-fg">Missing VAT · {noVatCount} expenses need VAT</p>
             <span className="flex gap-2">
               <button type="button" className="min-h-[44px] rounded-md px-3 text-sm text-amber-800 hover:bg-warning-bg" onClick={() => setFilterNoVatOnly(true)}>Review</button>
@@ -1502,13 +1504,13 @@ const ExpensesPage = () => {
                     </th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700 bg-neutral-50">Category</th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Branch</th>
-                    <th className="px-2 py-2 text-left font-semibold text-neutral-700">Route</th>
+                    <th className="hidden px-2 py-2 text-left font-semibold text-neutral-700 xl:table-cell">Route</th>
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">Amount</th>
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">VAT</th>
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">Claimable VAT</th>
                     <th className="px-2 py-2 text-right font-semibold text-neutral-700">Total</th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Date</th>
-                    <th className="px-2 py-2 text-center font-semibold text-neutral-700">VAT Period</th>
+                    <th className="hidden px-2 py-2 text-center font-semibold text-neutral-700 xl:table-cell">VAT Period</th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Status</th>
                     <th className="px-2 py-2 text-left font-semibold text-neutral-700">Note</th>
                     <th className="px-2 py-2 text-center font-semibold text-neutral-700">Actions</th>
@@ -1521,12 +1523,18 @@ const ExpensesPage = () => {
                         {loading && displayExpenses.length === 0 && !listError
                           ? 'Loading expenses…'
                           : listError
-                          ? 'Unable to load expenses.'
+                          ? 'Expenses could not be loaded. Check your connection, then try again.'
                           : user && !isAdminOrOwner(user)
                           ? 'No expenses in your assigned branch(es) for this period.'
                           : 'No expenses in this period.'}
                         {listError && (
-                          <button type="button" className="mt-2 block w-full text-sm text-primary-700" onClick={() => handleRefresh()}>Retry</button>
+                          <button type="button" className="btn btn-secondary mx-auto mt-3" onClick={() => handleRefresh()}>Try again</button>
+                        )}
+                        {!loading && !listError && isAdminOrOwner(user) && (
+                          <button type="button" onClick={() => setShowAddModal(true)} className="btn btn-primary mx-auto mt-3">
+                            <Plus className="h-4 w-4" aria-hidden />
+                            Add expense
+                          </button>
                         )}
                       </td>
                     </tr>
@@ -1568,7 +1576,7 @@ const ExpensesPage = () => {
                         <td className="px-2 py-2 text-sm text-neutral-700">
                           {expense.branchName || '-'}
                         </td>
-                        <td className="px-2 py-2 text-sm text-neutral-700">
+                        <td className="hidden px-2 py-2 text-sm text-neutral-700 xl:table-cell">
                           {expense.routeName || '-'}
                         </td>
                         <td className="px-2 py-2 whitespace-nowrap text-right font-medium text-neutral-900">
@@ -1594,7 +1602,7 @@ const ExpensesPage = () => {
                         <td className="px-2 py-2 whitespace-nowrap text-neutral-900">
                           {expense.date ? new Date(expense.date).toLocaleDateString('en-GB') : '-'}
                         </td>
-                        <td className="px-2 py-2 whitespace-nowrap text-center">
+                        <td className="hidden px-2 py-2 whitespace-nowrap text-center xl:table-cell">
                           {expense.date ? (
                             <span className="text-xs text-neutral-600">
                               {getVatQuarter(expense.date).label}
@@ -1689,9 +1697,14 @@ const ExpensesPage = () => {
                     {user && !isAdminOrOwner(user)
                       ? 'No expenses in your branches for this period.'
                       : listError
-                      ? 'Expenses could not be loaded.'
+                      ? 'Expenses could not be loaded. Check your connection, then try again.'
                       : 'No expenses for this period.'}
                   </p>
+                  {listError && (
+                    <button type="button" onClick={() => handleRefresh()} className="btn btn-secondary mt-3">
+                      Try again
+                    </button>
+                  )}
                   {!listError && isAdminOrOwner(user) && (
                     <button type="button" onClick={() => setShowAddModal(true)} className="btn btn-primary mt-3">
                       <Plus className="h-4 w-4" aria-hidden />
