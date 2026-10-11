@@ -198,3 +198,15 @@ STOP HERE — do not begin next phase automatically.
 - **Not done:** bulk payments, cheques, allocations across invoices, receipts and print, role restriction, row density with two or more receipts.
 - **Next task:** Receipts module surface (print and PDF of cleared receipts, batch receipts), then bulk payments.
 
+### 2026-10-11 — Checkpoint 13: Receipts on the Payments page (RC-01, RC-02, RC-03 PASS; RC-04 OPEN decision; RC-06 BLOCKED)
+- **Source:** branch `uiux-audit-p1`, local Vite 5173 + local API 5000 (synthetic SQLite copy). Local setup: tenant id 5 `FeaturesJson` set to `["daily_close","receipt_snapshots"]` in the UI-test DB. No production access.
+- **Changed:**
+  - Backend: `PaymentReceiptService.cs` (combined receipt keeps one payment method when all payments share it). `PaymentReceiptTests.cs` (two tests, the first failed before the fix).
+  - E2E: `e2e/receipts.spec.js` (new).
+- **Commands and results:**
+  - `dotnet test --filter PaymentReceiptTests` → 41 passed, 0 failed. Before the fix: 1 failed (the same-method test).
+  - `dotnet test --filter Receipt` → 77 passed, 0 failed, 8 skipped (PostgreSQL-only: `HttpIsolationPostgreSqlTests`; BLOCKED, no disposable PostgreSQL).
+  - `npx playwright test e2e/receipts.spec.js` → m360 2 passed, t768 2 passed, d1440 2 passed.
+- **Open:** RC-04 (tenants without the snapshot flag cannot download a receipt PDF): owner decision. RC-05 not tested (print window, legacy preview, branding, Arabic).
+- **Next task:** Bulk payments (Payments page), then the receipt print window and legacy-flag fixture (RC-05).
+
