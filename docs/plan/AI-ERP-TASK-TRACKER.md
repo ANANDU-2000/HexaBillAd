@@ -334,3 +334,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `DailyClosePage.jsx` (Remove disabled while saving). Test added to `daily-close-movements.spec.js`.
 - **Commands and results:** m360, t768, d1440 → 2 passed each (6 total). A double click sends one DELETE (200).
 - **Next task:** PY-06 rest (bulk cheques, allocations, receipts print, roles), then PS-03, AU-02.
+
+### 2026-10-11 — Checkpoint 36: Payments cheque lifecycle and role rules (PY-07, PY-08 PASS; PY-09 owner question)
+- **Changed:** `e2e/payments-cheque.spec.js`, `e2e/payments-roles.spec.js` (new). No application code changed.
+- **Commands and results:** cheque spec m360, t768, d1440 → 3 passed (pending keeps the balance, cleared reduces it by the amount, void restores it). Roles spec d1440, m360 → 2 passed (staff redirected; API 403 on edit and delete).
+- **Decision needed:** PY-09, whether any signed-in user may create a payment through the API.
+- **Next task:** PS-03 (POS credit sale), AU-02, PR-03, SE-03, then Reports rows.
