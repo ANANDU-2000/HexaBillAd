@@ -288,3 +288,13 @@ Still open in this table, in order:
 1. **UX-E01** (Expenses, PARTIAL): first record is still 48% at 360px (target 35%). The phone decision is open: keep the period chips for quick switching, or move them into the Filters sheet as the audit proposed. UX-E06 is PASS (tablet uses the compact list).
 2. **UX-S03** (one scroll model per page), **UX-S04** (adopt shared primitives), **UX-S06** (secondary text below 12px), **UX-S07** (POS toolbar buttons), **UX-S08** (sidebar tenant name).
 3. Modules not yet audited at the nested-interface level: POS, Purchases, Suppliers, Payments, Daily Close, Inventory, Routes, VAT, Dashboard/Reports, Staff, Settings, SuperAdmin, PWA, AI. Use [COVERAGE-MATRIX.md](COVERAGE-MATRIX.md) for the route list.
+
+### Authentication (`/login`, `auth/Login.jsx`)
+
+Finding: every other browser spec signs in by writing the token into local storage (`signIn` in `e2e/session.js`). Before this checkpoint no spec used the login form, so the login blocker class was untested in the browser.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| AU-01 | P1 | No browser test of the login form (wrong password, empty submit, correct login, logout). | `session.js` `signIn` writes localStorage | `e2e/auth-login.spec.js`: wrong password is reported and no session is stored; email kept; empty submit shows what is missing; correct password reaches `/dashboard`; logout returns to `/login` and clears the token. Phones sign out from the More sheet; desktop from the account menu. | PASS |
+| ↳ fix | | Test only (no application change). Message text is matched by pattern (incorrect / invalid / wrong / required). | | `auth-login.spec.js` (m360, t768, d1440: 9 passed in total on the last run) | |
+| AU-02 | — | Not tested: disabled account, expired session, password change, permission change, subdomain resolution for a second tenant, lockout after repeated wrong passwords. | — | Add with synthetic accounts per tenant (owner, staff, disabled). | NOT TESTED |

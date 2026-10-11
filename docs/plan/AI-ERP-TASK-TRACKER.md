@@ -230,3 +230,7 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/suppliers-edit-statement.spec.js` → d1440 3 passed, m360 and t768 6 passed in total. `npx vite build` → exit 0. ESLint on the page: 0 errors.
 - **Next task:** Receipt print window and the legacy snapshot case (RC-05), then the Suppliers Bills and Paid tabs and credit limit (rest of SU-07).
 
+### 2026-10-11 — Checkpoint 17: Login form (AU-01 PASS)
+- **Changed:** `e2e/auth-login.spec.js` (new). No application code changed.
+- **Commands and results:** `npx playwright test e2e/auth-login.spec.js` at d1440 (3 passed), m360 and t768 (6 passed in total).
+- **Next task:** Products and Inventory: product create, edit, SKU and stock adjustment with API read-back.
