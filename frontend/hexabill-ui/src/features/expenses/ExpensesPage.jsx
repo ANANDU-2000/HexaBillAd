@@ -31,8 +31,16 @@ import { Input, Select, TextArea } from '../../components/Form'
 import Modal from '../../components/Modal'
 import { ListSkeleton } from '../../components/mobile/index'
 import { expensesAPI, reportsAPI } from '../../services/index'
+import api from '../../services/api'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
+
+function expenseAttachmentPath(url) {
+  if (!url) return ''
+  if (url.includes('/api/storage/')) return url.replace(/^\/api\/?/, '')
+  if (url.startsWith('tenants/')) return `storage/${url}`
+  return ''
+}
 
 function BulkVatForm ({ noVatExpenses, onApply, onCancel, submitting }) {
   const [interpretation, setInterpretation] = useState('add-on-top')
@@ -818,7 +826,18 @@ const ExpensesPage = () => {
     setValue('partialCreditPct', expense.partialCreditPct != null ? expense.partialCreditPct : 100)
     setValue('paidFrom', (expense.paidFrom || expense.PaidFrom || 'Cash') === 'Bank' ? 'Bank' : 'Cash')
     setValue('vatInclusive', (expense.vatInclusive ?? expense.VatInclusive) === true) // use persisted flag when available; else default false for legacy
-    setAttachmentPreview(expense.attachmentUrl ? `/uploads/${expense.attachmentUrl}` : null)
+    setAttachmentPreview(null)
+    const storagePath = expenseAttachmentPath(expense.attachmentUrl)
+    if (storagePath) {
+      api.get(storagePath, { responseType: 'blob' })
+        .then((res) => {
+          if (res?.data?.type?.startsWith('image/'))
+            setAttachmentPreview(URL.createObjectURL(res.data))
+        })
+        .catch(() => setAttachmentPreview(null))
+    } else if (expense.attachmentUrl) {
+      setAttachmentPreview(`/uploads/${expense.attachmentUrl}`)
+    }
     setShowEditModal(true)
   }
   
@@ -896,10 +915,19 @@ const ExpensesPage = () => {
     })
   }
   
-  const handleDownloadAttachment = (expense) => {
-    if (expense.attachmentUrl) {
-      const url = `/uploads/${expense.attachmentUrl}`
-      window.open(url, '_blank')
+  const handleDownloadAttachment = async (expense) => {
+    if (!expense.attachmentUrl) return
+    const storagePath = expenseAttachmentPath(expense.attachmentUrl)
+    if (!storagePath) {
+      window.open(`/uploads/${expense.attachmentUrl}`, '_blank')
+      return
+    }
+    try {
+      const res = await api.get(storagePath, { responseType: 'blob' })
+      const blobUrl = URL.createObjectURL(res.data)
+      window.open(blobUrl, '_blank')
+    } catch {
+      toast.error('Could not open the receipt image')
     }
   }
   

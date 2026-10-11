@@ -15,7 +15,8 @@ const Logo = ({ className = '', showText = true, size = 'default' }) => {
   }, [companyLogo])
 
   // For storage URLs, fetch with auth and use blob URL so browser doesn't send unauthenticated request (401)
-  const logoUrlClean = companyLogo ? companyLogo.split('?')[0] : null
+  const isDataUri = typeof companyLogo === 'string' && companyLogo.startsWith('data:')
+  const logoUrlClean = companyLogo && !isDataUri ? companyLogo.split('?')[0] : null
   const isStorageUrl = logoUrlClean && (logoUrlClean.includes('/api/storage/') || logoUrlClean.includes('storage/tenants/'))
 
   const blobUrlRef = React.useRef(null)
@@ -76,7 +77,7 @@ const Logo = ({ className = '', showText = true, size = 'default' }) => {
   const directLogoSrc = !isStorageUrl && pathForSrc
     ? (pathForSrc.startsWith('http') ? `${pathForSrc}?t=${Date.now()}` : `${apiBase}${pathForSrc.startsWith('/') ? '' : '/'}${pathForSrc}?t=${Date.now()}`)
     : null
-  const logoSrc = isStorageUrl ? logoBlobUrl : directLogoSrc
+  const logoSrc = isDataUri ? companyLogo : (isStorageUrl ? logoBlobUrl : directLogoSrc)
 
   return (
     <div className={`flex items-center space-x-3 ${className}`}>

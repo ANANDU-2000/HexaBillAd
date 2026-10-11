@@ -6,6 +6,7 @@ using HexaBill.Api.Data;
 using HexaBill.Api.Models;
 using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
 namespace HexaBill.Api.Modules.SuperAdmin;
@@ -64,6 +65,7 @@ public class LogoUploadService : ILogoUploadService
             throw new ArgumentException("Invalid image file.");
 
         using var image = await Image.LoadAsync(stream, ct);
+        TrimNearWhiteMargins(image);
         if (image.Width > MaxWidth || image.Height > MaxHeight)
         {
             image.Mutate(x => x.Resize(new ResizeOptions
@@ -122,6 +124,9 @@ public class LogoUploadService : ILogoUploadService
         // Backward compat: also set COMPANY_LOGO / LOGO_PATH so existing code that reads LogoPath still gets a URL
         await SetOrAddAsync(tenantId, "COMPANY_LOGO", publicUrl, ct);
         await SetOrAddAsync(tenantId, "LOGO_PATH", publicUrl, ct);
+        var tenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == tenantId, ct);
+        if (tenant != null)
+            tenant.LogoPath = publicUrl;
 
         // Persist logo as base64 in DB so it survives container restarts (e.g. Render); limit 500KB to avoid bloat
         if (colourBytes.Length <= 500_000)
@@ -139,6 +144,40 @@ public class LogoUploadService : ILogoUploadService
             Height = image.Height,
             FileSizeKb = Math.Round(fileSizeKb, 2)
         };
+    }
+
+    private static void TrimNearWhiteMargins(Image image)
+    {
+        using var rgba = image.CloneAs<Rgba32>();
+        var minX = rgba.Width;
+        var minY = rgba.Height;
+        var maxX = -1;
+        var maxY = -1;
+        rgba.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < row.Length; x++)
+                {
+                    var p = row[x];
+                    if (p.A < 16 || (p.R > 245 && p.G > 245 && p.B > 245)) continue;
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        });
+        if (maxX < minX || maxY < minY) return;
+        const int pad = 8;
+        minX = Math.Max(0, minX - pad);
+        minY = Math.Max(0, minY - pad);
+        maxX = Math.Min(rgba.Width - 1, maxX + pad);
+        maxY = Math.Min(rgba.Height - 1, maxY + pad);
+        var rect = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
+        if (rect.Width >= rgba.Width - 4 && rect.Height >= rgba.Height - 4) return;
+        image.Mutate(x => x.Crop(rect));
     }
 
     private static bool IsValidImageMagicBytes(byte[] header, int length)

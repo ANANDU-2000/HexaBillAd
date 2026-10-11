@@ -1192,7 +1192,7 @@ namespace HexaBill.Api.Modules.Sales
         /// <summary>Logo box (width, height, column width) in points for the bilingual letterhead.</summary>
         internal static (float Width, float Height, float Column) LetterheadLogoBox(bool a4Letterhead, float fontSize)
         {
-            if (a4Letterhead) return (190f, 136f, 198f);
+            if (a4Letterhead) return (230f, 168f, 238f);
             return fontSize <= 9 ? (40f, 22f, 52f) : (90f, 52f, 106f);
         }
 

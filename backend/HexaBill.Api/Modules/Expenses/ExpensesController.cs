@@ -12,7 +12,7 @@ using HexaBill.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
-using System.IO;
+using HexaBill.Api.Core.Storage;
 
 namespace HexaBill.Api.Modules.Expenses
 {
@@ -26,14 +26,16 @@ namespace HexaBill.Api.Modules.Expenses
         private readonly IRouteScopeService _routeScopeService;
         private readonly IPdfService _pdfService;
         private readonly ILogger<ExpensesController> _logger;
+        private readonly IStorageService? _storage;
 
-        public ExpensesController(IExpenseService expenseService, AppDbContext context, IRouteScopeService routeScopeService, IPdfService pdfService, ILogger<ExpensesController> logger)
+        public ExpensesController(IExpenseService expenseService, AppDbContext context, IRouteScopeService routeScopeService, IPdfService pdfService, ILogger<ExpensesController> logger, IStorageService? storage = null)
         {
             _expenseService = expenseService;
             _context = context;
             _routeScopeService = routeScopeService;
             _pdfService = pdfService;
             _logger = logger;
+            _storage = storage;
         }
 
         [HttpGet]
@@ -775,25 +777,26 @@ namespace HexaBill.Api.Modules.Expenses
                     });
                 }
 
-                // Create uploads directory if it doesn't exist
-                var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "expenses");
-                if (!Directory.Exists(uploadsDir))
-                {
-                    Directory.CreateDirectory(uploadsDir);
-                }
-
-                // Generate unique filename
                 var fileName = $"expense_{id}_{Guid.NewGuid()}{fileExtension}";
-                var filePath = Path.Combine(uploadsDir, fileName);
-
-                // Save file
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                if (_storage != null)
                 {
-                    await file.CopyToAsync(stream);
+                    await using var buffer = new MemoryStream();
+                    await file.CopyToAsync(buffer);
+                    var key = $"tenants/{tenantId}/expenses/{fileName}";
+                    var contentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType;
+                    await _storage.UploadAsync(key, buffer.ToArray(), contentType);
+                    expense.AttachmentUrl = _storage.GetPublicUrl(key);
                 }
-
-                // Update expense with attachment URL
-                expense.AttachmentUrl = $"expenses/{fileName}";
+                else
+                {
+                    var uploadsDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "expenses");
+                    if (!Directory.Exists(uploadsDir))
+                        Directory.CreateDirectory(uploadsDir);
+                    var filePath = Path.Combine(uploadsDir, fileName);
+                    await using (var stream = new FileStream(filePath, FileMode.Create))
+                        await file.CopyToAsync(stream);
+                    expense.AttachmentUrl = $"expenses/{fileName}";
+                }
                 await _context.SaveChangesAsync();
 
                 return Ok(new ApiResponse<string>

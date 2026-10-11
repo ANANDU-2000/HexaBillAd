@@ -420,7 +420,8 @@ namespace HexaBill.Api.Modules.Products
             }
 
             product.Sku = InputValidator.SanitizeString(request.Sku, 50);
-            product.Barcode = !string.IsNullOrWhiteSpace(request.Barcode) ? InputValidator.SanitizeString(request.Barcode, 100) : null;
+            if (!string.IsNullOrWhiteSpace(request.Barcode))
+                product.Barcode = InputValidator.SanitizeString(request.Barcode, 100);
             product.NameEn = InputValidator.SanitizeString(request.NameEn, 200);
             product.NameAr = InputValidator.SanitizeString(request.NameAr, 200);
             product.UnitType = InputValidator.SanitizeString(request.UnitType, 50);

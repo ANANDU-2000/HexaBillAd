@@ -46,7 +46,7 @@ public class LetterheadLogoSizeTests
         var page = document.GetPage(1);
         var logo = page.GetImages().OrderByDescending(i => i.Bounds.Height).FirstOrDefault();
         Assert.NotNull(logo);
-        Assert.InRange(logo!.Bounds.Height, 130, 140);
+        Assert.InRange(logo!.Bounds.Height, 160, 176);
         Assert.InRange(logo.Bounds.Centroid.X, page.Width / 2 - 40, page.Width / 2 + 40);
     }
 
