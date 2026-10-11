@@ -170,6 +170,21 @@ Local setup (not in source): PDF download needs the tenant flag `receipt_snapsho
 | RC-05 | — | Not tested: "Print receipt" (opens a print window and writes the HTML receipt), receipt history on the customer ledger, the flag-off (legacy) preview state, multi-customer rejection message, print layout with tenant branding, and Arabic text in the receipt. | — | Add a print-window check and a flag-off fixture. | NOT TESTED |
 | RC-06 | — | Backend PostgreSQL-only tests were skipped locally: `HttpIsolationPostgreSqlTests` (`PostGenerateReceipt_Fin06…`, `ReceiptPreviewThenPdfDownload_OnPostgreSql`, `GetCustomerReceipts_CrossTenant…`). No disposable PostgreSQL is configured on this machine. | `dotnet test` output: 8 skipped | Provide a disposable PostgreSQL connection string for the test run. | BLOCKED (environment) |
 
+### Bulk payments (Payments page, `Bulk Payment Entry` dialog)
+
+Rows of customer, amount, method, date and reference; "Add Another Payment"; "Save All Payments (n)". A failed row pauses the batch with "Saved bulk payments: x of n confirmed" and "Retry remaining payments (k)". The client retries a keyed POST itself once (same `Idempotency-Key`); the server then returns 201 without a duplicate, so a pause shows only if the retry also fails.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| BP-01 | P3 | Saving a row without a customer showed "Please select a customer or an invoice." The bulk dialog has no invoice field, and the bulk check's own message ("Select a customer for every bulk payment.") never appeared. | Probe and `bulk-payments.spec.js` before the fix | Check the customer before the draft builder runs, so the bulk message shows. | PASS |
+| ↳ fix | | `PaymentsPage.jsx` `saveBulkPayments`: customer check first. `bulk-payments` "a row without a customer is refused before anything is saved": no POST sent, message shown, dialog kept open with its data. | | `bulk-payments.spec.js` (m360, t768, d1440) | |
+| BP-02 | P1 | Two customers saved in one batch: the test had not verified it through the API. | — | Save two rows, check the batch message, then read back each payment through the API (one per row, right customer and amount) and refresh. | PASS |
+| ↳ fix | | `bulk-payments` "two customers saved together, confirmed through the API". | | | |
+| BP-03 | P1 | When a row fails, the batch must pause without losing the other row, and a retry must not duplicate the row that succeeded. | — | Fail the second row (including the client's own keyed retry) until released; wait for the enabled "Retry remaining payments (1)"; release the failure; click Retry; API shows exactly one payment per row. | PASS |
+| ↳ observed | | Without the hold, the client's own keyed retry succeeded about 1 s after the 500 and the batch finished without the pause. That is the designed behaviour (keyed writes), and no duplicate was created. | probe log | `bulk-payments` "a failed row pauses, then resumes…" | |
+| BP-04 | — | Test data: the bulk and receipt specs pay down the local customer balances. Specs now use small amounts (10–21 AED) and customers with a balance above 60. When balances run out, the specs report that no customer has enough balance. | — | Re-create balances on the synthetic tenant (or add an invoice fixture) before a long run. | OPEN (test data) |
+| BP-05 | — | Not tested yet: cheque and online rows (reference required), an invoice-linked bulk row, pause after the page is reloaded (saved batch restored from local storage), and the "Resume bulk payments" button. | — | Add a reload-during-pause test and a cheque-reference validation test. | NOT TESTED |
+
 ### Purchases (`/purchases`, `features/purchases/PurchasesPage.jsx`)
 
 Audited at Checkpoint 5 (2026-10-10) with 12 synthetic purchases and 2 synthetic suppliers seeded into the local tenant (`seed-purchases` script, local API only). Create, edit, delete and pay were **not** exercised in this checkpoint, so they stay NOT TESTED.

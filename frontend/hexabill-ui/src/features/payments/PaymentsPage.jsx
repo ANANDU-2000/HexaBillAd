@@ -460,6 +460,8 @@ const PaymentsPage = () => {
     try {
       if (!savedBatch) {
         const drafts = bulkPayments.map(data => {
+          // Check the customer first: paymentDraft would otherwise report "customer or an invoice", and this dialog has no invoice field.
+          if (!data.customerId) throw new Error('Select a customer for every bulk payment.')
           const draft = paymentDraft(data)
           if (!draft.request.customerId) throw new Error('Select a customer for every bulk payment.')
           return {...draft,scope:ledgerPaymentScope({...recoveryIdentity,customerId:draft.request.customerId})}

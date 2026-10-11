@@ -210,3 +210,11 @@ STOP HERE — do not begin next phase automatically.
 - **Open:** RC-04 (tenants without the snapshot flag cannot download a receipt PDF): owner decision. RC-05 not tested (print window, legacy preview, branding, Arabic).
 - **Next task:** Bulk payments (Payments page), then the receipt print window and legacy-flag fixture (RC-05).
 
+### 2026-10-11 — Checkpoint 14: Bulk payments (BP-01, BP-02, BP-03 PASS; BP-04 OPEN test data; BP-05 NOT TESTED)
+- **Changed:** `PaymentsPage.jsx` (bulk customer check runs before the draft builder). `e2e/bulk-payments.spec.js` (new, three tests).
+- **Commands and results:**
+  - `npx playwright test e2e/bulk-payments.spec.js` at d1440 (3 passed, earlier amounts), m360 and t768 (6 passed with the small-amount version).
+  - `npx vite build` → exit 0.
+- **Finding:** the client retries a keyed payment POST once on its own; a pause is visible only if that retry also fails. No duplicates were created.
+- **Next task:** reload-during-pause and cheque validation for bulk payments (BP-05), then Daily close close and reopen (DC-06).
+
