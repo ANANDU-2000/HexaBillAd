@@ -338,3 +338,15 @@ Owners and admins manage staff here. Add User (Name, Email, Password, Role, Phon
 | ST-03 | P1 | Owner creates a staff account through the form and the role is stored; a staff user with no transactions can be removed; a staff login cannot open Add User. | — | `e2e/staff-users.spec.js`: create via the form (name, email, password, role Staff) → API read-back of the role → delete with the typed DELETE word → gone from the API. Staff login (API sign-in as that user) → `/users` shows no Add User and no Users heading. | PASS |
 | ↳ fix | | Test only. Desktop row button is "Delete User"; phone card button is "Delete". | | `staff-users.spec.js` (m360, t768, d1440: 6 passed in total on the last run) | |
 | ST-04 | — | Not tested: Edit user, Reset password, job titles and permissions, branch and route assignment, the activity log and online status, session revocation, and password change by the user. | — | Add after ST-01 is decided. | NOT TESTED |
+
+### Settings (`/settings`, `features/settings/SettingsPage.jsx`)
+
+Company tab: company name (English, Arabic), VAT TRN (15 digits), corporate tax TRN, address, phone, email, invoice header style. Saves go to `PUT /api/settings`; single keys to `PUT /api/settings/{key}`.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| SE-01 | P1 | The header "Save Changes" button (shown once something changed) did nothing. It sat above the form element, so its submit never reached the form, and no request was sent. A user who clicked it would believe the change was saved. | `settings-company.spec.js` (no PUT sent; the bottom button worked) | Connect the header button to the form with the `form` attribute; the form has an id. | PASS |
+| ↳ fix | | `SettingsPage.jsx`: `<form id="settings-form">` and `form="settings-form"` on the header button. Test clicks the header button and checks the server value, then reloads. | | `settings-company.spec.js` "company name: saved, read back through the API and after a reload, then restored" (m360, t768, d1440 passed) | |
+| SE-02 | P2 | VAT TRN validation was not verified: a value that is not 15 digits must be refused next to the field, with no request sent. | — | Enter 12345 → Save Settings → message "VAT TRN must contain exactly 15 digits" next to the field, no PUT, stored TRN unchanged. | PASS |
+| ↳ fix | | Test only. `settings-company.spec.js` "VAT TRN: a value that is not 15 digits is refused…" (m360, t768, d1440 passed). | | | |
+| SE-03 | — | Not tested: the other settings tabs (billing, email, notifications, backup), the Arabic company name round trip, logo upload, invoice header style, and whether a saved company name appears on printed documents. | — | Next: printed document header check with the saved company name (print PDF of an invoice), then the other tabs. | NOT TESTED |

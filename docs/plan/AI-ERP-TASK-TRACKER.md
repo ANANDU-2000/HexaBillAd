@@ -260,3 +260,8 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/staff-users.spec.js` at m360, t768, d1440 → 6 passed. Failed runs left test staff behind and hit the plan's staff cap; the spec now removes its own leftovers first.
 - **Decision needed (BLOCKED):** how a disabled staff account behaves (revoke existing sessions now, or refuse only new logins), and who can disable whom. Blocks ST-01. Not implemented without that decision.
 - **Next task:** Settings (company profile and branding) with save and reload checks, then Reports and VAT read checks.
+
+### 2026-10-11 — Checkpoint 23: Settings company profile (SE-01 P1 fixed, SE-02 PASS)
+- **Changed:** `SettingsPage.jsx` (header Save Changes connected to the settings form). `e2e/settings-company.spec.js` (new, two tests).
+- **Commands and results:** `npx playwright test e2e/settings-company.spec.js` at d1440 (2 passed), m360 and t768 (4 passed). `npx vite build` → exit 0.
+- **Next task:** printed invoice header uses the saved company name and TRN (SE-03), then the other settings tabs.
