@@ -317,3 +317,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `PurchasesPage.jsx` (header one row, bulk action in the menu), `DailyClosePage.jsx` (short intro, rule kept beside cash rows). New specs `purchases-header.spec.js`, `daily-close-intro.spec.js`.
 - **Commands and results:** both new specs at m360, t768, d1440 pass; existing purchases-list and daily-close specs pass (one batch flake on the Overdue tile, passed twice alone).
 - **Next task:** UX-S03 (scroll models), UX-S04 (shared primitives), UX-E01 phone decision, then NOT TESTED rows.
+
+### 2026-10-11 — Checkpoint 33: Scroll model PASS (UX-S03), primitives baseline (UX-S04 PARTIAL), Expenses E01 re-measured
+- **Changed:** `e2e/single-scroll.spec.js` (new). Tracker only otherwise.
+- **Commands and results:** `single-scroll.spec.js` m360, t768, d1440 → 3 passed. UX-S04 baseline counted by grep (948 raw buttons in 98 files; shared 25/34/13/29). UX-E01 re-measured at 48% at 360px.
+- **Decision needed:** UX-E01 summary card placement (48% visible vs about 35% behind Filters). UX-S04 bulk migration is deferred by design.
+- **Next task:** NOT TESTED rows in tracker order: DC rest, PY-06 rest, PS-03, AU-02, PR-03, SE-03, then Reports rows.
