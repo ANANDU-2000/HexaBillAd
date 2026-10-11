@@ -1189,6 +1189,13 @@ namespace HexaBill.Api.Modules.Sales
             return $"VAT TRN: {display}";
         }
 
+        /// <summary>Logo box (width, height, column width) in points for the bilingual letterhead.</summary>
+        internal static (float Width, float Height, float Column) LetterheadLogoBox(bool a4Letterhead, float fontSize)
+        {
+            if (a4Letterhead) return (190f, 136f, 198f);
+            return fontSize <= 9 ? (40f, 22f, 52f) : (90f, 52f, 106f);
+        }
+
         /// <summary>
         /// Bilingual monochrome letterhead: English left (~35%), logo center (~30%), RTL Arabic right (~35%).
         /// CT Reg and VAT TRN are separate lines (never joined with "|"). Logo column has no TRN.
@@ -1209,9 +1216,7 @@ namespace HexaBill.Api.Modules.Sales
                 var nameSize = a4Letterhead ? 15.5f : Math.Max(8f, fontSize);
                 var detailSize = a4Letterhead ? 8f : Math.Max(5f, fontSize - 3f);
                 var taxSize = a4Letterhead ? 7.5f : Math.Max(5f, detailSize - 0.5f);
-                var logoW = a4Letterhead ? 140f : (fontSize <= 9 ? 40f : 72f);
-                var logoH = a4Letterhead ? 100f : (fontSize <= 9 ? 22f : 40f);
-                var logoColW = a4Letterhead ? 148f : (fontSize <= 9 ? 52f : 88f);
+                var (logoW, logoH, logoColW) = LetterheadLogoBox(a4Letterhead, fontSize);
                 var (title, subtitle) = SplitCompanyNameLines(settings.CompanyNameEn);
                 if (string.IsNullOrWhiteSpace(title))
                     title = settings.CompanyNameEn ?? "";
