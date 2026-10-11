@@ -60,8 +60,9 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
 
   // REFRESH: the product is listed with its name.
   await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
-  // Desktop and tablet rows carry "Edit Product"; phone cards carry "Edit <product name>".
-  const phoneCards = info.project.use.viewport.width < 768
+  // From 1280px the list is a table whose rows carry "Edit Product"; below that it is cards that carry "Edit <product name>".
+  const width = info.project.use.viewport.width
+  const phoneCards = width < 1280
   const editControl = phoneCards
     ? page.getByRole('button', { name: `Edit ${name}`, exact: true }).filter({ visible: true }).first()
     : rowFor(page, name, 'Edit Product').filter({ visible: true }).getByRole('button', { name: 'Edit Product', exact: true })
@@ -79,11 +80,15 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
   await expect.poll(async () => (await productBySku(sku))?.sellPrice).toBe(22.75)
 
   // DEACTIVATE: a typed confirmation is required; inactive in the API afterwards.
-  // Desktop and tablet: from this product's row in the list. Phones: from the product detail page (no deactivate on phone cards).
-  const phone = info.project.use.viewport.width < 768
-  if (phone) {
+  // Table (1280px and up): from this product's row. Phones: from the product detail page. Tablets and small laptops:
+  // from the "…" menu on the product card.
+  if (width < 768) {
     await page.goto(`${feOrigin(SLUG)}/products/${product.id}`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Deactivate', exact: true }).filter({ visible: true }).first().click()
+  } else if (width < 1280) {
+    await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: `More actions for ${name}`, exact: true }).filter({ visible: true }).first().click()
+    await page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
   } else {
     await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
     await rowFor(page, name, 'Deactivate Product').filter({ visible: true }).getByRole('button', { name: 'Deactivate Product', exact: true }).click()

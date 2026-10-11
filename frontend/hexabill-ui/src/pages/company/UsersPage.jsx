@@ -596,7 +596,7 @@ const UsersPage = () => {
         </div>
 
         {/* Mobile: card list (no horizontal scroll, full content visible) */}
-        <div className="md:hidden space-y-3">
+        <div className="xl:hidden space-y-3">
           {filteredUsers.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
               {searchTerm ? (
@@ -672,7 +672,7 @@ const UsersPage = () => {
         </div>
 
         {/* Desktop: table (md and up) */}
-        <div className="hidden md:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+        <div className="hidden xl:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-[900px] w-full divide-y divide-neutral-200">
               <thead className="bg-gradient-to-r from-primary-900 to-primary-800 text-white">

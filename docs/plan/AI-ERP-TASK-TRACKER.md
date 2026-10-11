@@ -378,3 +378,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** customers-crud at m360, t768, d1024, d1440 (twice each) → all passed. `ux-audit` + `single-scroll` at t768 and d1024 → 24 passed.
 - **Found:** the row actions were off-screen at 768px and cut at 1024px (UX-C05, fixed). Test data accumulates (CU-02).
 - **Next task:** the same off-screen check on other tables (Products, Suppliers, Billing History, Staff) at 768 and 1024, then ST-04, AG-04, Routes and Inventory.
+
+### 2026-10-11 — Checkpoint 44: Tablet reach sweep (UX-T01, UX-T02 PASS)
+- **Changed:** `PaymentsPage.jsx` (header stacks until lg, table from xl), `SuppliersPage.jsx`, `UsersPage.jsx`, `ProductsPage.jsx` (table from xl; product cards gained a "…" menu), `CustomersPage.jsx` (earlier). New `e2e/offscreen-actions.spec.js`. Specs adjusted: payments-crud, payments-cheque, products-crud, staff-users, suppliers-list.
+- **Commands and results:** `offscreen-actions` m360, t768, d1024, d1440 → passed. `ux-audit` + `single-scroll` at t768 and d1024 → 24 passed. Payments, Products, Suppliers, Staff, Customers specs pass at every width.
+- **Found:** at 768px the Payments "Add Payment" button was off-screen (UX-T01). Test data accumulates (UX-T04).
+- **Next task:** run the sweep on the remaining routes (Billing History, Dashboard, Reports tabs, Purchases form), ST-04, AG-04, Routes and Inventory modules.

@@ -72,6 +72,8 @@ test('add supplier -> persisted -> deactivate -> hidden by default', async ({ pa
   // Phones keep the checkboxes behind the Filters button.
   if (info.project.use.viewport.width < 768) await page.getByRole('button', { name: /^Filters/ }).click()
   await page.getByLabel('Include deactivated').check()
+  // Old test suppliers pile up on the local tenant and push this one to a later page, so search for it.
+  await page.getByLabel('Search suppliers').fill(name)
   await expect(card(page, name)).toBeVisible()
   await expect(card(page, name)).toContainText('Deactivated')
 })

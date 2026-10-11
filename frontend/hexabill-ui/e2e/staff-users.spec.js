@@ -68,8 +68,8 @@ test('owner creates a staff user through the form, and removes it when it has no
   await expect(page.getByText(name).filter({ visible: true }).first()).toBeVisible()
   const user = await userByEmail(email)
   // The list shows the name (not the email): take the smallest row element that holds this name and a Delete button.
-  // Desktop rows say "Delete User"; phone cards say "Delete".
-  const deleteName = info.project.use.viewport.width < 768 ? 'Delete' : 'Delete User'
+  // The table (1280px and up) says "Delete User"; the card list below that says "Delete".
+  const deleteName = info.project.use.viewport.width < 1280 ? 'Delete' : 'Delete User'
   const row = page.locator('tr, li, article, div').filter({ hasText: name }).filter({ has: page.getByRole('button', { name: deleteName, exact: true }) }).last()
   await row.getByRole('button', { name: deleteName, exact: true }).filter({ visible: true }).first().click()
   const dialogDelete = page.getByRole('dialog').first()

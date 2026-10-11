@@ -993,8 +993,8 @@ const ProductsPage = () => {
         onApply={() => setMobileFiltersOpen(false)}
       />
 
-      {/* Modern Products Table — desktop and tablet only */}
-      <div className="hidden md:block">
+      {/* Modern Products Table — shown from 1280px; narrower screens use the card list below (its row actions fit) */}
+      <div className="hidden xl:block">
       <ModernTable
         data={products}
         loading={loading}
@@ -1223,13 +1223,13 @@ const ProductsPage = () => {
       />
       </div>
 
-      {/* Mobile product cards (md:hidden) */}
+      {/* Product cards (below 1280px: phones, tablets, small laptops) */}
       {loading ? (
-        <div className="md:hidden">
+        <div className="xl:hidden">
           <ListSkeleton count={4} />
         </div>
       ) : products.length > 0 && (
-        <div className="md:hidden space-y-2.5">
+        <div className="xl:hidden space-y-2.5">
           {products.map((product) => {
             const lowStock = (product.stockQty ?? 0) <= (product.reorderLevel || 0)
             const outOfStock = (product.stockQty ?? 0) <= 0
@@ -1310,6 +1310,20 @@ const ProductsPage = () => {
                       <Edit className="h-4 w-4" /> Edit
                     </button>
                   )}
+                  {/* The actions the desktop table has, so tablets and phones can reach them too. */}
+                  <span className="ms-auto" onClick={(e) => e.stopPropagation()}>
+                    <OverflowMenu
+                      label={`More actions for ${product.nameEn}`}
+                      items={[
+                        { label: 'Print barcode', icon: Printer, hidden: !product.barcode, onClick: () => handleBarcodePdfForProducts([product.id], { share: false }) },
+                        { label: 'Adjust stock', icon: Package, hidden: !canAdjustStock, onClick: () => handleStockAdjustment(product) },
+                        { label: 'Stock history', icon: History, hidden: !canAdjustStock, onClick: () => navigate(`/stock-adjustments?productId=${product.id}`) },
+                        product.isActive === false
+                          ? { label: 'Activate', icon: RotateCw, hidden: !canManageInventory, onClick: () => handleActivateProduct(product.id) }
+                          : { label: 'Deactivate', icon: Trash2, danger: true, separatorBefore: true, hidden: !canManageInventory, onClick: () => handleDeleteClick(product) },
+                      ]}
+                    />
+                  </span>
                 </div>
               </div>
             )

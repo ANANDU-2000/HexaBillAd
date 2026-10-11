@@ -526,7 +526,7 @@ const SuppliersPage = () => {
           </div>
         ) : (
           <>
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden xl:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-neutral-50 text-neutral-500">
                   <tr>
@@ -605,7 +605,7 @@ const SuppliersPage = () => {
               </table>
             </div>
 
-            <div className="md:hidden divide-y divide-neutral-100">
+            <div className="xl:hidden divide-y divide-neutral-100">
               {pageRows.length === 0 ? (
                 <div className="p-8 text-center text-sm text-neutral-600">
                   <p className="mb-3">No suppliers found.</p>
