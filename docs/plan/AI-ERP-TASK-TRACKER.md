@@ -357,3 +357,8 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `dotnet test --filter Report|Sale` → 119 passed, 9 skipped. products-activate m360, t768, d1440 → 3 passed. reports-outstanding m360, t768, d1440 (twice each) → all passed. The API was restarted with the UI-test database after the build.
 - **Decisions needed:** RP-04, which reports and lists staff may read (the API allows more than the UI shows). Same family as PY-09.
 - **Next task:** SE-03, VR-02, AG-04, then Customers CRUD and the Routes / Inventory modules.
+
+### 2026-10-11 — Checkpoint 40: Invoice PDF carries company name and TRN (SE-04 PASS)
+- **Changed:** `e2e/invoice-pdf.spec.js` (new, API only). No application code changed.
+- **Commands and results:** d1440 → 1 passed. Text extracted with `pdftotext`; company name, 15-digit TRN and invoice number present.
+- **Next task:** VR-02 (VAT other period), AG-04, Customers CRUD, Routes and Inventory modules.

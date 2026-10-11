@@ -373,7 +373,9 @@ Company tab: company name (English, Arabic), VAT TRN (15 digits), corporate tax 
 | ↳ fix | | `SettingsPage.jsx`: `<form id="settings-form">` and `form="settings-form"` on the header button. Test clicks the header button and checks the server value, then reloads. | | `settings-company.spec.js` "company name: saved, read back through the API and after a reload, then restored" (m360, t768, d1440 passed) | |
 | SE-02 | P2 | VAT TRN validation was not verified: a value that is not 15 digits must be refused next to the field, with no request sent. | — | Enter 12345 → Save Settings → message "VAT TRN must contain exactly 15 digits" next to the field, no PUT, stored TRN unchanged. | PASS |
 | ↳ fix | | Test only. `settings-company.spec.js` "VAT TRN: a value that is not 15 digits is refused…" (m360, t768, d1440 passed). | | | |
-| SE-03 | — | Not tested: the other settings tabs (billing, email, notifications, backup), the Arabic company name round trip, logo upload, invoice header style, and whether a saved company name appears on printed documents. | — | Next: printed document header check with the saved company name (print PDF of an invoice), then the other tabs. | NOT TESTED |
+| SE-03 | — | Not tested: the other settings tabs (billing, email, notifications, backup), the Arabic company name round trip, logo upload, invoice header style, and a company name changed in Settings appearing on the next printed invoice (the check below uses the saved name, it does not change it). | — | Next: the other tabs. | NOT TESTED |
+| SE-04 | P1 | Whether the printed invoice carries the saved company identity was not verified. | — | `e2e/invoice-pdf.spec.js` (API only, read-only): fetch the latest sale's PDF as the owner, extract the text with `pdftotext`, and check it contains the saved company name, the 15-digit VAT TRN and the invoice number. Skips if `pdftotext` is not installed. | PASS |
+| ↳ fix | | Test only (d1440 passed; the PDF does not depend on the browser width). | | | |
 
 ### VAT return (`/vat-return`, `features/reports/VatReturnPage.jsx`)
 
