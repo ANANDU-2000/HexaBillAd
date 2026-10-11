@@ -272,7 +272,7 @@ const DailyClosePage = () => {
           </button>
         )}
         <h1 className="text-xl font-semibold text-neutral-900">Daily close</h1>
-        <p className="text-sm text-neutral-600 mt-1">Compare system expected cash to your physical count. Settlement adjustments are excluded from cash received.</p>
+        <p className="text-sm text-neutral-600 mt-1">Compare the expected cash to your physical count.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -302,6 +302,7 @@ const DailyClosePage = () => {
         <div className="border rounded-lg p-4 bg-neutral-50 space-y-2 text-sm">
           <div className="flex justify-between"><span>Customer cash (cleared)</span><strong>{money(preview.collectionsCashReceived ?? preview.cashReceived)}</strong></div>
           <div className="flex justify-between"><span>Operating cash paid out</span><strong>{money(preview.collectionsCashPaidOut ?? preview.cashPaidOut)}</strong></div>
+          <p className="text-xs text-neutral-500">Settlement adjustments are excluded from cash received.</p>
           <div className="flex justify-between pt-2 border-t font-semibold text-base"><span>Expected in drawer</span><span>{money(preview.expectedCash)}</span></div>
           <p className="text-xs text-neutral-500">{preview.cashReceiptCount} cash receipt(s), {preview.expenseCount} expense(s), {preview.supplierCashPaymentCount} supplier cash payment(s)</p>
           {(preview.ownerCapitalIn > 0 || preview.ownerDrawing > 0 || preview.bankToDrawer > 0 || preview.drawerToBank > 0) && (

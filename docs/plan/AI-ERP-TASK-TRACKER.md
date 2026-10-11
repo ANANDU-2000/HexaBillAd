@@ -312,3 +312,8 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `tailwind.config.js` (`xs` 12px, `micro` 12px), `src/styles/tokens.css` (`--micro-size` 12px).
 - **Commands and results:** `ux-audit.spec.js` m360, t768, d1440 → 33 passed; smallest in-row font 12 everywhere (was 10.5 on desktop). List specs → 21 passed, 1 local 429 (passed alone).
 - **Next task:** PU-09 (purchases header wrap), DC-05, then UX-S03/S04 and the NOT TESTED rows.
+
+### 2026-10-11 — Checkpoint 32: Purchases header and Daily close intro (PU-09, DC-05 PASS)
+- **Changed:** `PurchasesPage.jsx` (header one row, bulk action in the menu), `DailyClosePage.jsx` (short intro, rule kept beside cash rows). New specs `purchases-header.spec.js`, `daily-close-intro.spec.js`.
+- **Commands and results:** both new specs at m360, t768, d1440 pass; existing purchases-list and daily-close specs pass (one batch flake on the Overdue tile, passed twice alone).
+- **Next task:** UX-S03 (scroll models), UX-S04 (shared primitives), UX-E01 phone decision, then NOT TESTED rows.
