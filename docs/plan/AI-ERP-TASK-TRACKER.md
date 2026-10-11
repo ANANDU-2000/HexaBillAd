@@ -278,3 +278,9 @@ STOP HERE — do not begin next phase automatically.
 - **Scope check:** the only API keys the frontend reads that contain a digit next to a letter or underscore are the aging buckets and the VAT boxes. The backend DTOs with that shape are `Bucket0_30`, `Bucket31_60`, `Bucket61_90` (`DTOs.cs`) and the five VAT boxes.
 - **Decision needed (OPEN):** AG-02. Historical aging counts invoices dated after the as-of date (27 invoices in 0-30 for 2026-06-30). It changes a financial formula, so it is not implemented here.
 - **Next task:** Reports summary cards and the Sales tab totals against the API, the same check as the VAT return.
+
+### 2026-10-11 — Checkpoint 26: Reports summary cards equal the API (RP-01 PASS)
+- **Changed:** `frontend/hexabill-ui/e2e/reports-summary.spec.js` (new, one test). No application code changed.
+- **Commands and results:** `npx playwright test e2e/reports-summary.spec.js` at m360, t768, d1440 → 3 passed.
+- **Notes:** the API names the summary fields `salesToday` and so on, but they sum the selected range. Naming only (RP-02, P3).
+- **Next task:** Reports Sales tab and Product Analysis totals against the API, then the staff view of the summary (RP-03).
