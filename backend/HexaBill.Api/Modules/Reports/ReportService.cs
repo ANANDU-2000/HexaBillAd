@@ -1312,7 +1312,8 @@ namespace HexaBill.Api.Modules.Reports
                 var totalCount = await query.CountAsync();
                 
                 var customers = await query
-                    .OrderByDescending(c => c.PendingBalance)
+                    // Ordering only: SQLite cannot ORDER BY a decimal column, so sort on a double (same order for money amounts).
+                    .OrderByDescending(c => (double)c.PendingBalance)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .Select(c => new CustomerDto
