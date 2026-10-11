@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { classifyServiceError, isAutoRetryable, isIdempotentWrite } from '../src/services/serviceErrors.js'
+import { classifyServiceError, isAutoRetryable, isIdempotentWrite, shouldBlockWhileDisconnected } from '../src/services/serviceErrors.js'
 
 test('only an explicit maintenance body is maintenance (P0-02)', () => {
   assert.equal(classifyServiceError(503, { maintenanceMode: true, message: 'x' }), 'maintenance')
@@ -46,4 +46,11 @@ test('recovery probe backs off to 60s and reads the maintenance-check contract',
   assert.equal(interpretProbe(200, { maintenanceMode: true, message: 'x' }), 'maintenance')
   assert.equal(interpretProbe(503, { status: 'Unavailable', schema: 'InitializationFailed' }), 'unavailable')
   assert.equal(interpretProbe(0, undefined), 'unavailable')
+})
+
+test('a disconnected client still lets user saves go out; only background reads are held back', () => {
+  assert.equal(shouldBlockWhileDisconnected('get'), true)
+  assert.equal(shouldBlockWhileDisconnected('HEAD'), true)
+  assert.equal(shouldBlockWhileDisconnected(undefined), true)
+  for (const method of ['post', 'PUT', 'patch', 'DELETE']) assert.equal(shouldBlockWhileDisconnected(method), false)
 })

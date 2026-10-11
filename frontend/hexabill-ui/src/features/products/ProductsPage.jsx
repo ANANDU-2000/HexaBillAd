@@ -306,7 +306,9 @@ const ProductsPage = () => {
           toast.error(`${msg} Use a different SKU or edit the existing product.`, { duration: 6000 })
           loadProducts()
         } else {
-          const msg = data?.message || 'Failed to create product'
+          const msg = data?.message || (error?.response
+            ? 'Failed to create product'
+            : 'Could not reach the server, so nothing was saved. Check your connection and try again.')
           const errors = data?.errors
           const fullMsg = errors?.length ? `${msg} (${errors.join(', ')})` : msg
           toast.error(fullMsg, { duration: 6000 })

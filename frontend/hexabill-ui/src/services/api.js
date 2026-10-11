@@ -4,7 +4,7 @@ import camelcaseKeys from 'camelcase-keys'
 import toast from 'react-hot-toast'
 import { connectionManager } from './connectionManager'
 import { showMaintenanceOverlay } from '../components/MaintenanceOverlay'
-import { classifyServiceError, isAutoRetryable } from './serviceErrors.js'
+import { classifyServiceError, isAutoRetryable, shouldBlockWhileDisconnected } from './serviceErrors.js'
 import { setSubscriptionGraceFromResponse } from '../components/SubscriptionGraceBanner'
 import { createRequestSession } from './requestSession.js'
 
@@ -549,7 +549,7 @@ api.interceptors.request.use(
     config._sessionScope = requestSession.current()
 
     // Check if we should allow this request
-    if (!connectionManager.shouldAllowRequest()) {
+    if (!connectionManager.shouldAllowRequest() && shouldBlockWhileDisconnected(config.method)) {
       const error = new Error('Server connection unavailable. Please wait...')
       error.config = config
       error.isConnectionBlocked = true

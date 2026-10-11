@@ -70,6 +70,15 @@ export function isAutoRetryable (config, status) {
   return isIdempotentWrite(config)
 }
 
+/**
+ * While the client believes the server is unreachable it holds back background reads so a
+ * restarting API is not flooded. A save the user just asked for is never held back silently:
+ * it goes out, and a real network failure is then reported by the normal error path.
+ */
+export function shouldBlockWhileDisconnected (method) {
+  return SAFE_METHODS.has(String(method || 'GET').toUpperCase())
+}
+
 /** Backoff for the recovery probe: 5s, 10s, 20s, 40s, then every 60s. */
 export function nextProbeDelayMs (attempt) {
   return Math.min(60_000, 5_000 * 2 ** Math.max(0, attempt))
