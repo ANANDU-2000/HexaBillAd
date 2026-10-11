@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Barcode,
   Tag,
+  Trash2,
+  Check,
 } from 'lucide-react'
 import { formatCurrency } from '../../utils/currency'
 import toast from 'react-hot-toast'
@@ -16,6 +18,7 @@ import { productsAPI } from '../../services/index'
 import { LoadingCard } from '../../components/Loading'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
+import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 
@@ -33,6 +36,9 @@ const ProductDetailPage = () => {
   const [movementsLoading, setMovementsLoading] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showStockModal, setShowStockModal] = useState(false)
+  // Phones have no deactivate on the product list, so the detail page offers it to owners and admins.
+  const [deactivateOpen, setDeactivateOpen] = useState(false)
+  const [statusBusy, setStatusBusy] = useState(false)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -69,6 +75,26 @@ const ProductDetailPage = () => {
       navigate('/products')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const changeStatus = async () => {
+    if (!product || statusBusy) return
+    const deactivating = product.isActive !== false
+    setStatusBusy(true)
+    try {
+      const res = deactivating ? await productsAPI.deleteProduct(product.id) : await productsAPI.activateProduct(product.id)
+      if (res?.success) {
+        toast.success(deactivating ? 'Product deactivated' : 'Product activated')
+        await loadProduct()
+      } else {
+        toast.error(res?.message || 'Could not change the product status')
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || 'Could not change the product status')
+    } finally {
+      setStatusBusy(false)
+      setDeactivateOpen(false)
     }
   }
 
@@ -210,6 +236,28 @@ const ProductDetailPage = () => {
             <History className="h-4 w-4 mr-2" />
             Full history
           </Link>
+          {canManage && product.isActive !== false && (
+            <button
+              type="button"
+              onClick={() => setDeactivateOpen(true)}
+              disabled={statusBusy}
+              className="inline-flex items-center px-4 py-2 min-h-11 border border-error-border rounded-lg text-sm font-medium text-error-fg bg-white hover:bg-error-bg disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Deactivate
+            </button>
+          )}
+          {canManage && product.isActive === false && (
+            <button
+              type="button"
+              onClick={changeStatus}
+              disabled={statusBusy}
+              className="inline-flex items-center px-4 py-2 min-h-11 border border-success-border rounded-lg text-sm font-medium text-success-fg bg-white hover:bg-success-bg disabled:opacity-50"
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Activate
+            </button>
+          )}
         </div>
       </div>
 
@@ -390,6 +438,16 @@ const ProductDetailPage = () => {
           onCancel={() => setShowStockModal(false)}
         />
       )}
+
+      <ConfirmDangerModal
+        isOpen={deactivateOpen}
+        title="Deactivate Product"
+        message={`This will deactivate ${product.nameEn || product.sku}. The product will be hidden from POS but will still appear in old invoices. You can reactivate it later.`}
+        confirmLabel="Deactivate Product"
+        requireTypedText="DEACTIVATE"
+        onConfirm={changeStatus}
+        onClose={() => setDeactivateOpen(false)}
+      />
     </div>
   )
 }

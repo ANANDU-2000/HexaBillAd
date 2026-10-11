@@ -234,3 +234,8 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `e2e/auth-login.spec.js` (new). No application code changed.
 - **Commands and results:** `npx playwright test e2e/auth-login.spec.js` at d1440 (3 passed), m360 and t768 (6 passed in total).
 - **Next task:** Products and Inventory: product create, edit, SKU and stock adjustment with API read-back.
+
+### 2026-10-11 — Checkpoint 18: Products create, edit and deactivate (PR-01, PR-02 PASS; PR-03 NOT TESTED)
+- **Changed:** `ProductDetailPage.jsx` (owners and admins: Deactivate and Activate on the detail page, typed confirmation). `e2e/products-crud.spec.js` (new).
+- **Commands and results:** `npx playwright test e2e/products-crud.spec.js` at m360, t768, d1440 → 3 passed. `npx vite build` → exit 0. ESLint on the page: 0 errors.
+- **Next task:** Product stock adjustment with API read-back and the stock history page (PR-03), then Inventory categories.

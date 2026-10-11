@@ -298,3 +298,15 @@ Finding: every other browser spec signs in by writing the token into local stora
 | AU-01 | P1 | No browser test of the login form (wrong password, empty submit, correct login, logout). | `session.js` `signIn` writes localStorage | `e2e/auth-login.spec.js`: wrong password is reported and no session is stored; email kept; empty submit shows what is missing; correct password reaches `/dashboard`; logout returns to `/login` and clears the token. Phones sign out from the More sheet; desktop from the account menu. | PASS |
 | ↳ fix | | Test only (no application change). Message text is matched by pattern (incorrect / invalid / wrong / required). | | `auth-login.spec.js` (m360, t768, d1440: 9 passed in total on the last run) | |
 | AU-02 | — | Not tested: disabled account, expired session, password change, permission change, subdomain resolution for a second tenant, lockout after repeated wrong passwords. | — | Add with synthetic accounts per tenant (owner, staff, disabled). | NOT TESTED |
+
+### Products (`/products`, `features/products/ProductsPage.jsx`, `ProductDetailPage.jsx`)
+
+Create uses the `Add product` form (`components/ProductForm.jsx`, named fields). Desktop and tablet rows carry Edit, View, Print barcode, Adjust stock, Stock history and Deactivate. Phone cards carry View and Edit only. Deactivate needs the typed word DEACTIVATE.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| PR-01 | P2 | Phones could not deactivate a product: the phone card has no Deactivate, and the detail page had Edit, Adjust stock and Full history only. Owners on phones had no way to hide a product from POS. | `products-crud.spec.js` phone run: card buttons View and Edit only | Owners and admins get Deactivate (typed DEACTIVATE) and Activate on the product detail page, the same confirmation as the list. | PASS |
+| ↳ fix | | `ProductDetailPage.jsx`: `changeStatus` (deactivate uses the same delete endpoint as the list; activate uses the activate endpoint), a confirmation with the typed word, and a reload from the API after success. Hidden for roles that cannot manage products. | | `products-crud.spec.js` phone run deactivates from the detail page (m360 passed) | |
+| PR-02 | P1 | Product create, edit and deactivate were not verified against the database. | — | `e2e/products-crud.spec.js`: create through the form (SKU, name, cost, sell price) → API read-back → list refresh → edit sell price 20.00 → 22.75 → API read-back → deactivate with the typed word → product read by id shows inactive. | PASS |
+| ↳ fix | | Test only. The list hides inactive products, so the test reads the product by id. | | `products-crud.spec.js` (m360, t768, d1440: 3 passed) | |
+| PR-03 | — | Not tested: Activate from the list or detail page, stock adjustment (`Adjust stock`) and its history, unit conversion, barcode print, categories, product import, pagination, price list, long Arabic product names. | — | Next product checks: stock adjustment with API read-back and stock history, then the price list. | NOT TESTED |
