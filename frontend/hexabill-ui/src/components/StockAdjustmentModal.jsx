@@ -85,9 +85,10 @@ const StockAdjustmentModal = ({ product, onSave, onCancel }) => {
             <label className="block text-sm font-medium text-neutral-700 mb-1">
               Reason *
             </label>
+            {/* No native "required": the app's own message below explains what is missing. */}
             <textarea
               name="reason"
-              required
+              aria-required="true"
               rows="3"
               className="input"
               value={formData.reason}
