@@ -1,6 +1,6 @@
 # HexaBill execution state (resume from here)
 
-Updated 2026-10-11. Branch `main`, local only (nothing pushed). Deployed runtime source is `704f802` (backend Render, frontend Vercel); the commits below are NOT deployed.
+Updated 2026-10-11. Branch `main`. Owner approved push + redeploy on 2026-10-11; code commits `0564c8e`, `6c8c28b`, `a560bc0` are pushed (origin/main `c9dc5e6`) and live.
 
 ## Local checkpoints this session
 | Commit | Task | Evidence |
@@ -27,3 +27,10 @@ Backend tests are built with `--artifacts-path "$TEMP/hb-artifacts"` because a d
 
 ## Next exact action
 Find the active production storage provider for tenant logos and expense attachments (read-only config check) and write a failing test for "logo survives a restart".
+
+## Release record (2026-10-11, owner-approved)
+- Push: `704f802..c9dc5e6` to origin/main. No migrations in the range (`git diff 704f802..HEAD -- backend/HexaBill.Api/Migrations` empty).
+- Backend: Render `dep-db5lc6cs728c7387gmp0` (API-triggered, autoDeploy off) live; `/health/ready` = Ready, schema Current, deployVersion `c9dc5e6`. Rollback: `dep-db5iuhflot8c73f4mit0` (`704f802`).
+- Frontend: Vercel `dpl_ASo1oPXfYXq6mXoL596AgZJ6d9U8` (`hexabill-2err37pup`), built from the push; bundle `index-DdioVnWh.js` matches the local build; live Products chunk contains the fix.
+- ROOT CAUSE FOUND (Gulf Harvest only): `gulfharvest.hexabill.company` had an explicit alias pinned to `hexabill-2jrio3lr0` (2026-10-07), overriding `*.hexabill.company`, so that tenant ran a 4-day-old frontend that predates the Oct-7 "201 body loss through Vercel proxy" fix. Alias re-pointed to `hexabill-2err37pup`. Rollback: `vercel alias set hexabill-2jrio3lr0-anandukrishnapa2000-gmailcoms-projects.vercel.app gulfharvest.hexabill.company --scope team_U8qgfcFQABNoNtJrAy5QyaZf`.
+- Checked after deploy (public, read-only): all four client domains `/login` 200, `/api/maintenance-check` false, same bundle. NOT TESTED: authenticated product/expense save, logo upload, print on the live tenant (needs the owner session).
