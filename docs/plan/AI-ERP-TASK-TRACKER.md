@@ -346,3 +346,8 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** t768 and d1440 → 1 passed each. Stored sale belongs to the customer, is unpaid, paid amount 0, balance up by the invoice total.
 - **Found:** a fresh POS defaults to Cash, a POS after New invoice defaults to Credit (PS-05).
 - **Next task:** AU-02, PR-03, SE-03, then Reports rows (VR-02, AG-04, RP-03).
+
+### 2026-10-11 — Checkpoint 38: Authentication safety (AU-03, AU-04, AU-05 PASS)
+- **Changed:** `e2e/auth-security.spec.js` (new, 3 tests). No application code changed.
+- **Commands and results:** d1440 and m360 → 3 passed each. Lockout after 5 wrong passwords (429 even with the right one), cross-tenant sign-in refused, invalid token → `/login`.
+- **Next task:** PR-03 (products activate, categories), SE-03, then Reports rows (VR-02, AG-04, RP-03).

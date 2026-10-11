@@ -313,7 +313,11 @@ Finding: every other browser spec signs in by writing the token into local stora
 |---|---|---|---|---|---|
 | AU-01 | P1 | No browser test of the login form (wrong password, empty submit, correct login, logout). | `session.js` `signIn` writes localStorage | `e2e/auth-login.spec.js`: wrong password is reported and no session is stored; email kept; empty submit shows what is missing; correct password reaches `/dashboard`; logout returns to `/login` and clears the token. Phones sign out from the More sheet; desktop from the account menu. | PASS |
 | ↳ fix | | Test only (no application change). Message text is matched by pattern (incorrect / invalid / wrong / required). | | `auth-login.spec.js` (m360, t768, d1440: 9 passed in total on the last run) | |
-| AU-02 | — | Not tested: disabled account, expired session, password change, permission change, subdomain resolution for a second tenant, lockout after repeated wrong passwords. | — | Add with synthetic accounts per tenant (owner, staff, disabled). | NOT TESTED |
+| AU-02 | — | Not tested: disabled account (blocked by ST-01), a genuinely expired (not invalid) token, password change, permission change, and the lockout message shown in the login form. | — | Add with synthetic accounts after ST-01 is decided. | NOT TESTED |
+| AU-03 | P1 | Lockout was not verified. | — | `e2e/auth-security.spec.js`: a temporary staff account (never the owner): the right password works, five wrong ones return 400, then the right password returns 429 "Too many failed attempts". The account is removed afterwards. | PASS |
+| AU-04 | P1 | Tenant separation at sign-in was not verified: the owner of one tenant must not sign in on another tenant's address. | — | Same spec: the gulfharvest owner on the frozenhub1 address is refused (not 200, not 500); the same login works on its own address. | PASS |
+| AU-05 | P1 | An invalid or tampered token must not show data. | — | Same spec: a bad token in storage → `/customers` ends on `/login`, the sign-in button is shown, and the bad token is removed from storage. | PASS |
+| ↳ fix | | Tests only (d1440 and m360: 3 passed each). | | | |
 
 ### Products (`/products`, `features/products/ProductsPage.jsx`, `ProductDetailPage.jsx`)
 
