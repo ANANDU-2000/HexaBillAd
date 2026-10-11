@@ -340,3 +340,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** cheque spec m360, t768, d1440 → 3 passed (pending keeps the balance, cleared reduces it by the amount, void restores it). Roles spec d1440, m360 → 2 passed (staff redirected; API 403 on edit and delete).
 - **Decision needed:** PY-09, whether any signed-in user may create a payment through the API.
 - **Next task:** PS-03 (POS credit sale), AU-02, PR-03, SE-03, then Reports rows.
+
+### 2026-10-11 — Checkpoint 37: POS credit sale (PS-04 PASS; PS-05 OPEN, owner decision)
+- **Changed:** `e2e/pos-credit-sale.spec.js` (new). No application code changed.
+- **Commands and results:** t768 and d1440 → 1 passed each. Stored sale belongs to the customer, is unpaid, paid amount 0, balance up by the invoice total.
+- **Found:** a fresh POS defaults to Cash, a POS after New invoice defaults to Credit (PS-05).
+- **Next task:** AU-02, PR-03, SE-03, then Reports rows (VR-02, AG-04, RP-03).
