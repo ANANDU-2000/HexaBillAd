@@ -254,3 +254,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `e2e/pos-stock-duplicate.spec.js` (new). No application code changed.
 - **Commands and results:** `npx playwright test e2e/pos-stock-duplicate.spec.js` at d1440 (2 passed), m360 and t768 (4 passed).
 - **Next task:** POS credit sale and payment (PS-03), then Billing History after a POS sale.
+
+### 2026-10-11 — Checkpoint 22: Staff accounts (ST-03 PASS; ST-01 BLOCKED on a security decision)
+- **Changed:** `e2e/staff-users.spec.js` (new, two tests). No application code changed.
+- **Commands and results:** `npx playwright test e2e/staff-users.spec.js` at m360, t768, d1440 → 6 passed. Failed runs left test staff behind and hit the plan's staff cap; the spec now removes its own leftovers first.
+- **Decision needed (BLOCKED):** how a disabled staff account behaves (revoke existing sessions now, or refuse only new logins), and who can disable whom. Blocks ST-01. Not implemented without that decision.
+- **Next task:** Settings (company profile and branding) with save and reload checks, then Reports and VAT read checks.
