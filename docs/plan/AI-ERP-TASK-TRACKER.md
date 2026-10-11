@@ -296,3 +296,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/reports-sales.spec.js` at m360, t768, d1440 → 3 passed. The table has 38 rows, one per API invoice, and each total and paid amount matches.
 - **Decision needed (SL-01):** how the Sales tab loads a range with more than 100 invoices (all pages, server-side totals with paging, or a visible "showing 100 of N"). Not implemented without that decision.
 - **Next task:** Reports Product Analysis totals against the API, then the staff view of the summary (RP-03).
+
+### 2026-10-11 — Checkpoint 29: Sales tab loads every page (SL-01 PASS)
+- **Changed:** `ReportsPage.jsx` (page loop, cap 50 pages, "Showing the first N of M" notice). `e2e/reports-sales.spec.js` (mocked 250-invoice test; row snapshot read).
+- **Commands and results:** `npx playwright test e2e/reports-sales.spec.js` at m360, t768, d1440 → 6 passed, twice.
+- **Choice made:** option A (loop pages) with a cap, chosen by the agent when the owner asked to finish all items.
+- **Next task:** pending UX tracker items in order (UX-S08, UX-S07, UX-S06, PU-09, DC-05, then the NOT TESTED rows).

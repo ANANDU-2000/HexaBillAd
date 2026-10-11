@@ -423,7 +423,11 @@ const ReportsPage = () => {
       } else if (activeTab === 'sales') {
         setLoadingSales(true)
         try {
-          const salesResponse = await reportsAPI.getSalesReport({
+          // SL-01: read every page of the range (100 invoices per request) up to a safety cap, so the charts and the
+          // Sales Details table cover the whole range. Past the cap the table says how many are shown.
+          const SALES_PAGE_SIZE = 100
+          const SALES_MAX_PAGES = 50
+          const salesParams = {
             fromDate: dateRange.from,
             toDate: dateRange.to,
             customerId: appliedFilters.customer ? parseInt(appliedFilters.customer) : undefined,
@@ -431,11 +435,18 @@ const ReportsPage = () => {
             branchId: appliedFilters.branch ? parseInt(appliedFilters.branch, 10) : undefined,
             routeId: appliedFilters.route ? parseInt(appliedFilters.route, 10) : undefined,
             search: appliedFilters.search || undefined, // BUG #2.5 FIX: Add search parameter
-            page: 1,
-            pageSize: 100
-          })
+            pageSize: SALES_PAGE_SIZE
+          }
+          const salesResponse = await reportsAPI.getSalesReport({ ...salesParams, page: 1 })
+          let allSalesItems = salesResponse?.data?.items || []
+          const salesTotalPages = salesResponse?.data?.totalPages || 1
+          const salesTotalCount = salesResponse?.data?.totalCount ?? allSalesItems.length
+          for (let pageNo = 2; pageNo <= Math.min(salesTotalPages, SALES_MAX_PAGES); pageNo += 1) {
+            const nextPage = await reportsAPI.getSalesReport({ ...salesParams, page: pageNo })
+            allSalesItems = allSalesItems.concat(nextPage?.data?.items || [])
+          }
           if (salesResponse?.success && salesResponse?.data) {
-            let salesData = salesResponse.data.items || []
+            let salesData = allSalesItems
 
             // Calculate balance and status for each sale
             salesData = salesData.map(sale => {
@@ -491,7 +502,8 @@ const ReportsPage = () => {
               sales: Object.values(salesByDate).sort((a, b) =>
                 new Date(a.date) - new Date(b.date)
               ),
-              salesList: salesData // Store detailed sales list for table display
+              salesList: salesData, // Store detailed sales list for table display
+              salesPartial: salesTotalCount > salesData.length ? { shown: salesData.length, total: salesTotalCount } : null
             }))
           }
         } finally {
@@ -1605,6 +1617,11 @@ const ReportsPage = () => {
                     <div className="bg-white border border-neutral-200 rounded-lg overflow-hidden">
                       <div className="px-6 py-4 border-b border-neutral-200">
                         <h3 className="text-lg font-semibold text-neutral-900">Sales Details</h3>
+                        {reportData.salesPartial && (
+                          <p className="mt-1 text-sm text-warning-fg" role="status">
+                            Showing the first {reportData.salesPartial.shown} of {reportData.salesPartial.total} invoices. Narrow the date range to see the rest.
+                          </p>
+                        )}
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full divide-y divide-neutral-200">

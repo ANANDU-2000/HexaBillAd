@@ -37,12 +37,42 @@ test('Sales: the table lists every invoice in the range with the API total and p
   const rows = page.locator('table tbody tr').filter({ has: page.locator('td') })
   await expect(rows, `rows for ${from} to ${to}`).toHaveCount(report.totalCount)
   const byNo = new Map((report.items || []).map((i) => [i.invoiceNo, i]))
-  for (const row of await rows.all()) {
+  // One snapshot of every row, so a re-render between reads cannot mix old and new rows.
+  const table = await rows.evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll('td')].map((td) => td.innerText)))
+  for (const cells of table) {
     // Columns: Invoice No, Date, Customer, Total, Paid, Balance, Status.
-    const cells = await row.locator('td').allInnerTexts()
     const item = byNo.get(cells[0].trim())
     expect(item, `invoice ${cells[0]} is in the API range`).toBeDefined()
     expect(num(cells[3]), `${cells[0]} total on screen`).toBeCloseTo(Number(item.grandTotal), 2)
     expect(num(cells[4]), `${cells[0]} paid on screen`).toBeCloseTo(Number(item.paidAmount ?? 0), 2)
   }
 })
+
+// SL-01: the tab reads every page of the range. The endpoint is mocked with three pages (250 invoices) so the local
+// tenant's data is not touched.
+test('Sales: a range with several pages lists every invoice', async ({ page }) => {
+  const total = 250
+  const calls = []
+  await page.route(/\/api\/reports\/sales\?/, async (route) => {
+    const url = new URL(route.request().url())
+    const pageNo = Number(url.searchParams.get('page') || 1)
+    const size = Number(url.searchParams.get('pageSize') || 10)
+    calls.push(pageNo)
+    const items = []
+    for (let n = (pageNo - 1) * size + 1; n <= Math.min(pageNo * size, total); n += 1) {
+      items.push({ id: n, invoiceNo: `MOCK-${n}`, invoiceDate: '2026-10-01T09:00:00', customerName: 'Mock customer', grandTotal: 10, paidAmount: 10 })
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { items, totalCount: total, page: pageNo, pageSize: size, totalPages: Math.ceil(total / size) } }),
+    })
+  })
+  await signIn(page, SLUG)
+  await page.goto(`${feOrigin(SLUG)}/reports`, { waitUntil: 'networkidle' })
+  await page.getByRole('tab', { name: 'Sales', exact: true }).filter({ visible: true }).first().click()
+  await expect(page.locator('table tbody tr').filter({ has: page.locator('td') })).toHaveCount(total)
+  expect([...new Set(calls)].sort((a, b) => a - b)).toEqual([1, 2, 3])
+  await expect(page.getByText(/Showing the first/)).toHaveCount(0)
+})
+
