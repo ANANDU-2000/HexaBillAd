@@ -759,7 +759,7 @@ export const paymentsAPI = {
   },
 
   getPayments: async (params = {}) => {
-    const response = await api.get('/payments', { params })
+    const response = await api.get('/payments', { params, _bypassCache: true })
     return response.data
   },
 

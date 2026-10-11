@@ -35,10 +35,10 @@ import { canManagePayments } from '../../utils/roles'
 import { useAuth } from '../../hooks/useAuth'
 import toast from 'react-hot-toast'
 import { localDateString } from '../../utils/dateFormat'
-import { readPaymentsStateFromParams, syncPaymentsSearchParams } from '../../utils/paymentsUrl'
+import { readPaymentsStateFromParams, syncPaymentsSearchParams, paymentListParams, paymentDateRangeError } from '../../utils/paymentsUrl'
 import { getReturnLabel, showReturnToPrompt } from '../../utils/returnNavigation'
 import { offerReceiptPreviewAfterPayment } from '../../utils/offerReceiptPreview'
-import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection } from '../../utils/receiptEligibility'
+import { canReceivePaymentReceipt, currentReceiptSelection, receiptIneligibilityReason, paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords } from '../../utils/receiptEligibility'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { createLedgerPaymentJournal, createPaymentBatchJournal, ledgerPaymentAccountPrefix, ledgerPaymentForm, ledgerPaymentScope, paymentBatchScope } from '../../utils/ledgerPaymentIntent'
 
@@ -59,6 +59,16 @@ const PaymentsPage = () => {
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '')
   const [filterMethod, setFilterMethod] = useState(() => searchParams.get('method') || '')
   const [filterStatus, setFilterStatus] = useState(() => searchParams.get('status') || '')
+  const [fromDate, setFromDate] = useState(() => readPaymentsStateFromParams(searchParams).fromDate)
+  const [toDate, setToDate] = useState(() => readPaymentsStateFromParams(searchParams).toDate)
+  const [page, setPage] = useState(() => readPaymentsStateFromParams(searchParams).page)
+  const [totalCount, setTotalCount] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [showDateFilters, setShowDateFilters] = useState(false)
+  const [listError, setListError] = useState('')
+  const listRequestRef = useRef(0)
+  const fetchDataRef = useRef(null)
+  const dateRangeError = paymentDateRangeError({ fromDate, toDate })
   const openedCustomerFromUrlRef = useRef(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingPayment, setEditingPayment] = useState(null)
@@ -72,6 +82,9 @@ const PaymentsPage = () => {
   const [showBulkPaymentModal, setShowBulkPaymentModal] = useState(false)
   const [bulkPayments, setBulkPayments] = useState([{ customerId: '', amount: '', method: 'Cash', paymentDate: localDateString(new Date()) }])
   const [selectedPaymentIds, setSelectedPaymentIds] = useState([])
+  const selectedPaymentIdsRef = useRef(selectedPaymentIds)
+  selectedPaymentIdsRef.current = selectedPaymentIds
+  const [listScope, setListScope] = useState(null)
   const [showReceiptPreviewModal, setShowReceiptPreviewModal] = useState(false)
   const [receiptPreviewPaymentIds, setReceiptPreviewPaymentIds] = useState([])
   const submittingRef = useRef(false)
@@ -90,6 +103,15 @@ const PaymentsPage = () => {
   const bulkScope = paymentBatchScope(recoveryIdentity)
   const accountPrefixRef = useRef(accountPrefix)
   accountPrefixRef.current = accountPrefix
+  useEffect(() => {
+    setPayments([])
+    setFilteredPayments([])
+    setSelectedPaymentIds([])
+    setCustomers([])
+    setSelectedCustomerDetails(null)
+    setOutstandingInvoices([])
+    setListScope(null)
+  }, [accountPrefix])
   const [unconfirmedPayments, setUnconfirmedPayments] = useState([])
   const [savedBatch, setSavedBatch] = useState(null)
   const [recoveryError, setRecoveryError] = useState(null)
@@ -148,17 +170,21 @@ const PaymentsPage = () => {
         search: searchTerm,
         method: filterMethod,
         status: filterStatus,
+        fromDate, toDate, page,
         customerId: showAddModal ? prev.get('customerId') : null
       })
       return params
     }, { replace: true })
-  }, [searchTerm, filterMethod, filterStatus, showAddModal, setSearchParams])
+  }, [searchTerm, filterMethod, filterStatus, fromDate, toDate, page, showAddModal, setSearchParams])
 
   useEffect(() => {
     const parsed = readPaymentsStateFromParams(searchParams)
     setSearchTerm((s) => (s === parsed.search ? s : parsed.search))
     setFilterMethod((m) => (m === parsed.method ? m : parsed.method))
     setFilterStatus((st) => (st === parsed.status ? st : parsed.status))
+    setFromDate((value) => value === parsed.fromDate ? value : parsed.fromDate)
+    setToDate((value) => value === parsed.toDate ? value : parsed.toDate)
+    setPage((value) => value === parsed.page ? value : parsed.page)
   }, [searchParams])
 
   useEffect(() => {
@@ -212,110 +238,58 @@ const PaymentsPage = () => {
   }, [selectedCustomerId])
 
   useEffect(() => {
-    let isMounted = true
-    
-    // Define fetchData before using it
-    const fetchDataSafe = async () => {
-      if (!isMounted) return
-      
-      try {
-        setLoading(true)
-        
-        // PERFORMANCE FIX: Remove unnecessary salesAPI.getSales() call
-        // Invoices load dynamically when customer is selected via getOutstandingInvoices()
-        // This saves loading 100 sales on every page load
-        const [paymentsRes, customersRes] = await Promise.all([
-          paymentsAPI.getPayments({ page: 1, pageSize: 100 }),
-          customersAPI.getCustomers({ page: 1, pageSize: 100 })
-        ])
-        
-        if (!isMounted) return
-        
-        if (paymentsRes.success && paymentsRes.data) {
-          setPayments(paymentsRes.data.items || paymentsRes.data || [])
-        } else {
-          setPayments([])
-        }
-        
-        if (customersRes.success && customersRes.data) {
-          setCustomers(customersRes.data.items || customersRes.data || [])
-        } else {
-          setCustomers([])
-        }
-        
-        // Sales are no longer loaded on page load - they load dynamically when customer is selected
-        setSales([])
-      } catch (error) {
-        if (!isMounted) return
-        console.error('Failed to load payments data:', error)
-        toast.error(error.response?.data?.message || 'Failed to load payments data')
-        setPayments([])
-        setCustomers([])
-        setSales([])
-      } finally {
-        if (isMounted) {
-          setLoading(false)
-        }
-      }
-    }
-    
-    fetchDataSafe()
-    
-    // Auto-refresh DISABLED - prevents UI interruption during user actions
-    // User can manually refresh with refresh button
-    
-    return () => {
-      isMounted = false
-    }
-  }, []) // Only run once on mount
-
-  useEffect(() => {
-    filterPayments()
-  }, [payments, debouncedSearchTerm, filterMethod, filterStatus])
-
-  const fetchDataRef = useRef(null)
+    fetchDataRef.current?.()
+    return () => { listRequestRef.current += 1 }
+  }, [debouncedSearchTerm, filterMethod, filterStatus, fromDate, toDate, page, accountPrefix])
 
   const fetchData = async () => {
+    const requestId = ++listRequestRef.current
+    const scope = accountPrefixRef.current
+    if (dateRangeError) {
+      setLoading(false)
+      setListError('')
+      setPayments([])
+      setTotalCount(0)
+      setTotalPages(1)
+      return
+    }
+    setLoading(true)
+    setListError('')
     try {
-      setLoading(true)
-      
-      // PERFORMANCE FIX: Remove unnecessary salesAPI.getSales() call
-      // Invoices load dynamically when customer is selected
       const [paymentsRes, customersRes] = await Promise.all([
-        paymentsAPI.getPayments({ page: 1, pageSize: 100 }),
+        paymentsAPI.getPayments(paymentListParams({
+          page, search: debouncedSearchTerm, method: filterMethod, status: filterStatus, fromDate, toDate
+        })),
         customersAPI.getCustomers({ page: 1, pageSize: 100 })
       ])
-      
-      if (paymentsRes.success && paymentsRes.data) {
-        setPayments(paymentsRes.data.items || paymentsRes.data || [])
-      } else {
-        console.warn('Payments response:', paymentsRes)
-        setPayments([])
+      if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return
+      if (!paymentsRes.success || !paymentsRes.data) throw new Error('Payments could not be loaded.')
+      const data = paymentsRes.data
+      const pages = Math.max(1, Number(data.totalPages) || 1)
+      setTotalCount(Number(data.totalCount) || 0)
+      setTotalPages(pages)
+      if (page > pages) {
+        setPage(pages)
+        return
       }
-      
-      if (customersRes.success && customersRes.data) {
-        setCustomers(customersRes.data.items || customersRes.data || [])
-      } else {
-        console.warn('Customers response:', customersRes)
-        setCustomers([])
-      }
-      
-      // Sales are no longer loaded - they load dynamically when customer is selected
+      const rows = data.items || []
+      setPayments(previous => mergeSelectedPaymentRecords(previous, rows, selectedPaymentIdsRef.current))
+      setFilteredPayments(rows)
+      setListScope(scope)
+      if (customersRes.success && customersRes.data) setCustomers(customersRes.data.items || customersRes.data || [])
       setSales([])
     } catch (error) {
-      console.error('Failed to load payments data:', error)
-      console.error('Error details:', error.response?.data || error.message)
-      toast.error(error.response?.data?.message || 'Failed to load payments data')
+      if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return
+      setListError(error.response?.data?.message || 'Payments could not be loaded. Please try again.')
       setPayments([])
-      setCustomers([])
-      setSales([])
+      setTotalCount(0)
+      setTotalPages(1)
     } finally {
-      setLoading(false)
+      if (requestId === listRequestRef.current && scope === accountPrefixRef.current) setLoading(false)
     }
   }
 
   fetchDataRef.current = fetchData
-
   // Listen for data update events to refresh when payments are made (uses ref to avoid stale closure)
   useEffect(() => {
     const handleDataUpdate = () => {
@@ -329,40 +303,6 @@ const PaymentsPage = () => {
     }
   }, [])
 
-  const filterPayments = () => {
-    let filtered = payments
-
-    // Apply search filter
-    if (debouncedSearchTerm) {
-      filtered = filtered.filter(payment =>
-        (payment.invoiceNo || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        (payment.customerName || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        (payment.ref || payment.reference || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-      )
-    }
-
-    // Apply method filter (use normalized method)
-    if (filterMethod) {
-      filtered = filtered.filter(payment =>
-        getPaymentMethod(payment).toLowerCase() === filterMethod.toLowerCase()
-      )
-    }
-
-    // Filter by the authoritative state, independently of payment method.
-    if (filterStatus) {
-      filtered = filtered.filter(payment => {
-        const status = String(payment.status ?? payment.Status ?? '').toUpperCase()
-        if (filterStatus === 'completed') return status === 'CLEARED'
-        if (filterStatus === 'pending') return status === 'PENDING'
-        if (filterStatus === 'credit') return status === 'PENDING' && getPaymentMethod(payment) === 'Credit'
-        if (filterStatus === 'void') return status === 'VOID'
-        if (filterStatus === 'returned') return status === 'RETURNED'
-        return true
-      })
-    }
-
-    setFilteredPayments(filtered)
-  }
 
   const executePayment = async (intent) => {
     if (user?.supportReadOnly) { toast.error('This support session is read-only.'); return }
@@ -388,7 +328,7 @@ const PaymentsPage = () => {
       reset()
       clearPaymentCustomerIdFromUrl()
       setSelectedPayment(null)
-      await fetchData()
+      await fetchDataRef.current?.()
       window.dispatchEvent(new CustomEvent('paymentCreated', { detail: { payment: response.data } }))
       window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
@@ -487,7 +427,7 @@ const PaymentsPage = () => {
       if (prefix === accountPrefixRef.current) {
         setSubmitting(false)
         refreshRecovery()
-        await fetchData()
+        await fetchDataRef.current?.()
       }
     }
   }
@@ -507,8 +447,9 @@ const PaymentsPage = () => {
       const response = await paymentsAPI.deletePayment(paymentToDelete.id)
       if (response?.success) {
         toast.success('Payment voided; history retained', { id: 'delete-payment' })
+        setSelectedPaymentIds(ids => ids.filter(id => id !== paymentToDelete.id))
         setPaymentToDelete(null)
-        await fetchData()
+        await fetchDataRef.current?.()
         window.dispatchEvent(new CustomEvent('dataUpdated'))
       } else {
         toast.error(response?.message || 'Failed to void payment', { id: 'delete-payment' })
@@ -522,8 +463,8 @@ const PaymentsPage = () => {
   }
 
   const eligibleReceiptPayments = useMemo(
-    () => (canEditPayments && !user?.supportReadOnly ? payments.filter(canReceivePaymentReceipt) : []),
-    [payments, canEditPayments, user?.supportReadOnly]
+    () => (canEditPayments && !user?.supportReadOnly && listScope === accountPrefix ? payments.filter(canReceivePaymentReceipt) : []),
+    [payments, canEditPayments, user?.supportReadOnly, listScope, accountPrefix]
   )
 
   const receiptSelectedIds = useMemo(
@@ -580,8 +521,8 @@ const PaymentsPage = () => {
   }
 
   const eligibleFilteredReceiptIds = useMemo(
-    () => canEditPayments && !user?.supportReadOnly ? filteredPayments.filter(canReceivePaymentReceipt).map(p => p.id) : [],
-    [filteredPayments,canEditPayments,user?.supportReadOnly]
+    () => canEditPayments && !user?.supportReadOnly && listScope === accountPrefix ? filteredPayments.filter(canReceivePaymentReceipt).map(p => p.id) : [],
+    [filteredPayments,canEditPayments,user?.supportReadOnly,listScope,accountPrefix]
   )
 
   const selectionSummary = receiptSelectionSummary(eligibleReceiptPayments,receiptSelectedIds,filteredPayments)
@@ -594,7 +535,8 @@ const PaymentsPage = () => {
       const response = await paymentsAPI.updatePaymentStatus(paymentId, status)
       if (response.success) {
         toast.success(`Cheque status updated to ${status}`)
-        fetchData()
+        setSelectedPaymentIds(ids => ids.filter(id => id !== paymentId))
+        fetchDataRef.current?.()
         // Trigger global update event to refresh customer balances
         window.dispatchEvent(new CustomEvent('dataUpdated'))
       } else {
@@ -613,7 +555,7 @@ const PaymentsPage = () => {
       return date.toLocaleDateString('en-GB', { 
         day: '2-digit', 
         month: '2-digit', 
-        year: 'numeric' 
+        year: 'numeric', timeZone: 'UTC'
       })
     } catch (error) {
       return dateString
@@ -635,10 +577,6 @@ const PaymentsPage = () => {
     if (state === 'RETURNED') return 'bg-red-100 text-red-800'
     if (state === 'PENDING') return 'bg-yellow-100 text-yellow-800'
     return 'bg-neutral-100 text-neutral-800'
-  }
-
-  if (loading) {
-    return <LoadingCard message="Loading payments..." />
   }
 
   return (
@@ -672,7 +610,7 @@ const PaymentsPage = () => {
         </div>
         <div className="mt-3 flex flex-nowrap items-center gap-2 sm:gap-3 lg:mt-0 lg:shrink-0">
           <button
-            onClick={() => fetchData()}
+            onClick={() => fetchDataRef.current?.()}
             aria-label="Refresh"
             title="Refresh"
             className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 sm:w-auto sm:px-4 sm:text-sm sm:font-medium"
@@ -682,7 +620,7 @@ const PaymentsPage = () => {
           </button>
           <button
             onClick={() => setShowBulkPaymentModal(true)}
-            disabled={submitting || Boolean(user?.supportReadOnly)}
+            disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
             className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md border border-neutral-300 bg-white px-3 text-sm font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50 sm:flex-none sm:px-4"
             title="Add multiple payments at once"
           >
@@ -690,7 +628,7 @@ const PaymentsPage = () => {
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            disabled={submitting || Boolean(user?.supportReadOnly)}
+            disabled={submitting || Boolean(user?.supportReadOnly) || listScope !== accountPrefix}
             className="inline-flex min-h-[44px] flex-1 items-center justify-center whitespace-nowrap rounded-md bg-primary-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-primary-700 disabled:opacity-50 sm:flex-none sm:px-4"
           >
             <Plus className="mr-2 h-4 w-4" aria-hidden />
@@ -700,36 +638,46 @@ const PaymentsPage = () => {
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-3 sm:p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Desktop: a bounded search (about 26rem), not the full toolbar width. */}
-          <div className="min-w-0 flex-1 sm:max-w-[26rem]">
+      <div className="rounded-lg border border-neutral-200 bg-white p-3 sm:p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-0 flex-[1_1_10rem] sm:max-w-[26rem]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
               <input
-                type="text"
-                placeholder="Search payments..."
+                type="search" aria-label="Search payments" maxLength={120}
+                placeholder="Invoice, customer or reference"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-neutral-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                onChange={(e) => { setSearchTerm(e.target.value); setPage(1) }}
+                className="min-h-[44px] w-full rounded-md border border-neutral-300 py-2 pl-10 pr-3 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500"
               />
             </div>
           </div>
-          <div className="flex space-x-3">
+          <button
+            type="button" aria-label="Payment date filters" aria-expanded={showDateFilters}
+            onClick={() => setShowDateFilters(value => !value)}
+            title={fromDate || toDate ? ('Payment dates: ' + (fromDate || 'any') + ' to ' + (toDate || 'any')) : 'Filter by payment date'}
+            className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-md border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+          >
+            <Filter className="h-4 w-4" /> Dates
+            {(fromDate || toDate) && <span className="h-2 w-2 rounded-full bg-primary-600" aria-label="Date range active" />}
+          </button>
+          <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
             <select
-              value={filterMethod}
-              onChange={(e) => setFilterMethod(e.target.value)}
-              className="w-32 px-3 py-2 border border-neutral-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              aria-label="Payment method" value={filterMethod}
+              onChange={(e) => { setFilterMethod(e.target.value); setPage(1) }}
+              className="min-h-[44px] min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm sm:w-32 sm:flex-none"
             >
               <option value="">All Methods</option>
               <option value="Cash">Cash</option>
               <option value="Cheque">Cheque</option>
               <option value="Online">Online</option>
+              <option value="Debit">Debit</option>
+              <option value="Credit">Credit</option>
             </select>
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-32 px-3 py-2 border border-neutral-300 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white"
+              aria-label="Payment status" value={filterStatus}
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1) }}
+              className="min-h-[44px] min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-2 text-sm sm:w-32 sm:flex-none"
             >
               <option value="">All Status</option>
               <option value="completed">Completed</option>
@@ -738,26 +686,63 @@ const PaymentsPage = () => {
               <option value="void">Voided</option>
               <option value="returned">Returned</option>
             </select>
-            {(filterMethod || filterStatus) && (
+            {(filterMethod || filterStatus || searchTerm || fromDate || toDate) && (
               <button
+                type="button" aria-label="Clear payment filters"
                 onClick={() => {
-                  setFilterMethod('')
-                  setFilterStatus('')
+                  setSearchTerm(''); setFilterMethod(''); setFilterStatus('')
+                  setFromDate(''); setToDate(''); setPage(1)
                 }}
-                className="inline-flex items-center px-4 py-2 border border-neutral-300 rounded-md shadow-sm text-sm font-medium text-neutral-700 bg-white hover:bg-neutral-50"
-              >
-                <Filter className="h-4 w-4 mr-2" />
-                Clear
-              </button>
+                className="min-h-[44px] shrink-0 rounded-md border border-neutral-300 px-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              >Clear</button>
             )}
           </div>
         </div>
+        {showDateFilters && (
+          <div role="group" aria-label="Payment date range" className="mt-3 border-t border-neutral-200 pt-3">
+            <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+              <label className="min-w-0 text-xs font-medium text-neutral-700">
+                From date
+                <input type="date" value={fromDate} aria-invalid={Boolean(dateRangeError)}
+                  onChange={(e) => { setFromDate(e.target.value); setPage(1) }}
+                  className="mt-1 min-h-[44px] w-full min-w-0 rounded-md border border-neutral-300 px-2 text-sm" />
+              </label>
+              <label className="min-w-0 text-xs font-medium text-neutral-700">
+                To date
+                <input type="date" value={toDate} aria-invalid={Boolean(dateRangeError)}
+                  onChange={(e) => { setToDate(e.target.value); setPage(1) }}
+                  className="mt-1 min-h-[44px] w-full min-w-0 rounded-md border border-neutral-300 px-2 text-sm" />
+              </label>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2 sm:flex">
+              <button type="button" onClick={() => {
+                const today = localDateString(); setFromDate(today); setToDate(today); setPage(1)
+              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">Today</button>
+              <button type="button" onClick={() => {
+                const now = new Date()
+                setFromDate(localDateString(new Date(now.getFullYear(), now.getMonth(), 1)))
+                setToDate(localDateString(new Date(now.getFullYear(), now.getMonth() + 1, 0)))
+                setPage(1)
+              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">This month</button>
+              <button type="button" onClick={() => {
+                setFromDate(''); setToDate(''); setPage(1)
+              }} className="min-h-[44px] rounded-md border border-neutral-300 px-2 text-xs font-medium hover:bg-neutral-50">All dates</button>
+            </div>
+          </div>
+        )}
+        {(fromDate || toDate) && <p className="mt-2 text-xs text-neutral-600">Payment date: {fromDate || 'Any date'} to {toDate || 'Any date'}</p>}
       </div>
+      {(dateRangeError || listError) && (
+        <div role="alert" className="rounded-lg border border-error/30 bg-error-bg p-3 text-sm text-error">
+          <p>{dateRangeError || listError}</p>
+          {!dateRangeError && <button type="button" onClick={fetchData} className="mt-2 min-h-[44px] font-medium underline">Try again</button>}
+        </div>
+      )}
 
       <p className="text-xs text-neutral-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
 
       {/* Payments Table - Desktop */}
-      <div className="hidden xl:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+      <div className={(dateRangeError || listError ? 'hidden' : 'hidden xl:block') + ' bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden'}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
@@ -799,7 +784,9 @@ const PaymentsPage = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-neutral-200">
-              {filteredPayments.length === 0 ? (
+              {loading || listScope !== accountPrefix ? (
+                <tr><td colSpan="9"><LoadingCard message="Loading payments..." /></td></tr>
+              ) : filteredPayments.length === 0 ? (
                 <tr>
                   <td colSpan="9" className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center">
@@ -954,12 +941,12 @@ const PaymentsPage = () => {
           setReceiptPreviewPaymentIds([])
           setSelectedPaymentIds([])
         }}
-        onSuccess={fetchData}
+        onSuccess={() => fetchDataRef.current?.()}
       />
 
       {/* Payments Cards - Mobile */}
-      <div className="xl:hidden space-y-3">
-        {filteredPayments.length === 0 ? (
+      <div className={(dateRangeError || listError ? 'hidden' : 'xl:hidden') + ' space-y-3'}>
+        {loading || listScope !== accountPrefix ? <LoadingCard message="Loading payments..." /> : filteredPayments.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
             <CreditCard className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
             <p className="text-neutral-500 text-lg font-medium">No payments found</p>
@@ -1062,6 +1049,22 @@ const PaymentsPage = () => {
           ))
         )}
       </div>
+
+      {!dateRangeError && !listError && (
+        <nav aria-label="Payment pagination" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3">
+          <p className="text-xs text-neutral-600">
+            {loading || listScope !== accountPrefix ? 'Loading payments...' : totalCount === 0 ? '0 matching payments' :
+              'Showing ' + ((page - 1) * 25 + 1) + '–' + Math.min(totalCount, (page - 1) * 25 + filteredPayments.length) + ' of ' + totalCount + ' matching payments'}
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={loading || listScope !== accountPrefix || page <= 1} onClick={() => setPage(value => value - 1)}
+              className="min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm disabled:opacity-40">Previous</button>
+            <span className="text-xs text-neutral-600">Page {page} of {totalPages}</span>
+            <button type="button" disabled={loading || listScope !== accountPrefix || page >= totalPages} onClick={() => setPage(value => value + 1)}
+              className="min-h-[44px] rounded-md border border-neutral-300 px-3 text-sm disabled:opacity-40">Next</button>
+          </div>
+        </nav>
+      )}
 
       {/* Add Payment Modal */}
       <Modal
@@ -1357,8 +1360,9 @@ const PaymentsPage = () => {
         allInvoices={[]}
         onClose={() => setEditingPayment(null)}
         onSaved={async () => {
+          setSelectedPaymentIds(ids => ids.filter(id => id !== editingPayment?.id))
           setEditingPayment(null)
-          await fetchData()
+          await fetchDataRef.current?.()
         }}
       />
 

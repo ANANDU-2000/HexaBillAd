@@ -101,3 +101,12 @@ export function toggleVisibleReceiptSelection(selectedIds, visibleIds) {
   if (visibleIds.every(id => selectedIds.includes(id))) return selectedIds.filter(id => !visibleIds.includes(id))
   return [...new Set([...selectedIds,...visibleIds])]
 }
+
+// Keep only selected rows from other pages; current server rows replace cached metadata.
+// The caller resets this in-memory collection whenever its authenticated scope changes.
+export function mergeSelectedPaymentRecords(previous, current, selectedIds) {
+  const selected = new Set(selectedIds)
+  const rows = new Map(previous.filter(row => selected.has(row.id)).map(row => [row.id, row]))
+  for (const row of current) rows.set(row.id, row)
+  return [...rows.values()]
+}

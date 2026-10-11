@@ -6,7 +6,7 @@ import {
   normalizePaymentForReceipt,
   paymentFromCustomerLedgerEntry,
   receiptIneligibilityReason,
-  paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection
+  paymentStatusLabel, receiptSelectionSummary, toggleVisibleReceiptSelection, mergeSelectedPaymentRecords
 } from '../src/utils/receiptEligibility.js'
 
 const payment = { id: 1, status: 'CLEARED', mode: 'CASH', amount: 1330 }
@@ -80,4 +80,20 @@ test('filtered receipt selection keeps hidden amounts and tests visible membersh
   assert.equal(receiptSelectionSummary(all,[1,3]).customerCount,2)
   assert.deepEqual(toggleVisibleReceiptSelection([1],[2]),[1,2])
   assert.deepEqual(toggleVisibleReceiptSelection([1,2],[2]),[1])
+})
+
+test('receipt selection preserves selected rows across pages without retaining unrelated previous rows', () => {
+  const previous = [payment, { ...payment, id: 2 }]
+  const current = [{ ...payment, id: 3, amount: 20 }]
+  const rows = mergeSelectedPaymentRecords(previous, current, [1])
+  assert.deepEqual(rows.map(row => row.id), [1, 3])
+  assert.equal(receiptSelectionSummary(rows, [1, 3], current).total, 1350)
+})
+
+test('fresh row metadata replaces selected cached amounts and removes newly ineligible selections', () => {
+  const rows = mergeSelectedPaymentRecords([payment], [{ ...payment, amount: 40, status: 'VOID' }], [1])
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0].amount, 40)
+  assert.deepEqual(currentReceiptSelection(rows, [1]), [])
+  assert.deepEqual(mergeSelectedPaymentRecords(rows, [], []), [])
 })

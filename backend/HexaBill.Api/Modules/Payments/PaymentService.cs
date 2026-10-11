@@ -23,7 +23,8 @@ namespace HexaBill.Api.Modules.Payments
     public interface IPaymentService
     {
         Task<bool> CheckDuplicatePaymentAsync(int tenantId, int customerId, decimal amount, DateTime paymentDate);
-        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null);
+        Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null,
+            DateTime? fromDate = null, DateTime? toDate = null, string? search = null, string? method = null, string? status = null);
         Task<PaymentDto?> GetPaymentByIdAsync(int id, int tenantId);
         Task<CreatePaymentResponse> CreatePaymentAsync(CreatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null);
         Task<bool> UpdatePaymentStatusAsync(int paymentId, PaymentStatus status, int userId, int tenantId);
@@ -211,10 +212,13 @@ namespace HexaBill.Api.Modules.Payments
             return exists;
         }
 
-        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null)
+        public async Task<PagedResponse<PaymentDto>> GetPaymentsAsync(int tenantId, int page = 1, int pageSize = 10, int? saleId = null, int? customerId = null,
+            DateTime? fromDate = null, DateTime? toDate = null, string? search = null, string? method = null, string? status = null)
         {
             if (page < 1 || pageSize < 1 || pageSize > 1000 || customerId < 0)
                 throw new ArgumentException("Use a valid page, customer and page size between 1 and 1000.");
+            if (fromDate.HasValue && toDate.HasValue && fromDate.Value.Date > toDate.Value.Date)
+                throw new ArgumentException("From date must be on or before To date.");
             var query = _context.Payments
                 .Where(p => p.TenantId == tenantId) // CRITICAL: Multi-tenant filter
                 .Include(p => p.Sale)
@@ -227,6 +231,47 @@ namespace HexaBill.Api.Modules.Payments
             if (customerId.HasValue)
                 query = customerId.Value == 0 ? query.Where(p => p.CustomerId == null)
                     : query.Where(p => p.CustomerId == customerId.Value);
+
+            // Payment dates use the stored UTC calendar date. Include the entire To day,
+            // and apply all filters before counting/paging so older matching rows remain reachable.
+            if (fromDate.HasValue)
+            {
+                var from = DateTime.SpecifyKind(fromDate.Value.Date, DateTimeKind.Utc);
+                query = query.Where(p => p.PaymentDate >= from);
+            }
+            if (toDate.HasValue && toDate.Value.Date < DateTime.MaxValue.Date)
+            {
+                var until = DateTime.SpecifyKind(toDate.Value.Date.AddDays(1), DateTimeKind.Utc);
+                query = query.Where(p => p.PaymentDate < until);
+            }
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLowerInvariant();
+                if (term.Length > 120) throw new ArgumentException("Payment search must be 120 characters or fewer.");
+                query = query.Where(p =>
+                    (p.Sale != null && p.Sale.InvoiceNo.ToLower().Contains(term)) ||
+                    (p.Customer != null && p.Customer.Name.ToLower().Contains(term)) ||
+                    (p.Reference != null && p.Reference.ToLower().Contains(term)));
+            }
+            if (!string.IsNullOrWhiteSpace(method))
+            {
+                if (!Enum.TryParse<PaymentMode>(method.Trim(), true, out var mode) || !Enum.IsDefined(mode))
+                    throw new ArgumentException("Choose a valid payment method.");
+                query = query.Where(p => p.Mode == mode);
+            }
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var state = status.Trim().ToUpperInvariant();
+                if (state == "CREDIT")
+                    query = query.Where(p => p.Mode == PaymentMode.CREDIT && p.Status == PaymentStatus.PENDING);
+                else
+                {
+                    if (state == "COMPLETED") state = "CLEARED";
+                    if (!Enum.TryParse<PaymentStatus>(state, true, out var paymentStatus) || !Enum.IsDefined(paymentStatus))
+                        throw new ArgumentException("Choose a valid payment status.");
+                    query = query.Where(p => p.Status == paymentStatus);
+                }
+            }
 
             var totalCount = await query.CountAsync();
             var payments = await query

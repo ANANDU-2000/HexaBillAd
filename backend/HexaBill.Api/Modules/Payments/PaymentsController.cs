@@ -78,12 +78,18 @@ namespace HexaBill.Api.Modules.Payments
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 10,
             [FromQuery] int? saleId = null,
-            [FromQuery] int? customerId = null)
+            [FromQuery] int? customerId = null,
+            [FromQuery] DateTime? fromDate = null,
+            [FromQuery] DateTime? toDate = null,
+            [FromQuery] string? search = null,
+            [FromQuery] string? method = null,
+            [FromQuery] string? status = null)
         {
             try
             {
                 var tenantId = CurrentTenantId; // CRITICAL: Multi-tenant data isolation
-                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize, saleId, customerId);
+                var result = await _paymentService.GetPaymentsAsync(tenantId, page, pageSize, saleId, customerId,
+                    fromDate, toDate, search, method, status);
                 return Ok(new ApiResponse<PagedResponse<PaymentDto>>
                 {
                     Success = true,
