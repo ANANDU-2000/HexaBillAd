@@ -362,3 +362,8 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `e2e/invoice-pdf.spec.js` (new, API only). No application code changed.
 - **Commands and results:** d1440 → 1 passed. Text extracted with `pdftotext`; company name, 15-digit TRN and invoice number present.
 - **Next task:** VR-02 (VAT other period), AG-04, Customers CRUD, Routes and Inventory modules.
+
+### 2026-10-11 — Checkpoint 41: VAT return other periods (VR-03 PASS)
+- **Changed:** `e2e/vat-return.spec.js` (refactored; 4 new tests). No application code changed.
+- **Commands and results:** m360, t768, d1440 → 5 passed each (15). Empty quarter, full year, snap to quarter, refusal of a window spanning quarters.
+- **Next task:** VAT/Reports export files (VR-02, AG-03), Customers CRUD, Routes and Inventory modules, ST-04.
