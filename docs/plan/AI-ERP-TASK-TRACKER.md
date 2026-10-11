@@ -244,3 +244,8 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `components/StockAdjustmentModal.jsx` (removed the native `required` on the reason; the app's message shows). `e2e/stock-adjust.spec.js` (new).
 - **Commands and results:** `npx playwright test e2e/stock-adjust.spec.js` at d1440 (1 passed), m360 and t768 (2 passed). `npx vite build` → exit 0.
 - **Next task:** Product price list and categories (PR-03), then POS checkout with API read-back.
+
+### 2026-10-11 — Checkpoint 20: POS checkout total matches the stored sale (PS-01 PASS; PS-02 NOT TESTED)
+- **Changed:** `e2e/pos-checkout.spec.js` (new). No application code changed.
+- **Commands and results:** `npx playwright test e2e/pos-checkout.spec.js` at m360, t768 (2 passed), d1440 (1 passed).
+- **Next task:** POS stock after sale and duplicate-save protection (PS-02), then credit sale and payment.

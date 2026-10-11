@@ -314,3 +314,13 @@ Create uses the `Add product` form (`components/ProductForm.jsx`, named fields).
 | ↳ fix | | `StockAdjustmentModal.jsx`. The test checks the message, and that no adjust-stock request was sent. | | `stock-adjust.spec.js` (m360, t768, d1440: 3 passed in total on the last run) | |
 | SA-02 | P1 | Stock adjustments were not confirmed against the database, or in the history. | — | `e2e/stock-adjust.spec.js`: create a product through the API, add 5 with a reason (server stock 5), remove 2 with a reason (server stock 3), then both reasons appear on the stock history page. | PASS |
 | ↳ not tested | | Negative stock beyond zero, adjustments on several branches, stock alerts below reorder level, and the history filters. | | — | NOT TESTED |
+
+### POS checkout (`/pos`, `features/sales/pos/PosEnterprisePage.jsx`)
+
+Layouts: wide layouts (desktop and tablet here) use `Add Row` (opens the product drawer) and `Save Invoice`. Phones use `Add Product to Bill` (same drawer) and `Checkout`, then `Save & Generate Invoice` in the payment sheet. The product drawer lists each product as a button (name, price, stock). Saving posts to `/api/sales` with an external reference for duplicate protection.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| PS-01 | P1 | POS checkout was not verified against the database. The total on the cashier's screen was never compared with the stored sale. | — | `e2e/pos-checkout.spec.js`: open the product drawer, pick a product, read the grand total from the screen, save, then read the sale by id from the API and compare totals. | PASS |
+| ↳ fix | | Test only. Passes at 360 (phone path), 768 (wide path on tablet) and 1440 (wide path). | | `pos-checkout.spec.js` (m360, t768, d1440 passed) | |
+| PS-02 | — | Not tested: cart quantity changes, discounts, customer selection (credit sales), payment split, cash drawer effects, returns, hold and resume, invoice print, delivery note, duplicate-save protection (double click), stock reduction after a sale, and the saved invoice in Billing History. | — | Next POS checks: stock after sale and duplicate-save protection; then credit sale and payment. | NOT TESTED |
