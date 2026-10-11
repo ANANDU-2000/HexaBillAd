@@ -11,13 +11,15 @@ module.exports = {
       },
       fontSize: {
         // Mirrors --h*-size in src/styles/tokens.css.
+        // text-xs is pinned to 12px: the 14px desktop root would make it 10.5px, below the smallest permitted size (UX-S06).
+        'xs': ['12px', { lineHeight: '1rem' }],
         'display': ['28px', { lineHeight: '1.2' }],
         'h1': ['24px', { lineHeight: '1.2' }],
         'h2': ['20px', { lineHeight: '1.25' }],
         'h3': ['16px', { lineHeight: '1.3' }],
         'body': ['14px', { lineHeight: '1.5' }],
         'caption': ['12px', { lineHeight: '1.4' }],
-        'micro': ['11px', { lineHeight: '1.3' }], // smallest permitted size (--micro-size)
+        'micro': ['12px', { lineHeight: '1.3' }], // smallest permitted size (--micro-size)
       },
       zIndex: {
         // Mirrors --z-* in tokens.css.

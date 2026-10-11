@@ -126,7 +126,7 @@
   --meta-size: 12px;
   --meta-weight: 400;
   --meta-line: 1.4;
-  --micro-size: 11px;     /* smallest permitted: bottom-nav labels, kbd hints */
+  --micro-size: 12px;     /* smallest permitted: bottom-nav labels, kbd hints */
 
   /* ---------- Neutrals ---------- */
   --color-neutral-50: #fafafa;

@@ -307,3 +307,8 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `Layout.jsx` (brand name wraps, up to three lines). `PosEnterprisePage.jsx` (Hold and Repeat neutral). `e2e/sidebar-name.spec.js` (new).
 - **Commands and results:** `sidebar-name.spec.js` d1024 and d1440 → 2 passed (the first try at two lines failed: the 47-character name needs three). POS specs d1440 and m360 → 6 passed.
 - **Next task:** UX-S06 (small text), PU-09, DC-05, then UX-S03/S04.
+
+### 2026-10-11 — Checkpoint 31: Smallest row text is 12px (UX-S06 PASS)
+- **Changed:** `tailwind.config.js` (`xs` 12px, `micro` 12px), `src/styles/tokens.css` (`--micro-size` 12px).
+- **Commands and results:** `ux-audit.spec.js` m360, t768, d1440 → 33 passed; smallest in-row font 12 everywhere (was 10.5 on desktop). List specs → 21 passed, 1 local 429 (passed alone).
+- **Next task:** PU-09 (purchases header wrap), DC-05, then UX-S03/S04 and the NOT TESTED rows.
