@@ -23,7 +23,7 @@ Backend tests are built with `--artifacts-path "$TEMP/hb-artifacts"` because a d
 3. LIVE-05 Daily close: owner decision to enable the `daily_close` flag for tenant 22 after staging check.
 4. Remaining logo sizes in the non-bilingual headers (`PdfService.cs` lines near 288, 691, 1309, 1799, 1961, 3126, 3344, 3510).
 5. P0 items awaiting the approved defaults in the goal: ST-01 staff disable, RP-04/PY-09 staff API permissions, AG-02 aging cutoff, PS-05 cash default.
-6. Release gate: nothing is deployed from these commits. Needs owner go/no-go.
+6. Release gate: commits above were deployed on owner approval (see Release record). Anything after `c9dc5e6` still needs a fresh go/no-go.
 
 ## Next exact action
 Find the active production storage provider for tenant logos and expense attachments (read-only config check) and write a failing test for "logo survives a restart".
