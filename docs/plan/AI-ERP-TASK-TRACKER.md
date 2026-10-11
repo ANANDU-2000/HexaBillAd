@@ -271,3 +271,10 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/vat-return.spec.js --project=m360 --project=t768 --project=d1440` → 3 passed (before the fix Box 1a showed 0.00 against 2815.67). `npx vite build` → exit 0. `npx eslint src/services/api.js` → 0 errors; the 2 warnings (unused `MAX_CONCURRENT_REQUESTS` and `url`) are on lines this change does not touch.
 - **Scope check:** the only API properties with a digit followed by a lowercase letter are the five VAT boxes (`DTOs.cs`, `VatReturnPeriod.cs`). No frontend code reads the old `box1A` or `box13B` spelling.
 - **Next task:** Reports read checks (aging and summary figures against the API), then a second VAT period with data.
+
+### 2026-10-11 — Checkpoint 25: Aging cards keep the API bucket keys (AG-01 P1 fixed; AG-02 OPEN, owner decision)
+- **Changed:** `frontend/hexabill-ui/src/services/api.js`: the response key converter also keeps keys with an underscore before a digit (`bucket0_30`, `bucket31_60`, `bucket61_90`). `frontend/hexabill-ui/e2e/reports-aging.spec.js` (new, two tests). No backend change.
+- **Commands and results:** `npx playwright test e2e/reports-aging.spec.js` at m360, t768, d1440 → 6 passed. Mutation check with the previous rule: "0-30 Days amount on screen: Expected 2283.2, Received 0", so the test catches the defect. `npx playwright test e2e/reports-aging.spec.js e2e/vat-return.spec.js --project=d1440` on the final code → 3 passed. `npx vite build` → exit 0.
+- **Scope check:** the only API keys the frontend reads that contain a digit next to a letter or underscore are the aging buckets and the VAT boxes. The backend DTOs with that shape are `Bucket0_30`, `Bucket31_60`, `Bucket61_90` (`DTOs.cs`) and the five VAT boxes.
+- **Decision needed (OPEN):** AG-02. Historical aging counts invoices dated after the as-of date (27 invoices in 0-30 for 2026-06-30). It changes a financial formula, so it is not implemented here.
+- **Next task:** Reports summary cards and the Sales tab totals against the API, the same check as the VAT return.

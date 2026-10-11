@@ -658,9 +658,9 @@ const transformResponseKeys = (obj) => {
   if (obj == null) return obj
   if (Array.isArray(obj)) return obj.map(transformResponseKeys)
   if (typeof obj === 'object' && obj.constructor === Object) {
-    // Keys with a digit followed by a lowercase letter (box1a, box13b) keep their spelling: camelcase
-    // would turn them into box1A and box13B, and the VAT return boxes then read as 0.00 (VAT-01).
-    return camelcaseKeys(obj, { deep: true, exclude: [/\d[a-z]/] })
+    // Keys such as box1a and bucket0_30 keep the spelling the API sends: camelcase would turn them into box1A
+    // (VAT-01) and bucket030 (AG-01), and the figures then read as 0.00. Other keys still convert.
+    return camelcaseKeys(obj, { deep: true, exclude: [/\d[a-z]/, /_\d/] })
   }
   return obj
 }
