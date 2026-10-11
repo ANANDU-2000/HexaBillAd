@@ -302,3 +302,8 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/reports-sales.spec.js` at m360, t768, d1440 → 6 passed, twice.
 - **Choice made:** option A (loop pages) with a cap, chosen by the agent when the owner asked to finish all items.
 - **Next task:** pending UX tracker items in order (UX-S08, UX-S07, UX-S06, PU-09, DC-05, then the NOT TESTED rows).
+
+### 2026-10-11 — Checkpoint 30: Sidebar brand name and POS toolbar colours (UX-S08, UX-S07 PASS)
+- **Changed:** `Layout.jsx` (brand name wraps, up to three lines). `PosEnterprisePage.jsx` (Hold and Repeat neutral). `e2e/sidebar-name.spec.js` (new).
+- **Commands and results:** `sidebar-name.spec.js` d1024 and d1440 → 2 passed (the first try at two lines failed: the 47-character name needs three). POS specs d1440 and m360 → 6 passed.
+- **Next task:** UX-S06 (small text), PU-09, DC-05, then UX-S03/S04.

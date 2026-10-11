@@ -389,7 +389,7 @@ const Layout = () => {
             <Link to="/dashboard" className={`flex min-w-0 items-center gap-2 rounded-md ${labelsVisible ? 'pl-1' : ''}`} title={companyName} aria-label={`${companyName} — dashboard`}>
               <Logo size="small" showText={false} className="!space-x-0" />
               {labelsVisible && (
-                <span className="truncate text-sm font-semibold leading-tight text-white">{companyName}</span>
+                <span className="line-clamp-3 break-words text-sm font-semibold leading-tight text-white">{companyName}</span>
               )}
             </Link>
             <button

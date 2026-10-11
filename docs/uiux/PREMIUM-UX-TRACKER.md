@@ -262,8 +262,10 @@ Baseline (Checkpoint 5): 360px first record 295 px (37%), row 136 px with 1 butt
 | UX-S05 | P2 | No quick-create. The Sale pill is the only create shortcut, and `QuickActionsPanel.jsx` is dead code. | code | One role-filtered `+` action sheet (Invoice, POS, Purchase, Expense, Receive payment, Customer, Product). | PASS |
 | ↳ fix | | `components/QuickCreate.jsx`: phone sheet from bottom-nav **+ New**, top-bar **New** menu from 768px. Role-filtered (`getQuickCreateActions`, same rule as routing; server still authorizes). Create forms open via `?new=1` (`hooks/useCreateIntent.js`) on Customers, Expenses, Products, Purchases. Receive payment → Customer Ledger; Pay supplier → Suppliers (both need a counterparty first). | `tests/quickCreate.test.js` (staff filtering), e2e deep links ×3 routes | | |
 | UX-S06 | P3 | Smallest text in rows is 10.5px on desktop and 11px in phone expense/ledger rows. | jsonl `minFontInRows` | Secondary text at least 12px on phone and 12px on desktop, at token contrast. | TODO |
-| UX-S07 | P2 | The POS toolbar uses one-off brown, purple and grey icon buttons. | `audit-pos-m360.png` | Use the token button variants. | TODO |
-| UX-S08 | P3 | The desktop sidebar truncates the tenant name ("GULF HARVEST G…"). | `audit-customers-d1440.png` | Two-line name or a short brand name from tenant settings. | TODO |
+| UX-S07 | P2 | The POS toolbar uses one-off brown, purple and grey icon buttons. | `audit-pos-m360.png` | Use the token button variants. | PASS |
+| ↳ fix | | `PosEnterprisePage.jsx`: Hold and Repeat use the same translucent secondary style as New; Resume stays green only when invoices are held (meaningful state). | | `pos-checkout` and `pos-stock-duplicate` specs (d1440, m360: 6 passed) | |
+| UX-S08 | P3 | The desktop sidebar truncates the tenant name ("GULF HARVEST G…"). | `audit-customers-d1440.png` | Two-line name or a short brand name from tenant settings. | PASS |
+| ↳ fix | | `Layout.jsx`: the brand name wraps up to three lines (`line-clamp-3`) and keeps the full name in `title`. | | `e2e/sidebar-name.spec.js` (d1024, d1440 passed; skipped on phones, no sidebar) | |
 
 ## Checks that passed
 

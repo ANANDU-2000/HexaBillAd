@@ -2335,7 +2335,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={handleHold}
             disabled={isFormDisabled || cart.filter(i => i.productId && (Number(i.qty) > 0)).length === 0}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-warning text-white rounded-md hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Hold (F6)"
           >
             <Bookmark className="h-3.5 w-3.5" />
@@ -2358,7 +2358,7 @@ const PosEnterprisePage = () => {
           <button
             onClick={handleRepeatLastInvoice}
             disabled={isFormDisabled || loadingSale}
-            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-violet-600 text-white rounded-md hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
+            className="h-9 px-2 sm:px-2.5 text-xs font-medium bg-white/15 text-white border border-white/30 rounded-md hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1"
             title="Repeat last invoice"
           >
             <RefreshCw className="h-3.5 w-3.5" />
