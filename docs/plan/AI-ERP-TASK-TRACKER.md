@@ -218,3 +218,9 @@ STOP HERE — do not begin next phase automatically.
 - **Finding:** the client retries a keyed payment POST once on its own; a pause is visible only if that retry also fails. No duplicates were created.
 - **Next task:** reload-during-pause and cheque validation for bulk payments (BP-05), then Daily close close and reopen (DC-06).
 
+### 2026-10-11 — Checkpoint 15: Daily close close and reopen (DC-06 PARTIAL, both paths PASS)
+- **Changed:** `e2e/daily-close-close.spec.js` (new, two tests). No application code changed.
+- **Commands and results:** `npx playwright test e2e/daily-close-close.spec.js` at m360, t768 (4 passed in total), d1440 (passed).
+- **Finding:** a day with cash paid out and no opening cash has negative expected drawer cash (-1,597.50 on 2026-10-10). The close form cannot record a negative count, so the test sets opening cash first. Whether the page should ask for opening cash before showing expected cash is a product question, not changed here.
+- **Next task:** Suppliers supplier edit and statement (SU-07), then Receipts print window and legacy flag (RC-05).
+
