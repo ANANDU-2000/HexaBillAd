@@ -54,7 +54,7 @@ test('cheque: pending keeps the balance, cleared reduces it by the amount, void 
     // Clear it from the row.
     await page.reload({ waitUntil: 'networkidle' })
     // The smallest element that holds this reference and a Mark cleared button: a table row or a phone card.
-    const row = page.locator('tr, div').filter({ hasText: reference }).filter({ has: page.getByRole('button', { name: 'Mark cleared' }) }).last()
+    const row = page.locator('tr, div').filter({ hasText: reference }).filter({ has: page.getByRole('button', { name: 'Mark cleared' }) }).filter({ visible: true }).last()
     const cleared = page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/payments\/\d+\/status$/.test(r.url()))
     await row.getByRole('button', { name: 'Mark cleared' }).filter({ visible: true }).first().click()
     expect((await cleared).status()).toBeLessThan(300)

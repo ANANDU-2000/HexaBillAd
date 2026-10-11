@@ -61,7 +61,9 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   // EDIT: lower the amount by 10% and set a reference. The update is confirmed through the API.
   const editedAmount = Math.floor(amount * 90) / 100
   const reference = `UX-EDIT-${Date.now()}`
-  await page.locator('[title="Edit Payment"], [title="Edit"]').filter({ visible: true }).first().click()
+  // The row for this payment (found by its unique amount): other payments dated today may sit above it.
+  const rowFor = (amt) => page.locator('tr, div').filter({ hasText: amt.toFixed(2) }).filter({ has: page.locator('[title="Edit Payment"], [title="Edit"], [aria-label="Void payment"], [title="Void payment"]') }).filter({ visible: true }).last()
+  await rowFor(amount).locator('[title="Edit Payment"], [title="Edit"]').filter({ visible: true }).first().click()
   const editDialog = page.getByRole('dialog').first()
   await expect(editDialog).toBeVisible()
   await editDialog.locator('label', { hasText: 'Amount *' }).locator('xpath=following-sibling::input[1]').fill(editedAmount.toFixed(2))
@@ -79,7 +81,7 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   await expect(page.locator('main').getByText(editedAmount.toFixed(2)).filter({ visible: true }).first()).toBeVisible()
 
   // Void (the list's delete action is a void with a reason, not a hard delete).
-  await page.getByRole('button', { name: 'Void payment' }).filter({ visible: true }).first().click()
+  await rowFor(editedAmount).getByRole('button', { name: 'Void payment' }).filter({ visible: true }).first().click()
   const confirm = page.getByRole('dialog').first()
   await expect(confirm).toBeVisible()
   const voided = page.waitForResponse((r) => r.request().method() !== 'GET' && /\/api\/payments\//.test(r.url()))

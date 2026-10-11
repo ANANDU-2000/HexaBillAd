@@ -665,12 +665,12 @@ const PaymentsPage = () => {
         <p>Saved bulk payments: {savedBatch.rows.filter(row => row.confirmed).length} of {savedBatch.rows.length} confirmed. Remaining payments retain their original amounts and keys.</p>
         <button type="button" disabled={submitting} onClick={() => setShowBulkPaymentModal(true)} className="mt-2 min-h-[44px] rounded border border-amber-400 px-3 font-medium">Resume bulk payments</button>
       </div>}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between lg:gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold text-neutral-900">Payments</h1>
           <p className="text-sm text-neutral-600 sm:text-base">Manage customer payments and cheque status. Customer balance reflects cleared payments only; mark cheques as cleared when they clear.</p>
         </div>
-        <div className="mt-3 flex flex-nowrap items-center gap-2 sm:mt-0 sm:gap-3">
+        <div className="mt-3 flex flex-nowrap items-center gap-2 sm:gap-3 lg:mt-0 lg:shrink-0">
           <button
             onClick={() => fetchData()}
             aria-label="Refresh"
@@ -757,7 +757,7 @@ const PaymentsPage = () => {
       <p className="text-xs text-neutral-600 px-1">Receipts are for cleared incoming payments only (cash, cheque, online, debit).</p>
 
       {/* Payments Table - Desktop */}
-      <div className="hidden md:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+      <div className="hidden xl:block bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
@@ -958,7 +958,7 @@ const PaymentsPage = () => {
       />
 
       {/* Payments Cards - Mobile */}
-      <div className="md:hidden space-y-3">
+      <div className="xl:hidden space-y-3">
         {filteredPayments.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-neutral-200 p-8 text-center">
             <CreditCard className="h-12 w-12 text-neutral-400 mx-auto mb-4" />
