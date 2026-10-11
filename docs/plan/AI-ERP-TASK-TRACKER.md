@@ -265,3 +265,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `SettingsPage.jsx` (header Save Changes connected to the settings form). `e2e/settings-company.spec.js` (new, two tests).
 - **Commands and results:** `npx playwright test e2e/settings-company.spec.js` at d1440 (2 passed), m360 and t768 (4 passed). `npx vite build` → exit 0.
 - **Next task:** printed invoice header uses the saved company name and TRN (SE-03), then the other settings tabs.
+
+### 2026-10-11 — Checkpoint 24: VAT return draft boxes (VR-01 P1 fixed; VR-02 NOT TESTED)
+- **Changed:** `frontend/hexabill-ui/src/services/api.js` (the response key converter keeps keys with a digit followed by a lowercase letter as the API sends them: `box1a`, `box1b`, `box9b`, `box13a`, `box13b`). `frontend/hexabill-ui/e2e/vat-return.spec.js` (new). No backend change.
+- **Commands and results:** `npx playwright test e2e/vat-return.spec.js --project=m360 --project=t768 --project=d1440` → 3 passed (before the fix Box 1a showed 0.00 against 2815.67). `npx vite build` → exit 0. `npx eslint src/services/api.js` → 0 errors; the 2 warnings (unused `MAX_CONCURRENT_REQUESTS` and `url`) are on lines this change does not touch.
+- **Scope check:** the only API properties with a digit followed by a lowercase letter are the five VAT boxes (`DTOs.cs`, `VatReturnPeriod.cs`). No frontend code reads the old `box1A` or `box13B` spelling.
+- **Next task:** Reports read checks (aging and summary figures against the API), then a second VAT period with data.

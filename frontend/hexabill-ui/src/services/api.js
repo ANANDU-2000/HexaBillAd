@@ -658,7 +658,9 @@ const transformResponseKeys = (obj) => {
   if (obj == null) return obj
   if (Array.isArray(obj)) return obj.map(transformResponseKeys)
   if (typeof obj === 'object' && obj.constructor === Object) {
-    return camelcaseKeys(obj, { deep: true })
+    // Keys with a digit followed by a lowercase letter (box1a, box13b) keep their spelling: camelcase
+    // would turn them into box1A and box13B, and the VAT return boxes then read as 0.00 (VAT-01).
+    return camelcaseKeys(obj, { deep: true, exclude: [/\d[a-z]/] })
   }
   return obj
 }

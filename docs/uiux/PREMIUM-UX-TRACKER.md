@@ -350,3 +350,13 @@ Company tab: company name (English, Arabic), VAT TRN (15 digits), corporate tax 
 | SE-02 | P2 | VAT TRN validation was not verified: a value that is not 15 digits must be refused next to the field, with no request sent. | — | Enter 12345 → Save Settings → message "VAT TRN must contain exactly 15 digits" next to the field, no PUT, stored TRN unchanged. | PASS |
 | ↳ fix | | Test only. `settings-company.spec.js` "VAT TRN: a value that is not 15 digits is refused…" (m360, t768, d1440 passed). | | | |
 | SE-03 | — | Not tested: the other settings tabs (billing, email, notifications, backup), the Arabic company name round trip, logo upload, invoice header style, and whether a saved company name appears on printed documents. | — | Next: printed document header check with the saved company name (print PDF of an invoice), then the other tabs. | NOT TESTED |
+
+### VAT return (`/vat-return`, `features/reports/VatReturnPage.jsx`)
+
+The draft return ("Return boxes (draft — not FTA mapping)") comes from `GET /api/reports/vat-return?from&to`. The page reads each box by its API name (`box1a`, `box1b`, `box9b`, `box13a`, `box13b`, and so on).
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| VR-01 | P1 | The draft boxes showed 0.00 for Box 1a, 1b, 9b, 13a and 13b while the API returned the real figures (Box 1a: 2815.67 from the API, 0.00 on the screen). The response converter camel-cased `box1a` to `box1A`, so the page found no value under the name it reads. | `vat-return.spec.js` failed before the fix (Box 1a: 0.00 vs 2815.67). Cause: `services/api.js` `transformResponseKeys` ran `camelcaseKeys` with no exclusion. Only these five properties in the API have a digit followed by a lowercase letter (`DTOs.cs`, `VatReturnPeriod.cs`). | Keep keys that have a digit followed by a lowercase letter as the API sends them (`exclude: [/\d[a-z]/]`). Every other key still converts. | PASS |
+| ↳ fix | | `services/api.js`: the exclusion applies only to those keys. Checked: no frontend code reads the old `box1A` or `box13B` spelling. | | `vat-return.spec.js` "draft boxes on screen equal the backend figures for the same period" (m360, t768, d1440: 3 passed) | |
+| VR-02 | — | Not tested: other periods (only the suggested period is checked), a period with no data, VAT figures on the Reports pages, any export or print of the return, and FTA mapping (the page labels the draft as not FTA mapping). | — | Next: a second period with data and a period with no data. Filing and FTA mapping stay out of scope until the owner asks for them. | NOT TESTED |
