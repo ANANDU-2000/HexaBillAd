@@ -391,4 +391,7 @@ The tab loads `GET /api/reports/sales` for the page's date range, page 1 only, w
 | ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
 |---|---|---|---|---|---|
 | SL-01 | P2 | The Sales tab shows at most the first 100 invoices of the range. The response has `totalCount`, but the tab never reads it, so a range with more than 100 invoices shows incomplete charts and an incomplete list, with no warning. The summary cards are not affected (they come from the summary API). | `ReportsPage.jsx` Sales load (`page: 1`, `pageSize: 100`, `salesData = salesResponse.data.items`); charts use `reportData.sales` (around lines 1539 and 1586). Not reproduced on this tenant: the range has 38 invoices. | Fetch every page (or show "Showing 100 of N" with paging) and make the charts use the full set. Decide which first, since it changes the tab's data flow. | OPEN |
-| SL-02 | — | Not tested: the Sales tab rows and charts for ranges with 100 invoices or fewer, against the API, the invoice list layout on phones, and the status filter. | — | Next: compare the rows with the API for the page range (38 invoices here). | NOT TESTED |
+| SL-02 | P2 | The Sales Details table had not been compared with the API. | — | `reports-sales.spec.js`: the table has one row per invoice the API returns for the range (38 here), and each row's total and paid amount equal the API's. | PASS |
+| ↳ not tested | | The Sales tab charts, the status and customer filters, and the phone layout beyond the horizontal scroll. | | — | NOT TESTED |
+
+- Test added with SL-02: `reports-sales.spec.js` (m360, t768, d1440: 3 passed). It fails if a range holds more than 100 invoices, until SL-01 is decided.

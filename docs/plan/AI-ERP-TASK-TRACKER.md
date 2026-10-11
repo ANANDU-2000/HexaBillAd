@@ -290,3 +290,9 @@ STOP HERE — do not begin next phase automatically.
 - **Evidence:** `ReportsPage.jsx` loads page 1 with `pageSize: 100` and never reads `totalCount`; the API reports 38 invoices for the page's range, so the truncation does not show on this tenant.
 - **Decision needed:** how the Sales tab should load a large range (all pages, or paging in the tab). It changes the tab's data flow, so it is not changed here.
 - **Next task:** Sales tab rows and charts against the API for the 38 invoices (SL-02).
+
+### 2026-10-11 — Checkpoint 28: Reports Sales table matches the API (SL-02 PASS; SL-01 OPEN, design decision)
+- **Changed:** `frontend/hexabill-ui/e2e/reports-sales.spec.js` (new, one test). No application code changed.
+- **Commands and results:** `npx playwright test e2e/reports-sales.spec.js` at m360, t768, d1440 → 3 passed. The table has 38 rows, one per API invoice, and each total and paid amount matches.
+- **Decision needed (SL-01):** how the Sales tab loads a range with more than 100 invoices (all pages, server-side totals with paging, or a visible "showing 100 of N"). Not implemented without that decision.
+- **Next task:** Reports Product Analysis totals against the API, then the staff view of the summary (RP-03).
