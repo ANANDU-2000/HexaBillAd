@@ -323,3 +323,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `single-scroll.spec.js` m360, t768, d1440 → 3 passed. UX-S04 baseline counted by grep (948 raw buttons in 98 files; shared 25/34/13/29). UX-E01 re-measured at 48% at 360px.
 - **Decision needed:** UX-E01 summary card placement (48% visible vs about 35% behind Filters). UX-S04 bulk migration is deferred by design.
 - **Next task:** NOT TESTED rows in tracker order: DC rest, PY-06 rest, PS-03, AU-02, PR-03, SE-03, then Reports rows.
+
+### 2026-10-11 — Checkpoint 34: Daily close capital and transfer movements (DC-07 PASS; DC-08 OPEN, P3)
+- **Changed:** `e2e/daily-close-movements.spec.js` (new). No application code changed.
+- **Commands and results:** m360, t768, d1440 → 1 passed each. Expected cash on the server and on the screen moves +25 then -5 and returns after both removals.
+- **Found:** Remove stays clickable while a delete runs, so a double click gives a 400 (DC-08).
+- **Next task:** DC-08 fix, then PY-06 rest (bulk cheques, allocations), PS-03, AU-02.
