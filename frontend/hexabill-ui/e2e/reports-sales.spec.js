@@ -75,4 +75,3 @@ test('Sales: a range with several pages lists every invoice', async ({ page }) =
   expect([...new Set(calls)].sort((a, b) => a - b)).toEqual([1, 2, 3])
   await expect(page.getByText(/Showing the first/)).toHaveCount(0)
 })
-

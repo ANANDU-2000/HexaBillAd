@@ -1,4 +1,3 @@
-/* global process */
 // UX Phase 1 audit: measures (does not change) the four priority list pages plus
 // POS and the add-expense form. Local/dev tenants only.
 // Run: npx playwright test e2e/ux-audit.spec.js --project=m360 --project=m390 --project=t768 --project=d1440
