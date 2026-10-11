@@ -27,7 +27,7 @@ test('payments: a staff login cannot open Payments or edit or delete a payment',
   const password = `UxPayRole-${stamp}-Pass!`
   const created = await ownerApi('/api/users', { method: 'POST', body: JSON.stringify({ name: `UX Pay ${stamp}`, email, password, role: 'Staff', phone: null }) })
   expect(created.status, `create staff: ${JSON.stringify(created.json).slice(0, 160)}`).toBeLessThan(300)
-  const id = created.json.data?.id ?? created.json.data?.Id
+  const id = created.json.data?.userId ?? created.json.data?.id ?? created.json.data?.Id
   try {
     const login = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...HOST }, body: JSON.stringify({ email, password }) })
     expect(login.status).toBe(200)

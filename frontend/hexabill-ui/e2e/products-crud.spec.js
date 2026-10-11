@@ -33,9 +33,19 @@ async function productBySku (sku) {
   return list.find((p) => p.sku === sku) || null
 }
 
+// Leave no active test product behind if a step fails (they crowd the POS product drawer).
+let createdSku = null
+test.afterEach(async () => {
+  if (!createdSku) return
+  const p = await productBySku(createdSku)
+  if (p && p.isActive !== false) await api(`/api/products/${p.id}`, { method: 'DELETE' })
+  createdSku = null
+})
+
 test('product: create -> persisted -> refresh -> edit price -> persisted -> deactivate (typed confirmation)', async ({ page }, info) => {
   const stamp = Date.now()
   const sku = `UX-SKU-${stamp}`
+  createdSku = sku
   const name = `UX Product ${stamp}`
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })

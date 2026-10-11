@@ -7,7 +7,7 @@
 // Screenshots land in e2e/.shots for review.
 import fs from 'node:fs'
 import { test, expect } from '@playwright/test'
-import { TENANTS, ownerPassword, signIn, feOrigin } from './session.js'
+import { TENANTS, ownerPassword, signIn, feOrigin, apiLogin } from './session.js'
 
 const ROUTES = [
   '/dashboard', '/pos', '/billing-history', '/sales-ledger', '/ledger', '/payments', '/purchases', '/expenses',
@@ -39,8 +39,18 @@ async function loadWithoutRateLimit (page, url, onAttempt) {
 
 for (const slug of TENANTS) {
   test.describe(slug, () => {
+    // Sign in once per tenant. If it fails (wrong local password), report it in one test and skip the routes:
+    // failing every route would send one bad login each and lock the owner account after five (15-minute lockout).
+    let loginProblem = null
+    test.beforeAll(async () => {
+      try { await apiLogin(slug) } catch (e) { loginProblem = e.message }
+    })
+    test('owner can sign in', () => {
+      expect(loginProblem, `${slug} owner sign-in`).toBeNull()
+    })
     for (const route of ROUTES) {
       test(`${route}`, async ({ page }, info) => {
+        test.skip(Boolean(loginProblem), `sign-in failed for ${slug}: ${loginProblem}`)
         test.setTimeout(150_000)
         const errors = []
         const serverErrors = []

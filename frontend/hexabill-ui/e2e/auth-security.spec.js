@@ -29,7 +29,7 @@ test('five wrong passwords lock the account, and the right password is then refu
   const password = `UxLock-${stamp}-Pass!`
   const created = await ownerApi('/api/users', { method: 'POST', body: JSON.stringify({ name: `UX Lock ${stamp}`, email, password, role: 'Staff', phone: null }) })
   expect(created.status, `create staff: ${JSON.stringify(created.json).slice(0, 160)}`).toBeLessThan(300)
-  const id = created.json.data?.id ?? created.json.data?.Id
+  const id = created.json.data?.userId ?? created.json.data?.id ?? created.json.data?.Id
   try {
     expect((await login(SLUG, email, password)).status, 'the right password works first').toBe(200)
     for (let n = 1; n <= 5; n += 1) {

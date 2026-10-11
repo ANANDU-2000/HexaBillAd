@@ -28,7 +28,7 @@ const items = (json) => json.data?.items || json.data?.Items || json.data || []
 async function removeLeftoverTestStaff () {
   const list = items((await api('/api/users?page=1&pageSize=200')).json)
   for (const u of list) {
-    if (/^UX (Staff|Role)/.test(u.name || '') && u.role?.toLowerCase() === 'staff') {
+    if (/^UX (Staff|Role|Pay|Lock)/.test(u.name || '') && u.role?.toLowerCase() === 'staff') {
       await api(`/api/users/${u.id}`, { method: 'DELETE' })
     }
   }
@@ -92,7 +92,7 @@ test('a staff login cannot reach user management', async ({ page }) => {
     body: JSON.stringify({ name: `UX Role ${stamp}`, email, password, role: 'Staff', phone: null }),
   })
   expect(created.status, `create staff: ${JSON.stringify(created.json).slice(0, 200)}`).toBeLessThan(300)
-  const id = created.json.data?.id ?? created.json.data?.Id
+  const id = created.json.data?.userId ?? created.json.data?.id ?? created.json.data?.Id
   try {
     // Log in as that staff user through the API (the same way the login form does), then load the app as them.
     const login = await fetch(`${API}/api/auth/login`, {

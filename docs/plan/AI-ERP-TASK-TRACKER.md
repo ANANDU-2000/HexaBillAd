@@ -384,3 +384,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `offscreen-actions` m360, t768, d1024, d1440 → passed. `ux-audit` + `single-scroll` at t768 and d1024 → 24 passed. Payments, Products, Suppliers, Staff, Customers specs pass at every width.
 - **Found:** at 768px the Payments "Add Payment" button was off-screen (UX-T01). Test data accumulates (UX-T04).
 - **Next task:** run the sweep on the remaining routes (Billing History, Dashboard, Reports tabs, Purchases form), ST-04, AG-04, Routes and Inventory modules.
+
+### 2026-10-11 — Checkpoint 45: Closing gate and harness hardening (UX-T05, UX-T06)
+- **Gate results:** backend `dotnet test` 729 passed, 0 failed, 52 skipped (PostgreSQL-only, no local PostgreSQL). Frontend unit tests 147 passed. `vite build` exit 0. ESLint 0 errors, 4 warnings. Full Playwright suite at d1440: 162 passed, 47 failed, 9 skipped before fixes; the failures were the locked frozenhub1 account (40), test data, and the Users table width. After fixes the previously failing specs pass at d1440 except as noted below.
+- **Changed:** `UsersPage.jsx` (wrap name and email), `route-sweep.spec.js` (single sign-in per tenant), cleanup in `stock-adjust`, `products-crud`, `staff-users`, `payments-roles`, `auth-security`.
+- **Still to verify:** the frozenhub1 sweep after the 15-minute lockout expires; the full suite at 360, 768, 1024 (only 1440 was run in full).
+- **Next task:** Routes and Inventory modules, ST-04, AG-04; owner decisions listed in the tracker (ST-01, RC-04, AG-02, PY-09, PS-05, RP-04, UX-E01).

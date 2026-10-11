@@ -44,39 +44,44 @@ test('stock adjustment: up, down, reason required, persisted and shown in the hi
   })
   expect(created.status, `create product: ${JSON.stringify(created.json).slice(0, 200)}`).toBeLessThan(300)
   const id = created.json.data.id
+  try {
 
-  await signIn(page, SLUG)
-  expect(await stockOf(id)).toBe(0)
+    await signIn(page, SLUG)
+    expect(await stockOf(id)).toBe(0)
 
-  // A reason is required: nothing is sent without one.
-  let posts = 0
-  page.on('request', (r) => { if (r.method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url())) posts += 1 })
-  let dialog = await openAdjust(page, id, name)
-  await dialog.locator('input[name="changeQty"]').fill('5')
-  await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
-  await expect(dialog.getByText(/reason for the stock adjustment/i).filter({ visible: true }).first()).toBeVisible()
-  expect(posts).toBe(0)
+    // A reason is required: nothing is sent without one.
+    let posts = 0
+    page.on('request', (r) => { if (r.method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url())) posts += 1 })
+    let dialog = await openAdjust(page, id, name)
+    await dialog.locator('input[name="changeQty"]').fill('5')
+    await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
+    await expect(dialog.getByText(/reason for the stock adjustment/i).filter({ visible: true }).first()).toBeVisible()
+    expect(posts).toBe(0)
 
-  // Add 5 with a reason: the server stock becomes 5.
-  await dialog.locator('textarea[name="reason"]').fill('Opening count (test)')
-  const up = page.waitForResponse((r) => r.request().method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url()))
-  await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
-  const upRes = await up
-  if (upRes.status() >= 300) throw new Error(`adjust-stock ${upRes.status()}: ${await upRes.text()}`)
-  await expect.poll(() => stockOf(id)).toBe(5)
+    // Add 5 with a reason: the server stock becomes 5.
+    await dialog.locator('textarea[name="reason"]').fill('Opening count (test)')
+    const up = page.waitForResponse((r) => r.request().method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url()))
+    await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
+    const upRes = await up
+    if (upRes.status() >= 300) throw new Error(`adjust-stock ${upRes.status()}: ${await upRes.text()}`)
+    await expect.poll(() => stockOf(id)).toBe(5)
 
-  // Remove 2 with a reason: the server stock becomes 3.
-  dialog = await openAdjust(page, id, name)
-  await dialog.locator('input[name="changeQty"]').fill('-2')
-  await dialog.locator('textarea[name="reason"]').fill('Damaged in store (test)')
-  const down = page.waitForResponse((r) => r.request().method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url()))
-  await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
-  const downRes = await down
-  if (downRes.status() >= 300) throw new Error(`adjust-stock ${downRes.status()}: ${await downRes.text()}`)
-  await expect.poll(() => stockOf(id)).toBe(3)
+    // Remove 2 with a reason: the server stock becomes 3.
+    dialog = await openAdjust(page, id, name)
+    await dialog.locator('input[name="changeQty"]').fill('-2')
+    await dialog.locator('textarea[name="reason"]').fill('Damaged in store (test)')
+    const down = page.waitForResponse((r) => r.request().method() === 'POST' && new RegExp(`/api/products/${id}/adjust-stock$`).test(r.url()))
+    await dialog.getByRole('button', { name: 'Adjust Stock', exact: true }).click()
+    const downRes = await down
+    if (downRes.status() >= 300) throw new Error(`adjust-stock ${downRes.status()}: ${await downRes.text()}`)
+    await expect.poll(() => stockOf(id)).toBe(3)
 
-  // Both adjustments are in the stock history with their reasons.
-  await page.goto(`${feOrigin(SLUG)}/stock-adjustments?productId=${id}`, { waitUntil: 'networkidle' })
-  await expect(page.getByText('Opening count (test)').filter({ visible: true }).first()).toBeVisible()
-  await expect(page.getByText('Damaged in store (test)').filter({ visible: true }).first()).toBeVisible()
+    // Both adjustments are in the stock history with their reasons.
+    await page.goto(`${feOrigin(SLUG)}/stock-adjustments?productId=${id}`, { waitUntil: 'networkidle' })
+    await expect(page.getByText('Opening count (test)').filter({ visible: true }).first()).toBeVisible()
+    await expect(page.getByText('Damaged in store (test)').filter({ visible: true }).first()).toBeVisible()
+  } finally {
+    // Leave no active test product behind (they crowd the POS product drawer).
+    await api(`/api/products/${id}`, { method: 'DELETE' })
+  }
 })

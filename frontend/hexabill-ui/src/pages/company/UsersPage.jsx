@@ -677,31 +677,31 @@ const UsersPage = () => {
             <table className="min-w-[900px] w-full divide-y divide-neutral-200">
               <thead className="bg-gradient-to-r from-primary-900 to-primary-800 text-white">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Phone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Assigned (Branch / Route)
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Last login
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -723,7 +723,7 @@ const UsersPage = () => {
                 ) : (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-neutral-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center">
                           {user.role?.toLowerCase() === 'owner' ? (
                             <ShieldAlert className="h-5 w-5 text-error mr-2" />
@@ -732,19 +732,19 @@ const UsersPage = () => {
                           ) : (
                             <User className="h-5 w-5 text-primary-500 mr-2" />
                           )}
-                          <span className="text-sm font-medium text-neutral-900">{user.name}</span>
+                          <span className="text-sm font-medium text-neutral-900 break-words">{user.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 max-w-[16rem]">
                         <div className="flex items-center text-sm text-neutral-600">
-                          <Mail className="h-4 w-4 mr-2" />
-                          {user.email}
+                          <Mail className="h-4 w-4 mr-2 shrink-0" />
+                          <span className="min-w-0 break-all">{user.email}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                         {user.phone || '-'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {/* BUG #2.9 FIX: Online/Offline status indicator using LastActiveAt */}
                         {(() => {
                           const lastActive = user.lastActiveAt ? new Date(user.lastActiveAt).getTime() : 0
@@ -769,7 +769,7 @@ const UsersPage = () => {
                           )
                         })()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex flex-col gap-0.5">
                           <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full w-fit ${user.role?.toLowerCase() === 'owner'
                             ? 'bg-red-100 text-red-800'
@@ -784,7 +784,7 @@ const UsersPage = () => {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-neutral-600 max-w-[280px]">
+                      <td className="px-4 py-3 text-sm text-neutral-600 max-w-[280px]">
                         {user.role?.toLowerCase() === 'staff' ? (
                           (() => {
                             const branchIds = user.assignedBranchIds || []
@@ -834,13 +834,13 @@ const UsersPage = () => {
                           <span className="text-neutral-400">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : '—'}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-600">
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
                           <button
                             onClick={() => {
