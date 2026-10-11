@@ -351,3 +351,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `e2e/auth-security.spec.js` (new, 3 tests). No application code changed.
 - **Commands and results:** d1440 and m360 → 3 passed each. Lockout after 5 wrong passwords (429 even with the right one), cross-tenant sign-in refused, invalid token → `/login`.
 - **Next task:** PR-03 (products activate, categories), SE-03, then Reports rows (VR-02, AG-04, RP-03).
+
+### 2026-10-11 — Checkpoint 39: Products activate, Outstanding report fix (OUT-01 PASS), staff data access finding (RP-04 OPEN)
+- **Changed:** `ReportService.cs` (ordering cast). New specs `products-activate.spec.js`, `reports-outstanding.spec.js`.
+- **Commands and results:** `dotnet test --filter Report|Sale` → 119 passed, 9 skipped. products-activate m360, t768, d1440 → 3 passed. reports-outstanding m360, t768, d1440 (twice each) → all passed. The API was restarted with the UI-test database after the build.
+- **Decisions needed:** RP-04, which reports and lists staff may read (the API allows more than the UI shows). Same family as PY-09.
+- **Next task:** SE-03, VR-02, AG-04, then Customers CRUD and the Routes / Inventory modules.
