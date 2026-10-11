@@ -258,7 +258,9 @@ namespace HexaBill.Api.Modules.Payments
             combined.AmountPaid = details.Sum(d => d.AmountPaid);
             combined.SettlementAdjustmentAmount = details.Sum(d => d.SettlementAdjustmentAmount ?? 0m) is var adjSum && adjSum > 0 ? adjSum : null;
             combined.AmountInWords = combined.Currency == "AED" ? AmountToWords(combined.AmountReceived) : "";
-            combined.PaymentMethod = "Multiple";
+            // One method for every payment keeps that method on the receipt; only a mixed batch says "Multiple".
+            var methods = details.Select(d => d.PaymentMethod).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            combined.PaymentMethod = methods.Count == 1 && !string.IsNullOrWhiteSpace(methods[0]) ? methods[0] : "Multiple";
             combined.Reference = null;
             combined.IsHistoricalSnapshot = details.All(d => d.IsHistoricalSnapshot);
             combined.LegacyReconstruction = details.Any(d => d.LegacyReconstruction);

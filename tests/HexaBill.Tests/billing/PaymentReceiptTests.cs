@@ -232,6 +232,30 @@ public class PaymentReceiptTests
         Assert.All(db.PaymentReceipts, r => Assert.Equal(saved[r.Id], r.SnapshotJson));
     }
 
+    [Fact]
+    public async Task CombinedReceipt_SameMethodForEveryPayment_ShowsThatMethod()
+    {
+        await using var db = await CreateDbAsync();
+        db.Payments.Add(Payment(2));
+        await db.SaveChangesAsync();
+        var (combined, _) = await Service(db).GenerateBatchReceiptAsync(10, [1, 2], 1);
+        // Two cash payments are not "Multiple" methods; the printed receipt must say Cash.
+        Assert.Equal(PaymentMode.CASH.ToString(), combined.PaymentMethod);
+    }
+
+    [Fact]
+    public async Task CombinedReceipt_MixedMethods_ShowsMultiple()
+    {
+        await using var db = await CreateDbAsync();
+        var second = Payment(2);
+        second.Mode = PaymentMode.CHEQUE;
+        second.Reference = "CHQ-TEST-2";
+        db.Payments.Add(second);
+        await db.SaveChangesAsync();
+        var (combined, _) = await Service(db).GenerateBatchReceiptAsync(10, [1, 2], 1);
+        Assert.Equal("Multiple", combined.PaymentMethod);
+    }
+
     private static async Task EnableSnapshots(AppDbContext db)
     {
         var tenant = await db.Tenants.SingleOrDefaultAsync(t => t.Id == 10);
