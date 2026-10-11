@@ -754,7 +754,7 @@ const CustomersPage = () => {
       {/* Customers Table - Responsive */}
       <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="hidden xl:block overflow-x-auto">
           <table className="min-w-full divide-y divide-neutral-200">
             <thead className="bg-neutral-50">
               <tr>
@@ -849,7 +849,7 @@ const CustomersPage = () => {
         </div>
 
         {/* Mobile cards: identity and balance first, two direct actions, the rest in More. */}
-        <ul className="md:hidden divide-y divide-surface-border">
+        <ul className="xl:hidden divide-y divide-surface-border">
           {filteredCustomers.map((customer) => {
             const balance = Number(customer.balance) || 0
             return (
@@ -869,7 +869,7 @@ const CustomersPage = () => {
                     </span>
                     {balance > 0 && <span className="block text-xs text-neutral-500">Outstanding</span>}
                   </div>
-                  <OverflowMenu label={`Actions for ${customer.name}`} items={customerMenuItems(customer)} />
+                  <OverflowMenu label={`More actions for ${customer.name}`} items={customerMenuItems(customer)} />
                 </div>
               </li>
             )

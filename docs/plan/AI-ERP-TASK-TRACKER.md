@@ -372,3 +372,9 @@ STOP HERE — do not begin next phase automatically.
 - **Changed:** `e2e/vat-exports.spec.js` (new, API only). No application code changed.
 - **Commands and results:** d1440 → 2 passed. CSV sums equal Box 1a, 1b, 9b; management CSV lines equal the API; Excel is a zip; PDF text has the company and the period.
 - **Next task:** Customers CRUD, ST-04, AG-04, then Routes and Inventory modules.
+
+### 2026-10-11 — Checkpoint 43: Customers CRUD (CU-01 PASS) and tablet row actions (UX-C05 PASS)
+- **Changed:** `CustomersPage.jsx` (table from 1280px, list below; list menu label unified). New `e2e/customers-crud.spec.js`.
+- **Commands and results:** customers-crud at m360, t768, d1024, d1440 (twice each) → all passed. `ux-audit` + `single-scroll` at t768 and d1024 → 24 passed.
+- **Found:** the row actions were off-screen at 768px and cut at 1024px (UX-C05, fixed). Test data accumulates (CU-02).
+- **Next task:** the same off-screen check on other tables (Products, Suppliers, Billing History, Staff) at 768 and 1024, then ST-04, AG-04, Routes and Inventory.
