@@ -217,7 +217,7 @@ const DailyClosePage = () => {
   }
 
   const removeMovement = async (id) => {
-    if (!canManageClose) return
+    if (!canManageClose || saving) return
     setSaving(true)
     try {
       const res = await dailyCloseAPI.deleteMovement(id)
@@ -353,7 +353,7 @@ const DailyClosePage = () => {
               {movements.map((m) => (
                 <li key={m.id} className="px-3 py-2 flex justify-between gap-2 items-center">
                   <span>{m.kind} · {money(m.amount)}</span>
-                  <button type="button" className="text-error-fg text-xs min-h-[44px] px-2" onClick={() => removeMovement(m.id)}>Remove</button>
+                  <button type="button" className="text-error-fg text-xs min-h-[44px] px-2 disabled:opacity-50" disabled={saving} onClick={() => removeMovement(m.id)}>Remove</button>
                 </li>
               ))}
             </ul>

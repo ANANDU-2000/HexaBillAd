@@ -79,3 +79,22 @@ test('daily close: capital and transfer movements change expected cash, and remo
     await removeTestMovements()
   }
 })
+
+// DC-08: a double click on Remove sends one delete, and the movement is gone.
+test('daily close: a double click on Remove deletes the movement once', async ({ page }) => {
+  await removeTestMovements()
+  try {
+    await signIn(page, SLUG)
+    await page.goto(`${feOrigin(SLUG)}/daily-close`, { waitUntil: 'networkidle' })
+    await page.locator('input[type="date"]').first().fill(DAY)
+    await addMovement(page, 'OwnerCapitalIn', 5)
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(1)
+    const deletes = []
+    page.on('response', (r) => { if (r.request().method() === 'DELETE' && /\/api\/daily-close\/movements\/\d+$/.test(r.url())) deletes.push(r.status()) })
+    await page.getByRole('button', { name: 'Remove', exact: true }).dblclick()
+    await expect(page.getByRole('button', { name: 'Remove', exact: true })).toHaveCount(0)
+    expect(deletes, 'one delete request, and it succeeded').toEqual([200])
+  } finally {
+    await removeTestMovements()
+  }
+})

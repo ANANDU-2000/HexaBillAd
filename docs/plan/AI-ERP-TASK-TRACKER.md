@@ -329,3 +329,8 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** m360, t768, d1440 → 1 passed each. Expected cash on the server and on the screen moves +25 then -5 and returns after both removals.
 - **Found:** Remove stays clickable while a delete runs, so a double click gives a 400 (DC-08).
 - **Next task:** DC-08 fix, then PY-06 rest (bulk cheques, allocations), PS-03, AU-02.
+
+### 2026-10-11 — Checkpoint 35: Daily close Remove guard (DC-08 PASS)
+- **Changed:** `DailyClosePage.jsx` (Remove disabled while saving). Test added to `daily-close-movements.spec.js`.
+- **Commands and results:** m360, t768, d1440 → 2 passed each (6 total). A double click sends one DELETE (200).
+- **Next task:** PY-06 rest (bulk cheques, allocations, receipts print, roles), then PS-03, AU-02.
