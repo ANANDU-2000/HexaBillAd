@@ -76,6 +76,8 @@ const SuppliersPage = () => {
   const [editForm, setEditForm] = useState({ ...emptyForm, isActive: true })
   const [editFormIsDeactivated, setEditFormIsDeactivated] = useState(false)
   const [editFormLoadFailed, setEditFormLoadFailed] = useState(false)
+  // While the saved details load, the fields are disabled: typing before the load would be overwritten by it.
+  const [editLoading, setEditLoading] = useState(false)
   const [updating, setUpdating] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null)
   const [deleting, setDeleting] = useState(false)
@@ -210,6 +212,7 @@ const SuppliersPage = () => {
     setShowEditModal(true)
     setEditFormIsDeactivated(false)
     setEditFormLoadFailed(false)
+    setEditLoading(true)
     try {
       const res = await suppliersAPI.getSupplier(s.supplierName)
       if (res?.success && res?.data) {
@@ -250,6 +253,8 @@ const SuppliersPage = () => {
         paymentTerms: '',
         isActive: s.isActive !== false
       })
+    } finally {
+      setEditLoading(false)
     }
   }
 
@@ -685,19 +690,22 @@ const SuppliersPage = () => {
         {editingSupplier && (
           <form onSubmit={handleUpdateSupplier} className="space-y-4">
             {editFormIsDeactivated && <p className="text-xs text-amber-800">This supplier is deactivated.</p>}
+            {editLoading && <p className="text-xs text-neutral-500" role="status">Loading supplier details…</p>}
             {editFormLoadFailed && (
               <p className="text-sm text-amber-800 bg-warning-bg border border-warning-border rounded-md px-3 py-2">
                 Supplier details could not be loaded. You can view what is shown, but changes cannot be saved.
               </p>
             )}
-            {supplierFields(editForm, setEditForm, 'edit')}
-            <label className="inline-flex items-center gap-2 text-sm text-neutral-800">
-              <input id="edit-isActive" type="checkbox" checked={editForm.isActive} onChange={e => setEditForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded border-neutral-300" />
-              Active
-            </label>
+            <fieldset disabled={editLoading} className="min-w-0 space-y-4 border-0 p-0">
+              {supplierFields(editForm, setEditForm, 'edit')}
+              <label className="inline-flex items-center gap-2 text-sm text-neutral-800">
+                <input id="edit-isActive" type="checkbox" checked={editForm.isActive} onChange={e => setEditForm(f => ({ ...f, isActive: e.target.checked }))} className="rounded border-neutral-300" />
+                Active
+              </label>
+            </fieldset>
             <div className="flex gap-2 justify-end">
               <button type="button" onClick={closeEdit} className={btnOutline}>Cancel</button>
-              <button type="submit" disabled={updating || editFormLoadFailed} className={btnPrimary}>{updating ? 'Saving...' : 'Save'}</button>
+              <button type="submit" disabled={updating || editFormLoadFailed || editLoading} className={btnPrimary}>{updating ? 'Saving...' : 'Save'}</button>
             </div>
           </form>
         )}

@@ -224,3 +224,9 @@ STOP HERE — do not begin next phase automatically.
 - **Finding:** a day with cash paid out and no opening cash has negative expected drawer cash (-1,597.50 on 2026-10-10). The close form cannot record a negative count, so the test sets opening cash first. Whether the page should ask for opening cash before showing expected cash is a product question, not changed here.
 - **Next task:** Suppliers supplier edit and statement (SU-07), then Receipts print window and legacy flag (RC-05).
 
+### 2026-10-11 — Checkpoint 16: Supplier edit and statement (SU-07 PARTIAL, SU-09 PASS)
+- **Changed:** `SuppliersPage.jsx` (edit fields disabled and Save blocked until the saved details load; loading message). `e2e/suppliers-edit-statement.spec.js` (new, three tests).
+- **Finding (P1, fixed):** typing in the edit form before its details loaded was lost, because the late load replaced every field (SU-09).
+- **Commands and results:** `npx playwright test e2e/suppliers-edit-statement.spec.js` → d1440 3 passed, m360 and t768 6 passed in total. `npx vite build` → exit 0. ESLint on the page: 0 errors.
+- **Next task:** Receipt print window and the legacy snapshot case (RC-05), then the Suppliers Bills and Paid tabs and credit limit (rest of SU-07).
+
