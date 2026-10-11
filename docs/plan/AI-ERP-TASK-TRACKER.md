@@ -284,3 +284,9 @@ STOP HERE — do not begin next phase automatically.
 - **Commands and results:** `npx playwright test e2e/reports-summary.spec.js` at m360, t768, d1440 → 3 passed.
 - **Notes:** the API names the summary fields `salesToday` and so on, but they sum the selected range. Naming only (RP-02, P3).
 - **Next task:** Reports Sales tab and Product Analysis totals against the API, then the staff view of the summary (RP-03).
+
+### 2026-10-11 — Checkpoint 27: Reports Sales tab truncation found by code reading (SL-01 OPEN, P2)
+- **Changed:** `docs/uiux/PREMIUM-UX-TRACKER.md` (Reports: sales section). No application code changed.
+- **Evidence:** `ReportsPage.jsx` loads page 1 with `pageSize: 100` and never reads `totalCount`; the API reports 38 invoices for the page's range, so the truncation does not show on this tenant.
+- **Decision needed:** how the Sales tab should load a large range (all pages, or paging in the tab). It changes the tab's data flow, so it is not changed here.
+- **Next task:** Sales tab rows and charts against the API for the 38 invoices (SL-02).

@@ -383,3 +383,12 @@ The four cards read `GET /api/reports/summary` for the date range the page shows
 | ↳ fix | | Test only. The expected values are non-zero, so an empty or misplaced card fails the test. | | `reports-summary.spec.js` (m360, t768, d1440: 3 passed) | |
 | RP-02 | P3 | The API names these fields `salesToday`, `purchasesToday`, `expensesToday` and `profitToday`, but they sum the selected date range (`ReportService.cs`, `GetSummaryReportAsync`). The values are correct; the names mislead anyone who reads the code. | `ReportService.cs` lines 136-180 | Rename in a later cleanup, together with the page and the test. Not changed here. | NOTE |
 | RP-03 | — | Not tested: the staff view (the controller clears `ProfitToday` on one path, `ReportsController.cs` around line 1307), the branch and route filters, the PDF export, and the other tabs (Sales, Product Analysis, Net sales, Returns, Customers, Overdue, Outstanding, Collections, Credit notes, Expenses, Branch, Route, Branch P&L, Damage, Staff, Cheque, P&L). | — | Next: Sales tab and Product Analysis totals against the API, then the staff view. | NOT TESTED |
+
+### Reports: sales (`/reports`, Sales tab, `features/reports/ReportsPage.jsx`)
+
+The tab loads `GET /api/reports/sales` for the page's date range, page 1 only, with `pageSize: 100`. The charts and the invoice list are built from the rows it receives.
+
+| ID | Sev | Issue (before state) | Evidence | Proposed solution | Status |
+|---|---|---|---|---|---|
+| SL-01 | P2 | The Sales tab shows at most the first 100 invoices of the range. The response has `totalCount`, but the tab never reads it, so a range with more than 100 invoices shows incomplete charts and an incomplete list, with no warning. The summary cards are not affected (they come from the summary API). | `ReportsPage.jsx` Sales load (`page: 1`, `pageSize: 100`, `salesData = salesResponse.data.items`); charts use `reportData.sales` (around lines 1539 and 1586). Not reproduced on this tenant: the range has 38 invoices. | Fetch every page (or show "Showing 100 of N" with paging) and make the charts use the full set. Decide which first, since it changes the tab's data flow. | OPEN |
+| SL-02 | — | Not tested: the Sales tab rows and charts for ranges with 100 invoices or fewer, against the API, the invoice list layout on phones, and the status filter. | — | Next: compare the rows with the API for the page range (38 invoices here). | NOT TESTED |
