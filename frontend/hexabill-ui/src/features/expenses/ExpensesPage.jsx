@@ -34,6 +34,8 @@ import { expensesAPI, reportsAPI } from '../../services/index'
 import api from '../../services/api'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
+import { fixMoney } from '../../utils/productFields'
+import { saveOutcomeIsUncertain } from '../../utils/apiError'
 
 function expenseAttachmentPath(url) {
   if (!url) return ''
@@ -678,6 +680,8 @@ const ExpensesPage = () => {
     return Number.isFinite(n) && n >= 0 && n <= 100 ? n : 100
   }
 
+  const createAttemptRef = useRef(null)
+
   const onSubmit = async (data) => {
     try {
       const catId = parseInt(data.category, 10)
@@ -685,12 +689,25 @@ const ExpensesPage = () => {
         toast.error('Please select a category')
         return
       }
-      const amt = parseFloat(data.amount)
-      if (isNaN(amt) || amt <= 0) {
-        toast.error('Please enter a valid amount greater than 0')
+      const amountFix = fixMoney(data.amount, 'Amount')
+      const amt = amountFix.value
+      if (!(amt > 0)) {
+        toast.error('Type the amount, for example 45.50')
         return
       }
+      if (amountFix.note) toast(`We fixed: ${amountFix.note}`, { duration: 7000 })
       const expenseDate = data.date ? new Date(data.date).toISOString() : new Date().toISOString()
+      const noteText = String(data.note || '').trim()
+      // Remember what exists before a create, so a lost answer can be told apart from a failed save.
+      let idsBefore = null
+      if (!selectedExpense) {
+        try {
+          const day = expenseDate.slice(0, 10)
+          const before = await expensesAPI.getExpenses({ page: 1, pageSize: 50, fromDate: day, toDate: day })
+          idsBefore = new Set((before?.data?.items || []).map(e => e.id))
+        } catch (_) { /* best effort */ }
+      }
+      createAttemptRef.current = selectedExpense ? null : { idsBefore, catId, note: noteText, day: expenseDate.slice(0, 10) }
       const partialCreditPct = toPartialCreditPct(data.partialCreditPct)
 
       if (selectedExpense) {
@@ -700,7 +717,7 @@ const ExpensesPage = () => {
           categoryId: catId,
           amount: amt,
           date: expenseDate,
-          note: data.note || '',
+          note: noteText,
           withVat: !!data.withVat,
           vatInclusive: !!data.vatInclusive,
           taxType: data.taxType || 'Standard',
@@ -724,7 +741,7 @@ const ExpensesPage = () => {
           categoryId: catId,
           amount: amt,
           date: expenseDate,
-          note: data.note || '',
+          note: noteText,
           attachmentUrl: null,
           recurringExpenseId: data.recurringExpenseId ? parseInt(data.recurringExpenseId, 10) : null,
           withVat: !!data.withVat,
@@ -799,9 +816,30 @@ const ExpensesPage = () => {
       window.dispatchEvent(new CustomEvent('dataUpdated'))
     } catch (error) {
       console.error('Error saving expense:', error)
+      // The server may have saved the expense even though the answer failed or never arrived.
+      const attempt = createAttemptRef.current
+      if (attempt?.idsBefore && saveOutcomeIsUncertain(error)) {
+        try {
+          const after = await expensesAPI.getExpenses({ page: 1, pageSize: 50, fromDate: attempt.day, toDate: attempt.day })
+          const hit = (after?.data?.items || []).find(e => !attempt.idsBefore.has(e.id) && e.categoryId === attempt.catId && (e.note || '') === attempt.note)
+          if (hit) {
+            toast.success('Expense added successfully!', { id: 'expense-add', duration: 4000 })
+            reset()
+            setShowAddModal(false)
+            setShowEditModal(false)
+            setSelectedExpense(null)
+            setAttachmentFile(null)
+            setAttachmentPreview(null)
+            setCurrentPage(1)
+            await fetchExpenses(1)
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
+            return
+          }
+        } catch (_) { /* fall through to the message below */ }
+      }
       const errMsg = error?.response?.data?.message
         || error?.response?.data?.errors?.[0]
-        || error?.message
+        || (saveOutcomeIsUncertain(error) ? 'The server did not answer. The expense was not saved, please try again.' : error?.message)
         || 'Could not save this expense.'
       if (!error?._handledByInterceptor) toast.error(errMsg)
     }
@@ -1855,7 +1893,7 @@ const ExpensesPage = () => {
         title="Add New Expense"
         size="xl"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="max-h-[80vh] overflow-y-auto overscroll-contain">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="max-h-[80vh] overflow-y-auto overscroll-contain">
           {/* One column on phones so no field is clipped at 360px (UX-E04). */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3">
             <div>
@@ -1880,20 +1918,20 @@ const ExpensesPage = () => {
                 options={categoryOptions}
                 required
                 error={errors.category?.message}
-                {...register('category', { required: 'Category is required' })}
+                {...register('category', { required: 'Pick a category, for example Fuel' })}
               />
             </div>
 
             <Input
               label={watch('withVat') && watch('vatInclusive') ? 'Amount (incl. VAT)' : 'Amount (excl. VAT)'}
               type="number"
-              step="0.01"
-              placeholder="0.00"
-              required
+              step="any"
+              inputMode="decimal"
+              placeholder="e.g. 45.50"
               error={errors.amount?.message}
               {...register('amount', {
-                required: 'Amount is required',
-                min: { value: 0.01, message: 'Amount must be greater than 0' }
+                required: 'Type the amount, for example 45.50',
+                min: { value: 0.01, message: 'Type an amount above 0, for example 45.50' }
               })}
             />
             {watch('withVat') && Number(watch('amount')) > 0 && (() => {
@@ -1997,7 +2035,7 @@ const ExpensesPage = () => {
 
             <TextArea
               label="Note"
-              placeholder="Description..."
+              placeholder="e.g. Diesel for delivery van"
               rows={1}
               error={errors.note?.message}
               {...register('note')}
@@ -2062,7 +2100,7 @@ const ExpensesPage = () => {
         title="Edit Expense"
         size="md"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-1">
@@ -2086,7 +2124,7 @@ const ExpensesPage = () => {
                 options={categoryOptions}
                 required
                 error={errors.category?.message}
-                {...register('category', { required: 'Category is required' })}
+                {...register('category', { required: 'Pick a category, for example Fuel' })}
               />
             </div>
 
@@ -2094,13 +2132,13 @@ const ExpensesPage = () => {
               <Input
                 label="Amount (excl. VAT)"
                 type="number"
-                step="0.01"
-                placeholder="0.00"
-                required
+                step="any"
+                inputMode="decimal"
+                placeholder="e.g. 45.50"
                 error={errors.amount?.message}
                 {...register('amount', {
-                  required: 'Amount is required',
-                  min: { value: 0.01, message: 'Amount must be greater than 0' }
+                  required: 'Type the amount, for example 45.50',
+                  min: { value: 0.01, message: 'Type an amount above 0, for example 45.50' }
                 })}
               />
 
@@ -2231,7 +2269,7 @@ const ExpensesPage = () => {
 
             <TextArea
               label="Note"
-              placeholder="Expense description..."
+              placeholder="e.g. Diesel for delivery van"
               rows={3}
               error={errors.note?.message}
               {...register('note')}
