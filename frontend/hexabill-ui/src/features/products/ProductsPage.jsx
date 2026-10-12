@@ -292,7 +292,9 @@ const ProductsPage = () => {
         offerCreateSuccessWithPrint(response.data)
         window.dispatchEvent(new CustomEvent('dataUpdated'))
         setShowForm(false)
-        loadProducts()
+        setActiveTab('all')
+        setSearchTerm(response.data?.sku || response.data?.nameEn || '')
+        setCurrentPage(1)
       } else {
         toast.error(response?.message || 'Failed to create product')
       }

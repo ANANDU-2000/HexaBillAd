@@ -247,19 +247,39 @@ namespace HexaBill.Api.Modules.Products
         {
             // Validate input
             if (string.IsNullOrWhiteSpace(request.NameEn))
-                throw new InvalidOperationException("Product name is required");
+                throw new ArgumentException("Product name is required");
             
             if (!InputValidator.ValidateSKU(request.Sku))
-                throw new InvalidOperationException("Invalid SKU format");
+                throw new ArgumentException("SKU can only use letters, numbers, dots, dashes, and underscores.");
             
             if (!InputValidator.ValidatePrice(request.SellPrice) || !InputValidator.ValidatePrice(request.CostPrice))
-                throw new InvalidOperationException("Invalid price. Prices must be between 0 and 1,000,000");
+                throw new ArgumentException("Invalid price. Prices must be between 0 and 1,000,000");
 
-            // CRITICAL: Check SKU uniqueness within owner's scope only
-            if (await _context.Products.AnyAsync(p => p.Sku == request.Sku && p.TenantId == tenantId))
+            var sku = InputValidator.SanitizeString(request.Sku, 50);
+            var skuKey = sku.ToLowerInvariant();
+
+            // Active match is case-insensitive so "Chicken" and "chicken" are the same product.
+            var activeSku = await _context.Products
+                .Where(p => p.TenantId == tenantId && p.IsActive && p.Sku.ToLower() == skuKey)
+                .Select(p => new { p.NameEn, p.Sku })
+                .FirstOrDefaultAsync();
+            if (activeSku != null)
             {
-                throw new InvalidOperationException("SKU already exists");
+                throw new InvalidOperationException($"SKU already exists on \"{activeSku.NameEn}\" ({activeSku.Sku}). Edit that product instead of creating it again.");
             }
+
+            // A deactivated product still occupies the unique SKU. Free it so the new product can be saved.
+            var inactiveSkus = await _context.Products
+                .Where(p => p.TenantId == tenantId && !p.IsActive && p.Sku.ToLower() == skuKey)
+                .ToListAsync();
+            foreach (var old in inactiveSkus)
+            {
+                var freed = $"old-{old.Id}";
+                old.Sku = freed.Length <= 50 ? freed : freed[..50];
+                old.UpdatedAt = DateTime.UtcNow;
+            }
+            if (inactiveSkus.Count > 0)
+                await _context.SaveChangesAsync();
 
             // Resolve barcode: explicit value, else SKU if unique as barcode, else assign after insert
             string? barcode = !string.IsNullOrWhiteSpace(request.Barcode)
@@ -268,24 +288,28 @@ namespace HexaBill.Api.Modules.Products
 
             if (!string.IsNullOrWhiteSpace(barcode))
             {
-                if (await _context.Products.AnyAsync(p => p.Barcode == barcode && p.TenantId == tenantId))
+                var barcodeKey = barcode.ToLowerInvariant();
+                var barcodeOwner = await _context.Products
+                    .Where(p => p.TenantId == tenantId && p.IsActive && p.Barcode != null && p.Barcode.ToLower() == barcodeKey)
+                    .Select(p => new { p.NameEn, p.Sku })
+                    .FirstOrDefaultAsync();
+                if (barcodeOwner != null)
                 {
-                    throw new InvalidOperationException("Barcode already exists for another product");
+                    throw new InvalidOperationException($"Barcode already exists on \"{barcodeOwner.NameEn}\" ({barcodeOwner.Sku}).");
                 }
             }
             else
             {
-                var skuAsBarcode = InputValidator.SanitizeString(request.Sku, 50);
-                var skuBarcodeTaken = await _context.Products.AnyAsync(p => p.Barcode == skuAsBarcode && p.TenantId == tenantId);
+                var skuBarcodeTaken = await _context.Products.AnyAsync(p => p.TenantId == tenantId && p.IsActive && p.Barcode != null && p.Barcode.ToLower() == skuKey);
                 if (!skuBarcodeTaken)
-                    barcode = skuAsBarcode;
+                    barcode = sku;
             }
 
             var product = new Product
             {
                 TenantId = tenantId,
                 OwnerId = tenantId,
-                Sku = InputValidator.SanitizeString(request.Sku, 50),
+                Sku = sku,
                 Barcode = barcode,
                 NameEn = InputValidator.SanitizeString(request.NameEn, 200),
                 NameAr = InputValidator.SanitizeString(request.NameAr, 200),

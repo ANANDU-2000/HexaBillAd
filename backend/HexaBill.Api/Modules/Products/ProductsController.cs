@@ -192,6 +192,15 @@ namespace HexaBill.Api.Modules.Products
                     Errors = new List<string> { ex.Message }
                 });
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new ApiResponse<ProductDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
             catch (InvalidOperationException ex)
             {
                 return Conflict(new ApiResponse<ProductDto>
