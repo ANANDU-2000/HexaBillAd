@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
@@ -1539,8 +1540,8 @@ const CustomerLedgerPage = () => {
       // Duplicate check: warn if another customer has same phone or email
       if (customerData.phone || customerData.email) {
         try {
-          const res = await customersAPI.getCustomers({ pageSize: 200 })
-          const list = res?.data?.items ?? res?.items ?? []
+          // The server caps a page at 100 customers, so walk every page or a duplicate beyond the first 100 is missed.
+          const { items: list } = await loadAllCustomerPages(customersAPI.getCustomers)
           const phoneMatch = customerData.phone && list.find(c => (c.phone || '').replace(/\s/g, '') === (customerData.phone || '').replace(/\s/g, ''))
           if (phoneMatch) {
             // The server rejects a duplicate phone for the tenant, so do not offer "Add anyway".

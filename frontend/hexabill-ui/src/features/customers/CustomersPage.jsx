@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate, useLocation, Link } from 'react-router-dom'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
@@ -294,13 +295,18 @@ const CustomersPage = () => {
     if (!selectedCustomer) {
       const phoneNorm = (data.phone || '').trim().replace(/\s/g, '')
       const emailNorm = (data.email || '').trim().toLowerCase()
+      // The screen shows one page; check every customer so a clash beyond the first page is still caught early.
+      let knownCustomers = customers
+      if (phoneNorm || emailNorm) {
+        try { knownCustomers = (await loadAllCustomerPages(customersAPI.getCustomers)).items } catch (_) { /* fall back to the page on screen */ }
+      }
       // The server rejects a duplicate phone for the tenant, so do not offer "Add anyway" for it.
-      const phoneDuplicate = phoneNorm && customers.find(c => (c.phone || '').replace(/\s/g, '') === phoneNorm)
+      const phoneDuplicate = phoneNorm && knownCustomers.find(c => (c.phone || '').replace(/\s/g, '') === phoneNorm)
       if (phoneDuplicate) {
         toast.error(`Customer "${phoneDuplicate.name}" already uses this phone number. Use a different number or open that customer.`)
         return
       }
-      const duplicate = emailNorm && customers.find(c => (c.email || '').trim().toLowerCase() === emailNorm)
+      const duplicate = emailNorm && knownCustomers.find(c => (c.email || '').trim().toLowerCase() === emailNorm)
       if (duplicate) {
         setDuplicateConfirm({ isOpen: true, data, existingName: duplicate.name })
         return

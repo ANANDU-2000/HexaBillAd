@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { fixMoney } from '../../utils/productFields'
 import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
@@ -262,7 +263,7 @@ const PaymentsPage = () => {
         paymentsAPI.getPayments(paymentListParams({
           page, search: debouncedSearchTerm, method: filterMethod, status: filterStatus, fromDate, toDate
         })),
-        customersAPI.getCustomers({ page: 1, pageSize: 100 })
+        loadAllCustomerPages(customersAPI.getCustomers)
       ])
       if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return
       if (!paymentsRes.success || !paymentsRes.data) throw new Error('Payments could not be loaded.')
@@ -278,7 +279,7 @@ const PaymentsPage = () => {
       setPayments(previous => mergeSelectedPaymentRecords(previous, rows, selectedPaymentIdsRef.current))
       setFilteredPayments(rows)
       setListScope(scope)
-      if (customersRes.success && customersRes.data) setCustomers(customersRes.data.items || customersRes.data || [])
+      if (customersRes.items?.length || customersRes.response?.success) setCustomers(customersRes.items)
       setSales([])
     } catch (error) {
       if (requestId !== listRequestRef.current || scope !== accountPrefixRef.current) return

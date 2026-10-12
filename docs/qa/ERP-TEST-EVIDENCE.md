@@ -11,3 +11,18 @@
 | T-LINT | ESLint on CustomersPage.jsx | `npx eslint` | 0 errors, 7 pre-existing warnings |
 
 No credentials, tokens or private customer data are recorded. Screenshots remain under the ignored e2e results folder.
+
+## 2026-10-13 form fix-it-for-them work (PostgreSQL disposable DB, synthetic tenant)
+| Spec | Result (360 and 1440 px) |
+|---|---|
+| customer-save-contract | 12 passed (360, 768, 1440) |
+| ledger-add-customer | 6 passed |
+| product-sku-autofix | 8 passed |
+| supplier-autofix | 4 passed |
+| expense-autofix | 6 passed |
+| purchase-autofix | 4 passed at 768 and 1440; 2 skipped at 360 by design (item table layout), phone layout not covered |
+| payment-autofix | 6 passed |
+| suppliers-money-tone | 2 passed (zero balance is not red; red and green amounts not asserted in browser) |
+| Backend full suite on PostgreSQL | 795 passed, 0 skipped |
+| Frontend unit tests | all passed |
+
