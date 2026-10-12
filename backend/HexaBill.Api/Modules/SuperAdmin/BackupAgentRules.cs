@@ -15,8 +15,14 @@ public static class TenantFeatureFlags
     public const string DailyClose = "daily_close";
     public const string VatBasisEffectiveDating = "vat_basis_effective_dating";
 
+    /// <summary>Flags that are on for every workspace and cannot be switched off per tenant.</summary>
+    public static bool IsAlwaysOn(string? key) =>
+        string.Equals(key, DailyClose, StringComparison.OrdinalIgnoreCase);
+
     public static bool IsEnabled(string? featuresJson, string key)
     {
+        if (IsAlwaysOn(key))
+            return true;
         if (string.IsNullOrWhiteSpace(featuresJson) || string.IsNullOrWhiteSpace(key))
             return false;
         try

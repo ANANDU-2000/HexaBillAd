@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { buildCustomerLedgerCollectHref, buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 import { useDebounce } from '../../hooks/useDebounce'
+import ReportSwitcher from '../../components/ui/ReportSwitcher'
 import {
   Download,
   Filter,
@@ -232,6 +233,21 @@ const ReportsPage = () => {
   const tabGroups = ['Sales', 'Receivables', 'Payables', 'Operations', 'Company']
     .map((label) => ({ label, tabs: tabs.filter((tab) => tab.group === label) }))
     .filter((group) => group.tabs.length > 0)
+
+  const moreFilterCount = ['product', 'customer', 'status', 'damageCategory', 'staffId'].filter((k) => filters[k]).length
+  // Filters apply as soon as they change (no Apply button).
+  const setFilter = (patch) => {
+    setFilters((prev) => ({ ...prev, ...patch }))
+    setAppliedFilters((prev) => ({ ...prev, ...patch }))
+  }
+  const periodPresets = [
+    { id: 'today', label: 'Today', range: () => { const t = localDateString(new Date()); return { from: t, to: t } } },
+    { id: 'yesterday', label: 'Yesterday', range: () => { const d = new Date(); d.setDate(d.getDate() - 1); const t = localDateString(d); return { from: t, to: t } } },
+    { id: 'last7', label: 'Last 7 days', range: () => { const f = new Date(); f.setDate(f.getDate() - 7); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'week', label: 'This week', range: () => { const f = new Date(); f.setDate(f.getDate() - f.getDay()); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'month', label: 'This month', range: () => { const f = new Date(); f.setDate(1); return { from: localDateString(f), to: localDateString(new Date()) } } },
+    { id: 'year', label: 'This year', range: () => { const f = new Date(); f.setMonth(0, 1); return { from: localDateString(f), to: localDateString(new Date()) } } },
+  ]
 
   // Update URL when tab changes (with debouncing to prevent request flood)
   const handleTabChange = (tabId) => {
@@ -1232,262 +1248,116 @@ const ReportsPage = () => {
   )
 
   return (
-    <div className="w-full max-w-full space-y-6">
-      {/* Header — full width */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="inline-flex items-center justify-center p-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
-            title="Back to Dashboard"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-xl font-semibold text-neutral-900">Reports & Analytics</h1>
-            <p className="text-xs sm:text-sm text-[#475569]">Comprehensive business insights and analytics</p>
-          </div>
-        </div>
-        <div className="mt-2 sm:mt-0 flex flex-wrap gap-2 sm:space-x-3">
-          <button
-            onClick={() => fetchReportData()}
-            className="inline-flex items-center justify-center px-3 py-2 border border-[#E5E7EB] rounded-lg text-sm font-medium text-[#0F172A] bg-white hover:bg-[#F8FAFC] transition-colors duration-150"
-          >
-            <RefreshCw className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Refresh</span>
-          </button>
-          <button
-            onClick={() => handleExport('pdf')}
-            className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 transition-colors duration-150"
-          >
-            <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Export PDF</span>
-            <span className="sm:hidden">Export</span>
-          </button>
-        </div>
-      </div>
+    <div className="flex min-h-0 w-full max-w-full flex-1 flex-col gap-2">
+      <h1 className="sr-only">Reports & Analytics</h1>
 
-      {/* Filters — collapsible; collapsed shows date row only to save space */}
-      <div className="bg-white rounded-lg border border-neutral-200 p-4 lg:p-6 w-full">
-        <button
-          type="button"
-          onClick={() => setFiltersExpanded(prev => !prev)}
-          className="flex items-center mb-2 w-full text-left"
-          aria-expanded={filtersExpanded}
-        >
-          <Filter className="h-5 w-5 text-primary-600 mr-2 flex-shrink-0" />
-          <h3 className="text-base lg:text-lg font-semibold text-neutral-900">Filters</h3>
-          {filtersExpanded ? <ChevronUp className="h-5 w-5 ml-2 text-neutral-500" /> : <ChevronDown className="h-5 w-5 ml-2 text-neutral-500" />}
-        </button>
-        <p className="text-sm text-neutral-600 mb-3">Date range applies to all tabs below.</p>
-        <div className="mb-3 sm:mb-4 flex flex-wrap gap-2">
-          <button
-            onClick={() => {
-              const today = localDateString(new Date())
-              setDateRange({ from: today, to: today })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => {
-              const yesterday = new Date()
-              yesterday.setDate(yesterday.getDate() - 1)
-              const yesterdayStr = localDateString(yesterday)
-              setDateRange({ from: yesterdayStr, to: yesterdayStr })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            Yesterday
-          </button>
-          <button
-            onClick={() => {
-              const to = localDateString(new Date())
-              const from = new Date()
-              from.setDate(from.getDate() - 7)
-              setDateRange({ from: localDateString(from), to })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            Last 7 Days
-          </button>
-          <button
-            onClick={() => {
-              const to = new Date()
-              const from = new Date(to)
-              from.setDate(from.getDate() - from.getDay()) // Start of week (Sunday)
-              setDateRange({ from: localDateString(from), to: localDateString(to) })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            This Week
-          </button>
-          <button
-            onClick={() => {
-              const to = localDateString(new Date())
-              const from = new Date()
-              from.setDate(1) // First day of month
-              setDateRange({ from: localDateString(from), to })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            This Month
-          </button>
-          <button
-            onClick={() => {
-              const to = localDateString(new Date())
-              const from = new Date()
-              from.setFullYear(from.getFullYear(), 0, 1) // First day of year
-              setDateRange({ from: localDateString(from), to })
-            }}
-            className="px-2 py-1 text-xs bg-primary-50 text-primary-700 rounded hover:bg-primary-100"
-          >
-            This Year
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 lg:gap-4">
-          <Input
-            label="From Date"
-            type="date"
-            value={dateRange.from}
-            onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
-          />
-          <Input
-            label="To Date"
-            type="date"
-            value={dateRange.to}
-            onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
-          />
-          {!filtersExpanded ? (
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={() => setFiltersExpanded(true)}
-                className="px-3 py-2 text-sm border border-neutral-300 rounded-lg hover:bg-neutral-50 text-neutral-700 flex items-center gap-1"
-              >
-                <ChevronDown className="h-4 w-4" />
-                Branch, Route, Product, Customer
-              </button>
-            </div>
-          ) : (
-            <>
-          <Select
-            label="Branch"
-            options={[
-              { value: '', label: 'All Branches' },
-              ...branchesList.map(b => ({ value: String(b.id), label: b.name || 'Branch' }))
-            ]}
-            value={filters.branch}
-            onChange={(e) => setFilters(prev => ({ ...prev, branch: e.target.value, route: '' }))}
-          />
-          <Select
-            label="Route"
-            options={[
-              { value: '', label: 'All Routes' },
-              ...routesList.map(r => ({ value: String(r.id), label: r.name || 'Route' }))
-            ]}
-            value={filters.route}
-            onChange={(e) => setFilters(prev => ({ ...prev, route: e.target.value }))}
-          />
-          <Select
-            label="Product"
-            options={[
-              { value: '', label: 'All Products' },
-              ...productsList.map(p => ({ value: p.id?.toString(), label: p.nameEn || p.sku || 'Unknown' }))
-            ]}
-            value={filters.product}
-            onChange={(e) => setFilters(prev => ({ ...prev, product: e.target.value }))}
-          />
-          <Select
-            label="Customer"
-            options={[
-              { value: '', label: 'All Customers' },
-              ...customersList.map(c => ({ value: c.id?.toString(), label: c.name || 'Unknown' }))
-            ]}
-            value={filters.customer}
-            onChange={(e) => setFilters(prev => ({ ...prev, customer: e.target.value }))}
-          />
-          {/* Status filter for Sales Report */}
-          {activeTab === 'sales' && (
-            <Select
-              label="Status"
-              options={[
-                { value: '', label: 'All Status' },
-                { value: 'Paid', label: 'Paid' },
-                { value: 'Pending', label: 'Pending' },
-                { value: 'Partial', label: 'Partial' }
-              ]}
-              value={filters.status}
-              onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-            />
-          )}
-          {/* Returns report filters */}
-          {activeTab === 'returns' && (
-            <>
-              <Select
-                label="Damage Category"
-                options={[
-                  { value: '', label: 'All Categories' },
-                  ...(reportData.damageCategories || []).map(dc => ({ value: String(dc.id), label: dc.name || 'Unknown' }))
-                ]}
-                value={filters.damageCategory}
-                onChange={(e) => setFilters(prev => ({ ...prev, damageCategory: e.target.value }))}
-              />
-              <Input
-                label="Staff User ID"
-                type="number"
-                min="1"
-                placeholder="Optional"
-                value={filters.staffId}
-                onChange={(e) => setFilters(prev => ({ ...prev, staffId: e.target.value }))}
-              />
-            </>
-          )}
-          <div className="flex items-end">
-            <button
-              onClick={handleApplyFilters}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 flex items-center gap-2"
-            >
-              <Filter className="h-4 w-4" />
-              Apply Filters
+      {/* Row 1: report switcher + refresh/export */}
+      <ReportSwitcher
+        groups={tabGroups}
+        activeId={activeTab}
+        onChange={handleTabChange}
+        right={(
+          <>
+            <button type="button" onClick={() => fetchReportData()} title="Refresh" aria-label="Refresh" className="inline-flex h-9 w-9 items-center justify-center rounded text-neutral-600 hover:bg-neutral-100">
+              <RefreshCw className="h-4 w-4" />
             </button>
-          </div>
+            <button type="button" onClick={() => handleExport('pdf')} className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary-600 px-3 text-[13px] font-medium text-white hover:bg-primary-700">
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Export PDF</span>
+            </button>
           </>
+        )}
+      />
+
+      {/* Row 2: one filter toolbar. Everything applies as soon as it changes. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-neutral-200 bg-white px-2 py-1.5">
+        <input type="date" aria-label="From Date" value={dateRange.from}
+          onChange={(e) => setDateRange((prev) => ({ ...prev, from: e.target.value }))}
+          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]" />
+        <span className="text-xs text-neutral-500">to</span>
+        <input type="date" aria-label="To Date" value={dateRange.to}
+          onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
+          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]" />
+        <select aria-label="Period" value=""
+          onChange={(e) => {
+            const preset = periodPresets.find((x) => x.id === e.target.value)
+            if (preset) setDateRange(preset.range())
+          }}
+          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px]">
+          <option value="">Period…</option>
+          {periodPresets.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+        </select>
+        <span className="hidden h-5 w-px bg-neutral-300 sm:block" aria-hidden />
+        <select aria-label="Branch" value={filters.branch}
+          onChange={(e) => setFilter({ branch: e.target.value, route: '' })}
+          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] max-w-[11rem]">
+          <option value="">All branches</option>
+          {branchesList.map((b) => <option key={b.id} value={String(b.id)}>{b.name || 'Branch'}</option>)}
+        </select>
+        <select aria-label="Route" value={filters.route}
+          onChange={(e) => setFilter({ route: e.target.value })}
+          className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] max-w-[11rem]">
+          <option value="">All routes</option>
+          {routesList.map((r) => <option key={r.id} value={String(r.id)}>{r.name || 'Route'}</option>)}
+        </select>
+
+        <div className="relative">
+          <button type="button" aria-expanded={filtersExpanded}
+            onClick={() => setFiltersExpanded((v) => !v)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50">
+            <Filter className="h-3.5 w-3.5" />
+            More
+            {moreFilterCount > 0 && <span className="rounded-full bg-primary-600 px-1.5 text-[11px] font-semibold text-white">{moreFilterCount}</span>}
+          </button>
+          {filtersExpanded && (
+            <div className="absolute left-0 top-full z-40 mt-1 w-72 space-y-2 rounded-md border border-neutral-200 bg-white p-3 shadow-lg">
+              <label className="block text-xs font-medium text-neutral-600">Product
+                <select value={filters.product} onChange={(e) => setFilter({ product: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
+                  <option value="">All products</option>
+                  {productsList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.nameEn || x.sku || 'Unknown'}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs font-medium text-neutral-600">Customer
+                <select value={filters.customer} onChange={(e) => setFilter({ customer: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
+                  <option value="">All customers</option>
+                  {customersList.map((x) => <option key={x.id} value={x.id?.toString()}>{x.name || 'Unknown'}</option>)}
+                </select>
+              </label>
+              {activeTab === 'sales' && (
+                <label className="block text-xs font-medium text-neutral-600">Status
+                  <select value={filters.status} onChange={(e) => setFilter({ status: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
+                    <option value="">All status</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Partial">Partial</option>
+                  </select>
+                </label>
+              )}
+              {activeTab === 'returns' && (
+                <>
+                  <label className="block text-xs font-medium text-neutral-600">Damage category
+                    <select value={filters.damageCategory} onChange={(e) => setFilter({ damageCategory: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full">
+                      <option value="">All categories</option>
+                      {(reportData.damageCategories || []).map((dc) => <option key={dc.id} value={String(dc.id)}>{dc.name || 'Unknown'}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-xs font-medium text-neutral-600">Staff user ID
+                    <input type="number" min="1" placeholder="Optional" value={filters.staffId} onChange={(e) => setFilter({ staffId: e.target.value })} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] mt-1 w-full" />
+                  </label>
+                </>
+              )}
+              <div className="flex justify-between pt-1">
+                <button type="button" onClick={() => setFilter({ product: '', customer: '', status: '', damageCategory: '', staffId: '' })} className="text-xs font-medium text-neutral-600 hover:text-neutral-900">Clear</button>
+                <button type="button" onClick={() => setFiltersExpanded(false)} className="text-xs font-semibold text-primary-700">Done</button>
+              </div>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Report groups wrap. No horizontal tab strip. */}
-      <div className="bg-white rounded-lg border border-[#E5E7EB] w-full">
-        <div className="px-3 sm:px-4 py-3 space-y-3">
-          {tabGroups.map((group) => (
-            <div key={group.label} className="flex flex-wrap items-center gap-2">
-              <span className="w-full text-xs font-semibold text-neutral-500 sm:w-auto sm:min-w-[6.5rem]">{group.label}</span>
-              {group.tabs.map((tab) => {
-                const active = activeTab === tab.id
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => handleTabChange(tab.id)}
-                    className={`min-h-11 md:min-h-9 rounded-full px-3 text-sm font-medium ${active
-                      ? 'bg-primary-600 text-white'
-                      : 'border border-surface-border bg-surface text-neutral-600 hover:border-primary-200 hover:text-primary-700'
-                    }`}
-                  >
-                    {tab.shortLabel || tab.name}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-
-        <div className="p-6">
+      {/* Report body fills the remaining height and scrolls on its own */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white">
+        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
           {loading ? (
             <TabContentSkeleton />
           ) : (
@@ -1495,49 +1365,49 @@ const ReportsPage = () => {
           {/* Summary Tab */}
           {activeTab === 'summary' && reportData.summary && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-                <div className="bg-success-bg rounded-lg p-3 sm:p-4 lg:p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
+                <div className="bg-success-bg rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-success flex-shrink-0" />
+                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-success flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-success">Total Sales</p>
-                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-green-900 truncate">
+                      <p className="text-base sm:text-xl lg:text-xl font-bold text-green-900 truncate">
                         {formatCurrency(reportData.summary.totalSales || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-primary-50 rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-primary-50 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-primary-600 flex-shrink-0" />
+                    <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-primary-600 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-primary-600">Total Purchases</p>
-                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-primary-900 truncate">
+                      <p className="text-base sm:text-xl lg:text-xl font-bold text-primary-900 truncate">
                         {formatCurrency(reportData.summary.totalPurchases || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-error-bg rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-error-bg rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-error flex-shrink-0" />
+                    <TrendingDown className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-error flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-error">Total Expenses</p>
-                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-red-900 truncate">
+                      <p className="text-base sm:text-xl lg:text-xl font-bold text-red-900 truncate">
                         {formatCurrency(reportData.summary.totalExpenses || 0)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-purple-50 rounded-lg p-3 sm:p-4 lg:p-6">
+                <div className="bg-purple-50 rounded-lg px-3 py-2 sm:px-4 sm:py-2.5">
                   <div className="flex items-center">
-                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-8 lg:w-8 text-purple-600 flex-shrink-0" />
+                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 lg:h-6 lg:w-6 text-purple-600 flex-shrink-0" />
                     <div className="ml-2 sm:ml-3 lg:ml-4 min-w-0">
                       <p className="text-xs sm:text-sm font-medium text-purple-600">Net Profit</p>
-                      <p className="text-base sm:text-xl lg:text-2xl font-bold text-purple-900 truncate">
+                      <p className="text-base sm:text-xl lg:text-xl font-bold text-purple-900 truncate">
                         {formatCurrency(reportData.summary.netProfit || 0)}
                       </p>
                     </div>

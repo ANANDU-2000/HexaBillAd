@@ -85,11 +85,11 @@ public class DailyClosePreviewTests
     }
 
     [Fact]
-    public async Task Preview_FeatureDisabled_Throws()
+    public async Task Preview_FeatureFlagOff_StillEnabled_AlwaysOn()
     {
         await using var db = await DatabaseAsync(enableDailyClose: false);
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            Service(db).GetPreviewAsync(10, DateTime.UtcNow.Date, openingCash: 0m));
+        var preview = await Service(db).GetPreviewAsync(10, DateTime.UtcNow.Date, openingCash: 0m);
+        Assert.Equal(0m, preview.OpeningCash);
     }
 
     private static DailyCloseService Service(AppDbContext db) =>

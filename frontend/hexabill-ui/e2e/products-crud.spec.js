@@ -90,18 +90,15 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
   await expect.poll(async () => (await productBySku(sku))?.sellPrice).toBe(22.75)
 
   // DEACTIVATE: a typed confirmation is required; inactive in the API afterwards.
-  // Table (1280px and up): from this product's row. Phones: from the product detail page. Tablets and small laptops:
-  // from the "…" menu on the product card.
+  // Phones: from the product detail page. Wider: from the row/card "…" menu.
   if (width < 768) {
     await page.goto(`${feOrigin(SLUG)}/products/${product.id}`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Deactivate', exact: true }).filter({ visible: true }).first().click()
-  } else if (width < 1280) {
+  } else {
+    // Table rows (1280px and up) and cards (768-1279px) both open the same "More actions" menu.
     await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: `More actions for ${name}`, exact: true }).filter({ visible: true }).first().click()
     await page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
-  } else {
-    await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
-    await rowFor(page, name, 'Deactivate Product').filter({ visible: true }).getByRole('button', { name: 'Deactivate Product', exact: true }).click()
   }
   const dialog = page.getByRole('dialog').first()
   await expect(dialog).toBeVisible()

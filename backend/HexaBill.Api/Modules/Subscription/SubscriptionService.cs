@@ -359,6 +359,8 @@ namespace HexaBill.Api.Modules.Subscription
 
         public async Task<bool> IsFeatureAllowedAsync(int tenantId, string feature)
         {
+            if (TenantFeatureFlags.IsAlwaysOn(feature)) return true;
+
             var subscription = await GetTenantSubscriptionAsync(tenantId);
             if (subscription == null) return false;
 

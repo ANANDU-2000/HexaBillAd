@@ -1,3 +1,4 @@
+import { openReport } from './reportNav.js'
 // Reports > Customers (unpaid 1+ days) and Overdue (30+ days): each customer row shows the balance the API returns,
 // and no customer the API leaves out is listed. This endpoint failed with a 500 on the local SQLite database
 // (OUT-01: SQLite cannot ORDER BY a decimal), so this test also guards that. Read-only. Synthetic local tenant only.
@@ -26,7 +27,7 @@ for (const [tab, days] of [['Customers', 1], ['Overdue', 30]]) {
     await signIn(page, SLUG)
     await page.goto(`${feOrigin(SLUG)}/reports`, { waitUntil: 'networkidle' })
     const loaded = page.waitForResponse((r) => /\/api\/reports\/outstanding\?/.test(r.url()) && r.request().method() === 'GET')
-    await page.getByRole('tab', { name: tab, exact: true }).filter({ visible: true }).first().click()
+    await openReport(page, tab)
     expect((await loaded).status(), 'the page gets the report').toBe(200)
 
     // The page loads twice and re-renders, so poll the whole list until it settles instead of checking parts of it.

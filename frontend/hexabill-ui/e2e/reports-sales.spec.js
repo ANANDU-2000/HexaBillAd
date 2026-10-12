@@ -1,3 +1,4 @@
+import { openReport } from './reportNav.js'
 // Reports > Sales: the Sales Details table lists every invoice the API returns for the range shown, with the same total
 // and paid amount for each invoice (SL-02). The tab asks for one page of up to 100 invoices (SL-01), so this check
 // fails by design if a range holds more than 100 invoices. Read-only. Synthetic local tenant only.
@@ -31,7 +32,7 @@ test('Sales: the table lists every invoice in the range with the API total and p
   expect(report.totalCount, 'more than 100 invoices in this range: see SL-01').toBeLessThanOrEqual(100)
 
   const loaded = page.waitForResponse((r) => /\/api\/reports\/sales\?/.test(r.url()) && r.request().method() === 'GET' && r.status() === 200)
-  await page.getByRole('tab', { name: 'Sales', exact: true }).filter({ visible: true }).first().click()
+  await openReport(page, 'Sales')
   await loaded
 
   const rows = page.locator('table tbody tr').filter({ has: page.locator('td') })
@@ -70,7 +71,7 @@ test('Sales: a range with several pages lists every invoice', async ({ page }) =
   })
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/reports`, { waitUntil: 'networkidle' })
-  await page.getByRole('tab', { name: 'Sales', exact: true }).filter({ visible: true }).first().click()
+  await openReport(page, 'Sales')
   await expect(page.locator('table tbody tr').filter({ has: page.locator('td') })).toHaveCount(total)
   expect([...new Set(calls)].sort((a, b) => a - b)).toEqual([1, 2, 3])
   await expect(page.getByText(/Showing the first/)).toHaveCount(0)

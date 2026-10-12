@@ -1,3 +1,4 @@
+import { openReport } from './reportNav.js'
 // Reports > Customer Aging and AP Aging: each bucket card on screen equals the aging the API returns for today.
 // AG-01: the 0-30, 31-60 and 61-90 buckets are sent as bucket0_30, bucket31_60 and bucket61_90. The response
 // converter used to rename them (bucket030), so the cards showed 0.00. On this tenant only the 0-30 bucket has
@@ -53,7 +54,7 @@ test('Customer Aging: the bucket cards equal the aging the API returns for today
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/reports`, { waitUntil: 'networkidle' })
   const loaded = page.waitForResponse((r) => /\/api\/reports\/aging\?/.test(r.url()) && r.request().method() === 'GET' && r.status() === 200)
-  await page.getByRole('tab', { name: 'Aging', exact: true }).filter({ visible: true }).first().click()
+  await openReport(page, 'Aging')
   await loaded
   await expect(card(page, '90+ Days')).toBeVisible()
   await expectAgingCards(page, report, 'invoices')
@@ -65,7 +66,7 @@ test('AP Aging: the bucket cards equal the supplier aging the API returns for to
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/reports`, { waitUntil: 'networkidle' })
   const loaded = page.waitForResponse((r) => /\/api\/reports\/ap-aging\?/.test(r.url()) && r.request().method() === 'GET' && r.status() === 200)
-  await page.getByRole('tab', { name: 'AP aging', exact: true }).filter({ visible: true }).first().click()
+  await openReport(page, 'AP aging')
   await loaded
   await expect(card(page, '90+ Days')).toBeVisible()
   await expectAgingCards(page, report, 'suppliers')

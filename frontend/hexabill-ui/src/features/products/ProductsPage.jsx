@@ -3,10 +3,11 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, Download, Upload, MoreVertical, RotateCw, Tag, Image as ImageIcon, X, History, ArrowUpCircle, ArrowDownCircle, Eye, ScanBarcode, Printer, Share2, Wand2 } from 'lucide-react'
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
+import ProductsTable from './ProductsTable'
 import ProductForm from '../../components/ProductForm'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
-import { TabNavigation, FilterPanel, ModernTable, OverflowMenu, Badge, Alert } from '../../components/ui/index'
+import { TabNavigation, FilterPanel, OverflowMenu, Badge, Alert } from '../../components/ui/index'
 import { MobileFilterSheet, ListSkeleton } from '../../components/mobile/index'
 import { useDebounce } from '../../hooks/useDebounce'
 import { useAuth } from '../../hooks/useAuth'
@@ -52,6 +53,8 @@ const ProductsPage = () => {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
   const activeFilterCount = Object.values(activeFilters).filter((v) => v !== '' && v != null).length
   const [categories, setCategories] = useState([])
+  const [selectedIds, setSelectedIds] = useState(() => new Set())
+  const [bulkBusy, setBulkBusy] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [productToDelete, setProductToDelete] = useState(null)
   const [showImportModal, setShowImportModal] = useState(false)
@@ -185,6 +188,10 @@ const ProductsPage = () => {
       loadStockMovements()
     }
   }, [activeTab, loadStockMovements])
+
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [currentPage, pageSize, debouncedSearchTerm, activeTab, activeFilters])
 
   useEffect(() => {
     loadProducts()
@@ -412,15 +419,55 @@ const ProductsPage = () => {
     }
   }
 
-  const handleDeleteClick = (product) => {
+  // Accepts one product or a list, so row menu and bulk bar share one confirm + result path.
+  const handleDeleteClick = (target) => {
+    const list = Array.isArray(target) ? target : [target]
+    if (list.length === 0) return
+    const single = list.length === 1
     setDangerModal({
       isOpen: true,
-      title: 'Deactivate Product',
-      message: `This will deactivate ${product.nameEn || product.sku}. The product will be hidden from POS but will still appear in old invoices. You can reactivate it later.`,
-      confirmLabel: 'Deactivate Product',
+      title: single ? 'Deactivate Product' : `Deactivate ${list.length} products`,
+      message: single
+        ? `This will deactivate ${list[0].nameEn || list[0].sku}. The product will be hidden from POS but will still appear in old invoices. You can reactivate it later.`
+        : `This will deactivate ${list.length} selected products. They will be hidden from POS but will still appear in old invoices. You can reactivate them later.`,
+      confirmLabel: single ? 'Deactivate Product' : `Deactivate ${list.length}`,
       requireTypedText: 'DEACTIVATE',
-      onConfirm: () => handleDeleteProduct(product.id)
+      onConfirm: () => (single ? handleDeleteProduct(list[0].id) : runBulk(list.map((p) => p.id), 'deactivate'))
     })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+  const toggleOne = (id) => setSelectedIds((prev) => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
+  })
+  const togglePage = (checked) => setSelectedIds((prev) => {
+    const next = new Set(prev)
+    products.forEach((p) => (checked ? next.add(p.id) : next.delete(p.id)))
+    return next
+  })
+
+  // Existing single-product endpoints, called one by one; failures are counted, not hidden.
+  const runBulk = async (ids, mode) => {
+    setBulkBusy(true)
+    let ok = 0
+    const failed = []
+    for (const id of ids) {
+      try {
+        const res = mode === 'deactivate' ? await productsAPI.deleteProduct(id) : await productsAPI.activateProduct(id)
+        if (res?.success) ok++; else failed.push(id)
+      } catch {
+        failed.push(id)
+      }
+    }
+    setBulkBusy(false)
+    const verb = mode === 'deactivate' ? 'deactivated' : 'activated'
+    if (ok > 0) toast.success(`${ok} product${ok !== 1 ? 's' : ''} ${verb}`)
+    if (failed.length > 0) toast.error(`${failed.length} could not be ${verb}. They stay selected.`)
+    setSelectedIds(new Set(failed))
+    window.dispatchEvent(new CustomEvent('dataUpdated'))
+    loadProducts()
   }
 
   const handleDeleteProduct = async (productId) => {
@@ -1019,233 +1066,33 @@ const ProductsPage = () => {
       />
 
       {/* Modern Products Table — shown from 1280px; narrower screens use the card list below (its row actions fit) */}
-      <div className="hidden xl:block">
-      <ModernTable
-        data={products}
-        loading={loading}
-        onRowClick={(product) => navigate(`/products/${product.id}`)}
-        columns={[
-          {
-            key: 'imageUrl',
-            label: 'Image',
-            sortable: false,
-            render: (product) => {
-              if (product.imageUrl) {
-                return (
-                  <div className="relative">
-                    <img 
-                      src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') 
-                        ? product.imageUrl 
-                        : `/uploads/${product.imageUrl}`}
-                      alt={product.nameEn}
-                      className="h-8 w-8 object-cover rounded border border-neutral-200"
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                        const placeholder = e.target.parentElement.querySelector('.image-placeholder')
-                        if (placeholder) placeholder.style.display = 'flex'
-                      }}
-                    />
-                    <div className="image-placeholder h-8 w-8 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center" style={{ display: 'none' }}>
-                      <ImageIcon className="h-4 w-4 text-neutral-400" />
-                    </div>
-                  </div>
-                )
-              }
-              return (
-                <div className="h-8 w-8 bg-neutral-100 rounded border border-neutral-200 flex items-center justify-center">
-                  <ImageIcon className="h-4 w-4 text-neutral-400" />
-                </div>
-              )
-            }
-          },
-          { key: 'sku', label: 'SKU', sortable: true },
-          { 
-            key: 'nameEn', 
-            label: 'Name (EN)', 
-            sortable: true,
-            render: (product) => (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    navigate(`/products/${product.id}`)
-                  }}
-                  className="text-left text-primary-700 hover:text-primary-900 hover:underline font-medium"
-                >
-                  {product.nameEn}
-                </button>
-                {product.isActive === false && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-neutral-100 text-neutral-600">
-                    Inactive
-                  </span>
-                )}
-              </div>
-            )
-          },
-          {
-            key: 'barcode',
-            label: 'Barcode',
-            sortable: true,
-            render: (product) => (
-              product.barcode ? (
-                <span className="font-mono text-xs text-neutral-600">{product.barcode}</span>
-              ) : (
-                <span className="text-neutral-400 text-xs">—</span>
-              )
-            )
-          },
-          {
-            key: 'categoryName',
-            label: 'Category',
-            sortable: true,
-            render: (product) => (
-              product.categoryName ? (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-50 text-primary-700">
-                  {product.categoryName}
-                </span>
-              ) : (
-                <span className="text-neutral-400 text-xs">—</span>
-              )
-            )
-          },
-          { key: 'unitType', label: 'Qty', sortable: true },
-          {
-            key: 'stockQty',
-            label: 'Stock',
-            sortable: true,
-            render: (product) => (
-              <div className="flex items-center">
-                <span className={product.stockQty <= (product.reorderLevel || 0) ? 'text-error font-medium' : ''}>
-                  {product.stockQty ?? 0}
-                </span>
-                {product.stockQty <= (product.reorderLevel || 0) && (
-                  <AlertTriangle className="h-4 w-4 text-red-500 ml-1" />
-                )}
-              </div>
-            )
-          },
-          { key: 'sellPrice', label: 'Price', sortable: true, render: (p) => `${currency} ${Number(p.sellPrice || 0).toFixed(2)}` },
-          {
-            key: 'expiryDate',
-            label: 'Expiry',
-            sortable: true,
-            render: (product) => {
-              if (!product.expiryDate) return <span className="text-neutral-500 text-xs">No expiry</span>;
-              const expiryDate = new Date(product.expiryDate);
-              const today = new Date();
-              const daysUntilExpiry = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+      {selectedIds.size > 0 && canManageInventory && (
+        <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary-300 bg-primary-50 px-3 py-2 text-sm" role="region" aria-label="Bulk actions">
+          <span className="font-semibold text-primary-900">{selectedIds.size} selected</span>
+          {totalCount > products.length && <span className="text-xs text-primary-800">on this page of {totalCount}</span>}
+          <span className="mx-1 hidden h-5 w-px bg-primary-200 sm:block" />
+          <button type="button" disabled={bulkBusy} onClick={() => handleBarcodePdfForProducts(products.filter((p) => selectedIds.has(p.id) && p.barcode).map((p) => p.id))} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50"><Printer className="h-4 w-4" />Print barcodes</button>
+          <button type="button" disabled={bulkBusy} onClick={() => runBulk([...selectedIds], 'activate')} className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1.5 font-medium text-neutral-800 hover:bg-neutral-50 disabled:opacity-50"><RotateCw className="h-4 w-4" />Activate</button>
+          <button type="button" disabled={bulkBusy} onClick={() => handleDeleteClick(products.filter((p) => selectedIds.has(p.id)))} className="inline-flex items-center gap-1.5 rounded-md border border-error/40 bg-white px-3 py-1.5 font-medium text-error hover:bg-error/10 disabled:opacity-50"><Trash2 className="h-4 w-4" />Deactivate</button>
+          <button type="button" onClick={clearSelection} className="ms-auto inline-flex items-center gap-1 rounded-md px-2 py-1.5 font-medium text-neutral-700 hover:bg-primary-100"><X className="h-4 w-4" />Clear</button>
+        </div>
+      )}
 
-              if (daysUntilExpiry < 0) {
-                return <span className="text-error font-medium text-xs">Expired</span>;
-              } else if (daysUntilExpiry <= 30) {
-                return <span className="text-orange-600 font-medium text-xs">{daysUntilExpiry}d left</span>;
-              } else {
-                return <span className="text-neutral-600 text-xs">{expiryDate.toLocaleDateString()}</span>;
-              }
-            }
-          }
-        ]}
-        actions={(product) => (
-          <div className="flex flex-wrap items-center gap-1 max-w-[16rem]">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/products/${product.id}`)
-              }}
-              className="bg-neutral-50 text-neutral-700 hover:text-white hover:bg-neutral-700 border border-neutral-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-              title="View product"
-              aria-label="View product"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline text-xs font-medium">View</span>
-            </button>
-            {canManageInventory && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  navigate(`/products/${product.id}?edit=1`)
-                }}
-                className="bg-primary-50 text-primary-600 hover:text-white hover:bg-primary-600 border border-primary-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-                title="Edit Product"
-                aria-label="Edit Product"
-              >
-                <Edit className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline text-xs font-medium">Edit</span>
-              </button>
-            )}
-            {product.barcode && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleBarcodePdfForProducts([product.id], { share: false })
-                }}
-                className="bg-violet-50 text-violet-700 hover:text-white hover:bg-violet-700 border border-violet-200 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-                title="Print barcode PDF"
-                aria-label="Print barcode"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline text-xs font-medium">Barcode</span>
-              </button>
-            )}
-            {canAdjustStock && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleStockAdjustment(product)
-                }}
-                className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-                title="Adjust Stock"
-                aria-label="Adjust Stock"
-              >
-                <Package className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline text-xs font-medium">Stock</span>
-              </button>
-            )}
-            {canAdjustStock && (
-              <Link
-                to={`/stock-adjustments?productId=${product.id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="bg-slate-50 text-slate-700 hover:text-white hover:bg-slate-700 border border-slate-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-                title="Stock adjustment history for this product"
-                aria-label="Stock adjustment history"
-              >
-                <History className="h-3.5 w-3.5" />
-                <span className="hidden lg:inline text-xs font-medium">History</span>
-              </Link>
-            )}
-            {canManageInventory && (
-              product.isActive === false ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleActivateProduct(product.id)
-                  }}
-                  className="bg-success-bg text-success hover:text-white hover:bg-success border border-green-300 p-1 sm:p-1.5 rounded transition-colors flex items-center gap-0.5 min-h-[44px]"
-                  title="Activate Product"
-                  aria-label="Activate Product"
-                >
-                  <RotateCw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline text-xs font-medium">Activate</span>
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleDeleteClick(product)
-                  }}
-                  className="bg-error/10 text-error hover:text-white hover:bg-error border border-error/30 p-1.5 sm:p-2 rounded transition-colors flex items-center gap-1 min-h-[44px]"
-                  title="Deactivate Product"
-                  aria-label="Deactivate Product"
-                >
-                  <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline text-xs font-medium">Deactivate</span>
-                </button>
-              )
-            )}
-          </div>
-        )}
-      />
+      <div className="hidden xl:block">
+        <ProductsTable
+          products={products}
+          loading={loading}
+          currency={currency}
+          selectedIds={selectedIds}
+          onToggleOne={toggleOne}
+          onTogglePage={togglePage}
+          canManageInventory={canManageInventory}
+          canAdjustStock={canAdjustStock}
+          onAdjustStock={handleStockAdjustment}
+          onDeactivate={handleDeleteClick}
+          onActivate={handleActivateProduct}
+          onPrintBarcode={(ids) => handleBarcodePdfForProducts(ids, { share: false })}
+        />
       </div>
 
       {/* Product cards (below 1280px: phones, tablets, small laptops) */}
