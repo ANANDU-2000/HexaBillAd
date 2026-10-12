@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { fixMoney } from '../../utils/productFields'
 import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
@@ -341,16 +342,18 @@ const PaymentsPage = () => {
   }
 
   const paymentDraft = (data) => {
-    const amount = Number(data.amount)
-    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Please enter a valid positive payment amount.')
+    const amountFix = fixMoney(data.amount, 'Amount')
+    const amount = amountFix.value
+    if (!(amount > 0)) throw new Error('Type the amount received, for example 250.00')
+    if (amountFix.note) toast(`We fixed: ${amountFix.note}`, { duration: 7000 })
     const customerId = data.customerId ? Number(data.customerId) : null
     const saleId = data.saleId ? Number(data.saleId) : null
-    if (!customerId && !saleId) throw new Error('Please select a customer or an invoice.')
+    if (!customerId && !saleId) throw new Error('Pick the customer or the invoice this payment is for.')
     const selectedMode = String(data.method || 'CASH').toUpperCase()
     const mode = selectedMode === 'PENDING' ? 'CREDIT' : selectedMode
-    if (!['CASH','CHEQUE','ONLINE','CREDIT','DEBIT'].includes(mode)) throw new Error('Select a valid payment method.')
+    if (!['CASH','CHEQUE','ONLINE','CREDIT','DEBIT'].includes(mode)) throw new Error('Pick how it was paid: Cash, Cheque or Online Transfer.')
     if (['CHEQUE', 'ONLINE'].includes(mode) && !String(data.ref || data.reference || '').trim()) {
-      throw new Error('Enter a reference for cheque or online payments.')
+      throw new Error(mode === 'CHEQUE' ? 'Type the cheque number, for example CHQ001' : 'Type the transaction reference, for example TXN123456')
     }
     let paymentDate = data.paymentDate
     if (/^\d{4}-\d{2}-\d{2}$/.test(paymentDate || '')) paymentDate = new Date(paymentDate + 'T00:00:00Z').toISOString()
@@ -380,12 +383,12 @@ const PaymentsPage = () => {
       if (data.saleId) {
         const selectedInvoice = outstandingInvoices.find(inv => inv.id === Number(data.saleId))
         if (selectedInvoice && paymentAmount > selectedInvoice.balanceAmount + 0.01) {
-          throw new Error('Payment exceeds the invoice outstanding balance. Refresh the invoice before saving.')
+          throw new Error(`This payment (${paymentAmount.toFixed(2)}) is more than the invoice balance (${Number(selectedInvoice.balanceAmount).toFixed(2)}). Type ${Number(selectedInvoice.balanceAmount).toFixed(2)} or less.`)
         }
       } else if (selectedCustomerDetails) {
         const customerBalance = Math.abs(selectedCustomerDetails.balance || 0)
         if (customerBalance > 0 && paymentAmount > customerBalance + 0.01) {
-          throw new Error('Payment exceeds the customer outstanding balance. Refresh the customer before saving.')
+          throw new Error(`This payment (${paymentAmount.toFixed(2)}) is more than the customer owes (${customerBalance.toFixed(2)}). Type ${customerBalance.toFixed(2)} or less.`)
         }
       }
       const intent = paymentJournal.begin(scope,draft)
@@ -1070,7 +1073,7 @@ const PaymentsPage = () => {
         title="Add New Payment"
         size="lg"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Select
               label="Customer (Optional - if not selecting invoice)"
@@ -1127,19 +1130,19 @@ const PaymentsPage = () => {
               ]}
               required
               error={errors.method?.message}
-              {...register('method', { required: 'Payment method is required' })}
+              {...register('method', { required: 'Pick how it was paid: Cash, Cheque or Online Transfer.' })}
             />
 
             <Input
               label="Amount"
               type="number"
-              step="0.01"
-              placeholder="0.00"
-              required
+              step="any"
+              inputMode="decimal"
+              placeholder="e.g. 250.00"
               error={errors.amount?.message}
               {...register('amount', { 
-                required: 'Amount is required',
-                min: { value: 0.01, message: 'Amount must be greater than 0' }
+                required: 'Type the amount received, for example 250.00',
+                min: { value: 0.01, message: 'Type an amount above 0, for example 250.00' }
               })}
             />
 
@@ -1149,7 +1152,7 @@ const PaymentsPage = () => {
               required
               error={errors.paymentDate?.message}
               defaultValue={localDateString(new Date())}
-              {...register('paymentDate', { required: 'Payment date is required' })}
+              {...register('paymentDate', { required: 'Pick the date the money was received' })}
             />
 
             {/* Auto-fill amount from selected invoice */}
@@ -1232,13 +1235,13 @@ const PaymentsPage = () => {
               <>
                 <Input
                   label="Cheque Number"
-                  placeholder="CHQ001"
+                  placeholder="e.g. CHQ001"
                   error={errors.ref?.message}
                   {...register('ref')}
                 />
                 <Input
                   label="Bank Name"
-                  placeholder="Emirates NBD"
+                  placeholder="e.g. Emirates NBD"
                   error={errors.bankName?.message}
                   {...register('bankName')}
                 />
@@ -1248,7 +1251,7 @@ const PaymentsPage = () => {
             {paymentMethod === 'Online' && (
               <Input
                 label="Transaction Reference"
-                placeholder="TXN123456"
+                placeholder="e.g. TXN123456"
                 error={errors.ref?.message}
                 {...register('ref')}
               />
@@ -1257,7 +1260,7 @@ const PaymentsPage = () => {
             <div className="md:col-span-2">
               <Input
                 label="Notes"
-                placeholder="Additional payment notes..."
+                placeholder="e.g. Paid by the shop owner at delivery"
                 error={errors.notes?.message}
                 {...register('notes')}
               />
