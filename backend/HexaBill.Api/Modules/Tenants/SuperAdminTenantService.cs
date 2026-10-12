@@ -1776,6 +1776,10 @@ namespace HexaBill.Api.Modules.Tenants
                 // Payments (must delete before Sales - FK_Payments_Sales_SaleId)
                 await _context.Payments.Where(p => p.TenantId == tenantId).ExecuteDeleteAsync();
 
+                // Damage stock points at the return that created it (FK_DamageInventories_SaleReturns_SourceReturnId);
+                // stock is reset to 0 below, so the damage balance is reset with it and must go before the sales (deleting a sale cascades to its returns).
+                await _context.DamageInventories.Where(d => d.TenantId == tenantId).ExecuteDeleteAsync();
+
                 // Sales and Sale Items
                 var saleIds = await _context.Sales.Where(s => s.TenantId == tenantId).Select(s => s.Id).ToListAsync();
                 if (saleIds.Any())
