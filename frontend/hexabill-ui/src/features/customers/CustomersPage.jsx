@@ -290,15 +290,17 @@ const CustomersPage = () => {
       return
     }
 
-    // Duplicate phone/email warning (Add only)
+    // Duplicate phone blocks; duplicate email asks for confirmation (Add only)
     if (!selectedCustomer) {
       const phoneNorm = (data.phone || '').trim().replace(/\s/g, '')
       const emailNorm = (data.email || '').trim().toLowerCase()
-      const duplicate = customers.find(c => {
-        const cPhone = (c.phone || '').replace(/\s/g, '')
-        const cEmail = (c.email || '').trim().toLowerCase()
-        return (phoneNorm && cPhone === phoneNorm) || (emailNorm && cEmail && cEmail === emailNorm)
-      })
+      // The server rejects a duplicate phone for the tenant, so do not offer "Add anyway" for it.
+      const phoneDuplicate = phoneNorm && customers.find(c => (c.phone || '').replace(/\s/g, '') === phoneNorm)
+      if (phoneDuplicate) {
+        toast.error(`Customer "${phoneDuplicate.name}" already uses this phone number. Use a different number or open that customer.`)
+        return
+      }
+      const duplicate = emailNorm && customers.find(c => (c.email || '').trim().toLowerCase() === emailNorm)
       if (duplicate) {
         setDuplicateConfirm({ isOpen: true, data, existingName: duplicate.name })
         return
@@ -1005,6 +1007,8 @@ const CustomersPage = () => {
             <Input
               label="Credit Limit"
               type="number"
+              min="0"
+              step="0.01"
               placeholder="50000"
               error={errors.creditLimit?.message}
               {...register('creditLimit', {
@@ -1183,11 +1187,11 @@ const CustomersPage = () => {
       {duplicateConfirm.isOpen && (
         <Modal
           isOpen
-          title="Duplicate phone or email"
+          title="Duplicate email"
           onClose={() => setDuplicateConfirm({ isOpen: false, data: null, existingName: '' })}
         >
           <p className="text-sm text-neutral-600 mb-4">
-            A customer named <strong>{duplicateConfirm.existingName}</strong> already has this phone number or email. Add anyway?
+            A customer named <strong>{duplicateConfirm.existingName}</strong> already has this email. Add anyway?
           </p>
           <div className="flex justify-end gap-2">
             <button
@@ -1257,6 +1261,8 @@ const CustomersPage = () => {
             <Input
               label="Credit Limit"
               type="number"
+              min="0"
+              step="0.01"
               placeholder="50000"
               error={errors.creditLimit?.message}
               {...register('creditLimit', {

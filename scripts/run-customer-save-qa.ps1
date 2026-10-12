@@ -1,8 +1,10 @@
 param(
     [string[]]$Projects = @('m360'),
+    [string]$TestFilter = '',
     [switch]$ResumeFixtures
 )
 $ErrorActionPreference = 'Stop'
+function New-QaSecret([int]$Bytes) { $b = New-Object byte[] $Bytes; $g = [Security.Cryptography.RandomNumberGenerator]::Create(); try { $g.GetBytes($b) } finally { $g.Dispose() }; [Convert]::ToBase64String($b) }
 $qaRoot = Split-Path $PSScriptRoot -Parent
 $qaPgBin = 'C:\Program Files\PostgreSQL\18\bin'
 $qaDb = 'hexabill_codex_browser_20261012_1525'
@@ -12,10 +14,10 @@ $qaExitCode = 1
 try {
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
     $env:HEXABILL_TEST_POSTGRES = "Host=127.0.0.1;Port=55472;Database=$qaDb;Username=hexabill_qa"
-    $env:HEXABILL_SYNTHETIC_PASSWORD = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(36))
+    $env:HEXABILL_SYNTHETIC_PASSWORD = (New-QaSecret 36)
     $env:HEXABILL_OWNER_PASSWORD = $env:HEXABILL_SYNTHETIC_PASSWORD
     Set-Item -Path 'Env:HEXABILL_E2E_EMAIL_GULFHARVEST-TEST' -Value 'owner@gulfharvest-test.hexabill.local'
-    $env:HEXABILL_EDGE_PROXY_SECRET = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
+    $env:HEXABILL_EDGE_PROXY_SECRET = (New-QaSecret 48)
     $env:Hosting__EdgeProxySecret = $env:HEXABILL_EDGE_PROXY_SECRET
     $env:HEXABILL_API = 'http://127.0.0.1:5078'
     $env:HEXABILL_DEV_API_ORIGIN = $env:HEXABILL_API
@@ -45,7 +47,7 @@ try {
         if ($qaApiProcess.HasExited -or $qaViteProcess.HasExited) { throw "Owned server exited; inspect $qaLogPrefix logs." }
         try {
             $qaHostState = Invoke-RestMethod "$env:HEXABILL_API/__synthetic-host" -TimeoutSec 2
-            $qaUi = Invoke-WebRequest 'http://127.0.0.1:5175/login' -TimeoutSec 2
+            $qaUi = Invoke-WebRequest 'http://127.0.0.1:5175/login' -UseBasicParsing -TimeoutSec 2
             if ($qaHostState.syntheticOnly -eq $true -and $qaUi.StatusCode -eq 200) { $qaReady = $true; break }
         } catch { Start-Sleep -Milliseconds 500 }
     }
@@ -54,6 +56,7 @@ try {
     try {
         $qaArgs = @('playwright', 'test', 'e2e/customer-save-contract.spec.js', '--workers=1')
         foreach ($qaProject in $Projects) { $qaArgs += "--project=$qaProject" }
+        if ($TestFilter) { $qaArgs += @('--grep', $TestFilter) }
         & npx.cmd @qaArgs
         $qaExitCode = $LASTEXITCODE
     } finally { Pop-Location }

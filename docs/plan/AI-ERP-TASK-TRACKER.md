@@ -43,6 +43,10 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-12 - QA-C02..C04 customer credit/duplicate rules (PASS locally)
+- Fixes: credit limit min/step; duplicate name/phone/route rules return 409 not 500; page blocks duplicate phone but keeps email confirmation. Details: `docs/qa/ERP-BUG-REGISTER.md`, `docs/qa/ERP-TEST-EVIDENCE.md`.
+- Evidence: browser 12/12 on PostgreSQL; backend 793/793 with PostgreSQL, 0 skipped; frontend 154/154. Production untouched, nothing pushed.
+- Next exact action: product create lost-response failure injection, then sales/payment idempotency. Live Gulf Harvest read-only inspection needs supplied credentials.
 ### 2026-10-12 - QA-C01 customer save (PASS locally)
 - Baseline: `main` at `3cd2a208bae0472735cbc1e090f12376c8a71434`; four pre-existing untracked documents preserved. Moved work to `codex/live-erp-qa-20261012`. No production push/deploy/migration/write.
 - Reproduction: real API bridge 5078, Vite 5175, fresh loopback PostgreSQL 18 cluster 55472, four synthetic tenants. Duplicate email + unique name/phone + blank credit -> HTTP 400. Existing backend separately forbids duplicate phone (500); that rule was not relaxed.

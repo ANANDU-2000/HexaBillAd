@@ -103,6 +103,35 @@ public class CustomersHttpIsolationTests
         Assert.DoesNotContain(json.Data!, c => c.Id == 2);
     }
 
+    [Fact]
+    public async Task CreateCustomer_DuplicateName_ReturnsConflictNotServerError()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var name = $"Dup Name {Guid.NewGuid():N}";
+        var first = await client.PostAsJsonAsync("/api/customers", new { name, phone = $"050{Random.Shared.Next(1000000, 9999999)}" });
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        var second = await client.PostAsJsonAsync("/api/customers", new { name, phone = $"051{Random.Shared.Next(1000000, 9999999)}" });
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        Assert.Contains("already exists", await second.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task CreateAndUpdateCustomer_DuplicatePhone_ReturnsConflictNotServerError()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var phone = $"052{Random.Shared.Next(1000000, 9999999)}";
+        var first = await client.PostAsJsonAsync("/api/customers", new { name = $"Phone Owner {Guid.NewGuid():N}", phone });
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        var dup = await client.PostAsJsonAsync("/api/customers", new { name = $"Phone Clone {Guid.NewGuid():N}", phone });
+        Assert.Equal(HttpStatusCode.Conflict, dup.StatusCode);
+
+        var other = await client.PostAsJsonAsync("/api/customers", new { name = $"Phone Other {Guid.NewGuid():N}", phone = $"053{Random.Shared.Next(1000000, 9999999)}" });
+        Assert.Equal(HttpStatusCode.Created, other.StatusCode);
+        var otherId = (await other.Content.ReadFromJsonAsync<ApiEnvelope<CustomerDtoStub>>())!.Data!.Id;
+        var update = await client.PutAsJsonAsync($"/api/customers/{otherId}", new { name = $"Phone Other {Guid.NewGuid():N}", phone });
+        Assert.Equal(HttpStatusCode.Conflict, update.StatusCode);
+    }
+
     private sealed class ApiEnvelope<T>
     {
         public bool Success { get; set; }

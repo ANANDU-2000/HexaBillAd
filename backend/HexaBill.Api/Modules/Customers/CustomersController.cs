@@ -163,6 +163,11 @@ namespace HexaBill.Api.Modules.Customers
             }
         }
 
+        // Service-level business rules (duplicate name/phone, bad route, credit-to-cash with balance) are
+        // client-correctable conflicts. Wrapped database failures and timeouts carry no such meaning and stay 500.
+        private static bool IsCustomerRuleViolation(InvalidOperationException ex) =>
+            ex.InnerException == null && !ex.Message.Contains("timed out", StringComparison.OrdinalIgnoreCase);
+
         [HttpPost]
         public async Task<ActionResult<ApiResponse<CustomerDto>>> CreateCustomer([FromBody] CreateCustomerRequest request)
         {
@@ -177,6 +182,15 @@ namespace HexaBill.Api.Modules.Customers
                     Success = true,
                     Message = "Customer created successfully",
                     Data = result
+                });
+            }
+            catch (InvalidOperationException ex) when (IsCustomerRuleViolation(ex))
+            {
+                return Conflict(new ApiResponse<CustomerDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
                 });
             }
             catch (Microsoft.EntityFrameworkCore.DbUpdateException ex)
@@ -225,6 +239,15 @@ namespace HexaBill.Api.Modules.Customers
                     Success = true,
                     Message = "Customer updated successfully",
                     Data = result
+                });
+            }
+            catch (InvalidOperationException ex) when (IsCustomerRuleViolation(ex))
+            {
+                return Conflict(new ApiResponse<CustomerDto>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = new List<string> { ex.Message }
                 });
             }
             catch (Exception ex)
