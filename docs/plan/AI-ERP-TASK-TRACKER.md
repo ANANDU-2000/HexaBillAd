@@ -43,6 +43,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-13 - forms fix-it-for-them (PASS locally, not pushed)
+- Done: customers (409 rules, phone block, decimal credit), ledger add-customer, owner clear-data damage FK, products SKU/price/conversion repair, suppliers, expenses, purchases (invoice clash 409), payments (amount rounding, messages), one status colour rule, money colour rule on Suppliers, all-pages customer loader. Details in `docs/qa/ERP-BUG-REGISTER.md` and `ERP-TEST-EVIDENCE.md`.
+- Evidence: backend 795/795 on PostgreSQL, 0 skipped; frontend unit tests 180/180; browser specs pass at 360 and 1440 px (purchases 360 skipped by design).
+- Open: purchase invoice number unique per company (owner decision on a per-supplier migration); clear-data leaves supplier payments, daily closes, quotations; searchable customer picker beyond 2,000; live Gulf Harvest read-only check needs credentials; money colours still hand-picked on Reports, VAT Return, Expenses lists (see docs/uiux/MONEY-COLOUR-ROLLOUT.md).
+- Next exact action: owner approval to push; then roll the money colour rule to Customer Ledger amounts and Payments list.
 ### 2026-10-12 - QA-C02..C04 customer credit/duplicate rules (PASS locally)
 - Fixes: credit limit min/step; duplicate name/phone/route rules return 409 not 500; page blocks duplicate phone but keeps email confirmation. Details: `docs/qa/ERP-BUG-REGISTER.md`, `docs/qa/ERP-TEST-EVIDENCE.md`.
 - Evidence: browser 12/12 on PostgreSQL; backend 793/793 with PostgreSQL, 0 skipped; frontend 154/154. Production untouched, nothing pushed.
