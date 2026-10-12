@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Eye, RefreshCw, Plus, Pencil, Trash2, Filter } from 'lucide-react'
 import { suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
+import { moneyTone, moneyWord } from '../../utils/moneyTone'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import Modal from '../../components/Modal'
@@ -19,15 +20,6 @@ const btnOutline = 'inline-flex items-center justify-center min-h-[44px] h-11 px
 const iconBtn = 'inline-flex items-center justify-center min-h-[44px] min-w-[44px] h-11 w-11 rounded-md text-neutral-700 hover:bg-neutral-100'
 
 const emptyForm = { name: '', phone: '', email: '', address: '', creditLimit: '', paymentTerms: '' }
-
-function moneyTone(kind, value) {
-  const n = Number(value) || 0
-  if (n === 0) return 'text-neutral-800'
-  if (kind === 'paid' && n > 0) return 'text-success-fg'
-  if (kind === 'due' && n > 0) return 'text-warning-fg'
-  if (kind === 'overdue' && n > 0) return 'text-error-fg'
-  return 'text-neutral-800'
-}
 
 function safeMessage(err, fallback) {
   if (err?._handledByInterceptor) return null
@@ -501,7 +493,7 @@ const SuppliersPage = () => {
         <div className="flex flex-wrap gap-x-6 gap-y-2 mb-3 text-sm">
           <div>
             <p className="text-xs text-neutral-500">Pending</p>
-            <p className={`tabular-nums font-semibold ${moneyTone('due', pendingTotal)}`}>{formatCurrency(pendingTotal)}</p>
+            <p className={`tabular-nums font-semibold ${moneyTone('due', pendingTotal)}`}>{formatCurrency(pendingTotal)}{moneyWord('due', pendingTotal) && <span className="ml-1 text-xs font-normal">{moneyWord('due', pendingTotal)}</span>}</p>
           </div>
           <div>
             <p className="text-xs text-neutral-500">With balance</p>
@@ -578,7 +570,7 @@ const SuppliersPage = () => {
                       <td className="px-2 h-10 text-neutral-600">{s.phone || '—'}</td>
                       <td className="px-2 h-10 text-right tabular-nums">{formatCurrency(s.totalPurchases || 0)}</td>
                       <td className={`px-2 h-10 text-right tabular-nums ${moneyTone('paid', s.totalPaid)}`}>{formatCurrency(s.totalPaid || 0)}</td>
-                      <td className={`px-2 h-10 text-right tabular-nums font-medium ${moneyTone('due', s.netPayable)}`}>{formatCurrency(s.netPayable || 0)}</td>
+                      <td className={`px-2 h-10 text-right tabular-nums font-medium ${moneyTone('due', s.netPayable)}`}>{formatCurrency(s.netPayable || 0)}{moneyWord('due', s.netPayable) && <span className="ml-1 text-xs font-normal">{moneyWord('due', s.netPayable)}</span>}</td>
                       <td className={`px-2 h-10 text-right tabular-nums ${moneyTone('overdue', s.overdue)}`}>{formatCurrency(s.overdue || 0)}</td>
                       <td className="px-2 h-10 text-neutral-700">{formatDate(s.lastPurchaseDate)}</td>
                       <td className="px-2 h-10 text-right tabular-nums">{s.invoiceCount ?? '—'}</td>
@@ -650,7 +642,7 @@ const SuppliersPage = () => {
                   <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
                     <div>
                       <p className="text-neutral-500">Outstanding</p>
-                      <p className={`tabular-nums font-medium ${moneyTone('due', s.netPayable)}`}>{formatCurrency(s.netPayable || 0)}</p>
+                      <p className={`tabular-nums font-medium ${moneyTone('due', s.netPayable)}`}>{formatCurrency(s.netPayable || 0)}{moneyWord('due', s.netPayable) && <span className="ml-1 text-xs font-normal">{moneyWord('due', s.netPayable)}</span>}</p>
                     </div>
                     <div>
                       <p className="text-neutral-500">Purchases</p>
