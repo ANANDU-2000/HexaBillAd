@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { 
@@ -572,11 +573,7 @@ const PaymentsPage = () => {
   const getPaymentMethod = (p) => (p.method || p.mode || '').toLowerCase().replace(/^./, c => c.toUpperCase())
   const getChequeStatus = (p) => p.chequeStatus || (p.status === 'CLEARED' ? 'Cleared' : p.status === 'RETURNED' ? 'Returned' : p.status === 'VOID' ? 'Void' : 'Pending')
   const getStatusColor = (status) => {
-    const state = String(status || '').toUpperCase()
-    if (state === 'CLEARED') return 'bg-green-100 text-green-800'
-    if (state === 'RETURNED') return 'bg-red-100 text-red-800'
-    if (state === 'PENDING') return 'bg-yellow-100 text-yellow-800'
-    return 'bg-neutral-100 text-neutral-800'
+    return statusTone(status, 'cheque')
   }
 
   return (

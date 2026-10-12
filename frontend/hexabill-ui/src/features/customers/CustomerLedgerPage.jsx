@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -2102,14 +2103,7 @@ const CustomerLedgerPage = () => {
   }
 
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'paid': return 'bg-green-100 text-green-800'
-      case 'partial': return 'bg-yellow-100 text-yellow-800'
-      case 'pending': return 'bg-red-100 text-red-800'
-      default: return 'bg-neutral-100 text-neutral-800'
-    }
-  }
+  const getStatusColor = (status) => statusTone(status, 'invoice')
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
@@ -4134,14 +4128,7 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
     })
   }, [invoices])
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'paid': return 'bg-green-100 text-green-800'
-      case 'partial': return 'bg-yellow-100 text-yellow-800'
-      case 'pending': return 'bg-red-100 text-red-800'
-      default: return 'bg-neutral-100 text-neutral-800'
-    }
-  }
+  const getStatusColor = (status) => statusTone(status, 'invoice')
 
   const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {

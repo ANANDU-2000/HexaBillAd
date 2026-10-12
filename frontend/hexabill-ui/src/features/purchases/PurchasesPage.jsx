@@ -1,5 +1,6 @@
 ﻿import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { statusTone } from '../../utils/statusTone'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard, Filter, ChevronDown } from 'lucide-react'
 import { purchasesAPI, productsAPI, settingsAPI, suppliersAPI } from '../../services/index'
@@ -1420,10 +1421,7 @@ const PurchasesPage = () => {
                           <td className="whitespace-nowrap px-3 py-2 text-right font-medium tabular-nums text-neutral-900">{formatCurrency(purchase.balanceAmount ?? purchase.totalAmount ?? 0)}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                              (purchase.paymentStatus || '').toLowerCase() === 'paid' ? 'bg-green-100 text-green-800' :
-                              (purchase.paymentStatus || '').toLowerCase() === 'partial' ? 'bg-amber-100 text-amber-800' :
-                              (purchase.paymentStatus || '').toLowerCase() === 'overdue' ? 'bg-red-100 text-red-800' :
-                              'bg-neutral-100 text-neutral-700'
+                              statusTone(purchase.paymentStatus || 'Unpaid', 'invoice')
                             }`}>
                               {purchase.paymentStatus || 'Unpaid'}
                             </span>
@@ -1484,10 +1482,7 @@ const PurchasesPage = () => {
                     const isExpanded = expandedPurchaseId === purchase.id
                     const status = (purchase.paymentStatus || '').toLowerCase()
                     const balance = purchase.balanceAmount ?? purchase.totalAmount ?? 0
-                    const statusClass = purchase.isOverdue ? 'bg-red-100 text-red-800'
-                      : status === 'paid' ? 'bg-green-100 text-green-800'
-                      : status === 'partial' || status === 'pending' ? 'bg-amber-100 text-amber-800'
-                      : 'bg-neutral-100 text-neutral-700'
+                    const statusClass = statusTone(purchase.isOverdue ? 'overdue' : (status || 'unpaid'), 'invoice')
                     return (
                     <div key={purchase.id} className="rounded-lg border border-neutral-200 bg-white">
                       <button

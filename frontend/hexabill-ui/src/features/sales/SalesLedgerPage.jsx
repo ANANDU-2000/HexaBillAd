@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
+import { statusTone } from '../../utils/statusTone'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import {
   Download,
@@ -1353,18 +1354,7 @@ const SalesLedgerPage = () => {
 
                       const displayStatus = normalizeStatusForDisplay(entry.status)
 
-                      const statusColor =
-                        displayStatus === 'Returned'
-                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                          : displayStatus === 'Paid'
-                            ? 'bg-green-100 text-green-800 border-green-300'
-                            : displayStatus === 'Pending'
-                              ? 'bg-orange-100 text-orange-800 border-orange-300'
-                            : displayStatus === 'Partial'
-                              ? 'bg-yellow-100 text-yellow-800 border-yellow-300'
-                              : displayStatus === 'Unpaid'
-                                ? 'bg-red-100 text-red-800 border-red-300'
-                                : 'bg-neutral-100 text-neutral-800 border-neutral-300'
+                      const statusColor = `${statusTone(displayStatus, 'invoice', { border: true })} border`
 
                       // For Sale rows show remaining balance for this invoice (0 when Paid); for Payment/Return show running balance
                       const customerBalance = entry.type === 'Sale' ? (entry.realPending ?? 0) : (entry.customerBalance ?? 0)
@@ -1657,18 +1647,7 @@ const SalesLedgerPage = () => {
                   return status
                 }
                 const displayStatus = normalizeStatusForDisplay(entry.status)
-                const statusColor =
-                  displayStatus === 'Returned'
-                    ? 'bg-amber-100 text-amber-800'
-                    : displayStatus === 'Paid'
-                      ? 'bg-green-100 text-green-800'
-                      : displayStatus === 'Pending'
-                        ? 'bg-orange-100 text-orange-800'
-                      : displayStatus === 'Partial'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : displayStatus === 'Unpaid'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-neutral-100 text-neutral-800'
+                const statusColor = statusTone(displayStatus, 'invoice')
 
                 return (
                   <React.Fragment key={ledgerRowKey(entry, idx)}>
