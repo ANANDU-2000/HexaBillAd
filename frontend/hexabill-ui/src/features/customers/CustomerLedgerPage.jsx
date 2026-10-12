@@ -28,6 +28,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
+import { readApiErrorReason, saveOutcomeIsUncertain } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
 import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
@@ -1443,29 +1444,50 @@ const CustomerLedgerPage = () => {
     }, { replace: true })
   }
 
+  const findCustomersByName = async (name) => {
+    const res = await customersAPI.getCustomers({ search: name, pageSize: 50 })
+    const list = res?.data?.items ?? res?.items ?? []
+    const wanted = (name || '').trim().toLowerCase()
+    return list.filter(c => (c.name || '').trim().toLowerCase() === wanted)
+  }
+
   const doCreateCustomer = async (customerData) => {
     customerLoadingRef.current = true
     setCustomerLoading(true)
+    let idsBefore = null
+    try { idsBefore = new Set((await findCustomersByName(customerData.name)).map(c => c.id)) } catch (_) { /* reconcile is best effort */ }
+    const finishSaved = async (saved) => {
+      toast.success('Customer added successfully!', { id: 'customer-add', duration: 4000 })
+      setShowAddCustomerModal(false)
+      setDuplicateCheckModal({ isOpen: false, message: '', customerData: null })
+      resetCustomerForm()
+      await fetchCustomers()
+      if (saved) handleSelectCustomer(saved)
+      window.dispatchEvent(new CustomEvent('customerCreated', { detail: saved }))
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
+    }
     try {
       const response = await customersAPI.createCustomer(customerData)
       if (response?.success) {
-        toast.success('Customer added successfully!', { id: 'customer-add', duration: 4000 })
-        setShowAddCustomerModal(false)
-        setDuplicateCheckModal({ isOpen: false, message: '', customerData: null })
-        resetCustomerForm()
-        await fetchCustomers()
-        if (response?.data) {
-          handleSelectCustomer(response.data)
-        }
-        window.dispatchEvent(new CustomEvent('customerCreated', { detail: response.data }))
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
+        await finishSaved(response.data)
       } else {
-        toast.error(response?.message || 'Failed to create customer', { id: 'customer-add-error' })
+        toast.error(response?.message || 'Customer was not saved. Please check the details and try again.', { id: 'customer-add-error' })
       }
     } catch (error) {
-      const errorMessage = error?.response?.data?.message ||
-        (Array.isArray(error?.response?.data?.errors) ? error.response.data.errors.join(', ') : '') || 'Failed to create customer'
-      if (!error?._handledByInterceptor) toast.error(errorMessage)
+      // The server may have saved the customer even though the answer was lost or failed (timeout, gateway error).
+      if (idsBefore && saveOutcomeIsUncertain(error)) {
+        try {
+          const created = (await findCustomersByName(customerData.name)).find(c => !idsBefore.has(c.id))
+          if (created) {
+            await finishSaved(created)
+            return
+          }
+        } catch (_) { /* fall through to the error message */ }
+      }
+      const reason = readApiErrorReason(error, saveOutcomeIsUncertain(error)
+        ? 'The server did not answer. Nothing was saved. Please try again.'
+        : 'Customer was not saved. Please check the details and try again.')
+      toast.error(reason, { id: 'customer-add-error' })
     } finally {
       customerLoadingRef.current = false
       setCustomerLoading(false)
@@ -1519,6 +1541,13 @@ const CustomerLedgerPage = () => {
           const res = await customersAPI.getCustomers({ pageSize: 200 })
           const list = res?.data?.items ?? res?.items ?? []
           const phoneMatch = customerData.phone && list.find(c => (c.phone || '').replace(/\s/g, '') === (customerData.phone || '').replace(/\s/g, ''))
+          if (phoneMatch) {
+            // The server rejects a duplicate phone for the tenant, so do not offer "Add anyway".
+            customerLoadingRef.current = false
+            setCustomerLoading(false)
+            toast.error(`Customer "${phoneMatch.name}" already uses this phone number. Use a different number or open that customer.`, { id: 'customer-add-error' })
+            return
+          }
           const emailMatch = customerData.email && list.find(c => (c.email || '').toLowerCase().trim() === (customerData.email || '').toLowerCase().trim())
           if (phoneMatch || emailMatch) {
             const msg = phoneMatch && emailMatch

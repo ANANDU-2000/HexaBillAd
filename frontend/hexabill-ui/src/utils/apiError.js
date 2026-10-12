@@ -39,3 +39,30 @@ export const handleApiError = (error, defaultMessage = 'An error occurred', show
   return message
 }
 
+
+/**
+ * Plain-language reason from a failed API call. Reads the app's own message, an errors list,
+ * ASP.NET validation errors ({ errors: { Field: ['text'] } }) and ProblemDetails titles.
+ */
+export const readApiErrorReason = (error, fallback = '') => {
+  const data = error?.response?.data
+  if (data && typeof data === 'object') {
+    if (typeof data.message === 'string' && data.message.trim()) return data.message.trim()
+    if (Array.isArray(data.errors)) {
+      const joined = data.errors.filter((e) => typeof e === 'string' && e.trim()).join(', ')
+      if (joined) return joined
+    }
+    if (data.errors && typeof data.errors === 'object') {
+      const first = Object.values(data.errors).flat().find((e) => typeof e === 'string' && e.trim())
+      if (first) return first
+    }
+    if (typeof data.title === 'string' && data.title.trim()) return data.title.trim()
+  }
+  return fallback
+}
+
+/** True when the server may have saved the record even though the client saw a failure. */
+export const saveOutcomeIsUncertain = (error) => {
+  const status = error?.response?.status
+  return !status || status >= 500
+}
