@@ -58,6 +58,28 @@ public class PurchasesHttpIsolationTests
     }
 
     [Fact]
+    public async Task PostCreatePurchase_SameInvoiceNumberFromAnotherSupplier_ReturnsConflictNotServerError()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var invoiceNo = $"SHARED-{Guid.NewGuid():N}".Substring(0, 18);
+        object Body(string supplier) => new
+        {
+            supplierName = supplier,
+            invoiceNo,
+            purchaseDate = DateTime.UtcNow,
+            paymentType = "Credit",
+            items = new[] { new { productId = 1, unitType = "PIECE", qty = 1m, unitCost = 10m } }
+        };
+        var first = await client.PostAsJsonAsync("/api/purchases", Body("Sup A"));
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        var second = await client.PostAsJsonAsync("/api/purchases", Body("Sup A Other"));
+        Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
+        var text = await second.Content.ReadAsStringAsync();
+        Assert.Contains("already used", text);
+        Assert.Contains("Sup A", text);
+    }
+
+    [Fact]
     public async Task PostCreatePurchase_CrossTenantProduct_ReturnsConflictOrBadRequest()
     {
         using var client = HttpIntegrationClient.Create(_factory, 2, "tenantb");

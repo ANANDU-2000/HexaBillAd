@@ -13,6 +13,8 @@ import { localDateString } from '../../utils/dateFormat'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import { ListSkeleton } from '../../components/mobile/index'
 import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
+import { cleanText, fixMoney } from '../../utils/productFields'
+import { saveOutcomeIsUncertain } from '../../utils/apiError'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
 const tallySelectClass = tallyInputClass
@@ -508,6 +510,8 @@ const PurchasesPage = () => {
     }, 0)
   }
 
+  const createAttemptRef = useRef(null)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (submitting) return
@@ -516,19 +520,37 @@ const PurchasesPage = () => {
       return
     }
 
-    // Validate all items have valid quantities and unit costs
-    const invalidItems = formData.items.filter(item => {
-      const qty = typeof item.qty === 'number' ? item.qty : parseFloat(item.qty)
-      const unitCost = typeof item.unitCost === 'number' ? item.unitCost : parseFloat(item.unitCost)
-      return isNaN(qty) || qty <= 0 || isNaN(unitCost) || unitCost < 0
-    })
-
-    if (invalidItems.length > 0) {
-      toast.error('All items must have valid quantity (> 0) and unit cost (>= 0)')
+    // Repair what can be repaired and tell the client; stop only when a quantity cannot be guessed.
+    const notes = []
+    const countBefore = formData.items.length
+    const filledItems = formData.items.filter(item => item.productId)
+    if (filledItems.length < countBefore) notes.push('Rows without a product were removed.')
+    if (filledItems.length === 0) {
+      toast.error('Pick at least one product, for example Beef Nan 250gm, and type its quantity')
       return
     }
+    const fixedItems = []
+    for (let i = 0; i < filledItems.length; i++) {
+      const item = filledItems[i]
+      const qty = typeof item.qty === 'number' ? item.qty : parseFloat(item.qty)
+      if (!Number.isFinite(qty) || qty <= 0) {
+        toast.error(`Row ${i + 1}: type the quantity, for example 10`)
+        return
+      }
+      const cost = fixMoney(item.unitCost, `Row ${i + 1} unit cost`)
+      if (cost.note) notes.push(cost.note)
+      fixedItems.push({ ...item, qty: Math.round(qty * 1000) / 1000, unitCost: cost.value })
+    }
+    const supplierClean = cleanText(formData.supplierName)
+    let invoiceClean = cleanText(formData.invoiceNo)
+    const purchaseDateFixed = formData.purchaseDate || localDateString(new Date())
+    if (!invoiceClean) {
+      const now = new Date()
+      invoiceClean = `PUR-${purchaseDateFixed.replace(/-/g, '')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+      notes.push(`Invoice number was empty, so ${invoiceClean} was used. You can change it by editing the purchase.`)
+    }
 
-    const trimmedSupplier = (formData.supplierName || '').trim()
+    const trimmedSupplier = supplierClean
     if (!editingPurchase) {
       try {
         // Always bypass GET cache: stale /by-name responses (e.g. id 0 legacy stub) block save after supplier is created
@@ -551,14 +573,14 @@ const PurchasesPage = () => {
 
     try {
       setSubmitting(true)
-      const purchaseDate = formData.purchaseDate || localDateString(new Date())
+      const purchaseDate = purchaseDateFixed
       const purchaseData = {
-        supplierName: (formData.supplierName || '').trim(),
-        invoiceNo: (formData.invoiceNo || '').trim(),
+        supplierName: supplierClean,
+        invoiceNo: invoiceClean,
         purchaseDate,
         expenseCategory: formData.expenseCategory || 'Inventory',
         isTaxClaimable: formData.isTaxClaimable !== false,
-        items: formData.items.map(item => ({
+        items: fixedItems.map(item => ({
           productId: Number(item.productId),
           unitType: (item.unitType || 'PCS').trim().toUpperCase(),
           qty: typeof item.qty === 'number' ? item.qty : parseFloat(item.qty) || 0,
@@ -567,6 +589,7 @@ const PurchasesPage = () => {
       }
 
       let response
+      createAttemptRef.current = editingPurchase ? null : { supplierName: supplierClean, invoiceNo: invoiceClean }
       if (editingPurchase) {
         response = await purchasesAPI.updatePurchase(editingPurchase.id, purchaseData)
         if (response.success) {
@@ -584,6 +607,7 @@ const PurchasesPage = () => {
       }
 
       if (response.success) {
+        if (notes.length) toast(`We fixed: ${notes.join(' ')}`, { duration: 9000 })
         setShowForm(false)
         setEditingPurchase(null)
         setFormData({
@@ -608,9 +632,30 @@ const PurchasesPage = () => {
       }
     } catch (error) {
       console.error('Purchase submit error:', error)
+      // The server may have saved the purchase even though the answer failed or never arrived.
+      // A repeated supplier + invoice number is answered with 409, so a lost answer plus a match means it was saved.
+      const attempt = createAttemptRef.current
+      if (attempt && saveOutcomeIsUncertain(error)) {
+        try {
+          const found = await purchasesAPI.getPurchases({ supplierName: attempt.supplierName, page: 1, pageSize: 20 })
+          const rows = found?.data?.items ?? found?.items ?? []
+          if (rows.some(r => String(r.invoiceNo || '').trim().toLowerCase() === attempt.invoiceNo.toLowerCase())) {
+            toast.success('Purchase created! Stock has been updated.', { id: 'purchase-create', duration: 6000 })
+            setShowForm(false)
+            setEditingPurchase(null)
+            loadPurchases()
+            loadAnalytics()
+            loadPendingSummary()
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
+            productsAPI.recomputeStock().then(() => loadProducts()).catch(() => loadProducts())
+            return
+          }
+        } catch (_) { /* fall through to the message below */ }
+      }
       const data = error?.response?.data
       const errors = data?.errors
-      const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message || 'Failed to save purchase'
+      const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message
+        || (saveOutcomeIsUncertain(error) ? 'The server did not answer. The purchase was not saved, please try again.' : 'Failed to save purchase')
       toast.error(editingPurchase ? `Update failed: ${errorMsg}` : `Create failed: ${errorMsg}`, { duration: 6000 })
     } finally {
       setSubmitting(false)
@@ -890,7 +935,7 @@ const PurchasesPage = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="pb-24 md:pb-0">
+            <form noValidate onSubmit={handleSubmit} className="pb-24 md:pb-0">
               {/* (1) Supplier Section */}
               <VoucherSection
                 sectionId="supplier"
@@ -972,7 +1017,7 @@ const PurchasesPage = () => {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[11rem_11rem_minmax(0,1fr)_minmax(0,1fr)]">
                   <div>
                     <label htmlFor="purchase-invoice" className={tallyLabelClass}>Invoice No *</label>
-                    <input id="purchase-invoice" type="text" required className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
+                    <input id="purchase-invoice" type="text" placeholder="e.g. INV-1042 (empty = we make one)" className={tallyInputClass} value={formData.invoiceNo} onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })} />
                   </div>
                   <div>
                     <label htmlFor="purchase-date" className={tallyLabelClass}>Purchase Date *</label>
@@ -1106,7 +1151,7 @@ const PurchasesPage = () => {
                           <div className="grid grid-cols-2 gap-2 mt-2">
                             <div>
                               <label className="text-xs text-primary-500">Qty</label>
-                              <input type="number" min="0" step="0.01" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
+                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 10" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.qty === '' ? '' : item.qty} onChange={(e) => updateItem(index, 'qty', e.target.value)} />
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit</label>
@@ -1122,7 +1167,7 @@ const PurchasesPage = () => {
                             </div>
                             <div>
                               <label className="text-xs text-primary-500">Unit cost</label>
-                              <input type="number" min="0" step="0.01" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
+                              <input type="number" inputMode="decimal" step="any" placeholder="e.g. 120.00" className="w-full min-h-11 px-2 border border-neutral-200 rounded text-base md:text-sm" value={item.unitCost === '' ? '' : item.unitCost} onChange={(e) => updateItem(index, 'unitCost', e.target.value)} />
                             </div>
                             <div className="flex flex-col justify-end">
                               <span className="text-xs text-primary-500">Total</span>

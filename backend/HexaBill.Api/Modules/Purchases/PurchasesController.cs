@@ -260,8 +260,17 @@ namespace HexaBill.Api.Modules.Purchases
                 var err = ex;
                 while (err?.InnerException != null) err = err.InnerException;
                 var userMessage = err?.Message ?? ex.Message;
-                if (userMessage.Contains("UNIQUE constraint") || userMessage.Contains("duplicate key"))
-                    userMessage = "Invoice number already exists. Use a different invoice number.";
+                var isUniqueClash = userMessage.Contains("UNIQUE constraint") || userMessage.Contains("duplicate key");
+                if (isUniqueClash)
+                {
+                    // Lost a race with another save of the same invoice number: the client can fix this, so it is a conflict.
+                    return Conflict(new ApiResponse<PurchaseDto>
+                    {
+                        Success = false,
+                        Message = "This invoice number is already used on another purchase. Add a letter or the supplier's initials to make it different.",
+                        Errors = new List<string> { "This invoice number is already used on another purchase. Add a letter or the supplier's initials to make it different." }
+                    });
+                }
                 return StatusCode(500, new ApiResponse<PurchaseDto>
                 {
                     Success = false,

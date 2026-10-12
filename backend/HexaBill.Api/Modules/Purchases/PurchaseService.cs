@@ -357,6 +357,19 @@ namespace HexaBill.Api.Modules.Purchases
                     $"Purchase invoice '{request.InvoiceNo}' from supplier '{request.SupplierName}' already exists.");
             }
             
+            // The database keeps invoice numbers unique per company (IX_Purchases_OwnerId_InvoiceNo), not per supplier.
+            // Say so clearly instead of failing at SaveChanges with a server error.
+            var clash = await _context.Purchases
+                .Where(p => p.TenantId == tenantId && p.InvoiceNo == request.InvoiceNo)
+                .Select(p => p.SupplierName)
+                .FirstOrDefaultAsync();
+            if (clash != null)
+            {
+                throw new InvalidOperationException(
+                    $"Invoice number '{request.InvoiceNo}' is already used on a purchase from supplier '{clash}'. " +
+                    $"Add a letter or the supplier's initials to make it different, for example '{request.InvoiceNo}-B'.");
+            }
+
             // CRITICAL: NpgsqlRetryingExecutionStrategy does not support user-initiated transactions.
             // Wrap in CreateExecutionStrategy().ExecuteAsync() so the transaction is retriable.
             var strategy = _context.Database.CreateExecutionStrategy();
