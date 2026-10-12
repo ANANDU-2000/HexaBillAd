@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
+import { normalizeSku, suggestSkuFromName } from '../utils/sku'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Plus, Upload, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
@@ -119,13 +120,28 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     return () => stopBarcodeCam()
   }, [barcodeScanOn, startBarcodeCam, stopBarcodeCam])
 
+  // New product: the SKU follows the English name until the user types their own SKU.
+  const skuEditedByUser = useRef(false)
+
   const handleChange = (e) => {
     const { name, value, type } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'categoryId' ? (value === '' ? null : parseInt(value)) : 
-              type === 'number' ? (value === '' ? '' : Number(value)) : value
-    }))
+    if (name === 'sku') skuEditedByUser.current = value.trim() !== ''
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: name === 'categoryId' ? (value === '' ? null : parseInt(value)) :
+                type === 'number' ? (value === '' ? '' : Number(value)) : value
+      }
+      if (name === 'nameEn' && !product && !skuEditedByUser.current) next.sku = suggestSkuFromName(value)
+      return next
+    })
+  }
+
+  const handleSkuBlur = () => {
+    setFormData(prev => {
+      const fixed = normalizeSku(prev.sku)
+      return fixed === prev.sku ? prev : { ...prev, sku: fixed }
+    })
   }
 
   const handleImageChange = (e) => {
@@ -205,9 +221,15 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       toast.error('Product name (English) is required')
       return
     }
-    if (!formData.sku || !formData.sku.trim()) {
-      toast.error('SKU is required')
+    // Fix spaces/symbols in the SKU for the user ("BEEF 250gm" -> "BEEF-250gm"); fall back to a name-based one.
+    const fixedSku = normalizeSku(formData.sku) || suggestSkuFromName(formData.nameEn)
+    if (!fixedSku) {
+      toast.error('Enter a SKU using letters or numbers, for example BEEF-250')
       return
+    }
+    if (fixedSku !== formData.sku) {
+      formData.sku = fixedSku
+      setFormData(prev => ({ ...prev, sku: fixedSku }))
     }
     if (!formData.unitType) {
       toast.error('Unit type is required')
@@ -316,11 +338,18 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <input
                   type="text"
                   name="sku"
-                  required
                   className="input"
                   value={formData.sku}
                   onChange={handleChange}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={handleSkuBlur}
+                  maxLength={50}
+                  placeholder="Auto from name, e.g. BEEF-250GM"
+                  aria-describedby="sku-hint"
                 />
+                <p id="sku-hint" className="mt-1 text-xs text-neutral-500">
+                  Short code for this item. Spaces become dashes. Leave empty to fill from the name.
+                </p>
               </div>
 
               <div className="sm:col-span-2">
