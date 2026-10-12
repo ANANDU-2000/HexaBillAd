@@ -41,6 +41,20 @@ import { localDateString } from '../../utils/dateFormat'
 import { readCustomersStateFromParams, syncCustomersSearchParams } from '../../utils/customersUrl'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 
+function buildCustomerPayload(data) {
+  return {
+    ...data,
+    // Optional blanks must have the same API representation on every save path.
+    creditLimit: Number.isFinite(data.creditLimit) ? data.creditLimit : 0,
+    email: (data.email || '').trim() || null,
+    branchId: data.branchId ? parseInt(data.branchId, 10) : null,
+    routeId: data.routeId ? parseInt(data.routeId, 10) : null,
+    mainLatitude: data.mainLatitude !== '' && data.mainLatitude != null ? Number(data.mainLatitude) : null,
+    mainLongitude: data.mainLongitude !== '' && data.mainLongitude != null ? Number(data.mainLongitude) : null,
+    clearMainLocation: !!data.clearMainLocation,
+  }
+}
+
 /** wa.me URL with digits-only MSISDN; Gulf-oriented defaults for UAE-style local numbers. */
 function buildWhatsAppUrlFromPhone(phone) {
   if (!phone || typeof phone !== 'string') return null
@@ -293,19 +307,7 @@ const CustomersPage = () => {
 
     try {
       setSaving(true)
-      const payload = {
-        ...data,
-        // A blank Credit Limit arrives as NaN (valueAsNumber) and serialises to null, which the API
-        // rejects for a decimal. Blank already means 0 everywhere else (import, payment-terms check).
-        creditLimit: Number.isFinite(data.creditLimit) ? data.creditLimit : 0,
-        // The API validates Email as an address, so a blank optional email must be null, not "".
-        email: (data.email || '').trim() || null,
-        branchId: data.branchId ? parseInt(data.branchId, 10) : null,
-        routeId: data.routeId ? parseInt(data.routeId, 10) : null,
-        mainLatitude: data.mainLatitude !== '' && data.mainLatitude != null ? Number(data.mainLatitude) : null,
-        mainLongitude: data.mainLongitude !== '' && data.mainLongitude != null ? Number(data.mainLongitude) : null,
-        clearMainLocation: !!data.clearMainLocation,
-      }
+      const payload = buildCustomerPayload(data)
       let response
       if (selectedCustomer) {
         response = await customersAPI.updateCustomer(selectedCustomer.id, payload)
@@ -340,11 +342,7 @@ const CustomersPage = () => {
     }
     const data = duplicateConfirm.data
     setDuplicateConfirm({ isOpen: false, data: null, existingName: '' })
-    const payload = {
-      ...data,
-      branchId: data.branchId ? parseInt(data.branchId, 10) : null,
-      routeId: data.routeId ? parseInt(data.routeId, 10) : null
-    }
+    const payload = buildCustomerPayload(data)
     try {
       setSaving(true)
       const response = await customersAPI.createCustomer(payload)

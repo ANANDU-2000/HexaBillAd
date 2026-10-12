@@ -5,6 +5,7 @@
 **Linked trackers (not duplicated here):** `docs/production/TASK-TRACKER.md` + `BUG-REGISTER.md` (T-/B- IDs), `docs/plan/PRODUCTION-ISSUE-REGISTER.md` (PS-), `docs/plan/ERROR-REGISTER.md` (REL-), `docs/plan/VAT-IMPLEMENTATION-TRACKER.md`, `docs/uiux/PREMIUM-UX-TRACKER.md` (UX). `docs/plan/STATE.md` is historical (stale deploy SHA).
 **Session order approved by owner 2026-10-10:** Checkpoint 1 = UX Phase 1 audit (read-only) → Checkpoint 2 = P0-02. Read-only production checks authorized for P0-02.
 **Current milestone:** P0 — Production stability and evidence.
+**Current execution (2026-10-12):** source `3cd2a208`, QA branch `codex/live-erp-qa-20261012`; actual live backend readiness reports this full SHA, while Vercel domain metadata reports frontend `c9dc5e6`. QA-C01 customer duplicate-email confirmation is verified locally on disposable PostgreSQL across all five widths. Production records read only. Current evidence and exact next action: `docs/production/ERP-LIVE-QA-2026-10-12.md`.
 **Tracker contract:** real tasks only; update `Last verified`, `git SHA`, test command/outcome, exact source reference/evidence. States `TODO / IN_PROGRESS / PASS / FAIL / BLOCKED / NOT TESTED`. Do not count skips as PASS. Existing VAT UI tracker is separate; link relevant entries.
 
 | ID | Priority | Milestone | Task | Status | Evidence / gate |
@@ -42,6 +43,16 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-12 - QA-C01 customer save (PASS locally)
+- Baseline: `main` at `3cd2a208bae0472735cbc1e090f12376c8a71434`; four pre-existing untracked documents preserved. Moved work to `codex/live-erp-qa-20261012`. No production push/deploy/migration/write.
+- Reproduction: real API bridge 5078, Vite 5175, fresh loopback PostgreSQL 18 cluster 55472, four synthetic tenants. Duplicate email + unique name/phone + blank credit -> HTTP 400. Existing backend separately forbids duplicate phone (500); that rule was not relaxed.
+- Fix: CustomersPage.jsx shares buildCustomerPayload between ordinary create/edit and duplicate-confirmation create.
+- `& .\scripts\run-customer-save-qa.ps1 -ResumeFixtures -Projects m360,m390,t768,d1024,d1440` -> exit 0, 5 passed / 0 failed / 0 skipped. HTTP 201, one POST, exactly one tenant-bound PostgreSQL row, reload/API parity, Unicode address, zero credit/null coordinates.
+- Backend: `dotnet test tests/HexaBill.Tests/HexaBill.Tests.csproj --filter 'FullyQualifiedName~CustomersHttpIsolationTests|FullyQualifiedName~ProductPersistenceHttpTests|FullyQualifiedName~HttpIsolationPostgreSqlTests|FullyQualifiedName~CustomerTenantIsolationPostgreSqlTests|FullyQualifiedName~ServiceUnavailableContractTests' --artifacts-path "$env:TEMP\hexabill-qa-artifacts-20261012" --nologo --verbosity quiet -p:WarningLevel=0` with separate fresh loopback DB -> exit 0, 65 passed / 0 failed / 0 skipped. Test schema/EnsureCreated is NOT migration proof.
+- Frontend `npm.cmd test` -> exit 0, 154 passed / 0 failed / 0 skipped. Changed-file ESLint -> exit 0, 0 errors, 7 existing warnings. QA specialist startup-503 mocked browser regression -> exit 0, 5 passed / 0 skipped; mocks are not live/backend evidence. Specialist token cost modest; no further delegation.
+- Next exact action: reproduce zero-credit customer -> positive-credit edit with absent payment-terms control; smallest UI fix and field persistence test if confirmed. Continue live detail/form audit. No next-milestone or release certification.
+- Open: duplicate-phone UI/backend mismatch, product lost-response claim of nothing saved, dependency restore ImageSharp advisories, remaining full finance/tenant/staff/print/PG migration gates.
+
 ### 2026-10-10 — Checkpoint 1: UX Phase 1 audit (read-only)
 - **Source:** branch `uiux-audit-p1` from `c6ba249`. Changes are docs plus one audit spec; no product code. Nothing committed yet, pending owner review.
 - **Environment:** local API on 127.0.0.1:5000 over the throwaway SQLite copy `%TEMP%\hexabill-uitest`. Synthetic expenses were added through the local API. No production access was used for this checkpoint.
