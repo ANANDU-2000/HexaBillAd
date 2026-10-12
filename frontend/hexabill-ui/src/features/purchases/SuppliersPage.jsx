@@ -4,6 +4,8 @@ import { Search, Eye, RefreshCw, Plus, Pencil, Trash2, Filter } from 'lucide-rea
 import { suppliersAPI } from '../../services/index'
 import { formatCurrency } from '../../utils/currency'
 import { moneyTone, moneyWord } from '../../utils/moneyTone'
+import { fixSupplierForm } from '../../utils/supplierFields'
+import { saveOutcomeIsUncertain } from '../../utils/apiError'
 import { useAuth } from '../../hooks/useAuth'
 import { isAdminOrOwner } from '../../utils/roles'
 import Modal from '../../components/Modal'
@@ -32,19 +34,6 @@ function safeMessage(err, fallback) {
   const msg = err?.response?.data?.message
   if (typeof msg === 'string' && msg && !/exception|sql|stack|tenant|npgsql|inner/i.test(msg)) return msg
   return fallback
-}
-
-function validEmail(value) {
-  const email = (value || '').trim()
-  if (!email) return true
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function creditValue(raw) {
-  if (raw === '' || raw == null) return { ok: true, value: undefined }
-  const n = parseFloat(raw)
-  if (Number.isNaN(n) || n < 0) return { ok: false, value: undefined }
-  return { ok: true, value: n }
 }
 
 const SuppliersPage = () => {
@@ -271,32 +260,20 @@ const SuppliersPage = () => {
   const handleUpdateSupplier = async (e) => {
     e.preventDefault()
     if (!editingSupplier || updating) return
-    const name = (editForm.name || '').trim()
-    if (!name) {
-      toast.error('Supplier name is required')
+    const fixed = fixSupplierForm(editForm)
+    if (fixed.error) {
+      toast.error(fixed.error)
       return
     }
-    if (!validEmail(editForm.email)) {
-      toast.error('Enter a valid email address')
-      return
-    }
-    const credit = creditValue(editForm.creditLimit)
-    if (!credit.ok) {
-      toast.error('Credit limit cannot be negative')
-      return
-    }
+    const name = fixed.values.name
     const fromDetail = searchParams.get('fromDetail') === '1'
     try {
       setUpdating(true)
       const res = await suppliersAPI.updateSupplier(editingSupplier.supplierName, {
-        name,
-        phone: editForm.phone?.trim() || undefined,
-        email: editForm.email?.trim() || undefined,
-        address: editForm.address?.trim() || undefined,
-        creditLimit: credit.value,
-        paymentTerms: editForm.paymentTerms?.trim() || undefined,
+        ...fixed.values,
         isActive: editForm.isActive
       })
+      if (fixed.notes.length) toast(`We fixed: ${fixed.notes.join(' ')}`, { duration: 9000 })
       if (res?.success) {
         toast.success('Supplier updated successfully')
         window.dispatchEvent(new CustomEvent('dataUpdated'))
@@ -340,49 +317,50 @@ const SuppliersPage = () => {
   const handleCreateSupplier = async (e) => {
     e.preventDefault()
     if (creating) return
-    const name = (createForm.name || '').trim()
-    if (!name) {
-      toast.error('Supplier name is required')
+    const fixed = fixSupplierForm(createForm)
+    if (fixed.error) {
+      toast.error(fixed.error)
       return
     }
-    if (!validEmail(createForm.email)) {
-      toast.error('Enter a valid email address')
-      return
-    }
-    const credit = creditValue(createForm.creditLimit)
-    if (!credit.ok) {
-      toast.error('Credit limit cannot be negative')
-      return
+    const name = fixed.values.name
+    const finishCreated = () => {
+      toast.success('Supplier created successfully')
+      if (fixed.notes.length) toast(`We fixed: ${fixed.notes.join(' ')}`, { duration: 9000 })
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
+      setShowCreateModal(false)
+      setCreateForm(emptyForm)
+      loadSuppliers()
+      let returnPath = null
+      try { returnPath = sessionStorage.getItem('hexabill.afterSupplierCreate') } catch (_) { /* ignore */ }
+      if (returnPath) {
+        try { sessionStorage.removeItem('hexabill.afterSupplierCreate') } catch (_) { /* ignore */ }
+        navigate(returnPath)
+      }
     }
     try {
       setCreating(true)
-      const res = await suppliersAPI.createSupplier({
-        name,
-        phone: createForm.phone?.trim() || undefined,
-        email: createForm.email?.trim() || undefined,
-        address: createForm.address?.trim() || undefined,
-        creditLimit: credit.value,
-        paymentTerms: createForm.paymentTerms?.trim() || undefined
-      })
+      const res = await suppliersAPI.createSupplier(fixed.values)
       if (res?.success) {
-        toast.success('Supplier created successfully')
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
-        setShowCreateModal(false)
-        setCreateForm(emptyForm)
-        loadSuppliers()
-        let returnPath = null
-        try { returnPath = sessionStorage.getItem('hexabill.afterSupplierCreate') } catch (_) { /* ignore */ }
-        if (returnPath) {
-          try { sessionStorage.removeItem('hexabill.afterSupplierCreate') } catch (_) { /* ignore */ }
-          navigate(returnPath)
-        }
+        finishCreated()
       } else {
         const msg = res?.message
         toast.error(typeof msg === 'string' && !/exception|sql|stack/i.test(msg) ? msg : 'Could not create supplier')
       }
     } catch (err) {
       console.error(err)
-      const msg = safeMessage(err, 'Could not create supplier')
+      // The server may have saved the supplier even though the answer failed. A duplicate name is answered with 409,
+      // so a lost answer or 5xx plus a matching name means it was saved.
+      if (saveOutcomeIsUncertain(err)) {
+        try {
+          const list = await suppliersAPI.getAllSuppliersSummary({ includeInactive: true })
+          const rows = Array.isArray(list?.data) ? list.data : []
+          if (rows.some(r => String(r.supplierName || '').trim().toLowerCase() === name.toLowerCase())) {
+            finishCreated()
+            return
+          }
+        } catch (_) { /* fall through to the message below */ }
+      }
+      const msg = safeMessage(err, 'Could not create supplier. Nothing was saved, please try again.')
       if (msg) toast.error(msg)
     } finally {
       setCreating(false)
@@ -399,19 +377,19 @@ const SuppliersPage = () => {
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="sm:col-span-2 sm:max-w-md">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-name`}>Name <span className="text-error">*</span></label>
-        <input id={`${idPrefix}-name`} type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={fieldClass} required />
+        <input id={`${idPrefix}-name`} type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Gulf Frozen Foods" className={fieldClass} />
       </div>
       <div className="sm:max-w-xs">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-phone`}>Phone</label>
-        <input id={`${idPrefix}-phone`} type="text" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={fieldClass} />
+        <input id={`${idPrefix}-phone`} type="text" inputMode="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="e.g. +971 50 123 4567" className={fieldClass} />
       </div>
       <div className="sm:max-w-md">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-email`}>Email</label>
-        <input id={`${idPrefix}-email`} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={fieldClass} />
+        <input id={`${idPrefix}-email`} type="text" inputMode="email" autoCapitalize="none" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="e.g. sales@supplier.com" className={fieldClass} />
       </div>
       <div className="sm:max-w-[10rem]">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-credit`}>Credit limit</label>
-        <input id={`${idPrefix}-credit`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={e => setForm(f => ({ ...f, creditLimit: e.target.value }))} className={fieldClass} />
+        <input id={`${idPrefix}-credit`} type="number" inputMode="decimal" step="any" value={form.creditLimit} onChange={e => setForm(f => ({ ...f, creditLimit: e.target.value }))} placeholder="e.g. 5000 (empty = no limit)" className={fieldClass} />
       </div>
       <div className="sm:max-w-xs">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-terms`}>Payment terms</label>
@@ -419,7 +397,7 @@ const SuppliersPage = () => {
       </div>
       <div className="sm:col-span-2">
         <label className="block text-sm font-medium text-neutral-800 mb-1" htmlFor={`${idPrefix}-address`}>Address</label>
-        <textarea id={`${idPrefix}-address`} rows={2} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} className={`${fieldClass} h-auto py-2`} />
+        <textarea id={`${idPrefix}-address`} rows={2} value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="e.g. Al Quoz, Dubai" className={`${fieldClass} h-auto py-2`} />
       </div>
     </div>
   )
