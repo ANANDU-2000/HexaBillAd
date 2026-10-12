@@ -1,4 +1,5 @@
 import { normalizeSku, suggestSkuFromName } from '../utils/sku'
+import { cleanText, fixName, fixMoney, fixConversion, fixBarcode } from '../utils/productFields'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Plus, Upload, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
@@ -122,6 +123,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
   // New product: the SKU follows the English name until the user types their own SKU.
   const skuEditedByUser = useRef(false)
+  const [fixNotes, setFixNotes] = useState([])
 
   const handleChange = (e) => {
     const { name, value, type } = e.target
@@ -217,64 +219,57 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!formData.nameEn || !formData.nameEn.trim()) {
-      toast.error('Product name (English) is required')
+    // Repair what can be repaired, tell the client what changed, and only stop when nothing sensible can be guessed.
+    const notes = []
+    let nameEn = fixName(formData.nameEn)
+    if (!nameEn.value && formData.sku && formData.sku.trim()) {
+      nameEn = { value: cleanText(String(formData.sku).replace(/[-_.]+/g, ' ')), note: 'Name was empty, so it was taken from the SKU. You can edit it later.' }
+    }
+    if (!nameEn.value) {
+      toast.error('Type the product name, for example: Beef Nan 250gm')
       return
     }
-    // Fix spaces/symbols in the SKU for the user ("BEEF 250gm" -> "BEEF-250gm"); fall back to a name-based one.
-    const fixedSku = normalizeSku(formData.sku) || suggestSkuFromName(formData.nameEn)
+    if (nameEn.note) notes.push(nameEn.note)
+    // SKU: spaces and symbols become dashes; empty falls back to a name-based one.
+    const fixedSku = normalizeSku(formData.sku) || suggestSkuFromName(nameEn.value)
     if (!fixedSku) {
       toast.error('Enter a SKU using letters or numbers, for example BEEF-250')
       return
     }
-    if (fixedSku !== formData.sku) {
-      formData.sku = fixedSku
-      setFormData(prev => ({ ...prev, sku: fixedSku }))
+    if (fixedSku !== formData.sku) notes.push(`SKU set to ${fixedSku}.`)
+    const cost = fixMoney(formData.costPrice, 'Cost price')
+    const sell = fixMoney(formData.sellPrice, 'Sell price')
+    const conv = fixConversion(formData.conversionToBase)
+    const barcode = fixBarcode(formData.barcode)
+    ;[cost, sell, conv].forEach(f => { if (f.note) notes.push(f.note) })
+    const unitType = formData.unitType || 'CRTN'
+    if (!formData.unitType) notes.push('Qty type was empty, so CRTN (Carton) was used.')
+    const fixed = {
+      ...formData,
+      nameEn: nameEn.value,
+      nameAr: cleanText(formData.nameAr),
+      sku: fixedSku,
+      unitType,
+      costPrice: cost.value,
+      sellPrice: sell.value,
+      conversionToBase: conv.value,
+      barcode: barcode.value,
     }
-    if (!formData.unitType) {
-      toast.error('Unit type is required')
-      return
-    }
-    if (formData.costPrice < 0 || formData.sellPrice < 0) {
-      toast.error('Prices cannot be negative')
-      return
-    }
-    if (formData.conversionToBase <= 0) {
-      toast.error('Conversion to base must be greater than 0')
-      return
-    }
-    
-    const validateDecimal = (value, maxDecimals = 2) => {
-      if (value === null || value === undefined || value === '') return true
-      const parts = value.toString().split('.')
-      return parts.length === 1 || parts[1].length <= maxDecimals
-    }
-    
-    if (!validateDecimal(formData.costPrice)) {
-      toast.error('Cost price must have maximum 2 decimal places')
-      return
-    }
-    if (!validateDecimal(formData.sellPrice)) {
-      toast.error('Sell price must have maximum 2 decimal places')
-      return
-    }
-    if (!validateDecimal(formData.conversionToBase)) {
-      toast.error('Conversion to base must have maximum 2 decimal places')
-      return
-    }
-    
-    if (formData.sellPrice < formData.costPrice) {
+    setFormData(fixed)
+    setFixNotes(notes)
+
+    if (fixed.sellPrice < fixed.costPrice) {
       setShowLossConfirm(true)
       return
     }
-    await doSubmitPart2()
+    await doSubmitPart2(fixed)
   }
 
-  const doSubmitPart2 = async () => {
+  const doSubmitPart2 = async (data = formData) => {
     const roundToDecimals = (value, decimals = 2) => {
       return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
     }
-    let imageUrl = formData.imageUrl || product?.imageUrl
+    let imageUrl = data.imageUrl || product?.imageUrl
     let uploadedAlready = false
     if (imageFile && product?.id) {
       try {
@@ -295,11 +290,11 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       }
     }
     const productData = {
-      ...formData,
-      costPrice: roundToDecimals(formData.costPrice),
-      sellPrice: roundToDecimals(formData.sellPrice),
-      conversionToBase: roundToDecimals(formData.conversionToBase, 4),
-      expiryDate: formData.expiryDate?.trim() || null,
+      ...data,
+      costPrice: roundToDecimals(data.costPrice),
+      sellPrice: roundToDecimals(data.sellPrice),
+      conversionToBase: roundToDecimals(data.conversionToBase, 4),
+      expiryDate: data.expiryDate?.trim() || null,
     }
     if (imageUrl) {
       productData.imageUrl = imageUrl
@@ -457,8 +452,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <input
                   type="text"
                   name="nameEn"
-                  required
                   className="input"
+                  placeholder="e.g. Beef Nan 250gm"
                   value={formData.nameEn}
                   onChange={handleChange}
                 />
@@ -472,6 +467,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   type="text"
                   name="nameAr"
                   className="input"
+                  dir="auto"
+                  placeholder="مثال: لحم بقري"
                   value={formData.nameAr}
                   onChange={handleChange}
                 />
@@ -532,7 +529,6 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 </label>
                 <select
                   name="unitType"
-                  required
                   className="input uppercase"
                   value={formData.unitType}
                   onChange={handleChange}
@@ -559,9 +555,9 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <input
                   type="number"
                   name="conversionToBase"
-                  required
-                  min="0"
-                  step="0.01"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="e.g. 1  (12 if one carton holds 12)"
                   className="input"
                   value={formData.conversionToBase}
                   onChange={handleChange}
@@ -575,9 +571,9 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <input
                   type="number"
                   name="costPrice"
-                  required
-                  min="0"
-                  step="0.01"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="e.g. 120.00"
                   className="input"
                   value={formData.costPrice}
                   onChange={handleChange}
@@ -591,9 +587,9 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <input
                   type="number"
                   name="sellPrice"
-                  required
-                  min="0"
-                  step="0.01"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="e.g. 140.00"
                   className="input"
                   value={formData.sellPrice}
                   onChange={handleChange}
@@ -665,6 +661,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 </label>
                 <textarea
                   name="descriptionEn"
+                  placeholder="e.g. Frozen beef, 250 g pack"
                   rows="2"
                   className="input"
                   value={formData.descriptionEn}
@@ -678,6 +675,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 </label>
                 <textarea
                   name="descriptionAr"
+                  placeholder="مثال: لحم بقري مجمد"
+                  dir="auto"
                   rows="2"
                   className="input"
                   value={formData.descriptionAr}
@@ -686,6 +685,12 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
             </div>
 
+            {fixNotes.length > 0 && (
+              <div role="status" className="text-xs text-warning-fg bg-warning-bg border border-warning-border rounded-md px-3 py-2">
+                <p className="font-medium">We fixed these for you:</p>
+                <ul className="list-disc pl-4">{fixNotes.map((n) => <li key={n}>{n}</li>)}</ul>
+              </div>
+            )}
             <p className="text-xs text-primary-800 bg-primary-50 border border-primary-200 rounded-md px-3 py-2">
               Stock is calculated from purchases and sales. New products start at 0 — use Stock Adjustment (Opening Stock) after create.
             </p>

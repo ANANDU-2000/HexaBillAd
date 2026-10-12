@@ -14,6 +14,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
 import toast from 'react-hot-toast'
 import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
+import { saveOutcomeIsUncertain } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const ProductsPage = () => {
@@ -272,9 +273,11 @@ const ProductsPage = () => {
       return
     }
 
+    let payloadSku = ''
     try {
       setSaving(true)
       const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
+      payloadSku = payload.sku
       const response = await productsAPI.createProduct(payload)
       if (response?.success) {
         // Upload image if provided (for new products, upload after creation)
@@ -300,6 +303,24 @@ const ProductsPage = () => {
       }
     } catch (error) {
       console.error('Error creating product:', error)
+      // The server may have saved the product even though the answer failed or never arrived.
+      // A duplicate SKU would have been answered with 409, so a 5xx or lost answer plus a matching SKU means it was saved.
+      if (saveOutcomeIsUncertain(error)) {
+        try {
+          const found = await productsAPI.getProducts({ search: payloadSku, pageSize: 20 })
+          const items = found?.data?.items ?? found?.items ?? []
+          const saved = items.find(p => String(p.sku || '').toLowerCase() === String(payloadSku || '').toLowerCase())
+          if (saved) {
+            offerCreateSuccessWithPrint(saved)
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
+            setShowForm(false)
+            setActiveTab('all')
+            setSearchTerm(saved.sku || saved.nameEn || '')
+            setCurrentPage(1)
+            return
+          }
+        } catch (_) { /* fall through to the message below */ }
+      }
       if (!error?._handledByInterceptor) {
         const data = error?.response?.data
         const status = error?.response?.status

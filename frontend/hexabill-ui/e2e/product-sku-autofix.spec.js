@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { signIn, feOrigin } from './session.js'
+import { signIn, feOrigin, API, EDGE } from './session.js'
 
 const SLUG = 'gulfharvest-test'
 test.use({ trace: 'off' })
@@ -38,4 +38,43 @@ test('an empty SKU is filled from the English name', async ({ page }) => {
   const response = await saved
   expect(response.status()).toBe(201)
   expect((await response.json()).data.sku).toBe(`QA-FISH-${stamp}`)
+})
+
+test('messy values are fixed, explained and saved', async ({ page }) => {
+  const stamp = `${Date.now()}`.slice(-8)
+  const form = await openForm(page)
+  await form.locator('input[name="nameEn"]').fill(`   QA   Beef    ${stamp}  `)
+  await form.locator('input[name="costPrice"]').fill('120.456')
+  await form.locator('input[name="sellPrice"]').fill('140')
+  await form.locator('input[name="conversionToBase"]').fill('0')
+  const saved = page.waitForResponse(r => r.request().method() === 'POST' && /\/api\/products$/.test(r.url()))
+  await form.getByRole('button', { name: 'Create Product', exact: true }).click()
+  const response = await saved
+  expect(response.status()).toBe(201)
+  const data = (await response.json()).data
+  expect(data.nameEn).toBe(`QA Beef ${stamp}`)
+  expect(data.costPrice).toBe(120.46)
+  expect(data.conversionToBase).toBe(1)
+})
+
+test('a lost server answer after a product was saved is not shown as a failure', async ({ page }) => {
+  const stamp = `${Date.now()}`.slice(-8)
+  const form = await openForm(page)
+  let posts = 0
+  await page.route(/\/api\/products$/, async route => {
+    if (route.request().method() !== 'POST') return route.continue()
+    posts++
+    await route.fetch({
+      url: `${API}/api/products`,
+      headers: { ...route.request().headers(), 'x-hexabill-original-host': `${SLUG}.localhost`, 'x-hexabill-edge-secret': EDGE },
+    })
+    return route.fulfill({ status: 502, contentType: 'text/html', body: '<html>Bad gateway</html>' })
+  })
+  await form.locator('input[name="nameEn"]').fill(`QA Lost ${stamp}`)
+  await form.locator('input[name="costPrice"]').fill('5')
+  await form.locator('input[name="sellPrice"]').fill('9')
+  await form.getByRole('button', { name: 'Create Product', exact: true }).click()
+  await expect(form).toBeHidden()
+  await expect(page.getByText(/Failed to create product/)).toHaveCount(0)
+  expect(posts).toBe(1)
 })
