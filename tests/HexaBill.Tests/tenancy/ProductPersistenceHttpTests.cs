@@ -96,6 +96,56 @@ public class ProductPersistenceHttpTests
     }
 
     [Fact]
+    public async Task Product_InactiveList_FiltersBeforePagination_AndRemainsTenantScoped()
+    {
+        using var a = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        using var b = HttpIntegrationClient.Create(_factory, 2, "tenantb");
+        var prefix = "STATUS-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var activeIds = new List<int>();
+        var inactiveIds = new List<int>();
+        for (var i = 0; i < 15; i++)
+        {
+            var item = await DataAsync(await a.PostAsJsonAsync("/api/products", Body($"{prefix}-{i}", $"{prefix} {i:D2}", 1m, 2m, 0m)));
+            var id = item.GetProperty("id").GetInt32();
+            if (i < 12) activeIds.Add(id);
+            else
+            {
+                inactiveIds.Add(id);
+                Assert.True((await a.DeleteAsync($"/api/products/{id}")).IsSuccessStatusCode);
+            }
+        }
+        var foreign = (await DataAsync(await b.PostAsJsonAsync("/api/products", Body($"{prefix}-FOREIGN", $"{prefix} foreign", 1m, 2m, 0m)))).GetProperty("id").GetInt32();
+        Assert.True((await b.DeleteAsync($"/api/products/{foreign}")).IsSuccessStatusCode);
+
+        var first = await DataAsync(await a.GetAsync($"/api/products?search={prefix}&inactiveOnly=true&page=1&pageSize=2&tenantId=2"));
+        Assert.Equal(3, first.GetProperty("totalCount").GetInt32());
+        Assert.Equal(2, first.GetProperty("totalPages").GetInt32());
+        var firstItems = first.GetProperty("items").EnumerateArray().ToList();
+        Assert.Equal(2, firstItems.Count);
+        Assert.All(firstItems, item =>
+        {
+            Assert.False(item.GetProperty("isActive").GetBoolean());
+            Assert.Contains(item.GetProperty("id").GetInt32(), inactiveIds);
+        });
+        var second = await DataAsync(await a.GetAsync($"/api/products?search={prefix}&inactiveOnly=true&page=2&pageSize=2"));
+        var last = Assert.Single(second.GetProperty("items").EnumerateArray().ToList());
+        Assert.Equal(inactiveIds[2], last.GetProperty("id").GetInt32());
+
+        var legacyAll = await DataAsync(await a.GetAsync($"/api/products?search={prefix}&includeInactive=true&pageSize=50"));
+        Assert.Equal(15, legacyAll.GetProperty("totalCount").GetInt32());
+        var active = await DataAsync(await a.GetAsync($"/api/products?search={prefix}&pageSize=50"));
+        Assert.Equal(12, active.GetProperty("totalCount").GetInt32());
+        Assert.All(active.GetProperty("items").EnumerateArray(), item => Assert.True(item.GetProperty("isActive").GetBoolean()));
+
+        var reopenedId = inactiveIds[0];
+        Assert.True((await a.PostAsync($"/api/products/{reopenedId}/activate", null)).IsSuccessStatusCode);
+        var after = await DataAsync(await a.GetAsync($"/api/products?search={prefix}&inactiveOnly=true&includeInactive=true&pageSize=50"));
+        Assert.Equal(2, after.GetProperty("totalCount").GetInt32());
+        Assert.DoesNotContain(after.GetProperty("items").EnumerateArray(), item => item.GetProperty("id").GetInt32() == reopenedId);
+        foreach (var id in activeIds.Append(reopenedId)) Assert.True((await a.DeleteAsync($"/api/products/{id}")).IsSuccessStatusCode);
+    }
+
+    [Fact]
     public async Task Product_Image_ReadRequiresAuthenticationAndMatchingTenant()
     {
         using var a = HttpIntegrationClient.Create(_factory, 1, "tenanta");

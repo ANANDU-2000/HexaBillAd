@@ -56,7 +56,8 @@ namespace HexaBill.Api.Modules.Products
             [FromQuery] string? unitType = null,
             [FromQuery] int? categoryId = null,
             [FromQuery] bool includeInactive = false,
-            [FromQuery] bool missingBarcode = false)
+            [FromQuery] bool missingBarcode = false,
+            [FromQuery] bool inactiveOnly = false)
         {
             try
             {
@@ -65,7 +66,7 @@ namespace HexaBill.Api.Modules.Products
                     return Forbid();
 
                 var globalThreshold = await GetGlobalLowStockThresholdAsync();
-                var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold, missingBarcode);
+                var result = await _productService.GetProductsAsync(tenantId, page, pageSize, search, lowStock, unitType, categoryId, includeInactive, globalThreshold, missingBarcode, inactiveOnly);
                 // Phase 1.2: Prevent browser/axios caching so stock updates are visible immediately
                 Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
                 Response.Headers["Pragma"] = "no-cache";

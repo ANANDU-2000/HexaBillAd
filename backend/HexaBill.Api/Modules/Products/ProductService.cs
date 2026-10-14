@@ -12,7 +12,7 @@ namespace HexaBill.Api.Modules.Products
     public interface IProductService
     {
         // MULTI-TENANT: All methods now require tenantId for data isolation
-        Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false);
+        Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false, bool inactiveOnly = false);
         Task<bool> ActivateProductAsync(int id, int tenantId);
         Task<ProductDto?> GetProductByIdAsync(int id, int tenantId);
         Task<ProductDto> CreateProductAsync(CreateProductRequest request, int tenantId);
@@ -43,7 +43,7 @@ namespace HexaBill.Api.Modules.Products
             _logger = logger;
         }
 
-        public async Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false)
+        public async Task<PagedResponse<ProductDto>> GetProductsAsync(int tenantId, int page = 1, int pageSize = 10, string? search = null, bool lowStock = false, string? unitType = null, int? categoryId = null, bool includeInactive = false, int? globalLowStockThreshold = null, bool missingBarcode = false, bool inactiveOnly = false)
         {
             // CRITICAL: Filter by tenantId for data isolation
             // By default, only show active products (IsActive = true)
@@ -66,8 +66,12 @@ namespace HexaBill.Api.Modules.Products
                     .AsQueryable();
             }
 
-            // Filter by active status unless explicitly including inactive products
-            if (!includeInactive)
+            // Apply status before counting/paging; includeInactive retains its all-status contract.
+            if (inactiveOnly)
+            {
+                query = query.Where(p => !p.IsActive);
+            }
+            else if (!includeInactive)
             {
                 query = query.Where(p => p.IsActive);
             }

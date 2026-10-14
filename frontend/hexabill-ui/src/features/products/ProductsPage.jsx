@@ -130,20 +130,12 @@ const ProductsPage = () => {
         missingBarcode: activeTab === 'missingBarcode',
         unitType: activeFilters.unitType || undefined,
         categoryId: activeFilters.categoryId ? parseInt(activeFilters.categoryId) : undefined,
-        includeInactive: activeTab === 'inactive' // Include inactive products when on inactive tab
+        inactiveOnly: activeTab === 'inactive'
       }
       
-      // Filter inactive products client-side when on inactive tab
-      // (Backend returns all products when includeInactive=true, we filter to only inactive)
-
       const response = await productsAPI.getProducts(params)
       if (response?.success && response?.data) {
-        let items = response.data.items || []
-        // Filter to only inactive products when on inactive tab
-        if (activeTab === 'inactive') {
-          items = items.filter(p => !p.isActive)
-        }
-        setProducts(items)
+        setProducts(response.data.items || [])
         setTotalPages(response.data.totalPages || 1)
         setTotalCount(response.data.totalCount || 0)
       } else {

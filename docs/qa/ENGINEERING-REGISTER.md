@@ -28,6 +28,7 @@ Updated 2026-10-14 (Asia/Calcutta). Goal active; Products gate IN PROGRESS.
 | PR-QA-07 | P1 | Numeric auto-fixes and omitted reorder field can hide invalid input / reset reorder settings | PASS (targeted) | Validate name/SKU/ranges before formatting, focus invalid control, preserve values, inline messages, label links and examples; reorder field now round trips create/edit. 182 unit tests pass. Keyboard category Enter no longer submits the product. Further field failure browser coverage pending. |
 | PR-QA-08 | P1 | Mobile cards omit product selection | PASS (focused browser contract) | Added visible page/row selection for inventory managers. At 360/1440 typed bulk confirmation sends two DELETEs once, retains the failed selection. Mocked API contract; real partial-bulk/role gate pending. |
 | QA-HARNESS-01 | P1 | Existing product browser assertions target old desktop controls / hidden mobile search | PASS (targeted harness fix) | Initial real run 11 passed/4 failed; later 4 passed/2 failed from hidden search. Updated visible role-based search and current desktop Edit control. Desktop CRUD retest passed, no trace token artifacts. Rate-limit failure remains classified as harness pacing, not bypassed. |
+| PR-QA-09 | P1 | Inactive tab filters after all-status pagination, hiding records and reporting wrong totals | PASS (targeted local HTTP/browser/PG) | HTTP before: expected 3 inactive, actual 12 active. Added server inactiveOnly filter before count/paging, preserves legacy includeInactive. After: 14 HTTP tests pass, no skips; 2 real Chrome status/bulk tests at 360/1440 pass, one request per action, correct 13-record/2-page inactive list, reactivation preserves SKU and stock 5.5 in PostgreSQL. |
 
 ## Exact targeted evidence
 
@@ -49,6 +50,10 @@ Runtime evidence remains private under `%LOCALAPPDATA%/HexaBillQA/20261013` (no 
 ## Module gates
 
 Products: NOT TESTED / IN PROGRESS. Customers, Shop Location, Expenses, Purchases, Daily Close, Payments, Sales/POS, Stock, Reports: NOT TESTED; wait for Products gate. No module PASS inferred from historic trackers or build success.
+
+2026-10-14 continuation: user explicitly requests live synthetic write QA. The signed-in Codex in-app browser is the live browser; installed Chrome is used for local regressions. Ordered action checklist: END-TO-END-CHECKLIST.md. Live canaries are labelled synthetic metadata records; existing client records and financial posting remain separately controlled. Detailed production evidence is private.
+
+PR-QA-09 evidence: targeted dotnet HTTP filter ProductPersistenceHttpTests/ProductsHttpIsolationTests/ProductControllerIsolationTests, exit 0, 14 passed. Frontend focused eslint exit 0 (7 existing warnings), 182 unit tests pass/no skips; build exit 0 (33.09s). Real Chrome products-status-postgres.spec.js at m360/d1440: 2 passed, exit 0 (11.1s), verifies true bulk writes/API/PG/refetch. Initial live-local launch missed JWT audience configuration and failed 401; corrected launch directory/settings. An interrupted selector run used incorrect textbox/button roles; corrected to actual searchbox/tab roles. No module PASS.
 
 Automatic approval review rejected public infrastructure diagnostics. Original reports are archived privately. The public candidate omits production identifiers, inventory and operational findings, and uses the existing public baseline as its parent. GitHub publication is authorized; production changes remain separately gated.
 
