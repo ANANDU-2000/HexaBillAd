@@ -46,7 +46,7 @@ test('messy values are fixed, explained and saved', async ({ page }) => {
   await form.locator('input[name="nameEn"]').fill(`   QA   Beef    ${stamp}  `)
   await form.locator('input[name="costPrice"]').fill('120.456')
   await form.locator('input[name="sellPrice"]').fill('140')
-  await form.locator('input[name="conversionToBase"]').fill('0')
+  await form.locator('input[name="conversionToBase"]').fill('1')
   const saved = page.waitForResponse(r => r.request().method() === 'POST' && /\/api\/products$/.test(r.url()))
   await form.getByRole('button', { name: 'Create Product', exact: true }).click()
   const response = await saved
@@ -57,7 +57,7 @@ test('messy values are fixed, explained and saved', async ({ page }) => {
   expect(data.conversionToBase).toBe(1)
 })
 
-test('a lost server answer after a product was saved is not shown as a failure', async ({ page }) => {
+test('a lost server answer after a product was saved is shown as uncertain without resending', async ({ page }) => {
   const stamp = `${Date.now()}`.slice(-8)
   const form = await openForm(page)
   let posts = 0
@@ -74,7 +74,8 @@ test('a lost server answer after a product was saved is not shown as a failure',
   await form.locator('input[name="costPrice"]').fill('5')
   await form.locator('input[name="sellPrice"]').fill('9')
   await form.getByRole('button', { name: 'Create Product', exact: true }).click()
-  await expect(form).toBeHidden()
+  await expect(page.getByText(/Save status is uncertain/)).toBeVisible()
+  await expect(form).toBeVisible()
   await expect(page.getByText(/Failed to create product/)).toHaveCount(0)
   expect(posts).toBe(1)
 })

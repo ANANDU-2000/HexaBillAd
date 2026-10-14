@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import ProductImage from '../../components/ProductImage'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowDown, ArrowUp, Edit, Eye, History, Image as ImageIcon, Package, Printer, RotateCw, Trash2 } from 'lucide-react'
 import { OverflowMenu } from '../../components/ui/index'
@@ -70,7 +71,7 @@ export default function ProductsTable({
                 checked={allOnPage}
                 ref={(el) => { if (el) el.indeterminate = someOnPage }}
                 onChange={(e) => onTogglePage(e.target.checked)}
-                disabled={products.length === 0}
+                disabled={!canManageInventory || products.length === 0}
               />
             </th>
             <th className="w-12 px-1 py-2" aria-label="Image" />
@@ -117,12 +118,13 @@ export default function ProductsTable({
                     aria-label={`Select ${p.nameEn || p.sku}`}
                     className="h-4 w-4 rounded border-neutral-400 text-primary-600 focus:ring-primary-500"
                     checked={selected}
+                    disabled={!canManageInventory}
                     onChange={() => onToggleOne(p.id)}
                   />
                 </td>
                 <td className="px-1 py-1.5">
                   {p.imageUrl ? (
-                    <img src={imageSrc(p.imageUrl)} alt="" className="h-8 w-8 rounded border border-neutral-200 object-cover" onError={(e) => { e.target.style.visibility = 'hidden' }} />
+                    <ProductImage productId={p.id} src={imageSrc(p.imageUrl)} alt="" className="h-8 w-8 rounded border border-neutral-200 object-cover" onError={(e) => { e.target.style.visibility = 'hidden' }} />
                   ) : (
                     <span className="flex h-8 w-8 items-center justify-center rounded border border-neutral-200 bg-neutral-100"><ImageIcon className="h-4 w-4 text-neutral-400" /></span>
                   )}

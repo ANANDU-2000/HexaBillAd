@@ -1,10 +1,11 @@
 import { normalizeSku, suggestSkuFromName } from '../utils/sku'
-import { cleanText, fixName, fixMoney, fixConversion, fixBarcode } from '../utils/productFields'
+import { cleanText, fixName, fixMoney, fixConversion, fixBarcode, validateProductFields } from '../utils/productFields'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, Plus, Upload, ScanBarcode, SwitchCamera, Wand2, Printer, Share2 } from 'lucide-react'
 import { productCategoriesAPI, productsAPI } from '../services'
 import toast from 'react-hot-toast'
 import ConfirmDangerModal from './ConfirmDangerModal'
+import ProductImage from './ProductImage'
 import { useCameraBarcodeScanner } from '../features/sales/pos/barcode/useCameraBarcodeScanner'
 import { playScanSuccessBeep } from '../features/sales/pos/barcode/scanBeep'
 import { downloadOrShareBarcodePdf } from '../utils/barcodePdf'
@@ -28,6 +29,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     sellPrice: product?.sellPrice || 0,
     expiryDate: product?.expiryDate ? product.expiryDate.split('T')[0] : '',
     categoryId: product?.categoryId || null,
+    reorderLevel: product?.reorderLevel ?? 0,
     descriptionEn: product?.descriptionEn || '',
     descriptionAr: product?.descriptionAr || ''
   })
@@ -38,12 +40,16 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
   const [showCategoryInput, setShowCategoryInput] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(product?.imageUrl || null)
+  const [imagePreview, setImagePreview] = useState(product?.imageUrl
+    ? (/^(https?:|data:|\/)/.test(product.imageUrl) ? product.imageUrl : `/uploads/${product.imageUrl}`)
+    : null)
+  const [imageRemoved, setImageRemoved] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [showLossConfirm, setShowLossConfirm] = useState(false)
   const [barcodeScanOn, setBarcodeScanOn] = useState(false)
   const [scanCamError, setScanCamError] = useState(null)
   const [barcodePdfBusy, setBarcodePdfBusy] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const handleAutoCreateBarcode = () => {
     const sku = (formData.sku || '').trim()
@@ -127,6 +133,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
   const handleChange = (e) => {
     const { name, value, type } = e.target
+    setFieldErrors(prev => ({ ...prev, [name]: undefined }))
     if (name === 'sku') skuEditedByUser.current = value.trim() !== ''
     setFormData(prev => {
       const next = {
@@ -158,6 +165,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
         return
       }
       setImageFile(file)
+      setImageRemoved(false)
       const reader = new FileReader()
       reader.onloadend = () => {
         setImagePreview(reader.result)
@@ -218,6 +226,13 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const errors = validateProductFields(formData)
+    setFieldErrors(errors)
+    const firstInvalid = Object.keys(errors)[0]
+    if (firstInvalid) {
+      e.currentTarget.elements.namedItem(firstInvalid)?.focus()
+      return
+    }
     
     // Repair what can be repaired, tell the client what changed, and only stop when nothing sensible can be guessed.
     const notes = []
@@ -253,6 +268,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       costPrice: cost.value,
       sellPrice: sell.value,
       conversionToBase: conv.value,
+      reorderLevel: Number(formData.reorderLevel || 0),
       barcode: barcode.value,
     }
     setFormData(fixed)
@@ -269,7 +285,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
     const roundToDecimals = (value, decimals = 2) => {
       return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
     }
-    let imageUrl = data.imageUrl || product?.imageUrl
+    let imageUrl = imageRemoved ? null : data.imageUrl || product?.imageUrl
     let uploadedAlready = false
     if (imageFile && product?.id) {
       try {
@@ -283,7 +299,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       } catch (error) {
         console.error('Error uploading image:', error)
         if (!error?._handledByInterceptor) {
-          toast.error('Failed to upload image. Product will be saved without image.')
+          toast.error(product?.imageUrl ? 'Image upload failed. The existing image will be kept.' : 'Image upload failed. Product details will be saved without an image.')
         }
       } finally {
         setUploadingImage(false)
@@ -296,16 +312,16 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
       conversionToBase: roundToDecimals(data.conversionToBase, 4),
       expiryDate: data.expiryDate?.trim() || null,
     }
-    if (imageUrl) {
-      productData.imageUrl = imageUrl
-    }
+    productData.imageUrl = imageUrl || null
     // Avoid double-upload: page also uploads when imageFile is passed for edits
-    onSave(productData, uploadedAlready ? null : imageFile)
+    await onSave(productData, uploadedAlready ? null : imageFile)
   }
 
   const scanStatusText = scanCamError
     || SCAN_STATUS_LABEL[barcodeScanStatus]
     || (barcodeScanOn ? 'Starting camera…' : '')
+
+  const fieldError = (name) => fieldErrors[name] && <p id={`product-${name}-error`} className="mt-1 text-xs text-error">{fieldErrors[name]}</p>
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
@@ -323,16 +339,23 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0">
           <div className="overflow-y-auto flex-1 px-4 py-3 space-y-3">
+            {Object.values(fieldErrors).some(Boolean) && (
+              <div role="alert" className="rounded-md border border-error bg-error/5 p-3 text-sm text-error">
+                Review the highlighted fields. Your other values have been kept.
+              </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-sku" className="block text-sm font-medium text-neutral-700 mb-1">
                   SKU *
                 </label>
                 <input
                   type="text"
                   name="sku"
+                  id="product-sku"
+                  aria-invalid={Boolean(fieldErrors.sku)}
                   className="input"
                   value={formData.sku}
                   onChange={handleChange}
@@ -340,25 +363,30 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   onBlur={handleSkuBlur}
                   maxLength={50}
                   placeholder="Auto from name, e.g. BEEF-250GM"
-                  aria-describedby="sku-hint"
+                  aria-describedby="sku-hint product-sku-error"
                 />
                 <p id="sku-hint" className="mt-1 text-xs text-neutral-500">
-                  Short code for this item. Spaces become dashes. Leave empty to fill from the name.
+                  Unique product code, not a barcode. Suggested from the name; check it before saving.
                 </p>
+                {fieldError('sku')}
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-barcode" className="block text-sm font-medium text-neutral-700 mb-1">
                   Barcode <span className="text-xs text-neutral-500 font-normal">(box code — Scan or type, then Save)</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
                   <input
                     type="text"
                     name="barcode"
+                    id="product-barcode"
+                    maxLength={100}
+                    aria-invalid={Boolean(fieldErrors.barcode)}
+                    aria-describedby="barcode-hint product-barcode-error"
                     className="input flex-1 min-w-[8rem]"
                     value={formData.barcode}
                     onChange={handleChange}
-                    placeholder="EAN-13, UPC, SKU…"
+                    placeholder="Scan or enter an existing barcode (optional)"
                   />
                   <button
                     type="button"
@@ -407,6 +435,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     </>
                   )}
                 </div>
+                <p id="barcode-hint" className="mt-1 text-xs text-neutral-500">Enter the code on the box, or use SKU-based barcode labels.</p>
+                {fieldError('barcode')}
                 {barcodeScanOn && (
                   <div className="mt-2 relative rounded-lg overflow-hidden border border-neutral-300 bg-black max-w-[220px]">
                     <video
@@ -446,41 +476,53 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-nameEn" className="block text-sm font-medium text-neutral-700 mb-1">
                   Name (English) *
                 </label>
                 <input
                   type="text"
                   name="nameEn"
+                  id="product-nameEn"
+                  maxLength={200}
+                  aria-invalid={Boolean(fieldErrors.nameEn)}
+                  aria-describedby="nameEn-hint product-nameEn-error"
                   className="input"
-                  placeholder="e.g. Beef Nan 250gm"
+                  placeholder="e.g. Beef slices 18 kg carton"
                   value={formData.nameEn}
                   onChange={handleChange}
                 />
+                <p id="nameEn-hint" className="mt-1 text-xs text-neutral-500">Use the name shown on your invoice.</p>
+                {fieldError('nameEn')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Name (Arabic)
+                <label htmlFor="product-nameAr" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Name (Arabic) (optional)
                 </label>
                 <input
                   type="text"
                   name="nameAr"
+                  id="product-nameAr"
+                  maxLength={200}
+                  aria-invalid={Boolean(fieldErrors.nameAr)}
+                  aria-describedby="product-nameAr-error"
                   className="input"
                   dir="auto"
                   placeholder="مثال: لحم بقري"
                   value={formData.nameAr}
                   onChange={handleChange}
                 />
+                {fieldError('nameAr')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-categoryId" className="block text-sm font-medium text-neutral-700 mb-1">
                   Category <span className="text-xs text-neutral-500 font-normal">(Optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <select
                     name="categoryId"
+                    id="product-categoryId"
                     className="input flex-1"
                     value={formData.categoryId || ''}
                     onChange={handleChange}
@@ -507,7 +549,12 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                       placeholder="New category name"
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleCreateCategory()}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleCreateCategory()
+                        }
+                      }}
                       className="input flex-1"
                       disabled={creatingCategory}
                     />
@@ -524,11 +571,14 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-unitType" className="block text-sm font-medium text-neutral-700 mb-1">
                   Qty Type *
                 </label>
                 <select
                   name="unitType"
+                  id="product-unitType"
+                  aria-invalid={Boolean(fieldErrors.unitType)}
+                  aria-describedby="product-unitType-error"
                   className="input uppercase"
                   value={formData.unitType}
                   onChange={handleChange}
@@ -546,15 +596,19 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   <option value="LTR">LTR (Liter)</option>
                   <option value="MTR">MTR (Meter)</option>
                 </select>
+                {fieldError('unitType')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-conversionToBase" className="block text-sm font-medium text-neutral-700 mb-1">
                   Conversion to Base *
                 </label>
                 <input
                   type="number"
                   name="conversionToBase"
+                  id="product-conversionToBase"
+                  aria-invalid={Boolean(fieldErrors.conversionToBase)}
+                  aria-describedby="conversion-hint product-conversionToBase-error"
                   step="any"
                   inputMode="decimal"
                   placeholder="e.g. 1  (12 if one carton holds 12)"
@@ -562,15 +616,20 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   value={formData.conversionToBase}
                   onChange={handleChange}
                 />
+                <p id="conversion-hint" className="mt-1 text-xs text-neutral-500">Use 1 for no conversion, or 12 for a carton holding 12 base units. Up to 4 decimals.</p>
+                {fieldError('conversionToBase')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Cost Price *
+                <label htmlFor="product-costPrice" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Purchase cost (AED, excl. VAT) *
                 </label>
                 <input
                   type="number"
                   name="costPrice"
+                  id="product-costPrice"
+                  aria-invalid={Boolean(fieldErrors.costPrice)}
+                  aria-describedby="cost-hint product-costPrice-error"
                   step="any"
                   inputMode="decimal"
                   placeholder="e.g. 120.00"
@@ -578,31 +637,45 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   value={formData.costPrice}
                   onChange={handleChange}
                 />
+                <p id="cost-hint" className="mt-1 text-xs text-neutral-500">Cost per base unit, for example 120.00. Purchases update this cost.</p>
+                {fieldError('costPrice')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Sell Price *
+                <label htmlFor="product-sellPrice" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Selling price (AED) *
                 </label>
                 <input
                   type="number"
                   name="sellPrice"
+                  id="product-sellPrice"
+                  aria-invalid={Boolean(fieldErrors.sellPrice)}
+                  aria-describedby="sell-hint product-sellPrice-error"
                   step="any"
                   inputMode="decimal"
-                  placeholder="e.g. 140.00"
+                  placeholder="e.g. 145.00"
                   className="input"
                   value={formData.sellPrice}
                   onChange={handleChange}
                 />
+                <p id="sell-hint" className="mt-1 text-xs text-neutral-500">Catalog selling price, for example 145.00. Check the tax treatment when making a sale.</p>
+                {fieldError('sellPrice')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                <label htmlFor="product-reorderLevel" className="block text-sm font-medium text-neutral-700 mb-1">Reorder level (optional)</label>
+                <input id="product-reorderLevel" name="reorderLevel" type="number" inputMode="numeric" min="0" step="1" className="input" value={formData.reorderLevel} onChange={handleChange} aria-invalid={Boolean(fieldErrors.reorderLevel)} aria-describedby="reorder-hint product-reorderLevel-error" />
+                <p id="reorder-hint" className="mt-1 text-xs text-neutral-500">Example: 5 base units. Use 0 for the company default low-stock threshold.</p>
+                {fieldError('reorderLevel')}
+              </div>
+              <div>
+                <label htmlFor="product-expiryDate" className="block text-sm font-medium text-neutral-700 mb-1">
                   Expiry Date <span className="text-xs text-neutral-500 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="date"
                   name="expiryDate"
+                  id="product-expiryDate"
                   className="input"
                   value={formData.expiryDate}
                   onChange={handleChange}
@@ -616,7 +689,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                 <div className="flex flex-wrap items-center gap-3">
                   {imagePreview && (
                     <div className="relative inline-block">
-                      <img
+                      <ProductImage
+                        productId={product?.id}
                         src={typeof imagePreview === 'string' && (imagePreview.startsWith('http') || imagePreview.startsWith('/') || imagePreview.startsWith('data:'))
                           ? imagePreview
                           : imagePreview}
@@ -629,6 +703,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                           onClick={() => {
                             setImageFile(null)
                             setImagePreview(null)
+                            setImageRemoved(true)
                           }}
                           className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-error"
                           title="Remove image"
@@ -643,6 +718,8 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                     <span className="text-sm">{imageFile ? imageFile.name : product?.id ? 'Change Image' : 'Upload Image'}</span>
                     <input
                       type="file"
+                      id="product-image"
+                      name="image"
                       accept="image/*"
                       onChange={handleImageChange}
                       className="hidden"
@@ -656,25 +733,34 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Description (English)
+                <label htmlFor="product-descriptionEn" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Description (English) (optional)
                 </label>
                 <textarea
                   name="descriptionEn"
+                  id="product-descriptionEn"
+                  maxLength={500}
+                  aria-invalid={Boolean(fieldErrors.descriptionEn)}
+                  aria-describedby="product-descriptionEn-error"
                   placeholder="e.g. Frozen beef, 250 g pack"
                   rows="2"
                   className="input"
                   value={formData.descriptionEn}
                   onChange={handleChange}
                 />
+                {fieldError('descriptionEn')}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Description (Arabic)
+                <label htmlFor="product-descriptionAr" className="block text-sm font-medium text-neutral-700 mb-1">
+                  Description (Arabic) (optional)
                 </label>
                 <textarea
                   name="descriptionAr"
+                  id="product-descriptionAr"
+                  maxLength={500}
+                  aria-invalid={Boolean(fieldErrors.descriptionAr)}
+                  aria-describedby="product-descriptionAr-error"
                   placeholder="مثال: لحم بقري مجمد"
                   dir="auto"
                   rows="2"
@@ -682,6 +768,7 @@ const ProductForm = ({ product, saving = false, onSave, onCancel, initialBarcode
                   value={formData.descriptionAr}
                   onChange={handleChange}
                 />
+                {fieldError('descriptionAr')}
               </div>
             </div>
 

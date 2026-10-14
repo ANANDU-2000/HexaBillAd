@@ -70,6 +70,59 @@ public class ProductPersistenceHttpTests
     }
 
     [Fact]
+    public async Task Product_FailedCreateWithInactiveSku_DoesNotRenameHistory_AndOriginalCanReactivate()
+    {
+        using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        var sku = "HISTORY-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var original = await DataAsync(await client.PostAsJsonAsync("/api/products", Body(sku, "Original historical item", 5m, 8m, 0m)));
+        var id = original.GetProperty("id").GetInt32();
+        Assert.True((await client.DeleteAsync($"/api/products/{id}")).IsSuccessStatusCode);
+        var otherSku = "BARCODE-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var holder = await DataAsync(await client.PostAsJsonAsync("/api/products", Body(otherSku, "Barcode holder", 1m, 2m, 0m)));
+
+        var rejected = await client.PostAsJsonAsync("/api/products", new
+        {
+            sku, barcode = otherSku + "-BC", nameEn = "Rejected replacement", unitType = "PCS", conversionToBase = 1m, costPrice = 1m, sellPrice = 2m,
+        });
+        Assert.False(rejected.IsSuccessStatusCode);
+        var after = await DataAsync(await client.GetAsync($"/api/products/{id}"));
+        Assert.Equal(sku, after.GetProperty("sku").GetString());
+        Assert.Equal("Original historical item", after.GetProperty("nameEn").GetString());
+        Assert.False(after.GetProperty("isActive").GetBoolean());
+        Assert.True((await client.PostAsync($"/api/products/{id}/activate", null)).IsSuccessStatusCode);
+        Assert.Equal(sku, (await DataAsync(await client.GetAsync($"/api/products/{id}"))).GetProperty("sku").GetString());
+        Assert.True((await client.DeleteAsync($"/api/products/{id}")).IsSuccessStatusCode);
+        Assert.True((await client.DeleteAsync($"/api/products/{holder.GetProperty("id").GetInt32()}")).IsSuccessStatusCode);
+    }
+
+    [Fact]
+    public async Task Product_Image_ReadRequiresAuthenticationAndMatchingTenant()
+    {
+        using var a = HttpIntegrationClient.Create(_factory, 1, "tenanta");
+        using var b = HttpIntegrationClient.Create(_factory, 2, "tenantb");
+        var sku = "IMG-" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        var id = (await DataAsync(await a.PostAsJsonAsync("/api/products", Body(sku, "Synthetic photo fixture", 1m, 2m, 0m)))).GetProperty("id").GetInt32();
+        var png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAO0lEQVR4nO3RQREAMAjEwKNqKrHCEFgJ4cMvK+CYCXVfZ9NZXY8HBvwBMhEyETIRMhEyETIRMhEyUcgHqGsBlLFhwGoAAAAASUVORK5CYII=");
+        using var multipart = new MultipartFormDataContent();
+        var photo = new ByteArrayContent(png);
+        photo.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/png");
+        multipart.Add(photo, "file", "synthetic.png");
+        var upload = await a.PostAsync($"/api/products/{id}/upload-image", multipart);
+        Assert.True(upload.IsSuccessStatusCode, await upload.Content.ReadAsStringAsync());
+        var own = await a.GetAsync($"/api/products/{id}/image");
+        Assert.True(own.IsSuccessStatusCode);
+        Assert.Equal("image/png", own.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(png, await own.Content.ReadAsByteArrayAsync());
+        Assert.True(own.Headers.CacheControl?.Private);
+        Assert.True(own.Headers.CacheControl?.NoStore);
+        Assert.Equal(HttpStatusCode.NotFound, (await b.GetAsync($"/api/products/{id}/image")).StatusCode);
+        using var anonymous = _factory.CreateClient();
+        foreach (var header in a.DefaultRequestHeaders.Where(h => h.Key != "Authorization")) anonymous.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/products/{id}/image")).StatusCode);
+        Assert.True((await a.DeleteAsync($"/api/products/{id}")).IsSuccessStatusCode);
+    }
+
+    [Fact]
     public async Task Product_NegativePrice_IsRejected()
     {
         using var client = HttpIntegrationClient.Create(_factory, 1, "tenanta");

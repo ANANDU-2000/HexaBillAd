@@ -24,7 +24,8 @@ export default defineConfig({
     channel: process.env.PW_CHANNEL || 'msedge',
     headless: true,
     screenshot: 'only-on-failure',
-    trace: 'retain-on-failure',
+    // API/session tokens must not be captured in trace artifacts.
+    trace: 'off',
   },
   projects: VIEWPORTS.map((vp) => ({
     name: vp.name,

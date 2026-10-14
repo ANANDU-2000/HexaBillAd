@@ -266,6 +266,35 @@ namespace HexaBill.Api.Core.Storage
             return relativePath;
         }
 
+        public async Task<(byte[] Bytes, string ContentType)?> ReadProductImageAsync(string filePath, int productId, int tenantId)
+        {
+            if (!_isEnabled || tenantId <= 0 || productId <= 0 || string.IsNullOrWhiteSpace(filePath)) return null;
+            var relative = filePath.Replace('\\', '/').TrimStart('/');
+            if (relative.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) relative = relative[8..];
+            var fileName = Path.GetFileName(relative);
+            if (relative != $"{tenantId}/products/{fileName}" || !fileName.StartsWith($"product_{productId}_", StringComparison.Ordinal)) return null;
+            var contentType = Path.GetExtension(fileName).ToLowerInvariant() switch
+            {
+                ".png" => "image/png", ".jpg" or ".jpeg" => "image/jpeg", ".gif" => "image/gif", ".webp" => "image/webp", _ => null
+            };
+            if (contentType == null) return null;
+            try
+            {
+                using var response = await _s3Client.GetObjectAsync(new GetObjectRequest { BucketName = _bucketName, Key = GetS3Key(relative) });
+                if (response.ContentLength > 5 * 1024 * 1024) return null;
+                using var bytes = new MemoryStream();
+                var buffer = new byte[32 * 1024];
+                int read;
+                while ((read = await response.ResponseStream.ReadAsync(buffer)) > 0)
+                {
+                    if (bytes.Length + read > 5 * 1024 * 1024) return null;
+                    await bytes.WriteAsync(buffer.AsMemory(0, read));
+                }
+                return (bytes.ToArray(), contentType);
+            }
+            catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound) { return null; }
+        }
+
         public async Task<string> UploadProfilePhotoAsync(IFormFile file, int userId, int tenantId)
         {
             if (file == null || file.Length == 0)

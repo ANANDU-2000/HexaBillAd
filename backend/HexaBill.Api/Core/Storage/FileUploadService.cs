@@ -14,6 +14,7 @@ namespace HexaBill.Api.Core.Storage
         Task<string> UploadLogoAsync(IFormFile file, int tenantId);
         Task<string> UploadInvoiceAttachmentAsync(IFormFile file, int purchaseId, int tenantId);
         Task<string> UploadProductImageAsync(IFormFile file, int productId, int tenantId);
+        Task<(byte[] Bytes, string ContentType)?> ReadProductImageAsync(string filePath, int productId, int tenantId);
         Task<string> UploadProfilePhotoAsync(IFormFile file, int userId, int tenantId);
         Task<bool> DeleteFileAsync(string filePath);
         Task<string> GetFileUrlAsync(string filePath);
@@ -184,6 +185,24 @@ namespace HexaBill.Api.Core.Storage
 
             // Return relative path for storage in database
             return $"{tenantId}/products/{fileName}";
+        }
+
+        public async Task<(byte[] Bytes, string ContentType)?> ReadProductImageAsync(string filePath, int productId, int tenantId)
+        {
+            if (tenantId <= 0 || productId <= 0 || string.IsNullOrWhiteSpace(filePath)) return null;
+            var relative = filePath.Replace('\\', '/').TrimStart('/');
+            if (relative.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) relative = relative[8..];
+            var fileName = Path.GetFileName(relative);
+            if (relative != $"{tenantId}/products/{fileName}" || !fileName.StartsWith($"product_{productId}_", StringComparison.Ordinal)) return null;
+            var contentType = Path.GetExtension(fileName).ToLowerInvariant() switch
+            {
+                ".png" => "image/png", ".jpg" or ".jpeg" => "image/jpeg", ".gif" => "image/gif", ".webp" => "image/webp", _ => null
+            };
+            if (contentType == null) return null;
+            var fullPath = Path.Combine(_uploadPath, tenantId.ToString(), "products", fileName);
+            var info = new FileInfo(fullPath);
+            if (!info.Exists || info.Length > 5 * 1024 * 1024) return null;
+            return (await File.ReadAllBytesAsync(fullPath), contentType);
         }
 
         public async Task<string> UploadProfilePhotoAsync(IFormFile file, int userId, int tenantId)

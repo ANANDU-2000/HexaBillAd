@@ -243,7 +243,7 @@ namespace HexaBill.Api.Data
                 entity.Property(e => e.CostPrice).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.SellPrice).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.StockQty).HasColumnType("numeric(18,2)");
-                entity.Property(e => e.ConversionToBase).HasColumnType("numeric(18,2)");
+                entity.Property(e => e.ConversionToBase).HasColumnType("numeric(18,4)");
                 
                 // Optimized concurrency for both PostgreSQL (bytea) and SQLite (BLOB)
                 entity.Property(e => e.RowVersion)
