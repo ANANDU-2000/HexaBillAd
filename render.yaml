@@ -7,7 +7,10 @@ services:
     name: hexabill-api
     runtime: docker
     dockerfilePath: backend/HexaBill.Api/Dockerfile
-    healthCheckPath: /health
+    # Apply to the existing service only after the production release gate is approved.
+    # EF migrations remain an explicit backed-up release step, not a startup task.
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health/ready
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production

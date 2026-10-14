@@ -244,6 +244,18 @@ namespace HexaBill.Api.Modules.Products
             }
         }
 
+        [HttpGet("{id}/image")]
+        public async Task<IActionResult> GetProductImage(int id)
+        {
+            var tenantId = CurrentTenantId;
+            var product = await _productService.GetProductByIdAsync(id, tenantId);
+            if (product == null || string.IsNullOrWhiteSpace(product.ImageUrl) || _fileUploadService == null) return NotFound();
+            var image = await _fileUploadService.ReadProductImageAsync(product.ImageUrl, id, tenantId);
+            if (image == null) return NotFound();
+            Response.Headers.CacheControl = "private, no-store";
+            return File(image.Value.Bytes, image.Value.ContentType);
+        }
+
         [HttpPost("{id}/upload-image")]
         [Authorize(Roles = "Owner,Admin,Staff")]
         [RequestSizeLimit(6 * 1024 * 1024)]

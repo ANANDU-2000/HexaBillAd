@@ -268,18 +268,15 @@ namespace HexaBill.Api.Modules.Products
                 throw new InvalidOperationException($"SKU already exists on \"{activeSku.NameEn}\" ({activeSku.Sku}). Edit that product instead of creating it again.");
             }
 
-            // A deactivated product still occupies the unique SKU. Free it so the new product can be saved.
-            var inactiveSkus = await _context.Products
+            // Preserve the identity used by historical invoices and inventory movements.
+            var inactiveSku = await _context.Products
                 .Where(p => p.TenantId == tenantId && !p.IsActive && p.Sku.ToLower() == skuKey)
-                .ToListAsync();
-            foreach (var old in inactiveSkus)
+                .Select(p => new { p.NameEn, p.Sku })
+                .FirstOrDefaultAsync();
+            if (inactiveSku != null)
             {
-                var freed = $"old-{old.Id}";
-                old.Sku = freed.Length <= 50 ? freed : freed[..50];
-                old.UpdatedAt = DateTime.UtcNow;
+                throw new InvalidOperationException($"SKU already exists on deactivated product \"{inactiveSku.NameEn}\" ({inactiveSku.Sku}). Reactivate that product or use a different SKU.");
             }
-            if (inactiveSkus.Count > 0)
-                await _context.SaveChangesAsync();
 
             // Resolve barcode: explicit value, else SKU if unique as barcode, else assign after insert
             string? barcode = !string.IsNullOrWhiteSpace(request.Barcode)
@@ -578,11 +575,12 @@ namespace HexaBill.Api.Modules.Products
                        SET ""StockQty"" = ""StockQty"" + {changeQty}, 
                            ""UpdatedAt"" = {DateTime.UtcNow}
                        WHERE ""Id"" = {productId} 
-                         AND ""TenantId"" = {tenantId}");
+                         AND ""TenantId"" = {tenantId}
+                         AND ""StockQty"" + {changeQty} >= 0");
                 
                 if (rowsAffected == 0)
                 {
-                    throw new InvalidOperationException($"Product {productId} not found or does not belong to your tenant.");
+                    throw new InvalidOperationException("Stock changed during this adjustment, or the product is unavailable. Refresh the stock balance and try again.");
                 }
                 
                 await _context.Entry(product).ReloadAsync();

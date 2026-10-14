@@ -34,7 +34,9 @@ export function fixSupplierForm (form) {
     credit = c.value
     if (c.note) notes.push(c.note)
   }
-  ;[email, phone].forEach(f => { if (f.note) notes.push(f.note) })
+  for (const field of [email, phone]) {
+    if (field.note) notes.push(field.note)
+  }
   return {
     error: name ? '' : 'Type the supplier name, for example: Gulf Frozen Foods',
     values: {

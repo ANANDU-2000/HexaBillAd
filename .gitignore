@@ -141,6 +141,7 @@ backend/data/*.json
 backend/**/hexabill*.db
 backend/**/hexabill*.db-*
 frontend/hexabill-ui/dist/
+frontend/hexabill-ui/e2e/.results-*/
 *.pdf.evidence/
 
 # Local logo seed (never commit)

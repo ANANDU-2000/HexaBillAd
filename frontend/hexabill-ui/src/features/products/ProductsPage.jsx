@@ -5,6 +5,7 @@ import { Plus, Edit, Trash2, Package, AlertTriangle, Search, Filter, RefreshCw, 
 import { productsAPI, stockAdjustmentsAPI, productCategoriesAPI } from '../../services/index'
 import ProductsTable from './ProductsTable'
 import ProductForm from '../../components/ProductForm'
+import ProductImage from '../../components/ProductImage'
 import StockAdjustmentModal from '../../components/StockAdjustmentModal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { TabNavigation, FilterPanel, OverflowMenu, Badge, Alert } from '../../components/ui/index'
@@ -310,23 +311,21 @@ const ProductsPage = () => {
       }
     } catch (error) {
       console.error('Error creating product:', error)
-      // The server may have saved the product even though the answer failed or never arrived.
-      // A duplicate SKU would have been answered with 409, so a 5xx or lost answer plus a matching SKU means it was saved.
+      // A matching SKU may predate this request. Without a request identifier,
+      // reconciliation can guide review but cannot prove this create committed.
       if (saveOutcomeIsUncertain(error)) {
+        let existingSkuFound = false
         try {
           const found = await productsAPI.getProducts({ search: payloadSku, pageSize: 20 })
           const items = found?.data?.items ?? found?.items ?? []
           const saved = items.find(p => String(p.sku || '').toLowerCase() === String(payloadSku || '').toLowerCase())
-          if (saved) {
-            offerCreateSuccessWithPrint(saved)
-            window.dispatchEvent(new CustomEvent('dataUpdated'))
-            setShowForm(false)
-            setActiveTab('all')
-            setSearchTerm(saved.sku || saved.nameEn || '')
-            setCurrentPage(1)
-            return
-          }
-        } catch (_) { /* fall through to the message below */ }
+          existingSkuFound = Boolean(saved)
+        } catch (_) { /* The outcome remains uncertain when the read also fails. */ }
+        toast.error(existingSkuFound
+          ? 'Save status is uncertain. A product with this SKU exists. Check that product before trying again.'
+          : 'Save status is uncertain. Check the product list before trying again; the server may have saved it.',
+        { duration: 10000 })
+        return
       }
       if (!error?._handledByInterceptor) {
         const data = error?.response?.data
@@ -338,7 +337,7 @@ const ProductsPage = () => {
         } else {
           const msg = data?.message || (error?.response
             ? 'Failed to create product'
-            : 'Could not reach the server, so nothing was saved. Check your connection and try again.')
+            : 'Could not confirm the save. Check the product list before trying again.')
           const errors = data?.errors
           const fullMsg = errors?.length ? `${msg} (${errors.join(', ')})` : msg
           toast.error(fullMsg, { duration: 6000 })
@@ -1066,6 +1065,12 @@ const ProductsPage = () => {
       />
 
       {/* Modern Products Table — shown from 1280px; narrower screens use the card list below (its row actions fit) */}
+      {canManageInventory && products.length > 0 && (
+        <label className="xl:hidden flex min-h-[44px] items-center gap-2 text-sm text-neutral-700">
+          <input type="checkbox" aria-label="Select all products on this page" checked={products.every(p => selectedIds.has(p.id))} onChange={(e) => togglePage(e.target.checked)} className="h-5 w-5 rounded border-neutral-400" />
+          Select page ({products.length}) — only the products shown here
+        </label>
+      )}
       {selectedIds.size > 0 && canManageInventory && (
         <div className="sticky top-0 z-20 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary-300 bg-primary-50 px-3 py-2 text-sm" role="region" aria-label="Bulk actions">
           <span className="font-semibold text-primary-900">{selectedIds.size} selected</span>
@@ -1112,13 +1117,19 @@ const ProductsPage = () => {
                 className="bg-white rounded-lg border border-neutral-200 p-3.5 cursor-pointer active:bg-neutral-50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
+                  {canManageInventory && (
+                    <label className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" aria-label={`Select ${product.nameEn || product.sku}`} checked={selectedIds.has(product.id)} onChange={() => toggleOne(product.id)} className="h-5 w-5 rounded border-neutral-400" />
+                    </label>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); navigate(`/products/${product.id}`) }}
                     className="text-left min-w-0 flex-1"
                   >
                     {product.imageUrl ? (
-                      <img
+                      <ProductImage
+                        productId={product.id}
                         src={product.imageUrl.startsWith('http') || product.imageUrl.startsWith('/') ? product.imageUrl : `/uploads/${product.imageUrl}`}
                         alt={product.nameEn}
                         className="h-9 w-9 object-cover rounded border border-neutral-200 mb-1.5"

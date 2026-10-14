@@ -1780,7 +1780,7 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<decimal>("ConversionToBase")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,4)");
 
                     b.Property<decimal>("CostPrice")
                         .HasColumnType("numeric(18,2)");

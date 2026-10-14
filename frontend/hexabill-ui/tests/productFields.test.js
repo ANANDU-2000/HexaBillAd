@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanText, fixName, fixMoney, fixConversion, fixBarcode, MAX_PRICE } from '../src/utils/productFields.js'
+import { cleanText, fixName, fixMoney, fixConversion, fixBarcode, MAX_PRICE, validateProductFields } from '../src/utils/productFields.js'
 
 test('names lose extra spaces', () => {
   assert.equal(cleanText('  Beef   Nan  250gm '), 'Beef Nan 250gm')
@@ -30,4 +30,24 @@ test('conversion is repaired to a positive number', () => {
 
 test('barcode spaces are removed', () => {
   assert.equal(fixBarcode(' 6281 0000 00001 ').value, '6281000000001')
+})
+
+const validForm = { sku: 'QA-18KG', nameEn: 'Synthetic carton', unitType: 'CRTN', conversionToBase: 1, costPrice: 120, sellPrice: 145, reorderLevel: 0 }
+
+test('invalid product values are rejected without guessing or changing the submitted values', () => {
+  const values = { ...validForm, nameEn: '', costPrice: -1, conversionToBase: 0, reorderLevel: 0.5 }
+  const original = { ...values }
+  const errors = validateProductFields(values)
+  assert.match(errors.nameEn, /English product name/)
+  assert.match(errors.costPrice, /between 0 and/)
+  assert.match(errors.conversionToBase, /0.0001/)
+  assert.match(errors.reorderLevel, /whole-number/)
+  assert.deepEqual(values, original)
+})
+
+test('product validation aligns supported decimal conversions, limits and optional text with the API', () => {
+  assert.deepEqual(validateProductFields({ ...validForm, conversionToBase: 0.0001, costPrice: 0 }), {})
+  assert.match(validateProductFields({ ...validForm, descriptionAr: 'ع'.repeat(501) }).descriptionAr, /500/)
+  assert.match(validateProductFields({ ...validForm, sellPrice: '' }).sellPrice, /Selling price/)
+  assert.match(validateProductFields({ ...validForm, conversionToBase: 1000000 }).conversionToBase, /999,999.99/)
 })
