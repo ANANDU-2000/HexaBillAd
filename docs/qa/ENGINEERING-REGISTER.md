@@ -9,7 +9,7 @@ Updated 2026-10-14 (Asia/Calcutta). Goal active; Products gate IN PROGRESS.
 - User now explicitly authorized GitHub push: "PUSH LATEST CODE GITHUB NOW". Publish the current `codex/products-field-qa` branch. Production deployments, routing changes, migrations and customer writes remain separately gated.
 - Tests use disposable loopback PostgreSQL and synthetic accounts. Private credentials, logs, infrastructure diagnostics and archived original reports remain outside the repository.
 - Original local checkpoints remain on codex/products-field-qa-local-checkpoints. Public candidate preserves implementation with private diagnostics removed.
-- Current task: publish sanitized verified source from the public baseline, excluding private diagnostic ancestors.
+- Current task: continue Products real bulk/role/concurrency/idempotency regression; public source publication completed.
 - Next action: real bulk/role/concurrency/idempotency coverage and inactive-only server pagination; resolve Products gates before Customers.
 
 ## Persistent bug register
@@ -51,3 +51,5 @@ Runtime evidence remains private under `%LOCALAPPDATA%/HexaBillQA/20261013` (no 
 Products: NOT TESTED / IN PROGRESS. Customers, Shop Location, Expenses, Purchases, Daily Close, Payments, Sales/POS, Stock, Reports: NOT TESTED; wait for Products gate. No module PASS inferred from historic trackers or build success.
 
 Automatic approval review rejected public infrastructure diagnostics. Original reports are archived privately. The public candidate omits production identifiers, inventory and operational findings, and uses the existing public baseline as its parent. GitHub publication is authorized; production changes remain separately gated.
+
+Publication VERIFIED: source commit feb039d31a8b6d52e0c57060a5c0c9b46d6fc7b8 on codex/products-field-qa; remote ref and local fetched tree match, clean worktree. Original local checkpoints retained; internal diagnostics archived privately after automatic publication review. Main was not updated. Remote CI run not observed at publication verification; not counted as a pass.
