@@ -45,6 +45,7 @@ public class StorageController : TenantScopedController
                 contentType = "image/webp";
 
             Response.Headers.CacheControl = "public, max-age=86400";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
             return File(bytes, contentType);
         }
         catch (FileNotFoundException)
@@ -63,7 +64,7 @@ public class StorageController : TenantScopedController
     /// Validates tenantId from key path matches JWT.
     /// </summary>
     [HttpGet("{*key}")]
-    [ResponseCache(Duration = 86400, Location = ResponseCacheLocation.Client, VaryByHeader = "Authorization")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public async Task<IActionResult> GetByKey(string key, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(key))
@@ -91,7 +92,9 @@ public class StorageController : TenantScopedController
             if (key.EndsWith(".png", StringComparison.OrdinalIgnoreCase)) contentType = "image/png";
             else if (key.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || key.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase)) contentType = "image/jpeg";
             else if (key.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)) contentType = "image/webp";
-            Response.Headers.CacheControl = "public, max-age=86400";
+            // Only brand logos may be cached, and only by this browser. Licences, invoices and other files are never stored.
+            Response.Headers.CacheControl = logoOnly ? "private, max-age=86400" : "private, no-store";
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
             return File(bytes, contentType);
         }
         catch (FileNotFoundException)

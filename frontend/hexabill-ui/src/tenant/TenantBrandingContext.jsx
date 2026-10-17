@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { adminAPI } from '../services/index'
 import { clearAllCache } from '../services/api'
@@ -6,6 +6,7 @@ import { getApiBaseUrl, getApiBaseUrlNoSuffix } from '../services/apiConfig'
 import { getTenantHost } from './tenantHost'
 import { useAuth } from '../hooks/useAuth'
 import { getSetting } from '../utils/settingsKeys'
+import { brandingLoadDecision } from './brandingLoadGate'
 
 const BrandingContext = createContext()
 
@@ -39,6 +40,12 @@ export const BrandingProvider = ({ children }) => {
     loading: true,
   })
 
+  const impersonatedRef = useRef(impersonatedTenantId)
+  impersonatedRef.current = impersonatedTenantId
+  const inFlightRef = useRef(0)
+  const lastLoadedAtRef = useRef(NaN)
+  const loadedOnceRef = useRef(false)
+
   const updateFavicon = useCallback((logoUrl) => {
     if (!logoUrl) return
     try {
@@ -56,7 +63,7 @@ export const BrandingProvider = ({ children }) => {
     }
   }, [])
 
-  const loadBranding = useCallback(async () => {
+  const loadBrandingNow = useCallback(async () => {
     // Skip API on login page to avoid ERR_CONNECTION_REFUSED flood when backend is down
     const path = typeof window !== 'undefined' ? window.location.pathname : ''
     if (path === '/login' && getTenantHost().mode === 'tenant') {
@@ -83,7 +90,7 @@ export const BrandingProvider = ({ children }) => {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
       return
     }
-    setBranding(prev => ({ ...prev, loading: true }))
+    if (!loadedOnceRef.current) setBranding(prev => ({ ...prev, loading: true }))
     try {
       // Prefer logo data URI (survives container restarts; no blob revoke)
       let logoDisplay = null
@@ -119,6 +126,7 @@ export const BrandingProvider = ({ children }) => {
           loading: false,
         }))
 
+        loadedOnceRef.current = true
         document.title = name
         if (logoDisplay && !logoDisplay.includes('/api/storage/') && !logoDisplay.includes('storage/tenants/'))
           updateFavicon(logoDisplay)
@@ -129,6 +137,29 @@ export const BrandingProvider = ({ children }) => {
       setBranding(prev => ({ ...prev, companyName: 'HexaBill', loading: false }))
     }
   }, [updateFavicon])
+
+  const loadBranding = useCallback(async (options) => {
+    const hostMode = getTenantHost().mode
+    const decision = brandingLoadDecision({
+      hostMode,
+      impersonatedTenantId: impersonatedRef.current,
+      force: options?.force === true,
+      inFlight: inFlightRef.current > 0,
+      lastAt: lastLoadedAtRef.current,
+      now: Date.now(),
+    })
+    if (!decision.load) {
+      if (decision.reason === 'platform-host') setBranding(prev => (prev.loading ? { ...prev, companyName: 'HexaBill', companyLogo: null, loading: false } : prev))
+      return
+    }
+    inFlightRef.current += 1
+    try {
+      await loadBrandingNow()
+    } finally {
+      inFlightRef.current -= 1
+      lastLoadedAtRef.current = Date.now()
+    }
+  }, [loadBrandingNow])
 
   useEffect(() => {
     loadBranding()
@@ -152,7 +183,7 @@ export const BrandingProvider = ({ children }) => {
   useEffect(() => {
     if (impersonatedTenantId != null) {
       clearAllCache()
-      loadBranding()
+      loadBranding({ force: true })
     }
   }, [impersonatedTenantId, loadBranding])
 
@@ -189,14 +220,14 @@ export const BrandingProvider = ({ children }) => {
         if (!fullLogoUrl.includes('/api/storage/') && !fullLogoUrl.includes('storage/tenants/'))
           updateFavicon(logoDisplay)
       }
-      loadBranding()
+      loadBranding({ force: true })
     }
     window.addEventListener('logo-updated', handleLogoUpdated)
     return () => window.removeEventListener('logo-updated', handleLogoUpdated)
   }, [loadBranding, updateFavicon])
 
   return (
-    <BrandingContext.Provider value={{ ...branding, refresh: loadBranding }}>
+    <BrandingContext.Provider value={{ ...branding, refresh: () => loadBranding({ force: true }) }}>
       {children}
     </BrandingContext.Provider>
   )
