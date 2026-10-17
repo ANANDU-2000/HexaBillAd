@@ -8,6 +8,7 @@ import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 import { useBranding } from '../../tenant/TenantBrandingContext'
+import BackLink from '../../components/ui/BackLink'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
 function unwrapProductList(res) {
@@ -490,6 +491,7 @@ export default function QuotationEditorPage() {
 
   return (
     <div className="p-2 md:p-3 w-full max-w-full flex flex-col gap-2">
+      <BackLink to="/quotations" label="Back to quotations" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">{isEdit ? 'Edit quotation' : 'New quotation'}</h1>

@@ -4,6 +4,7 @@ import { Save, Download, Printer } from 'lucide-react'
 import { salaryCertificatesAPI } from '../../services/documentsApi'
 import { getSetting } from '../../utils/settingsKeys'
 import { amountToWordsUpper } from '../../utils/amountToWords'
+import BackLink from '../../components/ui/BackLink'
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)
@@ -370,6 +371,7 @@ export default function SalaryCertificateEditorPage() {
 
   return (
     <div className="p-2 md:p-3 w-full max-w-full flex flex-col gap-2">
+      <BackLink to="/salary-certificates" label="Back to salary certificates" />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-text-primary">

@@ -45,6 +45,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-06 (fifth slice): one back control on the three document editors (PASS locally in browser; NOT live)
+- Static scan of the nine detail/editor routes: six had a labelled "Back to ..." arrow link; the quotation, agreement and salary-certificate editors only had a small "List" button on the right of the header. Added `components/ui/BackLink.jsx` (top-left, names the destination, 44px target) and used it as the first element of those three editors. The existing "List" buttons stay.
+- Evidence: `e2e/editor-back-link.spec.js` **15/15 at m360, m390, t768, d1024, d1440** (link present, top-left, inside the screen, 44px on touch pointers, click returns to the list URL). Quotation editor **red on the previous code** (no such link); the other two are red by construction (no link existed) and were not separately reverted. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- Not done: the six existing back links were not unified onto `BackLink` (they work; moving them is cosmetic and was left out to keep this change small), no unsaved-changes prompt on back (the quotation editor autosaves; agreements and certificates were not checked), shell-level back on phones, filter and action-bar consistency.
+
 ### 2026-10-17 — UX-06 (fourth slice): route-specific expenses failure state (PASS locally in browser; NOT live)
 - A second scan (regex over every `catch` block that resets a list to `[]` without any failure flag) found six candidates. Fixed the one that is a user-visible list: route-specific expenses in `RouteDetailPage.jsx` now shows `ErrorState` with Try again (a `success: false` response counts as failure); the empty text only follows a successful empty load.
 - Evidence: `e2e/route-expenses-load-failure.spec.js` **6/6 at m360, t768, d1440** (branch-level and route-specific cases); **new case red on the previous page**. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
