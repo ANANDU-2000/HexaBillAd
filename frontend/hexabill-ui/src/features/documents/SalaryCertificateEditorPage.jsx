@@ -4,7 +4,8 @@ import { Save, Download, Printer } from 'lucide-react'
 import { salaryCertificatesAPI } from '../../services/documentsApi'
 import { getSetting } from '../../utils/settingsKeys'
 import { amountToWordsUpper } from '../../utils/amountToWords'
-import BackLink from '../../components/ui/BackLink'
+import BackLink from '../../components/ui/BackLink'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)
@@ -136,6 +137,7 @@ export default function SalaryCertificateEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
+  useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {

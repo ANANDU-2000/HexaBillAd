@@ -8,7 +8,8 @@ import { calcQuoteLine, calcQuoteTotals } from '../../utils/quoteMath'
 import QuotationProductDrawer from '../../components/QuotationProductDrawer'
 import { getSetting, getSettingBool } from '../../utils/settingsKeys'
 import { useBranding } from '../../tenant/TenantBrandingContext'
-import BackLink from '../../components/ui/BackLink'
+import BackLink from '../../components/ui/BackLink'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 /** productsAPI returns ApiResponse; list is often nested as data.items (paged) or data (array). */
 function unwrapProductList(res) {
@@ -158,6 +159,7 @@ export default function QuotationEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
+  useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {

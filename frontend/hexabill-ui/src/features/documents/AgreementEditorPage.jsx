@@ -3,7 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Save, Download, Printer } from 'lucide-react'
 import { agreementsAPI } from '../../services/documentsApi'
 import { getSetting } from '../../utils/settingsKeys'
-import BackLink from '../../components/ui/BackLink'
+import BackLink from '../../components/ui/BackLink'
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard'
 
 function downloadBlob(blob, filename) {
   const url = window.URL.createObjectURL(blob)
@@ -88,6 +89,7 @@ export default function AgreementEditorPage() {
 
   const isDirty = Boolean(baseline) && currentSnapshot !== baseline
   isDirtyRef.current = isDirty
+  useUnsavedChangesGuard(isDirty)
 
   useEffect(() => {
     const onBeforeUnload = (e) => {
