@@ -5,7 +5,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 async function openDailyClose (page) {
   await signIn(page, SLUG)
