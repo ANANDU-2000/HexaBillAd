@@ -1788,6 +1788,15 @@ _ = Task.Run(async () =>
                     databaseNeedsCreation = true; // Assume creation needed if check fails
                 }
                 
+                // Fresh install: an EMPTY PostgreSQL database cannot be built from the migration history, so build it from the model
+                // and record the history. Off in production unless HEXABILL_BASELINE_EMPTY_DB=true; never acts on a database that has tables.
+                if (context.Database.IsNpgsql()
+                    && HexaBill.Api.Core.Infrastructure.FreshDatabaseBaseline.IsEnabled(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"), Environment.GetEnvironmentVariable(HexaBill.Api.Core.Infrastructure.FreshDatabaseBaseline.EnvironmentVariable))
+                    && await HexaBill.Api.Core.Infrastructure.FreshDatabaseBaseline.ApplyIfEmptyAsync(context, initLogger))
+                {
+                    databaseNeedsCreation = false;
+                }
+
                 var pending = context.Database.GetPendingMigrations().ToList();
                 if (pending.Any())
                 {

@@ -27,7 +27,7 @@ public class MigrationRehearsalPostgreSqlTests
         // database cannot be built from the history. Production works only because its history rows pre-exist. Run with
         // HEXABILL_MIGRATION_REHEARSAL=1 to see the current state; remove this guard once a verified baseline exists.
         Skip.If(Environment.GetEnvironmentVariable("HEXABILL_MIGRATION_REHEARSAL") != "1",
-            "Opt-in migration rehearsal (HEXABILL_MIGRATION_REHEARSAL=1). Known failing: the history cannot build an empty PostgreSQL database.");
+            "Opt-in migration rehearsal (HEXABILL_MIGRATION_REHEARSAL=1). Known failing: the migration history alone cannot build an empty PostgreSQL database; fresh installs use FreshDatabaseBaseline (see FreshDatabaseBaselinePostgreSqlTests).");
 
         var scratch = $"hexabill_migrate_rehearsal_{Guid.NewGuid():N}".Substring(0, 50);
         var admin = new NpgsqlConnectionStringBuilder(baseConnection!) { Database = "postgres", Pooling = false };
