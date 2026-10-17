@@ -45,6 +45,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-03 (continued): tablet overflow sweep across 18 main routes (PASS locally in browser; NOT live)
+- Extended `e2e/tablet-touch-targets.spec.js` with a sweep of /pos, /payments, /expenses, /ledger, /reports, /vat-return, /daily-close, /suppliers, /quotations, /delivery-notes, /salary-certificates, /pricelist, /users, /settings, /branches, /routes, /sales-ledger, /billing-history at touch 820x1180 (portrait), 1024x768 and 1180x820 (landscape): no horizontal page overflow and a 16px root on every route. **7/7 pass** (the earlier 4 plus 3 sweep cases) on the synthetic tenant.
+- Limits: this checks page-level overflow and root size only. It does not prove a route rendered its content (a route that redirects would also pass), does not check inner scroll containers, forms with the software keyboard open, split view, orientation changes mid-form, RTL, or real devices. Back navigation, filter and action-bar consistency (UX-06) are not done.
+- Next remaining local work is mostly UX-06 consistency; AI-02, voice, documents, maps and forecasts need owner decisions.
+
 ### 2026-10-17 — UX-06 (third slice): remaining swallowed load failures (PASS locally for route/branch; SuperAdmin page NOT TESTED in a browser; NOT live)
 - Fixed with the shared `ErrorState` and retry: route branch-level expenses (`RouteDetailPage.jsx`), the branch customer refresh after a transfer (now reuses the Customers tab effect, so it also gets the failure state), and the SuperAdmin tenant payment history (`SuperAdminTenantDetailPage.jsx`; money history is no longer silently blank, and `success: false` counts as a failure).
 - Evidence: `e2e/route-expenses-load-failure.spec.js` **3/3 at m360, t768, d1440, red on the previous page**; `e2e/branch-detail-load-failure.spec.js` re-run after the transfer-refresh change **4/4 (m360, d1440)**. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
