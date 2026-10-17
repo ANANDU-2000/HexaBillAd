@@ -45,6 +45,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-03 tablet touch size (PARTIAL: root-size fix PASS in browser; shell/orientation work NOT done; NOT live)
+- Root cause (CSS-confirmed): `index.css` dropped the root font to 14px for every viewport >= 769px. Tailwind sizes are rem-based, so on tablets at 820/1024/1180px `min-h-11` rendered 38.5px and other controls shrank, below the 44px touch minimum (this also explains the 38.5px seen in UX-05).
+- Change: the compact 14px root now applies only to `(min-width: 769px) and (pointer: fine)`. Touch tablets keep 16px; mouse desktops are unchanged. One rule, no per-component edits.
+- Evidence: `e2e/tablet-touch-targets.spec.js` with touch emulation at 820x1180, 1024x768 and 1180x820: root 16px, no horizontal overflow on /dashboard, /purchases, /products, /customers, dashboard primary action >= 43.5px; mouse 1280 keeps 14px. **4/4 pass; the three touch cases fail on the old CSS (got 14px).** Build exit 0.
+- Risk and NOT TESTED: this enlarges type and spacing on tablets everywhere (about 14% at these widths); only four pages were overflow-checked. Not tested: real iPad/Android, split view, software keyboard, orientation change with a form open, other routes (reports, POS, ledger), RTL. Hybrid laptops with touchscreens report a fine primary pointer and keep 14px.
+- Remaining UX-03/UX-06 scope not started: tablet shell/back navigation consistency, shared filter/list-card/status styling, error-state and action-bar patterns.
+- Next: OPS-01 runtime schema repair review.
+
 ### 2026-10-17 — OPS-02 memory metric uses the enforced container limit (PARTIAL: code PASS locally; live provider metrics BLOCKED)
 - Root cause (code-confirmed): `PlatformMetrics`/`DiagnosticsController` computed memory% as managed heap divided by the process's own working set, and set `limitsHint` critical/warning from it. That ratio says nothing about the Render plan limit (a 95 MB heap in a 100 MB working set read "critical" with no limit known).
 - Change: new `ContainerMemory` reads the host-enforced limit (cgroup v2 `memory.max`, then v1 `memory.limit_in_bytes`; "max"/unlimited/invalid is no limit) and reports process working set over that limit. With no limit, `memoryUsagePercent` is null, metrics are marked unavailable and the hint is driven only by the DB pool. The heap ratio stays as an informational metric labelled "not capacity headroom". `/diagnostics` health memory check now reports heap, working set, limit, source and `unknown` status instead of a fake percent. SuperAdmin dashboard shows "X MB / limit" or "Container limit not reported by the host".

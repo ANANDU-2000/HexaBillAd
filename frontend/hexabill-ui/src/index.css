@@ -24,7 +24,9 @@
     line-height: 1.5;
   }
 
-  @media (min-width: 769px) {
+  /* Compact 14px root only for mouse-class pointers. Tablets (touch, 820/1024/1180px) keep 16px so every rem-based
+     control, including min-h-11, stays at the 44px touch minimum. */
+  @media (min-width: 769px) and (pointer: fine) {
     html {
       font-size: 14px;
     }
