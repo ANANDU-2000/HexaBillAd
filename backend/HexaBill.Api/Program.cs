@@ -304,6 +304,8 @@ builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBi
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.ProductStockTool>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantToolRegistry>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantDraftService>();
+// AI gateway: off unless the "Ai" configuration section enables it; nothing calls it yet. Keys come from server configuration only.
+HexaBill.Api.Modules.Assistant.Ai.AiServiceRegistration.AddAiGateway(builder.Services, builder.Configuration);
 builder.Services.AddScoped<ICustomerItemPriceService, CustomerItemPriceService>();
 builder.Services.AddScoped<ICustomerMergeService, CustomerMergeService>();
 builder.Services.AddScoped<ISupplierMergeService, SupplierMergeService>();
