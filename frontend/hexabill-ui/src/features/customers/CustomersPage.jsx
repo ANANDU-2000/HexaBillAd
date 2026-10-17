@@ -1038,7 +1038,10 @@ const CustomersPage = () => {
               placeholder="ABC Restaurant"
               required
               error={errors.name?.message}
-              {...register('name', { required: 'Customer name is required' })}
+              {...register('name', {
+                required: 'Customer name is required',
+                maxLength: { value: 200, message: 'Customer name must be 200 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1046,7 +1049,10 @@ const CustomersPage = () => {
               placeholder="+971 50 123 4567"
               required
               error={errors.phone?.message}
-              {...register('phone', { required: 'Phone number is required' })}
+              {...register('phone', {
+                required: 'Phone number is required',
+                maxLength: { value: 20, message: 'Phone number must be 20 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1054,14 +1060,19 @@ const CustomersPage = () => {
               type="email"
               placeholder="info@abcrestaurant.com"
               error={errors.email?.message}
-              {...register('email', { validate: (v) => !v || validateEmail(v) ? true : 'Enter a valid email address' })}
+              {...register('email', {
+                validate: (v) => !v || validateEmail(v) ? true : 'Enter a valid email address',
+                maxLength: { value: 100, message: 'Email must be 100 characters or fewer' }
+              })}
             />
 
             <Input
               label="TRN Number"
               placeholder="TRN123456789"
               error={errors.trn?.message}
-              {...register('trn')}
+              {...register('trn', {
+                maxLength: { value: 50, message: 'TRN must be 50 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1073,7 +1084,8 @@ const CustomersPage = () => {
               error={errors.creditLimit?.message}
               {...register('creditLimit', {
                 valueAsNumber: true,
-                min: { value: 0, message: 'Credit limit must be positive' }
+                min: { value: 0, message: 'Credit limit must be positive' },
+                max: { value: 99999999.99, message: 'Credit limit must be 99,999,999.99 or less' }
               })}
             />
 
@@ -1292,7 +1304,10 @@ const CustomersPage = () => {
               placeholder="ABC Restaurant"
               required
               error={errors.name?.message}
-              {...register('name', { required: 'Customer name is required' })}
+              {...register('name', {
+                required: 'Customer name is required',
+                maxLength: { value: 200, message: 'Customer name must be 200 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1300,7 +1315,10 @@ const CustomersPage = () => {
               placeholder="+971 50 123 4567"
               required
               error={errors.phone?.message}
-              {...register('phone', { required: 'Phone number is required' })}
+              {...register('phone', {
+                required: 'Phone number is required',
+                maxLength: { value: 20, message: 'Phone number must be 20 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1308,14 +1326,19 @@ const CustomersPage = () => {
               type="email"
               placeholder="info@abcrestaurant.com"
               error={errors.email?.message}
-              {...register('email', { validate: (v) => !v || validateEmail(v) ? true : 'Enter a valid email address' })}
+              {...register('email', {
+                validate: (v) => !v || validateEmail(v) ? true : 'Enter a valid email address',
+                maxLength: { value: 100, message: 'Email must be 100 characters or fewer' }
+              })}
             />
 
             <Input
               label="TRN Number"
               placeholder="TRN123456789"
               error={errors.trn?.message}
-              {...register('trn')}
+              {...register('trn', {
+                maxLength: { value: 50, message: 'TRN must be 50 characters or fewer' }
+              })}
             />
 
             <Input
@@ -1327,7 +1350,8 @@ const CustomersPage = () => {
               error={errors.creditLimit?.message}
               {...register('creditLimit', {
                 valueAsNumber: true,
-                min: { value: 0, message: 'Credit limit must be positive' }
+                min: { value: 0, message: 'Credit limit must be positive' },
+                max: { value: 99999999.99, message: 'Credit limit must be 99,999,999.99 or less' }
               })}
             />
 

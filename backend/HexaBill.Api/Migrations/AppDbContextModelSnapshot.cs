@@ -1682,10 +1682,6 @@ namespace HexaBill.Api.Migrations
                     b.Property<string>("SnapshotJson")
                         .HasColumnType("TEXT");
 
-                    b.HasIndex("TenantId", "PaymentId")
-                        .IsUnique()
-                        .HasFilter("\"SnapshotJson\" IS NOT NULL");
-
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
@@ -1712,6 +1708,10 @@ namespace HexaBill.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "PaymentId")
+                        .IsUnique()
+                        .HasFilter("\"SnapshotJson\" IS NOT NULL");
 
                     b.HasIndex("GeneratedByUserId");
 
@@ -1854,6 +1854,11 @@ namespace HexaBill.Api.Migrations
 
                     b.HasIndex("TenantId", "Sku")
                         .IsUnique();
+
+                    b.HasIndex("TenantId", "Barcode")
+                        .IsUnique()
+                        .HasFilter("\"Barcode\" IS NOT NULL")
+                        .HasDatabaseName("IX_Products_TenantId_Barcode");
 
                     b.ToTable("Products");
                 });

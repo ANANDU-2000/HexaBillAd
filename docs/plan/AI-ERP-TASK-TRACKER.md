@@ -45,7 +45,18 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
-### 2026-10-17 — Product barcode conflict fix and create field matrix (PASS locally; NOT live; not pushed by this entry)
+### 2026-10-17 — Create-path fixes round 2: auto-fill 500, customer OwnerId, barcode index, customer form limits (PASS locally; NOT live)
+- Publication state (verified with `git ls-remote origin refs/heads/main`): `origin/main` = `10c9f52`, which is the first round of this session. The push tool reported a denial, but the remote was updated ("update by push" in the reflog). This round is local commit `543e557`, not pushed. The schema note on the remote holds row counts and row IDs from production; owner to decide whether to keep it on `main`.
+- Barcode auto-fill 500 root cause: the method opened a user transaction. Production enables Npgsql `EnableRetryOnFailure`, which rejects that (reproduced with the production policy). Fixed by running the unit of work inside `CreateExecutionStrategy()`. Test: `ProductAutoFillBarcodePostgreSqlTests` (2), red then green.
+- Customer create: `OwnerId` was not set (0 on 56 live rows). Fixed for new rows. Test: `CustomerCreateOwnerIdPostgreSqlTests` (1), red without the fix, green with it.
+- Barcode index drift: `IX_Products_TenantId_Barcode` declared in `AppDbContext`. Migration `20261017120000_DeclareProductBarcodeUniqueIndex` (idempotent `Up`). Snapshot gets the index line and the `TenantId` index ordering fix. The EF snapshot is SQLite-typed with unrelated drift, so `dotnet ef migrations add` output was discarded.
+- Customer form: max-length and credit-limit rules now match the DB and DTO. Files: `CustomersPage.jsx` (add and edit).
+- Evidence: full backend 839/839 on local PG 18 (`127.0.0.1:55490`, EnsureCreated), 0 skipped. Frontend `npm test` 184/184; `npm run build` exit 0; ESLint 0 errors.
+- Logo `SECURITY` errors: anonymous `GET /api/storage/tenants/{id}/logos/...` is denied by design and logged each time. Making logos public or silencing the log is a security decision for the owner. Not changed.
+- Live: no live writes, no migrations applied, no deploy, no backfill. Needs approval: deploy (backend and frontend), applying migration `20261017120000`, backfill of 56 `Customers.OwnerId` rows, live product create test.
+- STOP HERE — do not begin next phase automatically.
+
+### 2026-10-17 — Product barcode conflict fix and create field matrix (PASS locally; NOT live; on origin/main as `10c9f52`)
 - Root cause: `ProductService.CreateProductAsync` checked barcodes against active rows only. The live unique index `IX_Products_TenantId_Barcode` covers deactivated rows too, so an insert failed with a raw unique violation. `ProductsController` reported that as "SKU already exists". Live has 14 deactivated products with barcodes. The index is in live and in the 2026-10-11 recovery dump, but in no EF migration or model.
 - Fix: barcode checks now include deactivated rows, with a message that names the product. The controller names the barcode constraint when it fires. Files: `backend/HexaBill.Api/Modules/Products/ProductService.cs`, `backend/HexaBill.Api/Modules/Products/ProductsController.cs`.
 - Evidence: new `tests/HexaBill.Tests/tenancy/ProductBarcodeConflictPostgreSqlTests.cs`. Before the fix, 2 failed with `DbUpdateException` and the active-holder control passed. After the fix, 3/3 passed. Full backend on a disposable local PostgreSQL 18 cluster (`127.0.0.1:55490`, EnsureCreated, not a migration rehearsal): 836 passed, 0 failed, 0 skipped. Frontend `npm test` 184/184.

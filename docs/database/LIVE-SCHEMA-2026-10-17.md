@@ -2,7 +2,7 @@
 
 Generated from the live Render PostgreSQL database `hexabill` with read-only catalog queries. No DDL or DML was run for this file. Row counts are exact `count(*)` values at the snapshot time and change as users write. The database password and connection string are NOT in this file; they live only in the gitignored `backend/HexaBill.Api/.env`.
 
-Snapshot taken: 2026-10-17 08:09:31 UTC.
+Snapshot taken: 2026-10-17 09:45:34 UTC.
 
 ## Verified status at snapshot
 
@@ -22,11 +22,11 @@ Snapshot taken: 2026-10-17 08:09:31 UTC.
 
 1. Live product create after the 07:38 UTC deploy is NOT verified. A live write needs explicit owner approval (a marked test row in tenant 22 or a synthetic tenant, soft-deleted afterwards).
 2. Logo image requests reach `/api/storage/tenants/22/logos/...` without a bearer token and are logged as SECURITY errors (about 20 rows, 2026-10-11 to 2026-10-16). Not a DB error; needs an owner decision on how tenant logos are authorised.
-3. Barcode auto-fill 500 (2026-10-13 17:58 UTC): the client logged `GET /products/barcodes/auto-fill-missing` with no server stack trace. The server route is `POST /api/products/barcodes/auto-fill-missing`. Not reproduced on the current deploy.
+3. Barcode auto-fill 500: fixed locally. The method ran a user transaction, which Npgsql EnableRetryOnFailure rejects in production. It now runs inside the execution strategy. Not live until a backend deploy is approved.
 4. Sale return 9 (tenant 22) still has no route. The row was not edited.
 5. The database password was pasted into chat. Rotation is recommended; it was NOT rotated in this session.
-6. Schema drift: `IX_Products_TenantId_Barcode` (unique, partial on `Barcode IS NOT NULL`) exists in live and in the 2026-10-11 recovery dump, but no EF migration and no model declare it. Test databases built with EnsureCreated do not have it. Decision needed: declare it in the model with a migration that uses `IF NOT EXISTS`, which is a no-op on live. Applying that migration to live needs approval.
-7. `Customers.OwnerId` is 0 on 56 rows. The create path never sets it, unlike products (`OwnerId = tenantId`). Nothing reads `Customers.OwnerId` for scoping, so this is data quality, not a failure. A backfill to `TenantId` is a live UPDATE and needs approval.
+6. Schema drift: `IX_Products_TenantId_Barcode` exists in live and was in no EF migration or model. Fixed locally: the model declares it, and migration `20261017120000_DeclareProductBarcodeUniqueIndex` has an idempotent Up (`CREATE UNIQUE INDEX IF NOT EXISTS`). Applying that migration to live needs approval; it is a no-op there. Also open: the EF model snapshot is SQLite-typed and has drift against the model, so `dotnet ef migrations add` on it generates unrelated drop and add operations. The generated output was discarded. Rebuilding the snapshot is a separate task. Live also has a non-unique `IX_Products_Barcode` that the model does not declare.
+7. `Customers.OwnerId` is 0 on 56 live rows. Fixed locally for new rows: the create path now sets it to the tenant id. Backfilling the 56 existing rows is a live UPDATE and needs approval.
 
 ## Migration history
 

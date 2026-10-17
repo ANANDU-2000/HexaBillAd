@@ -504,7 +504,8 @@ namespace HexaBill.Api.Modules.Customers
 
                 var customer = new Customer
                 {
-                    TenantId = tenantId, // CRITICAL: Set owner_id
+                    TenantId = tenantId,
+                    OwnerId = tenantId, // NOT NULL column; products and imports set it the same way
                     Name = request.Name.Trim(),
                     Phone = request.Phone?.Trim(),
                     Email = request.Email?.Trim(),

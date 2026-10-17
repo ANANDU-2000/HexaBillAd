@@ -970,55 +970,62 @@ namespace HexaBill.Api.Modules.Products
 
         public async Task<int> AutoFillMissingBarcodesAsync(int tenantId)
         {
-            await using var tx = await _context.Database.BeginTransactionAsync();
-            try
+            // Production registers Npgsql EnableRetryOnFailure, which rejects user-initiated transactions
+            // (500 on POST /products/barcodes/auto-fill-missing). Run the transaction inside the strategy.
+            return await _context.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
             {
-                var missing = await _context.Products
-                    .Where(p => p.TenantId == tenantId && p.IsActive && (p.Barcode == null || p.Barcode == ""))
-                    .OrderBy(p => p.Id)
-                    .ToListAsync();
-
-                if (missing.Count == 0)
+                // A retry re-runs the whole unit of work, so drop entities tracked by the failed attempt.
+                _context.ChangeTracker.Clear();
+                await using var tx = await _context.Database.BeginTransactionAsync();
+                try
                 {
+                    var missing = await _context.Products
+                        .Where(p => p.TenantId == tenantId && p.IsActive && (p.Barcode == null || p.Barcode == ""))
+                        .OrderBy(p => p.Id)
+                        .ToListAsync();
+
+                    if (missing.Count == 0)
+                    {
+                        await tx.CommitAsync();
+                        return 0;
+                    }
+
+                    var existingBarcodes = await _context.Products
+                        .Where(p => p.TenantId == tenantId && p.Barcode != null && p.Barcode != "")
+                        .Select(p => p.Barcode!)
+                        .ToListAsync();
+                    var used = new HashSet<string>(existingBarcodes, StringComparer.OrdinalIgnoreCase);
+
+                    var count = 0;
+                    foreach (var product in missing)
+                    {
+                        string candidate;
+                        if (!string.IsNullOrWhiteSpace(product.Sku) && !used.Contains(product.Sku))
+                            candidate = product.Sku.Trim();
+                        else
+                            candidate = $"HB{tenantId}-{product.Id}";
+
+                        if (used.Contains(candidate))
+                            candidate = $"HB{tenantId}-{product.Id}-{Guid.NewGuid().ToString("N")[..6]}";
+
+                        product.Barcode = candidate.Length > 100 ? candidate[..100] : candidate;
+                        product.UpdatedAt = DateTime.UtcNow;
+                        used.Add(product.Barcode);
+                        count++;
+                    }
+
+                    await _context.SaveChangesAsync();
                     await tx.CommitAsync();
-                    return 0;
+                    _logger.LogInformation("Auto-filled {Count} missing barcodes for tenant {TenantId}", count, tenantId);
+                    return count;
                 }
-
-                var existingBarcodes = await _context.Products
-                    .Where(p => p.TenantId == tenantId && p.Barcode != null && p.Barcode != "")
-                    .Select(p => p.Barcode!)
-                    .ToListAsync();
-                var used = new HashSet<string>(existingBarcodes, StringComparer.OrdinalIgnoreCase);
-
-                var count = 0;
-                foreach (var product in missing)
+                catch (Exception ex)
                 {
-                    string candidate;
-                    if (!string.IsNullOrWhiteSpace(product.Sku) && !used.Contains(product.Sku))
-                        candidate = product.Sku.Trim();
-                    else
-                        candidate = $"HB{tenantId}-{product.Id}";
-
-                    if (used.Contains(candidate))
-                        candidate = $"HB{tenantId}-{product.Id}-{Guid.NewGuid().ToString("N")[..6]}";
-
-                    product.Barcode = candidate.Length > 100 ? candidate[..100] : candidate;
-                    product.UpdatedAt = DateTime.UtcNow;
-                    used.Add(product.Barcode);
-                    count++;
+                    await tx.RollbackAsync();
+                    _logger.LogError(ex, "AutoFillMissingBarcodes failed for tenant {TenantId}", tenantId);
+                    throw;
                 }
-
-                await _context.SaveChangesAsync();
-                await tx.CommitAsync();
-                _logger.LogInformation("Auto-filled {Count} missing barcodes for tenant {TenantId}", count, tenantId);
-                return count;
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync();
-                _logger.LogError(ex, "AutoFillMissingBarcodes failed for tenant {TenantId}", tenantId);
-                throw;
-            }
+            });
         }
 
         public async Task<List<ProductDto>> GetProductsForBarcodeLabelsAsync(int tenantId, IReadOnlyList<int>? productIds, bool missingOnly)

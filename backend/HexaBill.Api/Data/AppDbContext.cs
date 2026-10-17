@@ -239,6 +239,10 @@ namespace HexaBill.Api.Data
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Sku).IsRequired().HasMaxLength(50);
                 entity.HasIndex(e => new { e.TenantId, e.Sku }).IsUnique();
+                // Live already has this index (created outside the migrations). It covers deactivated rows too.
+                entity.HasIndex(e => new { e.TenantId, e.Barcode }).IsUnique()
+                    .HasFilter("\"Barcode\" IS NOT NULL")
+                    .HasDatabaseName("IX_Products_TenantId_Barcode");
                 entity.Property(e => e.UnitType).IsRequired().HasMaxLength(20);
                 entity.Property(e => e.CostPrice).HasColumnType("numeric(18,2)");
                 entity.Property(e => e.SellPrice).HasColumnType("numeric(18,2)");

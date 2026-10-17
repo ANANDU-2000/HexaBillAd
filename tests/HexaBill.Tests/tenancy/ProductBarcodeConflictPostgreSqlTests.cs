@@ -82,9 +82,6 @@ public class ProductBarcodeConflictPostgreSqlTests
         var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connection!).Options);
         db.SetRequestTenantScope(tenantId, false);
         await PostgresTestSchema.EnsureCreatedAsync(db);
-        // Live has this unique partial index, but no EF migration or model declares it. Mirror it
-        // so the test runs against the same constraint that production enforces.
-        await db.Database.ExecuteSqlRawAsync("CREATE UNIQUE INDEX IF NOT EXISTS \"IX_Products_TenantId_Barcode\" ON \"Products\" (\"TenantId\", \"Barcode\") WHERE \"Barcode\" IS NOT NULL;");
         db.Tenants.Add(new Tenant { Id = tenantId, Name = "Synthetic barcode conflict", Subdomain = $"barcode-{tenantId}" });
         await db.SaveChangesAsync();
         return db;
