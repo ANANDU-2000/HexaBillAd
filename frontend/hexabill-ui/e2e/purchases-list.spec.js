@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const isPurchaseList = (url) => url.pathname.endsWith('/api/purchases')
 const visible = (locator) => locator.filter({ visible: true })
 const RED_800 = 'rgb(153, 27, 27)'

@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 
 test('sidebar shows the full company name', async ({ page }, info) => {
   test.skip(info.project.use.viewport.width < 1024, 'the sidebar is a desktop layout')

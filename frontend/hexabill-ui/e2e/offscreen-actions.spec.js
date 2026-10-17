@@ -7,10 +7,10 @@ import { signIn, feOrigin } from './session.js'
 const ROUTES = ['/customers', '/products', '/suppliers', '/purchases', '/expenses', '/payments', '/billing-history', '/users', '/daily-close', '/reports', '/vat-return', '/ledger', '/sales-ledger', '/settings']
 
 test('no button or link is cut off at the right edge', async ({ page }) => {
-  await signIn(page, 'gulfharvest')
+  await signIn(page, (process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))
   const found = []
   for (const route of ROUTES) {
-    await page.goto(`${feOrigin('gulfharvest')}${route}`, { waitUntil: 'networkidle' })
+    await page.goto(`${feOrigin((process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))}${route}`, { waitUntil: 'networkidle' })
     const cut = await page.evaluate(() => {
       const vw = document.documentElement.clientWidth
       const out = []

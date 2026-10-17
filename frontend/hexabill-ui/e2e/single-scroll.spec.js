@@ -6,9 +6,9 @@ import { signIn, feOrigin } from './session.js'
 const ROUTES = ['/customers', '/expenses', '/purchases', '/suppliers', '/payments', '/billing-history', '/daily-close']
 
 test('main content has no nested vertical scroller', async ({ page }) => {
-  await signIn(page, 'gulfharvest')
+  await signIn(page, (process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))
   for (const route of ROUTES) {
-    await page.goto(`${feOrigin('gulfharvest')}${route}`, { waitUntil: 'networkidle' })
+    await page.goto(`${feOrigin((process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))}${route}`, { waitUntil: 'networkidle' })
     const nested = await page.evaluate(() => {
       const out = []
       for (const el of document.querySelectorAll('main *')) {

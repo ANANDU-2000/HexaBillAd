@@ -2,7 +2,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const isPhone = (info) => info.project.use.viewport.width < 768
 const bottomNav = (page) => page.locator('nav[aria-label="Main navigation"]')
 

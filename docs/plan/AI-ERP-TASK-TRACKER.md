@@ -45,6 +45,13 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — Regression pass over older browser specs after this session's UI changes (PARTIAL: no regression found; several specs fail on data or pre-existing causes)
+- Made 11 older e2e specs honour `HEXABILL_E2E_SLUG` (they hard-coded `gulfharvest`, which cannot log in to the synthetic tenant and trips the 15-minute lockout). Ran them on the synthetic PostgreSQL tenant at m360, t768, d1440.
+- Passed: `shell-navigation` (13 passed, 2 skipped), `settings-company` 6/6, `customers-crud` 6/6, `reports-summary` 3/3, `single-scroll` 3/3, `purchases-header` 3/3, `sidebar-name` 1 passed (2 skipped). Skips are NOT TESTED.
+- Failed, and not caused by this session: `purchases-list` (5 failed, 4 skipped; its error-and-recovery assertions pass, the failures need seeded `UX-PI-` purchases that this tenant lacks), `suppliers-list` (4 failed; needs a supplier named "UX Audit Supplier Gulf Produce LLC" that does not exist here), `products-crud` at 360px (search box not found) and `offscreen-actions` at 1440px on `/payments` (69 controls past the right edge). The last two were re-run with `Layout.jsx`, `index.css` and `PriceList.jsx` put back to their session-start versions and **failed identically**, so they predate my changes. They are real findings for later (phone product search and a wide payments table on desktop), not fixed here.
+- Not run: the other ~30 older specs (they assume older seeded data), pos/payment/VAT/export specs, full five-width runs of these, any spec on a staff-role session.
+- Process note: a baseline run overlapped a still-running batch once; the affected spec (`offscreen-actions`) was re-run cleanly and the numbers above are from the clean re-runs.
+
 ### 2026-10-17 — UX-06 (fifth slice): one back control on the three document editors (PASS locally in browser; NOT live)
 - Static scan of the nine detail/editor routes: six had a labelled "Back to ..." arrow link; the quotation, agreement and salary-certificate editors only had a small "List" button on the right of the header. Added `components/ui/BackLink.jsx` (top-left, names the destination, 44px target) and used it as the first element of those three editors. The existing "List" buttons stay.
 - Evidence: `e2e/editor-back-link.spec.js` **15/15 at m360, m390, t768, d1024, d1440** (link present, top-left, inside the screen, 44px on touch pointers, click returns to the list URL). Quotation editor **red on the previous code** (no such link); the other two are red by construction (no link existed) and were not separately reverted. Frontend `npm test` 210/210; lint 0 errors; build exit 0.

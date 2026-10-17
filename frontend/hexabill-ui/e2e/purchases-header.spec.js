@@ -4,8 +4,8 @@ import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
 test('purchase list header is one row; the bulk action is in the menu', async ({ page }) => {
-  await signIn(page, 'gulfharvest')
-  await page.goto(`${feOrigin('gulfharvest')}/purchases`, { waitUntil: 'networkidle' })
+  await signIn(page, (process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))
+  await page.goto(`${feOrigin((process.env.HEXABILL_E2E_SLUG || 'gulfharvest'))}/purchases`, { waitUntil: 'networkidle' })
   const title = page.getByRole('heading', { name: 'Purchase List', exact: true })
   const vat = page.getByRole('button', { name: 'VAT Return', exact: true }).filter({ visible: true }).first()
   await expect(title).toBeVisible()
