@@ -99,9 +99,14 @@ namespace HexaBill.Api.Modules.Returns
                 if (header == null || header.IsDeleted)
                     throw new InvalidOperationException("Original sale not found");
                 int? saleBranchId = null;
+                int? saleRouteId = null;
                 if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
-                    saleBranchId = await _context.Sales.Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
-                        .Select(s => s.BranchId).FirstOrDefaultAsync();
+                {
+                    var saleLocation = await _context.Sales.Where(s => s.Id == request.SaleId && s.TenantId == tenantId)
+                        .Select(s => new { s.BranchId, s.RouteId }).FirstOrDefaultAsync();
+                    saleBranchId = saleLocation?.BranchId;
+                    saleRouteId = saleLocation?.RouteId;
+                }
                 var items = await _context.SaleItems
                     .Where(si => si.SaleId == request.SaleId)
                     .Include(si => si.Product)
@@ -113,7 +118,7 @@ namespace HexaBill.Api.Modules.Returns
                     CustomerId = header.CustomerId,
                     GrandTotal = header.GrandTotal,
                     BranchId = saleBranchId,
-                    RouteId = null,
+                    RouteId = saleRouteId,
                     Items = items
                 };
                 await DailyClosePostingGuard.EnsureOpenAsync(_context, tenantId, DateTime.UtcNow, saleInfo.BranchId);

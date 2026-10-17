@@ -870,7 +870,8 @@ namespace HexaBill.Api.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ReturnNo).IsRequired().HasMaxLength(100);
-                entity.HasIndex(e => e.ReturnNo).IsUnique();
+                // Return numbers are issued per tenant per day, so uniqueness is scoped to the tenant.
+                entity.HasIndex(e => new { e.TenantId, e.ReturnNo }).IsUnique();
                 entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.VatTotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.Discount).HasColumnType("decimal(18,2)");

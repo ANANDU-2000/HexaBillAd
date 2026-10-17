@@ -295,7 +295,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var returnsQuery = _context.SaleReturns.AsQueryable();
                 returnsQuery = returnsQuery.Where(r =>
-                    r.ReturnDate >= from && r.ReturnDate <= to &&
+                    r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate <= to &&
                     (tenantId <= 0 || r.TenantId == tenantId) &&
                     (r.BranchId == branchId || (r.RouteId != null && routeIds.Contains(r.RouteId.Value))));
                 branchReturnsTotal = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
@@ -304,6 +304,23 @@ namespace HexaBill.Api.Modules.Branches
             {
                 _logger.LogError($"⚠️ BranchService SaleReturns: {ex.Message}");
                 branchReturnsTotal = 0m;
+            }
+
+            // Approved returns per route, attributed through the original invoice so legacy returns without RouteId still count.
+            var returnsByRoute = new Dictionary<int, decimal>();
+            try
+            {
+                returnsByRoute = (await _context.SaleReturns
+                    .Where(r => r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate <= to
+                        && (tenantId <= 0 || r.TenantId == tenantId)
+                        && r.Sale.RouteId != null && routeIds.Contains(r.Sale.RouteId!.Value))
+                    .GroupBy(r => r.Sale.RouteId!.Value)
+                    .Select(g => new { RouteId = g.Key, Total = g.Sum(r => r.GrandTotal) })
+                    .ToListAsync()).ToDictionary(x => x.RouteId, x => x.Total);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"BranchService route SaleReturns: {ex.Message}");
             }
 
             var routeList = await _context.Routes
@@ -322,7 +339,7 @@ namespace HexaBill.Api.Modules.Branches
                     var paymentsQuery = _context.Payments
                         .Where(p => p.SaleId.HasValue
                                     && saleIdsInBranch.Contains(p.SaleId.Value)
-                                    && p.SaleReturnId == null
+                                    && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED
                                     && (tenantId <= 0 || p.TenantId == tenantId)
                                     && p.PaymentDate >= from && p.PaymentDate <= to);
 
@@ -354,7 +371,7 @@ namespace HexaBill.Api.Modules.Branches
             {
                 var routeSales = salesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
                 var sales = routeSales?.Total ?? 0;
-                var routeReturns = 0m; // Route-level returns can be added later; currently only branch aggregate is used
+                var routeReturns = returnsByRoute.GetValueOrDefault(r.Id);
                 var expEntry = expensesByRoute.FirstOrDefault(x => x.RouteId == r.Id);
                 var expenses = expEntry.RouteId == r.Id ? expEntry.Total : 0m;
                 var cogsEntry = cogsByRouteList.FirstOrDefault(x => x.RouteId == r.Id);

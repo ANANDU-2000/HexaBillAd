@@ -2891,7 +2891,7 @@ namespace HexaBill.Api.Migrations
 
                     b.HasIndex("ReturnDate");
 
-                    b.HasIndex("ReturnNo")
+                    b.HasIndex("TenantId", "ReturnNo")
                         .IsUnique();
 
                     b.HasIndex("RouteId");

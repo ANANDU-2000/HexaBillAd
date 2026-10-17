@@ -481,10 +481,10 @@ namespace HexaBill.Api.Modules.Branches
             if (await _salesSchema.SalesHasBranchIdAndRouteIdAsync())
             {
                 totalSales = await _context.Sales
-                    .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .Where(s => s.RouteId == routeId && (tenantId <= 0 || s.TenantId == tenantId) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
                     .SumAsync(s => s.GrandTotal);
                 saleIds = await _context.Sales
-                    .Where(s => s.RouteId == routeId && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
+                    .Where(s => s.RouteId == routeId && (tenantId <= 0 || s.TenantId == tenantId) && !s.IsDeleted && s.InvoiceDate >= from && s.InvoiceDate <= to)
                     .Select(s => s.Id)
                     .ToListAsync();
             }
@@ -501,7 +501,7 @@ namespace HexaBill.Api.Modules.Branches
                 returnsQuery = returnsQuery.Where(r =>
                     r.ReturnDate >= from && r.ReturnDate <= to &&
                     (tenantId <= 0 || r.TenantId == tenantId) &&
-                    r.RouteId == routeId);
+                    r.Status == ReturnStatus.Approved && r.Sale.RouteId == routeId);
                 totalReturns = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
             }
             catch (Exception ex)
@@ -556,7 +556,7 @@ namespace HexaBill.Api.Modules.Branches
             }
             var totalPayments = invoiceCount > 0
                 ? await _context.Payments
-                    .Where(p => p.SaleId.HasValue && saleIds.Contains(p.SaleId.Value) && p.PaymentDate >= from && p.PaymentDate <= to)
+                    .Where(p => p.SaleId.HasValue && saleIds.Contains(p.SaleId.Value) && p.SaleReturnId == null && p.Status == PaymentStatus.CLEARED && (tenantId <= 0 || p.TenantId == tenantId) && p.PaymentDate >= from && p.PaymentDate <= to)
                     .SumAsync(p => p.Amount)
                 : 0m;
             var unpaidAmount = netSales > totalPayments ? netSales - totalPayments : 0m;
