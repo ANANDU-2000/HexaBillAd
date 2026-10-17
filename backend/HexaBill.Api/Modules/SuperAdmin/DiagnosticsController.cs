@@ -58,13 +58,18 @@ namespace HexaBill.Api.Modules.SuperAdmin
                     // Check memory usage
                     var memoryUsed = GC.GetTotalMemory(false);
                     var memoryMB = memoryUsed / (1024.0 * 1024.0);
-                    var memoryLimitMB = Environment.WorkingSet / (1024.0 * 1024.0);
-                    var memoryUsagePercent = (memoryMB / memoryLimitMB) * 100;
-                    health.checks["memory"] = new { 
-                        usedMB = Math.Round(memoryMB, 2),
-                        maxMB = memoryLimitMB,
-                        usagePercent = Math.Round(memoryUsagePercent, 2),
-                        status = memoryUsagePercent > 90 ? "critical" : memoryUsagePercent > 75 ? "warning" : "healthy"
+                    var workingSetMb = Environment.WorkingSet / (1024.0 * 1024.0);
+                    var containerMemory = HexaBill.Api.Core.Platform.ContainerMemory.Read(workingSetMb);
+                    double? memoryUsagePercent = containerMemory.Available && containerMemory.LimitMb > 0
+                        ? workingSetMb / containerMemory.LimitMb.Value * 100
+                        : null;
+                    health.checks["memory"] = new {
+                        heapMB = Math.Round(memoryMB, 2),
+                        workingSetMB = Math.Round(workingSetMb, 2),
+                        limitMB = containerMemory.LimitMb,
+                        limitSource = containerMemory.Source,
+                        usagePercent = memoryUsagePercent.HasValue ? Math.Round(memoryUsagePercent.Value, 2) : (double?)null,
+                        status = memoryUsagePercent is null ? "unknown" : memoryUsagePercent > 90 ? "critical" : memoryUsagePercent > 75 ? "warning" : "healthy"
                     };
 
                     // AUDIT-11 FIX: Add connection pool monitoring (PostgreSQL only)
@@ -176,7 +181,8 @@ namespace HexaBill.Api.Modules.SuperAdmin
                         workingSetMB,
                         activeConnections,
                         maxConnections,
-                        connectionStatsAvailable);
+                        connectionStatsAvailable,
+                        HexaBill.Api.Core.Platform.ContainerMemory.Read(workingSetMB));
                 }
             }
             catch (Exception ex)

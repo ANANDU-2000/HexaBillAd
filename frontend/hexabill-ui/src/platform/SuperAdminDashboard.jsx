@@ -234,11 +234,20 @@ const SuperAdminDashboard = () => {
               <h4 className="font-medium text-neutral-700 mb-2">Resource usage (backend)</h4>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
-                  <p className="text-neutral-500">Memory</p>
-                  <p className="font-semibold">{platformHealth.resourceUsage.memoryUsedMb} MB / ~{platformHealth.resourceUsage.workingSetMb} MB</p>
-                  <p className={`text-xs ${platformHealth.resourceUsage.limitsHint === 'critical' ? 'text-error' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'text-warning' : 'text-neutral-500'}`}>
-                    {platformHealth.resourceUsage.memoryUsagePercent}% — {platformHealth.resourceUsage.limitsHint === 'critical' ? 'Critical' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'Warning' : 'OK'}
-                  </p>
+                  <p className="text-neutral-500">Memory (process vs container limit)</p>
+                  {platformHealth.resourceUsage.memoryLimitAvailable && platformHealth.resourceUsage.memoryUsagePercent != null ? (
+                    <>
+                      <p className="font-semibold">{platformHealth.resourceUsage.workingSetMb} MB / {platformHealth.resourceUsage.memoryLimitMb} MB</p>
+                      <p className={`text-xs ${platformHealth.resourceUsage.limitsHint === 'critical' ? 'text-error' : platformHealth.resourceUsage.limitsHint === 'warning' ? 'text-warning' : 'text-neutral-500'}`}>
+                        {platformHealth.resourceUsage.memoryUsagePercent}% of the container limit
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-semibold">{platformHealth.resourceUsage.workingSetMb} MB in use</p>
+                      <p className="text-xs text-neutral-500">Container limit not reported by the host. Check Render, Metrics, for the real limit.</p>
+                    </>
+                  )}
                 </div>
                 <div>
                   <p className="text-neutral-500">DB connections</p>
