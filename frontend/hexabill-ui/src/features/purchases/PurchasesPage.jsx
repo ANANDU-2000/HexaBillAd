@@ -16,6 +16,7 @@ import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../u
 import { cleanText, fixMoney } from '../../utils/productFields'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useAuth } from '../../hooks/useAuth'
+import ProductPicker from './ProductPicker'
 import { savePurchaseDraft, loadPurchaseDraft, clearPurchaseDraft } from '../../utils/purchaseDraft'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
@@ -1110,45 +1111,17 @@ const PurchasesPage = () => {
                 onToggle={toggleVoucherSection}
               >
                 <label htmlFor="purchase-product-search" className={tallyLabelClass}>Add Product (F3)</label>
-                <div className="relative">
-                  <input
-                    id="purchase-product-search"
-                    ref={searchInputRef}
-                    type="text"
-                    placeholder="Search products..."
-                    className={tallyInputClass}
-                    value={productSearchTerm}
-                    onChange={(e) => {
-                      setProductSearchTerm(e.target.value)
-                      setShowProductSearch(true)
-                    }}
-                    onFocus={() => setShowProductSearch(true)}
-                  />
-                  <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-primary-400" />
-                </div>
-
-                {showProductSearch && products.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full max-w-md bg-white border-2 border-neutral-200 rounded shadow-lg max-h-64 overflow-y-auto">
-                    {products.map((product) => (
-                      <div
-                        key={product.id}
-                        className="p-2 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer"
-                        onClick={() => addItem(product)}
-                      >
-                        <div className="flex justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{product.nameEn}</p>
-                            <p className="text-xs text-primary-500">SKU: {product.sku}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{formatCurrency(product.costPrice || 0)}</p>
-                            <p className="text-xs text-primary-500">Stock: {product.stockQty}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <ProductPicker
+                  inputId="purchase-product-search"
+                  inputRef={searchInputRef}
+                  inputClassName={tallyInputClass}
+                  value={productSearchTerm}
+                  onChange={setProductSearchTerm}
+                  products={products}
+                  open={showProductSearch}
+                  onOpenChange={setShowProductSearch}
+                  onSelect={addItem}
+                />
 
               {/* Items - Mobile: vertical cards (no horizontal scroll); Desktop: table */}
               <div className="mb-4 w-full max-w-full mt-4">

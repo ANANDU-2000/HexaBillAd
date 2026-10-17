@@ -45,6 +45,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-01 purchase product picker (PASS locally on synthetic PostgreSQL + browser; NOT live)
+- Root cause (code-confirmed, reproduced by inspection): the results list was `absolute z-10` but the `relative` wrapper contained only the input, so the list anchored to a distant ancestor and sat under the item-table headers; rows used `onClick`, which a touch blur could swallow.
+- Fix: new `features/purchases/ProductPicker.jsx` (ARIA combobox/listbox) keeps input and list in one relative wrapper (`top-full`, `z-40`, `overscroll-contain`, 44px rows), selects on `pointerdown`, closes on outside press/Escape, ArrowUp/Down/Home/End/Enter via `utils/pickerNav.js`. Not solved by z-index alone.
+- Evidence: `tests/pickerNav.test.js` 3/3; `npm test` all pass; ESLint 0 errors; build exit 0. Browser (guarded runner, disposable PG 55474, synthetic tenant `gulfharvest-test`) `e2e/purchases-picker.spec.js` (anchor geometry, topmost-element check, keyboard, touch tap) **15/15 at m360, m390, t768, d1024, d1440**. Existing create->edit->delete purchase flow through the new picker passed at m360, t768, d1440 (temporary copy of `purchases-crud.spec.js` pointed at the synthetic slug, with a supplier seeded; copy removed). Its "pay supplier" test fails on a missing unpaid-purchase fixture, unrelated.
+- Test-infra notes: `purchases-crud.spec.js` hard-codes slug `gulfharvest`; failed logins there trip the 15-minute lockout (429). New spec reads `HEXABILL_E2E_SLUG`. The runner's `-Projects` needs an array.
+- NOT TESTED: real software keyboard, orientation change, S278/S279 original screenshots on production, 820/1180 widths.
+- Next: UX-04 separate purchase entry from history/analytics and fix fixed footer/bottom-nav spacing.
+
 ### 2026-10-17 — REL-01 purchase route error recovery (PARTIAL: draft safety PASS locally; S037 cause NOT reproduced)
 - S037 cause (render exception vs chunk vs network) is unproven; no runtime evidence. Submit path already has 409 duplicate and lost-response lookup (existing code), so no new retry logic added.
 - Change: unsaved new purchase is kept in per-tenant `sessionStorage` (`utils/purchaseDraft.js`), restored after a crash/reload, cleared on save or Cancel; storage failure never throws. `ErrorBoundary` (contained routes) gets "Try again without reloading" for non-chunk render errors.
