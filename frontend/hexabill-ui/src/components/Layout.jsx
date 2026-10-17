@@ -13,7 +13,7 @@ import {
   HelpCircle,
   Keyboard,
   MoreHorizontal,
-  Search
+  Search, Sparkles
 } from 'lucide-react'
 import BottomNav from './BottomNav'
 import MoreMenuSheet from './mobile/MoreMenuSheet'
@@ -22,6 +22,8 @@ import { useKeyboardOpen, useOverlayOpen } from '../hooks/useShellChrome'
 import { shouldShowBottomNav } from '../navigation/quickCreate'
 import Logo from './Logo'
 import CommandPalette from './CommandPalette'
+import AssistantPanel from '../features/assistant/AssistantPanel'
+import { isAssistantEnabled } from '../features/assistant/assistantDraft'
 import ShortcutHelp from './ShortcutHelp'
 import AlertNotifications from './AlertNotifications'
 import CloudHostingCostReminder from './CloudHostingCostReminder'
@@ -55,6 +57,9 @@ const Layout = () => {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  // Off unless VITE_ENABLE_ASSISTANT=true or this browser sets localStorage hexabill.assistant=1.
+  const assistantEnabled = isAssistantEnabled(import.meta.env)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [navTip, setNavTip] = useState(null)
   const closeMore = useCallback(() => setMoreOpen(false), [])
@@ -370,6 +375,16 @@ const Layout = () => {
           </button>
           ) : <span className="w-3 shrink-0" aria-hidden />}
           <p className="min-w-0 flex-1 truncate px-1 text-base font-semibold">{mobilePageTitle || companyName}</p>
+          {assistantEnabled && (
+            <button
+              type="button"
+              onClick={() => setAssistantOpen(true)}
+              className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100 active:bg-neutral-200"
+              aria-label="Open assistant"
+            >
+              <Sparkles className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
@@ -488,6 +503,17 @@ const Layout = () => {
               <kbd className="hidden rounded border border-surface-border bg-white px-1.5 font-sans text-micro text-neutral-500 lg:block">Ctrl K</kbd>
             </button>
             <div className="ml-auto flex shrink-0 items-center gap-1 text-neutral-600">
+              {assistantEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setAssistantOpen(true)}
+                  className="flex min-h-[40px] min-w-[40px] items-center justify-center rounded-md text-neutral-600 transition-colors hover:bg-neutral-100"
+                  aria-label="Open assistant"
+                  title="Assistant"
+                >
+                  <Sparkles className="h-[18px] w-[18px]" strokeWidth={1.75} aria-hidden />
+                </button>
+              )}
               <QuickCreateMenu />
               {isAdminOrOwner(user) && <AlertNotifications />}
               <div className="relative" ref={profileDropdownRef}>
@@ -570,6 +596,7 @@ const Layout = () => {
         </div>
       </div>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {assistantEnabled && <AssistantPanel open={assistantOpen} onClose={() => setAssistantOpen(false)} />}
       <ShortcutHelp open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       {navTip && (
         <div

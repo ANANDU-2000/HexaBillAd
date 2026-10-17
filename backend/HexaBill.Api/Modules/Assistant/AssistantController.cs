@@ -85,13 +85,13 @@ public class AssistantController : TenantScopedController
         public string? IdempotencyKey { get; set; }
     }
 
-    private async Task<IActionResult> RunDraft(Func<AssistantCaller, Task<object>> action, int successStatus = 200)
+    private async Task<IActionResult> RunDraft(Func<AssistantCaller, Task<object>> action, Func<object, int>? statusOf = null)
     {
         if (!TryCaller(out var caller)) return Forbid();
         try
         {
             var data = await action(caller);
-            return StatusCode(successStatus, new ApiResponse<object> { Success = true, Message = "OK", Data = data });
+            return StatusCode(statusOf?.Invoke(data) ?? 200, new ApiResponse<object> { Success = true, Message = "OK", Data = data });
         }
         catch (DraftException ex)
         {
@@ -108,7 +108,8 @@ public class AssistantController : TenantScopedController
     /// <summary>Propose a new customer. Nothing is created; the response shows the cleaned fields, any field errors and a hash to confirm.</summary>
     [HttpPost("drafts/customer")]
     public Task<IActionResult> CreateCustomerDraft([FromBody] CustomerDraftRequest request, CancellationToken ct) =>
-        RunDraft(async c => await _drafts.CreateCustomerDraftAsync(c.TenantId, c.UserId, request ?? new CustomerDraftRequest(), ct), 201);
+        RunDraft(async c => await _drafts.CreateCustomerDraftAsync(c.TenantId, c.UserId, request ?? new CustomerDraftRequest(), ct),
+            data => data is DraftView { Status: "Invalid" } ? 200 : 201);
 
     [HttpGet("drafts/{id:guid}")]
     public Task<IActionResult> GetDraft(Guid id, CancellationToken ct) =>

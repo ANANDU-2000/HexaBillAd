@@ -113,6 +113,13 @@ public sealed class AssistantDraftService
         }
         if (fields.Phone == null && fields.Email == null) warnings.Add("No phone or email: you will not be able to contact this customer from the system.");
 
+        // A draft with problems can never be confirmed, so it is shown but not stored. This keeps abandoned or
+        // half-typed attempts from using up the open-draft limit.
+        if (errors.Count > 0)
+        {
+            return new DraftView(Guid.Empty, CustomerCreate, "Invalid", fields, errors, warnings, string.Empty, now, null);
+        }
+
         var draft = new AssistantDraft
         {
             Id = Guid.NewGuid(),

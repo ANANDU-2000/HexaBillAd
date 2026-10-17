@@ -36,6 +36,22 @@ public class AssistantDraftHttpTests
         return (data.GetProperty("id").GetGuid(), data.GetProperty("payloadHash").GetString()!, data);
     }
 
+    private async Task<int> StoredDrafts(int tenantId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await db.AssistantDrafts.IgnoreQueryFilters().CountAsync(d => d.TenantId == tenantId);
+    }
+
+    private static async Task<JsonElement> ProposeInvalid(HttpClient client, object payload)
+    {
+        var response = await client.PostAsJsonAsync("/api/assistant/drafts/customer", payload);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode); // shown with its errors, not created
+        var data = (await Body(response)).GetProperty("data");
+        Assert.Equal("Invalid", data.GetProperty("status").GetString());
+        return data;
+    }
+
     private static Task<HttpResponseMessage> Confirm(HttpClient client, Guid id, string hash, string? key) =>
         client.PostAsJsonAsync($"/api/assistant/drafts/{id}/confirm", new { payloadHash = hash, idempotencyKey = key });
 
@@ -56,21 +72,24 @@ public class AssistantDraftHttpTests
     }
 
     [Fact]
-    public async Task InvalidFields_AreReportedPerField_AndBlockConfirm()
+    public async Task InvalidFields_AreReportedPerField_NothingIsStored_AndThereIsNothingToConfirm()
     {
         using var client = Owner(1, "tenanta");
-        var (id, hash, data) = await Propose(client, new { name = "", email = "not-an-email", creditLimit = -5, phone = new string('9', 30) });
+        var before = await StoredDrafts(1);
+        var data = await ProposeInvalid(client, new { name = "", email = "not-an-email", creditLimit = -5, phone = new string('9', 30) });
         var fields = data.GetProperty("errors").EnumerateArray().Select(e => e.GetProperty("field").GetString()).ToHashSet();
         Assert.Superset(new HashSet<string?> { "name", "email", "creditLimit", "phone" }, fields);
-        var confirm = await Confirm(client, id, hash, Key());
-        Assert.Equal(HttpStatusCode.BadRequest, confirm.StatusCode);
+        Assert.Equal(string.Empty, data.GetProperty("payloadHash").GetString());
+        Assert.Equal(before, await StoredDrafts(1)); // abandoned or invalid attempts must not use up the open-draft limit
+        var confirm = await Confirm(client, Guid.Empty, "anything", Key());
+        Assert.Equal(HttpStatusCode.NotFound, confirm.StatusCode);
     }
 
     [Fact]
     public async Task DuplicateName_IsFlaggedAtDraftTime()
     {
         using var client = Owner(1, "tenanta");
-        var (_, _, data) = await Propose(client, new { name = "Cust A" });
+        var data = await ProposeInvalid(client, new { name = "Cust A" });
         Assert.Contains(data.GetProperty("errors").EnumerateArray(), e => e.GetProperty("field").GetString() == "name");
     }
 
