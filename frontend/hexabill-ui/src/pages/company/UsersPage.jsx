@@ -230,6 +230,20 @@ const UsersPage = () => {
   const [userToDelete, setUserToDelete] = useState(null)
   const [sessions, setSessions] = useState([])
   const [sessionsLoading, setSessionsLoading] = useState(false)
+  const [sessionsError, setSessionsError] = useState('')
+
+  // One opener for the desktop and the phone Activity buttons, so both keep failed and empty apart.
+  const openActivity = (user) => {
+    setActivityUser(user)
+    setShowActivityModal(true)
+    setActivityLogs([])
+    setActivityError('')
+    setActivityLoading(true)
+    loadUserActivity(() => adminAPI.getUserActivity(user.id)).then((result) => {
+      setActivityLogs(result.logs)
+      setActivityError(result.status === 'error' ? result.message : '')
+    }).finally(() => setActivityLoading(false))
+  }
 
   const [userModalTab, setUserModalTab] = useState('details') // 'details' | 'access' | 'assignments'
   const [assignedBranches, setAssignedBranches] = useState([])
@@ -563,10 +577,11 @@ const UsersPage = () => {
                 setShowSessionsModal(true)
                 setSessionsLoading(true)
                 setSessions([])
+                setSessionsError('')
                 adminAPI.getSessions().then((res) => {
                   if (res?.success && Array.isArray(res.data)) setSessions(res.data)
-                  else setSessions([])
-                }).catch(() => setSessions([])).finally(() => setSessionsLoading(false))
+                  else { setSessions([]); setSessionsError('Sessions could not be loaded. Try again.') }
+                }).catch(() => { setSessions([]); setSessionsError('Sessions could not be loaded. Try again.') }).finally(() => setSessionsLoading(false))
               }}
               className="px-4 py-2 min-h-[44px] bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition flex items-center"
             >
@@ -656,7 +671,7 @@ const UsersPage = () => {
                   )}
                   <div className="mt-3 pt-3 border-t border-neutral-100 flex flex-wrap gap-2">
                     <button type="button" onClick={() => { navigator.clipboard.writeText(user.email).then(() => toast.success('Email copied')) }} className="p-2 text-neutral-500 hover:bg-neutral-100 rounded" title="Copy email"><Copy className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => { setActivityUser(user); setShowActivityModal(true); setActivityLogs([]); setActivityLoading(true); adminAPI.getUserActivity(user.id).then((res) => { if (res?.success && Array.isArray(res.data)) setActivityLogs(res.data); else setActivityLogs([]); }).catch(() => setActivityLogs([])).finally(() => setActivityLoading(false)) }} className="p-2 text-neutral-500 hover:bg-indigo-50 rounded" title="Activity"><Activity className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => openActivity(user)} className="inline-flex min-h-11 min-w-11 items-center justify-center p-2 text-neutral-500 hover:bg-indigo-50 rounded" aria-label={`Activity for ${user.name}`} title="Activity"><Activity className="h-4 w-4" /></button>
                     {(isOwner(currentUser) || user.role?.toLowerCase() !== 'owner') && (
                       <>
                         <button type="button" onClick={() => openEditModal(user)} className="p-2 text-primary-600 hover:bg-primary-50 rounded" title="Edit"><Edit className="h-4 w-4" /></button>
@@ -855,17 +870,7 @@ const UsersPage = () => {
                             <Copy className="h-5 w-5" />
                           </button>
                           <button
-                            onClick={() => {
-                              setActivityUser(user)
-                              setShowActivityModal(true)
-                              setActivityLogs([])
-                              setActivityLoading(true)
-                              setActivityError('')
-                              loadUserActivity(() => adminAPI.getUserActivity(user.id)).then((result) => {
-                                setActivityLogs(result.logs)
-                                setActivityError(result.status === 'error' ? result.message : '')
-                              }).finally(() => setActivityLoading(false))
-                            }}
+                            onClick={() => openActivity(user)}
                             className="text-neutral-500 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition"
                             title="View activity"
                           >
@@ -1015,13 +1020,15 @@ const UsersPage = () => {
       {/* Sessions modal: who is logged in / recent logins */}
       <Modal
         isOpen={showSessionsModal}
-        onClose={() => { setShowSessionsModal(false); setSessions([]) }}
+        onClose={() => { setShowSessionsModal(false); setSessions([]); setSessionsError('') }}
         title="Recent sessions"
       >
         <p className="text-sm text-neutral-500 mb-3">Recent logins for your company. Each row is one login event.</p>
         <div className="min-h-[200px] max-h-[60vh] overflow-auto">
           {sessionsLoading ? (
             <div className="flex items-center justify-center py-8"><LoadingCard /></div>
+          ) : sessionsError ? (
+            <p role="alert" className="text-sm text-error py-4">{sessionsError}</p>
           ) : sessions.length === 0 ? (
             <p className="text-sm text-neutral-500 py-4">No sessions found.</p>
           ) : (

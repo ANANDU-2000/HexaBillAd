@@ -45,6 +45,13 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — REL-02 correction: phone Activity button and Recent sessions (PASS locally in browser; NOT live)
+- Correction to the earlier REL-02 entry: the route and error-state fix reached only the desktop Activity button. `UsersPage.jsx` has a second, phone-layout copy of the button with its own inline fetch that still swallowed failures into "No activity recorded" (the exact phone case in S223). Found by the wider scan for `.catch(() => set...([]))`, proved by a browser run (red at 360px on the previous code, desktop already green).
+- Fix: one shared `openActivity(user)` used by both buttons (single call site for `getUserActivity` now); phone button gets a 44px target and an accessible name. Recent sessions had the same swallow and now shows "Sessions could not be loaded. Try again." with the empty text only after a successful empty load.
+- Evidence: `e2e/users-activity-failure.spec.js` **6/6 at m360, t768, d1440, 0 skipped**; asserts every activity request goes to `/api/admin/users/{id}/activity`, a failure shows the error and never "No activity recorded", success lists the row. **Previous code: 3 of 4 cases failed at m360 and d1440 (phone activity, and sessions at both widths).** Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- The scan of `.catch(() => set...([]))` over `src/` now finds no remaining swallow of a list load; only the guarded versions that set a failure flag remain. Other swallow shapes (for example `catch {}` with a toast only, or `?? []` after a failed call) were not scanned.
+- NOT TESTED: staff-role view of this page, password-reset and delete flows on phones.
+
 ### 2026-10-17 — UX-03 (continued): tablet overflow sweep across 18 main routes (PASS locally in browser; NOT live)
 - Extended `e2e/tablet-touch-targets.spec.js` with a sweep of /pos, /payments, /expenses, /ledger, /reports, /vat-return, /daily-close, /suppliers, /quotations, /delivery-notes, /salary-certificates, /pricelist, /users, /settings, /branches, /routes, /sales-ledger, /billing-history at touch 820x1180 (portrait), 1024x768 and 1180x820 (landscape): no horizontal page overflow and a 16px root on every route. **7/7 pass** (the earlier 4 plus 3 sweep cases) on the synthetic tenant.
 - Limits: this checks page-level overflow and root size only. It does not prove a route rendered its content (a route that redirects would also pass), does not check inner scroll containers, forms with the software keyboard open, split view, orientation changes mid-form, RTL, or real devices. Back navigation, filter and action-bar consistency (UX-06) are not done.
