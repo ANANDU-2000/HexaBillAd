@@ -3,6 +3,7 @@
 // (a force delete removes the customer's invoices and payments, so it is never confirmed here).
 // Synthetic local tenant only; the test removes what it adds.
 import { test, expect } from '@playwright/test'
+import { ensureOwingCustomer } from './fixtures.js'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
@@ -91,7 +92,7 @@ test('customer: add -> stored -> edit credit limit -> delete (no transactions)',
 
 test('customer with transactions: delete asks for a typed confirmation, and cancelling keeps everything', async ({ page }) => {
   const customers = items((await api('/api/customers?page=1&pageSize=100')).json)
-  const owing = customers.find((c) => Number(c.balance) > 0)
+  const owing = customers.find((c) => Number(c.balance) > 0) || await ensureOwingCustomer(SLUG)
   expect(owing, 'a customer with a balance must exist').toBeTruthy()
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/customers`, { waitUntil: 'networkidle' })

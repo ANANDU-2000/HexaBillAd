@@ -3,6 +3,7 @@
 // Viewport-aware: the item form is a table from 768px (md) and a card list below it; the purchase list
 // is a table from 1280px (xl) and expandable rows below it. Synthetic local tenant only.
 import { test, expect } from '@playwright/test'
+import { ensureUnpaidPurchase } from './fixtures.js'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
@@ -113,6 +114,7 @@ test('pay supplier from a purchase records a payment that reduces the supplier b
   const listIsTable = info.project.use.viewport.width >= 1280
   await signIn(page, SLUG)
 
+  await ensureUnpaidPurchase(SLUG)
   const { json } = await api('/api/purchases?page=1&pageSize=50')
   const target = (json.data?.items || []).find((p) => Number(p.balanceAmount ?? p.totalAmount) > 0.009 && (p.paymentStatus || '').toLowerCase() !== 'paid')
   expect(target, 'an unpaid purchase must exist on the local tenant').toBeTruthy()

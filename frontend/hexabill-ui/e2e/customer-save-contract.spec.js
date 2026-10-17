@@ -29,6 +29,19 @@ async function api (path, init = {}) {
   return response.json()
 }
 
+// Once the tenant has a branch the form requires one; choose the first real branch so the spec works on either fixture state.
+async function pickBranchIfRequired (form) {
+  const branch = form.getByLabel(/^Branch/)
+  if (await branch.count() === 0) return
+  const value = await branch.locator('option').evaluateAll(opts => opts.map(o => o.value).find(v => v))
+  if (value) await branch.selectOption(value)
+  const route = form.locator('select[name="routeId"]')
+  if (await route.count()) {
+    const routeValue = await route.locator('option').evaluateAll(opts => opts.map(o => o.value).find(v => v))
+    if (routeValue) await route.selectOption(routeValue)
+  }
+}
+
 function countCustomers (tenantId, name) {
   if (!Number.isInteger(Number(tenantId)) || !/^QA (duplicate|terms|decimal|phone) \d+$/.test(name)) {
     throw new Error('Unexpected synthetic SQL lookup values.')
@@ -61,6 +74,7 @@ test('duplicate email confirmation saves blank optional values once and survives
   await form.getByLabel(/Phone Number/).fill(phone)
   await form.getByLabel('Email Address').fill(email)
   await form.getByLabel('Address', { exact: true }).fill('Synthetic Arabic address: \u062f\u0628\u064a')
+  await pickBranchIfRequired(form)
   await form.getByRole('button', { name: 'Add Customer', exact: true }).click()
   const duplicate = page.getByRole('dialog').filter({ hasText: 'Duplicate email' })
   await expect(duplicate).toBeVisible()
@@ -110,6 +124,7 @@ test('positive-credit edit offers payment terms and preserves them after refresh
   expect(await edit.getByLabel('Credit Limit', { exact: true }).evaluate(input => input.validity.stepMismatch)).toBe(false)
   await expect(edit.locator('select[name="paymentTerms"]')).toBeVisible()
   await edit.locator('select[name="paymentTerms"]').selectOption('Net 30')
+  await pickBranchIfRequired(edit)
   const saved = page.waitForResponse(response => response.request().method() === 'PUT' && new URL(response.url()).pathname === `/api/customers/${id}`)
   await edit.getByRole('button', { name: 'Update Customer', exact: true }).click()
   expect((await saved).status()).toBe(200)
@@ -148,6 +163,7 @@ test('fractional credit create rejects negatives and persists optional fields', 
   await form.getByLabel('Address', { exact: true }).fill('Synthetic A&B, \u062f\u0628\u064a')
   await form.getByLabel('Location (optional)', { exact: true }).fill('Synthetic zone')
   const saved = page.waitForResponse(response => response.request().method() === 'POST' && /\/api\/customers$/.test(response.url()))
+  await pickBranchIfRequired(form)
   await form.getByRole('button', { name: 'Add Customer', exact: true }).click()
   expect((await saved).status()).toBe(201)
   await expect(form).toBeHidden()
@@ -173,6 +189,7 @@ test('duplicate phone is blocked with the real reason and creates nothing', asyn
   const form = page.getByRole('dialog').filter({ has: page.locator('input[name="name"]') })
   await form.getByLabel(/Customer Name/).fill(name)
   await form.getByLabel(/Phone Number/).fill(phone)
+  await pickBranchIfRequired(form)
   await form.getByRole('button', { name: 'Add Customer', exact: true }).click()
   await expect(page.getByText(/already uses this phone number/).first()).toBeVisible()
   await expect(page.getByRole('dialog').filter({ hasText: 'Duplicate email' })).toHaveCount(0)

@@ -1434,10 +1434,11 @@ const CustomersPage = () => {
             {branches.length > 0 && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label htmlFor="edit-customer-branch" className="block text-sm font-medium text-neutral-700 mb-1">
                     Branch {branches.length > 0 && <span className="text-red-500">*</span>}
                   </label>
                   <select
+                    id="edit-customer-branch"
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${errors.branchId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...register('branchId', {
                       required: branches.length > 0 ? 'Branch is required when company has branches' : false,
@@ -1457,10 +1458,11 @@ const CustomersPage = () => {
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  <label htmlFor="edit-customer-route" className="block text-sm font-medium text-neutral-700 mb-1">
                     Route {selectedBranchId && <span className="text-red-500">*</span>}
                   </label>
                   <select
+                    id="edit-customer-route"
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 disabled:bg-neutral-100 disabled:cursor-not-allowed ${errors.routeId ? 'border-red-500' : 'border-neutral-300'}`}
                     {...register('routeId', {
                       required: selectedBranchId ? 'Route is required when branch is selected' : false

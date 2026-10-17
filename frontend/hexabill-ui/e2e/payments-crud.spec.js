@@ -2,6 +2,7 @@
 // Each save is checked against the API (persistence), not only a toast. Synthetic local tenant only.
 // The amount is unique per run so the test finds its own record.
 import { test, expect } from '@playwright/test'
+import { ensureOwingCustomer } from './fixtures.js'
 import { signIn, feOrigin, apiLogin, API, EDGE } from './session.js'
 
 const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
@@ -26,7 +27,8 @@ test('add customer payment -> persisted -> refresh -> void -> kept as a voided r
   await signIn(page, SLUG)
 
   // A payment must reference an outstanding invoice (the API refuses on-account payments), so pick a customer with a balance.
-  const customers = items((await api('/api/customers?page=1&pageSize=50')).json)
+  await ensureOwingCustomer(SLUG)
+  const customers = items((await api('/api/customers?page=1&pageSize=100')).json)
   const owing = customers.filter((c) => Number(c.balance) > 1).sort((a, b) => Number(b.balance) - Number(a.balance))
   expect(owing.length, 'a customer with an outstanding balance must exist on the local tenant').toBeGreaterThan(0)
   const customer = owing[0]
