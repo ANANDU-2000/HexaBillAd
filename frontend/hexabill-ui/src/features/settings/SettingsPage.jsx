@@ -54,6 +54,8 @@ const SettingsPage = () => {
   const [showClearDataModal, setShowClearDataModal] = useState(false)
   const [clearDataConfirmation, setClearDataConfirmation] = useState('')
   const [clearDataCheckbox, setClearDataCheckbox] = useState(false)
+  const [clearDataReason, setClearDataReason] = useState('')
+  const [clearDataPassword, setClearDataPassword] = useState('')
   const [loadingClearData, setLoadingClearData] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [showTemplatePreview, setShowTemplatePreview] = useState(false)
@@ -376,18 +378,31 @@ const SettingsPage = () => {
   }
 
   const handleClearAllData = async () => {
-    if (!clearDataCheckbox || clearDataConfirmation.trim().toUpperCase() !== 'CLEAR') {
-      toast.error('Check the box and type CLEAR to confirm')
+    if (!clearDataCheckbox || clearDataConfirmation.trim() !== 'CLEAR') {
+      toast.error('Check the box and type CLEAR in capital letters to confirm')
+      return
+    }
+    if (clearDataReason.trim().length < 10) {
+      toast.error('Enter a reason of at least 10 characters')
+      return
+    }
+    if (!clearDataPassword) {
+      toast.error('Enter your password to continue')
       return
     }
     try {
       setLoadingClearData(true)
-      const response = await settingsAPI.clearData()
+      const response = await settingsAPI.clearData({
+        reason: clearDataReason.trim(),
+        confirmation: clearDataConfirmation.trim(),
+        password: clearDataPassword,
+        backupConfirmed: clearDataCheckbox,
+      })
       if (response?.success) {
         toast.success(response.message || 'All transactional data has been cleared.')
         setShowClearDataModal(false)
         setClearDataConfirmation('')
-        setClearDataCheckbox(false)
+        setClearDataCheckbox(false); setClearDataReason(''); setClearDataPassword('')
         setTimeout(() => navigate(0), 1500)
       } else {
         toast.error(response?.message || 'Failed to clear data')
@@ -1748,7 +1763,7 @@ const SettingsPage = () => {
                   type="button"
                   onClick={() => {
                     setClearDataConfirmation('')
-                    setClearDataCheckbox(false)
+                    setClearDataCheckbox(false); setClearDataReason(''); setClearDataPassword('')
                     setShowClearDataModal(true)
                   }}
                   className="bg-white text-error border-2 border-red-300 px-6 py-2.5 rounded-lg font-bold hover:bg-error hover:text-white transition-all shadow-sm flex items-center gap-2 flex-shrink-0"
@@ -1892,7 +1907,7 @@ const SettingsPage = () => {
         onClose={() => {
           setShowClearDataModal(false)
           setClearDataConfirmation('')
-          setClearDataCheckbox(false)
+          setClearDataCheckbox(false); setClearDataReason(''); setClearDataPassword('')
         }}
         title="Danger: Clear all company data"
         size="md"
@@ -1917,7 +1932,7 @@ const SettingsPage = () => {
                 onChange={(e) => setClearDataCheckbox(e.target.checked)}
                 className="mt-0.5"
               />
-              <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data.</span>
+              <span className="text-sm font-medium text-red-800">I understand this will permanently delete all transactional data, and I have a backup I can restore from.</span>
             </label>
             <div>
               <label className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Type CLEAR to confirm</label>
@@ -1929,6 +1944,29 @@ const SettingsPage = () => {
                 onChange={(e) => setClearDataConfirmation(e.target.value)}
               />
             </div>
+            <div>
+              <label htmlFor="clear-data-reason" className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Reason (recorded in the audit log)</label>
+              <input
+                id="clear-data-reason"
+                type="text"
+                maxLength={300}
+                className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 outline-none"
+                placeholder="For example: clearing test entries before go-live"
+                value={clearDataReason}
+                onChange={(e) => setClearDataReason(e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor="clear-data-password" className="block text-xs font-bold text-error-fg uppercase tracking-wider mb-1">Your password</label>
+              <input
+                id="clear-data-password"
+                type="password"
+                autoComplete="current-password"
+                className="w-full px-4 py-3 border-2 border-red-300 rounded-lg bg-white text-red-800 outline-none"
+                value={clearDataPassword}
+                onChange={(e) => setClearDataPassword(e.target.value)}
+              />
+            </div>
           </div>
           <div className="flex gap-3 pt-2">
             <button
@@ -1936,7 +1974,7 @@ const SettingsPage = () => {
               onClick={() => {
                 setShowClearDataModal(false)
                 setClearDataConfirmation('')
-                setClearDataCheckbox(false)
+                setClearDataCheckbox(false); setClearDataReason(''); setClearDataPassword('')
               }}
               className="flex-1 px-4 py-3 text-neutral-600 font-bold hover:bg-neutral-100 rounded-lg transition-all border border-neutral-300"
             >
@@ -1945,7 +1983,7 @@ const SettingsPage = () => {
             <LoadingButton
               onClick={handleClearAllData}
               loading={loadingClearData}
-              disabled={clearDataConfirmation.trim().toUpperCase() !== 'CLEAR' || !clearDataCheckbox}
+              disabled={clearDataConfirmation.trim() !== 'CLEAR' || !clearDataCheckbox || clearDataReason.trim().length < 10 || !clearDataPassword}
               className="flex-2 px-8 py-3 bg-error text-white font-bold rounded-lg hover:bg-red-700 shadow-lg border-2 border-red-700 disabled:opacity-50 disabled:grayscale transition-all"
             >
               Clear all data

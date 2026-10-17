@@ -1263,8 +1263,8 @@ export const settingsAPI = {
     const response = await api.put('/settings', settings)
     return response.data
   },
-  clearData: async () => {
-    const response = await api.post('/settings/clear-data')
+  clearData: async (payload) => {
+    const response = await api.post('/settings/clear-data', payload)
     return response.data
   },
   getAuditLogs: async (page = 1, pageSize = 20, filters = {}) => {

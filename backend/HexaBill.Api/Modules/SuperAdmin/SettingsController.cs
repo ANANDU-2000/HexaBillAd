@@ -16,6 +16,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HexaBill.Api.Modules.SuperAdmin
 {
+    public class ClearTenantDataRequest
+    {
+        public string? Reason { get; set; }
+        public string? Confirmation { get; set; }
+        public string? Password { get; set; }
+        public bool BackupConfirmed { get; set; }
+    }
+
     [Authorize]
     [ApiController]
     [Route("api/[controller]")]
@@ -256,7 +264,7 @@ namespace HexaBill.Api.Modules.SuperAdmin
         /// </summary>
         [HttpPost("clear-data")]
         [Authorize(Roles = "Owner,Admin")]
-        public async Task<IActionResult> ClearMyTenantData()
+        public async Task<IActionResult> ClearMyTenantData([FromBody] ClearTenantDataRequest? request)
         {
             var tenantId = CurrentTenantId;
             if (tenantId <= 0)
@@ -268,6 +276,28 @@ namespace HexaBill.Api.Modules.SuperAdmin
             {
                 return Unauthorized(new ServiceResponse<object> { Success = false, Message = "Invalid user" });
             }
+
+            // Server-side guard: the page's confirmation box is not a control. Reason, typed word, backup
+            // acknowledgement and the caller's own password are all required before anything is deleted.
+            var reason = request?.Reason?.Trim() ?? string.Empty;
+            if (reason.Length < 10)
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = "Enter a reason of at least 10 characters." });
+            if (!string.Equals(request?.Confirmation?.Trim(), "CLEAR", StringComparison.Ordinal))
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = "Type CLEAR in capital letters to confirm." });
+            if (request?.BackupConfirmed != true)
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = "Confirm that you have a backup you can restore from." });
+            if (string.IsNullOrEmpty(request?.Password))
+                return BadRequest(new ServiceResponse<object> { Success = false, Message = "Enter your password to continue." });
+            var caller = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId && u.TenantId == tenantId);
+            bool passwordOk;
+            try { passwordOk = caller != null && BCrypt.Net.BCrypt.Verify(request!.Password, caller.PasswordHash); }
+            catch (BCrypt.Net.SaltParseException) { passwordOk = false; }
+            if (!passwordOk)
+            {
+                _logger.LogWarning("SECURITY: clear-data refused, password check failed. Tenant {TenantId}, user {UserId}.", tenantId, userId);
+                return StatusCode(StatusCodes.Status403Forbidden, new ServiceResponse<object> { Success = false, Message = "Password is incorrect." });
+            }
+
             try
             {
                 var success = await _tenantService.ClearTenantDataAsync(tenantId, userId);
@@ -275,6 +305,16 @@ namespace HexaBill.Api.Modules.SuperAdmin
                 {
                     return NotFound(new ServiceResponse<object> { Success = false, Message = "Tenant not found" });
                 }
+                _context.AuditLogs.Add(new AuditLog
+                {
+                    TenantId = tenantId,
+                    OwnerId = tenantId,
+                    UserId = userId,
+                    Action = "ClearTenantData",
+                    Details = $"Owner-initiated clear of transactional data. Reason: {reason}",
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
                 return Ok(new ServiceResponse<object> { Success = true, Message = "All transactional data has been cleared. Users, products, and customers are kept; stock and balances are reset." });
             }
             catch (Exception ex)
