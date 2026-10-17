@@ -297,7 +297,9 @@ namespace HexaBill.Api.Modules.Branches
                 returnsQuery = returnsQuery.Where(r =>
                     r.Status == ReturnStatus.Approved && r.ReturnDate >= from && r.ReturnDate <= to &&
                     (tenantId <= 0 || r.TenantId == tenantId) &&
-                    (r.BranchId == branchId || (r.RouteId != null && routeIds.Contains(r.RouteId.Value))));
+                    (r.BranchId == branchId || r.Sale.BranchId == branchId
+                        || (r.RouteId != null && routeIds.Contains(r.RouteId.Value))
+                        || (r.Sale.RouteId != null && routeIds.Contains(r.Sale.RouteId.Value))));
                 branchReturnsTotal = await returnsQuery.SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
             }
             catch (Exception ex)

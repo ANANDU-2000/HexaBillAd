@@ -39,6 +39,7 @@ import toast from 'react-hot-toast'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import StopLocationMap, { captureDeviceGps } from '../../components/StopLocationMap'
 import { localDateString } from '../../utils/dateFormat'
+import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { readCustomersStateFromParams, syncCustomersSearchParams } from '../../utils/customersUrl'
 import { buildCustomerLedgerHref } from '../../utils/customerLedgerUrl'
 
@@ -323,21 +324,48 @@ const CustomersPage = () => {
         response = await customersAPI.createCustomer(payload)
       }
 
-      if (response.success) {
+      if (response?.success !== false && response?.data?.id) {
         toast.success(selectedCustomer ? 'Customer updated successfully!' : 'Customer added successfully!')
         window.dispatchEvent(new CustomEvent('dataUpdated'))
-        // Refresh customer list without page reload
         await fetchCustomers()
         reset()
         setShowAddModal(false)
         setShowEditModal(false)
         setSelectedCustomer(null)
+      } else if (!selectedCustomer) {
+        const found = await customersAPI.getCustomers({ search: data.name, pageSize: 20 }).catch(() => null)
+        const items = found?.data?.items ?? found?.items ?? []
+        const saved = items.find(c => String(c.name || '').toLowerCase() === String(data.name || '').toLowerCase())
+        if (saved?.id) {
+          toast.success('Customer added successfully!')
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
+          await fetchCustomers()
+          reset()
+          setShowAddModal(false)
+        } else {
+          toast.error(response.message || 'Failed to save customer')
+        }
       } else {
         toast.error(response.message || 'Failed to save customer')
       }
     } catch (error) {
       console.error('Failed to save customer:', error)
-      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to save customer')
+      if (!selectedCustomer && saveOutcomeIsUncertain(error)) {
+        try {
+          const found = await customersAPI.getCustomers({ search: data.name, pageSize: 20 })
+          const items = found?.data?.items ?? found?.items ?? []
+          const saved = items.find(c => String(c.name || '').toLowerCase() === String(data.name || '').toLowerCase())
+          if (saved?.id) {
+            toast.success('Customer added successfully!')
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
+            await fetchCustomers()
+            reset()
+            setShowAddModal(false)
+            return
+          }
+        } catch (_) { /* keep the error below */ }
+      }
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || (saveOutcomeIsUncertain(error) ? uncertainSaveMessage('customer') : 'Failed to save customer'))
     } finally {
       setSaving(false)
     }
@@ -354,17 +382,43 @@ const CustomersPage = () => {
     try {
       setSaving(true)
       const response = await customersAPI.createCustomer(payload)
-      if (response.success) {
+      if (response?.success !== false && response?.data?.id) {
         toast.success('Customer added successfully!')
         window.dispatchEvent(new CustomEvent('dataUpdated'))
         await fetchCustomers()
         reset()
         setShowAddModal(false)
       } else {
-        toast.error(response.message || 'Failed to save customer')
+        const found = await customersAPI.getCustomers({ search: data.name, pageSize: 20 }).catch(() => null)
+        const items = found?.data?.items ?? found?.items ?? []
+        const saved = items.find(c => String(c.name || '').toLowerCase() === String(data.name || '').toLowerCase())
+        if (saved?.id) {
+          toast.success('Customer added successfully!')
+          window.dispatchEvent(new CustomEvent('dataUpdated'))
+          await fetchCustomers()
+          reset()
+          setShowAddModal(false)
+        } else {
+          toast.error(response.message || 'Failed to save customer')
+        }
       }
     } catch (error) {
-      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || 'Failed to save customer')
+      if (saveOutcomeIsUncertain(error)) {
+        try {
+          const found = await customersAPI.getCustomers({ search: data.name, pageSize: 20 })
+          const items = found?.data?.items ?? found?.items ?? []
+          const saved = items.find(c => String(c.name || '').toLowerCase() === String(data.name || '').toLowerCase())
+          if (saved?.id) {
+            toast.success('Customer added successfully!')
+            window.dispatchEvent(new CustomEvent('dataUpdated'))
+            await fetchCustomers()
+            reset()
+            setShowAddModal(false)
+            return
+          }
+        } catch (_) { /* keep the error below */ }
+      }
+      if (!error?._handledByInterceptor) toast.error(error?.response?.data?.message || (saveOutcomeIsUncertain(error) ? uncertainSaveMessage('customer') : 'Failed to save customer'))
     } finally {
       setSaving(false)
     }

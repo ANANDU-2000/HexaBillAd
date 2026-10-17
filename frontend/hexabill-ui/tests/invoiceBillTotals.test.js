@@ -29,6 +29,12 @@ test('numeric string amounts sum as money rather than concatenate', () => {
   ]), { totalInvoices: 2, totalPaid: 16, totalPending: 10 })
 })
 
+test('a full approved return clears pending on a partially paid invoice', () => {
+  assert.deepEqual(invoiceBillTotals([
+    { grandTotal: 15.75, paidAmount: 5, returnedAmount: 15.75, paymentStatus: 'Partial' },
+  ]), { totalInvoices: 1, totalPaid: 5, totalPending: 0 })
+})
+
 test('an empty date-filtered list has zero totals', () => {
   assert.deepEqual(invoiceBillTotals([]), { totalInvoices: 0, totalPaid: 0, totalPending: 0 })
 })

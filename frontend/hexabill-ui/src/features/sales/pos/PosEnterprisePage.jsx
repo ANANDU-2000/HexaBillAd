@@ -53,6 +53,7 @@ import { useAuth } from '../../../hooks/useAuth'
 import { isAdminOrOwner } from '../../../utils/roles'
 import { useBranchesRoutes } from '../../../contexts/BranchesRoutesContext'
 import toast from 'react-hot-toast'
+import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../../utils/apiError'
 import { showToast } from '../../../utils/toast'
 import ConfirmDangerModal from '../../../components/ConfirmDangerModal'
 import PrintOptionsModal from '../../../components/PrintOptionsModal'
@@ -1769,7 +1770,7 @@ const PosEnterprisePage = () => {
         })
 
         response = await salesAPI.updateSale(editingSaleId, updateData)
-        if (response.success) {
+        if (response?.success !== false && (response?.success || response?.data?.id)) {
           const invoiceNo = response.data?.invoiceNo
           const saleId = response.data?.id
           toast.success(`Invoice ${invoiceNo || editingSaleId} updated successfully!`, { id: 'invoice-update', duration: 4000 })
@@ -1835,7 +1836,7 @@ const PosEnterprisePage = () => {
 
         console.log('Create Sale Response:', response)
 
-        if (response.success) {
+        if (response?.success !== false && (response?.success || response?.data?.id)) {
           // The invoice exists now; the next sale (even if identical) must get a new key.
           saleSubmitKeysRef.current.reset()
           const invoiceNo = response.data?.invoiceNo
@@ -1877,6 +1878,7 @@ const PosEnterprisePage = () => {
         }
       }
     } catch (error) {
+      if (error?._handledByInterceptor && !saveOutcomeIsUncertain(error)) return
       console.error('Error saving/updating invoice:', error)
       console.error('Error details:', {
         message: error?.message,
@@ -1959,7 +1961,11 @@ const PosEnterprisePage = () => {
           errorMsg = error.message
         }
 
-        toast.error(errorMsg, { duration: 8000 })
+        if (saveOutcomeIsUncertain(error)) {
+          toast.error(uncertainSaveMessage('sales'), { duration: 10000, id: 'invoice-save' })
+        } else {
+          toast.error(errorMsg, { duration: 8000 })
+        }
 
         // Log detailed error for debugging (stringify so "Object" shows actual content)
         console.log('Error occurred during save')

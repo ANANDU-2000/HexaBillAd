@@ -372,6 +372,8 @@ namespace HexaBill.Api.Models
         public decimal RoundOff { get; set; }
         public decimal GrandTotal { get; set; }
         public decimal PaidAmount { get; set; } // CRITICAL: Include for balance calculation and accurate reporting
+        /// <summary>Approved sale-return total for this invoice. Outstanding is GrandTotal - PaidAmount - ReturnedAmount.</summary>
+        public decimal ReturnedAmount { get; set; }
         public string PaymentStatus { get; set; } = string.Empty;
         public DateTime? DueDate { get; set; } // Payment due date for credit customers
         public string? Notes { get; set; }

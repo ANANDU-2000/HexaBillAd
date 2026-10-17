@@ -910,7 +910,7 @@ namespace HexaBill.Api.Data
             {
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.ReturnNo).IsRequired().HasMaxLength(100);
-                entity.HasIndex(e => e.ReturnNo).IsUnique();
+                entity.HasIndex(e => new { e.TenantId, e.ReturnNo }).IsUnique();
                 entity.Property(e => e.Subtotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.VatTotal).HasColumnType("decimal(18,2)");
                 entity.Property(e => e.GrandTotal).HasColumnType("decimal(18,2)");

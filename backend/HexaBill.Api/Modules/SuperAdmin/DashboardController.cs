@@ -101,17 +101,14 @@ public class DashboardController : TenantScopedController // MULTI-TENANT: Owner
                 isSystemAdmin ? "SUPER ADMIN" : $"Owner {tenantId}", totalSales, purchasesTodayCash, grossProfit, totalExpenses, profitToday);
         }
 
-        // Pending Bills Count (sales where PaymentStatus is Pending or Partial, excluding deleted)
-        var pendingCountQuery = _context.Sales
-            .Where(s => !s.IsDeleted && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial));
-        if (!isSystemAdmin) pendingCountQuery = pendingCountQuery.Where(s => s.TenantId == tenantId);
-        var pendingBillsCount = await pendingCountQuery.CountAsync();
-        
-        // Pending Payments Amount
-        var pendingAmountQuery = _context.Sales
-            .Where(s => !s.IsDeleted && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial));
-        if (!isSystemAdmin) pendingAmountQuery = pendingAmountQuery.Where(s => s.TenantId == tenantId);
-        var pendingPayments = await pendingAmountQuery.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0;
+        // Pending amount is invoice total minus receipts minus approved returns.
+        var pendingSales = _context.Sales.Where(s => !s.IsDeleted);
+        if (!isSystemAdmin) pendingSales = pendingSales.Where(s => s.TenantId == tenantId);
+        var pendingBalances = pendingSales.Select(s => s.GrandTotal - s.PaidAmount -
+            (_context.SaleReturns.Where(r => r.SaleId == s.Id && r.TenantId == s.TenantId && r.Status == ReturnStatus.Approved).Sum(r => (decimal?)r.GrandTotal) ?? 0m));
+        var openBalances = pendingBalances.Where(balance => balance > 0.05m);
+        var pendingBillsCount = await openBalances.CountAsync();
+        var pendingPayments = await openBalances.SumAsync(balance => (decimal?)balance) ?? 0;
 
         // Low Stock Alerts (products with stock less than 100)
         var lowStockQuery = _context.Products.Where(p => p.StockQty < 100);

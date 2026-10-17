@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { statusTone } from '../../utils/statusTone'
 import { useCreateIntent } from '../../hooks/useCreateIntent'
 import { Plus, Edit, Trash2, Eye, Save, Search, X, RefreshCw, ExternalLink, Users, CreditCard, Filter, ChevronDown } from 'lucide-react'
@@ -14,7 +14,7 @@ import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import { ListSkeleton } from '../../components/mobile/index'
 import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
 import { cleanText, fixMoney } from '../../utils/productFields'
-import { saveOutcomeIsUncertain } from '../../utils/apiError'
+import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
 const tallySelectClass = tallyInputClass
@@ -592,21 +592,27 @@ const PurchasesPage = () => {
       createAttemptRef.current = editingPurchase ? null : { supplierName: supplierClean, invoiceNo: invoiceClean }
       if (editingPurchase) {
         response = await purchasesAPI.updatePurchase(editingPurchase.id, purchaseData)
-        if (response.success) {
+        if (response?.success !== false && response?.data?.id) {
           toast.success('Purchase updated successfully!', { id: 'purchase-update', duration: 4000 })
         } else {
           toast.error(response.message || 'Failed to update purchase')
         }
       } else {
         response = await purchasesAPI.createPurchase(purchaseData)
-        if (response.success) {
+        if (!(response?.success !== false && response?.data?.id)) {
+          const found = await purchasesAPI.getPurchases({ supplierName: supplierClean, page: 1, pageSize: 20 }).catch(() => null)
+          const rows = found?.data?.items ?? found?.items ?? []
+          const match = rows.find(r => String(r.invoiceNo || '').trim().toLowerCase() === invoiceClean.toLowerCase())
+          if (match?.id) response = { success: true, data: match }
+        }
+        if (response?.success !== false && response?.data?.id) {
           toast.success('Purchase created! Stock has been updated. If Products still show 0 stock, go to Products and click Recompute Stock.', { id: 'purchase-create', duration: 6000 })
         } else {
           toast.error(response.message || 'Failed to create purchase', { id: 'purchase-create' })
         }
       }
 
-      if (response.success) {
+      if (response?.success !== false && response?.data?.id) {
         if (notes.length) toast(`We fixed: ${notes.join(' ')}`, { duration: 9000 })
         setShowForm(false)
         setEditingPurchase(null)
@@ -652,11 +658,13 @@ const PurchasesPage = () => {
           }
         } catch (_) { /* fall through to the message below */ }
       }
-      const data = error?.response?.data
-      const errors = data?.errors
-      const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message
-        || (saveOutcomeIsUncertain(error) ? 'The server did not answer. The purchase was not saved, please try again.' : 'Failed to save purchase')
-      toast.error(editingPurchase ? `Update failed: ${errorMsg}` : `Create failed: ${errorMsg}`, { duration: 6000 })
+      if (!error?._handledByInterceptor) {
+        const data = error?.response?.data
+        const errors = data?.errors
+        const errorMsg = (Array.isArray(errors) && errors.length && errors[0]) || data?.message
+          || (saveOutcomeIsUncertain(error) ? uncertainSaveMessage('purchase') : 'Failed to save purchase')
+        toast.error(editingPurchase ? `Update failed: ${errorMsg}` : `Create failed: ${errorMsg}`, { duration: 6000 })
+      }
     } finally {
       setSubmitting(false)
     }

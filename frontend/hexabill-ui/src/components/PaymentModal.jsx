@@ -245,11 +245,11 @@ const PaymentModal = ({ isOpen, onClose, invoiceId, customerId, onPaymentSuccess
       const response = await send(intent.request, intent.idempotencyKey)
       
       // Backend returns: { success: true, message: "...", data: { payment, invoice, customer } }
-      if (response?.success) {
+      const paymentResult = response?.data?.payment || response?.data
+      if (response?.success !== false && paymentResult?.id) {
         paymentJournal.complete(scope, intent.idempotencyKey)
         if (scope !== paymentScopeRef.current) return
         setUnconfirmedPayment(null)
-        const paymentResult = response?.data?.payment || response?.data
         const invoiceData = response?.data?.invoice
         const mode = paymentResult?.mode || intent.request.mode
         const amount = paymentResult?.amount || intent.request.amount

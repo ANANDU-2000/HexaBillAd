@@ -35,7 +35,7 @@ import api from '../../services/api'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { buildDailyCloseHref, readExpensesStateFromParams, syncExpensesSearchParams } from '../../utils/expensesUrl'
 import { fixMoney } from '../../utils/productFields'
-import { saveOutcomeIsUncertain } from '../../utils/apiError'
+import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 
 function expenseAttachmentPath(url) {
   if (!url) return ''
@@ -727,7 +727,7 @@ const ExpensesPage = () => {
           paidFrom: data.paidFrom === 'Bank' ? 'Bank' : 'Cash'
         })
 
-        if (response?.success) {
+        if (response?.success !== false && response?.data?.id) {
           toast.success('Expense updated successfully!', { id: 'expense-update', duration: 4000 })
         } else {
           const reason = response?.message || response?.errors?.[0] || 'Could not save this expense.'
@@ -786,7 +786,15 @@ const ExpensesPage = () => {
           }
         }
 
-        if (response?.success) {
+        if (!(response?.success !== false && response?.data?.id)) {
+          const attempt = createAttemptRef.current
+          if (attempt?.idsBefore) {
+            const after = await expensesAPI.getExpenses({ page: 1, pageSize: 50, fromDate: attempt.day, toDate: attempt.day }).catch(() => null)
+            const hit = (after?.data?.items || []).find(e => !attempt.idsBefore.has(e.id) && e.categoryId === attempt.catId && (e.note || '') === attempt.note)
+            if (hit?.id) response = { success: true, data: hit }
+          }
+        }
+        if (response?.success !== false && response?.data?.id) {
           toast.success('Expense added successfully!', { id: 'expense-add', duration: 4000 })
           window.dispatchEvent(new CustomEvent('dataUpdated'))
         } else {
@@ -839,7 +847,7 @@ const ExpensesPage = () => {
       }
       const errMsg = error?.response?.data?.message
         || error?.response?.data?.errors?.[0]
-        || (saveOutcomeIsUncertain(error) ? 'The server did not answer. The expense was not saved, please try again.' : error?.message)
+        || (saveOutcomeIsUncertain(error) ? uncertainSaveMessage('expense') : error?.message)
         || 'Could not save this expense.'
       if (!error?._handledByInterceptor) toast.error(errMsg)
     }

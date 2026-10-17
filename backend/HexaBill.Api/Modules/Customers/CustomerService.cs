@@ -582,6 +582,10 @@ namespace HexaBill.Api.Modules.Customers
                 _logger.LogError(ex, "Database error in CreateCustomerAsync: {Message}", errorMessage);
                 throw new InvalidOperationException($"Database error: {errorMessage}", ex);
             }
+            catch (InvalidOperationException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "CreateCustomerAsync error");
@@ -978,11 +982,15 @@ namespace HexaBill.Api.Modules.Customers
             // Build unified transaction list - ONE entry per transaction (with ReturnId for delete action)
             var allTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks, int? ReturnId)>();
 
+            var approvedReturnBySale = salesReturns
+                .GroupBy(r => r.SaleId)
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.GrandTotal));
+
             // Add sales (Invoices) - DEBIT entries
             foreach (var sale in salesData)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0);
-                var balance = sale.GrandTotal - paidAmount;
+                var balance = Math.Max(0m, sale.GrandTotal - paidAmount - approvedReturnBySale.GetValueOrDefault(sale.Id, 0m));
                 var status = balance <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" 
                     : paidAmount > 0 ? "Partial" 
                     : "Unpaid";
@@ -1213,10 +1221,15 @@ namespace HexaBill.Api.Modules.Customers
             // Build transaction list: Invoice → Its Payments → Next Invoice → Its Payments (with ReturnId for returns)
             var groupedTransactions = new List<(DateTime Date, string Type, string InvoiceNo, string? PaymentMode, decimal Debit, decimal Credit, string Status, int? SaleId, int? PaymentId, string? Remarks, int? ReturnId)>();
 
+            var approvedReturnBySale = salesReturns
+                .Where(r => r.Status == ReturnStatus.Approved)
+                .GroupBy(r => r.SaleId)
+                .ToDictionary(g => g.Key, g => g.Sum(r => r.GrandTotal));
+
             foreach (var sale in sales)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0m);
-                var balance = sale.GrandTotal - paidAmount;
+                var balance = Math.Max(0m, sale.GrandTotal - paidAmount - approvedReturnBySale.GetValueOrDefault(sale.Id, 0m));
                 string status = balance <= SalePaymentHelpers.SettlementToleranceAed ? "Paid" : paidAmount > 0 ? "Partial" : "Unpaid";
                 var firstPayment = payments.FirstOrDefault(p => p.SaleId == sale.Id);
                 var paymentMode = (string?)(firstPayment?.Mode.ToString().ToUpper() ?? "NOT PAID");
@@ -1465,17 +1478,30 @@ namespace HexaBill.Api.Modules.Customers
                     .Select(g => new { SaleId = g.Key, TotalPaid = g.Sum(p => p.Amount) })
                     .ToDictionaryAsync(x => x.SaleId, x => x.TotalPaid);
 
+                var approvedReturnBySale = await _context.SaleReturns
+                    .Where(sr => sr.CustomerId == customerId && sr.TenantId == tenantId && sr.Status == ReturnStatus.Approved)
+                    .GroupBy(sr => sr.SaleId)
+                    .Select(g => new { SaleId = g.Key, Total = g.Sum(r => r.GrandTotal) })
+                    .ToDictionaryAsync(x => x.SaleId, x => x.Total);
+
+                (decimal Paid, decimal Balance, string Status) StatementInvoiceLine(int saleId, decimal grandTotal)
+                {
+                    var paid = salePayments.GetValueOrDefault(saleId, 0m);
+                    var returned = approvedReturnBySale.GetValueOrDefault(saleId, 0m);
+                    var balance = Math.Max(0m, grandTotal - paid - returned);
+                    var lineStatus = balance <= SalePaymentHelpers.SettlementToleranceAed
+                        ? "Paid"
+                        : paid > 0 || returned > 0 ? "Partial" : "Unpaid";
+                    return (paid, balance, lineStatus);
+                }
+
                 // Combine and sort all transactions with invoice status
                 // Format: (Date, Particulars (just number), Reference (same), Debit, Credit, Status, PaidAmount, BalanceAmount, PaymentMode)
                 var allTransactions = new List<(DateTime Date, string Particulars, string Reference, decimal Debit, decimal Credit, string Status, decimal PaidAmount, decimal BalanceAmount, string PaymentMode)>();
             
             foreach (var sale in sales)
             {
-                    var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0);
-                    var balanceAmount = sale.GrandTotal - paidAmount;
-                    var status = paidAmount >= sale.GrandTotal ? "Paid" 
-                        : paidAmount > 0 ? "Partial" 
-                        : "Unpaid";
+                    var (paidAmount, balanceAmount, status) = StatementInvoiceLine(sale.Id, sale.GrandTotal);
                     
                     // Just the invoice number, no "Invoice" prefix
                     allTransactions.Add((sale.InvoiceDate, sale.InvoiceNo ?? "", sale.InvoiceNo ?? "", sale.GrandTotal, 0, status, paidAmount, balanceAmount, ""));
@@ -1562,11 +1588,7 @@ namespace HexaBill.Api.Modules.Customers
                 // Process each invoice with its payments immediately after
                 foreach (var sale in sales.OrderBy(s => s.InvoiceDate).ThenBy(s => s.Id))
                 {
-                    var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0);
-                    var balanceAmount = sale.GrandTotal - paidAmount;
-                    var status = paidAmount >= sale.GrandTotal ? "Paid" 
-                        : paidAmount > 0 ? "Partial" 
-                        : "Unpaid";
+                    var (paidAmount, balanceAmount, status) = StatementInvoiceLine(sale.Id, sale.GrandTotal);
                     
                     // Add the invoice first
                     groupedTransactions.Add((
@@ -2573,14 +2595,21 @@ namespace HexaBill.Api.Modules.Customers
 
             var outstandingInvoices = new List<Models.OutstandingInvoiceDto>();
 
+            var saleIds = sales.Select(s => s.Id).ToList();
+            var approvedReturnBySale = await InvoiceReceivables.ApprovedReturns(_context, tenantId)
+                .Where(r => saleIds.Contains(r.SaleId))
+                .GroupBy(r => r.SaleId)
+                .Select(g => new { SaleId = g.Key, Total = g.Sum(r => r.GrandTotal) })
+                .ToDictionaryAsync(x => x.SaleId, x => x.Total);
+
             foreach (var sale in sales)
             {
                 // Use Sale.PaidAmount directly (maintained atomically by PaymentService)
                 var paidAmount = sale.PaidAmount;
-                var balanceAmount = sale.GrandTotal - paidAmount;
+                var balanceAmount = InvoiceReceivables.Outstanding(sale.GrandTotal, paidAmount, approvedReturnBySale.GetValueOrDefault(sale.Id, 0m));
 
                 // Only include if there's still a balance
-                if (balanceAmount > 0)
+                if (balanceAmount > SalePaymentHelpers.SettlementToleranceAed)
                 {
                     // CRITICAL: Use DueDate from sale, fallback to 30 days if not set
                     var dueDate = sale.DueDate ?? sale.InvoiceDate.AddDays(30);

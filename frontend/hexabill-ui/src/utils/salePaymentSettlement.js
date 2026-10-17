@@ -8,10 +8,11 @@ export const SETTLEMENT_TOLERANCE_AED = 0.05
 export const MAX_SETTLEMENT_ADJUSTMENT_AED = 50
 export const TENANT_FEATURE_SETTLEMENT_ADJUSTMENTS = 'settlement_adjustments'
 
-export function computeOutstanding(grandTotal, paidAmount) {
+export function computeOutstanding(grandTotal, paidAmount, returnedAmount = 0) {
   const gt = Number(grandTotal) || 0
   const paid = Number(paidAmount) || 0
-  return Math.max(0, gt - paid)
+  const returned = Number(returnedAmount) || 0
+  return Math.max(0, gt - paid - returned)
 }
 
 /**
@@ -30,12 +31,12 @@ export function computeInvoiceSettlementShortfall(outstandingAmount, cashAmount)
 /**
  * True when the invoice is fully settled (API says Paid, zero/negative total, or outstanding within tolerance).
  */
-export function isInvoiceFullySettled({ grandTotal, paidAmount, paymentStatus } = {}) {
+export function isInvoiceFullySettled({ grandTotal, paidAmount, returnedAmount = 0, paymentStatus } = {}) {
   const st = String(paymentStatus || '').toLowerCase()
   if (st === 'paid') return true
   const gt = Number(grandTotal) || 0
   if (gt <= 0) return true
-  return computeOutstanding(gt, paidAmount) <= SETTLEMENT_TOLERANCE_AED
+  return computeOutstanding(gt, paidAmount, returnedAmount) <= SETTLEMENT_TOLERANCE_AED
 }
 
 /**
@@ -44,8 +45,9 @@ export function isInvoiceFullySettled({ grandTotal, paidAmount, paymentStatus } 
 export function getInvoicePaymentBadge(sale) {
   const gt = Number(sale?.grandTotal) || 0
   const paid = Number(sale?.paidAmount) || 0
+  const returned = Number(sale?.returnedAmount) || 0
   const status = sale?.paymentStatus
-  if (isInvoiceFullySettled({ grandTotal: gt, paidAmount: paid, paymentStatus: status })) {
+  if (isInvoiceFullySettled({ grandTotal: gt, paidAmount: paid, returnedAmount: returned, paymentStatus: status })) {
     return { label: 'Paid', colorClass: 'bg-success-bg text-success-fg ring-1 ring-inset ring-success-border' }
   }
   const s = String(status || '').toLowerCase()

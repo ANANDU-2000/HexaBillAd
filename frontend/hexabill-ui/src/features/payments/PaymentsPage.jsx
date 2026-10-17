@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { fixMoney } from '../../utils/productFields'
 import { statusTone } from '../../utils/statusTone'
@@ -316,7 +316,8 @@ const PaymentsPage = () => {
     try {
       const send = intent.kind === 'allocate' ? paymentsAPI.allocatePayment : paymentsAPI.createPayment
       const response = await send(intent.request, intent.idempotencyKey)
-      if (!response?.success) throw new Error(response?.message || 'Payment is unconfirmed. Retry the previous payment.')
+      const paymentBody = response?.data?.payment || response?.data
+      if (response?.success === false || !paymentBody?.id) throw new Error(response?.message || 'Payment is unconfirmed. Retry the previous payment.')
       paymentJournal.complete(intent.scope, intent.idempotencyKey)
       if (prefix !== accountPrefixRef.current) return
       const paymentResult = response?.data?.payment || response?.data

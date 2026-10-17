@@ -66,3 +66,17 @@ export const saveOutcomeIsUncertain = (error) => {
   const status = error?.response?.status
   return !status || status >= 500
 }
+
+/** Do not tell the user a write failed when the server may already have stored it. */
+export const uncertainSaveMessage = (listName) =>
+  `Save status is uncertain. Check the ${listName} list before trying again; the server may have saved it.`
+
+/**
+ * Keep the server's field reason. A correlation id is a support reference, not a replacement message.
+ * Production returned 409 with a phone conflict and X-Correlation-ID, and the toast showed only the ref.
+ */
+export const formatApiErrorForToast = (message, correlationId) => {
+  const text = typeof message === 'string' && message.trim() ? message.trim() : 'Something went wrong'
+  if (!correlationId) return text
+  return `${text} (Ref: ${correlationId})`
+}

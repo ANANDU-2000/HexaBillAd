@@ -38,7 +38,8 @@ function buildInvoiceOptions (outstandingInvoices = [], allInvoices = [], curren
     if (inv?.id == null || map.has(inv.id)) continue
     const grandTotal = Number(inv.grandTotal ?? inv.total) || 0
     const paidAmount = Number(inv.paidAmount) || 0
-    const balanceAmount = grandTotal - paidAmount
+    const returnedAmount = Number(inv.returnedAmount) || 0
+    const balanceAmount = Math.max(0, grandTotal - paidAmount - returnedAmount)
     map.set(inv.id, {
       id: inv.id,
       invoiceNo: inv.invoiceNo || `INV-${inv.id}`,

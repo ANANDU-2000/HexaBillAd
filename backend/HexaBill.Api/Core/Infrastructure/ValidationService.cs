@@ -73,8 +73,10 @@ namespace HexaBill.Api.Core.Infrastructure
                     var actualPaidAmount = await _context.Payments
                         .Where(p => p.SaleId == saleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
                         .SumAsync(p => p.Amount);
-                    
-                    var outstanding = sale.GrandTotal - actualPaidAmount;
+                    var approvedReturns = await _context.SaleReturns
+                        .Where(r => r.SaleId == sale.Id && r.TenantId == tenantId && r.Status == ReturnStatus.Approved)
+                        .SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
+                    var outstanding = Math.Max(0m, sale.GrandTotal - actualPaidAmount - approvedReturns);
 
                     if (outstanding <= 0)
                     {
@@ -115,7 +117,8 @@ namespace HexaBill.Api.Core.Infrastructure
                     // Check if customer has any outstanding invoices
                     var totalOutstanding = await _context.Sales
                         .Where(s => s.TenantId == tenantId && s.CustomerId == customerId.Value && !s.IsDeleted)
-                        .SumAsync(s => s.GrandTotal - s.PaidAmount);
+                        .SumAsync(s => s.GrandTotal - s.PaidAmount -
+                            (_context.SaleReturns.Where(r => r.SaleId == s.Id && r.TenantId == tenantId && r.Status == ReturnStatus.Approved).Sum(r => (decimal?)r.GrandTotal) ?? 0m));
 
                     if (totalOutstanding <= 0)
                     {

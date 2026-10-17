@@ -524,17 +524,25 @@ namespace HexaBill.Api.Modules.Notifications
                 var overdueDays = 30; // Configurable
                 var overdueDate = DateTime.UtcNow.AddDays(-overdueDays);
 
-                var overdueInvoices = await _context.Sales
-                    .Where(s => s.PaymentStatus != SalePaymentStatus.Paid &&
-                               s.CreatedAt < overdueDate &&
-                               (s.GrandTotal - s.PaidAmount) > 0)
+                var overdueRows = await _context.Sales
+                    .Where(s => !s.IsDeleted &&
+                               s.PaymentStatus != SalePaymentStatus.Paid &&
+                               s.CreatedAt < overdueDate)
+                    .Select(s => new
+                    {
+                        s.Id,
+                        s.TenantId,
+                        Balance = s.GrandTotal - s.PaidAmount -
+                            (_context.SaleReturns.Where(r => r.SaleId == s.Id && r.TenantId == s.TenantId && r.Status == ReturnStatus.Approved).Sum(r => (decimal?)r.GrandTotal) ?? 0m)
+                    })
+                    .Where(s => s.Balance > 0.05m)
                     .ToListAsync();
 
-                foreach (var g in overdueInvoices.GroupBy(s => s.TenantId ?? 0))
+                foreach (var g in overdueRows.GroupBy(s => s.TenantId ?? 0))
                 {
                     var tenantId = g.Key;
                     var list = g.ToList();
-                    var totalOverdue = list.Sum(s => s.GrandTotal - s.PaidAmount);
+                    var totalOverdue = list.Sum(s => s.Balance);
                     var lastOverdueAlert = await _context.Alerts
                         .Where(a => a.Type == AlertType.OverdueInvoice.ToString() && !a.IsResolved && (a.TenantId ?? 0) == tenantId)
                         .OrderByDescending(a => a.CreatedAt)

@@ -2090,7 +2090,7 @@ namespace HexaBill.Api.Migrations
 
                     b.HasIndex("PurchaseId");
 
-                    b.HasIndex("ReturnNo")
+                    b.HasIndex("TenantId", "ReturnNo")
                         .IsUnique();
 
                     b.ToTable("PurchaseReturns");

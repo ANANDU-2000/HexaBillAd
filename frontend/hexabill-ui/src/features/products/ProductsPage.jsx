@@ -16,7 +16,7 @@ import { isAdminOrOwner } from '../../utils/roles'
 import { downloadOrShareBarcodePdf } from '../../utils/barcodePdf'
 import toast from 'react-hot-toast'
 import { readProductsStateFromParams, syncProductsSearchParams } from '../../utils/productsUrl'
-import { saveOutcomeIsUncertain } from '../../utils/apiError'
+import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 
 const ProductsPage = () => {
@@ -274,12 +274,28 @@ const ProductsPage = () => {
     }
 
     let payloadSku = ''
+    const finishSavedProduct = (saved, { uploaded = false } = {}) => {
+      setShowForm(false)
+      setActiveTab('all')
+      setSearchTerm(saved?.sku || saved?.nameEn || payloadSku)
+      setCurrentPage(1)
+      window.dispatchEvent(new CustomEvent('dataUpdated'))
+      if (uploaded) offerCreateSuccessWithPrint(saved)
+      else toast.success('This product is saved. It is in the product list.')
+      loadProducts()
+    }
+    const findSavedBySku = async () => {
+      if (!payloadSku) return null
+      const found = await productsAPI.getProducts({ search: payloadSku, pageSize: 20 })
+      const items = found?.data?.items ?? found?.items ?? []
+      return items.find(p => String(p.sku || '').toLowerCase() === String(payloadSku).toLowerCase()) || null
+    }
     try {
       setSaving(true)
       const payload = { ...productData, expiryDate: productData.expiryDate?.trim() || null }
       payloadSku = payload.sku
       const response = await productsAPI.createProduct(payload)
-      if (response?.success) {
+      if (response?.success !== false && response?.data?.id) {
         // Upload image if provided (for new products, upload after creation)
         if (imageFile && response.data?.id) {
           try {
@@ -292,31 +308,24 @@ const ProductsPage = () => {
             toast.error('Product created, but image upload failed')
           }
         }
-        offerCreateSuccessWithPrint(response.data)
-        window.dispatchEvent(new CustomEvent('dataUpdated'))
-        setShowForm(false)
-        setActiveTab('all')
-        setSearchTerm(response.data?.sku || response.data?.nameEn || '')
-        setCurrentPage(1)
+        finishSavedProduct(response.data, { uploaded: true })
       } else {
-        toast.error(response?.message || 'Failed to create product')
+        const saved = await findSavedBySku().catch(() => null)
+        if (saved?.id) finishSavedProduct(saved)
+        else toast.error(response?.message || 'Failed to create product')
       }
     } catch (error) {
       console.error('Error creating product:', error)
       // A matching SKU may predate this request. Without a request identifier,
       // reconciliation can guide review but cannot prove this create committed.
       if (saveOutcomeIsUncertain(error)) {
-        let existingSkuFound = false
-        try {
-          const found = await productsAPI.getProducts({ search: payloadSku, pageSize: 20 })
-          const items = found?.data?.items ?? found?.items ?? []
-          const saved = items.find(p => String(p.sku || '').toLowerCase() === String(payloadSku || '').toLowerCase())
-          existingSkuFound = Boolean(saved)
-        } catch (_) { /* The outcome remains uncertain when the read also fails. */ }
-        toast.error(existingSkuFound
-          ? 'Save status is uncertain. A product with this SKU exists. Check that product before trying again.'
-          : 'Save status is uncertain. Check the product list before trying again; the server may have saved it.',
-        { duration: 10000 })
+        let saved = null
+        try { saved = await findSavedBySku() } catch (_) { /* The outcome remains uncertain when the read also fails. */ }
+        if (saved?.id) {
+          finishSavedProduct(saved)
+          return
+        }
+        toast.error(uncertainSaveMessage('product'), { duration: 10000 })
         return
       }
       if (!error?._handledByInterceptor) {

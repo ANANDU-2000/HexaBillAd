@@ -132,7 +132,9 @@ namespace HexaBill.Api.Modules.Payments
                         snapshot.Response.Invoice = currentSale == null ? null : new InvoiceSummaryDto
                         {
                             Id = currentSale.Id, InvoiceNo = currentSale.InvoiceNo, TotalAmount = currentSale.GrandTotal,
-                            PaidAmount = currentSale.PaidAmount, OutstandingAmount = currentSale.GrandTotal - currentSale.PaidAmount, Status = currentSale.PaymentStatus.ToString()
+                            PaidAmount = currentSale.PaidAmount,
+                            OutstandingAmount = InvoiceReceivables.Outstanding(currentSale.GrandTotal, currentSale.PaidAmount, await ApprovedReturnsForSaleAsync(currentSale.Id, tenantId)),
+                            Status = currentSale.PaymentStatus.ToString()
                         };
                     if (snapshot.Response.Customer != null)
                         snapshot.Response.Customer = currentCustomer == null ? null : new CustomerSummaryDto
@@ -157,7 +159,9 @@ namespace HexaBill.Api.Modules.Payments
                 Invoice = sale == null ? null : new InvoiceSummaryDto
                 {
                     Id = sale.Id, InvoiceNo = sale.InvoiceNo, TotalAmount = sale.GrandTotal,
-                    PaidAmount = sale.PaidAmount, OutstandingAmount = sale.GrandTotal - sale.PaidAmount, Status = sale.PaymentStatus.ToString()
+                    PaidAmount = sale.PaidAmount,
+                    OutstandingAmount = InvoiceReceivables.Outstanding(sale.GrandTotal, sale.PaidAmount, await ApprovedReturnsForSaleAsync(sale.Id, tenantId)),
+                    Status = sale.PaymentStatus.ToString()
                 },
                 Customer = customer == null ? null : new CustomerSummaryDto { Id = customer.Id, Name = customer.Name, Balance = customer.Balance }
             };
@@ -404,10 +408,13 @@ namespace HexaBill.Api.Modules.Payments
                         var actualPaidAmount = await _context.Payments
                             .Where(p => p.SaleId == request.SaleId.Value && p.TenantId == tenantId && p.Status != PaymentStatus.VOID)
                             .SumAsync(p => p.Amount);
-                        var realOutstanding = invoiceSale.GrandTotal - actualPaidAmount;
+                        var approvedReturns = await ApprovedReturnsForSaleAsync(invoiceSale.Id, tenantId);
+                        var realOutstanding = InvoiceReceivables.Outstanding(invoiceSale.GrandTotal, actualPaidAmount, approvedReturns);
 
                         if (realOutstanding <= 0)
-                            throw new ArgumentException($"Invoice {invoiceSale.InvoiceNo} is already fully paid. Total: {invoiceSale.GrandTotal:F2} AED, Paid: {actualPaidAmount:F2} AED. No more payments allowed.");
+                            throw new ArgumentException(approvedReturns > 0
+                                ? $"Invoice {invoiceSale.InvoiceNo} has no balance left after approved returns ({approvedReturns:F2} AED). Paid: {actualPaidAmount:F2} AED."
+                                : $"Invoice {invoiceSale.InvoiceNo} is already fully paid. Total: {invoiceSale.GrandTotal:F2} AED, Paid: {actualPaidAmount:F2} AED. No more payments allowed.");
 
                         var totalIncoming = request.Amount + adjustmentAmount;
                         if (totalIncoming > realOutstanding + 0.01m)
@@ -544,7 +551,7 @@ namespace HexaBill.Api.Modules.Payments
                             InvoiceNo = invoiceSale.InvoiceNo,
                             TotalAmount = invoiceSale.GrandTotal,
                             PaidAmount = invoiceSale.PaidAmount,
-                            OutstandingAmount = invoiceSale.GrandTotal - invoiceSale.PaidAmount,
+                            OutstandingAmount = InvoiceReceivables.Outstanding(invoiceSale.GrandTotal, invoiceSale.PaidAmount, await ApprovedReturnsForSaleAsync(invoiceSale.Id, tenantId)),
                             Status = invoiceSale.PaymentStatus.ToString()
                         } : null,
                         Customer = updatedCustomer != null ? new CustomerSummaryDto
@@ -984,9 +991,23 @@ namespace HexaBill.Api.Modules.Payments
 
         public async Task<List<Models.OutstandingInvoiceDto>> GetOutstandingInvoicesAsync(int customerId, int tenantId)
         {
-            var sales = await _context.Sales
+            var approved = InvoiceReceivables.ApprovedReturns(_context, tenantId);
+            var rows = await _context.Sales
                 .Where(s => s.CustomerId == customerId && s.TenantId == tenantId && !s.IsDeleted)
                 .Where(s => s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.InvoiceNo,
+                    s.InvoiceDate,
+                    s.GrandTotal,
+                    s.PaidAmount,
+                    s.PaymentStatus,
+                    Returned = approved.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m
+                })
+                .ToListAsync();
+
+            return rows
                 .Select(s => new Models.OutstandingInvoiceDto
                 {
                     Id = s.Id,
@@ -994,14 +1015,13 @@ namespace HexaBill.Api.Modules.Payments
                     InvoiceDate = s.InvoiceDate,
                     GrandTotal = s.GrandTotal,
                     PaidAmount = s.PaidAmount,
-                    BalanceAmount = s.GrandTotal - s.PaidAmount,
+                    BalanceAmount = InvoiceReceivables.Outstanding(s.GrandTotal, s.PaidAmount, s.Returned),
                     PaymentStatus = s.PaymentStatus.ToString(),
                     DaysOverdue = (int)(DateTime.UtcNow - s.InvoiceDate).TotalDays
                 })
+                .Where(s => s.BalanceAmount > SalePaymentHelpers.SettlementToleranceAed)
                 .OrderBy(s => s.InvoiceDate)
-                .ToListAsync();
-
-            return sales;
+                .ToList();
         }
 
         public async Task<InvoiceAmountDto> GetInvoiceAmountAsync(int invoiceId, int tenantId)
@@ -1013,16 +1033,22 @@ namespace HexaBill.Api.Modules.Payments
             if (sale == null)
                 throw new ArgumentException("Invoice not found");
 
+            var returned = await ApprovedReturnsForSaleAsync(sale.Id, tenantId);
             return new InvoiceAmountDto
             {
                 Id = sale.Id,
                 InvoiceNo = sale.InvoiceNo,
                 TotalAmount = sale.GrandTotal,
                 PaidAmount = sale.PaidAmount,
-                OutstandingAmount = sale.GrandTotal - sale.PaidAmount,
+                OutstandingAmount = InvoiceReceivables.Outstanding(sale.GrandTotal, sale.PaidAmount, returned),
                 Status = sale.PaymentStatus.ToString()
             };
         }
+
+        private async Task<decimal> ApprovedReturnsForSaleAsync(int saleId, int tenantId) =>
+            await InvoiceReceivables.ApprovedReturns(_context, tenantId)
+                .Where(r => r.SaleId == saleId)
+                .SumAsync(r => (decimal?)r.GrandTotal) ?? 0m;
 
         public async Task<CreatePaymentResponse> AllocatePaymentAsync(AllocatePaymentRequest request, int userId, int tenantId, string? idempotencyKey = null)
         {

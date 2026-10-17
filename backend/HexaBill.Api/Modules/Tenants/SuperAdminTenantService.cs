@@ -1707,7 +1707,8 @@ namespace HexaBill.Api.Modules.Tenants
 
             var outstanding = await _context.Sales
                 .Where(s => s.TenantId == tenantId && !s.IsDeleted && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial))
-                .SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0;
+                .SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount -
+                    (_context.SaleReturns.Where(r => r.SaleId == s.Id && r.TenantId == tenantId && r.Status == ReturnStatus.Approved).Sum(r => (decimal?)r.GrandTotal) ?? 0m))) ?? 0;
             if (metrics.TotalRevenue > 0 && outstanding > 0)
             {
                 var pct = (double)(outstanding / metrics.TotalRevenue * 100);

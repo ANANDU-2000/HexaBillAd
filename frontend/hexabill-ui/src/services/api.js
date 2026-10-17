@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { connectionManager } from './connectionManager'
 import { showMaintenanceOverlay } from '../components/MaintenanceOverlay'
 import { classifyServiceError, isAutoRetryable, shouldBlockWhileDisconnected } from './serviceErrors.js'
+import { formatApiErrorForToast } from '../utils/apiError.js'
 import { setSubscriptionGraceFromResponse } from '../components/SubscriptionGraceBanner'
 import { createRequestSession } from './requestSession.js'
 
@@ -1085,16 +1086,14 @@ api.interceptors.response.use(
       connectionManager.markConnected()
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
       const baseMessage = error.response.data.message
-      const errorMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : baseMessage
-      reportError(errorMsg)
+      reportError(formatApiErrorForToast(baseMessage, correlationId))
       error._handledByInterceptor = true
     } else if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
       // Server is responding with errors array
       connectionManager.markConnected()
       const correlationId = error.response?.data?.correlationId || error.response?.headers?.['x-correlation-id']
       const errorMsg = error.response.data.errors.join(', ')
-      const finalMsg = correlationId ? `Something went wrong. Ref: ${correlationId}` : errorMsg
-      reportError(finalMsg)
+      reportError(formatApiErrorForToast(errorMsg, correlationId))
       error._handledByInterceptor = true
     } else if (error.response?.data !== undefined && error.response?.data !== null) {
       // Server responded with a body but no message/errors (e.g. ProblemDetails shape, empty object)

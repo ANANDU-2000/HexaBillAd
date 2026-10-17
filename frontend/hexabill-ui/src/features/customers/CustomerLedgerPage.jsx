@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { loadAllCustomerPages } from '../../utils/loadAllPages'
 import { statusTone } from '../../utils/statusTone'
 import { useForm } from 'react-hook-form'
@@ -30,7 +30,7 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
-import { readApiErrorReason, saveOutcomeIsUncertain } from '../../utils/apiError'
+import { readApiErrorReason, saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
 import { useBranding } from '../../tenant/TenantBrandingContext'
 import { formatCurrency, formatBalance, roundMoney } from '../../utils/currency'
 import { createLedgerPaymentJournal, ledgerPaymentForm, ledgerPaymentScope } from '../../utils/ledgerPaymentIntent'
@@ -1470,10 +1470,14 @@ const CustomerLedgerPage = () => {
     }
     try {
       const response = await customersAPI.createCustomer(customerData)
-      if (response?.success) {
+      if (response?.success !== false && response?.data?.id) {
         await finishSaved(response.data)
       } else {
-        toast.error(response?.message || 'Customer was not saved. Please check the details and try again.', { id: 'customer-add-error' })
+        const created = idsBefore
+          ? (await findCustomersByName(customerData.name).catch(() => [])).find(c => !idsBefore.has(c.id))
+          : null
+        if (created) await finishSaved(created)
+        else toast.error(response?.message || 'Customer was not saved. Please check the details and try again.', { id: 'customer-add-error' })
       }
     } catch (error) {
       // The server may have saved the customer even though the answer was lost or failed (timeout, gateway error).
@@ -1487,7 +1491,7 @@ const CustomerLedgerPage = () => {
         } catch (_) { /* fall through to the error message */ }
       }
       const reason = readApiErrorReason(error, saveOutcomeIsUncertain(error)
-        ? 'The server did not answer. Nothing was saved. Please try again.'
+        ? uncertainSaveMessage('customer')
         : 'Customer was not saved. Please check the details and try again.')
       toast.error(reason, { id: 'customer-add-error' })
     } finally {
@@ -4205,7 +4209,8 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
                   // Use the actual paidAmount from backend, or calculate from grandTotal
                   const paidAmount = invoice.paidAmount ?? 0
                   const grandTotal = invoice.grandTotal || invoice.total || 0
-                  const balance = grandTotal - paidAmount
+                  const returnedAmount = Number(invoice.returnedAmount) || 0
+                  const balance = Math.max(0, grandTotal - paidAmount - returnedAmount)
                   // Use paymentStatus from backend if available, otherwise calculate
                   const invoiceStatus = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
 
@@ -4347,7 +4352,8 @@ const InvoicesTab = ({ invoices, outstandingInvoices, user, onViewInvoice, onVie
             // CRITICAL: Initialize all variables at top to prevent TDZ errors
             const paidAmount = invoice.paidAmount ?? 0
             const grandTotal = invoice.grandTotal || invoice.total || 0
-            const balance = grandTotal - paidAmount
+            const returnedAmount = Number(invoice.returnedAmount) || 0
+            const balance = Math.max(0, grandTotal - paidAmount - returnedAmount)
             const invoiceStatus = invoice.paymentStatus || (balance === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Pending')
             return (
               <div key={invoice.id} className="bg-white rounded-lg border border-neutral-200 p-4 shadow-sm">
@@ -4860,7 +4866,8 @@ const PaymentEntryModal = ({
       if (!invoiceMap.has(inv.id)) {
         const paidAmount = inv.paidAmount || 0
         const grandTotal = inv.grandTotal || inv.total || 0
-        const balanceAmount = grandTotal - paidAmount
+        const returnedAmount = Number(inv.returnedAmount) || 0
+        const balanceAmount = Math.max(0, grandTotal - paidAmount - returnedAmount)
 
         invoiceMap.set(inv.id, {
           id: inv.id,

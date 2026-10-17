@@ -418,7 +418,8 @@ namespace HexaBill.Api.Modules.Reports
                     pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                     
                     var paidBillsQuery = baseSalesQuery
-                        .Where(s => (s.GrandTotal - s.PaidAmount) <= tol);
+                        .Where(s => (s.GrandTotal - s.PaidAmount -
+                            (approvedReturnsForReceivables.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) <= tol);
                     
                     paidBillsCount = await paidBillsQuery.CountAsync(); // Count in database
                     paidBillsAmount = await paidBillsQuery.SumAsync(s => (decimal?)s.GrandTotal) ?? 0m; // Sum in database
@@ -1113,17 +1114,18 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var statusUpper = status.ToUpper();
                 var tol2 = SalePaymentHelpers.SettlementToleranceAed;
+                var approvedReturns = InvoiceReceivables.ApprovedReturns(_context, tenantId);
                 if (statusUpper == "PENDING" || statusUpper == "UNPAID")
                 {
-                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) > tol2);
+                    query = query.Where(s => (s.GrandTotal - s.PaidAmount - (approvedReturns.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) > tol2);
                 }
                 else if (statusUpper == "PAID")
                 {
-                    query = query.Where(s => (s.GrandTotal - s.PaidAmount) <= tol2);
+                    query = query.Where(s => (s.GrandTotal - s.PaidAmount - (approvedReturns.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) <= tol2);
                 }
                 else if (statusUpper == "PARTIAL")
                 {
-                    query = query.Where(s => s.PaidAmount > 0 && (s.GrandTotal - s.PaidAmount) > tol2);
+                    query = query.Where(s => s.PaidAmount > 0 && (s.GrandTotal - s.PaidAmount - (approvedReturns.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) > tol2);
                 }
             }
             
@@ -1201,6 +1203,7 @@ namespace HexaBill.Api.Modules.Reports
             }
             
             _logger.LogDebug("Sales Report: {Total} total sales, returning {Count} for page {Page}", totalCount, sales.Count, page);
+            await AttachApprovedReturnAmountsAsync(sales, tenantId);
 
             return new PagedResponse<SaleDto>
             {
@@ -1210,6 +1213,20 @@ namespace HexaBill.Api.Modules.Reports
                 PageSize = pageSize,
                 TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
             };
+        }
+
+        private async Task AttachApprovedReturnAmountsAsync(List<SaleDto> sales, int tenantId)
+        {
+            if (sales.Count == 0) return;
+            var ids = sales.Select(s => s.Id).ToList();
+            var returned = await InvoiceReceivables.ApprovedReturns(_context, tenantId)
+                .Where(r => ids.Contains(r.SaleId))
+                .GroupBy(r => r.SaleId)
+                .Select(g => new { SaleId = g.Key, Total = g.Sum(r => r.GrandTotal) })
+                .ToListAsync();
+            var bySale = returned.ToDictionary(x => x.SaleId, x => x.Total);
+            foreach (var sale in sales)
+                sale.ReturnedAmount = bySale.GetValueOrDefault(sale.Id);
         }
 
         public async Task<List<ProductSalesDto>> GetProductSalesReportAsync(int tenantId, DateTime fromDate, DateTime toDate, int top = 20)
@@ -1318,7 +1335,8 @@ namespace HexaBill.Api.Modules.Reports
                             && s.CustomerId == c.Id
                             && s.PaymentStatus != SalePaymentStatus.Paid
                             && s.InvoiceDate <= overdueCutoff
-                            && (s.GrandTotal - s.PaidAmount) > tol));
+                            && (s.GrandTotal - s.PaidAmount -
+                                (_context.SaleReturns.Where(r => r.SaleId == s.Id && r.TenantId == tenantId && r.Status == ReturnStatus.Approved).Sum(r => (decimal?)r.GrandTotal) ?? 0m)) > tol));
                 
                 var totalCount = await query.CountAsync();
                 

@@ -468,7 +468,8 @@ const ReportsPage = () => {
             salesData = salesData.map(sale => {
               const paidAmount = sale.paidAmount || 0
               const grandTotal = sale.grandTotal || 0
-              const balance = grandTotal - paidAmount
+              const returnedAmount = Number(sale.returnedAmount) || 0
+              const balance = Math.max(0, grandTotal - paidAmount - returnedAmount)
 
               // Determine status based on balance
               let status = 'Pending'
