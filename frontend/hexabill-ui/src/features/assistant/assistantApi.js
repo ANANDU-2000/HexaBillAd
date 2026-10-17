@@ -15,6 +15,8 @@ const wrap = async (call) => {
 export const assistantApi = {
   runTool: (name, args) => wrap(() => api.post(`/assistant/tools/${name}`, args)),
   createCustomerDraft: (body) => wrap(() => api.post('/assistant/drafts/customer', body)),
+  createExpenseDraft: (body) => wrap(() => api.post('/assistant/drafts/expense', body)),
+  listExpenseCategories: () => wrap(() => api.get('/expenses/categories')),
   confirmDraft: (id, payloadHash, idempotencyKey) =>
     wrap(() => api.post(`/assistant/drafts/${id}/confirm`, { payloadHash, idempotencyKey })),
   cancelDraft: (id) => wrap(() => api.post(`/assistant/drafts/${id}/cancel`)),

@@ -36,7 +36,8 @@ public class AssistantController : TenantScopedController
         if (tenantId <= 0 || IsSystemAdmin) return false;
         var userClaim = User.FindFirst("UserId") ?? User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier) ?? User.FindFirst("id");
         if (userClaim == null || !int.TryParse(userClaim.Value, out var userId)) return false;
-        caller = new AssistantCaller(tenantId, userId, User.IsInRole("Owner") || User.IsInRole("Admin"));
+        caller = new AssistantCaller(tenantId, userId, User.IsInRole("Owner") || User.IsInRole("Admin"), IsStaff,
+            User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? string.Empty);
         return true;
     }
 
@@ -111,6 +112,12 @@ public class AssistantController : TenantScopedController
         RunDraft(async c => await _drafts.CreateCustomerDraftAsync(c.TenantId, c.UserId, request ?? new CustomerDraftRequest(), ct),
             data => data is DraftView { Status: "Invalid" } ? 200 : 201);
 
+    /// <summary>Propose a plain expense (no VAT options). Nothing is created; the same checks as the normal screen run on confirm.</summary>
+    [HttpPost("drafts/expense")]
+    public Task<IActionResult> CreateExpenseDraft([FromBody] ExpenseDraftRequest request, CancellationToken ct) =>
+        RunDraft(async c => await _drafts.CreateExpenseDraftAsync(c.TenantId, c.UserId, request ?? new ExpenseDraftRequest(), ct),
+            data => data is DraftView { Status: "Invalid" } ? 200 : 201);
+
     [HttpGet("drafts/{id:guid}")]
     public Task<IActionResult> GetDraft(Guid id, CancellationToken ct) =>
         RunDraft(async c => await _drafts.GetAsync(c.TenantId, c.UserId, id, ct));
@@ -122,5 +129,5 @@ public class AssistantController : TenantScopedController
     /// <summary>Execute a reviewed draft. Needs the hash the person saw and an idempotency key; the same key returns the first result.</summary>
     [HttpPost("drafts/{id:guid}/confirm")]
     public Task<IActionResult> ConfirmDraft(Guid id, [FromBody] ConfirmDraftRequest request, CancellationToken ct) =>
-        RunDraft(async c => await _drafts.ConfirmAsync(c.TenantId, c.UserId, id, request?.PayloadHash ?? string.Empty, request?.IdempotencyKey ?? string.Empty, ct));
+        RunDraft(async c => await _drafts.ConfirmAsync(c.TenantId, c.UserId, id, request?.PayloadHash ?? string.Empty, request?.IdempotencyKey ?? string.Empty, ct, c.IsStaff, c.Role));
 }

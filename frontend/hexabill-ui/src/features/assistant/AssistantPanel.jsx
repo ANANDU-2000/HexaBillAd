@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { X, Maximize2, Minimize2, Search, UserPlus } from 'lucide-react'
+import { X, Maximize2, Minimize2, Search, UserPlus, Receipt } from 'lucide-react'
 import { assistantApi } from './assistantApi'
 import {
-  canConfirm, describeConfirmFailure, emptyCustomerForm, fieldErrorMap, newIdempotencyKey, toDraftRequest,
+  canConfirm, describeConfirmFailure, emptyCustomerForm, emptyExpenseForm, fieldErrorMap, newIdempotencyKey, toDraftRequest, toExpenseDraftRequest,
 } from './assistantDraft'
 
 const inputClass = 'block w-full min-h-11 rounded-md border border-neutral-300 bg-white px-3 text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/30'
@@ -186,6 +186,121 @@ function NewCustomerTab () {
   )
 }
 
+
+function NewExpenseTab () {
+  const [form, setForm] = useState(emptyExpenseForm())
+  const [categories, setCategories] = useState([])
+  const [categoriesState, setCategoriesState] = useState('loading')
+  const [draft, setDraft] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState(null)
+  const [created, setCreated] = useState(null)
+  const keyRef = useRef(null)
+  const draftRef = useRef(null)
+  draftRef.current = draft
+
+  const releaseDraft = (d) => { if (d && d.status === 'Draft' && d.id) assistantApi.cancelDraft(d.id) }
+  useEffect(() => () => releaseDraft(draftRef.current), [])
+
+  useEffect(() => {
+    let cancelled = false
+    assistantApi.listExpenseCategories().then((res) => {
+      if (cancelled) return
+      if (res.ok && Array.isArray(res.data)) { setCategories(res.data); setCategoriesState('ready') } else setCategoriesState('error')
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const set = (name) => (e) => { releaseDraft(draftRef.current); setForm((f) => ({ ...f, [name]: e.target.value })); setDraft(null); setFailure(null) }
+  const errors = fieldErrorMap(draft?.errors)
+
+  const review = async (e) => {
+    e.preventDefault()
+    releaseDraft(draftRef.current)
+    setBusy(true); setFailure(null); setCreated(null)
+    const res = await assistantApi.createExpenseDraft(toExpenseDraftRequest(form))
+    setBusy(false)
+    if (!res.ok) { setFailure({ text: res.message || 'The draft could not be prepared.' }); return }
+    keyRef.current = newIdempotencyKey()
+    setDraft(res.data)
+  }
+
+  const confirm = async () => {
+    if (!canConfirm(draft) || busy) return
+    setBusy(true); setFailure(null)
+    const res = await assistantApi.confirmDraft(draft.id, draft.payloadHash, keyRef.current)
+    setBusy(false)
+    if (res.ok) { setCreated(res.data?.result || {}); setDraft(null); setForm(emptyExpenseForm()); return }
+    setFailure(describeConfirmFailure(res.status, res.message, 'Expenses', 'expense'))
+    if (res.status === 409 || res.status === 410 || res.status === 404) setDraft(null)
+  }
+
+  const startOver = () => { releaseDraft(draftRef.current); setDraft(null); setFailure(null) }
+
+  return (
+    <div className="space-y-4">
+      {created && (
+        <div role="status" className="rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+          Expense recorded: <strong>{Number(created.amount).toFixed(2)}</strong>{created.status === 'Pending' ? ' (waiting for approval)' : ''}.{' '}
+          <Link className="underline" to="/expenses">Open Expenses</Link>
+        </div>
+      )}
+      {categoriesState === 'error' && <p role="alert" className="text-sm text-error">Expense categories could not be loaded. Use the Expenses screen.</p>}
+      <form onSubmit={review} className="space-y-3" noValidate>
+        <Field id="assistant-exp-category" label="Category *" error={errors.categoryId}>
+          <select id="assistant-exp-category" className={inputClass} value={form.categoryId} onChange={set('categoryId')} aria-invalid={Boolean(errors.categoryId)}>
+            <option value="">Choose a category</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field id="assistant-exp-amount" label="Amount *" error={errors.amount}>
+            <input id="assistant-exp-amount" className={inputClass} inputMode="decimal" value={form.amount} onChange={set('amount')} aria-invalid={Boolean(errors.amount)} />
+          </Field>
+          <Field id="assistant-exp-date" label="Date *" error={errors.date}>
+            <input id="assistant-exp-date" type="date" className={inputClass} value={form.date} onChange={set('date')} aria-invalid={Boolean(errors.date)} />
+          </Field>
+        </div>
+        <Field id="assistant-exp-note" label="Note" error={errors.note}>
+          <input id="assistant-exp-note" className={inputClass} value={form.note} onChange={set('note')} />
+        </Field>
+        <button type="submit" disabled={busy || categoriesState === 'loading'} className="btn btn-secondary min-h-11 w-full">
+          <Receipt className="h-4 w-4" aria-hidden /> {busy && !draft ? 'Checking…' : 'Review'}
+        </button>
+      </form>
+
+      {draft && (
+        <section aria-label="Review before recording" className="space-y-3 rounded-md border border-neutral-300 bg-neutral-50 p-3">
+          <h3 className="text-sm font-semibold text-neutral-900">Review before recording</h3>
+          <dl className="grid grid-cols-[auto,1fr] gap-x-3 gap-y-1 text-sm">
+            <dt className="text-neutral-500">Category</dt><dd className="break-words">{draft.fields.categoryName || '—'}</dd>
+            <dt className="text-neutral-500">Amount</dt><dd>{Number(draft.fields.amount).toFixed(2)}</dd>
+            <dt className="text-neutral-500">Date</dt><dd>{draft.fields.date || '—'}</dd>
+            <dt className="text-neutral-500">Note</dt><dd className="break-words">{draft.fields.note || '—'}</dd>
+          </dl>
+          {draft.warnings?.map((w) => <p key={w} className="text-xs text-amber-800">{w}</p>)}
+          {draft.errors?.length > 0
+            ? <p role="alert" className="text-sm text-error">Fix the highlighted fields, then review again.</p>
+            : <p className="text-xs text-neutral-600">Nothing is saved until you confirm. This draft expires in 15 minutes.</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={confirm} disabled={!canConfirm(draft) || busy} className="btn btn-primary min-h-11 flex-1">
+              {busy ? 'Recording…' : 'Confirm and record'}
+            </button>
+            <button type="button" onClick={startOver} disabled={busy} className="btn btn-secondary min-h-11">Edit</button>
+          </div>
+        </section>
+      )}
+
+      {failure && (
+        <div role="alert" className="rounded-md border border-error-border bg-error-bg p-3 text-sm text-error-fg">
+          <p>{failure.text}</p>
+          {failure.uncertain && <Link to="/expenses" className="mt-1 inline-block underline">Open Expenses</Link>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * Right-side assistant panel (full-screen on phones, optionally full-screen on larger screens).
  * No model is involved: it runs read-only lookups and a draft, review, confirm flow, all enforced by the server.
@@ -226,10 +341,11 @@ export default function AssistantPanel ({ open, onClose }) {
       <div role="tablist" className="flex border-b border-neutral-200">
         <button role="tab" aria-selected={tab === 'find'} type="button" className={tabClass('find')} onClick={() => setTab('find')}>Look up</button>
         <button role="tab" aria-selected={tab === 'customer'} type="button" className={tabClass('customer')} onClick={() => setTab('customer')}>New customer</button>
+        <button role="tab" aria-selected={tab === 'expense'} type="button" className={tabClass('expense')} onClick={() => setTab('expense')}>New expense</button>
       </div>
       <div className={`flex-1 overflow-y-auto p-4 ${expanded ? 'md:mx-auto md:w-full md:max-w-2xl' : ''}`}>
         <p className="mb-3 text-xs text-neutral-500">Lookups only read your records. Anything that creates data is shown to you first and needs your confirmation.</p>
-        {tab === 'find' ? <FindTab /> : <NewCustomerTab />}
+        {tab === 'find' ? <FindTab /> : tab === 'customer' ? <NewCustomerTab /> : <NewExpenseTab />}
       </div>
     </aside>
   )

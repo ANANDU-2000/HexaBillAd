@@ -36,14 +36,29 @@ export const newIdempotencyKey = (cryptoObj = globalThis.crypto) => {
  * `retry` is true only when the server refused before doing anything, so asking again is safe.
  * A 5xx or a lost response may have saved the customer, so it is never offered as a blind retry.
  */
-export const describeConfirmFailure = (status, message) => {
+export const describeConfirmFailure = (status, message, listName = 'Customers', itemName = 'customer') => {
   const text = message || 'Could not confirm.'
   if (status === 410) return { text, retry: false, startOver: true }
   if (status === 409) return { text, retry: false, startOver: true }
   if (status === 400) return { text, retry: false, startOver: false }
   if (status === 404) return { text: 'This draft is no longer available. Review it again.', retry: false, startOver: true }
-  return { text: 'The result is not certain. Check the Customers list before creating this customer again.', retry: false, startOver: true, uncertain: true }
+  return { text: `The result is not certain. Check the ${listName} list before creating this ${itemName} again.`, retry: false, startOver: true, uncertain: true }
 }
+
+export const emptyExpenseForm = (today = new Date()) => ({
+  categoryId: '',
+  amount: '',
+  date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`,
+  note: '',
+})
+
+/** Expense form -> request body. Amount stays a number or 0 so the server can say what is wrong with it. */
+export const toExpenseDraftRequest = (form) => ({
+  categoryId: form.categoryId === '' ? 0 : Number(form.categoryId),
+  amount: form.amount === '' || form.amount == null ? 0 : Number(form.amount),
+  date: form.date,
+  note: form.note,
+})
 
 export const emptyCustomerForm = () => ({ name: '', phone: '', email: '', trn: '', address: '', creditLimit: '', paymentTerms: '', customerType: 'Credit' })
 

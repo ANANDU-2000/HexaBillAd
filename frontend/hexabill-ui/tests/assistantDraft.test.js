@@ -62,3 +62,18 @@ test('draft request keeps text as typed and turns an empty credit limit into 0',
   assert.equal(body.creditLimit, 0)
   assert.equal(toDraftRequest({ ...form, creditLimit: '250.5' }).creditLimit, 250.5)
 })
+
+test('uncertain wording names the right list for expenses', () => {
+  const r = describeConfirmFailure(500, 'boom', 'Expenses', 'expense')
+  assert.match(r.text, /Expenses list/)
+  assert.match(r.text, /this expense again/)
+  assert.match(describeConfirmFailure(500, 'boom').text, /Customers list/)
+})
+
+test('expense form defaults to today and maps empty fields to values the server can reject', async () => {
+  const { emptyExpenseForm, toExpenseDraftRequest } = await import('../src/features/assistant/assistantDraft.js')
+  const form = emptyExpenseForm(new Date(2026, 9, 5))
+  assert.equal(form.date, '2026-10-05')
+  assert.deepEqual(toExpenseDraftRequest(form), { categoryId: 0, amount: 0, date: '2026-10-05', note: '' })
+  assert.deepEqual(toExpenseDraftRequest({ categoryId: '3', amount: '12.345', date: '2026-10-05', note: 'fuel' }), { categoryId: 3, amount: 12.345, date: '2026-10-05', note: 'fuel' })
+})

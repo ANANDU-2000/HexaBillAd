@@ -6,7 +6,7 @@ using HexaBill.Api.Modules.Products;
 namespace HexaBill.Api.Modules.Assistant;
 
 /// <summary>Who is asking. Always derived from the authenticated token on the server, never from the request body.</summary>
-public sealed record AssistantCaller(int TenantId, int UserId, bool IsOwnerOrAdmin);
+public sealed record AssistantCaller(int TenantId, int UserId, bool IsOwnerOrAdmin, bool IsStaff = false, string Role = "");
 
 /// <summary>A record the answer was read from, so a person can check it.</summary>
 public sealed record AssistantSource(string Type, string Id, string Label, DateTime AsOf);

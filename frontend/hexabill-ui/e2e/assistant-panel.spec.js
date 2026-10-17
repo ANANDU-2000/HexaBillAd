@@ -20,6 +20,22 @@ async function customersNamed (name) {
   return items.filter((c) => c.name === name)
 }
 
+
+async function ensureExpenseCategory () {
+  const list = await api('/api/expenses/categories')
+  const first = (list.json.data ?? [])[0]
+  if (first) return first
+  const made = await api('/api/expenses/categories', { method: 'POST', body: JSON.stringify({ name: `Panel Test Category ${Date.now()}` }) })
+  expect(made.status, JSON.stringify(made.json)).toBeLessThan(300)
+  return made.json.data
+}
+
+async function expensesWithNote (note) {
+  const r = await api('/api/expenses?page=1&pageSize=100')
+  const items = r.json.data?.items ?? []
+  return items.filter((e) => e.note === note)
+}
+
 const openPanel = async (page) => {
   await page.getByRole('button', { name: 'Open assistant' }).filter({ visible: true }).first().click()
   const dialog = page.getByRole('dialog', { name: 'Assistant' })
@@ -117,6 +133,55 @@ test.describe('flag on', () => {
     expect(await customersNamed(name)).toHaveLength(0) // the request was intercepted, so nothing was created
 
     // Closing the panel cancels the reviewed draft, so it does not sit against the open-draft limit.
+    const cancelled = page.waitForResponse((r) => /\/api\/assistant\/drafts\/[0-9a-f-]+\/cancel/.test(r.url()) && r.request().method() === 'POST')
+    await dialog.getByRole('button', { name: 'Close assistant' }).click()
+    expect((await cancelled).status()).toBe(200)
+  })
+
+  test('new expense: field errors block confirm, review shows the rounded amount, confirm records exactly one', async ({ page }) => {
+    const category = await ensureExpenseCategory()
+    const note = `panel-expense-${Date.now()}`
+    const dialog = await openPanel(page)
+    await dialog.getByRole('tab', { name: 'New expense' }).click()
+    await dialog.getByLabel('Category *').selectOption(String(category.id))
+
+    // No amount: the problem is shown on the amount field and nothing can be confirmed.
+    await dialog.getByLabel('Note').fill(note)
+    await dialog.getByRole('button', { name: 'Review' }).click()
+    await expect(dialog.getByRole('alert').filter({ hasText: 'greater than 0' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Confirm and record' })).toBeDisabled()
+
+    // 12.345 rounds half up to 12.35 on the review, and review alone saves nothing.
+    await dialog.getByLabel('Amount *').fill('12.345')
+    await dialog.getByRole('button', { name: 'Review' }).click()
+    const review = dialog.getByRole('region', { name: 'Review before recording' })
+    await expect(review).toContainText('12.35')
+    await expect(review).toContainText(note)
+    expect(await expensesWithNote(note)).toHaveLength(0)
+
+    // Two fast taps still record one expense, with the reviewed amount.
+    await dialog.getByRole('button', { name: 'Confirm and record' }).dblclick()
+    await expect(dialog.getByRole('status').filter({ hasText: 'Expense recorded' })).toBeVisible()
+    const saved = await expensesWithNote(note)
+    expect(saved).toHaveLength(1)
+    expect(Number(saved[0].amount)).toBeCloseTo(12.35, 2)
+  })
+
+  test('an uncertain expense confirm failure names Expenses and offers no retry', async ({ page }) => {
+    const category = await ensureExpenseCategory()
+    const note = `panel-expense-uncertain-${Date.now()}`
+    await page.route(/\/api\/assistant\/drafts\/[0-9a-f-]+\/confirm/, (route) =>
+      route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ success: false, message: 'boom' }) }))
+    const dialog = await openPanel(page)
+    await dialog.getByRole('tab', { name: 'New expense' }).click()
+    await dialog.getByLabel('Category *').selectOption(String(category.id))
+    await dialog.getByLabel('Amount *').fill('5')
+    await dialog.getByLabel('Note').fill(note)
+    await dialog.getByRole('button', { name: 'Review' }).click()
+    await dialog.getByRole('button', { name: 'Confirm and record' }).click()
+    await expect(dialog.getByRole('alert').filter({ hasText: 'Check the Expenses list' })).toBeVisible()
+    await expect(dialog.getByRole('link', { name: 'Open Expenses' }).last()).toBeVisible()
+    expect(await expensesWithNote(note)).toHaveLength(0)
     const cancelled = page.waitForResponse((r) => /\/api\/assistant\/drafts\/[0-9a-f-]+\/cancel/.test(r.url()) && r.request().method() === 'POST')
     await dialog.getByRole('button', { name: 'Close assistant' }).click()
     expect((await cancelled).status()).toBe(200)

@@ -64,4 +64,33 @@ public class AssistantDraftPostgreSqlTests
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         Assert.Equal(0, await db.Customers.IgnoreQueryFilters().CountAsync(c => c.Name == name));
     }
+
+    [SkippableFact]
+    public async Task ExpenseConfirm_IsExactlyOnce_UnderConcurrency_AndOtherCompanyIsRefused_OnPostgreSql()
+    {
+        var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);
+        using var a = HttpIntegrationClient.Create(factory, factory.TenantAId, factory.TenantAId, factory.SlugA);
+        using var b = HttpIntegrationClient.Create(factory, factory.TenantBId, factory.TenantBId, factory.SlugB);
+        var marker = "pg-draft-exp-" + Guid.NewGuid().ToString("N")[..10];
+        var proposed = await a.PostAsJsonAsync("/api/assistant/drafts/expense",
+            new { categoryId = factory.ExpenseCategoryAId, amount = 19.995, date = DateTime.UtcNow.ToString("yyyy-MM-dd"), note = marker });
+        Assert.True(proposed.StatusCode == HttpStatusCode.Created, $"{(int)proposed.StatusCode}: {await proposed.Content.ReadAsStringAsync()}");
+        var data = (await proposed.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var id = data.GetProperty("id").GetGuid();
+        var hash = data.GetProperty("payloadHash").GetString()!;
+        Assert.Equal(20.00m, data.GetProperty("fields").GetProperty("amount").GetDecimal()); // half rounds up
+
+        Assert.Equal(HttpStatusCode.NotFound, (await Confirm(b, id, hash, $"pg-draft-{Guid.NewGuid():N}")).StatusCode);
+
+        var results = await Task.WhenAll(Enumerable.Range(0, 4).Select(i => Confirm(a, id, hash, $"pg-draft-{Guid.NewGuid():N}")));
+        Assert.Equal(1, results.Count(r => r.StatusCode == HttpStatusCode.OK));
+        Assert.All(results.Where(r => r.StatusCode != HttpStatusCode.OK), r => Assert.Equal(HttpStatusCode.Conflict, r.StatusCode));
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var rows = await db.Expenses.IgnoreQueryFilters().Where(e => e.Note == marker).ToListAsync();
+        var row = Assert.Single(rows);
+        Assert.Equal(factory.TenantAId, row.TenantId);
+        Assert.Equal(20.00m, row.Amount);
+    }
 }
