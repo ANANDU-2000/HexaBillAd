@@ -45,6 +45,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — REL-01 purchase route error recovery (PARTIAL: draft safety PASS locally; S037 cause NOT reproduced)
+- S037 cause (render exception vs chunk vs network) is unproven; no runtime evidence. Submit path already has 409 duplicate and lost-response lookup (existing code), so no new retry logic added.
+- Change: unsaved new purchase is kept in per-tenant `sessionStorage` (`utils/purchaseDraft.js`), restored after a crash/reload, cleared on save or Cancel; storage failure never throws. `ErrorBoundary` (contained routes) gets "Try again without reloading" for non-chunk render errors.
+- Evidence: `tests/purchaseDraft.test.js` 4/4; `npm test` 192/192, 0 skipped; build exit 0; ESLint 0 errors. NOT TESTED: browser crash-restore flow, deployed behaviour.
+- Next: UX-01 purchase product picker (S278/S279).
+
 ### 2026-10-17 — Audit kit: SAVE-01 status and REL-02 staff activity route (PASS locally; NOT live)
 - Source: branch `main`, HEAD `b71ec0c` at start; untracked `HexaBill_Audit_Execution_Kit/` and `hexabill_al_uiuimages/` left uncommitted. Deployed Render/Vercel versions NOT re-verified this session.
 - SAVE-01: no new live reproduction (needs owner credentials and approval for a marked test write). Local reproduction, root causes and fixes are in the two 2026-10-17 create-path entries below and `docs/qa/HEXABILL-PRODUCTION-SAVE-INCIDENT.md`. Live status: BLOCKED (deploy and live product/customer test not authorized).

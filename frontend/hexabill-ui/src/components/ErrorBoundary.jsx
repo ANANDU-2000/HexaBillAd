@@ -25,6 +25,11 @@ class ErrorBoundary extends React.Component {
     }
   }
 
+  handleRetry = () => {
+    // Re-render the route without a reload so in-memory and draft state survive a transient render error.
+    this.setState({ hasError: false, error: null, errorInfo: null })
+  }
+
   handleReset = () => {
     // Full reload so the browser fetches the latest JS/CSS (fixes stale SPA chunks after deploy).
     window.location.reload()
@@ -51,6 +56,15 @@ class ErrorBoundary extends React.Component {
               <RefreshCw className="h-4 w-4" />
               Reload page
             </button>
+            {this.props.contained && !chunkFailure && !offline && (
+              <button
+                type="button"
+                onClick={this.handleRetry}
+                className="mt-2 mx-auto min-h-11 px-4 py-2 text-sm text-primary-700 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
+              >
+                Try again without reloading
+              </button>
+            )}
           </div>
         </div>
       )

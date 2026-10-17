@@ -15,6 +15,8 @@ import { ListSkeleton } from '../../components/mobile/index'
 import { readPurchasesStateFromParams, syncPurchasesSearchParams } from '../../utils/purchasesUrl'
 import { cleanText, fixMoney } from '../../utils/productFields'
 import { saveOutcomeIsUncertain, uncertainSaveMessage } from '../../utils/apiError'
+import { useAuth } from '../../hooks/useAuth'
+import { savePurchaseDraft, loadPurchaseDraft, clearPurchaseDraft } from '../../utils/purchaseDraft'
 
 const tallyInputClass = 'w-full max-w-full px-3 py-1.5 min-h-[44px] text-base md:text-sm border border-neutral-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50'
 const tallySelectClass = tallyInputClass
@@ -33,6 +35,8 @@ const VoucherSection = ({ title, children }) => (
 const PurchasesPage = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const location = useLocation()
+  const { user: authUser } = useAuth()
+  const draftTenantId = authUser?.tenantId ?? authUser?.id ?? null
   const [purchases, setPurchases] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(() => Number(searchParams.get('page')) || 1)
@@ -91,6 +95,22 @@ const PurchasesPage = () => {
   const [expandedPurchaseId, setExpandedPurchaseId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [mobileVoucherSection, setMobileVoucherSection] = useState('supplier')
+
+  // Restore an unsaved new purchase after a route crash or reload (REL-01); saved edits are never restored.
+  const draftRestoredRef = useRef(false)
+  useEffect(() => {
+    if (draftRestoredRef.current || draftTenantId == null) return
+    draftRestoredRef.current = true
+    const draft = loadPurchaseDraft(draftTenantId)
+    if (draft) {
+      setFormData(draft)
+      setShowForm(true)
+      toast('Restored your unsaved purchase.', { id: 'purchase-draft-restored' })
+    }
+  }, [draftTenantId])
+  useEffect(() => {
+    if (showForm && !editingPurchase && draftRestoredRef.current) savePurchaseDraft(draftTenantId, formData)
+  }, [showForm, editingPurchase, formData, draftTenantId])
 
   const toggleVoucherSection = (sectionId) => {
     setMobileVoucherSection((s) => (s === sectionId ? '' : sectionId))
@@ -614,6 +634,7 @@ const PurchasesPage = () => {
 
       if (response?.success !== false && response?.data?.id) {
         if (notes.length) toast(`We fixed: ${notes.join(' ')}`, { duration: 9000 })
+        clearPurchaseDraft(draftTenantId)
         setShowForm(false)
         setEditingPurchase(null)
         setFormData({
@@ -647,6 +668,7 @@ const PurchasesPage = () => {
           const rows = found?.data?.items ?? found?.items ?? []
           if (rows.some(r => String(r.invoiceNo || '').trim().toLowerCase() === attempt.invoiceNo.toLowerCase())) {
             toast.success('Purchase created! Stock has been updated.', { id: 'purchase-create', duration: 6000 })
+            clearPurchaseDraft(draftTenantId)
             setShowForm(false)
             setEditingPurchase(null)
             loadPurchases()
@@ -936,7 +958,7 @@ const PurchasesPage = () => {
                 {editingPurchase ? 'Edit Purchase Entry' : 'New Purchase Entry'}
               </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { clearPurchaseDraft(draftTenantId); setShowForm(false) }}
                 className="text-primary-500 hover:text-primary-700"
               >
                 <X className="h-5 w-5" />
@@ -1342,7 +1364,7 @@ const PurchasesPage = () => {
 
               {/* (6) Totals - shown in items table foot; (7) Actions - sticky on mobile above BottomNav */}
               <div className="flex justify-end space-x-3 mt-4 md:static fixed bottom-[var(--hb-bottom-nav-h,4.75rem)] left-0 right-0 p-4 bg-white border-t-2 border-neutral-200 md:border-0 md:bottom-0 md:p-0 z-10 md:z-auto">
-                <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
+                <button type="button" onClick={() => { clearPurchaseDraft(draftTenantId); setShowForm(false) }} className="px-4 py-2 min-h-11 border-2 border-neutral-200 rounded text-base font-medium hover:bg-neutral-50">Cancel</button>
                 <button type="submit" disabled={submitting} className="px-4 py-2 min-h-11 bg-primary-600 text-white rounded text-base font-medium hover:bg-primary-700 disabled:opacity-50 flex items-center">
                   <Save className="h-4 w-4 mr-2" /> {submitting ? 'Saving…' : 'Save Purchase'}
                 </button>
