@@ -204,6 +204,7 @@ const SalesLedgerPage = () => {
   const canEditPayments = canManagePayments(user)
   const { branches, routes } = useBranchesRoutes()
   const [loading, setLoading] = useState(true)
+  const [ledgerLoadFailed, setLedgerLoadFailed] = useState(false)
   const getDefaultDateRange = () => {
     const today = new Date()
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -341,8 +342,18 @@ const SalesLedgerPage = () => {
     setRoutesForBranch((routes || []).filter(r => r.branchId === branchId))
   }, [filters.branchId, routes])
 
+  // A failed load is not "no transactions": say so and offer a retry, so an empty ledger is never mistaken for zero sales.
+  const ledgerLoadFailedNotice = (
+    <div role="alert" className="text-center">
+      <p className="font-medium text-error-fg">The sales ledger could not be loaded.</p>
+      <p className="mt-1 text-sm text-neutral-600">Nothing was changed. Check the connection and try again.</p>
+      <button type="button" onClick={() => fetchSalesLedgerRef.current?.()} className="mt-3 min-h-11 rounded-lg border border-neutral-300 bg-white px-4 text-sm text-neutral-700 hover:bg-neutral-50">Try again</button>
+    </div>
+  )
+
   const fetchSalesLedger = async () => {
     setLoading(true)
+    setLedgerLoadFailed(false)
     try {
       const params = {
         fromDate: dateRange.from,
@@ -393,6 +404,7 @@ const SalesLedgerPage = () => {
       console.error('Error loading sales ledger:', error)
       const msg = error?.response?.data?.message || 'Failed to load sales ledger'
       if (!error?._handledByInterceptor) toast.error(msg)
+      setLedgerLoadFailed(true)
       setReportData({ salesLedger: [], salesLedgerSummary: null })
     } finally {
       setLoading(false)
@@ -1279,8 +1291,12 @@ const SalesLedgerPage = () => {
                 {filteredLedger.length === 0 ? (
                   <tr>
                     <td colSpan="14" className="px-4 py-8 text-center text-neutral-500">
-                      <FileText className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
-                      <p>No transactions found matching the filters</p>
+                      {ledgerLoadFailed ? ledgerLoadFailedNotice : (
+                        <>
+                          <FileText className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
+                          <p>No transactions found matching the filters</p>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -1638,8 +1654,12 @@ const SalesLedgerPage = () => {
           <div className="md:hidden flex-1 min-h-0 overflow-auto px-2 py-2 space-y-2">
             {displayedLedger.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-neutral-500">
-                <FileText className="w-12 h-12 mb-2 text-neutral-300" />
-                <p className="text-sm">No transactions found</p>
+                {ledgerLoadFailed ? ledgerLoadFailedNotice : (
+                  <>
+                    <FileText className="w-12 h-12 mb-2 text-neutral-300" />
+                    <p className="text-sm">No transactions found</p>
+                  </>
+                )}
               </div>
             ) : (
               <>
