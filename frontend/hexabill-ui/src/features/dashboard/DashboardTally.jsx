@@ -14,6 +14,7 @@ import { canAccessPage, isAdminOrOwner, isOwner } from '../../utils/roles'
 import { useBranchesRoutes } from '../../contexts/BranchesRoutesContext'
 import { mobilePageShellClass } from '../../components/tallyFormClasses'
 import Button from '../../components/ui/Button'
+import DailyCloseStatusCard from './DailyCloseStatusCard'
 import { localDateString } from '../../utils/dateFormat'
 
 const GET_STARTED_DISMISSED_KEY = 'hexabill_get_started_dismissed'
@@ -665,6 +666,8 @@ const DashboardTally = () => {
                 )}
             </section>
             )}
+
+            {isAdminOrOwner(user) && <DailyCloseStatusCard branchId={selectedBranchId} />}
 
             {canShow('quickActions') && (
                 <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 lg:flex lg:flex-row">

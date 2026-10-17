@@ -45,6 +45,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-05 owner dashboard Daily Close status (PARTIAL; NOT live)
+- Finding: `DashboardTally` already had quick actions (New invoice F3, New purchase F4, Customer ledger F10, Expenses) and the Daily Close backend/page already exist and are admin-only. Missing: Daily Close status on the dashboard. No backend duplicated.
+- Change: `DailyCloseStatusCard` (owner/admin only) reads the existing `GET /api/daily-close/status` for today and shows Not closed yet / Draft saved / Reopened (with reason) / Closed (matching, or variance with or without a recorded reason) / unavailable on a failed load; it never claims Closed unless the server row is Closed. The button opens the existing Daily close page; closing, variance review and reopening rules are untouched. Mapping lives in `dailyCloseStatus.js`.
+- Evidence: `tests/dailyCloseStatus.test.js` 6/6; `npm test` all pass; build exit 0; lint 0 errors. Browser `e2e/dashboard-daily-close.spec.js` **5/5 at m360, m390, t768, d1024, d1440** (card text agrees with the API status for today, button >=44px below 1024px, no horizontal overflow, navigates to /daily-close).
+- Observation for UX-03: design-system buttons render ~38.5px tall at 1024px and wider even with `min-h-11`; tablet landscape (1024/1180) touch targets are therefore below 44px. Not changed here.
+- NOT TESTED: Closed/Draft/Reopened card states in a browser (only the synthetic tenant's real state was asserted), branch-scoped status, staff view (card hidden by role in code, not browser-tested), a "Receive payment" quick action (not added).
+- Next: UX-03 tablet shell (touch-target size at 1024/1180, orientation), RouteDetailPage phone layout.
+
 ### 2026-10-17 — UX-02 phone card lists for price list and document lists (PARTIAL; NOT live)
 - Defect (S183/S184, S200, S203, S210): wide tables inside a sideways scroller hide product/customer identity while actions stay visible. Fixed for four lists: `PriceList.jsx`, `QuotationsPage.jsx`, `DeliveryNotesPage.jsx`, `SalaryCertificatesPage.jsx`. Below `md` each row is a card (identity, date/status, 44px actions with accessible names); from `md` the existing table is unchanged.
 - Evidence: `e2e/pricelist-responsive.spec.js` 5/5 (m360, m390, t768, d1024, d1440); `e2e/document-lists-responsive.spec.js` 16/16 (m360, m390, t768, d1440) including a seeded quotation with a very long customer name and all five action buttons within the screen and >=44px. **Quotations red on the previous page, green on the fix.** `npm test` 204/204, build exit 0, lint 0 errors.
