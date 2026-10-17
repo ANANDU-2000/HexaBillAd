@@ -16,12 +16,14 @@ namespace HexaBill.Api.Modules.Assistant;
 public class AssistantController : TenantScopedController
 {
     private readonly AssistantToolRegistry _registry;
+    private readonly AssistantDraftService _drafts;
     private readonly AppDbContext _context;
     private readonly ILogger<AssistantController> _logger;
 
-    public AssistantController(AssistantToolRegistry registry, AppDbContext context, ILogger<AssistantController> logger)
+    public AssistantController(AssistantToolRegistry registry, AssistantDraftService drafts, AppDbContext context, ILogger<AssistantController> logger)
     {
         _registry = registry;
+        _drafts = drafts;
         _context = context;
         _logger = logger;
     }
@@ -76,4 +78,48 @@ public class AssistantController : TenantScopedController
             return StatusCode(500, new ApiResponse<object> { Success = false, Message = "The tool could not run. Use the normal screens." });
         }
     }
+
+    public sealed class ConfirmDraftRequest
+    {
+        public string? PayloadHash { get; set; }
+        public string? IdempotencyKey { get; set; }
+    }
+
+    private async Task<IActionResult> RunDraft(Func<AssistantCaller, Task<object>> action, int successStatus = 200)
+    {
+        if (!TryCaller(out var caller)) return Forbid();
+        try
+        {
+            var data = await action(caller);
+            return StatusCode(successStatus, new ApiResponse<object> { Success = true, Message = "OK", Data = data });
+        }
+        catch (DraftException ex)
+        {
+            return StatusCode(ex.StatusCode, new ApiResponse<object> { Success = false, Message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Assistant draft action failed for tenant {TenantId}", caller.TenantId);
+            // The outcome may be unknown: say so instead of inviting a blind retry.
+            return StatusCode(500, new ApiResponse<object> { Success = false, Message = "Something went wrong and the result is not certain. Check the Customers list before trying again." });
+        }
+    }
+
+    /// <summary>Propose a new customer. Nothing is created; the response shows the cleaned fields, any field errors and a hash to confirm.</summary>
+    [HttpPost("drafts/customer")]
+    public Task<IActionResult> CreateCustomerDraft([FromBody] CustomerDraftRequest request, CancellationToken ct) =>
+        RunDraft(async c => await _drafts.CreateCustomerDraftAsync(c.TenantId, c.UserId, request ?? new CustomerDraftRequest(), ct), 201);
+
+    [HttpGet("drafts/{id:guid}")]
+    public Task<IActionResult> GetDraft(Guid id, CancellationToken ct) =>
+        RunDraft(async c => await _drafts.GetAsync(c.TenantId, c.UserId, id, ct));
+
+    [HttpPost("drafts/{id:guid}/cancel")]
+    public Task<IActionResult> CancelDraft(Guid id, CancellationToken ct) =>
+        RunDraft(async c => { await _drafts.CancelAsync(c.TenantId, c.UserId, id, ct); return new { cancelled = true }; });
+
+    /// <summary>Execute a reviewed draft. Needs the hash the person saw and an idempotency key; the same key returns the first result.</summary>
+    [HttpPost("drafts/{id:guid}/confirm")]
+    public Task<IActionResult> ConfirmDraft(Guid id, [FromBody] ConfirmDraftRequest request, CancellationToken ct) =>
+        RunDraft(async c => await _drafts.ConfirmAsync(c.TenantId, c.UserId, id, request?.PayloadHash ?? string.Empty, request?.IdempotencyKey ?? string.Empty, ct));
 }

@@ -303,6 +303,7 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.FindCustomersTool>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.ProductStockTool>();
 builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantToolRegistry>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantDraftService>();
 builder.Services.AddScoped<ICustomerItemPriceService, CustomerItemPriceService>();
 builder.Services.AddScoped<ICustomerMergeService, CustomerMergeService>();
 builder.Services.AddScoped<ISupplierMergeService, SupplierMergeService>();

@@ -152,6 +152,7 @@ namespace HexaBill.Api.Data
         public DbSet<ProductCategory> ProductCategories { get; set; }
         public DbSet<InventoryTransaction> InventoryTransactions { get; set; }
         public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<AssistantDraft> AssistantDrafts { get; set; }
         public DbSet<Setting> Settings { get; set; }
         public DbSet<DamageCategory> DamageCategories { get; set; }
         public DbSet<DamageInventory> DamageInventories { get; set; }
@@ -697,6 +698,19 @@ namespace HexaBill.Api.Data
             });
 
             // AuditLog configuration
+            modelBuilder.Entity<AssistantDraft>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Kind).IsRequired().HasMaxLength(40);
+                entity.Property(e => e.PayloadJson).IsRequired().HasColumnType(Database.IsNpgsql() ? "text" : "TEXT");
+                entity.Property(e => e.PayloadHash).IsRequired().HasMaxLength(64);
+                entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+                entity.Property(e => e.IdempotencyKey).HasMaxLength(80);
+                entity.Property(e => e.ResultJson).HasColumnType(Database.IsNpgsql() ? "text" : "TEXT");
+                entity.HasIndex(e => new { e.TenantId, e.UserId, e.Status });
+                entity.HasIndex(e => new { e.TenantId, e.IdempotencyKey }).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
+            });
+
             modelBuilder.Entity<AuditLog>(entity =>
             {
                 entity.HasKey(e => e.Id);
