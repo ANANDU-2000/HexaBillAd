@@ -84,6 +84,7 @@ builder.Services.AddControllers(options =>
         options.JsonSerializerOptions.WriteIndented = true;
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
         options.JsonSerializerOptions.Converters.Add(new HexaBill.Api.Core.Infrastructure.NullableDateTimeEmptyStringConverter());
+        options.JsonSerializerOptions.Converters.Add(new HexaBill.Api.Core.Infrastructure.UtcDateTimeJsonConverter());
     });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
