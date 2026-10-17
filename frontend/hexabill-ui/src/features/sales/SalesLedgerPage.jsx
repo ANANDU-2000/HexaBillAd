@@ -611,6 +611,7 @@ const SalesLedgerPage = () => {
         entries,
         subtotal: {
           totalSales,
+          totalReturns: returnEntriesForCustomer.reduce((sum, e) => sum + (e.grandTotal || 0), 0),
           totalPayments,
           totalPending,
           totalInvoices: salesEntries.length,
@@ -675,7 +676,7 @@ const SalesLedgerPage = () => {
   const totalRealPending = salesEntries.reduce((sum, e) => sum + (e.realPending || 0), 0)
 
   // 4. Pending Balance = Total Sales - Total Returns - Total Payments (net outstanding)
-  const pendingBalance = Math.max(0, totalSales - totalReturns - totalPayments)
+  const pendingBalance = totalSales - totalReturns - totalPayments
 
   // Total Invoices = Count of sales entries (not transactions)
   const totalInvoices = salesEntries.length
@@ -898,7 +899,7 @@ const SalesLedgerPage = () => {
       return
     }
     try {
-      const headers = ['Date', 'Type', 'Invoice No', 'Customer', 'Payment Mode', 'Bill Amount', 'VAT', 'Paid Amount', 'Pending', 'Days overdue', 'Status', 'Balance']
+      const headers = ['Date', 'Type', 'Invoice No', 'Customer', 'Payment Mode', 'Bill Amount', 'VAT', 'Paid Amount', 'Returns', 'Pending', 'Days overdue', 'Status', 'Balance']
       const rows = displayLedgerSorted.map(entry => {
         const dateStr = new Date(entry.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
         const billAmt = entry.type === 'Sale' ? (entry.grandTotal || 0) : entry.type === 'Payment' ? (entry.realGotPayment || 0) : 0
@@ -915,6 +916,7 @@ const SalesLedgerPage = () => {
           billAmt.toFixed(2),
           vatAmt.toFixed(2),
           paidAmt.toFixed(2),
+          (entry.type === 'Return' ? (entry.grandTotal || 0) : 0).toFixed(2),
           pending.toFixed(2),
           daysOd == null ? '' : String(daysOd),
           entry.status || 'Unpaid',
@@ -1009,6 +1011,7 @@ const SalesLedgerPage = () => {
               <span className="hidden sm:inline">{showFilters ? 'Hide' : 'Show'}</span>
             </button>
             <button
+              aria-label="Export Excel"
               onClick={handleExportExcel}
               className="px-3 py-2 border border-success text-success-fg rounded-lg text-sm font-medium hover:bg-success-bg flex items-center gap-1.5"
             >
@@ -1253,6 +1256,9 @@ const SalesLedgerPage = () => {
                     Paid Amount
                   </th>
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
+                    Returns
+                  </th>
+                  <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
                     Pending
                   </th>
                   <th className="px-2 lg:px-3 py-2 text-right text-xs lg:text-xs font-bold text-neutral-700 uppercase whitespace-nowrap border-r border-neutral-300">
@@ -1272,7 +1278,7 @@ const SalesLedgerPage = () => {
               <tbody className="bg-white divide-y divide-neutral-200">
                 {filteredLedger.length === 0 ? (
                   <tr>
-                    <td colSpan="13" className="px-4 py-8 text-center text-neutral-500">
+                    <td colSpan="14" className="px-4 py-8 text-center text-neutral-500">
                       <FileText className="w-12 h-12 mx-auto mb-2 text-neutral-300" />
                       <p>No transactions found matching the filters</p>
                     </td>
@@ -1306,6 +1312,9 @@ const SalesLedgerPage = () => {
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPayments)}
                               </td>
+                              <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                                {formatCurrency(prevCustomerGroup.subtotal.totalReturns)}
+                              </td>
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                                 {formatCurrency(prevCustomerGroup.subtotal.totalPending)}
                               </td>
@@ -1316,7 +1325,7 @@ const SalesLedgerPage = () => {
                                 {prevCustomerGroup.subtotal.totalInvoices} invoices
                               </td>
                               <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-indigo-700 border-r border-neutral-300">
-                                {formatBalance(prevCustomerGroup.subtotal.totalSales - prevCustomerGroup.subtotal.totalPayments)}
+                                {formatBalance(prevCustomerGroup.subtotal.balance)}
                               </td>
                               <td className={stickyActionCell('bg-indigo-50')} />
                             </tr>
@@ -1397,15 +1406,18 @@ const SalesLedgerPage = () => {
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-medium text-teal-700 border-r border-neutral-200">
                           {entry.type === 'Payment' ? '-' : (entry.vatTotal > 0 ? formatCurrency(entry.vatTotal) : '-')}
                         </td>
-                        {/* Paid Amount - Sales: paid; Return: return amount (credit); Payment: amount */}
+                        {/* Paid Amount excludes returned goods, which have their own column. */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-success border-r border-neutral-200">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
                             : entry.type === 'Return'
-                              ? formatCurrency(entry.grandTotal || 0)
+                              ? '-'
                               : entry.type === 'Payment'
                                 ? formatCurrency(entry.realGotPayment || 0)
                                 : '-'}
+                        </td>
+                        <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-neutral-700 border-r border-neutral-200">
+                          {entry.type === 'Return' ? formatCurrency(entry.grandTotal || 0) : '-'}
                         </td>
                         {/* Pending - Show only for Sales (unpaid amount) */}
                         <td className="px-2 lg:px-3 py-1.5 lg:py-2 whitespace-nowrap text-xs lg:text-sm text-right font-semibold text-error border-r border-neutral-200">
@@ -1541,6 +1553,9 @@ const SalesLedgerPage = () => {
                             <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPayments)}
                             </td>
+                            <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                              {formatCurrency(lastCustomerGroup.subtotal.totalReturns)}
+                            </td>
                             <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                               {formatCurrency(lastCustomerGroup.subtotal.totalPending)}
                             </td>
@@ -1564,7 +1579,7 @@ const SalesLedgerPage = () => {
                 )}
                 {hasMore && (
                   <tr>
-                    <td colSpan="13" className="px-4 py-3 text-center bg-neutral-50">
+                    <td colSpan="14" className="px-4 py-3 text-center bg-neutral-50">
                       <button
                         onClick={handleLoadMore}
                         className="px-4 py-2 bg-primary-600 text-white text-sm font-medium rounded-md hover:bg-primary-700 transition-colors"
@@ -1594,6 +1609,9 @@ const SalesLedgerPage = () => {
                   </td>
                   <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-success-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalPayments)}
+                  </td>
+                  <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-neutral-700 border-r border-neutral-300">
+                    {formatCurrency(filteredSummary.totalReturns)}
                   </td>
                   <td className="px-2 lg:px-3 py-2 text-right text-xs lg:text-sm font-bold text-error-fg border-r border-neutral-300">
                     {formatCurrency(filteredSummary.totalRealPending)}
@@ -1777,7 +1795,7 @@ const SalesLedgerPage = () => {
 
                     <div className="grid grid-cols-2 gap-1.5 text-xs">
                       <div>
-                        <div className="text-xs text-neutral-500 uppercase">Bill</div>
+                        <div className="text-xs text-neutral-500 uppercase">{entry.type === 'Return' ? 'Returns' : 'Bill'}</div>
                         <div className="font-bold text-primary-600">
                           {entry.type === 'Sale'
                             ? formatCurrency(entry.grandTotal || 0)
@@ -1797,7 +1815,7 @@ const SalesLedgerPage = () => {
                         <div className="font-bold text-success">
                           {entry.type === 'Sale'
                             ? (entry.paidAmount > 0 ? formatCurrency(entry.paidAmount) : '-')
-                            : formatCurrency(entry.realGotPayment || 0)}
+                            : entry.type === 'Return' ? '-' : formatCurrency(entry.realGotPayment || 0)}
                         </div>
                       </div>
                       {entry.type === 'Sale' && entry.realPending > 0 && (

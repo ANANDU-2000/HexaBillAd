@@ -109,6 +109,8 @@ namespace HexaBill.Api.Modules.Reports
                 if (tenantId <= 0)
                     throw new UnauthorizedAccessException("A tenant is required for this report.");
 
+                var approvedReturnsForReceivables = InvoiceReceivables.ApprovedReturns(_context, tenantId);
+
                 var today = _timeZoneService.GetCurrentDate();
                 DateTime startDate;
                 DateTime endDate;
@@ -406,11 +408,14 @@ namespace HexaBill.Api.Modules.Reports
                     }
                     
                     var tol = SalePaymentHelpers.SettlementToleranceAed;
-                    var pendingBillsQuery = baseSalesQuery
-                        .Where(s => (s.GrandTotal - s.PaidAmount) > tol);
+                    var pendingBillsQuery = baseSalesQuery.Select(s => new
+                    {
+                        Balance = s.GrandTotal - s.PaidAmount -
+                            (approvedReturnsForReceivables.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)
+                    }).Where(s => s.Balance > tol);
                     
                     pendingBillsCount = await pendingBillsQuery.CountAsync();
-                    pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0m;
+                    pendingBillsAmount = await pendingBillsQuery.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                     
                     var paidBillsQuery = baseSalesQuery
                         .Where(s => (s.GrandTotal - s.PaidAmount) <= tol);
@@ -425,8 +430,9 @@ namespace HexaBill.Api.Modules.Reports
                     var pendingInvoicesQuery = from s in _context.Sales
                                                join c in _context.Customers on s.CustomerId equals c.Id into customerGroup
                                                from c in customerGroup.DefaultIfEmpty()
+                                               let returned = approvedReturnsForReceivables.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m
                                                where !s.IsDeleted && 
-                                                     (s.GrandTotal - s.PaidAmount) > SalePaymentHelpers.SettlementToleranceAed
+                                                     (s.GrandTotal - s.PaidAmount - returned) > SalePaymentHelpers.SettlementToleranceAed
                                                select new { Sale = s, Customer = c };
                     
                     // Apply tenant filter if needed
@@ -517,9 +523,14 @@ namespace HexaBill.Api.Modules.Reports
                             && s.TenantId == tenantId
                             && s.CustomerId != null
                             && s.PaymentStatus != SalePaymentStatus.Paid
-                            && s.InvoiceDate <= overdueCutoff
-                            && (s.GrandTotal - s.PaidAmount) > tolOverdue);
-                        overdueAmountTotal = await overdueSalesQ.SumAsync(s => (decimal?)(s.GrandTotal - s.PaidAmount)) ?? 0m;
+                            && s.InvoiceDate <= overdueCutoff)
+                            .Select(s => new
+                            {
+                                s.CustomerId,
+                                Balance = s.GrandTotal - s.PaidAmount -
+                                    (approvedReturnsForReceivables.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m)
+                            }).Where(s => s.Balance > tolOverdue);
+                        overdueAmountTotal = await overdueSalesQ.SumAsync(s => (decimal?)s.Balance) ?? 0m;
                         overdueCustomersCount = await overdueSalesQ.Select(s => s.CustomerId!.Value).Distinct().CountAsync();
                     }
                 }
@@ -1601,13 +1612,16 @@ namespace HexaBill.Api.Modules.Reports
             var utcNow = DateTime.UtcNow;
             var today = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc);
 
+            var approvedReturns = InvoiceReceivables.ApprovedReturns(_context, tenantId);
             var query = from s in _context.Sales
                         join c in _context.Customers on s.CustomerId equals c.Id into cGrp
                         from c in cGrp.DefaultIfEmpty()
+                        let returned = approvedReturns.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m
+                        let balance = s.GrandTotal - s.PaidAmount - returned
                         where !s.IsDeleted
                               && (s.PaymentStatus == SalePaymentStatus.Pending || s.PaymentStatus == SalePaymentStatus.Partial)
-                              && (s.GrandTotal - s.PaidAmount) > SalePaymentHelpers.SettlementToleranceAed
-                        select new { s, c };
+                              && balance > SalePaymentHelpers.SettlementToleranceAed
+                        select new { s, c, Balance = balance };
 
             if (tenantId > 0)
                 query = query.Where(x => x.s.TenantId == tenantId);
@@ -1655,7 +1669,7 @@ namespace HexaBill.Api.Modules.Reports
                     CustomerName = x.c != null ? x.c.Name : null,
                     GrandTotal = x.s.GrandTotal,
                     PaidAmount = x.s.PaidAmount,
-                    BalanceAmount = x.s.GrandTotal - x.s.PaidAmount,
+                    BalanceAmount = x.Balance,
                     PaymentStatus = x.s.PaymentStatus.ToString(),
                     DaysOverdue = 0 // Will be calculated below
                 })
@@ -2196,14 +2210,20 @@ namespace HexaBill.Api.Modules.Reports
                 salesQuery = salesQuery.Where(s => s.CustomerId == customerId.Value);
             }
 
-            var sales = await salesQuery.ToListAsync();
+            var approvedReturns = InvoiceReceivables.ApprovedReturns(_context, tenantId);
+            var sales = await salesQuery.Select(s => new
+            {
+                Sale = s,
+                Returned = approvedReturns.Where(r => r.SaleId == s.Id).Sum(r => (decimal?)r.GrandTotal) ?? 0m
+            }).ToListAsync();
             var invoices = new List<AgingInvoiceDto>();
 
             // PRODUCTION_MASTER_TODO #9: Use remaining balance (GrandTotal - PaidAmount), not total. PaidAmount = cleared only.
-            foreach (var sale in sales)
+            foreach (var row in sales)
             {
+                var sale = row.Sale;
                 var paidAmount = sale.PaidAmount; // CLEARED-only, matches customer balance and invoice status
-                var balance = sale.GrandTotal - paidAmount;
+                var balance = InvoiceReceivables.Outstanding(sale.GrandTotal, paidAmount, row.Returned);
                 if (balance <= 0.01m) continue;
 
                 // CRITICAL FIX: TimeSpan subtraction, not .Date property
@@ -2343,42 +2363,6 @@ namespace HexaBill.Api.Modules.Reports
             };
         }
 
-        /// <summary>Raw SQL to load returns for ledger when SaleReturns.BranchId may not exist. Selects Id, ReturnDate, ReturnNo, CustomerId, GrandTotal, VatTotal.</summary>
-        private async Task<List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal, decimal VatTotal)>> GetSalesLedgerReturnsRawAsync(int tenantId, DateTime from, DateTime to, int? staffId)
-        {
-            var conn = _context.Database.GetDbConnection();
-            var wasOpen = conn.State == System.Data.ConnectionState.Open;
-            if (!wasOpen) await conn.OpenAsync();
-            try
-            {
-                string sql = @"SELECT ""Id"", ""ReturnDate"", ""ReturnNo"", ""CustomerId"", ""GrandTotal"", COALESCE(""VatTotal"", 0) FROM ""SaleReturns"" WHERE ""TenantId"" = @p0 AND ""ReturnDate"" >= @p1 AND ""ReturnDate"" < @p2";
-                if (staffId.HasValue) sql += " AND \"CreatedBy\" = @p3";
-                sql += " ORDER BY \"ReturnDate\", \"Id\"";
-                using var cmd = conn.CreateCommand();
-                cmd.CommandText = sql;
-                var p0 = cmd.CreateParameter(); p0.ParameterName = "p0"; p0.Value = tenantId; cmd.Parameters.Add(p0);
-                var p1 = cmd.CreateParameter(); p1.ParameterName = "p1"; p1.Value = from; cmd.Parameters.Add(p1);
-                var p2 = cmd.CreateParameter(); p2.ParameterName = "p2"; p2.Value = to; cmd.Parameters.Add(p2);
-                if (staffId.HasValue) { var p3 = cmd.CreateParameter(); p3.ParameterName = "p3"; p3.Value = staffId.Value; cmd.Parameters.Add(p3); }
-                var list = new List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal, decimal VatTotal)>();
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    while (await reader.ReadAsync())
-                    {
-                        list.Add((
-                            reader.GetInt32(0),
-                            reader.GetDateTime(1),
-                            reader.IsDBNull(2) ? null : reader.GetString(2),
-                            reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
-                            reader.GetDecimal(4),
-                            reader.IsDBNull(5) ? 0m : reader.GetDecimal(5)));
-                    }
-                }
-                return list;
-            }
-            finally { if (!wasOpen) await conn.CloseAsync(); }
-        }
-
         /// <summary>Raw SQL to load sales for ledger when Sales.BranchId may not exist. Selects Id, InvoiceNo, InvoiceDate, CustomerId, GrandTotal, Subtotal, VatTotal.</summary>
         private async Task<List<(int Id, string InvoiceNo, DateTime InvoiceDate, int? CustomerId, decimal GrandTotal, decimal Subtotal, decimal VatTotal)>> GetSalesLedgerSalesRawAsync(int tenantId, DateTime from, DateTime to, int? staffId)
         {
@@ -2445,23 +2429,20 @@ namespace HexaBill.Api.Modules.Reports
                 .ThenBy(p => p.Id)
                 .ToListAsync();
 
-            // Get returns in same date range. On PostgreSQL use raw SQL so we never select BranchId/RouteId (columns may not exist).
-            List<(int Id, DateTime ReturnDate, string? ReturnNo, int? CustomerId, decimal GrandTotal, decimal VatTotal)> returns;
-            if (_context.Database.IsNpgsql())
-            {
-                returns = await GetSalesLedgerReturnsRawAsync(tenantId, from, to, staffId);
-            }
-            else
-            {
-                var returnsQuery = _context.SaleReturns
-                    .Where(r => r.TenantId == tenantId && r.ReturnDate >= from && r.ReturnDate < to);
-                if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
-                var projected = await returnsQuery
-                    .OrderBy(r => r.ReturnDate).ThenBy(r => r.Id)
-                    .Select(r => new { r.Id, r.ReturnDate, r.ReturnNo, r.CustomerId, r.GrandTotal, r.VatTotal })
-                    .ToListAsync();
-                returns = projected.Select(x => (x.Id, x.ReturnDate, (string?)x.ReturnNo, x.CustomerId, x.GrandTotal, x.VatTotal)).ToList();
-            }
+            // Project only ledger columns, preserving compatibility with schemas without return branch/route columns.
+            var returnsQuery = InvoiceReceivables.ApprovedReturns(_context, tenantId)
+                .Where(r => r.ReturnDate >= from && r.ReturnDate < to);
+            if (staffId.HasValue) returnsQuery = returnsQuery.Where(r => r.CreatedBy == staffId.Value);
+            var returns = await returnsQuery.OrderBy(r => r.ReturnDate).ThenBy(r => r.Id)
+                .Select(r => new { r.Id, r.ReturnDate, r.ReturnNo, r.CustomerId, r.GrandTotal, r.VatTotal })
+                .ToListAsync();
+
+            // Current invoice settlement uses all approved returns, just as it uses all cleared receipts.
+            var returnedBySale = await InvoiceReceivables.ApprovedReturns(_context, tenantId)
+                .Where(r => saleIds.Contains(r.SaleId))
+                .GroupBy(r => r.SaleId)
+                .Select(g => new { SaleId = g.Key, Amount = g.Sum(r => r.GrandTotal) })
+                .ToDictionaryAsync(r => r.SaleId, r => r.Amount);
 
             // Cleared payment amounts only (same rule as POS / SalePaymentHelpers — pending cheques are not "paid" yet)
             var salePayments = await _context.Payments
@@ -2522,11 +2503,16 @@ namespace HexaBill.Api.Modules.Reports
             foreach (var sale in sales)
             {
                 var paidAmount = salePayments.GetValueOrDefault(sale.Id, 0m);
-                var balance = sale.GrandTotal - paidAmount;
+                var returnedAmount = returnedBySale.GetValueOrDefault(sale.Id, 0m);
+                var balance = InvoiceReceivables.Outstanding(sale.GrandTotal, paidAmount, returnedAmount);
 
                 // Invoice row: settlement from cleared payments only (Sale row — not individual payment receipts)
                 string status = "Unpaid";
-                if (balance <= SalePaymentHelpers.SettlementToleranceAed)
+                if (returnedAmount > 0 && returnedAmount >= sale.GrandTotal - SalePaymentHelpers.SettlementToleranceAed)
+                {
+                    status = "Returned";
+                }
+                else if (balance <= SalePaymentHelpers.SettlementToleranceAed)
                 {
                     status = "Paid";
                 }
@@ -2557,7 +2543,7 @@ namespace HexaBill.Api.Modules.Reports
                 }
 
                 // Calculate real pending (GrandTotal - PaidAmount)
-                var realPending = sale.GrandTotal - paidAmount;
+                var realPending = balance;
                 
                 ledgerEntries.Add(new SalesLedgerEntryDto
                 {
@@ -2656,7 +2642,7 @@ namespace HexaBill.Api.Modules.Reports
                     GrandTotal = ret.GrandTotal,
                     PaidAmount = 0,
                     RealPending = 0,
-                    RealGotPayment = ret.GrandTotal,
+                    RealGotPayment = 0, // A goods return is not a cash receipt.
                     Status = "Returned",
                     CustomerBalance = customerBalances[customerKey],
                     PlanDate = null,

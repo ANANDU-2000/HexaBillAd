@@ -2,19 +2,24 @@ param(
     [string[]]$Projects = @('m360'),
     [string]$TestFilter = '',
     [string]$Spec = 'e2e/customer-save-contract.spec.js',
-    [switch]$ResumeFixtures
+    [switch]$ResumeFixtures,
+    [string]$Database = 'hexabill_codex_browser_20261012_1525',
+    [int]$PostgresPort = 55472
 )
 $ErrorActionPreference = 'Stop'
 function New-QaSecret([int]$Bytes) { $b = New-Object byte[] $Bytes; $g = [Security.Cryptography.RandomNumberGenerator]::Create(); try { $g.GetBytes($b) } finally { $g.Dispose() }; [Convert]::ToBase64String($b) }
 $qaRoot = Split-Path $PSScriptRoot -Parent
 $qaPgBin = 'C:\Program Files\PostgreSQL\18\bin'
-$qaDb = 'hexabill_codex_browser_20261012_1525'
+if ($Database -notmatch '^hexabill_codex_browser_[a-zA-Z0-9_]+$' -or $PostgresPort -lt 1024 -or $PostgresPort -gt 65535) {
+    throw 'A dedicated synthetic browser database and local test port are required.'
+}
+$qaDb = $Database
 $qaApiProcess = $null
 $qaViteProcess = $null
 $qaExitCode = 1
 try {
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
-    $env:HEXABILL_TEST_POSTGRES = "Host=127.0.0.1;Port=55472;Database=$qaDb;Username=hexabill_qa"
+    $env:HEXABILL_TEST_POSTGRES = "Host=127.0.0.1;Port=$PostgresPort;Database=$qaDb;Username=hexabill_qa"
     $env:HEXABILL_SYNTHETIC_PASSWORD = (New-QaSecret 36)
     $env:HEXABILL_OWNER_PASSWORD = $env:HEXABILL_SYNTHETIC_PASSWORD
     Set-Item -Path 'Env:HEXABILL_E2E_EMAIL_GULFHARVEST-TEST' -Value 'owner@gulfharvest-test.hexabill.local'
@@ -24,7 +29,7 @@ try {
     $env:HEXABILL_DEV_API_ORIGIN = $env:HEXABILL_API
     $env:HEXABILL_FE_PORT = '5175'
     $env:PGHOST = '127.0.0.1'
-    $env:PGPORT = '55472'
+    $env:PGPORT = "$PostgresPort"
     $env:PGUSER = 'hexabill_qa'
     $env:PGDATABASE = $qaDb
     $env:HEXABILL_QA_PSQL = Join-Path $qaPgBin 'psql.exe'
