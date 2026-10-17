@@ -45,6 +45,25 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — Product barcode conflict fix and create field matrix (PASS locally; NOT live; not pushed by this entry)
+- Root cause: `ProductService.CreateProductAsync` checked barcodes against active rows only. The live unique index `IX_Products_TenantId_Barcode` covers deactivated rows too, so an insert failed with a raw unique violation. `ProductsController` reported that as "SKU already exists". Live has 14 deactivated products with barcodes. The index is in live and in the 2026-10-11 recovery dump, but in no EF migration or model.
+- Fix: barcode checks now include deactivated rows, with a message that names the product. The controller names the barcode constraint when it fires. Files: `backend/HexaBill.Api/Modules/Products/ProductService.cs`, `backend/HexaBill.Api/Modules/Products/ProductsController.cs`.
+- Evidence: new `tests/HexaBill.Tests/tenancy/ProductBarcodeConflictPostgreSqlTests.cs`. Before the fix, 2 failed with `DbUpdateException` and the active-holder control passed. After the fix, 3/3 passed. Full backend on a disposable local PostgreSQL 18 cluster (`127.0.0.1:55490`, EnsureCreated, not a migration rehearsal): 836 passed, 0 failed, 0 skipped. Frontend `npm test` 184/184.
+- Docs: `docs/database/PRODUCT-CUSTOMER-CREATE-FIELDS-2026-10-17.md` (field matrix across DB, DTO, service and client, with the root-cause table). `docs/database/LIVE-SCHEMA-2026-10-17.md` regenerated with no tenant names, a NOT NULL list, and drift items 6–7.
+- Live: no live writes, no migrations, no deploy. `autoDeploy` is `no` on the Render service, so the barcode fix needs an approved backend deploy.
+- Open: decision on declaring `IX_Products_TenantId_Barcode` in the model; `Customers.OwnerId` = 0 on 56 rows (backfill needs approval); migration rehearsal on a database with live history; live product create test needs approval.
+- STOP HERE — do not begin next phase automatically.
+
+### 2026-10-17 — Live save-failure verification and schema snapshot (read-only; live product create NOT TESTED)
+- Source: local `main` = `origin/main` = `84c9e1f`. Render live deploy `dep-db9iamvavr4c73e6gpvg` = `84c9e1f` (finished 07:38:04Z). `/health/ready` Ready / Connected / Current. Render `autoDeploy` is `no` on the service; `render.yaml` still says `checksPass`, which does not match the live setting.
+- Live DB, read-only: 55 history rows, 54 migration files, none pending. Orphan history row `20260215070856_AddBranchIdToExpense` documented, not edited. Return-number indexes are per tenant; duplicate pairs 0 in `SaleReturns`, `PurchaseReturns`, `Products.Sku`.
+- Live frontend bundle `index-C7xkt4XT.js` serves the `(Ref:` toast format. Tests: `node --test tests/apiError.test.js` 3/3; `npm test` 184/184, 0 skipped.
+- Post-deploy: customer 126 (tenant 22) created 07:45:57Z; ErrorLogs since deploy 0. No live product write was made. Barcode auto-fill 500 (2026-10-13) unexplained; logo requests without a token logged as SECURITY errors.
+- Artifacts: `docs/database/LIVE-SCHEMA-2026-10-17.md` (67 tables, 871 columns, 22,679 rows; no credentials), `docs/qa/HEXABILL-PRODUCTION-SAVE-INCIDENT.md` updated.
+- NOT done: no live test writes, no migrations (none pending), no deploy triggered, no password rotation.
+- Next: owner approval for one marked product and customer test write in tenant 22, then soft-delete; rotate the database password that was pasted into chat.
+- STOP HERE — do not begin next phase automatically.
+
 ### 2026-10-17 — P0-FIN-RETURN-05: branch/route parity (PASS locally; committed on branch `codex/return-branch-route-parity-2`; push to main pending owner approval)
 - Repo state found mid-task: HEAD `d188fc2` on `main` (committed 11:27 by another writer, parent `adeb0cf`, reimplements return reconciliation). Commit `2ec0691` (tracker note) landed on the return chain during the session. My changes are uncommitted in the working tree; backup patch and new files are in the session scratchpad `route-parity-backup/`. No branch, reset or push was performed after this was noticed; one `git stash` of two of my files was popped and verified.
 - Defects reproduced on PostgreSQL through the real `ReturnService.CreateSaleReturnAsync` path (15.75 invoice, 5.00 cash receipt, branch + route): (a) new returns stored `RouteId = null` (hard-coded in `ReturnService`), so route returns were always 0; (b) branch and route return sums included pending, rejected and reversed returns; (c) route payment sums included refund payments (`SaleReturnId`) and VOID payments, branch included VOID; (d) branch route rows hard-coded returns to 0; (e) route sales sum had no explicit tenant predicate (the global tenant filter already protects it; guard test passes).

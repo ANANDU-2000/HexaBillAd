@@ -1,0 +1,16 @@
+GOAL: Fix and verify HexaBill's production-reported 'saved in DB but UI says Failed' defects and accounting inconsistencies. Read docs/qa/HEXABILL_LIVE_SAVE_FAILURE_ENGINEERING.md (full specification), current Git state and the existing QA tracker; do not replan the project.
+
+Use legitimate authenticated tools to inspect Render backend/DB logs and PostgreSQL schema + Vercel frontend, READ-ONLY first. Confirm exact deployment SHAs, tenant/database and the real API status, response body and request ID. Never infer a response from the screenshot's Payload tab. Do not assume Render MCP exists: discover its availability before use.
+
+The historical ZIP suggests ProductsPage and CustomersPage branch on response.success, CustomersPage awaits fetchCustomers after save, PurchasesPage also branches on success, and api.js transforms response keys. Verify CURRENT code and trace POST -> controller -> transaction -> response interceptor -> toast -> refresh.
+
+P0: check invoice 15.75, payment 5, full return 15.75; expected outstanding 0 and customer credit 5. Reconcile ledger, aging, dashboard, route, branch, VAT and reports.
+P1: reproduce product/customer false error after actual 201/commit, then purchase/payment false results and stale list. Check branch/route validation and form contract. Write failing tests, fix root cause and verify list and DB state after refresh.
+
+For each bug: CAPTURE RAW REQUEST+RESPONSE -> CORRELATE LOG -> CHECK TENANT-SCOPED DB -> REPRODUCE IN DISPOSABLE PG -> FAILING TEST -> CODE FIX -> CHROME/PLAYWRIGHT -> API/DB/FINANCIAL RECONCILIATION -> TRACK -> NEXT.
+
+Inspect schema column types, nullable/default/precision, foreign keys, unique constraints, indexes, EF migrations and DTO mappings using read-only minimal queries; never dump user data. Test genuine browser fill/save/edit/delete or deactivate only on synthetic staging/local tenants, not real Gulf Harvest production. Check retries, idempotency, permissions and concurrency. Preserve live QA rows.
+
+Run .NET, frontend, PostgreSQL integration/concurrency and full browser tests. No unexplained skips. Capture redacted screenshots, network errors, server logs and database evidence. Maintain docs/qa/HEXABILL-PRODUCTION-SAVE-INCIDENT.md. Continue approved local work autonomously; no more planning-only stops.
+
+DO NOT change live PostgreSQL, production data, migrations, Render/Vercel deployment, real invoices, balances or VAT without a separate explicit production release approval, tested backup, rollback and staged verification. No invented credentials or tools. Report STATUS (PASS/FAIL/BLOCKED), ROOT CAUSE, TESTS, DB+API EVIDENCE, FILES, RISKS, NEXT. Never claim production fixed until the deployed production version is actually verified.

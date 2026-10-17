@@ -218,10 +218,14 @@ namespace HexaBill.Api.Modules.Products
                     || errorMessage.Contains("duplicate") || errorMessage.Contains("23505");
                 if (isUniqueViolation)
                 {
+                    // Name the constraint that fired, so a barcode clash is not reported as a SKU clash.
+                    var isBarcodeViolation = errorMessage.Contains("TenantId_Barcode");
                     return Conflict(new ApiResponse<ProductDto>
                     {
                         Success = false,
-                        Message = "Product with this SKU already exists for this tenant. Use a different SKU.",
+                        Message = isBarcodeViolation
+                            ? "A product with this barcode already exists for this tenant. Use a different barcode."
+                            : "Product with this SKU already exists for this tenant. Use a different SKU.",
                         Errors = new List<string> { errorMessage }
                     });
                 }

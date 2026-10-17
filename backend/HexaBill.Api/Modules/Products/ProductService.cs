@@ -287,21 +287,25 @@ namespace HexaBill.Api.Modules.Products
                 ? InputValidator.SanitizeString(request.Barcode, 100)
                 : null;
 
+            // The unique index IX_Products_TenantId_Barcode covers deactivated rows too, so the barcode
+            // check must include them. Checking active rows only let an insert reach the index and fail.
             if (!string.IsNullOrWhiteSpace(barcode))
             {
                 var barcodeKey = barcode.ToLowerInvariant();
                 var barcodeOwner = await _context.Products
-                    .Where(p => p.TenantId == tenantId && p.IsActive && p.Barcode != null && p.Barcode.ToLower() == barcodeKey)
-                    .Select(p => new { p.NameEn, p.Sku })
+                    .Where(p => p.TenantId == tenantId && p.Barcode != null && p.Barcode.ToLower() == barcodeKey)
+                    .Select(p => new { p.NameEn, p.Sku, p.IsActive })
                     .FirstOrDefaultAsync();
                 if (barcodeOwner != null)
                 {
-                    throw new InvalidOperationException($"Barcode already exists on \"{barcodeOwner.NameEn}\" ({barcodeOwner.Sku}).");
+                    throw new InvalidOperationException(barcodeOwner.IsActive
+                        ? $"Barcode already exists on \"{barcodeOwner.NameEn}\" ({barcodeOwner.Sku})."
+                        : $"Barcode already exists on deactivated product \"{barcodeOwner.NameEn}\" ({barcodeOwner.Sku}). Reactivate that product or use a different barcode.");
                 }
             }
             else
             {
-                var skuBarcodeTaken = await _context.Products.AnyAsync(p => p.TenantId == tenantId && p.IsActive && p.Barcode != null && p.Barcode.ToLower() == skuKey);
+                var skuBarcodeTaken = await _context.Products.AnyAsync(p => p.TenantId == tenantId && p.Barcode != null && p.Barcode.ToLower() == skuKey);
                 if (!skuBarcodeTaken)
                     barcode = sku;
             }
