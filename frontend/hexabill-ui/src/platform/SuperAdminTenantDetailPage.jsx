@@ -55,6 +55,7 @@ import { Input, Select } from '../components/Form'
 import ConfirmDangerModal from '../components/ConfirmDangerModal'
 import { isValidTenantSlug } from '../tenant/tenantHost'
 import { TabNavigation } from '../components/ui'
+import ErrorState from '../components/ui/ErrorState'
 
 const SuperAdminTenantDetailPage = () => {
   const { id } = useParams()
@@ -106,6 +107,8 @@ const SuperAdminTenantDetailPage = () => {
   const [invoicesLoading, setInvoicesLoading] = useState(false)
   const [paymentHistory, setPaymentHistory] = useState(null)
   const [paymentHistoryLoading, setPaymentHistoryLoading] = useState(false)
+  const [paymentHistoryFailed, setPaymentHistoryFailed] = useState(false)
+  const [paymentHistoryReload, setPaymentHistoryReload] = useState(0)
   const [exportLoading, setExportLoading] = useState(false)
   const [dangerModal, setDangerModal] = useState({
     isOpen: false,
@@ -197,15 +200,17 @@ const SuperAdminTenantDetailPage = () => {
   useEffect(() => {
     if (id && activeTab === 'payments') {
       setPaymentHistoryLoading(true)
+      setPaymentHistoryFailed(false)
       superAdminAPI.getTenantPaymentHistory(parseInt(id))
         .then((res) => {
           if (res?.success && Array.isArray(res?.data)) setPaymentHistory(res.data)
-          else setPaymentHistory([])
+          else { setPaymentHistory([]); setPaymentHistoryFailed(true) }
         })
-        .catch(() => setPaymentHistory([]))
+        // A failed load is not "no history": show an error with retry so money history is never silently blank.
+        .catch(() => { setPaymentHistory([]); setPaymentHistoryFailed(true) })
         .finally(() => setPaymentHistoryLoading(false))
     }
-  }, [id, activeTab])
+  }, [id, activeTab, paymentHistoryReload])
 
   useEffect(() => {
     if (id && (activeTab === 'limits' || activeTab === 'overview')) {
@@ -1057,6 +1062,8 @@ const SuperAdminTenantDetailPage = () => {
           <p className="text-sm text-neutral-500 mb-4">Subscription and payment method. When the tenant paid or started trial, renewals, and payment method.</p>
           {paymentHistoryLoading ? (
             <LoadingCard />
+          ) : paymentHistoryFailed ? (
+            <ErrorState compact title="Payment history could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => setPaymentHistoryReload(n => n + 1)} />
           ) : paymentHistory && paymentHistory.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

@@ -45,6 +45,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-06 (third slice): remaining swallowed load failures (PASS locally for route/branch; SuperAdmin page NOT TESTED in a browser; NOT live)
+- Fixed with the shared `ErrorState` and retry: route branch-level expenses (`RouteDetailPage.jsx`), the branch customer refresh after a transfer (now reuses the Customers tab effect, so it also gets the failure state), and the SuperAdmin tenant payment history (`SuperAdminTenantDetailPage.jsx`; money history is no longer silently blank, and `success: false` counts as a failure).
+- Evidence: `e2e/route-expenses-load-failure.spec.js` **3/3 at m360, t768, d1440, red on the previous page**; `e2e/branch-detail-load-failure.spec.js` re-run after the transfer-refresh change **4/4 (m360, d1440)**. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- NOT TESTED: the SuperAdmin payment history in a browser (needs a platform-host session the synthetic harness does not provide; only build and lint), the branch customer transfer flow end to end.
+- The audited "failure shown as empty" list pattern is now cleared on the files named in the earlier slices. Pages not scanned may still have it.
+
 ### 2026-10-17 — UX-06 (second slice): branch Customers and Staff failed loads (PASS locally in browser; NOT live)
 - `BranchDetailPage.jsx`: the Customers and Staff tabs turned any load failure into an empty list ("No customers in this branch", "No staff assigned"). They now show the shared `ErrorState` with Try again (refetches both tabs); the empty messages appear only after a successful empty load. A `success: false` response counts as a failure too.
 - Evidence: `e2e/branch-detail-load-failure.spec.js` **6/6 at m360, t768, d1440** (real branch via API, list responses mocked to fail then succeed). **Both tests red on the previous page, green on the fix.** Frontend `npm test` 210/210; lint 0 errors; build exit 0.

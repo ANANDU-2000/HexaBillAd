@@ -454,16 +454,7 @@ const BranchDetailPage = () => {
         setTransferTargetBranchId('')
         setTransferTargetRouteId('')
         // Refresh customers list
-        if (activeTab === 'customers') {
-          setBranchCustomersLoading(true)
-          customersAPI.getCustomers({ branchId: parseInt(id, 10), pageSize: 200 })
-            .then(res => {
-              if (res?.success && res?.data?.items) setBranchCustomers(res.data.items)
-              else setBranchCustomers([])
-            })
-            .catch(() => setBranchCustomers([]))
-            .finally(() => setBranchCustomersLoading(false))
-        }
+        if (activeTab === 'customers') setBranchTabReload(n => n + 1) // reuses the tab effect, including its failure state
       } else {
         toast.error(res?.message || 'Failed to transfer customer')
       }

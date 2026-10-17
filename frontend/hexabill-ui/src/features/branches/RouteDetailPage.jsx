@@ -65,6 +65,8 @@ const RouteDetailPage = () => {
   const [routeSalesReload, setRouteSalesReload] = useState(0)
   const [generalExpenses, setGeneralExpenses] = useState([])
   const [generalExpensesLoading, setGeneralExpensesLoading] = useState(false)
+  const [generalExpensesFailed, setGeneralExpensesFailed] = useState(false)
+  const [generalExpensesReload, setGeneralExpensesReload] = useState(0)
   const [showTodaysRoute, setShowTodaysRoute] = useState(false)
   const [todaysRouteCustomers, setTodaysRouteCustomers] = useState([])
   const [updatingVisitStatus, setUpdatingVisitStatus] = useState(null) // { customerId: status }
@@ -220,15 +222,17 @@ const RouteDetailPage = () => {
   useEffect(() => {
     if (activeTab === 'expenses' && id && route?.branchId) {
       setGeneralExpensesLoading(true)
+      setGeneralExpensesFailed(false)
       expensesAPI.getExpenses({ branchId: route.branchId, pageSize: 100 })
         .then(res => {
           const items = res?.data?.items ?? res?.items ?? []
           setGeneralExpenses(Array.isArray(items) ? items : [])
         })
-        .catch(() => setGeneralExpenses([]))
+        // A failed load is not "no expenses": keep the states apart and offer a retry.
+        .catch(() => { setGeneralExpenses([]); setGeneralExpensesFailed(true) })
         .finally(() => setGeneralExpensesLoading(false))
     }
-  }, [activeTab, id, route?.branchId])
+  }, [activeTab, id, route?.branchId, generalExpensesReload])
 
   const handleAddExpense = async (e) => {
     e?.preventDefault()
@@ -810,6 +814,8 @@ const RouteDetailPage = () => {
               <h3 className="text-md font-medium text-neutral-700 mb-3">Branch-Level Expenses (Rent, Utilities, etc.)</h3>
               {generalExpensesLoading ? (
                 <div className="py-4 flex justify-center"><div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-600 border-t-transparent" /></div>
+              ) : generalExpensesFailed ? (
+                <ErrorState compact title="Branch expenses could not be loaded" message="Check your connection and try again. Nothing was changed." onAction={() => setGeneralExpensesReload(n => n + 1)} />
               ) : generalExpenses.length === 0 ? (
                 <p className="text-neutral-500 text-sm py-2">No branch-level expenses allocated to this route's branch.</p>
               ) : (
