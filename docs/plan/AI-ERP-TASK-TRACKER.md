@@ -45,6 +45,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — CLEAN-01 documentation index and empty parent lockfile (PARTIAL; cleanup kept minimal)
+- Verified in this checkout: the four duplicate groups from the audit are byte-identical (same MD5). Only one tracked file references the old `TEST END TO END/` folder (`docs/qa/ENGINEERING-REGISTER.md`, which records that folder as intentionally preserved), and the two goal documents only name each other. No tool, script or CI file references any of the duplicates.
+- Removed: `frontend/package-lock.json` (an empty `packages` map; no `frontend/package.json` exists). Usage check: `vercel.json`, both GitHub workflows and `render.yaml` always target `frontend/hexabill-ui`. `frontend/hexabill-ui` `npm run build` exit 0 afterwards. Git history keeps the file.
+- Added: `docs/INDEX.md` (authority order, evidence map, duplicate table, cleanup rules). Nothing moved or deleted otherwise.
+- Not done on purpose: duplicate QA files in `TEST END TO END/` (user documents), duplicate goal documents (owner must choose the canonical one), skill copies (both discovery paths intentional), root-document relocation, large-file refactors, bulk moves.
+- NOT TESTED: a Vercel build from the actual dashboard configuration (root directory setting not read; the repo's `vercel.json` implies repo root).
+- Next: authorized product work; AI, voice, maps and forecast items remain unstarted and mostly need owner decisions (provider, data use, budget).
+
 ### 2026-10-17 — OPS-01 runtime schema repair: inventory and fresh-migration finding (FINDING recorded; NOTHING removed; rehearsal NOT TESTED by default)
 - Inventory (static): about 217 `ALTER TABLE` occurrences outside `Migrations/` (115 in `Program.cs`, 10 and 6 `CREATE TABLE` in `PostgresBranchesRoutesSchema.cs`, `TenantContextMiddleware` adds `Tenants.FeaturesJson` at request time, plus `SuperAdminTenantService`, `VendorDiscountService`). Production-startup supplier DDL is among them. None changed in this checkpoint: removal needs a verified versioned baseline first (audit condition).
 - Finding (executed, disposable PostgreSQL 18, scratch database created and dropped by the test): migrating an empty database from the 42-migration history fails. `20260214173227_AddBranchAndRoute` was scaffolded against SQLite (`INTEGER`/`TEXT`, 32 `CreateTable` calls) and re-creates tables such as `Customers` that `InitialPostgreSQL` already made (42P07). So a fresh PostgreSQL database cannot be built from migrations; production only works because its history rows already exist. This is the same collision recorded earlier as REL-004/011.
