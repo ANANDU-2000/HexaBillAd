@@ -211,4 +211,100 @@ public class AssistantExpenseDraftHttpTests
         Assert.DoesNotContain("77.77", row.Details);
         Assert.Contains("kind=expense.create", row.Details);
     }
+
+    [Fact]
+    public async Task ClosedBusinessDay_RefusesConfirm_WritesNothing_AndTheSameDraftWorksOnceTheDayIsReopened()
+    {
+        var marker = Marker();
+        // A date no other test uses, so closing it here cannot affect them.
+        var day = new DateTime(2026, 9, 15, 0, 0, 0, DateTimeKind.Utc);
+        int closeId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var close = new HexaBill.Api.Models.DailyCashClose
+            {
+                TenantId = 1, OwnerId = 1, BusinessDate = day, Version = 1, Status = HexaBill.Api.Models.DailyCashCloseStatus.Closed,
+                OpeningCash = 0, ExpectedCash = 0, CountedCash = 0, Variance = 0, CreatedByUserId = 1,
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, ClosedAt = DateTime.UtcNow, ClosedByUserId = 1,
+            };
+            db.DailyCashCloses.Add(close);
+            await db.SaveChangesAsync();
+            closeId = close.Id;
+        }
+
+        using var client = Owner(1, "tenanta");
+        var (id, hash, _) = await Propose(client, new { categoryId = 1, amount = 30, date = "2026-09-15", note = marker });
+
+        var refused = await Confirm(client, id, hash, Key());
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Contains("closed", (await Body(refused)).GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal((0, 0m), await ExpensesWith(1, marker));
+        // The refusal happened before any write, so the draft is not stuck as "being confirmed".
+        var again = await Confirm(client, id, hash, Key());
+        Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
+        Assert.Contains("closed", (await Body(again)).GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var close = await db.DailyCashCloses.IgnoreQueryFilters().FirstAsync(c => c.Id == closeId);
+            close.Status = HexaBill.Api.Models.DailyCashCloseStatus.Draft; // reopened
+            await db.SaveChangesAsync();
+        }
+        var ok = await Confirm(client, id, hash, Key());
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        Assert.Equal((1, 30m), await ExpensesWith(1, marker));
+    }
+
+    [Fact]
+    public async Task VatLockedPeriod_RefusesConfirm_WritesNothing_AndTheSameDraftWorksOnceUnlocked()
+    {
+        var marker = Marker();
+        // A one-day period no other test posts into.
+        var day = new DateTime(2026, 7, 20, 0, 0, 0, DateTimeKind.Utc);
+        int periodId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var period = new HexaBill.Api.Models.VatReturnPeriod
+            {
+                TenantId = 1, PeriodType = "Monthly", PeriodLabel = "UX-LOCK", PeriodStart = day, PeriodEnd = day.AddDays(1).AddTicks(-1),
+                DueDate = day.AddDays(28), Status = "Locked", LockedAt = DateTime.UtcNow, LockedByUserId = 1,
+            };
+            db.VatReturnPeriods.Add(period);
+            await db.SaveChangesAsync();
+            periodId = period.Id;
+        }
+
+        try
+        {
+            using var client = Owner(1, "tenanta");
+            var (id, hash, _) = await Propose(client, new { categoryId = 1, amount = 25, date = "2026-07-20", note = marker });
+
+            var refused = await Confirm(client, id, hash, Key());
+            Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+            Assert.Contains("locked", (await Body(refused)).GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal((0, 0m), await ExpensesWith(1, marker));
+
+            using (var scope = _factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var period = await db.VatReturnPeriods.IgnoreQueryFilters().FirstAsync(p => p.Id == periodId);
+                period.Status = "Draft"; // unlocked (amended) by the owner through the normal VAT screens
+                await db.SaveChangesAsync();
+            }
+            var ok = await Confirm(client, id, hash, Key());
+            Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+            Assert.Equal((1, 25m), await ExpensesWith(1, marker));
+        }
+        finally
+        {
+            // Leave no locked period behind for other tests.
+            using var scope = _factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var period = await db.VatReturnPeriods.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == periodId);
+            if (period != null) { period.Status = "Draft"; await db.SaveChangesAsync(); }
+        }
+    }
 }

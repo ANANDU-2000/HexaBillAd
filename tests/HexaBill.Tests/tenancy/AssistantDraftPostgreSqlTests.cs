@@ -93,4 +93,89 @@ public class AssistantDraftPostgreSqlTests
         Assert.Equal(factory.TenantAId, row.TenantId);
         Assert.Equal(20.00m, row.Amount);
     }
+
+    [SkippableFact]
+    public async Task ExpenseConfirm_ClosedDayAndVatLockedPeriod_AreRefusedWithNothingWritten_ThenWorkOnceReopened_OnPostgreSql()
+    {
+        var factory = PostgresIntegrationSkip.RequireFactory(_fixture.Factory);
+        using var client = HttpIntegrationClient.Create(factory, factory.TenantAId, factory.TenantAId, factory.SlugA);
+        var closedDay = new DateTime(2026, 9, 16, 0, 0, 0, DateTimeKind.Utc);
+        var lockedDay = new DateTime(2026, 7, 21, 0, 0, 0, DateTimeKind.Utc);
+        int closeId, periodId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var close = new HexaBill.Api.Models.DailyCashClose
+            {
+                TenantId = factory.TenantAId, OwnerId = factory.TenantAId, BusinessDate = closedDay, Version = 1,
+                Status = HexaBill.Api.Models.DailyCashCloseStatus.Closed, OpeningCash = 0, ExpectedCash = 0, CountedCash = 0, Variance = 0,
+                CreatedByUserId = factory.TenantAId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow, ClosedAt = DateTime.UtcNow, ClosedByUserId = factory.TenantAId,
+            };
+            var period = new HexaBill.Api.Models.VatReturnPeriod
+            {
+                TenantId = factory.TenantAId, PeriodType = "Monthly", PeriodLabel = "PG-UX-LOCK", PeriodStart = lockedDay, PeriodEnd = lockedDay.AddDays(1).AddTicks(-1),
+                DueDate = lockedDay.AddDays(28), Status = "Locked", LockedAt = DateTime.UtcNow, LockedByUserId = factory.TenantAId,
+            };
+            db.DailyCashCloses.Add(close);
+            db.VatReturnPeriods.Add(period);
+            await db.SaveChangesAsync();
+            closeId = close.Id;
+            periodId = period.Id;
+        }
+
+        async Task<(Guid id, string hash)> ProposeOn(string date, string note)
+        {
+            var response = await client.PostAsJsonAsync("/api/assistant/drafts/expense",
+                new { categoryId = factory.ExpenseCategoryAId, amount = 15, date, note });
+            Assert.True(response.StatusCode == HttpStatusCode.Created, $"{(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+            var data = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+            return (data.GetProperty("id").GetGuid(), data.GetProperty("payloadHash").GetString()!);
+        }
+
+        async Task<int> CountWith(string note)
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return await db.Expenses.IgnoreQueryFilters().CountAsync(e => e.Note == note);
+        }
+
+        try
+        {
+            var closedNote = "pg-draft-closed-" + Guid.NewGuid().ToString("N")[..8];
+            var lockedNote = "pg-draft-vatlock-" + Guid.NewGuid().ToString("N")[..8];
+            var (closedId, closedHash) = await ProposeOn("2026-09-16", closedNote);
+            var (lockedId, lockedHash) = await ProposeOn("2026-07-21", lockedNote);
+
+            var closedRefused = await Confirm(client, closedId, closedHash, $"pg-draft-{Guid.NewGuid():N}");
+            Assert.Equal(HttpStatusCode.Conflict, closedRefused.StatusCode);
+            Assert.Contains("closed", (await closedRefused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+            var lockedRefused = await Confirm(client, lockedId, lockedHash, $"pg-draft-{Guid.NewGuid():N}");
+            Assert.Equal(HttpStatusCode.Conflict, lockedRefused.StatusCode);
+            Assert.Contains("locked", (await lockedRefused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString()!, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(0, await CountWith(closedNote));
+            Assert.Equal(0, await CountWith(lockedNote));
+
+            using (var scope = factory.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                (await db.DailyCashCloses.IgnoreQueryFilters().FirstAsync(c => c.Id == closeId)).Status = HexaBill.Api.Models.DailyCashCloseStatus.Draft;
+                (await db.VatReturnPeriods.IgnoreQueryFilters().FirstAsync(x => x.Id == periodId)).Status = "Draft";
+                await db.SaveChangesAsync();
+            }
+            Assert.Equal(HttpStatusCode.OK, (await Confirm(client, closedId, closedHash, $"pg-draft-{Guid.NewGuid():N}")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await Confirm(client, lockedId, lockedHash, $"pg-draft-{Guid.NewGuid():N}")).StatusCode);
+            Assert.Equal(1, await CountWith(closedNote));
+            Assert.Equal(1, await CountWith(lockedNote));
+        }
+        finally
+        {
+            using var scope = factory.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var close = await db.DailyCashCloses.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Id == closeId);
+            var period = await db.VatReturnPeriods.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == periodId);
+            if (close != null) close.Status = HexaBill.Api.Models.DailyCashCloseStatus.Draft;
+            if (period != null) period.Status = "Draft";
+            await db.SaveChangesAsync();
+        }
+    }
 }
