@@ -109,7 +109,42 @@ export default function QuotationsPage() {
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-auto">
-          <table className="w-full text-sm min-w-[720px]">
+          {/* Phone: identity and actions in one card, no sideways scrolling (UX-02) */}
+          <ul className="md:hidden divide-y" aria-label="Quotations">
+            {rows.map((r) => (
+              <li key={r.id} className="px-3 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link className="text-primary font-semibold" to={`/quotations/${r.id}`}>{r.quoteNo}</Link>
+                    <p className="break-words text-sm text-slate-800">{r.customerName || '—'}</p>
+                    <p className="text-xs text-slate-500">{r.quoteDate?.slice?.(0, 10) || r.quoteDate} · {r.status}</p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold tabular-nums">{currency} {Number(r.grandTotal).toFixed(2)}</p>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {[
+                    ['Edit', () => navigate(`/quotations/${r.id}`), Pencil, false],
+                    ['Print', () => handlePdf(r, 'A4', 'print', 'body'), Printer, false],
+                    ['Full', () => handlePdf(r, 'A4', 'print', 'full'), Printer, false],
+                    ['PDF', () => handlePdf(r, 'A4', 'download', 'full'), Download, false],
+                    ['Delete', () => handleDelete(r), Trash2, true],
+                  ].map(([label, action, Icon, danger]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={busyId === r.id}
+                      onClick={action}
+                      aria-label={`${label} ${r.quoteNo}`}
+                      className={`inline-flex min-h-11 items-center gap-1 rounded border px-3 text-sm disabled:opacity-50 ${danger ? 'border-error-border text-error-fg' : 'hover:bg-slate-100'}`}
+                    >
+                      <Icon className="w-4 h-4" aria-hidden /> {label}
+                    </button>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
+          <table className="hidden md:table w-full text-sm min-w-[720px]">
             <thead className="bg-slate-50 text-left sticky top-0 z-10">
               <tr>
                 <th className="px-2 py-1.5 font-semibold">Quote #</th>

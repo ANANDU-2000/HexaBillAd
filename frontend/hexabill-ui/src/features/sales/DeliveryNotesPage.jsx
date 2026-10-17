@@ -137,7 +137,35 @@ export default function DeliveryNotesPage() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full text-sm min-w-[640px]">
+            {/* Phone: identity and actions in one card, no sideways scrolling (UX-02) */}
+            <ul className="md:hidden divide-y" aria-label="Delivery notes">
+              {rows.map((r) => {
+                const itemCount = r.itemCount ?? r.items?.length ?? 0
+                const busy = busyId === r.id
+                return (
+                  <li key={r.id} className="px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <Link className="font-semibold text-primary" to={`/delivery-notes/${r.id}`}>DN-{r.invoiceNo}</Link>
+                        <p className="break-words text-sm text-slate-800">{r.customerName || 'Cash Customer'}</p>
+                        <p className="text-xs text-slate-500">
+                          {r.invoiceDate ? new Date(r.invoiceDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} · {itemCount} items
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Link to={`/delivery-notes/${r.id}`} aria-label={`View DN-${r.invoiceNo}`} className="inline-flex min-h-11 items-center gap-1 rounded border border-neutral-200 px-3 text-sm"><Eye className="w-4 h-4" aria-hidden /> View</Link>
+                      {[['PDF', 'A4', 'download', Download], ['A4', 'A4', 'print', Printer], ['A5', 'A5', 'print', Printer]].map(([label, size, mode, Icon]) => (
+                        <button key={label} type="button" disabled={busy} onClick={() => handlePdf(r, size, mode)} aria-label={`${label} DN-${r.invoiceNo}`} className="inline-flex min-h-11 items-center gap-1 rounded border border-neutral-200 px-3 text-sm disabled:opacity-50">
+                          <Icon className="w-4 h-4" aria-hidden /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+            <table className="hidden md:table w-full text-sm min-w-[640px]">
               <thead className="bg-slate-50 text-left sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1.5 font-semibold">DN / Invoice #</th>

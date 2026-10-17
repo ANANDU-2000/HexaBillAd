@@ -45,6 +45,12 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-02 phone card lists for price list and document lists (PARTIAL; NOT live)
+- Defect (S183/S184, S200, S203, S210): wide tables inside a sideways scroller hide product/customer identity while actions stay visible. Fixed for four lists: `PriceList.jsx`, `QuotationsPage.jsx`, `DeliveryNotesPage.jsx`, `SalaryCertificatesPage.jsx`. Below `md` each row is a card (identity, date/status, 44px actions with accessible names); from `md` the existing table is unchanged.
+- Evidence: `e2e/pricelist-responsive.spec.js` 5/5 (m360, m390, t768, d1024, d1440); `e2e/document-lists-responsive.spec.js` 16/16 (m360, m390, t768, d1440) including a seeded quotation with a very long customer name and all five action buttons within the screen and >=44px. **Quotations red on the previous page, green on the fix.** `npm test` 204/204, build exit 0, lint 0 errors.
+- NOT TESTED: delivery-note and salary-certificate card path with real rows (synthetic tenant has none; only the no-overflow check ran), route sales table (S189, `RouteDetailPage.jsx` still has 5 tables and no phone cards), price-list save from the phone card against the API, tablet column priorities, other wide tables (reports).
+- Next: RouteDetailPage phone layout, then UX-03/UX-06 tablet shell.
+
 ### 2026-10-17 — UX-04 purchase entry mode and fixed footer spacing (PASS locally in browser; NOT live)
 - Defects: (a) with the voucher open, filters, status chips, "Purchase List" and the "This period" analytics block still rendered under it; (b) `Layout.jsx` set `--hb-bottom-nav-h` from the route only, so when the bottom nav was hidden (inline voucher, modal, software keyboard) the fixed Save bar floated 4.75rem above the screen bottom.
 - Fix: `PurchasesPage.jsx` renders history/analytics only when `!showForm`; Cancel/Save return to history. `Layout.jsx` uses `bottomNavVisible` for the variable (also benefits POS bars that use it).

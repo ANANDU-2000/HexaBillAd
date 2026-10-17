@@ -192,7 +192,59 @@ const PriceList = () => {
           <div className="p-3 border-b-2 border-neutral-300 bg-neutral-50">
             <h3 className="text-sm font-bold text-neutral-900">Price List</h3>
           </div>
-          <div className="overflow-x-auto">
+          {/* Phone: one card per product so the name stays next to the price and the edit control (UX-02) */}
+          <ul className="md:hidden divide-y divide-neutral-200" aria-label="Price list">
+            {filteredProducts.length === 0 ? (
+              <li className="px-4 py-8 text-center text-sm text-neutral-500">
+                {searchTerm ? 'No products found matching your search' : 'No products available'}
+              </li>
+            ) : (
+              filteredProducts.map((product) => (
+                <li key={product.id} className="px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium text-neutral-900">{product.nameEn}</p>
+                      <p className="text-xs text-neutral-500">SKU {product.sku} · {product.unitType} · Stock {product.stockQty}</p>
+                    </div>
+                    {editingProduct !== product.id && (
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums text-neutral-900">{formatCurrency(product.sellPrice)}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(product)}
+                          className="mt-1 inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md border border-neutral-300 px-3 text-sm text-primary-700"
+                          aria-label={`Edit price for ${product.nameEn}`}
+                        >
+                          <Edit className="h-4 w-4" aria-hidden /> Edit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {editingProduct === product.id && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        aria-label={`New price for ${product.nameEn}`}
+                        className="min-h-11 w-full rounded-md border border-neutral-300 px-3 text-base"
+                        value={editForm.sellPrice}
+                        onChange={(e) => setEditForm({ ...editForm, sellPrice: e.target.value })}
+                      />
+                      <button type="button" onClick={() => handleSave(product.id)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md bg-primary-600 text-white" aria-label="Save price">
+                        <Save className="h-5 w-5" aria-hidden />
+                      </button>
+                      <button type="button" onClick={handleCancel} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-neutral-300 text-error" aria-label="Cancel price edit">
+                        <X className="h-5 w-5" aria-hidden />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
+          <div className="hidden md:block overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead className="bg-neutral-50">
                 <tr>

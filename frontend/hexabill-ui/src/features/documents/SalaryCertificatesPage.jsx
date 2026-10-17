@@ -146,7 +146,39 @@ export default function SalaryCertificatesPage() {
           </div>
         ) : (
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full text-sm min-w-[860px]">
+            {/* Phone: identity and actions in one card, no sideways scrolling (UX-02) */}
+            <ul className="md:hidden divide-y" aria-label="Salary certificates">
+              {filtered.map((r) => (
+                <li key={r.id} className="px-3 py-3">
+                  <Link className="font-semibold text-primary" to={`/salary-certificates/${r.id}`}>{r.certificateNo}</Link>
+                  <p className="break-words text-sm text-slate-800">{r.employeeName || '—'}</p>
+                  <p className="text-xs text-slate-500">
+                    {String(r.certificateDate || '').slice(0, 10)} · {r.designation || '—'} · {r.status}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {[
+                      ['Edit', () => navigate(`/salary-certificates/${r.id}`), Pencil, false],
+                      ['Print', () => handlePdf(r, 'A4', 'print', 'body'), Printer, false],
+                      ['Full', () => handlePdf(r, 'A4', 'print', 'full'), Printer, false],
+                      ['PDF', () => handlePdf(r, 'A4', 'download', 'full'), Download, false],
+                      ['Delete', () => handleDelete(r), Trash2, true],
+                    ].map(([label, action, Icon, danger]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        disabled={busyId === r.id}
+                        onClick={action}
+                        aria-label={`${label} ${r.certificateNo}`}
+                        className={`inline-flex min-h-11 items-center gap-1 rounded border px-3 text-sm disabled:opacity-50 ${danger ? 'border-error-border text-error-fg' : 'hover:bg-slate-100'}`}
+                      >
+                        <Icon className="w-4 h-4" aria-hidden /> {label}
+                      </button>
+                    ))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <table className="hidden md:table w-full text-sm min-w-[860px]">
               <thead className="bg-slate-50 text-left sticky top-0 z-10">
                 <tr>
                   <th className="px-2 py-1.5 font-semibold">No.</th>
