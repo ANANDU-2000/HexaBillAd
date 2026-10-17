@@ -227,7 +227,7 @@ const ReportsPage = () => {
     { id: 'staff', name: 'Staff Performance', shortLabel: 'Staff', icon: Users, adminOnly: true, group: 'Operations' },
     { id: 'cheque', name: 'Cheque Report', shortLabel: 'Cheque', icon: ShieldCheck, adminOnly: true, group: 'Operations' },
     { id: 'profit-loss', name: 'Profit & Loss', shortLabel: 'P&L', icon: TrendingUp, adminOnly: true, group: 'Company' },
-    { id: 'ai', name: 'AI Insights', shortLabel: 'AI', icon: Eye, adminOnly: true, group: 'Company' }
+    { id: 'ai', name: 'Insights', shortLabel: 'Insights', icon: Eye, adminOnly: true, group: 'Company' }
   ].filter(tab => !tab.adminOnly || isAdminOrOwner(user))
     .filter((tab) => tab.id !== 'ai' || REPORTS_AI_INSIGHTS_ENABLED)
   const tabGroups = ['Sales', 'Receivables', 'Payables', 'Operations', 'Company']
@@ -1011,7 +1011,19 @@ const ReportsPage = () => {
               })
             }
 
-            setReportData(prev => ({ ...prev, aiSuggestions: suggestions }))
+            const stats = Array.isArray(aiData.topSellerStats) ? aiData.topSellerStats : []
+            const topSellers = (aiData.topSellers || []).map((product, index) => ({
+              id: product.id,
+              name: product.nameEn || product.sku,
+              unit: product.unitType,
+              revenue: Number(stats[index]?.revenue ?? 0),
+              quantity: Number(stats[index]?.quantity ?? 0),
+            }))
+            setReportData(prev => ({
+              ...prev,
+              aiSuggestions: suggestions,
+              insightMeta: { topSellers, basis: aiData.rankingBasis || 'revenue', method: aiData.method || 'rule-based', periodDays: aiData.periodDays || 30, asOf: aiData.asOf || null },
+            }))
           }
         } catch (error) {
           console.error('Error loading AI suggestions:', error)
@@ -3579,11 +3591,29 @@ const ReportsPage = () => {
               <div className="bg-gradient-to-r from-primary-50 to-purple-50 rounded-lg p-6">
                 <div className="flex items-center mb-4">
                   <Eye className="h-6 w-6 text-primary-600 mr-2" />
-                  <h3 className="text-lg font-semibold text-neutral-900">AI Business Insights</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900">Business insights</h3>
                 </div>
                 <p className="text-neutral-600 mb-6">
-                  AI-powered recommendations to optimize your business performance
+                  Rule-based suggestions worked out from your own sales, stock and customer balances. No AI model is used here.
                 </p>
+                {reportData.insightMeta?.topSellers?.length > 0 && (
+                  <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-4">
+                    <h4 className="text-sm font-semibold text-neutral-900">
+                      Top sellers by {reportData.insightMeta.basis} (last {reportData.insightMeta.periodDays} days)
+                    </h4>
+                    <ol className="mt-2 space-y-1 text-sm">
+                      {reportData.insightMeta.topSellers.map((item) => (
+                        <li key={item.id} className="flex justify-between gap-3">
+                          <span className="min-w-0 break-words">{item.name}</span>
+                          <span className="shrink-0 tabular-nums text-neutral-700">{formatCurrency(item.revenue)}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="mt-2 text-xs text-neutral-500">
+                      Sum of invoice lines, deleted invoices excluded.{reportData.insightMeta.asOf ? ` As of ${new Date(reportData.insightMeta.asOf).toLocaleString()}.` : ''}
+                    </p>
+                  </div>
+                )}
 
                 {reportData.aiSuggestions && reportData.aiSuggestions.length > 0 ? (
                   <div className="space-y-4">
@@ -3606,7 +3636,7 @@ const ReportsPage = () => {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-12 text-neutral-500">
-                    No AI suggestions available at this time
+                    No suggestions right now. Nothing in your stock, margins or balances needs attention.
                   </div>
                 )}
               </div>

@@ -1434,38 +1434,42 @@ namespace HexaBill.Api.Modules.Reports
             {
                 var fromDate = DateTime.UtcNow.Date.AddDays(-periodDays).ToUtcKind();
 
-                // Top sellers - Safe query with null checks
+                // Top sellers: ranked by revenue (sum of line totals) over the period, highest first.
+                // Deleted sales are excluded; the tenant filter and explicit tenant predicate keep it to this company.
+                // Quantity is reported but not ranked on, because units (PCS, CRTN, KG) differ between lines.
                 List<ProductDto> topSellers = new List<ProductDto>();
+                List<TopSellerStatDto> topSellerStats = new List<TopSellerStatDto>();
                 try
                 {
-                    topSellers = await _context.SaleItems
-                        .Include(si => si.Sale)
-                        .Include(si => si.Product)
-                        .Where(si => si.Sale != null && si.Sale.TenantId == tenantId && si.Sale.InvoiceDate >= fromDate && si.Product != null)
-                        .GroupBy(si => new { 
-                            si.ProductId, 
-                            ProductName = si.Product != null ? si.Product.NameEn : "Unknown", 
-                            ProductSku = si.Product != null ? si.Product.Sku : "N/A",
-                            UnitType = si.Product != null ? si.Product.UnitType : "KG",
-                            CostPrice = si.Product != null ? si.Product.CostPrice : 0,
-                            SellPrice = si.Product != null ? si.Product.SellPrice : 0,
-                            StockQty = si.Product != null ? si.Product.StockQty : 0,
-                            ReorderLevel = si.Product != null ? si.Product.ReorderLevel : 0
-                        })
-                        .Select(g => new ProductDto
-                        {
-                            Id = g.Key.ProductId,
-                            Sku = g.Key.ProductSku,
-                            NameEn = g.Key.ProductName,
-                            UnitType = g.Key.UnitType,
-                            ConversionToBase = 1,
-                            CostPrice = g.Key.CostPrice,
-                            SellPrice = g.Key.SellPrice,
-                            StockQty = g.Key.StockQty,
-                            ReorderLevel = g.Key.ReorderLevel
-                        })
+                    var ranked = await _context.SaleItems
+                        .Where(si => si.Sale != null && si.Sale.TenantId == tenantId && !si.Sale.IsDeleted && si.Sale.InvoiceDate >= fromDate)
+                        .GroupBy(si => si.ProductId)
+                        .Select(g => new { ProductId = g.Key, Revenue = g.Sum(x => x.LineTotal), Quantity = g.Sum(x => x.Qty) })
+                        .OrderByDescending(x => x.Revenue)
+                        .ThenBy(x => x.ProductId)
                         .Take(5)
                         .ToListAsync();
+                    var rankedIds = ranked.Select(r => r.ProductId).ToList();
+                    var productsById = await _context.Products
+                        .Where(p => p.TenantId == tenantId && rankedIds.Contains(p.Id))
+                        .ToDictionaryAsync(p => p.Id);
+                    foreach (var row in ranked)
+                    {
+                        if (!productsById.TryGetValue(row.ProductId, out var product)) continue;
+                        topSellers.Add(new ProductDto
+                        {
+                            Id = product.Id,
+                            Sku = product.Sku,
+                            NameEn = product.NameEn,
+                            UnitType = product.UnitType,
+                            ConversionToBase = 1,
+                            CostPrice = product.CostPrice,
+                            SellPrice = product.SellPrice,
+                            StockQty = product.StockQty,
+                            ReorderLevel = product.ReorderLevel
+                        });
+                        topSellerStats.Add(new TopSellerStatDto { ProductId = row.ProductId, Revenue = row.Revenue, Quantity = row.Quantity });
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1591,6 +1595,11 @@ namespace HexaBill.Api.Modules.Reports
                 return new AISuggestionsDto
                 {
                     TopSellers = topSellers,
+                    TopSellerStats = topSellerStats,
+                    RankingBasis = "revenue",
+                    Method = "rule-based",
+                    PeriodDays = periodDays,
+                    AsOf = DateTime.UtcNow,
                     RestockCandidates = restockCandidates,
                     LowMarginProducts = lowMarginProducts,
                     PendingCustomers = pendingCustomers,

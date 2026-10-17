@@ -883,6 +883,23 @@ namespace HexaBill.Api.Models
         public List<ProductDto> LowMarginProducts { get; set; } = new();
         public List<CustomerDto> PendingCustomers { get; set; } = new();
         public List<ProductDto> PromotionCandidates { get; set; } = new();
+        /// <summary>Sales behind each TopSellers row, in the same order.</summary>
+        public List<TopSellerStatDto> TopSellerStats { get; set; } = new();
+        /// <summary>Metric TopSellers is ranked by.</summary>
+        public string RankingBasis { get; set; } = "revenue";
+        /// <summary>These are fixed rules over this company's own data, not a model prediction.</summary>
+        public string Method { get; set; } = "rule-based";
+        public int PeriodDays { get; set; }
+        public DateTime AsOf { get; set; }
+    }
+
+    public class TopSellerStatDto
+    {
+        public int ProductId { get; set; }
+        /// <summary>Sum of invoice line totals in the period (not deleted sales, this company only).</summary>
+        public decimal Revenue { get; set; }
+        /// <summary>Sum of quantities in the sold unit; units can differ between lines, so do not rank on it.</summary>
+        public decimal Quantity { get; set; }
     }
 
     public class StaffPerformanceDto
