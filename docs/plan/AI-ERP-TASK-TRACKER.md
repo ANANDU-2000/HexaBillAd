@@ -45,6 +45,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — Two findings from the regression pass resolved (PASS locally in browser; NOT live)
+- Products at 360px: not a product bug. The phone search field is `type="search"` (role `searchbox`), while `products-crud.spec.js` looked for role `textbox`. The locator now matches by placeholder, which works for both layouts. `products-crud.spec.js` create, refresh, edit price, deactivate with typed confirmation: **5/5 at m360, m390, t768, d1024, d1440**.
+- Payments at 1440px: real layout defect. Nine columns with 24px cell padding put the Actions column (edit, void, print, cheque actions) past the right edge inside a horizontal scroller; 69 controls were cut off. Fix in `PaymentsPage.jsx`: cell padding reduced from `px-6` to `px-4`, and the Actions header and cells are `sticky right-0` with a background and a soft edge shadow (row hover colour follows via `group-hover`), so actions stay reachable at any width. `e2e/offscreen-actions.spec.js` (13 routes) **4/4 at m360, t768, d1024, d1440**; the same spec failed at d1440 on the previous code. `payments-crud.spec.js` 2/2 and `payments-list.spec.js` 2 passed / 2 skipped (skips NOT TESTED) at m360 and d1440 after the change. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- Not done: other wide tables were not individually examined beyond the 13 routes the offscreen spec covers; the sticky column was not checked with very long customer names or in RTL; payments phone cards were not changed.
+
 ### 2026-10-17 — Regression pass over older browser specs after this session's UI changes (PARTIAL: no regression found; several specs fail on data or pre-existing causes)
 - Made 11 older e2e specs honour `HEXABILL_E2E_SLUG` (they hard-coded `gulfharvest`, which cannot log in to the synthetic tenant and trips the 15-minute lockout). Ran them on the synthetic PostgreSQL tenant at m360, t768, d1440.
 - Passed: `shell-navigation` (13 passed, 2 skipped), `settings-company` 6/6, `customers-crud` 6/6, `reports-summary` 3/3, `single-scroll` 3/3, `purchases-header` 3/3, `sidebar-name` 1 passed (2 skipped). Skips are NOT TESTED.

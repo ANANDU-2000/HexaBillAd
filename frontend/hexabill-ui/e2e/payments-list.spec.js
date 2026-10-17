@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 import { signIn, feOrigin } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const PRIMARY_BLUE = 'rgb(37, 99, 235)' // primary-600 (#2563EB)
 
 test('phones: Refresh, Bulk Payment and Add Payment share one row; Add Payment is the primary', async ({ page }, info) => {

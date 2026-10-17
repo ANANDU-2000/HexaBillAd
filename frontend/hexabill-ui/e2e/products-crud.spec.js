@@ -49,7 +49,7 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
   const name = `UX Product ${stamp}`
   await signIn(page, SLUG)
   await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
-  await page.getByRole('textbox', { name: /Search products/ }).filter({ visible: true }).first().fill(sku)
+  await page.getByPlaceholder(/Search products/).filter({ visible: true }).first().fill(sku)
 
   // CREATE
   await page.getByRole('button', { name: /^Add product$/i }).filter({ visible: true }).first().click()
@@ -71,7 +71,7 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
 
   // REFRESH: the product is listed with its name.
   await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
-  await page.getByRole('textbox', { name: /Search products/ }).filter({ visible: true }).first().fill(sku)
+  await page.getByPlaceholder(/Search products/).filter({ visible: true }).first().fill(sku)
   // From 1280px the list is a table whose rows carry "Edit Product"; below that it is cards that carry "Edit <product name>".
   const width = info.project.use.viewport.width
   const phoneCards = width < 1280
@@ -99,7 +99,7 @@ test('product: create -> persisted -> refresh -> edit price -> persisted -> deac
   } else {
     // Table rows (1280px and up) and cards (768-1279px) both open the same "More actions" menu.
     await page.goto(`${feOrigin(SLUG)}/products`, { waitUntil: 'networkidle' })
-    await page.getByRole('textbox', { name: /Search products/ }).filter({ visible: true }).first().fill(sku)
+    await page.getByPlaceholder(/Search products/).filter({ visible: true }).first().fill(sku)
     await page.getByRole('button', { name: `More actions for ${name}`, exact: true }).filter({ visible: true }).first().click()
     await page.getByRole('menuitem', { name: 'Deactivate', exact: true }).click()
   }

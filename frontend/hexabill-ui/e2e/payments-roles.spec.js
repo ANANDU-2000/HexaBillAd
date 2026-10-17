@@ -3,7 +3,7 @@
 import { test, expect } from '@playwright/test'
 import { feOrigin, apiLogin, API, EDGE } from './session.js'
 
-const SLUG = 'gulfharvest'
+const SLUG = process.env.HEXABILL_E2E_SLUG || 'gulfharvest'
 const HOST = { 'X-HexaBill-Original-Host': `${SLUG}.localhost`, 'X-HexaBill-Edge-Secret': EDGE }
 
 async function ownerApi (path, init = {}) {

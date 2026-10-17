@@ -759,28 +759,28 @@ const PaymentsPage = () => {
                     aria-label="Select all eligible payments for receipt"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Invoice
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Method
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Reference
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                <th className="sticky right-0 z-10 bg-neutral-50 px-4 py-3 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
                   Actions
                 </th>
               </tr>
@@ -802,7 +802,7 @@ const PaymentsPage = () => {
                 </tr>
               ) : (
                 filteredPayments.map((payment) => (
-                  <tr key={payment.id} className="hover:bg-neutral-50">
+                  <tr key={payment.id} className="group hover:bg-neutral-50">
                     <td className="px-4 py-4 whitespace-nowrap">
                       {canEditPayments && !user?.supportReadOnly && canReceivePaymentReceipt(payment) && <input
                         type="checkbox"
@@ -812,25 +812,25 @@ const PaymentsPage = () => {
                         aria-label={`Select payment ${payment.id} for receipt`}
                       />}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-neutral-900">{payment.invoiceNo || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="text-sm text-neutral-900">{payment.customerName || '-'}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {money(payment.amount)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <CreditCard className="h-4 w-4 text-neutral-400 mr-2" />
                         <span className="text-sm text-neutral-900">{getPaymentMethod(payment)}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {payment.ref || payment.reference || '-'}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         {getStatusIcon(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}
                         <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(payment.status, getChequeStatus(payment), getPaymentMethod(payment))}`}>
@@ -838,10 +838,10 @@ const PaymentsPage = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-900">
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-neutral-900">
                       {formatDate(payment.paymentDate)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="sticky right-0 z-10 bg-white group-hover:bg-neutral-50 px-4 py-4 whitespace-nowrap text-sm font-medium shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.12)]">
                       <div className="flex items-center space-x-2">
                         {canEditPayments && (
                           <button
