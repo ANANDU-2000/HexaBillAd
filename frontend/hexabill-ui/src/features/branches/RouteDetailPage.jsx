@@ -71,6 +71,7 @@ const RouteDetailPage = () => {
   const [showTodaysRoute, setShowTodaysRoute] = useState(false)
   const [todaysRouteCustomers, setTodaysRouteCustomers] = useState([])
   const [updatingVisitStatus, setUpdatingVisitStatus] = useState(null) // { customerId: status }
+  const [reasonDraft, setReasonDraft] = useState(null) // { customerId, status, text } while a failed or skipped stop waits for its reason
   const [showAssignRouteStaffModal, setShowAssignRouteStaffModal] = useState(false)
   const [routeStaffToAssign, setRouteStaffToAssign] = useState([])
   const [routeStaffAssignLoading, setRouteStaffAssignLoading] = useState(false)
@@ -364,7 +365,7 @@ const RouteDetailPage = () => {
         toast.error(res?.message || 'Failed to update visit status')
       }
     } catch (e) {
-      if (!e?._handledByInterceptor) toast.error('Failed to update visit status')
+      if (!e?._handledByInterceptor) toast.error(e?.response?.data?.message || 'Failed to update visit status')
     } finally {
       setUpdatingVisitStatus(null)
     }
@@ -569,6 +570,14 @@ const RouteDetailPage = () => {
             <p className="text-sm text-neutral-500">{route.branchName ?? '—'}</p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={openCollectionSheet}
+          disabled={loadingSheet}
+          className="inline-flex min-h-11 items-center gap-1 px-3 py-1.5 border border-neutral-300 rounded-lg text-sm text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+        >
+          {loadingSheet ? 'Opening…' : 'Collection sheet'}
+        </button>
         {canManage && (
           <div className="flex items-center gap-2">
             <button
@@ -1238,14 +1247,22 @@ const RouteDetailPage = () => {
                     'Visited': 'bg-primary-100 text-primary-700',
                     'NotHome': 'bg-amber-100 text-warning-fg',
                     'PaymentCollected': 'bg-emerald-100 text-success-fg',
-                    'Rescheduled': 'bg-purple-100 text-purple-700'
+                    'Rescheduled': 'bg-purple-100 text-purple-700',
+                    'Arrived': 'bg-sky-100 text-sky-800',
+                    'Delivered': 'bg-green-100 text-success-fg',
+                    'Failed': 'bg-red-100 text-error-fg',
+                    'Skipped': 'bg-neutral-200 text-neutral-700'
                   }
                   const statusLabels = {
                     'NotVisited': 'Not Visited',
                     'Visited': 'Visited',
                     'NotHome': 'Not Home',
                     'PaymentCollected': 'Payment Collected',
-                    'Rescheduled': 'Rescheduled'
+                    'Rescheduled': 'Rescheduled',
+                    'Arrived': 'Arrived',
+                    'Delivered': 'Delivered',
+                    'Failed': 'Delivery failed',
+                    'Skipped': 'Skipped'
                   }
                   const currentStatus = c.visitStatus || 'NotVisited'
                   const isUpdating = updatingVisitStatus === `${c.customerId}-${currentStatus}`
@@ -1262,6 +1279,12 @@ const RouteDetailPage = () => {
                             value={currentStatus}
                             onChange={(e) => {
                               const newStatus = e.target.value
+                              // A failed or skipped stop needs a reason first, so ask for it before saving anything.
+                              if (newStatus === 'Failed' || newStatus === 'Skipped') {
+                                setReasonDraft({ customerId: c.customerId, status: newStatus, text: c.visitNotes || '' })
+                                return
+                              }
+                              setReasonDraft(null)
                               const paymentAmount = newStatus === 'PaymentCollected' && c.outstandingBalance > 0 ? c.outstandingBalance : null
                               handleUpdateVisitStatus(c.customerId, newStatus, c.visitNotes, paymentAmount)
                             }}
@@ -1273,7 +1296,40 @@ const RouteDetailPage = () => {
                             <option value="NotHome">Not Home</option>
                             <option value="PaymentCollected">Payment Collected</option>
                             <option value="Rescheduled">Rescheduled</option>
+                            <option value="Arrived">Arrived</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Failed">Delivery failed</option>
+                            <option value="Skipped">Skipped</option>
                           </select>
+                          {reasonDraft?.customerId === c.customerId && (
+                            <div className="flex w-full min-w-[12rem] flex-col gap-1 text-left">
+                              <label htmlFor={`visit-reason-${c.customerId}`} className="text-xs font-medium text-neutral-700">
+                                Reason ({statusLabels[reasonDraft.status]})
+                              </label>
+                              <input
+                                id={`visit-reason-${c.customerId}`}
+                                className="min-h-11 rounded border border-neutral-300 px-2 text-base md:min-h-0 md:text-sm"
+                                maxLength={500}
+                                value={reasonDraft.text}
+                                onChange={(e) => setReasonDraft((d) => ({ ...d, text: e.target.value }))}
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  disabled={reasonDraft.text.trim().length < 3 || isUpdating}
+                                  onClick={async () => {
+                                    const draft = reasonDraft
+                                    await handleUpdateVisitStatus(c.customerId, draft.status, draft.text.trim(), null)
+                                    setReasonDraft(null)
+                                  }}
+                                  className="min-h-11 rounded bg-primary-600 px-3 text-sm text-white disabled:opacity-50 md:min-h-0 md:py-1"
+                                >
+                                  Save
+                                </button>
+                                <button type="button" onClick={() => setReasonDraft(null)} className="min-h-11 rounded border border-neutral-300 px-3 text-sm md:min-h-0 md:py-1">Cancel</button>
+                              </div>
+                            </div>
+                          )}
                           {stopLocationEnabled && (
                             <button
                               type="button"

@@ -589,7 +589,8 @@ namespace HexaBill.Api.Modules.Branches
             if (route == null) return null;
             var branchName = (await _context.Branches.Where(b => b.Id == route.BranchId).Select(b => b.Name).FirstOrDefaultAsync()) ?? "";
 
-            var dateStart = date.Date;
+            // Npgsql only writes UTC to timestamptz; a plain yyyy-MM-dd arrives as Kind=Unspecified.
+            var dateStart = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
             var dateEnd = dateStart.AddDays(1).AddTicks(-1);
 
             var customerIds = route.RouteCustomers.Select(rc => rc.CustomerId).ToList();
@@ -663,108 +664,125 @@ namespace HexaBill.Api.Modules.Branches
                 .FirstOrDefaultAsync(c => c.Id == customerId && (tenantId <= 0 || c.TenantId == tenantId));
             if (customer == null) return null;
 
-            if (!Enum.TryParse<VisitStatus>(request.Status, true, out var visitStatus))
+            // Enum.TryParse also accepts any number ("99"), so a defined name is required as well.
+            if (!Enum.TryParse<VisitStatus>(request.Status, true, out var visitStatus) || !Enum.IsDefined(typeof(VisitStatus), visitStatus)
+                || (request.Status?.Trim().Length > 0 && char.IsDigit(request.Status.Trim()[0])))
                 throw new ArgumentException($"Invalid status: {request.Status}");
+            var notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim();
+            if (notes != null && notes.Length > 500) throw new ArgumentException("The note can be at most 500 characters.");
+            if ((visitStatus == VisitStatus.Failed || visitStatus == VisitStatus.Skipped) && (notes == null || notes.Length < 3))
+                throw new ArgumentException($"Give a reason when a stop is marked {visitStatus.ToString().ToLowerInvariant()}.");
+            // Arrival and delivery are timestamped even without GPS; the location block below only adds coordinates.
+            DateTime? reachedNow = visitStatus is VisitStatus.Arrived or VisitStatus.Delivered ? (request.ReachedAt ?? DateTime.UtcNow) : null;
 
-            var visitDate = request.VisitDate.Date;
+            var visitDate = DateTime.SpecifyKind(request.VisitDate.Date, DateTimeKind.Utc); // Unspecified dates are rejected by Npgsql
             var locationEnabled = IsStopLocationEnabled();
             var hasCoords = request.Latitude.HasValue && request.Longitude.HasValue
                 && Math.Abs(request.Latitude.Value) <= 90 && Math.Abs(request.Longitude.Value) <= 180;
 
-            await using var tx = await _context.Database.BeginTransactionAsync();
-            try
+            var strategy = _context.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
             {
-                CustomerVisit? visit;
+                // A retry starts clean: nothing from a failed attempt may stay tracked.
+                _context.ChangeTracker.Clear();
+                var cust = await _context.Customers.FirstAsync(c => c.Id == customerId && (tenantId <= 0 || c.TenantId == tenantId));
+                await using var tx = await _context.Database.BeginTransactionAsync();
                 try
                 {
-                    visit = await _context.CustomerVisits
-                        .FirstOrDefaultAsync(v => v.RouteId == routeId &&
-                                                 v.CustomerId == customerId &&
-                                                 v.VisitDate.Date == visitDate &&
-                                                 (tenantId <= 0 || v.TenantId == tenantId));
+                    CustomerVisit? visit;
+                    try
+                    {
+                        visit = await _context.CustomerVisits
+                            .FirstOrDefaultAsync(v => v.RouteId == routeId &&
+                                                     v.CustomerId == customerId &&
+                                                     v.VisitDate.Date == visitDate &&
+                                                     (tenantId <= 0 || v.TenantId == tenantId));
+                    }
+                    catch (Exception ex) when (IsRelationMissing42P01(ex))
+                    {
+                        await tx.RollbackAsync();
+                        return null;
+                    }
+
+                    if (visit == null)
+                    {
+                        visit = new CustomerVisit
+                        {
+                            RouteId = routeId,
+                            CustomerId = customerId,
+                            TenantId = tenantId,
+                            StaffId = userId,
+                            VisitDate = visitDate,
+                            Status = visitStatus,
+                            Notes = notes,
+                            PaymentCollected = request.PaymentCollected,
+                            ReachedAt = reachedNow,
+                            CreatedAt = DateTime.UtcNow
+                        };
+                        _context.CustomerVisits.Add(visit);
+                    }
+                    else
+                    {
+                        visit.Status = visitStatus;
+                        visit.Notes = notes;
+                        visit.PaymentCollected = request.PaymentCollected;
+                        if (reachedNow.HasValue) visit.ReachedAt = reachedNow;
+                        visit.StaffId = userId;
+                        visit.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    if (locationEnabled && hasCoords)
+                    {
+                        visit.Latitude = request.Latitude;
+                        visit.Longitude = request.Longitude;
+                        visit.ReachedAt = request.ReachedAt ?? DateTime.UtcNow;
+
+                        var shouldWriteMain = request.UpdateSavedLocation
+                            || cust.MainLatitude == null
+                            || cust.MainLongitude == null;
+                        if (shouldWriteMain)
+                        {
+                            cust.MainLatitude = request.Latitude;
+                            cust.MainLongitude = request.Longitude;
+                            cust.LocationUpdatedAt = DateTime.UtcNow;
+                            cust.LocationUpdatedBy = userId;
+                            cust.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+                    await tx.CommitAsync();
+
+                    return new CustomerVisitDto
+                    {
+                        Id = visit.Id,
+                        RouteId = visit.RouteId,
+                        CustomerId = visit.CustomerId,
+                        CustomerName = cust.Name ?? "",
+                        VisitDate = visit.VisitDate,
+                        Status = visit.Status.ToString(),
+                        Notes = visit.Notes,
+                        PaymentCollected = visit.PaymentCollected,
+                        StaffId = visit.StaffId,
+                        CreatedAt = visit.CreatedAt,
+                        Latitude = visit.Latitude,
+                        Longitude = visit.Longitude,
+                        ReachedAt = visit.ReachedAt,
+                        MainLatitude = cust.MainLatitude,
+                        MainLongitude = cust.MainLongitude
+                    };
                 }
                 catch (Exception ex) when (IsRelationMissing42P01(ex))
                 {
-                    await tx.RollbackAsync();
+                    try { await tx.RollbackAsync(); } catch { /* ignore */ }
                     return null;
                 }
-
-                if (visit == null)
+                catch
                 {
-                    visit = new CustomerVisit
-                    {
-                        RouteId = routeId,
-                        CustomerId = customerId,
-                        TenantId = tenantId,
-                        StaffId = userId,
-                        VisitDate = visitDate,
-                        Status = visitStatus,
-                        Notes = request.Notes,
-                        PaymentCollected = request.PaymentCollected,
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    _context.CustomerVisits.Add(visit);
+                    try { await tx.RollbackAsync(); } catch { /* ignore */ }
+                    throw;
                 }
-                else
-                {
-                    visit.Status = visitStatus;
-                    visit.Notes = request.Notes;
-                    visit.PaymentCollected = request.PaymentCollected;
-                    visit.StaffId = userId;
-                    visit.UpdatedAt = DateTime.UtcNow;
-                }
-
-                if (locationEnabled && hasCoords)
-                {
-                    visit.Latitude = request.Latitude;
-                    visit.Longitude = request.Longitude;
-                    visit.ReachedAt = request.ReachedAt ?? DateTime.UtcNow;
-
-                    var shouldWriteMain = request.UpdateSavedLocation
-                        || customer.MainLatitude == null
-                        || customer.MainLongitude == null;
-                    if (shouldWriteMain)
-                    {
-                        customer.MainLatitude = request.Latitude;
-                        customer.MainLongitude = request.Longitude;
-                        customer.LocationUpdatedAt = DateTime.UtcNow;
-                        customer.LocationUpdatedBy = userId;
-                        customer.UpdatedAt = DateTime.UtcNow;
-                    }
-                }
-
-                await _context.SaveChangesAsync();
-                await tx.CommitAsync();
-
-                return new CustomerVisitDto
-                {
-                    Id = visit.Id,
-                    RouteId = visit.RouteId,
-                    CustomerId = visit.CustomerId,
-                    CustomerName = customer.Name ?? "",
-                    VisitDate = visit.VisitDate,
-                    Status = visit.Status.ToString(),
-                    Notes = visit.Notes,
-                    PaymentCollected = visit.PaymentCollected,
-                    StaffId = visit.StaffId,
-                    CreatedAt = visit.CreatedAt,
-                    Latitude = visit.Latitude,
-                    Longitude = visit.Longitude,
-                    ReachedAt = visit.ReachedAt,
-                    MainLatitude = customer.MainLatitude,
-                    MainLongitude = customer.MainLongitude
-                };
-            }
-            catch (Exception ex) when (IsRelationMissing42P01(ex))
-            {
-                try { await tx.RollbackAsync(); } catch { /* ignore */ }
-                return null;
-            }
-            catch
-            {
-                try { await tx.RollbackAsync(); } catch { /* ignore */ }
-                throw;
-            }
+            });
         }
 
         public async Task<List<CustomerVisitDto>> GetCustomerVisitsAsync(int routeId, int tenantId, DateTime? date)
@@ -779,7 +797,7 @@ namespace HexaBill.Api.Modules.Branches
 
                 if (date.HasValue)
                 {
-                    var dateStart = date.Value.Date;
+                    var dateStart = DateTime.SpecifyKind(date.Value.Date, DateTimeKind.Utc);
                     var dateEnd = dateStart.AddDays(1);
                     query = query.Where(v => v.VisitDate >= dateStart && v.VisitDate < dateEnd);
                 }
@@ -821,7 +839,7 @@ namespace HexaBill.Api.Modules.Branches
                 .FirstOrDefaultAsync(r => r.Id == routeId && (tenantId <= 0 || r.TenantId == tenantId));
             if (route == null) return null;
 
-            var dateStart = date.Date;
+            var dateStart = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc);
             var dateEnd = dateStart.AddDays(1);
 
             var stops = await _context.RouteCustomers.AsNoTracking()

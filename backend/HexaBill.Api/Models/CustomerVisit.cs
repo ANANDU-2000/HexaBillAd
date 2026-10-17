@@ -12,7 +12,12 @@ namespace HexaBill.Api.Models
         Visited = 1,
         NotHome = 2,
         PaymentCollected = 3,
-        Rescheduled = 4
+        Rescheduled = 4,
+        // Delivery states (stored as text, so no schema change). Failed and Skipped need a reason in Notes.
+        Arrived = 5,
+        Delivered = 6,
+        Failed = 7,
+        Skipped = 8
     }
 
     public class CustomerVisit
