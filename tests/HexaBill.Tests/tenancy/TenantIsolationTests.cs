@@ -322,7 +322,7 @@ internal static class TestJwtFactory
         return new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    public static string CreateAuthenticatedApiToken(int userId, int tenantId, string slug, int sessionVersion = 1)
+    public static string CreateAuthenticatedApiToken(int userId, int tenantId, string slug, int sessionVersion = 1, string role = "Owner")
     {
         var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(Secret));
         var creds = new Microsoft.IdentityModel.Tokens.SigningCredentials(key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.HmacSha256);
@@ -330,7 +330,7 @@ internal static class TestJwtFactory
         {
             new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
             new Claim("UserId", userId.ToString()),
-            new Claim(ClaimTypes.Role, "Owner"),
+            new Claim(ClaimTypes.Role, role),
             new Claim("sv", sessionVersion.ToString()),
             new Claim("plat", "false"),
             new Claim("tid", tenantId.ToString()),

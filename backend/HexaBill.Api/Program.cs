@@ -299,6 +299,10 @@ builder.Services.AddScoped<ISaleValidationService, SaleValidationService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+// Read-only assistant tools (no model, no writes). Add a tool by registering another IAssistantTool here.
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.FindCustomersTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.IAssistantTool, HexaBill.Api.Modules.Assistant.ProductStockTool>();
+builder.Services.AddScoped<HexaBill.Api.Modules.Assistant.AssistantToolRegistry>();
 builder.Services.AddScoped<ICustomerItemPriceService, CustomerItemPriceService>();
 builder.Services.AddScoped<ICustomerMergeService, CustomerMergeService>();
 builder.Services.AddScoped<ISupplierMergeService, SupplierMergeService>();
