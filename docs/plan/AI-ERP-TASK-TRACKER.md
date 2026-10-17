@@ -45,6 +45,13 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — DATA-01 company count definitions (PARTIAL: server counts PASS; UI browser NOT TESTED; no tenant data touched)
+- Root cause (code-confirmed): `SuperAdminTenantsPage` showed "Total Businesses" = the filtered `totalCount`, and "Active"/"Trial" = counts over the current page's 20 rows only. Seven vs five in S288/S300 is therefore partly a definition problem. No tenant was created, merged or deleted; the real five-client inventory is NOT reconciled here (needs a read-only look at the live directory and the owner's list, including which rows are test/demo).
+- Change: `GET /api/superadmin/tenant` now also returns `statusCounts`, `directoryTotal` and `asOf`, computed over every company regardless of page, search or status filter (additive `PagedResponse` fields). The page uses them and states the definition, as-of time, and that test/demo rows are included until marked.
+- Evidence: new `TenantDirectoryCountsHttpTests` red before the change, green after. `Tenant`/`SuperAdmin` filtered backend run **382 passed / 0 failed / 0 skipped** with `HEXABILL_TEST_POSTGRES` on disposable cluster 55474 (346 passed + 36 skipped without it, so the PostgreSQL run is the evidence). Frontend build exit 0, lint 0 errors.
+- NOT TESTED: the page in a browser (needs a SuperAdmin session on the platform host), other admin metrics (dashboard `tenant/dashboard`, health), a test/demo flag on tenants (no such column; proposed, needs a migration decision).
+- Next: OPS-02 true resource metrics, SAFE-01 destructive controls.
+
 ### 2026-10-17 — UX-05 owner dashboard Daily Close status (PARTIAL; NOT live)
 - Finding: `DashboardTally` already had quick actions (New invoice F3, New purchase F4, Customer ledger F10, Expenses) and the Daily Close backend/page already exist and are admin-only. Missing: Daily Close status on the dashboard. No backend duplicated.
 - Change: `DailyCloseStatusCard` (owner/admin only) reads the existing `GET /api/daily-close/status` for today and shows Not closed yet / Draft saved / Reopened (with reason) / Closed (matching, or variance with or without a recorded reason) / unavailable on a failed load; it never claims Closed unless the server row is Closed. The button opens the existing Daily close page; closing, variance review and reopening rules are untouched. Mapping lives in `dailyCloseStatus.js`.

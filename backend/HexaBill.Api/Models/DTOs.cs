@@ -1248,6 +1248,12 @@ namespace HexaBill.Api.Models
         public int Page { get; set; }
         public int PageSize { get; set; }
         public int TotalPages { get; set; }
+        /// <summary>Optional: companies per status over the whole directory, ignoring page, search and status filter.</summary>
+        public Dictionary<string, int>? StatusCounts { get; set; }
+        /// <summary>Optional: all companies in the directory (sum of StatusCounts), ignoring page, search and status filter.</summary>
+        public int? DirectoryTotal { get; set; }
+        /// <summary>Optional: UTC time the directory counts were read.</summary>
+        public DateTime? AsOf { get; set; }
     }
 
     // Return DTOs

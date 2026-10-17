@@ -33,6 +33,7 @@ const SuperAdminTenantsPage = () => {
   const [loading, setLoading] = useState(true)
   const [tenants, setTenants] = useState([])
   const [totalCount, setTotalCount] = useState(0)
+  const [directory, setDirectory] = useState(null) // server counts over every company: { total, statusCounts, asOf }
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize] = useState(20)
   const [searchTerm, setSearchTerm] = useState('')
@@ -99,6 +100,7 @@ const SuperAdminTenantsPage = () => {
       if (response.success) {
         setTenants(response.data.items || [])
         setTotalCount(response.data.totalCount || 0)
+        setDirectory(response.data.statusCounts ? { total: response.data.directoryTotal ?? 0, statusCounts: response.data.statusCounts, asOf: response.data.asOf ?? null } : null)
       } else {
         toast.error(response.message || 'Failed to load companies')
       }
@@ -470,24 +472,30 @@ const SuperAdminTenantsPage = () => {
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <StatCard
-          title="Total Businesses"
-          value={totalCount}
+          title="All companies"
+          value={directory ? directory.total : totalCount}
           icon={Building2}
           format="number"
         />
         <StatCard
           title="Active Instances"
-          value={tenants.filter(t => t.status === 'Active').length}
+          value={directory ? (directory.statusCounts.Active ?? 0) : tenants.filter(t => t.status === 'Active').length}
           icon={CheckCircle}
           format="number"
         />
         <StatCard
           title="Trial Users"
-          value={tenants.filter(t => t.status === 'Trial').length}
+          value={directory ? (directory.statusCounts.Trial ?? 0) : tenants.filter(t => t.status === 'Trial').length}
           icon={RefreshCw}
           format="number"
         />
       </div>
+
+      {directory && (
+        <p className="-mt-6 mb-6 text-xs text-neutral-500">
+          Counts cover every company in this environment, whatever the filters or page{directory.asOf ? `, as of ${new Date(directory.asOf).toLocaleString()}` : ''}. Suspended {directory.statusCounts.Suspended ?? 0}, Expired {directory.statusCounts.Expired ?? 0}. Test and demo companies are included until marked.
+        </p>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg border border-neutral-200 shadow-sm p-4 mb-6">

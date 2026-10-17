@@ -932,13 +932,23 @@ namespace HexaBill.Api.Modules.Tenants
                 }
             }
 
+            // Directory-wide counts (not page, search or status filtered) so stat cards never describe only one page.
+            var statusGroups = await _context.Tenants.AsNoTracking()
+                .GroupBy(t => t.Status)
+                .Select(g => new { Status = g.Key, Count = g.Count() })
+                .ToListAsync();
+            var statusCounts = statusGroups.ToDictionary(g => g.Status.ToString(), g => g.Count);
+
             return new PagedResponse<TenantDto>
             {
                 Items = tenants,
                 TotalCount = totalCount,
                 Page = page,
                 PageSize = pageSize,
-                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize)
+                TotalPages = (int)Math.Ceiling((double)totalCount / pageSize),
+                StatusCounts = statusCounts,
+                DirectoryTotal = statusCounts.Values.Sum(),
+                AsOf = DateTime.UtcNow
             };
         }
 
