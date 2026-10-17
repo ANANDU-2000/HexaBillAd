@@ -673,7 +673,38 @@ const RouteDetailPage = () => {
           ) : routeSales.length === 0 ? (
             <p className="text-neutral-500 py-6">No invoices for this route yet.</p>
           ) : (
-            <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+            <>
+            {/* Phone: invoice, customer, total and status together with a 44px View action (UX-02) */}
+            <ul className="md:hidden divide-y divide-neutral-200 border border-neutral-200 rounded-lg bg-white" aria-label="Route invoices">
+              {routeSales.map(s => {
+                const status = (s.status || 'Pending')
+                const tone = status.toLowerCase() === 'paid' ? 'bg-green-100 text-success-fg' : status.toLowerCase() === 'partial' ? 'bg-amber-100 text-warning-fg' : 'bg-red-100 text-error-fg'
+                return (
+                  <li key={s.id} className="px-3 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium">{s.invoiceNumber || s.invoiceNo || s.id}</p>
+                        <p className="break-words text-sm text-neutral-700">{s.customerName || '—'}</p>
+                        <p className="text-xs text-neutral-500">{s.invoiceDate ? new Date(s.invoiceDate).toLocaleDateString() : '—'}</p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold tabular-nums">{formatCurrency(s.grandTotal ?? s.total ?? 0)}</p>
+                        <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium ${tone}`}>{status}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/sales-ledger?invoiceId=${s.id}`)}
+                      aria-label={`View invoice ${s.invoiceNumber || s.invoiceNo || s.id}`}
+                      className="mt-2 inline-flex min-h-11 items-center rounded border border-neutral-300 px-4 text-sm text-primary-700"
+                    >
+                      View
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+            <div className="hidden md:block overflow-x-auto border border-neutral-200 rounded-lg">
               <table className="min-w-full divide-y divide-neutral-200">
                 <thead className="bg-neutral-50 sticky top-0">
                   <tr>
@@ -699,6 +730,7 @@ const RouteDetailPage = () => {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       )}

@@ -45,6 +45,11 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — UX-02 (continued): route sales phone cards (PASS locally in browser; NOT live)
+- `RouteDetailPage.jsx` sales tab now shows invoice cards below `md` (invoice no, customer, date, total, status, 44px View button); the table is unchanged from `md` up. The other four tables on this page (customers, expenses, summaries, print views) are not changed.
+- Evidence: `e2e/route-sales-responsive.spec.js` **5/5 at m360, m390, t768, d1024, d1440**; **red on the previous page** (no card list), green on the fix. The route and branch are real records created through the API on the synthetic tenant; **only the invoice list response is mocked** (three invoices, one with a very long customer name), so this proves layout and rendering, not invoice data. Frontend `npm test` 210/210; lint 0 errors; build exit 0.
+- NOT TESTED: route sales with real invoices, route customers/expenses tables on phones, S189 on production, 820/1180 widths.
+
 ### 2026-10-17 — AI-01 foundation: read-only assistant tool registry (PASS locally; backend only; NO model, NO UI, NOT live)
 - Scope: the provider-free base the assistant will sit on. No LLM, no network call, no write tool, no real customer data sent anywhere. `Modules/Assistant`: `AssistantToolRegistry` (fixed list), `find_customers` (existing `ICustomerService.SearchCustomersAsync`) and `product_stock` (existing `IProductService.SearchProductsAsync`). Endpoints: `GET /api/assistant/tools`, `POST /api/assistant/tools/{name}`.
 - Controls: caller (tenant, user, owner/admin flag) is read from the token only; platform administrators get 403; unknown and not-allowed tools both return 404; arguments are typed and any extra field (`tenantId`, `sql`, ...) is rejected with 400; query length and limit are bounded (limit capped at 10); owners/admins see balances and cost price, staff get those fields as null; every answer carries record sources with an as-of time; a run writes an `AssistantToolRun` audit row with the tool name and source count, not the search text.
