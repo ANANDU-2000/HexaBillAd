@@ -45,6 +45,14 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — Audit kit: SAVE-01 status and REL-02 staff activity route (PASS locally; NOT live)
+- Source: branch `main`, HEAD `b71ec0c` at start; untracked `HexaBill_Audit_Execution_Kit/` and `hexabill_al_uiuimages/` left uncommitted. Deployed Render/Vercel versions NOT re-verified this session.
+- SAVE-01: no new live reproduction (needs owner credentials and approval for a marked test write). Local reproduction, root causes and fixes are in the two 2026-10-17 create-path entries below and `docs/qa/HEXABILL-PRODUCTION-SAVE-INCIDENT.md`. Live status: BLOCKED (deploy and live product/customer test not authorized).
+- REL-02 root cause (code-confirmed): `adminAPI.getUserActivity` called `/users/{id}/activity`; no such route in `UsersController`. The endpoint is `AdminController` `GET /api/admin/users/{id}/activity` (`AdminOrOwner`, tenant-checked). Any failure was also swallowed into "No activity recorded".
+- Fix: `services/index.js` route; new `src/utils/userActivity.js` returns ok vs error; `UsersPage.jsx` shows an error alert for a failed load and the empty text only for a successful empty list.
+- Evidence: `node --test tests/userActivity.test.js` 4/4; `npm test` 188/188, 0 skipped; `npm run build` exit 0; ESLint 0 errors. Backend `UserActivityHttpIsolationTests` 3/3 (own tenant 200, other tenant 404, legacy `/api/users/{id}/activity` 404) on the SQLite HTTP factory. NOT TESTED: browser run, deployed routing, PostgreSQL variant.
+- Next: REL-01 purchase route error, then UX-01 purchase picker.
+
 ### 2026-10-17 — Create-path fixes round 2: auto-fill 500, customer OwnerId, barcode index, customer form limits (PASS locally; NOT live)
 - Publication state (verified with `git ls-remote origin refs/heads/main`): `origin/main` = `10c9f52`, which is the first round of this session. The push tool reported a denial, but the remote was updated ("update by push" in the reflog). This round is local commit `543e557`, not pushed. The schema note on the remote holds row counts and row IDs from production; owner to decide whether to keep it on `main`.
 - Barcode auto-fill 500 root cause: the method opened a user transaction. Production enables Npgsql `EnableRetryOnFailure`, which rejects that (reproduced with the production policy). Fixed by running the unit of work inside `CreateExecutionStrategy()`. Test: `ProductAutoFillBarcodePostgreSqlTests` (2), red then green.

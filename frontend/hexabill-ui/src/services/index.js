@@ -1443,7 +1443,7 @@ export const adminAPI = {
   },
 
   getUserActivity: async (userId, limit = 50) => {
-    const response = await api.get(`/users/${userId}/activity`, { params: { limit } })
+    const response = await api.get(`/admin/users/${userId}/activity`, { params: { limit } })
     return response.data
   },
 

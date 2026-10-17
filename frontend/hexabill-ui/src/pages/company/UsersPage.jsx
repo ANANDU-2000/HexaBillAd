@@ -34,6 +34,7 @@ import { LoadingCard } from '../../components/Loading'
 import Modal from '../../components/Modal'
 import ConfirmDangerModal from '../../components/ConfirmDangerModal'
 import { adminAPI } from '../../services'
+import { loadUserActivity } from '../../utils/userActivity'
 import toast from 'react-hot-toast'
 import { isAdminOrOwner, isOwner, getRoleDisplayName } from '../../utils/roles'  // CRITICAL: Multi-tenant role checking
 import { validateEmail } from '../../utils/validation'
@@ -224,6 +225,7 @@ const UsersPage = () => {
   const [activityUser, setActivityUser] = useState(null)
   const [activityLogs, setActivityLogs] = useState([])
   const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState('')
   const [showSessionsModal, setShowSessionsModal] = useState(false)
   const [userToDelete, setUserToDelete] = useState(null)
   const [sessions, setSessions] = useState([])
@@ -858,10 +860,11 @@ const UsersPage = () => {
                               setShowActivityModal(true)
                               setActivityLogs([])
                               setActivityLoading(true)
-                              adminAPI.getUserActivity(user.id).then((res) => {
-                                if (res?.success && Array.isArray(res.data)) setActivityLogs(res.data)
-                                else setActivityLogs([])
-                              }).catch(() => setActivityLogs([])).finally(() => setActivityLoading(false))
+                              setActivityError('')
+                              loadUserActivity(() => adminAPI.getUserActivity(user.id)).then((result) => {
+                                setActivityLogs(result.logs)
+                                setActivityError(result.status === 'error' ? result.message : '')
+                              }).finally(() => setActivityLoading(false))
                             }}
                             className="text-neutral-500 hover:text-indigo-700 p-2 hover:bg-indigo-50 rounded transition"
                             title="View activity"
@@ -976,12 +979,14 @@ const UsersPage = () => {
       {/* User Activity Modal */}
       <Modal
         isOpen={showActivityModal}
-        onClose={() => { setShowActivityModal(false); setActivityUser(null); setActivityLogs([]) }}
+        onClose={() => { setShowActivityModal(false); setActivityUser(null); setActivityLogs([]); setActivityError('') }}
         title={activityUser ? `Activity: ${activityUser.name}` : 'User activity'}
       >
         <div className="min-h-[200px] max-h-[60vh] overflow-auto">
           {activityLoading ? (
             <div className="flex items-center justify-center py-8"><LoadingCard /></div>
+          ) : activityError ? (
+            <p role="alert" className="text-sm text-error py-4">{activityError}</p>
           ) : activityLogs.length === 0 ? (
             <p className="text-sm text-neutral-500 py-4">No activity recorded for this user.</p>
           ) : (
