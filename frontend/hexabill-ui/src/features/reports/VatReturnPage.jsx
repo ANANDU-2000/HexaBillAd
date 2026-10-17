@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { shouldRunBackgroundRefresh, vatPeriodKey } from '../../utils/vatRefreshGate'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   RefreshCw,
@@ -155,10 +156,21 @@ const VatReturnPage = () => {
   const [validationExpanded, setValidationExpanded] = useState(false)
   const [trackingExpanded, setTrackingExpanded] = useState(false)
   const requestIdRef = useRef(0)
+  const inFlightRef = useRef(false)
+  const lastLoadRef = useRef({ key: null, at: NaN })
+  const [refreshNote, setRefreshNote] = useState(null) // background refresh failed; previous figures kept
 
   const isValidDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)
 
-  const fetchVatReturn = useCallback(async (fromOverride, toOverride) => {
+  const fetchVatReturn = useCallback(async (fromOverride, toOverride, options = {}) => {
+    const background = options.background === true
+    if (background && !shouldRunBackgroundRefresh({
+      inFlight: inFlightRef.current,
+      lastKey: lastLoadRef.current.key,
+      lastAt: lastLoadRef.current.at,
+      key: vatPeriodKey(fromOverride ?? fromDate, toOverride ?? toDate),
+      now: Date.now(),
+    })) return
     const requestId = ++requestIdRef.current
     const f = fromOverride ?? fromDate
     const t = toOverride ?? toDate
@@ -211,7 +223,9 @@ const VatReturnPage = () => {
       }
     }
     setLoadError(null)
-    setLoading(true)
+    setRefreshNote(null)
+    if (!background) setLoading(true)
+    inFlightRef.current = true
     try {
       const params = { from: fromFinal, to: toFinal }
       const res = await reportsAPI.getVatReturn(params)
@@ -220,6 +234,7 @@ const VatReturnPage = () => {
       const success = res?.success !== false && dto != null
       if (requestId !== requestIdRef.current) return
       if (success) {
+        lastLoadRef.current = { key: vatPeriodKey(fromFinal, toFinal), at: Date.now() }
         setVatReturn(dto)
         setLoadError(null)
         if (import.meta.env.DEV) {
@@ -255,6 +270,11 @@ const VatReturnPage = () => {
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return
+      if (background) {
+        // Keep what the user is reading; tell them the refresh failed instead of blanking the report.
+        setRefreshNote('Could not refresh VAT figures. Showing the last loaded data.')
+        return
+      }
       const status = err?.response?.status
       const data = err?.response?.data
       const msg = data?.message || 'Failed to load VAT return'
@@ -279,7 +299,10 @@ const VatReturnPage = () => {
       setVatReturn(null)
       setLedgerFallback(null)
     } finally {
-      if (requestId === requestIdRef.current) setLoading(false)
+      if (requestId === requestIdRef.current) {
+        inFlightRef.current = false
+        setLoading(false)
+      }
     }
   }, [fromDate, toDate])
 
@@ -336,7 +359,7 @@ const VatReturnPage = () => {
 
   // Refresh when sales, purchases, or expenses are updated from other pages
   useEffect(() => {
-    const handler = () => { if (fromDate && toDate) fetchVatReturn(fromDate, toDate) }
+    const handler = () => { if (fromDate && toDate) fetchVatReturn(fromDate, toDate, { background: true }) }
     window.addEventListener('dataUpdated', handler)
     return () => window.removeEventListener('dataUpdated', handler)
   }, [fromDate, toDate, fetchVatReturn])
@@ -347,7 +370,7 @@ const VatReturnPage = () => {
     const debounced = () => {
       clearTimeout(t)
       t = setTimeout(() => {
-        if (document.visibilityState === 'visible' && fromDate && toDate) fetchVatReturn(fromDate, toDate)
+        if (document.visibilityState === 'visible' && fromDate && toDate) fetchVatReturn(fromDate, toDate, { background: true })
       }, 400)
     }
     document.addEventListener('visibilitychange', debounced)
@@ -675,7 +698,13 @@ const VatReturnPage = () => {
         )}
       </div>
 
-      {loading ? (
+      {refreshNote && (
+        <p role="status" className="mb-3 rounded-md border border-warning-border bg-warning-bg px-3 py-2 text-sm text-warning-fg">{refreshNote}</p>
+      )}
+      {loading && vatReturn && (
+        <p role="status" className="mb-3 text-sm text-neutral-500">Updating VAT figures for {fromDate} to {toDate}…</p>
+      )}
+      {loading && !vatReturn ? (
         <LoadingCard message="Loading VAT return..." />
       ) : loadError === 'access' ? (
         <div className="py-12 text-center">

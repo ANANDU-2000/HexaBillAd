@@ -45,6 +45,13 @@
 | FINAL-02 | P0 | ALL | Stage rollout plan, backups, feature flags, rollback, support docs | TODO | Written approval for prod |
 
 ## Session log
+### 2026-10-17 — VAT-01 passive refetch and content replacement (PASS locally in browser; production cause NOT proven)
+- Code-confirmed: `focus`, `visibilitychange` and `dataUpdated` each called `fetchVatReturn`, which set `loading=true`, and the render swapped the whole report for `LoadingCard`. No scroll listener exists (unchanged finding). A focus/visibility burst (for example touch or devtools) therefore flashed the report and could move the scroll position.
+- Fix: passive triggers call `fetchVatReturn(..., { background: true })`, gated by `utils/vatRefreshGate.js` (skip while a request is in flight or the same period loaded under 30s ago). Background failures keep the last figures and show a status note. Foreground loads keep existing content with an "Updating VAT figures for <period>…" line; the loading card shows only when there is nothing to show. Request-id guard for stale responses unchanged.
+- Evidence: `tests/vatRefreshGate.test.js` 5/5; `npm test` 200/200, 0 skipped; build exit 0; ESLint 0 errors. Browser spec `e2e/vat-refresh-stability.spec.js` (scroll plus focus/visibility events, request count, DOM node survives, no loading card) **3/3 at m360, t768, d1440** on disposable PG; **red on the previous page (extra request: expected 2, got 3), green on the fix**.
+- Observed, not fixed: the initial page load issues 2 VAT GETs (mount effect plus URL-sync). Quarter helpers vs tenant tax schedules not reconciled (still open). NOT TESTED: other widths, real mobile Safari focus behaviour, deployed build, scroll position after a foreground period change.
+- Next: UX-04 purchase entry vs history split and footer spacing.
+
 ### 2026-10-17 — UX-01 purchase product picker (PASS locally on synthetic PostgreSQL + browser; NOT live)
 - Root cause (code-confirmed, reproduced by inspection): the results list was `absolute z-10` but the `relative` wrapper contained only the input, so the list anchored to a distant ancestor and sat under the item-table headers; rows used `onClick`, which a touch blur could swallow.
 - Fix: new `features/purchases/ProductPicker.jsx` (ARIA combobox/listbox) keeps input and list in one relative wrapper (`top-full`, `z-40`, `overscroll-contain`, 44px rows), selects on `pointerdown`, closes on outside press/Escape, ArrowUp/Down/Home/End/Enter via `utils/pickerNav.js`. Not solved by z-index alone.
